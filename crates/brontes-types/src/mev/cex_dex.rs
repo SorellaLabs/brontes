@@ -262,7 +262,7 @@ impl fmt::Display for ArbPnl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "\n - Maker Mid: {}\n - Taker Mid: {}\n - Maker Ask: {}\n - Taker Ask: {}",
+            "ArbPnl:\n - Maker Mid: {}\n - Taker Mid: {}\n - Maker Ask: {}\n - Taker Ask: {}",
             self.maker_taker_mid.0.clone().to_float(),
             self.maker_taker_mid.1.clone().to_float(),
             self.maker_taker_ask.0.clone().to_float(),

@@ -60,6 +60,7 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
+use colored::Colorize;
 use malachite::{
     num::basic::traits::{Two, Zero},
     Rational,
@@ -474,19 +475,23 @@ pub struct PossibleCexDex {
     pub aggregate_pnl: ArbPnl,
 }
 
-impl Display for PossibleCexDex {
+impl fmt::Display for PossibleCexDex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Aggregate PnL: {}", self.aggregate_pnl)?;
+        writeln!(f, "{}", "Aggregate PnL:".bold().underline())?;
+        writeln!(f, "  {}", self.aggregate_pnl)?;
+
+        writeln!(f, "{}", "Arbitrage Legs:".bold().underline())?;
         if !self.arb_legs.is_empty() {
-            writeln!(f, "Arbitrage Legs:")?;
-            for leg in &self.arb_legs {
-                if let Some(ref leg) = leg {
-                    writeln!(f, "{}", leg)?;
-                } else {
-                    writeln!(f, "No leg data available")?;
+            for (index, leg) in self.arb_legs.iter().enumerate() {
+                match leg {
+                    Some(leg) => writeln!(f, "  - Leg {}: {}", index + 1, leg)?,
+                    None => writeln!(f, "  - Leg {}: No data available", index + 1)?,
                 }
             }
+        } else {
+            writeln!(f, "  No arbitrage legs data available")?;
         }
+
         Ok(())
     }
 }
@@ -565,30 +570,36 @@ pub struct CexDexProcessing {
 
 impl fmt::Display for CexDexProcessing {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Dex Swaps:")?;
+        writeln!(f, "{}", "Cex-Dex Processing Details:".bold().underline())?;
+
+        writeln!(f, "{}", "Dex Swaps:".bold())?;
         for swap in &self.dex_swaps {
-            writeln!(f, "{}", swap)?;
+            writeln!(f, "  - {}", swap)?;
         }
 
+        writeln!(f, "{}", "Global VMAM CEX/DEX:".bold())?;
         if let Some(ref vmam) = self.global_vmam_cex_dex {
-            writeln!(f, "Global VMAM CEX/DEX: {}", vmam)?;
+            writeln!(f, "  - {}", vmam)?;
         } else {
-            writeln!(f, "Global VMAM CEX/DEX: Not available")?;
+            writeln!(f, "  - Not available")?;
         }
 
-        writeln!(f, "Per Exchange PnL:")?;
-        for exchange_pnl in &self.per_exchange_pnl {
-            if let Some(ref pnl) = exchange_pnl {
-                writeln!(f, "{}", pnl)?;
-            } else {
-                writeln!(f, "PnL data not available")?;
-            }
+        writeln!(f, "{}", "Per Exchange PnL:".bold())?;
+        for (index, exchange_pnl) in self.per_exchange_pnl.iter().enumerate() {
+            writeln!(
+                f,
+                "  - Exchange {}: {}",
+                index + 1,
+                exchange_pnl
+                    .as_ref()
+                    .map_or("PnL data not available".to_string(), |pnl| pnl.to_string())
+            )?;
         }
 
-        if let Some(ref max) = self.max_profit {
-            writeln!(f, "Max Profit: {}", max)?;
-        } else {
-            writeln!(f, "Max Profit: Not available")?;
+        writeln!(f, "{}", "Max Profit:".bold())?;
+        match self.max_profit {
+            Some(ref max) => writeln!(f, "  - {}", max)?,
+            None => writeln!(f, "  - Not available")?,
         }
 
         Ok(())
@@ -769,6 +780,38 @@ pub struct ArbSanityCheck {
     pub profitable_cross_exchange: bool,
     pub global_profitability:      bool,
     pub is_stable_swaps:           bool,
+}
+
+impl fmt::Display for ArbSanityCheck {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "\x1b[1m\x1b[4mCex Dex Sanity Check\x1b[0m\x1b[24m")?;
+
+        writeln!(f, "Profitable Exchanges:")?;
+        for (index, (exchange, pnl)) in self.profitable_exchanges.iter().enumerate() {
+            writeln!(f, "    - Exchange {}: {}", index + 1, exchange)?;
+            writeln!(f, "        - ARB PNL: {}", pnl)?;
+        }
+
+        if self.profitable_cross_exchange {
+            writeln!(f, "Is profitable cross exchange")?;
+        } else {
+            writeln!(f, "Is not profitable cross exchange")?;
+        }
+
+        if self.global_profitability {
+            writeln!(f, "Is globally profitable based on cross exchange VMAP")?;
+        } else {
+            writeln!(f, "Is not globally profitable based on cross exchange VMAP")?;
+        }
+
+        if self.is_stable_swaps {
+            writeln!(f, "Is a stable swap")?;
+        } else {
+            writeln!(f, "Is not a stable swap")?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Display for ExchangeLeg {

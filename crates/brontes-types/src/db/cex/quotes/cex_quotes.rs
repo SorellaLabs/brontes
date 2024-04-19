@@ -23,6 +23,7 @@ use std::{
 
 use alloy_primitives::Address;
 use clickhouse::Row;
+use colored::*;
 use derive_more::Display;
 use itertools::Itertools;
 use malachite::{
@@ -620,23 +621,31 @@ impl fmt::Display for FeeAdjustedQuote {
         let price_maker = self.price_maker.clone();
         let price_taker = self.price_taker.clone();
         let amount = self.amount.clone();
-        write!(
+
+        writeln!(f, "{}", "Fee Adjusted Quote:".bold().underline())?;
+        writeln!(f, "  Exchange: {}", self.exchange)?;
+        writeln!(f, "  Timestamp: {}", self.timestamp)?;
+        writeln!(f, "  Prices:")?;
+        writeln!(
             f,
-            "Exchange: {}\nTimestamp: {}\nPrices:\n\tMaker: Bid: {:.4} Ask: {:.4}\n\tTaker: Bid: \
-             {:.4} Ask: {:.4}\nBest Bid Amount:\n\t{:.4} \n\t Best Ask Amount {:.4}\nToken0: {}",
-            self.exchange,
-            self.timestamp,
+            "    Maker: Bid {:.4}, Ask {:.4}",
             price_maker.0.to_float(),
-            price_maker.1.to_float(),
+            price_maker.1.to_float()
+        )?;
+        writeln!(
+            f,
+            "    Taker: Bid {:.4}, Ask {:.4}",
             price_taker.0.to_float(),
-            price_taker.1.to_float(),
-            amount.0.to_float(),
-            amount.1.to_float(),
-            self.token0
-        )
+            price_taker.1.to_float()
+        )?;
+        writeln!(f, "  Amounts:")?;
+        writeln!(f, "    Bid Amount: {:.4}", amount.0.to_float())?;
+        writeln!(f, "    Ask Amount: {:.4}", amount.1.to_float())?;
+        writeln!(f, "  Token0: {}", self.token0)?;
+
+        Ok(())
     }
 }
-
 impl FeeAdjustedQuote {
     pub fn maker_taker_mid(&self) -> (Rational, Rational) {
         (
