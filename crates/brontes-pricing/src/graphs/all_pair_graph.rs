@@ -263,7 +263,7 @@ impl AllPairGraph {
             |node| node == end_idx,
             |node0, node1| (*node0, *node1),
             connections,
-            10_000,
+            7_500,
             timeout,
             is_extension,
             &indexes,

@@ -49,7 +49,7 @@ pub struct TraceLoader {
 impl TraceLoader {
     pub async fn new() -> Self {
         let handle = tokio::runtime::Handle::current();
-        init_threadpools(10);
+        init_threadpools(32);
         let libmdbx = get_db_handle(handle.clone()).await;
 
         let (a, b) = unbounded_channel();

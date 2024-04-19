@@ -189,6 +189,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             &mev_addresses,
             &deltas,
             metadata.clone(),
+            false,
         ) {
             (Some(rev), true)
         } else {

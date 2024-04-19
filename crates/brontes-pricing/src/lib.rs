@@ -59,20 +59,22 @@ pub use graphs::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{arithmetic::traits::Abs, basic::traits::One},
+    num::basic::traits::{One, Zero},
     Rational,
 };
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
 /// max movement of price in the block before its considered invalid.
-/// currently 70%
-const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(7, 10);
+/// currently %90 movement from start price.
+/// If WETH was at 3000$usd. to trigger this. the final price
+/// of the pool would have to end at $350
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
 
 /// # Brontes Batch Pricer
 ///
@@ -516,20 +518,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 tracing::debug!(?tx_idx, ?block, ?pair0, "failed pairs no inserts");
             }
-        } else {
-            if self
-                .graph_manager
-                .subgraph_verifier
-                .is_verifying(&pair0, &pool_pair)
-            {
-                tracing::debug!(
-                    ?tx_idx,
-                    ?block,
-                    ?pair0,
-                    ?pool_pair,
-                    "pair is currently being verified"
-                );
-            }
+        } else if self
+            .graph_manager
+            .subgraph_verifier
+            .is_verifying_with_block(&pair0, &pool_pair, block)
+        {
+            error!(?tx_idx, ?block, ?pair0, ?pool_pair, "pair is currently being verified");
         }
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
@@ -564,20 +558,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 tracing::debug!(?tx_idx, ?block, ?pair1, "failed pairs no inserts");
             }
-        } else {
-            if self
-                .graph_manager
-                .subgraph_verifier
-                .is_verifying(&pair1, &flipped_pool)
-            {
-                tracing::debug!(
-                    ?tx_idx,
-                    ?block,
-                    ?pair1,
-                    ?flipped_pool,
-                    "pair is currently being verified"
-                );
-            }
+        } else if self
+            .graph_manager
+            .subgraph_verifier
+            .is_verifying_with_block(&pair1, &flipped_pool, block)
+        {
+            error!(?tx_idx, ?block, ?pair1, ?flipped_pool, "pair is currently being verified");
         }
     }
 
@@ -700,7 +686,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     })
                 }
                 VerificationResults::Abort(pair, goes_through, block) => {
-                    tracing::debug!(?pair, ?goes_through, "aborted verification process");
+                    tracing::debug!(target: "brontes::missing_pricing", ?pair, ?goes_through, ?block, "aborted verification process");
                     self.failed_pairs
                         .entry(block)
                         .or_default()
@@ -761,24 +747,25 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     }
 
                     let Some((id, need_state, force_rundown)) = self.add_subgraph(
-                    pair,
-                    full_pair,
-                    goes_through,
-                    extends_pair,
-                    block,
-                    edges,
-                    frayed_ext,
-                ) else {
-                    tracing::debug!("requery bad state add subgraph failed");
-                    return None;
-                };
+                        pair,
+                        full_pair,
+                        goes_through,
+                        extends_pair,
+                        block,
+                        edges,
+                        frayed_ext,
+                    ) else {
+                        tracing::debug!("requery bad state add subgraph failed");
+                        return None;
+                    };
 
-                    if force_rundown {
+                    if force_rundown && !need_state {
                         tracing::debug!("force rundown requery bad state par");
                         return Some((pair, full_pair, goes_through, block))
                     } else if !need_state {
                         recusing.push((block, id, full_pair, vec![goes_through]))
                     }
+
                     None
                 },
             )
@@ -805,6 +792,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             stuff
                 .into_iter()
                 .map(|(pair, complete_pair, goes_through, block)| {
+                    // if the rundown was forced. this means that we don't need to be so aggressive
+                    // with the ign
+
                     let ignores = self
                         .graph_manager
                         .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
@@ -818,18 +808,19 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         );
                     }
 
-                    // take all combinations of our ignore nodes
+                    // take all combinations of our ignore nodes. If the rundown was forced, we,
+                    // won't bother trying to generate a diverse set and
                     if ignores.len() > 1 {
                         ignores
                             .iter()
                             .copied()
                             .combinations(ignores.len() - 1)
-                            .map(|ignores| RequeryPairs {
+                            .map(|i| RequeryPairs {
                                 pair,
                                 goes_through,
                                 full_pair: complete_pair,
                                 block,
-                                ignore_state: ignores.into_iter().collect::<FastHashSet<_>>(),
+                                ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
                                 frayed_ends: vec![],
                             })
                             .collect_vec()
@@ -846,7 +837,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 })
                 .collect_vec()
                 .into_par_iter()
-                .flat_map(|queries| {
+                .map(|queries| {
                     let shit = queries.first().unwrap();
                     let goes_through = shit.goes_through;
                     let pair = shit.pair;
@@ -861,60 +852,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     let edges = edges.into_iter().flatten().flatten().unique().collect_vec();
 
                     // if we dont have any edges, lets run with no ignores.
-                    let (edges, extend) = if edges.is_empty() {
-                        let query = vec![RequeryPairs {
-                            goes_through,
-                            pair,
-                            block,
-                            full_pair,
-                            ignore_state: FastHashSet::default(),
-                            frayed_ends: vec![],
-                        }];
-
-                        let (edges, mut extend): (Vec<_>, Vec<_>) =
-                            par_state_query(&self.graph_manager, query)
-                                .into_iter()
-                                .map(|e| (e.edges, e.extends_pair))
-                                .unzip();
-
-                        (
-                            edges.into_iter().flatten().flatten().unique().collect_vec(),
-                            extend.pop().flatten(),
-                        )
-                    } else {
-                        (edges, extend.pop().flatten())
-                    };
+                    let (edges, extend) = (edges, extend.pop().flatten());
 
                     // add calls and try_verify calls
-                    let mut add_calls = Vec::new();
 
-                    if edges.is_empty() {
-                        if goes_through == Pair::default() {
-                            debug!(?pair, ?block, "Failed to find connection for graph");
-                        } else {
-                            debug!(
-                                ?pair,
-                                ?goes_through,
-                                ?block,
-                                "Failed to find connection for graph"
-                            );
-                        }
-
-                        add_calls.push((
-                            pair,
-                            full_pair,
-                            goes_through,
-                            extend,
-                            block,
-                            vec![],
-                            true,
-                        ));
-                    } else {
-                        add_calls.push((pair, full_pair, goes_through, extend, block, edges, true));
-                    }
                     tracing::debug!(?pair, ?block, "finished rundown");
-
-                    add_calls
+                    (pair, full_pair, goes_through, extend, block, edges, true)
                 })
                 .collect::<Vec<_>>()
         });
@@ -922,23 +865,20 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let verify = new_subgraphs
             .into_iter()
             .filter_map(|(pair, complete_pair, goes_through, extend, block, edges, frayed_ext)| {
-                let Some((id, need_state, ..)) = self
-                    .add_subgraph(
-                        pair,
-                        complete_pair,
-                        goes_through,
-                        extend,
-                        block,
-                        edges,
-                        frayed_ext,
-                    ) else {
-                        return None
-                    };
+                let (id, need_state, ..) = self.add_subgraph(
+                    pair,
+                    complete_pair,
+                    goes_through,
+                    extend,
+                    block,
+                    edges,
+                    frayed_ext,
+                )?;
 
                 if !need_state {
                     return Some((block, id, complete_pair, vec![goes_through]))
                 }
-                return None
+                None
             })
             .collect_vec();
 
@@ -1066,9 +1006,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             && self.completed_block < self.current_block
     }
 
-    /// The price can pre-process up to 10 blocks in the future
+    /// The price can pre-process up to 40 blocks in the future
     fn process_future_blocks(&self) -> bool {
-        self.completed_block + 10 > self.current_block
+        self.completed_block + 40 > self.current_block
     }
 
     /// Attempts to resolve the block & start processing the next block.
@@ -1153,7 +1093,17 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .into_iter()
             .filter_map(|(key, price)| Some((key, price, last.remove(&key)?)))
             .filter_map(|(key, first_price, last_price)| {
-                let block_movement = (last_price - &first_price).abs() / first_price;
+                let block_movement = if last_price > first_price {
+                    if last_price == Rational::ZERO {
+                        return None
+                    }
+                    (&last_price - &first_price) / last_price
+                } else {
+                    if first_price == Rational::ZERO {
+                        return None
+                    }
+                    (&first_price - &last_price) / first_price
+                };
                 if block_movement > MAX_BLOCK_MOVEMENT {
                     Some(key)
                 } else {
@@ -1169,7 +1119,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .for_each(|map| map.retain(|k, v| !removals.contains(&(*k, v.goes_through))));
 
         removals.into_iter().for_each(|pair| {
-            tracing::debug!(pair=?pair.0, goes_through=?pair.1, "drastic price change detected. removing pair");
+            tracing::debug!(target: "brontes::missing_pricing",pair=?pair.0,
+                            goes_through=?pair.1, "drastic price change detected. removing pair");
             self.graph_manager.remove_subgraph(pair.0, pair.1);
         })
     }
