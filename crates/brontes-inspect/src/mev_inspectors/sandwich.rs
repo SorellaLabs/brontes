@@ -460,7 +460,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 if i_hash.iter().any(|hash| j_hash.contains(hash)) {
                     if i_hash.len() > j_hash.len() {
                         removals.push(j);
-                    } else if j_hash.len() < i_hash.len() {
+                    } else if i_hash.len() < j_hash.len() {
                         removals.push(i);
                     } else {
                         // if same, take bundle with lower profit as it is most
