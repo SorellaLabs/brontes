@@ -31,6 +31,7 @@
 use std::sync::Arc;
 
 use brontes_types::{mev::Mev, FastHashMap};
+use itertools::Itertools;
 use tracing::{span, Level};
 
 mod mev_filters;
@@ -146,35 +147,32 @@ fn deduplicate_mev(
     subordinate_mev_types: &[MevType],
     sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
-    let dominant_mev_list = match sorted_mev.get(dominant_mev_type) {
-        Some(list) => list,
-        None => return,
-    };
+    let Some(dominant_mev_list) = sorted_mev.get(dominant_mev_type) else { return };
 
-    let mut removal_indices = Vec::new();
+    let mut indexes = Vec::new();
 
-    for dominant_bundle in dominant_mev_list.iter() {
-        let hashes = dominant_bundle.data.mev_transaction_hashes();
+    for dominate_mev in dominant_mev_list {
+        let hashes = dominate_mev.data.mev_transaction_hashes();
 
-        for &subordinate_mev_type in subordinate_mev_types {
-            if let Some(subordinate_mev_list) = sorted_mev.get(&subordinate_mev_type) {
-                removal_indices.extend(
-                    find_mev_with_matching_tx_hashes(subordinate_mev_list, &hashes)
-                        .into_iter()
-                        .map(|i| (i, subordinate_mev_type)),
-                );
-            }
+        for &sub_mev_type in subordinate_mev_types {
+            let Some(sub_mev_list) = sorted_mev.get(&sub_mev_type) else {
+                continue;
+            };
+            indexes.extend(
+                find_mev_with_matching_tx_hashes(sub_mev_list, &hashes)
+                    .zip(vec![sub_mev_type].into_iter().cycle()),
+            )
         }
     }
 
-    // Remove the subordinate mev data that is being deduplicated
-    for (index, mev_type) in removal_indices.iter().rev() {
-        if let Some(mev_list) = sorted_mev.get_mut(mev_type) {
-            if mev_list.len() > *index {
-                mev_list.remove(*index);
-            }
-        }
-    }
+    indexes
+        .into_iter()
+        .unique()
+        .sorted_unstable_by(|a, b| b.0.cmp(&a.0))
+        .for_each(|(index, mev_type)| {
+            let Some(mev_list) = sorted_mev.get_mut(&mev_type) else { return };
+            mev_list.remove(index);
+        });
 }
 
 /// Attempts to compose a new complex MEV occurrence from a list of
@@ -214,11 +212,7 @@ fn try_compose_mev(
 
             for &other_mev_type in child_mev_type.iter().skip(1) {
                 if let Some(other_mev_data_list) = sorted_mev.get(&other_mev_type) {
-                    let indexes = find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes);
-                    if indexes.is_empty() {
-                        break
-                    }
-                    for index in indexes {
+                    for index in find_mev_with_matching_tx_hashes(other_mev_data_list, &tx_hashes) {
                         let other_bundle = &other_mev_data_list[index];
 
                         to_compose.push(other_bundle.clone());

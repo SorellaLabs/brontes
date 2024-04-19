@@ -47,6 +47,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         deltas: &AddressDeltas,
         metadata: Arc<Metadata>,
         cex: bool,
+        at_or_before: bool,
     ) -> Option<FastHashMap<Address, Rational>> {
         let mut usd_deltas = FastHashMap::default();
 
@@ -59,6 +60,13 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 let pair = Pair(*token_addr, self.quote);
                 let price = if cex {
                     metadata.cex_quotes.get_binance_quote(&pair)?.price_maker.1
+                } else if at_or_before {
+                    metadata
+                        .dex_quotes
+                        .as_ref()?
+                        .price_at_or_before(pair, tx_position as usize)
+                        .map(|price| price.get_price(at))?
+                        .clone()
                 } else {
                     metadata
                         .dex_quotes
@@ -375,9 +383,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         mev_addresses: &FastHashSet<Address>,
         deltas: &AddressDeltas,
         metadata: Arc<Metadata>,
+        at_or_before: bool,
     ) -> Option<Rational> {
         let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index, at, deltas, metadata.clone(), false)?;
+            self.usd_delta_by_address(tx_index, at, deltas, metadata.clone(), false, at_or_before)?;
 
         let sum = addr_usd_deltas
             .iter()

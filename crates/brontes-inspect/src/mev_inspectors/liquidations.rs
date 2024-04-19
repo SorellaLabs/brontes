@@ -79,6 +79,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             &mev_addresses,
             &deltas,
             metadata.clone(),
+            false,
         ) {
             (Some(rev), true)
         } else {
