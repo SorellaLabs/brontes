@@ -88,7 +88,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     (!goes_through.is_zero()).then_some(goes_through),
                     pair,
                     ignore_state,
-                    0,
+                    if pair == full_pair { 100 } else { 0 },
                     None,
                     Duration::from_millis(250),
                     default_extends_pair.is_some(),
