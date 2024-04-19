@@ -31,6 +31,7 @@
 use std::sync::Arc;
 
 use brontes_types::{mev::Mev, FastHashMap};
+use itertools::Itertools;
 use tracing::{span, Level};
 
 mod mev_filters;
@@ -164,13 +165,14 @@ fn deduplicate_mev(
         }
     }
 
-    indexes.sort_unstable_by(|a, b| b.0.cmp(&a.0));
-    indexes.dedup();
-
-    indexes.into_iter().for_each(|(index, mev_type)| {
-        let Some(mev_list) = sorted_mev.get_mut(&mev_type) else { return };
-        mev_list.remove(index);
-    });
+    indexes
+        .into_iter()
+        .unique()
+        .sorted_unstable_by(|a, b| b.0.cmp(&a.0))
+        .for_each(|(index, mev_type)| {
+            let Some(mev_list) = sorted_mev.get_mut(&mev_type) else { return };
+            mev_list.remove(index);
+        });
 }
 
 /// Attempts to compose a new complex MEV occurrence from a list of
