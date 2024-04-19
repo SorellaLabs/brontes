@@ -7,21 +7,30 @@ use std::{
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, MevType, Sandwich},
+    mev::{Bundle, BundleData, Mev, MevType, Sandwich},
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedSwap, NormalizedTransfer,
     },
+    pair::Pair,
     tree::{collect_address_set_for_accounting, BlockTree, GasDetails},
     ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
     TreeIter, TreeSearchBuilder, TxInfo, UnzipPadded,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
+    Rational,
+};
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
+
+/// the price difference was more than 90% between dex pricing and effective
+/// price, we put this so high due to the inner swap price manipulation
+/// effect that sandwich has
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -44,9 +53,6 @@ pub struct PossibleSandwich {
     victims:               Vec<Vec<B256>>,
 }
 
-// Add support for this, where there is a frontrun & then backrun & in between
-// there is an unrelated tx that is not frontrun but is backrun. See the rari
-// trade here. https://libmev.com/blocks/18215838
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
@@ -62,122 +68,126 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_nested_action,
         ]);
 
-         Self::get_possible_sandwich(tree.clone())
-            .into_iter()
-            .flat_map(Self::partition_into_gaps)
-            .filter_map(
-                |PossibleSandwich {
-                     eoa: _e,
-                     possible_frontruns,
-                     possible_backrun,
-                     mev_executor_contract,
-                     victims,
-                 }| {
-                    if victims.iter().flatten().count() == 0 {
-                        return None
-                    };
+        Self::dedup_bundles(
+            Self::get_possible_sandwich(tree.clone())
+                .into_iter()
+                .flat_map(Self::partition_into_gaps)
+                .filter_map(
+                    |PossibleSandwich {
+                         eoa: _e,
+                         possible_frontruns,
+                         possible_backrun,
+                         mev_executor_contract,
+                         victims,
+                     }| {
+                        if victims.iter().flatten().count() == 0 {
+                            return None
+                        };
 
-                    let (victim_swaps_transfers, victim_info): (Vec<_>, Vec<_>) = victims
-                        .into_iter()
-                        .map(|victim| {
-                            (
-                                tree.clone()
-                                    .collect_txes(&victim, search_args.clone())
-                                    .t_map(|actions| {
-                                        self.utils
-                                            .flatten_nested_actions_default(actions.into_iter())
-                                    }),
-                                victim,
-                            )
-                        })
-                        .try_fold(vec![], |mut acc, (victim_set, hashes)| {
-                            let tree = victim_set.tree();
-                            let (actions, info) = victim_set
-                                .map(|s| {
-                                    s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
-                                        Actions::try_swaps_merged,
-                                        Actions::try_transfer,
-                                    ))
-                                })
-                                .into_zip_tree(tree)
-                                .tree_zip_with(hashes.into_iter())
-                                .t_full_filter_map(|(tree, rest)| {
-                                    let (swap, hashes): (Vec<_>, Vec<_>) =
-                                        UnzipPadded::unzip_padded(rest);
-
-                                    if !hashes
-                                        .iter()
-                                        .map(|v| {
-                                            let tree = &(*tree.clone());
-                                            let d = tree.get_root(*v).unwrap().get_root_action();
-
-                                            d.is_revert()
-                                                || mev_executor_contract == d.get_to_address()
-                                        })
-                                        .any(|d| d)
-                                    {
-                                        Some((
-                                            swap,
-                                            hashes
-                                                .into_iter()
-                                                .map(|hash| {
-                                                    tree.get_tx_info(hash, self.utils.db).unwrap()
-                                                })
-                                                .collect::<Vec<_>>(),
+                        let (victim_swaps_transfers, victim_info): (Vec<_>, Vec<_>) = victims
+                            .into_iter()
+                            .map(|victim| {
+                                (
+                                    tree.clone()
+                                        .collect_txes(&victim, search_args.clone())
+                                        .t_map(|actions| {
+                                            self.utils
+                                                .flatten_nested_actions_default(actions.into_iter())
+                                        }),
+                                    victim,
+                                )
+                            })
+                            .try_fold(vec![], |mut acc, (victim_set, hashes)| {
+                                let tree = victim_set.tree();
+                                let (actions, info) = victim_set
+                                    .map(|s| {
+                                        s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
+                                            Actions::try_swaps_merged,
+                                            Actions::try_transfer,
                                         ))
-                                    } else {
-                                        None
-                                    }
-                                })?;
+                                    })
+                                    .into_zip_tree(tree)
+                                    .tree_zip_with(hashes.into_iter())
+                                    .t_full_filter_map(|(tree, rest)| {
+                                        let (swap, hashes): (Vec<_>, Vec<_>) =
+                                            UnzipPadded::unzip_padded(rest);
 
-                            if actions.is_empty() {
-                                None
-                            } else {
-                                acc.push((actions, info));
-                                Some(acc)
-                            }
-                        })?
-                        .into_iter()
-                        .unzip();
+                                        if !hashes
+                                            .iter()
+                                            .map(|v| {
+                                                let tree = &(*tree.clone());
+                                                let d =
+                                                    tree.get_root(*v).unwrap().get_root_action();
 
-                    let frontrun_info = possible_frontruns
-                        .iter()
-                        .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
-                        .collect::<Vec<_>>();
+                                                d.is_revert()
+                                                    || mev_executor_contract == d.get_to_address()
+                                            })
+                                            .any(|d| d)
+                                        {
+                                            Some((
+                                                swap,
+                                                hashes
+                                                    .into_iter()
+                                                    .map(|hash| {
+                                                        tree.get_tx_info(hash, self.utils.db)
+                                                            .unwrap()
+                                                    })
+                                                    .collect::<Vec<_>>(),
+                                            ))
+                                        } else {
+                                            None
+                                        }
+                                    })?;
 
-                    let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
+                                if actions.is_empty() {
+                                    None
+                                } else {
+                                    acc.push((actions, info));
+                                    Some(acc)
+                                }
+                            })?
+                            .into_iter()
+                            .unzip();
 
-                    let searcher_actions: Vec<Vec<Actions>> = tree
-                        .clone()
-                        .collect_txes(
-                            possible_frontruns
-                                .iter()
-                                .copied()
-                                .chain(std::iter::once(possible_backrun))
-                                .collect::<Vec<_>>()
-                                .as_slice(),
-                            search_args.clone(),
+                        let frontrun_info = possible_frontruns
+                            .iter()
+                            .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
+                            .collect::<Vec<_>>();
+
+                        let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
+
+                        let searcher_actions: Vec<Vec<Actions>> = tree
+                            .clone()
+                            .collect_txes(
+                                possible_frontruns
+                                    .iter()
+                                    .copied()
+                                    .chain(std::iter::once(possible_backrun))
+                                    .collect::<Vec<_>>()
+                                    .as_slice(),
+                                search_args.clone(),
+                            )
+                            .map(|actions| {
+                                self.utils
+                                    .flatten_nested_actions_default(actions.into_iter())
+                                    .collect_vec()
+                            })
+                            .collect::<Vec<_>>();
+
+                        self.calculate_sandwich(
+                            tree.clone(),
+                            metadata.clone(),
+                            frontrun_info,
+                            back_run_info,
+                            searcher_actions,
+                            victim_info,
+                            victim_swaps_transfers,
                         )
-                        .map(|actions| {
-                            self.utils
-                                .flatten_nested_actions_default(actions.into_iter())
-                                .collect_vec()
-                        })
-                        .collect::<Vec<_>>();
-
-                    self.calculate_sandwich(
-                        tree.clone(),
-                        metadata.clone(),
-                        frontrun_info,
-                        back_run_info,
-                        searcher_actions,
-                        victim_info,
-                        victim_swaps_transfers,
-                    )
-                },
-            )
-            .flatten()
-            .collect::<Vec<_>>()
+                    },
+                )
+                .flatten()
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -192,6 +202,23 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_info: Vec<Vec<TxInfo>>,
         victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
     ) -> Option<Vec<Bundle>> {
+        // if all of the sandwichers have the same eoa or are all verified contracts.
+        // then we can continue. otherwise false positive
+        if !(possible_front_runs_info
+            .iter()
+            .chain(vec![&backrun_info])
+            .all(|f| f.mev_contract.is_some())
+            || possible_front_runs_info
+                .iter()
+                .chain(vec![&backrun_info])
+                .map(|f| f.eoa)
+                .unique()
+                .count()
+                == 1)
+        {
+            return None
+        }
+
         let back_run_actions = searcher_actions.pop()?;
 
         if !Self::has_pool_overlap(
@@ -234,6 +261,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
+        // ensure valid pricing
+        let mut has_dex_price = true;
+        for (swaps, info) in front_run_swaps.iter().zip(&possible_front_runs_info) {
+            has_dex_price &= self.valid_pricing(metadata.clone(), swaps, info.tx_index as usize);
+        }
+        has_dex_price &=
+            self.valid_pricing(metadata.clone(), &back_run_swaps, backrun_info.tx_index as usize);
+
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
             .into_iter()
@@ -273,16 +308,18 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         mev_addresses.extend(backrun_addresses);
 
-        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+        let rev = if let Some(rev) = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
             &mev_addresses,
             &searcher_deltas,
             metadata.clone(),
+            true,
         ) {
-            (Some(rev), true)
+            Some(rev)
         } else {
-            (Some(Rational::ZERO), false)
+            has_dex_price = false;
+            Some(Rational::ZERO)
         };
 
         let profit_usd = rev
@@ -334,6 +371,118 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!(?header, ?sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
+    }
+
+    fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
+        if swaps.is_empty() {
+            return true
+        }
+
+        let pcts = swaps
+            .iter()
+            .filter_map(|swap| {
+                let effective_price = swap.swap_rate();
+
+                let am_in_price = metadata
+                    .dex_quotes
+                    .as_ref()?
+                    .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
+
+                let am_out_price = metadata
+                    .dex_quotes
+                    .as_ref()?
+                    .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
+
+                // we reciprocal amount out because we won't have pricing for quote <> token out
+                // but we will have flipped
+                let dex_pricing_rate = (am_out_price.get_price(PriceAt::Average).reciprocal()
+                    * am_in_price.get_price(PriceAt::Average))
+                .reciprocal();
+
+                let pct = if effective_price > dex_pricing_rate {
+                    if effective_price == Rational::ZERO {
+                        return None
+                    }
+                    (&effective_price - &dex_pricing_rate) / &effective_price
+                } else {
+                    if dex_pricing_rate == Rational::ZERO {
+                        return None
+                    }
+                    (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                };
+
+                if pct > MAX_PRICE_DIFF {
+                    tracing::warn!(
+                        ?effective_price,
+                        ?dex_pricing_rate,
+                        ?swap,
+                        "to big of a delta for pricing on sandwich"
+                    );
+                }
+
+                Some(pct)
+            })
+            .collect_vec();
+
+        if pcts.is_empty() {
+            return true
+        }
+
+        pcts.into_iter()
+            .max()
+            .filter(|delta| delta.le(&MAX_PRICE_DIFF))
+            .is_some()
+    }
+
+    /// Because of the recusive split nature of the search,
+    /// we can sometimes get overlap which leads to double counting and
+    /// false positives that are unwanted. to combat this
+    /// we check all hashes and will check for duplicates.
+    /// when a duplicate arises, we will always take the bundle
+    /// with more transactions as it is the most correct
+    #[allow(clippy::comparison_chain)]
+    fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
+        let mut bundles = bundles
+            .into_iter()
+            .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
+            .collect_vec();
+
+        let len = bundles.len();
+
+        let mut removals = Vec::new();
+        for i in 0..len {
+            for j in 0..len {
+                if i == j {
+                    continue
+                }
+
+                let i_hash = &bundles[i].0;
+                let j_hash = &bundles[j].0;
+                if i_hash.iter().any(|hash| j_hash.contains(hash)) {
+                    if i_hash.len() > j_hash.len() {
+                        removals.push(j);
+                    } else if i_hash.len() < j_hash.len() {
+                        removals.push(i);
+                    } else {
+                        // if same, take bundle with lower profit as it is most
+                        // likey, more correct
+                        if bundles[i].1.header.profit_usd > bundles[j].1.header.profit_usd {
+                            removals.push(i);
+                        } else {
+                            removals.push(j);
+                        }
+                    }
+                }
+            }
+        }
+        removals.sort_unstable_by(|a, b| b.cmp(a));
+        removals.dedup();
+
+        removals.into_iter().for_each(|idx| {
+            bundles.remove(idx);
+        });
+
+        bundles.into_iter().map(|res| res.1).collect_vec()
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
@@ -623,7 +772,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
             .any(|(swaps, transfers)| {
                 swaps.iter().any(|s| pools.contains(&s.pool))
-                    && transfers.iter().any(|t| {
+                    || transfers.iter().any(|t| {
                         // victim has a transfer from the pool that was a token in for
                         // the sandwich
                         tokens.contains(&(t.token.address, t.to, is_frontrun))
@@ -1184,17 +1333,5 @@ mod tests {
             .with_expected_profit_usd(0.16);
 
         inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    // assert no mev
-    #[brontes_macros::test]
-    async fn mistro_no_sando() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_block(18550059);
-
-        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }

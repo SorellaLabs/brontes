@@ -174,7 +174,8 @@ macro_rules! db_types {
                 pub fn get_db_enum(&self) -> BrontesClickhouseTables {
                     match self {
                         $(
-                            BrontesClickhouseTableDataTypes::$db_type(_) => BrontesClickhouseTables::[<Clickhouse $db_table>],
+                            BrontesClickhouseTableDataTypes::$db_type(_) =>
+                                BrontesClickhouseTables::[<Clickhouse $db_table>],
                         )*
                     }
                 }
