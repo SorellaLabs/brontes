@@ -20,6 +20,8 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required
 
+use std::cmp::min;
+
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
@@ -809,9 +811,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                     // take all combinations of our ignore nodes
                     if ignores.len() > 1 {
-                        tracing::info!(permuations=%ignores.len(), "doing perms");
-                        (0..ignores.len())
-                            .flat_map(|c| ignores.iter().copied().combinations(c).collect_vec())
+                        ignores
+                            .iter()
+                            .copied()
+                            .combinations(min(3, ignores.len() - 1))
                             .map(|ignores| RequeryPairs {
                                 pair,
                                 goes_through,
