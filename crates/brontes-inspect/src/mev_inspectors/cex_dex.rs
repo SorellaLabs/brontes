@@ -194,7 +194,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 if some_quotes.is_empty() {
                     None
                 } else {
-                    debug!("dex swap {:?} for index {}", dex_swaps[index], index);
+                    if index >= dex_swaps.len() {
+                        error!("Index out of bounds: {} for dex_swaps: {:#?}", index, dex_swaps);
+                    }
                     let volume_weighted_quote = metadata
                         .cex_quotes
                         .get_volume_weighted_quote(&some_quotes, &dex_swaps[index]);
