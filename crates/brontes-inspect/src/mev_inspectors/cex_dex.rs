@@ -40,7 +40,6 @@
 //! Arbitrage opportunities are validated and false positives minimized in
 //! `filter_possible_cex_dex`. Valid opportunities are bundled into
 //! `BundleData::CexDex` instances.
-
 use std::{
     cmp::{max, min},
     fmt,
@@ -54,6 +53,7 @@ use brontes_types::{
         cex::{CexExchange, FeeAdjustedQuote},
         dex::PriceAt,
     },
+    display::utils::display_cex_dex,
     mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
     normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     pair::Pair,
@@ -422,6 +422,10 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ) -> Option<(f64, BundleData)> {
         let sanity_check_arb = possible_cex_dex.arb_sanity_check();
 
+        if !sanity_check_arb.profitable_exchanges.is_empty() {
+            return possible_cex_dex.into_bundle(info);
+        }
+
         let has_outlier_pnl = sanity_check_arb.profitable_exchanges.len() < 2
             && !sanity_check_arb.profitable_exchanges.is_empty()
             && sanity_check_arb.profitable_exchanges[0].1.maker_taker_ask.1 > Rational::from(10000)
@@ -657,8 +661,6 @@ impl CexDexProcessing {
         incomplete_routes.iter().rev().for_each(|i| {
             self.per_exchange_pnl.remove(*i);
         });
-
-        debug!("Found Max Profit Path: {:#?}", self);
 
         Some(())
     }
