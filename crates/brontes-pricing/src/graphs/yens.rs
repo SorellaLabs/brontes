@@ -130,7 +130,7 @@ where
     FSE: Fn(&N) -> bool + Send + Sync,
 {
     let Some((e, n, c)) =
-        dijkstra_internal(start, second, &successors, &path_value, &success, 5_000)
+        dijkstra_internal(start, second, &successors, &path_value, &success, 25_000)
     else {
         return vec![];
     };
