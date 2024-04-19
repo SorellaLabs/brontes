@@ -178,14 +178,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
     ) -> Option<CexDexProcessing> {
-        let mut quotes = Vec::new();
-
-        self.cex_exchanges.iter().for_each(|exchange| {
-            quotes.push(self.cex_quotes_for_swap(&dex_swaps, metadata, exchange));
-        });
-
-        debug!("{:?}", quotes);
-        debug!("{:?}", dex_swaps);
+        let quotes = self
+            .cex_exchanges
+            .iter()
+            .map(|exchange| self.cex_quotes_for_swap(&dex_swaps, metadata, exchange))
+            .collect_vec();
 
         let iters: Vec<_> = quotes.iter().map(|vec| vec.iter()).collect();
         let quotes_vwam: Vec<Option<FeeAdjustedQuote>> = izip!(iters)
@@ -197,6 +194,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 if some_quotes.is_empty() {
                     None
                 } else {
+                    debug!("dex swap {:?} for index {}", dex_swaps[index], index);
                     let volume_weighted_quote = metadata
                         .cex_quotes
                         .get_volume_weighted_quote(&some_quotes, &dex_swaps[index]);
