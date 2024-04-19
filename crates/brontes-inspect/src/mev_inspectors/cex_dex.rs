@@ -43,6 +43,8 @@
 
 use std::{
     cmp::{max, min},
+    fmt,
+    fmt::Display,
     sync::Arc,
 };
 
@@ -398,6 +400,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 .1
                 .cmp(&a.as_ref().unwrap().aggregate_pnl.maker_taker_mid.1)
         });
+
+        println!("{}", cex_dex.to_string());
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -470,6 +474,23 @@ pub struct PossibleCexDex {
     pub aggregate_pnl: ArbPnl,
 }
 
+impl Display for PossibleCexDex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Aggregate PnL: {}", self.aggregate_pnl)?;
+        if !self.arb_legs.is_empty() {
+            writeln!(f, "Arbitrage Legs:")?;
+            for leg in &self.arb_legs {
+                if let Some(ref leg) = leg {
+                    writeln!(f, "{}", leg)?;
+                } else {
+                    writeln!(f, "No leg data available")?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 impl PossibleCexDex {
     pub fn from_exchange_legs(mut exchange_legs: Vec<Option<ExchangeLeg>>) -> Option<Self> {
         if exchange_legs.iter().all(Option::is_none) {
@@ -540,6 +561,38 @@ pub struct CexDexProcessing {
     pub global_vmam_cex_dex: Option<PossibleCexDex>,
     pub per_exchange_pnl:    Vec<Option<PossibleCexDex>>,
     pub max_profit:          Option<PossibleCexDex>,
+}
+
+impl fmt::Display for CexDexProcessing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Dex Swaps:")?;
+        for swap in &self.dex_swaps {
+            writeln!(f, "{}", swap)?;
+        }
+
+        if let Some(ref vmam) = self.global_vmam_cex_dex {
+            writeln!(f, "Global VMAM CEX/DEX: {}", vmam)?;
+        } else {
+            writeln!(f, "Global VMAM CEX/DEX: Not available")?;
+        }
+
+        writeln!(f, "Per Exchange PnL:")?;
+        for exchange_pnl in &self.per_exchange_pnl {
+            if let Some(ref pnl) = exchange_pnl {
+                writeln!(f, "{}", pnl)?;
+            } else {
+                writeln!(f, "PnL data not available")?;
+            }
+        }
+
+        if let Some(ref max) = self.max_profit {
+            writeln!(f, "Max Profit: {}", max)?;
+        } else {
+            writeln!(f, "Max Profit: Not available")?;
+        }
+
+        Ok(())
+    }
 }
 
 impl CexDexProcessing {
@@ -663,7 +716,7 @@ impl CexDexProcessing {
         let profitable_exchanges: Vec<(CexExchange, ArbPnl)> = self
             .per_exchange_pnl
             .iter()
-            .filter_map(|p| p.as_ref()) // Get references to the existing PnL data
+            .filter_map(|p| p.as_ref())
             .filter(|p| {
                 p.aggregate_pnl.maker_taker_mid.1 > Rational::ZERO
                     || p.aggregate_pnl.maker_taker_ask.1 > Rational::ZERO
@@ -718,10 +771,10 @@ pub struct ArbSanityCheck {
     pub is_stable_swaps:           bool,
 }
 
-#[derive(Debug)]
-pub struct PossibleCexDexLeg {
-    pub swap:          NormalizedSwap,
-    pub possible_legs: ExchangeLeg,
+impl Display for ExchangeLeg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Cex Quote: {}, PnL: {}", self.cex_quote, self.pnl)
+    }
 }
 
 #[derive(Clone, Debug)]

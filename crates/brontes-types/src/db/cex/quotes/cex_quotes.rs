@@ -168,13 +168,13 @@ impl CexPriceMap {
                 let fees = exchange.fees();
 
                 let fee_adjusted_maker = (
-                    &volume_weighted_bid * (Rational::from(1) - &fees.0),
-                    &volume_weighted_ask * (Rational::from(1) - &fees.0),
+                    &volume_weighted_bid * (Rational::ONE - &fees.0),
+                    &volume_weighted_ask * (Rational::ONE - &fees.0),
                 );
 
                 let fee_adjusted_taker = (
-                    volume_weighted_bid * (Rational::from(1) - &fees.1),
-                    volume_weighted_ask * (Rational::from(1) - &fees.1),
+                    volume_weighted_bid * (Rational::ONE - &fees.1),
+                    volume_weighted_ask * (Rational::ONE - &fees.1),
                 );
 
                 FeeAdjustedQuote {
@@ -613,6 +613,28 @@ pub struct FeeAdjustedQuote {
     /// Bid & Ask amount
     pub amount:      (Rational, Rational),
     pub token0:      Address,
+}
+
+impl fmt::Display for FeeAdjustedQuote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let price_maker = self.price_maker.clone();
+        let price_taker = self.price_taker.clone();
+        let amount = self.amount.clone();
+        write!(
+            f,
+            "Exchange: {}\nTimestamp: {}\nPrices:\n\tMaker: Bid: {:.4} Ask: {:.4}\n\tTaker: Bid: \
+             {:.4} Ask: {:.4}\nBest Bid Amount:\n\t{:.4} \n\t Best Ask Amount {:.4}\nToken0: {}",
+            self.exchange,
+            self.timestamp,
+            price_maker.0.to_float(),
+            price_maker.1.to_float(),
+            price_taker.0.to_float(),
+            price_taker.1.to_float(),
+            amount.0.to_float(),
+            amount.1.to_float(),
+            self.token0
+        )
+    }
 }
 
 impl FeeAdjustedQuote {
