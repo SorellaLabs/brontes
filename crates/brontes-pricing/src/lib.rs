@@ -815,7 +815,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             .iter()
                             .copied()
                             .combinations(min(
-                                (ignores.len() - 1) - ignores.len() / 4,
+                                (ignores.len() - 1) - (ignores.len() / 4),
                                 ignores.len() - 1,
                             ))
                             .map(|ignores| RequeryPairs {
