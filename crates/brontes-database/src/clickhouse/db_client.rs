@@ -381,14 +381,14 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap()
+                    .unwrap() as f64
                     - self.cex_download_config.time_window.0 * 1000000.0;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap()
+                    .unwrap() as f64
                     + self.cex_download_config.time_window.1 * 1000000.0;
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
