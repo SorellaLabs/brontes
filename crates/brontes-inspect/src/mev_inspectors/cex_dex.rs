@@ -184,8 +184,9 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .map(|exchange| self.cex_quotes_for_swap(&dex_swaps, metadata, exchange))
             .collect_vec();
 
-        quotes.iter().for_each(|q| {
-            debug!("{:#?}", q);
+        debug!("Number of dex_swaps: {}", dex_swaps.len());
+        quotes.iter().enumerate().for_each(|(i, vec)| {
+            debug!("Quotes length for exchange {}: {}", i, vec.len());
         });
 
         let iters: Vec<_> = quotes.iter().map(|vec| vec.iter()).collect();
