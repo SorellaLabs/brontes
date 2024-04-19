@@ -24,8 +24,6 @@ use std::{
 use alloy_primitives::Address;
 use clickhouse::Row;
 use colored::*;
-use derive_more::Display;
-use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::{Reciprocal, ReciprocalAssign},

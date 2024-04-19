@@ -656,7 +656,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     // Mev section
     writeln!(f, "\n{}", "MEV:\n".bold().underline().bright_yellow())?;
-    writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
+    writeln!(f, "   - Max Profit Route (USD): {}", format_profit(bundle.header.profit_usd))?;
     writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
 
     // Cex-dex specific details
@@ -670,56 +670,104 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(
         f,
         "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data.global_vmap_pnl.maker_taker_mid.0.to_string(),
-        cex_dex_data.global_vmap_pnl.maker_taker_mid.1.to_string(),
-        cex_dex_data.global_vmap_pnl.maker_taker_ask.0.to_string(),
-        cex_dex_data.global_vmap_pnl.maker_taker_ask.1.to_string()
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_mid
+            .0
+            .clone()
+            .to_float()
+            .to_string(),
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_mid
+            .1
+            .clone()
+            .to_float()
+            .to_string(),
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_ask
+            .0
+            .clone()
+            .to_float()
+            .to_string(),
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_ask
+            .1
+            .clone()
+            .to_float()
+            .to_string()
     )?;
 
     writeln!(f, "  - {}: Optimal Route PnL", "PnL".bright_blue())?;
     writeln!(
         f,
         "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data.optimal_route_pnl.maker_taker_mid.0.to_string(),
-        cex_dex_data.optimal_route_pnl.maker_taker_mid.1.to_string(),
-        cex_dex_data.optimal_route_pnl.maker_taker_ask.0.to_string(),
-        cex_dex_data.optimal_route_pnl.maker_taker_ask.1.to_string()
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_mid
+            .0
+            .clone()
+            .to_float()
+            .to_string(),
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_mid
+            .1
+            .clone()
+            .to_float()
+            .to_string(),
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_ask
+            .0
+            .clone()
+            .to_float()
+            .to_string(),
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_ask
+            .1
+            .clone()
+            .to_float()
+            .to_string()
     )?;
 
-    writeln!(f, "  - Per Exchange PnL:")?;
+    writeln!(f, "{}", "  - Per Exchange PnL:".bold().underline().purple())?;
     for (exchange, pnl) in &cex_dex_data.per_exchange_pnl {
+        writeln!(f, "    - {}:", exchange.to_string().bold().underline().green())?;
         writeln!(
             f,
-            "    {}: Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-            exchange,
-            pnl.maker_taker_mid.0.to_string(),
-            pnl.maker_taker_mid.1.to_string(),
-            pnl.maker_taker_ask.0.to_string(),
-            pnl.maker_taker_ask.1.to_string()
+            "      - Maker Mid: {:.6} Taker Mid: {:.6}",
+            pnl.maker_taker_mid.0.clone().to_float(),
+            pnl.maker_taker_mid.1.clone().to_float()
+        )?;
+        writeln!(
+            f,
+            "      - Maker Ask: {:.6} Taker Ask: {:.6}",
+            pnl.maker_taker_ask.0.clone().to_float(),
+            pnl.maker_taker_ask.1.clone().to_float()
         )?;
     }
 
-    // Display swaps and corresponding ArbDetails
-    writeln!(f, "  - Swaps and Corresponding ArbDetails:")?;
+    writeln!(f, "\n----------------------------------------")?;
+    writeln!(f, "{}", "Arb Details".bold().red().underline())?;
+
     for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
-        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
-        writeln!(f, "      Global VMAP ArbDetails:")?;
-        for detail in &cex_dex_data.global_vmap_details {
-            writeln!(f, "        - {}", detail)?;
-        }
-        writeln!(f, "      Optimal Route ArbDetails:")?;
-        for detail in &cex_dex_data.optimal_route_details {
-            writeln!(f, "        - {}", detail)?;
-        }
-        writeln!(f, "      Per Exchange ArbDetails:")?;
-        for (exchange, details) in cex_dex_data.per_exchange_details.iter().enumerate() {
-            writeln!(f, "        Exchange {}:", exchange)?;
-            for detail in details {
-                writeln!(f, "          - {}", detail)?;
-            }
+        writeln!(f, "\n{}:\n    - {}", format!("Swap {}", i + 1).bold().blue().underline(), swap)?;
+
+        writeln!(f, "   - {}:", "Max Profit Arb".purple().bold().underline())?;
+        writeln!(f, "   - {}", &cex_dex_data.optimal_route_details[i])?;
+
+        writeln!(f, "   - {}:", "Global VMAP".purple().bold().underline())?;
+        writeln!(f, "   - {}", &cex_dex_data.global_vmap_details[i])?;
+
+        writeln!(f, "   - {}:", "Per Exchange Arb Details".purple().bold().underline())?;
+        for details in cex_dex_data.per_exchange_details.iter() {
+            writeln!(f, "{}", details[i])?;
         }
     }
-
     bundle
         .header
         .balance_deltas

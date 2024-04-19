@@ -8,6 +8,7 @@ use std::{
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
+use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -187,31 +188,62 @@ pub struct ArbDetails {
 
 impl fmt::Display for ArbDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Arb Leg Details:")?;
         writeln!(
             f,
-            "   - Price on CEX ({:?}): Best Bid: {}, Best Ask: {}",
-            self.cex_exchange,
-            self.best_bid_maker.to_string(),
-            self.best_ask_maker.to_string()
+            "   -{}: {}",
+            "Exchange".bold().underline().green(),
+            self.cex_exchange.to_string().bold()
         )?;
-        writeln!(f, "   - Price on DEX {}: {}", self.dex_exchange, self.dex_price.to_string())?;
-        writeln!(f, "   - Amount: {}", self.dex_amount.to_string())?;
+        writeln!(f, "       - Dex Price: {:.6}", self.dex_price.clone().to_float().to_string())?;
         writeln!(
             f,
-            "   - PnL pre-gas (Mid Prices): Maker Mid: {}, Taker Mid: {}",
-            self.pnl_pre_gas.maker_taker_mid.0.to_string(),
-            self.pnl_pre_gas.maker_taker_mid.1.to_string()
+            "       - CEX Prices: Maker Bid: {:.6} (-{:.3}), Maker Ask: {:.6} (-{:.3})",
+            self.best_bid_maker.clone().to_float().to_string(),
+            (&self.best_bid_taker - &self.best_bid_maker)
+                .to_float()
+                .to_string(),
+            self.best_ask_maker.clone().to_float().to_string(),
+            (&self.best_ask_taker - &self.best_ask_maker)
+                .to_float()
+                .to_string()
         )?;
-        write!(
+        writeln!(f, "{}", "       - PnL Pre-Gas:".bold().underline().green())?;
+        writeln!(
             f,
-            "   - PnL pre-gas (Ask Prices): Maker Ask: {}, Taker Ask: {}",
-            self.pnl_pre_gas.maker_taker_ask.0.to_string(),
-            self.pnl_pre_gas.maker_taker_ask.1.to_string()
-        )
+            "           - Mid Price PnL: Maker: {:.6}, Taker: {:.6}",
+            self.pnl_pre_gas
+                .maker_taker_mid
+                .0
+                .clone()
+                .to_float()
+                .to_string(),
+            self.pnl_pre_gas
+                .maker_taker_mid
+                .1
+                .clone()
+                .to_float()
+                .to_string()
+        )?;
+        writeln!(
+            f,
+            "           - Ask PnL: Maker: {:.6}, Taker: {:.6}",
+            self.pnl_pre_gas
+                .maker_taker_ask
+                .0
+                .clone()
+                .to_float()
+                .to_string(),
+            self.pnl_pre_gas
+                .maker_taker_ask
+                .1
+                .clone()
+                .to_float()
+                .to_string()
+        )?;
+
+        Ok(())
     }
 }
-
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined, Eq)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
