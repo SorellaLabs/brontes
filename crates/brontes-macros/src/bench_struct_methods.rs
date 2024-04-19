@@ -12,8 +12,8 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
             if name_val.path.segments.last()?.ident == "ptr" {
                 let Expr::Field(ref a) = name_val.value else { return None };
                 match &a.member {
-                    syn::Member::Named(n) => return Some(n.to_owned()),
-                    _ => return None,
+                    syn::Member::Named(n) => Some(n.to_owned()),
+                    _ => None,
                 }
             } else {
                 None

@@ -8,7 +8,6 @@ use brontes_types::{
     tree::BlockTree,
     FastHashMap, GasDetails, ToScaledRational, TreeSearchBuilder,
 };
-use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use tracing::log::debug;
 
@@ -90,22 +89,20 @@ pub(crate) fn sort_mev_by_type(orchestra_data: Vec<Bundle>) -> FastHashMap<MevTy
 
 /// Finds the index of the first classified mev in the list whose transaction
 /// hashes match any of the provided hashes.
-pub(crate) fn find_mev_with_matching_tx_hashes(
-    mev_data_list: &[Bundle],
-    tx_hashes: &[FixedBytes<32>],
-) -> Vec<usize> {
+pub(crate) fn find_mev_with_matching_tx_hashes<'a>(
+    mev_data_list: &'a [Bundle],
+    tx_hashes: &'a [FixedBytes<32>],
+) -> impl Iterator<Item = usize> + 'a {
     mev_data_list
         .iter()
         .enumerate()
         .filter_map(|(index, bundle)| {
             let tx_hashes_in_mev = bundle.data.mev_transaction_hashes();
-            if tx_hashes_in_mev.iter().any(|hash| tx_hashes.contains(hash)) {
-                Some(index)
-            } else {
-                None
-            }
+            tx_hashes_in_mev
+                .iter()
+                .any(|hash| tx_hashes.contains(hash))
+                .then_some(index)
         })
-        .collect_vec()
 }
 
 pub fn filter_and_count_bundles(
