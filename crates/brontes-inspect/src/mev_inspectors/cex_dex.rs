@@ -184,10 +184,15 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .map(|exchange| self.cex_quotes_for_swap(&dex_swaps, metadata, exchange))
             .collect_vec();
 
+        quotes.iter().for_each(|q| {
+            debug!("{:#?}", q);
+        });
+
         let iters: Vec<_> = quotes.iter().map(|vec| vec.iter()).collect();
         let quotes_vwam: Vec<Option<FeeAdjustedQuote>> = izip!(iters)
             .enumerate()
             .map(|(index, row)| {
+                debug!("{:#?}", row);
                 let some_quotes: Vec<&FeeAdjustedQuote> =
                     row.filter_map(|quote| quote.as_ref()).collect();
                 debug!("{:?} at index {}", some_quotes, index);
