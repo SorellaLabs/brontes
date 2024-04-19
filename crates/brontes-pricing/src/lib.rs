@@ -809,6 +809,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                     // take all combinations of our ignore nodes
                     if ignores.len() > 1 {
+                        tracing::info!(permuations=%ignores.len(), "doing perms");
                         (0..ignores.len())
                             .flat_map(|c| ignores.iter().copied().combinations(c).collect_vec())
                             .map(|ignores| RequeryPairs {
