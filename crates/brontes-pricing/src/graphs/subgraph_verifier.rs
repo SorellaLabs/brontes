@@ -218,7 +218,6 @@ impl SubgraphVerifier {
                 tracing::debug!(?pair, "missing state");
                 None
             })?;
-        tracing::debug!(?state);
 
         let state = &state
             .iter_mut()
