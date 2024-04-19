@@ -215,7 +215,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             max_profit: None,
         };
 
-        cex_dex.construct_max_profit_route();
+        cex_dex.construct_max_profit_route()?;
 
         return Some(cex_dex)
     }
