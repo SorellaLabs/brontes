@@ -466,9 +466,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         // if same, take bundle with lower profit as it is most
                         // likey, more correct
                         if bundles[i].1.header.profit_usd > bundles[j].1.header.profit_usd {
-                            removals.push(j);
-                        } else {
                             removals.push(i);
+                        } else {
+                            removals.push(j);
                         }
                     }
                 }
