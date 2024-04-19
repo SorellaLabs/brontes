@@ -90,7 +90,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     ignore_state,
                     if pair == full_pair { 100 } else { 0 },
                     None,
-                    Duration::from_millis(250),
+                    Duration::from_millis(100),
                     default_extends_pair.is_some(),
                     None,
                 );
@@ -120,7 +120,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                                 ignore_state.clone(),
                                 0,
                                 None,
-                                Duration::from_millis(250),
+                                Duration::from_millis(100),
                                 default_extends_pair.is_some(),
                                 None,
                             )
