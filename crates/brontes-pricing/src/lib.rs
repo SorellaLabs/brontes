@@ -71,8 +71,10 @@ use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
 /// max movement of price in the block before its considered invalid.
-/// currently 45%
-const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(45, 100);
+/// currently 85 movement from start price.
+/// If WETH was at 3000$usd. to trigger this. the final price
+/// of the pool would have to end at $450
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(85, 100);
 
 /// # Brontes Batch Pricer
 ///
