@@ -841,7 +841,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 })
                 .collect_vec()
                 .into_par_iter()
-                .flat_map(|queries| {
+                .map(|queries| {
                     let shit = queries.first().unwrap();
                     let goes_through = shit.goes_through;
                     let pair = shit.pair;
@@ -859,40 +859,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     let (edges, extend) = (edges, extend.pop().flatten());
 
                     // add calls and try_verify calls
-                    let mut add_calls = Vec::new();
 
-                    if edges.is_empty() {
-                        if goes_through == Pair::default() {
-                            debug!(
-                                ?pair,
-                                ?goes_through,
-                                ?block,
-                                "Failed to find connection for graph"
-                            );
-                        } else {
-                            debug!(
-                                ?pair,
-                                ?goes_through,
-                                ?block,
-                                "Failed to find connection for graph"
-                            );
-                        }
-
-                        add_calls.push((
-                            pair,
-                            full_pair,
-                            goes_through,
-                            extend,
-                            block,
-                            vec![],
-                            true,
-                        ));
-                    } else {
-                        add_calls.push((pair, full_pair, goes_through, extend, block, edges, true));
-                    }
                     tracing::debug!(?pair, ?block, "finished rundown");
-
-                    add_calls
+                    (pair, full_pair, goes_through, extend, block, edges, true)
                 })
                 .collect::<Vec<_>>()
         });
