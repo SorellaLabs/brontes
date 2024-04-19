@@ -517,7 +517,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if self
                 .graph_manager
                 .subgraph_verifier
-                .is_verifying(&pair0, &pool_pair, block)
+                .is_verifying_with_block(&pair0, &pool_pair, block)
             {
                 error!(?tx_idx, ?block, ?pair0, ?pool_pair, "pair is currently being verified");
             }
@@ -559,7 +559,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if self
                 .graph_manager
                 .subgraph_verifier
-                .is_verifying(&pair1, &flipped_pool, blcok)
+                .is_verifying_with_block(&pair1, &flipped_pool, block)
             {
                 error!(?tx_idx, ?block, ?pair1, ?flipped_pool, "pair is currently being verified");
             }
