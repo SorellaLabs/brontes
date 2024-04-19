@@ -18,7 +18,7 @@ use super::dex_pricing::WaitingForPricerFuture;
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process
-const MAX_PENDING_TREES: usize = 40;
+const MAX_PENDING_TREES: usize = 45;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;

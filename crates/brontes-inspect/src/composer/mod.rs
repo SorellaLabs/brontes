@@ -165,7 +165,7 @@ fn deduplicate_mev(
     }
 
     indexes.sort_unstable_by(|a, b| b.0.cmp(&a.0));
-    indexes.dedup_by_key(|a| a.0);
+    indexes.dedup();
 
     indexes.into_iter().for_each(|(index, mev_type)| {
         let Some(mev_list) = sorted_mev.get_mut(&mev_type) else { return };

@@ -819,12 +819,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             .iter()
                             .copied()
                             .combinations(ignores.len() - 1)
-                            .map(|ignores| RequeryPairs {
+                            .map(|i| RequeryPairs {
                                 pair,
                                 goes_through,
                                 full_pair: complete_pair,
                                 block,
-                                ignore_state: ignores.into_iter().collect::<FastHashSet<_>>(),
+                                ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
                                 frayed_ends: vec![],
                             })
                             .collect_vec()
@@ -834,7 +834,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             pair,
                             block,
                             full_pair: complete_pair,
-                            ignore_state: FastHashSet::default(),
+                            ignore_state: ignores.into_iter().collect::<FastHashSet<_>>(),
                             frayed_ends: vec![],
                         }]
                     }
@@ -1014,7 +1014,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     /// The price can pre-process up to 40 blocks in the future
     fn process_future_blocks(&self) -> bool {
-        self.completed_block + 20 > self.current_block
+        self.completed_block + 40 > self.current_block
     }
 
     /// Attempts to resolve the block & start processing the next block.
