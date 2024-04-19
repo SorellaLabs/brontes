@@ -41,7 +41,10 @@
 //! `filter_possible_cex_dex`. Valid opportunities are bundled into
 //! `BundleData::CexDex` instances.
 
-use std::sync::Arc;
+use std::{
+    cmp::{max, min},
+    sync::Arc,
+};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -55,8 +58,10 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::izip;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::basic::traits::{Two, Zero},
+    Rational,
+};
 use reth_primitives::Address;
 use tracing::{debug, error};
 
@@ -118,16 +123,13 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     /// # Returns
     /// A vector of `Bundle` instances representing classified CEX-DEX arbitrage
     fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
-        let swap_txes = tree
-            .clone()
+        tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Actions::is_swap,
                 Actions::is_transfer,
                 Actions::is_eth_transfer,
                 Actions::is_aggregator,
-            ]));
-
-        swap_txes
+            ]))
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
 
@@ -137,9 +139,11 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                         return None
                     }
                 }
+
                 let deltas = swaps.clone().into_iter().account_for_actions();
-                let dex_swaps = swaps
-                    .into_iter()
+                let dex_swaps = self
+                    .utils
+                    .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
                     .collect_action_vec(Actions::try_swaps_merged);
 
                 if self.is_triangular_arb(&dex_swaps) {
@@ -230,16 +234,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         return Some(cex_dex)
     }
 
-    /// Detects potential CEX-DEX arbitrage opportunities for a given swap.
+    /// Detects potential CEX-DEX arbitrage opportunities for a sequence of
+    /// swaps
     ///
     /// # Arguments
     ///
-    /// * `swap` - The swap action to analyze.
+    /// * `swap` - The swaps to analyze.
     /// * `metadata` - Combined metadata for additional context in analysis.
+    /// * `cex_prices` - Fee adjusted CEX quotes for the corresponding swaps.
     ///
     /// # Returns
     ///
-    /// An option containing a `PossibleCexDexLeg` if an opportunity is found,
+    /// An option containing a `PossibleCexDex` if an opportunity is found,
     /// otherwise `None`.
     pub fn detect_cex_dex_opportunity(
         &self,
@@ -247,19 +253,19 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         cex_prices: Vec<Option<FeeAdjustedQuote>>,
         metadata: &Metadata,
     ) -> Option<PossibleCexDex> {
-        let exchange_legs = swaps
-            .iter()
-            .zip(cex_prices.into_iter())
-            .map(|(swap, quote)| {
-                if let Some(q) = quote {
-                    self.profit_classifier(swap, &q, metadata)
-                } else {
-                    None
-                }
-            })
-            .collect_vec();
-
-        PossibleCexDex::from_exchange_legs(exchange_legs)
+        PossibleCexDex::from_exchange_legs(
+            swaps
+                .iter()
+                .zip(cex_prices.into_iter())
+                .map(|(swap, quote)| {
+                    if let Some(q) = quote {
+                        self.profit_classifier(swap, q, metadata)
+                    } else {
+                        None
+                    }
+                })
+                .collect_vec(),
+        )
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
@@ -267,15 +273,17 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
-        cex_quote: &FeeAdjustedQuote,
+        cex_quote: FeeAdjustedQuote,
         metadata: &Metadata,
     ) -> Option<ExchangeLeg> {
-        // If the price difference between the DEX and CEX is greater than 2x, this
-        // is likely a false positive resulting from incorrect price data
-        let smaller = swap.swap_rate().min(cex_quote.price_maker.1.clone());
-        let larger = swap.swap_rate().max(cex_quote.price_maker.1.clone());
+        // If the price difference between the DEX and CEX is greater than 2x, the
+        // quote is likely invalid
 
-        if smaller * Rational::from(2) < larger {
+        let swap_rate = swap.swap_rate();
+        let smaller = min(&swap_rate, &cex_quote.price_maker.1);
+        let larger = max(&swap_rate, &cex_quote.price_maker.1);
+
+        if smaller * Rational::TWO < *larger {
             log_price_delta(
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
@@ -299,7 +307,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let token_price = metadata.cex_quotes.get_quote_direct_or_via_intermediary(
             &Pair(swap.token_in.address, self.utils.quote),
             &cex_quote.exchange,
-            &swap,
+            None,
         )?;
 
         let token_maker_taker_mid = token_price.maker_taker_mid();
@@ -340,7 +348,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
                 metadata
                     .cex_quotes
-                    .get_quote_direct_or_via_intermediary(&pair, exchange, &swap)
+                    .get_quote_direct_or_via_intermediary(&pair, exchange, Some(&swap))
                     .or_else(|| {
                         debug!(
                             "No CEX quote found for pair: {}, {} at exchange: {:?}",
@@ -526,6 +534,7 @@ impl PossibleCexDex {
     }
 }
 
+#[derive(Debug)]
 pub struct CexDexProcessing {
     pub dex_swaps:           Vec<NormalizedSwap>,
     pub global_vmam_cex_dex: Option<PossibleCexDex>,
@@ -540,7 +549,6 @@ impl CexDexProcessing {
         }
 
         let mut transposed_arb_leg: Vec<Vec<&ExchangeLeg>> = vec![Vec::new(); self.dex_swaps.len()];
-
         let mut incomplete_routes: Vec<usize> = Vec::new();
 
         for (index, p) in self
@@ -585,6 +593,8 @@ impl CexDexProcessing {
         incomplete_routes.iter().rev().for_each(|i| {
             self.per_exchange_pnl.remove(*i);
         });
+
+        debug!("Found Max Profit Path: {:#?}", self);
 
         Some(())
     }

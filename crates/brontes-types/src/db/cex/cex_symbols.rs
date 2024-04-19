@@ -1,7 +1,7 @@
 use clickhouse::Row;
 use serde::Deserialize;
 
-use super::cex::CexExchange;
+use super::CexExchange;
 use crate::{
     pair::Pair,
     serde_utils::{address_pair, cex_exchange},

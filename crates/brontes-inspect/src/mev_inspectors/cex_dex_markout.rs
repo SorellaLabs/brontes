@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    cmp::{max, min},
+    sync::Arc,
+};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -159,10 +162,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     ) -> Option<SwapLeg> {
         // If the price difference between the DEX and CEX is greater than 10x then this
         // is likely a false positive resulting from incorrect price data
-        let smaller = swap.swap_rate().min(maker_price.price.clone());
-        let larger = swap.swap_rate().max(maker_price.price.clone());
+        let swap_rate = swap.swap_rate();
+        let smaller = min(&swap_rate, &cex_quote.price_maker.1);
+        let larger = max(&swap_rate, &cex_quote.price_maker.1);
 
-        if smaller * Rational::from(2) < larger {
+        if smaller * Rational::TWO < *larger {
             tracing::error!(
                 "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
                  - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\

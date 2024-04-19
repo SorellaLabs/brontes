@@ -5,11 +5,11 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 #[cfg(not(feature = "cex-dex-markout"))]
-use brontes_types::db::raw_cex_quotes::{CexQuotesConverter, RawCexQuotes};
+use brontes_types::db::cex::{CexQuotesConverter, RawCexQuotes};
 #[cfg(feature = "cex-dex-markout")]
-use brontes_types::db::raw_cex_trades::{CexTradesConverter, RawCexTrades};
+use brontes_types::db::cex::{CexTradesConverter, RawCexTrades};
 #[cfg(feature = "local-clickhouse")]
-use brontes_types::db::{block_times::BlockTimes, cex_symbols::CexSymbols};
+use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,

@@ -3,11 +3,14 @@ use clickhouse::Row;
 use itertools::Itertools;
 use serde::Deserialize;
 
-use super::{
-    block_times::BlockTimes, cex::CexExchange, cex_symbols::CexSymbols, cex_trades::CexTradeMap,
-};
 use crate::{
-    constants::USDC_ADDRESS, db::block_times::CexBlockTimes, serde_utils::cex_exchange, FastHashMap,
+    constants::USDC_ADDRESS,
+    db::{
+        block_times::{BlockTimes, CexBlockTimes},
+        cex::{cex_symbols::CexSymbols, cex_trades::CexTradeMap, CexExchange},
+    },
+    serde_utils::cex_exchange,
+    FastHashMap,
 };
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]

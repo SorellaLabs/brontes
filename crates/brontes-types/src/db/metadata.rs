@@ -6,7 +6,11 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use serde_with::serde_as;
 
-use super::{builder::BuilderInfo, cex::CexPriceMap, cex_trades::CexTradeMap, dex::DexQuotes};
+use super::{
+    builder::BuilderInfo,
+    cex::{CexPriceMap, CexTradeMap},
+    dex::DexQuotes,
+};
 #[cfg(feature = "cex-dex-markout")]
 use crate::db::cex::CexExchange;
 use crate::{

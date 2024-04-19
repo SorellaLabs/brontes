@@ -13,6 +13,7 @@
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
 use std::{
+    cmp::{max, min},
     default::Default,
     fmt,
     fmt::{Display, Formatter},
@@ -41,7 +42,10 @@ use tracing::error;
 use super::raw_cex_quotes::RawCexQuotes;
 use crate::{
     constants::*,
-    db::redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
+    db::{
+        cex::CexExchange,
+        redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined},
+    },
     implement_table_value_codecs_with_zc,
     normalized_actions::NormalizedSwap,
     pair::{Pair, PairRedefined},
@@ -244,7 +248,7 @@ impl CexPriceMap {
         &self,
         pair: &Pair,
         exchange: &CexExchange,
-        dex_swap: &NormalizedSwap,
+        dex_swap: Option<&NormalizedSwap>,
     ) -> Option<FeeAdjustedQuote> {
         let intermediaries = exchange.most_common_quote_assets();
 
@@ -283,28 +287,30 @@ impl CexPriceMap {
                         amount:      normalized_bbo_amount,
                     };
 
-                    let smaller = dex_swap
-                        .swap_rate()
-                        .min(combined_quote.price_maker.1.clone());
-                    let larger = dex_swap
-                        .swap_rate()
-                        .max(combined_quote.price_maker.1.clone());
+                    if let Some(swap) = dex_swap {
+                        let swap_rate = swap.swap_rate();
+                        let smaller = min(&swap_rate, &combined_quote.price_maker.1);
+                        let larger = max(&swap_rate, &combined_quote.price_maker.1);
 
-                    if smaller * Rational::from(2) < larger {
-                        log_significant_price_difference(
-                            &dex_swap,
-                            &exchange,
-                            &combined_quote,
-                            &quote1,
-                            &quote2,
-                            &intermediary.to_string(),
-                        );
-                        return None;
+                        if smaller * Rational::TWO < *larger {
+                            log_significant_price_difference(
+                                &swap,
+                                &exchange,
+                                &combined_quote,
+                                &quote1,
+                                &quote2,
+                                &intermediary.to_string(),
+                            );
+                            return None;
+                        } else {
+                            return Some(combined_quote);
+                        }
                     } else {
                         return Some(combined_quote);
                     }
+                } else {
+                    None
                 }
-                None
             })
             .max_by(|a, b| a.amount.0.cmp(&b.amount.0))
     }
@@ -315,7 +321,7 @@ impl CexPriceMap {
         &self,
         pair: &Pair,
         exchange: &CexExchange,
-        dex_swap: &NormalizedSwap,
+        dex_swap: Option<&NormalizedSwap>,
     ) -> Option<FeeAdjustedQuote> {
         self.get_quote(pair, exchange)
             .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap))
@@ -731,42 +737,6 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
             amount,
         }
     }
-}
-
-#[derive(
-    Copy,
-    Display,
-    Debug,
-    Clone,
-    Default,
-    Eq,
-    PartialEq,
-    Hash,
-    serde::Serialize,
-    // serde::Deserialize,
-    rkyv::Serialize,
-    rkyv::Deserialize,
-    rkyv::Archive,
-)]
-#[archive_attr(derive(Eq, PartialEq, Hash))]
-pub enum CexExchange {
-    Binance,
-    Bitmex,
-    Deribit,
-    Okex,
-    Coinbase,
-    Kraken,
-    BybitSpot,
-    Kucoin,
-    Upbit,
-    Huobi,
-    GateIo,
-    Bitstamp,
-    Gemini,
-    Average,
-    VWAP,
-    #[default]
-    Unknown,
 }
 
 self_convert_redefined!(CexExchange);
