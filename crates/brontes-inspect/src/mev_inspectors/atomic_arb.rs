@@ -15,10 +15,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{
-        arithmetic::traits::{Abs, Reciprocal},
-        basic::traits::Zero,
-    },
+    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
 use reth_primitives::Address;
