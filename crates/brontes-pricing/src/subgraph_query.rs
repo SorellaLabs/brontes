@@ -90,7 +90,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     ignore_state,
                     if pair == full_pair { 100 } else { 0 },
                     None,
-                    Duration::from_millis(100),
+                    Duration::from_millis(150),
                     default_extends_pair.is_some(),
                     None,
                 );
@@ -120,7 +120,7 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                                 ignore_state.clone(),
                                 0,
                                 None,
-                                Duration::from_millis(100),
+                                Duration::from_millis(150),
                                 default_extends_pair.is_some(),
                                 None,
                             )
@@ -203,7 +203,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             n_pair,
             FastHashSet::default(),
             100,
-            None,
+            Some(8),
             Duration::from_millis(300),
             default_extend_to.is_some(),
             Some(pair.1),
