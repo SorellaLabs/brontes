@@ -58,7 +58,10 @@ pub use graphs::{
     VerificationResults,
 };
 use itertools::Itertools;
-use malachite::{num::basic::traits::One, Rational};
+use malachite::{
+    num::basic::traits::{One, Zero},
+    Rational,
+};
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
@@ -1089,8 +1092,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .filter_map(|(key, price)| Some((key, price, last.remove(&key)?)))
             .filter_map(|(key, first_price, last_price)| {
                 let block_movement = if last_price > first_price {
+                    if last_price == Rational::ZERO {
+                        return None
+                    }
                     (&last_price - &first_price) / last_price
                 } else {
+                    if first_price == Rational::ZERO {
+                        return None
+                    }
                     (&first_price - &last_price) / first_price
                 };
                 if block_movement > MAX_BLOCK_MOVEMENT {

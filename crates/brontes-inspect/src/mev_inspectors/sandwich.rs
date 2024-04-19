@@ -397,8 +397,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .reciprocal();
 
                 let pct = if effective_price > dex_pricing_rate {
+                    if effective_price == Rational::ZERO {
+                        return None
+                    }
                     (&effective_price - &dex_pricing_rate) / &effective_price
                 } else {
+                    if dex_pricing_rate == Rational::ZERO {
+                        return None
+                    }
                     (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                 };
 

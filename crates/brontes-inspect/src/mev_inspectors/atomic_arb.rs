@@ -25,9 +25,9 @@ use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
-/// the price difference was more than 100% between dex pricing and effective
+/// the price difference was more than 50% between dex pricing and effective
 /// price
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigned(1);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(5, 10);
 
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -258,7 +258,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     * am_in_price.get_price(PriceAt::Average))
                 .reciprocal();
 
-                let pct = (&effective_price - &dex_pricing_rate).abs() / &effective_price;
+                let pct = if effective_price > dex_pricing_rate {
+                    if effective_price == Rational::ZERO {
+                        return None
+                    }
+                    (&effective_price - &dex_pricing_rate) / &effective_price
+                } else {
+                    if dex_pricing_rate == Rational::ZERO {
+                        return None
+                    }
+                    (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                };
 
                 if pct > MAX_PRICE_DIFF {
                     tracing::warn!(
