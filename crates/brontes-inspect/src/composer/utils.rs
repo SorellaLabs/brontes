@@ -8,7 +8,6 @@ use brontes_types::{
     tree::BlockTree,
     FastHashMap, GasDetails, ToScaledRational, TreeSearchBuilder,
 };
-use itertools::Itertools;
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 use tracing::log::debug;
 

@@ -29,7 +29,7 @@ type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<Nor
 
 /// the price difference was more than 60% between dex pricing and effective
 /// price
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(6, 10);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(10, 10);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
