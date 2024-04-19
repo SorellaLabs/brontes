@@ -517,15 +517,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if self
                 .graph_manager
                 .subgraph_verifier
-                .is_verifying(&pair0, &pool_pair)
+                .is_verifying(&pair0, &pool_pair, block)
             {
-                tracing::error!(
-                    ?tx_idx,
-                    ?block,
-                    ?pair0,
-                    ?pool_pair,
-                    "pair is currently being verified"
-                );
+                error!(?tx_idx, ?block, ?pair0, ?pool_pair, "pair is currently being verified");
             }
         }
 
@@ -565,15 +559,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             if self
                 .graph_manager
                 .subgraph_verifier
-                .is_verifying(&pair1, &flipped_pool)
+                .is_verifying(&pair1, &flipped_pool, blcok)
             {
-                tracing::error!(
-                    ?tx_idx,
-                    ?block,
-                    ?pair1,
-                    ?flipped_pool,
-                    "pair is currently being verified"
-                );
+                error!(?tx_idx, ?block, ?pair1, ?flipped_pool, "pair is currently being verified");
             }
         }
     }
@@ -776,7 +764,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     } else if !need_state {
                         recusing.push((block, id, full_pair, vec![goes_through]))
                     }
-                    tracing::info!("no force rundown or recusing");
+
                     None
                 },
             )

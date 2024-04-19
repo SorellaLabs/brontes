@@ -112,10 +112,13 @@ impl SubgraphVerifier {
         self.pending_subgraphs.keys().copied().collect_vec()
     }
 
-    pub fn is_verifying(&self, pair: &Pair, goes_through: &Pair) -> bool {
+    pub fn is_verifying(&self, pair: &Pair, goes_through: &Pair, block: u64) -> bool {
         self.pending_subgraphs
             .get(&pair.ordered())
-            .and_then(|a| a.iter().find(|(p, _)| p == goes_through))
+            .and_then(|a| {
+                a.iter()
+                    .find(|(p, s)| p == goes_through || s.block == block)
+            })
             .is_some()
     }
 
