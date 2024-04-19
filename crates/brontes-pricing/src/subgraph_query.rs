@@ -71,7 +71,7 @@ pub struct StateQueryRes {
     pub full_pair:    Pair,
 }
 
-// already generated
+// already generated subgraph but need to fill in gaps
 pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     pairs: Vec<RequeryPairs>,
@@ -79,26 +79,25 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
     pairs
         .into_par_iter()
         .map(|RequeryPairs { pair, goes_through, full_pair, block, ignore_state, frayed_ends }| {
-            // default extends,
-            let default_extends_pair = graph.has_extension(&goes_through, pair.1);
+            let default_extends_pair = graph.has_extension(&goes_through, full_pair.1);
 
+            // if we have no direct extensions we are looking for, we will search the l
             if frayed_ends.is_empty() {
                 let (edges, extends_pair) = graph.create_subgraph(
                     block,
-                    // if not zero, then we have a go, through
                     (!goes_through.is_zero()).then_some(goes_through),
                     pair,
                     ignore_state,
-                    100,
-                    Some(5),
-                    Duration::from_millis(120),
+                    if pair == full_pair { 100 } else { 0 },
+                    None,
+                    Duration::from_millis(150),
                     default_extends_pair.is_some(),
                     None,
                 );
 
                 return StateQueryRes {
-                    extends_pair,
                     pair,
+                    extends_pair,
                     block,
                     goes_through,
                     full_pair,
@@ -204,8 +203,8 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             n_pair,
             FastHashSet::default(),
             100,
-            Some(5),
-            Duration::from_millis(69),
+            Some(10),
+            Duration::from_millis(300),
             default_extend_to.is_some(),
             Some(pair.1),
         );
