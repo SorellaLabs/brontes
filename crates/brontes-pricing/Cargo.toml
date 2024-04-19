@@ -73,6 +73,7 @@ criterion = { version = "0.5", features = [
   "async",
   "async_tokio",
 ], optional = true }
+brontes-macros.workspace = true
 
 [dev-dependencies]
 pricing-test-utils = { path = "./pricing-test-utils" }
@@ -82,7 +83,6 @@ brontes-database = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-types = { workspace = true, features = ["tests"] }
 reth-tracing-ext = { workspace = true, features = ["tests"] }
-brontes-macros.workspace = true
 dotenv.workspace = true
 tokio.workspace = true
 reth-provider.workspace = true

@@ -1,8 +1,5 @@
-use std::collections::HashMap;
-
 use clickhouse::Row;
 use itertools::Itertools;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Deserialize;
 
 use super::{
@@ -27,7 +24,7 @@ pub struct RawCexQuotes {
 #[derive(Debug)]
 pub struct CexQuotesConverter {
     pub block_times: Vec<CexBlockTimes>,
-    pub symbols:     HashMap<(CexExchange, String), CexSymbols>,
+    pub symbols:     FastHashMap<(CexExchange, String), CexSymbols>,
     pub quotes:      Vec<RawCexQuotes>,
 }
 
@@ -41,7 +38,7 @@ impl CexQuotesConverter {
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
-            .collect::<HashMap<_, _>>();
+            .collect::<FastHashMap<_, _>>();
 
         let quotes = quotes
             .into_iter()
@@ -60,18 +57,16 @@ impl CexQuotesConverter {
     }
 
     pub fn convert_to_prices(self) -> Vec<(u64, CexPriceMap)> {
-        let mut block_num_map = HashMap::new();
+        let mut block_num_map = FastHashMap::default();
 
         self.quotes
-            .into_par_iter()
+            .into_iter()
             .filter_map(|q| {
                 self.block_times
-                    .par_iter()
-                    .find_any(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
+                    .iter()
+                    .find(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
                     .map(|block_time| (block_time.block_number, q))
             })
-            .collect::<Vec<_>>()
-            .into_iter()
             .for_each(|(block_num, quote)| {
                 block_num_map
                     .entry(block_num)
@@ -80,9 +75,9 @@ impl CexQuotesConverter {
             });
 
         block_num_map
-            .into_par_iter()
+            .into_iter()
             .map(|(block_num, quotes)| {
-                let mut exchange_map = HashMap::new();
+                let mut exchange_map = FastHashMap::default();
 
                 quotes.into_iter().for_each(|quote| {
                     exchange_map
@@ -92,15 +87,16 @@ impl CexQuotesConverter {
                 });
 
                 let cex_price_map = exchange_map
-                    .into_par_iter()
+                    .into_iter()
                     .map(|(exch, quotes)| {
-                        let mut exchange_symbol_map = HashMap::new();
+                        let mut exchange_symbol_map = FastHashMap::default();
 
                         quotes.into_iter().for_each(|quote| {
                             let symbol = self
                                 .symbols
                                 .get(&(quote.exchange, quote.symbol.clone()))
                                 .unwrap();
+
                             exchange_symbol_map
                                 .entry(&symbol.address_pair)
                                 .or_insert(Vec::new())
@@ -108,7 +104,7 @@ impl CexQuotesConverter {
                         });
 
                         let symbol_price_map = exchange_symbol_map
-                            .into_par_iter()
+                            .into_iter()
                             .map(|(pair, quotes)| {
                                 (
                                     pair.ordered(),

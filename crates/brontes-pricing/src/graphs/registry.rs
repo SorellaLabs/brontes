@@ -10,6 +10,7 @@ use malachite::{
 };
 
 use super::{subgraph::PairSubGraph, PoolState};
+use crate::types::ProtocolState;
 
 /// Manages subgraphs in the BrontesBatchPricer module, crucial for DEX pricing.
 ///
@@ -52,6 +53,38 @@ impl SubGraphRegistry {
         Self { sub_graphs }
     }
 
+    // useful for debugging
+    #[allow(unused)]
+    pub fn check_for_dups(&self) {
+        self.sub_graphs
+            .iter()
+            .flat_map(|(a, v)| v.iter().zip(vec![a].into_iter().cycle()))
+            .map(|(inner, out)| (out.ordered(), inner.0))
+            .counts()
+            .iter()
+            .for_each(|((pair, extends), am)| {
+                if *am != 1 {
+                    tracing::warn!(
+                        ?pair,
+                        ?extends,
+                        amount=?am,
+                        "has more than one entry in the subgraph registry"
+                    );
+                }
+            });
+    }
+
+    pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
+        self.sub_graphs
+            .get(&pair.ordered())
+            .and_then(|graph| {
+                graph
+                    .iter()
+                    .find_map(|(inner_gt, s)| (inner_gt == goes_through).then(|| s.extends_to()))
+            })
+            .flatten()
+    }
+
     pub fn all_pairs_with_quote(&self, addr: Address) -> Vec<Pair> {
         self.sub_graphs
             .keys()
@@ -68,18 +101,11 @@ impl SubGraphRegistry {
             .copied()
     }
 
-    pub fn has_go_through(&self, pair: &Pair, goes_through: &Option<Pair>) -> bool {
-        if let Some(goes_through) = goes_through {
-            self.sub_graphs
-                .get(pair)
-                .filter(|g| {
-                    g.iter()
-                        .any(|(gt, _)| gt == goes_through || goes_through.is_zero())
-                })
-                .is_some()
-        } else {
-            self.sub_graphs.contains_key(pair)
-        }
+    pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
+        self.sub_graphs
+            .get(&pair.ordered())
+            .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
+            .is_some()
     }
 
     pub fn remove_subgraph(&mut self, pair: &Pair, goes_through: &Pair) {
@@ -90,14 +116,6 @@ impl SubGraphRegistry {
             v.retain(|(gt, _)| gt != goes_through);
             !v.is_empty()
         });
-    }
-
-    // if we have more than 4 extensions, this is enough of a market outlook
-    pub fn current_pairs(&self, pair: &Pair) -> usize {
-        self.sub_graphs
-            .get(pair)
-            .map(|f| f.len())
-            .unwrap_or_default()
     }
 
     pub fn add_verified_subgraph(
@@ -127,9 +145,46 @@ impl SubGraphRegistry {
 
     fn remove_all_extensions_of(&mut self, pair: Pair) {
         self.sub_graphs.retain(|_, inner| {
-            inner.retain(|(_, g)| g.extends_to().map(|ex| ex != pair).unwrap_or(true));
+            inner.retain(|(_, g)| {
+                g.extends_to()
+                    .map(|ex| ex.ordered() != pair.ordered())
+                    .unwrap_or(true)
+            });
             !inner.is_empty()
         })
+    }
+
+    pub fn verify_current_subgraphs<T: ProtocolState>(
+        &mut self,
+        pair: Pair,
+        goes_through: &Pair,
+        start: Address,
+        start_price: Rational,
+        state: &FastHashMap<Address, T>,
+    ) -> Option<bool> {
+        let mut requery = false;
+        self.sub_graphs.retain(|g_pair, sub| {
+            // wrong pair, then retain
+            if *g_pair != pair.ordered() {
+                return true
+            }
+
+            sub.retain_mut(|(gt, graph)| {
+                if goes_through == gt {
+                    let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
+                    // shit is disjoint
+                    if res.should_abandon {
+                        requery = true;
+                        return false
+                    }
+                }
+                true
+            });
+
+            !sub.is_empty()
+        });
+
+        Some(requery)
     }
 
     pub fn get_price(
@@ -172,9 +227,8 @@ impl SubGraphRegistry {
         self.sub_graphs
             .get(&pair)
             .and_then(|g| {
-                g.iter().find_map(|(gt, graph)| {
-                    (*gt == goes_through || gt.flip() == goes_through).then_some(graph)
-                })
+                g.iter()
+                    .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph))
             })
             .map(|graph| {
                 Some((

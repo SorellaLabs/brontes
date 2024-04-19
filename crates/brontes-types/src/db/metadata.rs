@@ -95,8 +95,10 @@ impl Metadata {
                     Rational::ZERO
                 } else {
                     dex_quotes
-                        .price_at_or_before(Pair(WETH_ADDRESS, quote_token), dex_quotes.0.len())
-                        .map(|price| price.post_state)
+                        .price_for_block(
+                            Pair(WETH_ADDRESS, quote_token),
+                            crate::db::dex::BlockPrice::Average,
+                        )
                         .unwrap_or(Rational::ZERO)
                 }
             } else {

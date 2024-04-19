@@ -25,7 +25,7 @@ use petgraph::{
 };
 use tracing::error;
 
-use crate::{types::ProtocolState, AllPairGraph, Pair};
+use crate::{types::ProtocolState, Pair};
 
 pub struct VerificationOutcome {
     pub should_requery: bool,
@@ -49,7 +49,7 @@ struct BfsArgs {
 }
 
 const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
-const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 5_000;
+const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 7_500;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized
@@ -349,10 +349,9 @@ impl PairSubGraph {
         &mut self,
         start: Address,
         start_price: Rational,
-        state: FastHashMap<Address, T>,
-        _all_pair_graph: &AllPairGraph,
+        state: &FastHashMap<Address, T>,
     ) -> VerificationOutcome {
-        let result = self.run_bfs_with_liquidity_params(start, start_price, &state);
+        let result = self.run_bfs_with_liquidity_params(start, start_price, state, true);
 
         // grab all edges below rundown threshold and remove. if disjoint, then
         // we abandon pricing for the given pair
@@ -370,7 +369,7 @@ impl PairSubGraph {
 
         self.prune_subgraph_rundown(edges);
 
-        let disjoint = self.dijkstra_path(&state, None).is_none();
+        let disjoint = self.dijkstra_path(state, None).is_none();
 
         VerificationOutcome {
             should_requery: false,
@@ -385,10 +384,9 @@ impl PairSubGraph {
         start: Address,
         start_price: Rational,
         state: FastHashMap<Address, T>,
-        _all_pair_graph: &AllPairGraph,
     ) -> VerificationOutcome {
         tracing::debug!(?self.pair, "verification starting");
-        let result = self.run_bfs_with_liquidity_params(start, start_price, &state);
+        let result = self.run_bfs_with_liquidity_params(start, start_price, &state, false);
 
         tracing::debug!(?self.pair, "completed bfs with liq");
 
@@ -417,6 +415,7 @@ impl PairSubGraph {
         start: Address,
         start_price: Rational,
         state: &FastHashMap<Address, T>,
+        ignore_goes_through: bool,
     ) -> BfsArgs {
         self.bfs_with_price(
             start,
@@ -448,12 +447,14 @@ impl PairSubGraph {
                     let (t0, t1) = pool_state.tvl(info.get_token_with_direction(is_outgoing));
                     let liq0 = prev_price.clone().reciprocal() * &t0;
 
+                    let goes_through_arg = if ignore_goes_through {
+                        true
+                    } else {
+                        self.must_go_through != pair && self.must_go_through != pair.flip()
+                    };
                     // check if below liquidity and that if we remove we don't make the graph
                     // disjoint.
-                    if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN
-                        && self.must_go_through != pair
-                        && self.must_go_through != pair.flip()
-                    {
+                    if liq0 < MIN_LIQUIDITY_USD_PEGGED_TOKEN && goes_through_arg {
                         Self::bad_state(pair, info, liq0.clone(), &mut removal_map.removal_state);
                     } else {
                         let t0xt1 = &t0 * &t1;
@@ -757,7 +758,7 @@ impl PairSubGraph {
                 let new_price = &price * local_weighted_price;
                 let token_1_priced = token_1_am * new_price.clone().reciprocal();
                 let tvl = token_0_priced + token_1_priced;
-                let next_score = &node_score + tvl.reciprocal();
+                let next_score = &node_score + std::cmp::max(Rational::ZERO, MAX_TVL_WEIGHT - tvl);
 
                 match scores.entry(next) {
                     Occupied(ent) => {
@@ -784,6 +785,8 @@ impl PairSubGraph {
         node_price.remove(&goal)
     }
 }
+
+const MAX_TVL_WEIGHT: Rational = Rational::const_from_unsigned(100_000_000_000u64);
 
 fn add_edge(
     graph: &mut DiGraph<(), Vec<SubGraphEdge>, u16>,
