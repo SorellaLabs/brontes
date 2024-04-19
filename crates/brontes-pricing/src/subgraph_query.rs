@@ -95,10 +95,6 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
                     None,
                 );
 
-                let pair = extends_pair
-                    .map(|ext| Pair(full_pair.0, ext.0))
-                    .unwrap_or(pair);
-
                 return StateQueryRes {
                     pair,
                     extends_pair,
@@ -207,7 +203,7 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             n_pair,
             FastHashSet::default(),
             100,
-            Some(10),
+            Some(8),
             Duration::from_millis(69),
             default_extend_to.is_some(),
             Some(pair.1),

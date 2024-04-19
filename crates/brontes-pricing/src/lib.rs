@@ -776,6 +776,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     } else if !need_state {
                         recusing.push((block, id, full_pair, vec![goes_through]))
                     }
+                    tracing::info!("no force rundown or recusing");
                     None
                 },
             )
