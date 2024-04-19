@@ -154,7 +154,9 @@ fn deduplicate_mev(
         let hashes = dominate_mev.data.mev_transaction_hashes();
 
         for &sub_mev_type in subordinate_mev_types {
-            let Some(sub_mev_list) = sorted_mev.get(&sub_mev_type) else { continue; };
+            let Some(sub_mev_list) = sorted_mev.get(&sub_mev_type) else {
+                continue;
+            };
             indexes.extend(
                 find_mev_with_matching_tx_hashes(&sub_mev_list, &hashes)
                     .zip(vec![sub_mev_type].into_iter().cycle()),

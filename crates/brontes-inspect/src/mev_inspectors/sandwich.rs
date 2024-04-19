@@ -257,15 +257,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .collect::<Vec<_>>();
 
         // ensure valid pricing
+        let mut has_dex_price = true;
         for (swaps, info) in front_run_swaps.iter().zip(&possible_front_runs_info) {
-            if !self.valid_pricing(metadata.clone(), swaps, info.tx_index as usize) {
-                return None
-            }
+            has_dex_price &= self.valid_pricing(metadata.clone(), swaps, info.tx_index as usize);
         }
-
-        if !self.valid_pricing(metadata.clone(), &back_run_swaps, backrun_info.tx_index as usize) {
-            return None
-        }
+        has_dex_price &=
+            self.valid_pricing(metadata.clone(), &back_run_swaps, backrun_info.tx_index as usize);
 
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
@@ -306,7 +303,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         mev_addresses.extend(backrun_addresses);
 
-        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+        let rev = if let Some(rev) = self.utils.get_deltas_usd(
             backrun_info.tx_index,
             PriceAt::After,
             &mev_addresses,
@@ -314,9 +311,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             metadata.clone(),
             true,
         ) {
-            (Some(rev), true)
+            Some(rev)
         } else {
-            (Some(Rational::ZERO), false)
+            has_dex_price = false;
+            Some(Rational::ZERO)
         };
 
         let profit_usd = rev

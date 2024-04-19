@@ -91,19 +91,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
-        if !self.valid_pricing(metadata.clone(), &swaps, info.tx_index as usize) {
-            return None
-        }
+        let mut has_dex_price =
+            self.valid_pricing(metadata.clone(), &swaps, info.tx_index as usize);
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
-
         let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
             .chain(eth_transfers.into_iter().map(Actions::from))
             .account_for_actions();
 
-        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+        let rev = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::Average,
             &mev_addresses,
@@ -111,18 +109,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             metadata.clone(),
             false,
         ) {
-            (Some(rev), true)
+            Some(rev)
         } else {
-            (
-                Some(self.utils.get_available_usd_deltas(
-                    info.tx_index,
-                    PriceAt::Average,
-                    &mev_addresses,
-                    &account_deltas,
-                    metadata.clone(),
-                )),
-                false,
-            )
+            has_dex_price = false;
+            Some(Rational::ZERO)
         };
 
         let gas_used = info.gas_details.gas_paid();
