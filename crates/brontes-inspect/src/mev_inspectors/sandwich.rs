@@ -374,7 +374,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
-        if swaps.len() == 0 {
+        if swaps.is_empty() {
             return true
         }
 
@@ -440,6 +440,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// we check all hashes and will check for duplicates.
     /// when a duplicate arises, we will always take the bundle
     /// with more transactions as it is the most correct
+    #[allow(clippy::comparison_chain)]
     fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
         let mut bundles = bundles
             .into_iter()
@@ -1330,6 +1331,19 @@ mod tests {
             ])
             .with_gas_paid_usd(32.2)
             .with_expected_profit_usd(0.16);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_quad_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_block(18565754)
+            .with_gas_paid_usd(268.0)
+            .with_expected_profit_usd(45.0);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

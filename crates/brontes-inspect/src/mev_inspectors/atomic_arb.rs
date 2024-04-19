@@ -220,7 +220,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     }
 
     fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
-        if swaps.len() == 0 {
+        if swaps.is_empty() {
             return true
         }
 

@@ -60,22 +60,20 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 let pair = Pair(*token_addr, self.quote);
                 let price = if cex {
                     metadata.cex_quotes.get_binance_quote(&pair)?.best_ask()
+                } else if at_or_before {
+                    metadata
+                        .dex_quotes
+                        .as_ref()?
+                        .price_at_or_before(pair, tx_position as usize)
+                        .map(|price| price.get_price(at))?
+                        .clone()
                 } else {
-                    if at_or_before {
-                        metadata
-                            .dex_quotes
-                            .as_ref()?
-                            .price_at_or_before(pair, tx_position as usize)
-                            .map(|price| price.get_price(at))?
-                            .clone()
-                    } else {
-                        metadata
-                            .dex_quotes
-                            .as_ref()?
-                            .price_at(pair, tx_position as usize)
-                            .map(|price| price.get_price(at))?
-                            .clone()
-                    }
+                    metadata
+                        .dex_quotes
+                        .as_ref()?
+                        .price_at(pair, tx_position as usize)
+                        .map(|price| price.get_price(at))?
+                        .clone()
                 };
 
                 let usd_amount = amount.clone() * price.clone();

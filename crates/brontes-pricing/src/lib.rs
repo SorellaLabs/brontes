@@ -518,14 +518,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 tracing::debug!(?tx_idx, ?block, ?pair0, "failed pairs no inserts");
             }
-        } else {
-            if self
-                .graph_manager
-                .subgraph_verifier
-                .is_verifying_with_block(&pair0, &pool_pair, block)
-            {
-                error!(?tx_idx, ?block, ?pair0, ?pool_pair, "pair is currently being verified");
-            }
+        } else if self
+            .graph_manager
+            .subgraph_verifier
+            .is_verifying_with_block(&pair0, &pool_pair, block)
+        {
+            error!(?tx_idx, ?block, ?pair0, ?pool_pair, "pair is currently being verified");
         }
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
@@ -560,14 +558,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             } else {
                 tracing::debug!(?tx_idx, ?block, ?pair1, "failed pairs no inserts");
             }
-        } else {
-            if self
-                .graph_manager
-                .subgraph_verifier
-                .is_verifying_with_block(&pair1, &flipped_pool, block)
-            {
-                error!(?tx_idx, ?block, ?pair1, ?flipped_pool, "pair is currently being verified");
-            }
+        } else if self
+            .graph_manager
+            .subgraph_verifier
+            .is_verifying_with_block(&pair1, &flipped_pool, block)
+        {
+            error!(?tx_idx, ?block, ?pair1, ?flipped_pool, "pair is currently being verified");
         }
     }
 
@@ -747,7 +743,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             "no edges found"
                         );
 
-                        return Some((pair, full_pair, goes_through, block, false))
+                        return Some((pair, full_pair, goes_through, block))
                     }
 
                     let Some((id, need_state, force_rundown)) = self.add_subgraph(
@@ -765,7 +761,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                     if force_rundown && !need_state {
                         tracing::debug!("force rundown requery bad state par");
-                        return Some((pair, full_pair, goes_through, block, true))
+                        return Some((pair, full_pair, goes_through, block))
                     } else if !need_state {
                         recusing.push((block, id, full_pair, vec![goes_through]))
                     }
@@ -791,11 +787,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
     #[brontes_macros::bench_time(ptr=self.bench)]
-    fn par_rundown(&mut self, stuff: Vec<(Pair, Pair, Pair, u64, bool)>) {
+    fn par_rundown(&mut self, stuff: Vec<(Pair, Pair, Pair, u64)>) {
         let new_subgraphs = execute_on!(target = pricing, {
             stuff
                 .into_iter()
-                .map(|(pair, complete_pair, goes_through, block, forced_rundown)| {
+                .map(|(pair, complete_pair, goes_through, block)| {
                     // if the rundown was forced. this means that we don't need to be so aggressive
                     // with the ign
 
@@ -814,7 +810,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                     // take all combinations of our ignore nodes. If the rundown was forced, we,
                     // won't bother trying to generate a diverse set and
-                    if ignores.len() > 1 && !forced_rundown {
+                    if ignores.len() > 1 {
                         ignores
                             .iter()
                             .copied()
@@ -834,7 +830,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             pair,
                             block,
                             full_pair: complete_pair,
-                            ignore_state: ignores.into_iter().collect::<FastHashSet<_>>(),
+                            ignore_state: FastHashSet::default(),
                             frayed_ends: vec![],
                         }]
                     }
@@ -869,7 +865,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         let verify = new_subgraphs
             .into_iter()
             .filter_map(|(pair, complete_pair, goes_through, extend, block, edges, frayed_ext)| {
-                let Some((id, need_state, ..)) = self.add_subgraph(
+                let (id, need_state, ..) = self.add_subgraph(
                     pair,
                     complete_pair,
                     goes_through,
@@ -877,14 +873,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     block,
                     edges,
                     frayed_ext,
-                ) else {
-                    return None
-                };
+                )?;
 
                 if !need_state {
                     return Some((block, id, complete_pair, vec![goes_through]))
                 }
-                return None
+                None
             })
             .collect_vec();
 
@@ -998,7 +992,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .into_iter()
                 .zip(vec![self.completed_block].into_iter().cycle())
                 .map(|((pair, complete_pair, goes_through), block)| {
-                    (pair, complete_pair, goes_through, block, true)
+                    (pair, complete_pair, goes_through, block)
                 })
                 .collect_vec(),
         );

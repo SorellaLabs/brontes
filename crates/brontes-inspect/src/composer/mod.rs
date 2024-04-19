@@ -159,7 +159,7 @@ fn deduplicate_mev(
                 continue;
             };
             indexes.extend(
-                find_mev_with_matching_tx_hashes(&sub_mev_list, &hashes)
+                find_mev_with_matching_tx_hashes(sub_mev_list, &hashes)
                     .zip(vec![sub_mev_type].into_iter().cycle()),
             )
         }
