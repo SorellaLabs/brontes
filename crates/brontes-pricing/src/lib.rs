@@ -863,7 +863,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                     if edges.is_empty() {
                         if goes_through == Pair::default() {
-                            debug!(?pair, ?block, "Failed to find connection for graph");
+                            debug!(
+                                ?pair,
+                                ?goes_through,
+                                ?block,
+                                "Failed to find connection for graph"
+                            );
                         } else {
                             debug!(
                                 ?pair,
@@ -904,12 +909,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     edges,
                     frayed_ext,
                 ) else {
+                    tracing::info!(?pair,?complete_pair,?goes_through, "add subgraph is none");
                     return None
                 };
 
                 if !need_state {
                     return Some((block, id, complete_pair, vec![goes_through]))
                 }
+                tracing::info!(?pair, ?complete_pair, ?goes_through, "needs state");
                 return None
             })
             .collect_vec();
