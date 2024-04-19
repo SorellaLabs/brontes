@@ -63,7 +63,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
