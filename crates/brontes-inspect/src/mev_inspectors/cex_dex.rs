@@ -184,42 +184,24 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .map(|exchange| self.cex_quotes_for_swap(&dex_swaps, metadata, exchange))
             .collect_vec();
 
-        debug!("Number of dex_swaps: {}", dex_swaps.len());
-        quotes.iter().enumerate().for_each(|(i, vec)| {
-            debug!("Quotes length for exchange {}: {}", i, vec.len());
+        let mut transposed_quotes: Vec<Vec<&Option<FeeAdjustedQuote>>> =
+            vec![Vec::new(); quotes[0].len()];
+
+        quotes.iter().for_each(|q| {
+            q.iter().enumerate().for_each(|(index, quote)| {
+                transposed_quotes[index].push(quote);
+            })
         });
 
-        let iters: Vec<_> = quotes.iter().map(|vec| vec.iter()).collect();
-
-        for (i, iter) in iters
-            .clone()
-            .into_iter()
-            .enumerate()
-            .map(|(i, iter)| (i, iter))
-        {
-            debug!("Index: {}: with: {:#?}", i, iter.collect::<Vec<_>>());
-        }
-
-        let zipped: Vec<_> = izip!(iters.clone())
-            .enumerate()
-            .map(|(i, iter)| {
-                debug!("Index in izip: {}: {:#?}", i, iter.collect::<Vec<_>>());
-            })
-            .collect();
-
-        let quotes_vwam: Vec<Option<FeeAdjustedQuote>> = izip!(iters)
+        let quotes_vwam: Vec<Option<FeeAdjustedQuote>> = transposed_quotes
+            .iter()
             .enumerate()
             .map(|(index, row)| {
-                debug!("{:#?}", row);
                 let some_quotes: Vec<&FeeAdjustedQuote> =
-                    row.filter_map(|quote| quote.as_ref()).collect();
-                debug!("{:?} at index {}", some_quotes, index);
+                    row.iter().filter_map(|quote| quote.as_ref()).collect();
                 if some_quotes.is_empty() {
                     None
                 } else {
-                    if index >= dex_swaps.len() {
-                        error!("Index out of bounds: {} for dex_swaps: {:#?}", index, dex_swaps);
-                    }
                     let volume_weighted_quote = metadata
                         .cex_quotes
                         .get_volume_weighted_quote(&some_quotes, &dex_swaps[index]);
