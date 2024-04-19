@@ -27,9 +27,10 @@ use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
 
-/// the price difference was more than 60% between dex pricing and effective
-/// price
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(10, 10);
+/// the price difference was more than 90% between dex pricing and effective
+/// price, we put this so high due to the inner swap price manipulation
+/// effect that sandwich has
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -403,7 +404,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     if dex_pricing_rate == Rational::ZERO {
                         return None
                     }
-                    (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                    (&dex_pricing_rate - &effective_price) / &effective_price
                 };
 
                 if pct > MAX_PRICE_DIFF {

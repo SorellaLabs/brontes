@@ -71,10 +71,10 @@ use types::{DexPriceMsg, PoolUpdate};
 
 use crate::types::PoolState;
 /// max movement of price in the block before its considered invalid.
-/// currently 85 movement from start price.
+/// currently %90 movement from start price.
 /// If WETH was at 3000$usd. to trigger this. the final price
-/// of the pool would have to end at $450
-const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(85, 100);
+/// of the pool would have to end at $350
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
 
 /// # Brontes Batch Pricer
 ///
@@ -1104,7 +1104,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     if first_price == Rational::ZERO {
                         return None
                     }
-                    (&first_price - &last_price) / first_price
+                    (&first_price - &last_price) / last_price
                 };
                 if block_movement > MAX_BLOCK_MOVEMENT {
                     Some(key)
@@ -1121,7 +1121,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .for_each(|map| map.retain(|k, v| !removals.contains(&(*k, v.goes_through))));
 
         removals.into_iter().for_each(|pair| {
-            tracing::debug!(target: "brontes::missing_pricing",pair=?pair.0, goes_through=?pair.1, "drastic price change detected. removing pair");
+            tracing::debug!(target: "brontes::missing_pricing",pair=?pair.0,
+                            goes_through=?pair.1, "drastic price change detected. removing pair");
             self.graph_manager.remove_subgraph(pair.0, pair.1);
         })
     }

@@ -254,7 +254,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     if dex_pricing_rate == Rational::ZERO {
                         return None
                     }
-                    (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                    (&dex_pricing_rate - &effective_price) / &effective_price
                 };
 
                 if pct > MAX_PRICE_DIFF {
