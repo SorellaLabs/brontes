@@ -68,122 +68,126 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
             Actions::is_nested_action,
         ]);
 
-        Self::get_possible_sandwich(tree.clone())
-            .into_iter()
-            .flat_map(Self::partition_into_gaps)
-            .filter_map(
-                |PossibleSandwich {
-                     eoa: _e,
-                     possible_frontruns,
-                     possible_backrun,
-                     mev_executor_contract,
-                     victims,
-                 }| {
-                    if victims.iter().flatten().count() == 0 {
-                        return None
-                    };
+        Self::dedup_bundles(
+            Self::get_possible_sandwich(tree.clone())
+                .into_iter()
+                .flat_map(Self::partition_into_gaps)
+                .filter_map(
+                    |PossibleSandwich {
+                         eoa: _e,
+                         possible_frontruns,
+                         possible_backrun,
+                         mev_executor_contract,
+                         victims,
+                     }| {
+                        if victims.iter().flatten().count() == 0 {
+                            return None
+                        };
 
-                    let (victim_swaps_transfers, victim_info): (Vec<_>, Vec<_>) = victims
-                        .into_iter()
-                        .map(|victim| {
-                            (
-                                tree.clone()
-                                    .collect_txes(&victim, search_args.clone())
-                                    .t_map(|actions| {
-                                        self.utils
-                                            .flatten_nested_actions_default(actions.into_iter())
-                                    }),
-                                victim,
-                            )
-                        })
-                        .try_fold(vec![], |mut acc, (victim_set, hashes)| {
-                            let tree = victim_set.tree();
-                            let (actions, info) = victim_set
-                                .map(|s| {
-                                    s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
-                                        Actions::try_swaps_merged,
-                                        Actions::try_transfer,
-                                    ))
-                                })
-                                .into_zip_tree(tree)
-                                .tree_zip_with(hashes.into_iter())
-                                .t_full_filter_map(|(tree, rest)| {
-                                    let (swap, hashes): (Vec<_>, Vec<_>) =
-                                        UnzipPadded::unzip_padded(rest);
-
-                                    if !hashes
-                                        .iter()
-                                        .map(|v| {
-                                            let tree = &(*tree.clone());
-                                            let d = tree.get_root(*v).unwrap().get_root_action();
-
-                                            d.is_revert()
-                                                || mev_executor_contract == d.get_to_address()
-                                        })
-                                        .any(|d| d)
-                                    {
-                                        Some((
-                                            swap,
-                                            hashes
-                                                .into_iter()
-                                                .map(|hash| {
-                                                    tree.get_tx_info(hash, self.utils.db).unwrap()
-                                                })
-                                                .collect::<Vec<_>>(),
+                        let (victim_swaps_transfers, victim_info): (Vec<_>, Vec<_>) = victims
+                            .into_iter()
+                            .map(|victim| {
+                                (
+                                    tree.clone()
+                                        .collect_txes(&victim, search_args.clone())
+                                        .t_map(|actions| {
+                                            self.utils
+                                                .flatten_nested_actions_default(actions.into_iter())
+                                        }),
+                                    victim,
+                                )
+                            })
+                            .try_fold(vec![], |mut acc, (victim_set, hashes)| {
+                                let tree = victim_set.tree();
+                                let (actions, info) = victim_set
+                                    .map(|s| {
+                                        s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
+                                            Actions::try_swaps_merged,
+                                            Actions::try_transfer,
                                         ))
-                                    } else {
-                                        None
-                                    }
-                                })?;
+                                    })
+                                    .into_zip_tree(tree)
+                                    .tree_zip_with(hashes.into_iter())
+                                    .t_full_filter_map(|(tree, rest)| {
+                                        let (swap, hashes): (Vec<_>, Vec<_>) =
+                                            UnzipPadded::unzip_padded(rest);
 
-                            if actions.is_empty() {
-                                None
-                            } else {
-                                acc.push((actions, info));
-                                Some(acc)
-                            }
-                        })?
-                        .into_iter()
-                        .unzip();
+                                        if !hashes
+                                            .iter()
+                                            .map(|v| {
+                                                let tree = &(*tree.clone());
+                                                let d =
+                                                    tree.get_root(*v).unwrap().get_root_action();
 
-                    let frontrun_info = possible_frontruns
-                        .iter()
-                        .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
-                        .collect::<Vec<_>>();
+                                                d.is_revert()
+                                                    || mev_executor_contract == d.get_to_address()
+                                            })
+                                            .any(|d| d)
+                                        {
+                                            Some((
+                                                swap,
+                                                hashes
+                                                    .into_iter()
+                                                    .map(|hash| {
+                                                        tree.get_tx_info(hash, self.utils.db)
+                                                            .unwrap()
+                                                    })
+                                                    .collect::<Vec<_>>(),
+                                            ))
+                                        } else {
+                                            None
+                                        }
+                                    })?;
 
-                    let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
+                                if actions.is_empty() {
+                                    None
+                                } else {
+                                    acc.push((actions, info));
+                                    Some(acc)
+                                }
+                            })?
+                            .into_iter()
+                            .unzip();
 
-                    let searcher_actions: Vec<Vec<Actions>> = tree
-                        .clone()
-                        .collect_txes(
-                            possible_frontruns
-                                .iter()
-                                .copied()
-                                .chain(std::iter::once(possible_backrun))
-                                .collect::<Vec<_>>()
-                                .as_slice(),
-                            search_args.clone(),
+                        let frontrun_info = possible_frontruns
+                            .iter()
+                            .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
+                            .collect::<Vec<_>>();
+
+                        let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
+
+                        let searcher_actions: Vec<Vec<Actions>> = tree
+                            .clone()
+                            .collect_txes(
+                                possible_frontruns
+                                    .iter()
+                                    .copied()
+                                    .chain(std::iter::once(possible_backrun))
+                                    .collect::<Vec<_>>()
+                                    .as_slice(),
+                                search_args.clone(),
+                            )
+                            .map(|actions| {
+                                self.utils
+                                    .flatten_nested_actions_default(actions.into_iter())
+                                    .collect_vec()
+                            })
+                            .collect::<Vec<_>>();
+
+                        self.calculate_sandwich(
+                            tree.clone(),
+                            metadata.clone(),
+                            frontrun_info,
+                            back_run_info,
+                            searcher_actions,
+                            victim_info,
+                            victim_swaps_transfers,
                         )
-                        .map(|actions| {
-                            self.utils
-                                .flatten_nested_actions_default(actions.into_iter())
-                                .collect_vec()
-                        })
-                        .collect::<Vec<_>>();
-
-                    self.calculate_sandwich(
-                        tree.clone(),
-                        metadata.clone(),
-                        frontrun_info,
-                        back_run_info,
-                        searcher_actions,
-                        victim_info,
-                        victim_swaps_transfers,
-                    )
-                },
-            )
-            .flatten()
-            .collect::<Vec<_>>()
+                    },
+                )
+                .flatten()
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -227,18 +231,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             // as a sandwich, we will recursively remove orders in both directions
             // to cover the full order-set to ensure that we don't miss any
             // opportunities
-            return self
-                .recursive_possible_sandwiches(
-                    tree.clone(),
-                    metadata.clone(),
-                    &possible_front_runs_info,
-                    backrun_info,
-                    &back_run_actions,
-                    &searcher_actions,
-                    &victim_info,
-                    &victim_actions,
-                )
-                .map(Self::dedup_bundles)
+            return self.recursive_possible_sandwiches(
+                tree.clone(),
+                metadata.clone(),
+                &possible_front_runs_info,
+                backrun_info,
+                &back_run_actions,
+                &searcher_actions,
+                &victim_info,
+                &victim_actions,
+            )
         }
 
         // if we reach this part of the code, we have found a sandwich and
