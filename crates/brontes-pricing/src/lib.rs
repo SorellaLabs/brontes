@@ -1104,7 +1104,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     if first_price == Rational::ZERO {
                         return None
                     }
-                    (&first_price - &last_price) / last_price
+                    (&first_price - &last_price) / first_price
                 };
                 if block_movement > MAX_BLOCK_MOVEMENT {
                     Some(key)

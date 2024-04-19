@@ -7,7 +7,7 @@ use std::{
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, MevType, Sandwich},
+    mev::{Bundle, BundleData, Mev, MevType, Sandwich},
     normalized_actions::{
         accounting::ActionAccounting, Actions, NormalizedSwap, NormalizedTransfer,
     },
@@ -227,16 +227,18 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             // as a sandwich, we will recursively remove orders in both directions
             // to cover the full order-set to ensure that we don't miss any
             // opportunities
-            return self.recursive_possible_sandwiches(
-                tree.clone(),
-                metadata.clone(),
-                &possible_front_runs_info,
-                backrun_info,
-                &back_run_actions,
-                &searcher_actions,
-                &victim_info,
-                &victim_actions,
-            )
+            return self
+                .recursive_possible_sandwiches(
+                    tree.clone(),
+                    metadata.clone(),
+                    &possible_front_runs_info,
+                    backrun_info,
+                    &back_run_actions,
+                    &searcher_actions,
+                    &victim_info,
+                    &victim_actions,
+                )
+                .map(Self::dedup_bundles)
         }
 
         // if we reach this part of the code, we have found a sandwich and
@@ -404,7 +406,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     if dex_pricing_rate == Rational::ZERO {
                         return None
                     }
-                    (&dex_pricing_rate - &effective_price) / &effective_price
+                    (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                 };
 
                 if pct > MAX_PRICE_DIFF {
@@ -428,6 +430,56 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .max()
             .filter(|delta| delta.le(&MAX_PRICE_DIFF))
             .is_some()
+    }
+
+    /// Because of the recusive split nature of the search,
+    /// we can sometimes get overlap which leads to double counting and
+    /// false positives that are unwanted. to combat this
+    /// we check all hashes and will check for duplicates.
+    /// when a duplicate arises, we will always take the bundle
+    /// with more transactions as it is the most correct
+    fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
+        let mut bundles = bundles
+            .into_iter()
+            .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
+            .collect_vec();
+
+        let len = bundles.len();
+
+        let mut removals = Vec::new();
+        for i in 0..len {
+            for j in 0..len {
+                if i == j {
+                    continue
+                }
+
+                let i_hash = &bundles[i].0;
+                let j_hash = &bundles[j].0;
+                if i_hash.iter().any(|hash| j_hash.contains(hash)) {
+                    if i_hash.len() > j_hash.len() {
+                        removals.push(j);
+                    } else if j_hash.len() < i_hash.len() {
+                        removals.push(i);
+                    } else {
+                        // if same, take bundle with lower profit as it is most
+                        // likey, more correct
+                        if bundles[i].1.header.profit_usd > bundles[j].1.header.profit_usd {
+                            removals.push(j);
+                        } else {
+                            removals.push(i);
+                        }
+                    }
+                }
+            }
+        }
+        removals.sort_unstable_by(|a, b| b.cmp(a));
+        removals.dedup();
+
+        removals.into_iter().for_each(|idx| {
+            bundles.remove(idx);
+        });
+
+        bundles.into_iter().map(|res| res.1).collect_vec()
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
