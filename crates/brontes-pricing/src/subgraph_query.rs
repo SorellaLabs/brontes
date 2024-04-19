@@ -203,8 +203,8 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             n_pair,
             FastHashSet::default(),
             100,
-            Some(8),
-            Duration::from_millis(69),
+            None,
+            Duration::from_millis(300),
             default_extend_to.is_some(),
             Some(pair.1),
         );
