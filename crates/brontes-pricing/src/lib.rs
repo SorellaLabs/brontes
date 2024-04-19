@@ -747,7 +747,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             "no edges found"
                         );
 
-                        return Some((pair, full_pair, goes_through, block))
+                        return Some((pair, full_pair, goes_through, block, false))
                     }
 
                     let Some((id, need_state, force_rundown)) = self.add_subgraph(
@@ -765,7 +765,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
                     if force_rundown {
                         tracing::debug!("force rundown requery bad state par");
-                        return Some((pair, full_pair, goes_through, block))
+                        return Some((pair, full_pair, goes_through, block, true))
                     } else if !need_state {
                         recusing.push((block, id, full_pair, vec![goes_through]))
                     }
@@ -791,11 +791,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
     #[brontes_macros::bench_time(ptr=self.bench)]
-    fn par_rundown(&mut self, stuff: Vec<(Pair, Pair, Pair, u64)>) {
+    fn par_rundown(&mut self, stuff: Vec<(Pair, Pair, Pair, u64, bool)>) {
         let new_subgraphs = execute_on!(target = pricing, {
             stuff
                 .into_iter()
-                .map(|(pair, complete_pair, goes_through, block)| {
+                .map(|(pair, complete_pair, goes_through, block, forced_rundown)| {
+                    // if the rundown was forced. this means that we don't need to be so aggressive
+                    // with the ign
+
                     let ignores = self
                         .graph_manager
                         .verify_subgraph_on_new_path_failure(complete_pair, &goes_through)
@@ -810,7 +813,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     }
 
                     // take all combinations of our ignore nodes
-                    if ignores.len() > 1 {
+                    if ignores.len() > 1 && !forced_rundown {
                         ignores
                             .iter()
                             .copied()
@@ -994,7 +997,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .into_iter()
                 .zip(vec![self.completed_block].into_iter().cycle())
                 .map(|((pair, complete_pair, goes_through), block)| {
-                    (pair, complete_pair, goes_through, block)
+                    (pair, complete_pair, goes_through, block, true)
                 })
                 .collect_vec(),
         );
