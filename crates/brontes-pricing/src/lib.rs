@@ -20,8 +20,6 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required
 
-use std::cmp::min;
-
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
