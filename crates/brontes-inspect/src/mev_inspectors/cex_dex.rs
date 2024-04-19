@@ -190,7 +190,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 let some_quotes: Vec<&FeeAdjustedQuote> =
                     row.into_iter().filter_map(Option::as_ref).collect();
                 if some_quotes.is_empty() {
-                    None
+                    return None;
                 } else {
                     let volume_weighted_quote = metadata
                         .cex_quotes
