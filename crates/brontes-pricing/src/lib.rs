@@ -763,7 +763,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         return None;
                     };
 
-                    if force_rundown {
+                    if force_rundown && !need_state {
                         tracing::debug!("force rundown requery bad state par");
                         return Some((pair, full_pair, goes_through, block, true))
                     } else if !need_state {
@@ -812,7 +812,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         );
                     }
 
-                    // take all combinations of our ignore nodes
+                    // take all combinations of our ignore nodes. If the rundown was forced, we,
+                    // won't bother trying to generate a diverse set and
                     if ignores.len() > 1 && !forced_rundown {
                         ignores
                             .iter()
