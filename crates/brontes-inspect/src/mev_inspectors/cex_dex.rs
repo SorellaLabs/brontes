@@ -190,6 +190,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         });
 
         let iters: Vec<_> = quotes.iter().map(|vec| vec.iter()).collect();
+
+        for (i, iter) in iters.clone().into_iter().enumerate() {
+            debug!("Exchange {}: {:?}", i, iter.collect::<Vec<_>>());
+        }
+
+        let zipped: Vec<_> = izip!(iters.clone())
+            .enumerate()
+            .map(|(i, iter)| {
+                debug!("Exchange {}: {:#?}", i, iter);
+            })
+            .collect();
+
         let quotes_vwam: Vec<Option<FeeAdjustedQuote>> = izip!(iters)
             .enumerate()
             .map(|(index, row)| {
