@@ -133,9 +133,8 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
 
     // because sandwich runs based off of transactions, if the profit is the
     // same, we know that the sandwich is actually just a jit and we
-    // shouldn't compose
-    tracing::info!(?jit_classified.profit_usd, ?classified_sandwich.profit_usd);
-    if jit_classified.profit_usd == classified_sandwich.profit_usd {
+    // shouldn't compose.
+    if (jit_classified.profit_usd - classified_sandwich.profit_usd) < 0.2 {
         return None
     }
 
