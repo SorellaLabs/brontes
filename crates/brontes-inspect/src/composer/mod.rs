@@ -224,18 +224,21 @@ fn try_compose_mev(
             }
 
             if to_compose.len() == child_mev_type.len() {
-                sorted_mev
-                    .entry(*parent_mev_type)
-                    .or_default()
-                    .push(compose(to_compose));
-                for (mev_type, index) in temp_removal_indices {
-                    removal_indices.entry(mev_type).or_default().push(index);
-                }
+                if let Some(composed) = compose(to_compose) {
+                    sorted_mev
+                        .entry(*parent_mev_type)
+                        .or_default()
+                        .push(composed);
 
-                removal_indices
-                    .entry(first_mev_type)
-                    .or_default()
-                    .push(first_i)
+                    for (mev_type, index) in temp_removal_indices {
+                        removal_indices.entry(mev_type).or_default().push(index);
+                    }
+
+                    removal_indices
+                        .entry(first_mev_type)
+                        .or_default()
+                        .push(first_i)
+                }
             }
         }
 
@@ -245,7 +248,7 @@ fn try_compose_mev(
     // Remove the mev data that was composed from the sorted mev list
     for (mev_type, indices) in removal_indices {
         if let Some(mev_list) = sorted_mev.get_mut(&mev_type) {
-            for &index in indices.iter().rev() {
+            for &index in indices.iter().sorted_unstable().rev() {
                 if mev_list.len() > index {
                     mev_list.remove(index);
                 }
