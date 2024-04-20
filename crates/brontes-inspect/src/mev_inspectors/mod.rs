@@ -1,7 +1,7 @@
 pub mod atomic_arb;
 #[cfg(not(feature = "cex-dex-markout"))]
 pub mod cex_dex;
-// #[cfg(feature = "cex-dex-markout")]
+#[cfg(feature = "cex-dex-markout")]
 pub mod cex_dex_markout;
 pub mod jit;
 pub mod liquidations;
