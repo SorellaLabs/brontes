@@ -6,8 +6,11 @@ use std::{
 };
 
 use ::clickhouse::DbRow;
-use ::serde::ser::Serializer;
+use ::serde::ser::{
+    Serializer,
+};
 use ahash::HashSet;
+use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -78,7 +81,7 @@ impl Mev for CexDex {
 }
 
 impl Serialize for CexDex {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -187,31 +190,62 @@ pub struct ArbDetails {
 
 impl fmt::Display for ArbDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Arb Leg Details:")?;
         writeln!(
             f,
-            "   - Price on CEX ({:?}): Best Bid: {}, Best Ask: {}",
-            self.cex_exchange,
-            self.best_bid_maker.clone().to_float(),
-            self.best_ask_maker.clone().to_float()
+            "   - {}: {}",
+            "Exchange".bold().underline().cyan(),
+            self.cex_exchange.to_string().bold()
         )?;
-        writeln!(f, "   - Price on DEX {}: {}", self.dex_exchange, self.dex_price)?;
-        writeln!(f, "   - Amount: {}", self.dex_amount)?;
+        writeln!(f, "       - Dex Price: {:.6}", self.dex_price.clone().to_float().to_string())?;
         writeln!(
             f,
-            "   - PnL pre-gas (Mid Prices): Maker Mid: {}, Taker Mid: {}",
-            self.pnl_pre_gas.maker_taker_mid.0.clone().to_float(),
-            self.pnl_pre_gas.maker_taker_mid.1.clone().to_float()
+            "       - CEX Prices: Maker Bid: {:.6} (-{:.5}), Maker Ask: {:.6} (-{:.5})",
+            self.best_bid_maker.clone().to_float().to_string(),
+            (&self.best_bid_maker - &self.best_bid_taker)
+                .to_float()
+                .to_string(),
+            self.best_ask_maker.clone().to_float().to_string(),
+            (&self.best_ask_maker - &self.best_ask_taker)
+                .to_float()
+                .to_string()
         )?;
-        write!(
+        writeln!(f, "       - {}", "PnL Pre-Gas:".bold().underline().green())?;
+        writeln!(
             f,
-            "   - PnL pre-gas (Ask Prices): Maker Ask: {}, Taker Ask: {}",
-            self.pnl_pre_gas.maker_taker_ask.0.clone().to_float(),
-            self.pnl_pre_gas.maker_taker_ask.1.clone().to_float()
-        )
+            "           - Mid Price PnL: Maker: {:.6}, Taker: {:.6}",
+            self.pnl_pre_gas
+                .maker_taker_mid
+                .0
+                .clone()
+                .to_float()
+                .to_string(),
+            self.pnl_pre_gas
+                .maker_taker_mid
+                .1
+                .clone()
+                .to_float()
+                .to_string()
+        )?;
+        writeln!(
+            f,
+            "           - Ask PnL: Maker: {:.6}, Taker: {:.6}",
+            self.pnl_pre_gas
+                .maker_taker_ask
+                .0
+                .clone()
+                .to_float()
+                .to_string(),
+            self.pnl_pre_gas
+                .maker_taker_ask
+                .1
+                .clone()
+                .to_float()
+                .to_string()
+        )?;
+
+        Ok(())
     }
 }
-
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined, Eq)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
@@ -222,7 +256,7 @@ pub struct ArbPnl {
 
 impl PartialOrd for ArbPnl {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.maker_taker_mid.0.partial_cmp(&other.maker_taker_mid.0)
+        Some(self.cmp(other))
     }
 }
 

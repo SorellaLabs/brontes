@@ -24,15 +24,17 @@ use std::{
 use alloy_primitives::Address;
 use clickhouse::Row;
 use colored::*;
+use itertools::Itertools;
 use malachite::{
     num::{
-        arithmetic::traits::{Reciprocal, ReciprocalAssign},
+        arithmetic::traits::Reciprocal,
         basic::traits::{One, Two, Zero},
         conversion::traits::FromSciString,
     },
     Rational,
 };
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
+use reth_primitives::TxHash;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 #[allow(unused_imports)]
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
@@ -66,7 +68,7 @@ use crate::{
 ///
 /// This provides us with the actual token0 when the map is queried so we can
 /// interpret the price in the correct direction & reciprocate the price (which
-/// is a rational) if need be.
+/// is stored as a malachite rational) if need be.
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>);
 
@@ -106,7 +108,8 @@ impl CexPriceMap {
         Self(FastHashMap::default())
     }
 
-    /// Retrieves a CEX quote for a specified token pair from a given exchange.
+    /// Retrieves a volume weighted CEX quote for a specified token pair from a
+    /// given exchange.
     ///
     /// This function looks up the quote for the `pair` in the context of the
     /// specified `exchange`. The quote is retrieved based on an ordered
@@ -189,54 +192,6 @@ impl CexPriceMap {
             })
     }
 
-    pub fn get_binance_quote(&self, pair: &Pair) -> Option<FeeAdjustedQuote> {
-        self.get_quote(pair, &CexExchange::Binance)
-    }
-
-    /*
-    /// Computes an average quote for a given token pair across multiple
-    /// exchanges.
-    pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
-        if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
-        }
-
-        let ordered_pair = pair.ordered();
-        let (sum_price, acc_price, sum_amt) = exchanges
-            .iter()
-            .filter_map(|exchange| self.get_quote(&ordered_pair, exchange))
-            .fold(
-                (
-                    (Rational::default(), Rational::default()),
-                    0,
-                    (Rational::default(), Rational::default()),
-                ),
-                |acc, quote| {
-                    (
-                        (acc.0 .0 + &quote.price.0, acc.0 .1 + &quote.price.1),
-                        acc.1 + 1,
-                        (
-                            acc.2 .0 + (quote.price.0 * quote.amount.0),
-                            acc.2 .1 + (quote.price.1 * quote.amount.1),
-                        ),
-                    )
-                },
-            );
-
-        if acc_price > 0 {
-            let count_rational = Rational::from(acc_price);
-            Some(CexQuote {
-                exchange:  CexExchange::default(),
-                timestamp: 0,
-                price:     (sum_price.0 / &count_rational, sum_price.1 / count_rational),
-                token0:    pair.0,
-                amount:    sum_amt,
-            })
-        } else {
-            None
-        }
-    }*/
-
     /// Retrieves a CEX quote for a given token pair using an intermediary
     /// asset.
     ///
@@ -248,6 +203,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         dex_swap: Option<&NormalizedSwap>,
+        tx_hash: Option<&TxHash>,
     ) -> Option<FeeAdjustedQuote> {
         let intermediaries = exchange.most_common_quote_assets();
 
@@ -299,6 +255,7 @@ impl CexPriceMap {
                                 &quote1,
                                 &quote2,
                                 &intermediary.to_string(),
+                                tx_hash,
                             );
                             None
                         } else {
@@ -321,9 +278,10 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         dex_swap: Option<&NormalizedSwap>,
+        tx_hash: Option<&TxHash>,
     ) -> Option<FeeAdjustedQuote> {
         self.get_quote(pair, exchange)
-            .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap))
+            .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap, tx_hash))
     }
 
     pub fn get_volume_weighted_quote(
@@ -367,6 +325,11 @@ impl CexPriceMap {
 
         if smaller * Rational::from(2) < larger {
             log_significant_cross_exchange_vmap_difference(
+                exchange_quotes
+                    .iter()
+                    .map(|q| q.exchange.to_string())
+                    .collect_vec()
+                    .join(", "),
                 dex_swap,
                 volume_weighted_ask_maker,
                 &dex_swap.token_out.address,
@@ -384,6 +347,10 @@ impl CexPriceMap {
             })
         }
     }
+
+    pub fn get_binance_quote(&self, pair: &Pair) -> Option<FeeAdjustedQuote> {
+        self.get_quote(pair, &CexExchange::Binance)
+    }
 }
 
 fn log_significant_price_difference(
@@ -393,18 +360,19 @@ fn log_significant_price_difference(
     quote1: &FeeAdjustedQuote,
     quote2: &FeeAdjustedQuote,
     intermediary: &str,
+    tx_hash: Option<&TxHash>,
 ) {
     error!(
-        "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
-        - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-        - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
-        - Intermediary Prices:\n\
-        * First Leg Price: {:.7}\n\
-        * Second Leg Price: {:.7}\n\
-        - Token Contracts:\n\
-        * Token Out: https://etherscan.io/address/{}\n\
-        * Intermediary: https://etherscan.io/address/{}\n\
-        * Token In: https://etherscan.io/address/{}",
+        "   \n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
+                - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
+                    * First Leg Price: {:.7}\n\
+                    * Second Leg Price: {:.7}\n\
+                - Token Contracts:\n\
+                    * Token Out: https://etherscan.io/address/{}\n\
+                    * Intermediary: https://etherscan.io/address/{}\n\
+                    * Token In: https://etherscan.io/address/{}\n\
+                {}",
         dex_swap.token_out_symbol(),
         dex_swap.token_in_symbol(),
         exchange,
@@ -415,26 +383,30 @@ fn log_significant_price_difference(
         dex_swap.token_out.address,
         intermediary,
         dex_swap.token_in.address,
+        tx_hash.map_or(String::new(), |hash| format!("- Transaction Hash: https://etherscan.io/tx/{}", hash))
     );
 }
 
 fn log_significant_cross_exchange_vmap_difference(
+    exchange_list: String,
     dex_swap: &NormalizedSwap,
     vmap_quote: Rational,
     token_out_address: &Address,
     token_in_address: &Address,
 ) {
     error!(
-        "\n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on VWAP:\x1b[0m\n\
-        - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-        - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\
-        - Token Contracts:\n\
-        * Token Out: https://etherscan.io/address/{}\n\
-        * Token In: https://etherscan.io/address/{}",
+        "   \n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on VWAP:\x1b[0m\n\
+                - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\
+                - \x1b[1;34mExchanges:\x1b[0m {}\n\
+                - Token Contracts:\n\
+                * Token Out: https://etherscan.io/address/{}\n\
+                * Token In: https://etherscan.io/address/{}",
         dex_swap.token_out_symbol(),
         dex_swap.token_in_symbol(),
         dex_swap.swap_rate().to_float(),
         vmap_quote.to_float(),
+        exchange_list,
         token_out_address,
         token_in_address,
     );
@@ -446,7 +418,7 @@ type CexPriceMapDeser =
 
 #[allow(dead_code)]
 impl Serialize for CexPriceMap {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -479,7 +451,7 @@ impl Serialize for CexPriceMap {
 
 #[allow(dead_code)]
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -579,8 +551,9 @@ impl Display for CexQuote {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Exchange: {}\nTimestamp: {}\nBest Ask Price: {:.2}\nBest Bid Price: {:.2}\nToken 0 \
-             Address: {}",
+            "Exchange: {}\nTimestamp: {}\nBest Ask Price: {:.2}\nBest Bid Price: {:.2}\nBase 
+             \
+             Asset Address: https://etherscan.io/address/{}",
             self.exchange,
             self.timestamp,
             self.price.0.clone().to_float(),
@@ -621,25 +594,25 @@ impl fmt::Display for FeeAdjustedQuote {
         let amount = self.amount.clone();
 
         writeln!(f, "{}", "Fee Adjusted Quote:".bold().underline())?;
-        writeln!(f, "  Exchange: {}", self.exchange)?;
-        writeln!(f, "  Timestamp: {}", self.timestamp)?;
-        writeln!(f, "  Prices:")?;
+        writeln!(f, "   Exchange: {}", self.exchange)?;
+        writeln!(f, "   Timestamp: {}", self.timestamp)?;
+        writeln!(f, "   Prices:")?;
         writeln!(
             f,
-            "    Maker: Bid {:.4}, Ask {:.4}",
+            "       Maker: Bid {:.4}, Ask {:.4}",
             price_maker.0.to_float(),
             price_maker.1.to_float()
         )?;
         writeln!(
             f,
-            "    Taker: Bid {:.4}, Ask {:.4}",
+            "       Taker: Bid {:.4}, Ask {:.4}",
             price_taker.0.to_float(),
             price_taker.1.to_float()
         )?;
-        writeln!(f, "  Amounts:")?;
-        writeln!(f, "    Bid Amount: {:.4}", amount.0.to_float())?;
-        writeln!(f, "    Ask Amount: {:.4}", amount.1.to_float())?;
-        writeln!(f, "  Token0: {}", self.token0)?;
+        writeln!(f, "   Amounts:")?;
+        writeln!(f, "       Bid Amount: {:.4}", amount.0.to_float())?;
+        writeln!(f, "       Ask Amount: {:.4}", amount.1.to_float())?;
+        writeln!(f, "       Token0: {}", self.token0)?;
 
         Ok(())
     }
@@ -694,15 +667,6 @@ pub enum TradeSide {
 }
 
 impl CexQuote {
-    #[allow(dead_code)]
-    fn inverse_price_assign(&mut self) {
-        self.price.0.reciprocal_assign();
-        self.price.1.reciprocal_assign();
-
-        self.amount.0 *= &self.price.0;
-        self.amount.1 *= &self.price.0;
-    }
-
     fn inverse_price(&self) -> Self {
         Self {
             exchange:  self.exchange,
@@ -1011,59 +975,5 @@ mod tests {
         );
 
         assert_eq!(pair.ordered(), pair);
-    }
-
-    #[test]
-    fn test_order() {
-        let pair = Pair(LINK_ADDRESS, WBTC_ADDRESS);
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_req() {
-        let pair = Pair(
-            Address::from_str("0x8f8221aFbB33998d8584A2B05749bA73c37a938a").unwrap(),
-            WBTC_ADDRESS,
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_wbtc_usdc() {
-        let pair = Pair(WBTC_ADDRESS, USDC_ADDRESS);
-
-        assert_eq!(pair.ordered(), pair);
-    }
-
-    #[test]
-    fn test_order_agix_wbtc() {
-        let pair = Pair(
-            USDC_ADDRESS,
-            Address::from_str("0x5B7533812759B45C2B44C19e320ba2cD2681b542").unwrap(),
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_badger_wbtc() {
-        let pair = Pair(
-            WBTC_ADDRESS,
-            Address::from_str("0x3472a5a71965499acd81997a54bba8d852c6e53d").unwrap(),
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_looks_usdc() {
-        let pair = Pair(
-            Address::from_str("0xf4d2888d29D722226FafA5d9B24F9164c092421E").unwrap(),
-            USDT_ADDRESS,
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
     }
 }

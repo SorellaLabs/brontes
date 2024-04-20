@@ -20,7 +20,7 @@ pub struct BundleDataWithRevenue {
     pub revenue: f64,
     pub data:    BundleData,
 }
-
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Deserialize, PartialEq, EnumIter, Clone, Display, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub enum BundleData {
