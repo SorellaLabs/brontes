@@ -6,9 +6,7 @@ use std::{
 };
 
 use ::clickhouse::DbRow;
-use ::serde::ser::{
-    Serializer,
-};
+use ::serde::ser::Serializer;
 use ahash::HashSet;
 use colored::Colorize;
 use malachite::Rational;

@@ -9,7 +9,7 @@ use malachite::{
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use super::{utils::PairTradeWalker, CexTrades};
-use crate::{db::cex::CexExchange, pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
+use crate::{db::cex::CexExchange, pair::Pair, FastHashMap, FastHashSet};
 
 const PRE_DECAY: f64 = -0.5;
 const POST_DECAY: f64 = -0.2;
@@ -38,6 +38,7 @@ pub struct WindowExchangePrice {
 impl Mul for WindowExchangePrice {
     type Output = WindowExchangePrice;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn mul(mut self, mut rhs: Self) -> Self::Output {
         // adjust the price with volume
         self.exchange_price_with_volume_direct = self
@@ -179,6 +180,7 @@ impl<'a> TimeWindowTrades<'a> {
             .max_by_key(|a| a.0.global_exchange_price.clone())
     }
 
+    #[allow(clippy::type_complexity)]
     fn get_vwam_price(
         &self,
         exchanges: &[CexExchange],
