@@ -48,6 +48,7 @@ use crate::{
     libmdbx::{tables::BlockInfoData, types::LibmdbxData},
     CompressedTable,
 };
+const SECONDS_TO_US: f64 = 1_000_000.0;
 
 #[derive(Default)]
 pub struct Clickhouse {
@@ -382,14 +383,14 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - self.cex_download_config.time_window.0 * 1000000.0;
+                    - self.cex_download_config.time_window.0 * SECONDS_TO_US;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + self.cex_download_config.time_window.1 * 1000000.0;
+                    + self.cex_download_config.time_window.1 * SECONDS_TO_US;
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -404,8 +405,8 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .map(|b| {
                         b.convert_to_timestamp_query(
-                            self.cex_download_config.time_window.0 * 1000000.0,
-                            self.cex_download_config.time_window.1 * 1000000.0,
+                            self.cex_download_config.time_window.0 * SECONDS_TO_US,
+                            self.cex_download_config.time_window.1 * SECONDS_TO_US,
                         )
                     })
                     .collect::<Vec<_>>()
@@ -478,14 +479,14 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    - self.cex_download_config.time_window.0 * 1000000;
+                    - self.cex_download_config.time_window.0 * SECONDS_TO_US;
 
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap()
-                    + self.cex_download_config.time_window.1 * 1000000;
+                    + self.cex_download_config.time_window.1 * SECONDS_TO_US;
 
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
@@ -500,8 +501,8 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .map(|b| {
                         b.convert_to_timestamp_query(
-                            self.cex_download_config.time_window.0 * 1000000,
-                            self.cex_download_config.time_window.1 * 1000000,
+                            self.cex_download_config.time_window.0 * SECONDS_TO_US,
+                            self.cex_download_config.time_window.1 * SECONDS_TO_US,
                         )
                     })
                     .collect::<Vec<_>>()
