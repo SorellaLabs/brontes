@@ -2,7 +2,7 @@ use arrow::{
     array::{
         Array, ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
     },
-    datatypes::{DataType, Field},
+    datatypes::{DataType, Field, Schema},
     error::ArrowError,
     record_batch::RecordBatch,
 };
