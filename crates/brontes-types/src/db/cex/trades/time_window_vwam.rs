@@ -9,7 +9,7 @@ use malachite::{
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use super::{utils::PairTradeWalker, CexTrades};
-use crate::{db::cex::CexExchange, pair::Pair, FastHashMap, FastHashSet};
+use crate::{db::cex::CexExchange, pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 
 const PRE_DECAY: f64 = -0.5;
 const POST_DECAY: f64 = -0.2;
@@ -206,8 +206,6 @@ impl<'a> TimeWindowTrades<'a> {
 
         while trade_volume_global.le(vol) {
             let trades = walker.get_trades_for_window();
-            tracing::info!(?pair, ?timestamp, trade_am = trades.len(), "trades");
-
             for trade in trades {
                 let trade = trade.get();
                 let (m_fee, t_fee) = trade.exchange.fees();
@@ -239,6 +237,12 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if &trade_volume_global < vol {
+            tracing::info!(
+                ?pair,
+                trade_vol = trade_volume_global.clone().to_float(),
+                needed_vol = vol.clone().to_float(),
+                "not enough vol"
+            );
             return None
         }
 
@@ -262,6 +266,7 @@ impl<'a> TimeWindowTrades<'a> {
             maker.insert(ex, (maker_price, trade_vol.clone()));
             taker.insert(ex, (taker_price, trade_vol));
         }
+
         if trade_volume_global == Rational::ZERO {
             tracing::warn!("no trade vol global weight");
             return None
