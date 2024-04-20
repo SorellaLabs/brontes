@@ -1,5 +1,4 @@
-use core::f64;
-use std::f64::consts::E;
+use std::{f64::consts::E, ops::Mul};
 
 use alloy_primitives::Address;
 use itertools::Itertools;
@@ -24,20 +23,104 @@ const MAX_PRE_TIME_US: u64 = 3_000_000;
 const PRE_SCALING_DIFF: u64 = 3_000_000;
 const TIME_STEP: u64 = 100_000;
 
+pub type PriceWithVolume = (Rational, Rational);
+pub type MakerTakerWindowVwam = (WindowExchangePrice, WindowExchangePrice);
+
+#[derive(Debug, Clone, Default)]
+pub struct WindowExchangePrice {
+    /// the price for this exchange with the volume
+    pub exchange_price_with_volume_direct: FastHashMap<CexExchange, PriceWithVolume>,
+    /// weighted combined price.
+    pub global_exchange_price:             Rational,
+}
+
+// used for intermediary calcs
+impl Mul for WindowExchangePrice {
+    type Output = WindowExchangePrice;
+
+    fn mul(mut self, mut rhs: Self) -> Self::Output {
+        // adjust the price with volume
+        self.exchange_price_with_volume_direct = self
+            .exchange_price_with_volume_direct
+            .into_iter()
+            .filter_map(|(exchange, (this_price, this_vol))| {
+                let (other_price, other_vol) =
+                    rhs.exchange_price_with_volume_direct.remove(&exchange)?;
+
+                let this_vol = &this_price * &this_vol;
+                let other_vol = &other_vol * &other_price;
+                let vol = this_vol + other_vol;
+
+                let price = this_price * other_price;
+
+                Some((exchange, (price, vol)))
+            })
+            .collect();
+
+        self.global_exchange_price *= rhs.global_exchange_price;
+
+        self
+    }
+}
+
 // trades sorted by time-stamp with the index to block time-stamp closest to the
 // block_number
-pub struct CexTradeMap2(FastHashMap<CexExchange, FastHashMap<Pair, (usize, Vec<CexTrades>)>>);
+pub struct TimeWindowTrades<'a>(
+    FastHashMap<&'a CexExchange, FastHashMap<&'a Pair, (usize, &'a Vec<CexTrades>)>>,
+);
 
-impl CexTradeMap2 {
-    pub fn get_price(
+impl<'a> TimeWindowTrades<'a> {
+    pub(crate) fn new_from_cex_trade_map(
+        trade_map: &'a mut FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
+        timestamp: u64,
+        exchanges: &'a [CexExchange],
+        pair: Pair,
+    ) -> Self {
+        let map = trade_map
+            .iter_mut()
+            .filter_map(|(ex, pairs)| {
+                if !exchanges.contains(ex) || pair.0 == pair.1 {
+                    return None
+                }
+
+                Some((
+                    ex,
+                    pairs
+                        .iter_mut()
+                        .filter_map(|(ex_pair, trades)| {
+                            if !(pair.0 == ex_pair.0
+                                || pair.0 == ex_pair.1
+                                || pair.1 == ex_pair.0
+                                || pair.1 == ex_pair.1)
+                            {
+                                return None
+                            }
+                            // because we know that for this, we will only be
+                            // touching pairs that are in
+                            trades.sort_unstable_by_key(|k| k.timestamp);
+                            let idx = trades.partition_point(|trades| trades.timestamp < timestamp);
+                            Some((ex_pair, (idx, &*trades)))
+                        })
+                        .collect(),
+                ))
+            })
+            .collect::<FastHashMap<&CexExchange, FastHashMap<&Pair, (usize, &Vec<CexTrades>)>>>();
+
+        Self(map)
+    }
+
+    pub(crate) fn get_price(
         &self,
         exchanges: &[CexExchange],
         pair: Pair,
         volume: &Rational,
         timestamp: u64,
-    ) -> Option<(Rational, Rational)> {
+    ) -> Option<MakerTakerWindowVwam> {
         if pair.0 == pair.1 {
-            return Some((Rational::ZERO, Rational::ZERO))
+            return Some((
+                WindowExchangePrice { global_exchange_price: Rational::ONE, ..Default::default() },
+                WindowExchangePrice { global_exchange_price: Rational::ONE, ..Default::default() },
+            ))
         }
 
         let res = self
@@ -57,7 +140,7 @@ impl CexTradeMap2 {
         pair: &Pair,
         volume: &Rational,
         timestamp: u64,
-    ) -> Option<(Rational, Rational)> {
+    ) -> Option<MakerTakerWindowVwam> {
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_par_iter()
             .filter_map(|intermediary| {
@@ -84,7 +167,8 @@ impl CexTradeMap2 {
 
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
                 let res = self.get_vwam_price(exchanges, pair0, volume, timestamp)?;
-                let new_vol = volume * &res.0;
+
+                let new_vol = volume * &res.0.global_exchange_price;
                 let pair1_v = self.get_vwam_price(exchanges, pair1, &new_vol, timestamp)?;
 
                 let maker = res.0 * pair1_v.0;
@@ -92,7 +176,7 @@ impl CexTradeMap2 {
 
                 Some((maker, taker))
             })
-            .max_by_key(|a| a.0.clone())
+            .max_by_key(|a| a.0.global_exchange_price.clone())
     }
 
     fn get_vwam_price(
@@ -101,13 +185,13 @@ impl CexTradeMap2 {
         pair: Pair,
         vol: &Rational,
         timestamp: u64,
-    ) -> Option<(Rational, Rational)> {
+    ) -> Option<MakerTakerWindowVwam> {
         let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
             self.0
                 .iter()
                 .filter(|(e, _)| exchanges.contains(e))
-                .filter_map(|(exchange, trades)| Some((*exchange, trades.get(&pair)?)))
-                .map(|(ex, (idx, trades))| ((ex, (idx + 1, *idx)), (ex, trades)))
+                .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
+                .map(|(ex, (idx, trades))| ((ex, (idx + 1, *idx)), (ex, *trades)))
                 .unzip();
 
         let mut walker = PairTradeWalker::new(
@@ -117,20 +201,25 @@ impl CexTradeMap2 {
             timestamp + START_POST_TIME_US,
         );
 
-        let mut vxp_maker = Rational::ZERO;
-        let mut vxp_taker = Rational::ZERO;
-        let mut trade_volume = Rational::ZERO;
+        let mut trade_volume_global = Rational::ZERO;
+        let mut exchange_vxp = FastHashMap::default();
 
-        while trade_volume.le(vol) {
+        while trade_volume_global.le(vol) {
             for trade in walker.get_trades_for_window() {
-                let (m_fee, t_fee) = trade.get().exchange.fees();
-                let weight = calcuate_weight(timestamp as u64, trade.get().timestamp as u64);
+                let trade = trade.get();
+                let (m_fee, t_fee) = trade.exchange.fees();
+                let weight = calcuate_weight(timestamp as u64, trade.timestamp as u64);
 
-                vxp_maker +=
-                    (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount * &weight;
-                vxp_taker +=
-                    (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount * &weight;
-                trade_volume += &trade.get().amount * weight;
+                let (vxp_maker, vxp_taker, trade_volume_weight, trade_volume_ex) = exchange_vxp
+                    .entry(trade.exchange)
+                    .or_insert((Rational::ZERO, Rational::ZERO, Rational::ZERO, Rational::ZERO));
+
+                *vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
+                *vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;
+                *trade_volume_weight += &trade.amount * weight;
+                *trade_volume_ex += &trade.amount;
+
+                trade_volume_global += &trade.amount;
             }
 
             if walker.get_min_time_delta(timestamp) >= MAX_PRE_TIME_US
@@ -146,11 +235,40 @@ impl CexTradeMap2 {
             walker.expand_time_bounds(min_expand, TIME_STEP);
         }
 
-        if &trade_volume < vol {
+        if &trade_volume_global < vol {
             return None
         }
 
-        Some((vxp_maker, vxp_taker))
+        let mut maker = FastHashMap::default();
+        let mut taker = FastHashMap::default();
+
+        let mut global_maker = Rational::ZERO;
+        let mut global_taker = Rational::ZERO;
+
+        for (ex, (vxp_maker, vxp_taker, trade_vol_weight, trade_vol)) in exchange_vxp {
+            let maker_price = vxp_maker / &trade_vol_weight;
+            let taker_price = vxp_taker / &trade_vol_weight;
+
+            global_maker += &maker_price * &trade_vol;
+            global_taker += &taker_price * &trade_vol;
+
+            maker.insert(ex, (maker_price, trade_vol.clone()));
+            taker.insert(ex, (taker_price, trade_vol));
+        }
+
+        let global_maker = global_maker / &trade_volume_global;
+        let global_taker = global_taker / &trade_volume_global;
+
+        let maker_ret = WindowExchangePrice {
+            exchange_price_with_volume_direct: maker,
+            global_exchange_price:             global_maker,
+        };
+        let taker_ret = WindowExchangePrice {
+            exchange_price_with_volume_direct: taker,
+            global_exchange_price:             global_taker,
+        };
+
+        Some((maker_ret, taker_ret))
     }
 
     fn calculate_intermediary_addresses(

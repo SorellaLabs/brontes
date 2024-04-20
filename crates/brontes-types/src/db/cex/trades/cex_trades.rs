@@ -10,7 +10,7 @@ use crate::{
     db::{cex::CexExchange, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
-    FastHashMap, 
+    FastHashMap,
 };
 
 type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
@@ -28,12 +28,9 @@ impl CexTradeMap {
                         trades.into_iter().fold(
                             FastHashMap::default(),
                             |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
-                                acc.entry(pair.to_source()).or_default().extend(
-                                    trades
-                                        .into_iter()
-                                        .map(|t| t.to_source())
-                                        .sorted_unstable_by_key(|a| a.price.clone()),
-                                );
+                                acc.entry(pair.to_source())
+                                    .or_default()
+                                    .extend(trades.into_iter().map(|t| t.to_source()));
                                 acc
                             },
                         ),
@@ -60,12 +57,9 @@ impl<'de> Deserialize<'de> for CexTradeMap {
                     FastHashMap::default(),
                     |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
                         let pair = Pair(pair.0.parse().unwrap(), pair.1.parse().unwrap());
-                        acc.entry(pair).or_default().extend(
-                            trades
-                                .into_iter()
-                                .map(Into::into)
-                                .sorted_unstable_by_key(|a: &CexTrades| a.price.clone()),
-                        );
+                        acc.entry(pair)
+                            .or_default()
+                            .extend(trades.into_iter().map(Into::into));
                         acc
                     },
                 ));

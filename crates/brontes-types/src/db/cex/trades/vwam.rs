@@ -64,8 +64,8 @@ impl CexTradeMap {
     // - 3. Selects most profitable route and returns it as the Price
     // -- It should be noted here that this will not aggregate multiple possible
     // routes
-    pub fn get_price(
-        &self,
+    pub(crate) fn get_price(
+        &mut self,
         exchanges: &[CexExchange],
         pair: &Pair,
         volume: &Rational,
@@ -78,6 +78,9 @@ impl CexTradeMap {
             ))
         }
 
+        // order the possible trade pairs.
+        self.ensure_proper_order(exchanges, pair);
+
         let res = self
             .get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref())
             .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()));
@@ -87,6 +90,24 @@ impl CexTradeMap {
         }
 
         res
+    }
+
+    fn ensure_proper_order(&mut self, exchanges: &[CexExchange], pair: &Pair) {
+        self.0.iter_mut().for_each(|(ex, pairs)| {
+            if !exchanges.contains(ex) || pair.0 == pair.1 {
+                return
+            }
+            pairs.iter_mut().for_each(|(ex_pair, trades)| {
+                if !(pair.0 == ex_pair.0
+                    || pair.0 == ex_pair.1
+                    || pair.1 == ex_pair.0
+                    || pair.1 == ex_pair.1)
+                {
+                    return
+                }
+                trades.sort_unstable_by_key(|k| k.price.clone());
+            });
+        })
     }
 
     fn calculate_intermediary_addresses(
@@ -189,7 +210,7 @@ impl CexTradeMap {
         calculate_multi_cross_pair(pair0_vwams, pair1_vwams, volume)
     }
 
-    pub fn get_vwam_via_intermediary_spread(
+    fn get_vwam_via_intermediary_spread(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
