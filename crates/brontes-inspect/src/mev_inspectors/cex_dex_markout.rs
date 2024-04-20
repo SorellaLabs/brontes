@@ -273,8 +273,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .0
             .global_exchange_price;
 
-        tracing::info!(?pair, ?token_price, "toke price calc");
-
         let pnl_mid = (
             &maker_delta * &swap.amount_out * &token_price,
             &taker_delta * &swap.amount_out * &token_price,
