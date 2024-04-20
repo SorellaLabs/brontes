@@ -195,24 +195,24 @@ impl fmt::Display for ArbDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "   -{}: {}",
-            "Exchange".bold().underline().green(),
+            "   - {}: {}",
+            "Exchange".bold().underline().cyan(),
             self.cex_exchange.to_string().bold()
         )?;
         writeln!(f, "       - Dex Price: {:.6}", self.dex_price.clone().to_float().to_string())?;
         writeln!(
             f,
-            "       - CEX Prices: Maker Bid: {:.6} (-{:.3}), Maker Ask: {:.6} (-{:.3})",
+            "       - CEX Prices: Maker Bid: {:.6} (-{:.5}), Maker Ask: {:.6} (-{:.5})",
             self.best_bid_maker.clone().to_float().to_string(),
-            (&self.best_bid_taker - &self.best_bid_maker)
+            (&self.best_bid_maker - &self.best_bid_taker)
                 .to_float()
                 .to_string(),
             self.best_ask_maker.clone().to_float().to_string(),
-            (&self.best_ask_taker - &self.best_ask_maker)
+            (&self.best_ask_maker - &self.best_ask_taker)
                 .to_float()
                 .to_string()
         )?;
-        writeln!(f, "{}", "       - PnL Pre-Gas:".bold().underline().green())?;
+        writeln!(f, "   {}", "- PnL Pre-Gas:".bold().underline().green())?;
         writeln!(
             f,
             "           - Mid Price PnL: Maker: {:.6}, Taker: {:.6}",
