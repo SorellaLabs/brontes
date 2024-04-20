@@ -1,6 +1,6 @@
 use brontes_macros::action_impl;
 use brontes_types::{
-    normalized_actions::{NormalizedMint, NormalizedSwap},
+    normalized_actions::{NormalizedFlashLoan, NormalizedMint, NormalizedSwap},
     structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
@@ -113,6 +113,35 @@ action_impl!(
     }
 );
 
+action_impl!(
+    Protocol::BancorV3,
+    crate::BancorNetwork::flashLoanCall,
+    FlashLoan,
+    [],
+    call_data: true,
+    include_delegated_logs: true,
+    |call_info: CallInfo, call_data: flashLoanCall, db_tx: &DB| {
+        let token = db_tx.try_fetch_token_info(call_data.token)?;
+        let amount = call_data.amount.to_scaled_rational(token.decimals);
+
+        Ok(NormalizedFlashLoan {
+            protocol: Protocol::BancorV3,
+            trace_index: call_info.trace_idx,
+            pool: call_info.target_address,
+            from: call_info.from_address,
+            receiver_contract: call_data.recipient,
+            aave_mode: None,
+            assets: vec![token],
+            amounts: vec![amount],
+            child_actions: vec![],
+            fees_paid: vec![],
+            repayments: vec![],
+
+            msg_value: call_info.msg_value
+        })
+    }
+);
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -213,6 +242,42 @@ mod tests {
                 0,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Actions::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_bancor_v3_flash_loan() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let flash_loan =
+            B256::from(hex!("84b5586863e52e9f70b0ed8e7d832fc39e25ca7ea28e7a9aa4220587ddd682d3"));
+
+            let eq_action = Actions::FlashLoan(NormalizedFlashLoan {
+            protocol:          Protocol::BancorV3,
+            trace_index:       2,
+            from:              Address::new(hex!("41eeba3355d7d6ff628b7982f3f9d055c39488cb")),
+            pool:              Address::new(hex!("eef417e1d5cc832e619ae18d2f140de2999dd4fb")),
+            receiver_contract: Address::new(hex!("41eeba3355d7d6ff628b7982f3f9d055c39488cb")),
+            assets:            vec![TokenInfoWithAddress::weth()],
+            amounts:           vec![U256::from_str("4387616000000000000")
+                .unwrap()
+                .to_scaled_rational(18)
+                ],
+            aave_mode:         None,
+            child_actions:     vec![],
+            repayments:        vec![],
+            fees_paid:         vec![],
+            msg_value:         U256::ZERO,
+        });
+
+        classifier_utils
+            .contains_action_except(
+                flash_loan,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_flash_loan),
+                &["child_actions"],
             )
             .await
             .unwrap();

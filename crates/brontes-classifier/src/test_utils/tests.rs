@@ -460,6 +460,9 @@ impl ClassifierTestUtils {
         assert!(!tree.tx_roots.is_empty(), "empty tree. most likely an invalid hash");
 
         let root = tree.tx_roots.remove(0);
+
+        println!("{:#?}", root.collect(&tree_collect_builder));
+
         let mut actions = root.collect(&tree_collect_builder);
         assert!(
             !actions.is_empty(),
