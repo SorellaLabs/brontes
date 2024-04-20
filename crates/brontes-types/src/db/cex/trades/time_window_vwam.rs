@@ -206,7 +206,7 @@ impl<'a> TimeWindowTrades<'a> {
 
         while trade_volume_global.le(vol) {
             let trades = walker.get_trades_for_window();
-            tracing::info!(?pair, trade_am = trades.len(), "trades");
+            tracing::info!(?pair, ?timestamp, trade_am = trades.len(), "trades");
 
             for trade in trades {
                 let trade = trade.get();
