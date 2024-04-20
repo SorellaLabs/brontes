@@ -105,7 +105,7 @@ impl Mev for JitLiquiditySandwich {
     }
 }
 
-pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
+pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
     let mut sandwich: Option<Sandwich> = None;
     let mut jit: Option<JitLiquidity> = None;
     let mut classified_sandwich: Option<BundleHeader> = None;
@@ -130,6 +130,13 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
     let classified_sandwich =
         classified_sandwich.expect("Expected Classified MEV data for Sandwich");
     let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
+
+    /// because sandwich runs based off of transactions, if the profit is the
+    /// same, we know that the sandwich is actually just a jit and we
+    /// shouldn't compose
+    if jit_classified.profit_usd == classified_sandwich.profit_usd {
+        return None
+    }
 
     let mut frontrun_mints: Vec<Option<Vec<NormalizedMint>>> =
         vec![None; sandwich.frontrun_tx_hash.len()];
@@ -184,7 +191,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Bundle {
         no_pricing_calculated: classified_sandwich.no_pricing_calculated,
     };
 
-    Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) }
+    Some(Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) })
 }
 
 impl Serialize for JitLiquiditySandwich {
