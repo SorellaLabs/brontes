@@ -381,13 +381,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 2);
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDex);
 
-        let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges.len() == 1
-            || sanity_check_arb.profitable_exchanges.len() == 1;
+        let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges_ask.len() == 1
+            || sanity_check_arb.profitable_exchanges_mid.len() == 1;
 
         let should_include_based_on_pnl = sanity_check_arb.global_profitability.0
             || sanity_check_arb.global_profitability.1
-            || sanity_check_arb.profitable_exchanges.len() > 2
-            || sanity_check_arb.profitable_exchanges.len() > 2;
+            || sanity_check_arb.profitable_exchanges_ask.len() > 2
+            || sanity_check_arb.profitable_exchanges_mid.len() > 2;
 
         let is_outlier_but_not_stable_swaps =
             is_profitable_outlier && !sanity_check_arb.is_stable_swaps;
@@ -623,8 +623,8 @@ impl CexDexProcessing {
         let is_stable_swaps = self.is_stable_swaps();
 
         ArbSanityCheck {
-            profitable_exchanges,
-            profitable_exchanges,
+            profitable_exchanges_mid,
+            profitable_exchanges_ask,
             profitable_cross_exchange,
             global_profitability,
             is_stable_swaps,
@@ -768,29 +768,11 @@ impl fmt::Display for PossibleCexDex {
 
 #[derive(Debug, Default)]
 pub struct ArbSanityCheck {
-    pub profitable_exchanges:      Vec<(CexExchange, ArbPnl)>,
-    pub profitable_cross_exchange: bool,
-    pub global_profitability:      bool,
+    pub profitable_exchanges_mid:  Vec<(CexExchange, ArbPnl)>,
+    pub profitable_exchanges_ask:  Vec<(CexExchange, ArbPnl)>,
+    pub profitable_cross_exchange: (bool, bool),
+    pub global_profitability:      (bool, bool),
     pub is_stable_swaps:           bool,
-}
-
-impl ArbSanityCheck {
-    /// Determines if the CEX-DEX arbitrage is a highly profitable outlier.
-    ///
-    /// This function checks if the arbitrage is only profitable on a single
-    /// exchange based on the ask price, and if the profit on this exchange
-    /// exceeds a high profit threshold (e.g., $10,000). Additionally, it
-    /// verifies if the exchange is either Kucoin or Okex.
-    ///
-    /// Returns `true` if all conditions are met, indicating a highly profitable
-    /// outlier.
-    pub fn is_profitable_outlier(&self) -> bool {
-        !self.profitable_exchanges_ask.is_empty()
-            && self.profitable_exchanges_ask.len() == 1
-            && self.profitable_exchanges_ask[0].1.maker_taker_ask.1 > HIGH_PROFIT_THRESHOLD
-            && (self.profitable_exchanges_ask[0].0 == CexExchange::Kucoin
-                || self.profitable_exchanges_ask[0].0 == CexExchange::Okex)
-    }
 }
 
 impl fmt::Display for ArbSanityCheck {
