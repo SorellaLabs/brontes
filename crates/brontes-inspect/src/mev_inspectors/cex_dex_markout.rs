@@ -775,6 +775,25 @@ pub struct ArbSanityCheck {
     pub is_stable_swaps:           bool,
 }
 
+impl ArbSanityCheck {
+    /// Determines if the CEX-DEX arbitrage is a highly profitable outlier.
+    ///
+    /// This function checks if the arbitrage is only profitable on a single
+    /// exchange based on the ask price, and if the profit on this exchange
+    /// exceeds a high profit threshold (e.g., $10,000). Additionally, it
+    /// verifies if the exchange is either Kucoin or Okex.
+    ///
+    /// Returns `true` if all conditions are met, indicating a highly profitable
+    /// outlier.
+    pub fn is_profitable_outlier(&self) -> bool {
+        !self.profitable_exchanges_ask.is_empty()
+            && self.profitable_exchanges_ask.len() == 1
+            && self.profitable_exchanges_ask[0].1.maker_taker_ask.1 > HIGH_PROFIT_THRESHOLD
+            && (self.profitable_exchanges_ask[0].0 == CexExchange::Kucoin
+                || self.profitable_exchanges_ask[0].0 == CexExchange::Okex)
+    }
+}
+
 impl fmt::Display for ArbSanityCheck {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "\x1b[1m\x1b[4mCex Dex Sanity Check\x1b[0m\x1b[24m")?;
