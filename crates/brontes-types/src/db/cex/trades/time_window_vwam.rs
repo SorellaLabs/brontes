@@ -328,10 +328,14 @@ impl<'a> TimeWindowTrades<'a> {
 fn calcuate_weight(block_time: u64, trade_time: u64) -> Rational {
     let pre = trade_time < block_time;
 
-    let res = Rational::try_from_float_simplest(if pre {
-        E.powf(PRE_DECAY * (block_time - trade_time) as f64)
-    } else {
-        E.powf(POST_DECAY * (trade_time - block_time) as f64)
+    let res = Rational::try_from_float_simplest({
+        let floated = if pre {
+            E.powf(PRE_DECAY * (block_time - trade_time) as f64)
+        } else {
+            E.powf(POST_DECAY * (trade_time - block_time) as f64)
+        };
+        tracing::info!(?block_time, ?trade_time, weight = floated);
+        floated
     })
     .unwrap();
 
