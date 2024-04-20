@@ -293,19 +293,19 @@ impl CexPriceMap {
 
                         if smaller * Rational::TWO < *larger {
                             log_significant_price_difference(
-                                &swap,
-                                &exchange,
+                                swap,
+                                exchange,
                                 &combined_quote,
                                 &quote1,
                                 &quote2,
                                 &intermediary.to_string(),
                             );
-                            return None;
+                            None
                         } else {
-                            return Some(combined_quote);
+                            Some(combined_quote)
                         }
                     } else {
-                        return Some(combined_quote);
+                        Some(combined_quote)
                     }
                 } else {
                     None
@@ -367,12 +367,12 @@ impl CexPriceMap {
 
         if smaller * Rational::from(2) < larger {
             log_significant_cross_exchange_vmap_difference(
-                &dex_swap,
+                dex_swap,
                 volume_weighted_ask_maker,
                 &dex_swap.token_out.address,
                 &dex_swap.token_in.address,
             );
-            return None;
+            None
         } else {
             Some(FeeAdjustedQuote {
                 exchange:    CexExchange::VWAP,

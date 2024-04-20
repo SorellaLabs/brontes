@@ -675,29 +675,25 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             .maker_taker_mid
             .0
             .clone()
-            .to_float()
-            .to_string(),
+            .to_float(),
         cex_dex_data
             .global_vmap_pnl
             .maker_taker_mid
             .1
             .clone()
-            .to_float()
-            .to_string(),
+            .to_float(),
         cex_dex_data
             .global_vmap_pnl
             .maker_taker_ask
             .0
             .clone()
-            .to_float()
-            .to_string(),
+            .to_float(),
         cex_dex_data
             .global_vmap_pnl
             .maker_taker_ask
             .1
             .clone()
-            .to_float()
-            .to_string()
+            .to_float(),
     )?;
 
     writeln!(f, "  - {}: Optimal Route PnL", "PnL".bright_blue())?;
@@ -709,29 +705,25 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             .maker_taker_mid
             .0
             .clone()
-            .to_float()
-            .to_string(),
+            .to_float(),
         cex_dex_data
             .optimal_route_pnl
             .maker_taker_mid
             .1
             .clone()
-            .to_float()
-            .to_string(),
+            .to_float(),
         cex_dex_data
             .optimal_route_pnl
             .maker_taker_ask
             .0
             .clone()
-            .to_float()
-            .to_string(),
+            .to_float(),
         cex_dex_data
             .optimal_route_pnl
             .maker_taker_ask
             .1
             .clone()
             .to_float()
-            .to_string()
     )?;
 
     writeln!(f, "{}", "  - Per Exchange PnL:".bold().underline().purple())?;

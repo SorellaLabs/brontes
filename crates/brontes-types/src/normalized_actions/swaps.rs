@@ -242,7 +242,7 @@ pub struct ClickhouseArbDetails {
 impl TryFrom<ArbDetails> for ClickhouseArbDetails {
     type Error = eyre::Report;
 
-    fn try_from(value: ArbDetails) -> eyre::Result<Self> {
+    fn try_from(_value: ArbDetails) -> eyre::Result<Self> {
         todo!();
         /*
 

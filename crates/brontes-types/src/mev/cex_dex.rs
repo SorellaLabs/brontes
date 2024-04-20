@@ -84,7 +84,7 @@ impl Mev for CexDex {
 }
 
 impl Serialize for CexDex {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -259,7 +259,7 @@ pub struct ArbPnl {
 
 impl PartialOrd for ArbPnl {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.maker_taker_mid.0.partial_cmp(&other.maker_taker_mid.0)
+        Some(self.cmp(other))
     }
 }
 
