@@ -381,13 +381,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 2);
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDex);
 
-        let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges_ask.len() == 1
-            || sanity_check_arb.profitable_exchanges_mid.len() == 1;
+        let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges.len() == 1
+            || sanity_check_arb.profitable_exchanges.len() == 1;
 
         let should_include_based_on_pnl = sanity_check_arb.global_profitability.0
             || sanity_check_arb.global_profitability.1
-            || sanity_check_arb.profitable_exchanges_ask.len() > 2
-            || sanity_check_arb.profitable_exchanges_mid.len() > 2;
+            || sanity_check_arb.profitable_exchanges.len() > 2
+            || sanity_check_arb.profitable_exchanges.len() > 2;
 
         let is_outlier_but_not_stable_swaps =
             is_profitable_outlier && !sanity_check_arb.is_stable_swaps;
@@ -623,8 +623,8 @@ impl CexDexProcessing {
         let is_stable_swaps = self.is_stable_swaps();
 
         ArbSanityCheck {
-            profitable_exchanges_mid,
-            profitable_exchanges_ask,
+            profitable_exchanges,
+            profitable_exchanges,
             profitable_cross_exchange,
             global_profitability,
             is_stable_swaps,
