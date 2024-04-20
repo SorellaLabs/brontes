@@ -212,7 +212,7 @@ impl fmt::Display for ArbDetails {
                 .to_float()
                 .to_string()
         )?;
-        writeln!(f, "   {}", "- PnL Pre-Gas:".bold().underline().green())?;
+        writeln!(f, "       - {}", "PnL Pre-Gas:".bold().underline().green())?;
         writeln!(
             f,
             "           - Mid Price PnL: Maker: {:.6}, Taker: {:.6}",
