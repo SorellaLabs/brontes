@@ -253,6 +253,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
+        tracing::info!(?cex_quote.0, ?swap.swap_rate());
 
         let maker_delta = &cex_quote.0 - swap.swap_rate();
         let taker_delta = &cex_quote.1 - swap.swap_rate();
