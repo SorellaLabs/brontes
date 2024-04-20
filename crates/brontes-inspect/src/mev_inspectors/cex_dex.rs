@@ -62,7 +62,7 @@ use malachite::{
     num::basic::traits::{Two, Zero},
     Rational,
 };
-use reth_primitives::Address;
+use reth_primitives::{Address, TxHash};
 use tracing::{debug, error};
 
 use super::atomic_arb::is_stable_pair;
@@ -151,7 +151,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 }
 
                 let mut possible_cex_dex: CexDexProcessing =
-                    self.detect_cex_dex(dex_swaps, &metadata)?;
+                    self.detect_cex_dex(dex_swaps, &metadata, &tx_info.tx_hash)?;
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
@@ -181,11 +181,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         &self,
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
+        tx_hash: &TxHash,
     ) -> Option<CexDexProcessing> {
         let quotes = self
             .cex_exchanges
             .iter()
-            .map(|exchange| self.cex_quotes_for_swap(&dex_swaps, metadata, exchange))
+            .map(|exchange| self.cex_quotes_for_swap(&dex_swaps, metadata, exchange, tx_hash))
             .collect_vec();
 
         let mut transposed_quotes: Vec<Vec<&Option<FeeAdjustedQuote>>> =
@@ -214,11 +215,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             .collect();
 
         let global_vwam_cex_dex =
-            self.detect_cex_dex_opportunity(&dex_swaps, quotes_vwam, metadata);
+            self.detect_cex_dex_opportunity(&dex_swaps, quotes_vwam, metadata, tx_hash);
 
         let per_exchange_pnl = quotes
             .into_iter()
-            .map(|quotes| self.detect_cex_dex_opportunity(&dex_swaps, quotes, metadata))
+            .map(|quotes| self.detect_cex_dex_opportunity(&dex_swaps, quotes, metadata, tx_hash))
             .collect();
 
         let mut cex_dex = CexDexProcessing {
@@ -251,6 +252,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         swaps: &[NormalizedSwap],
         cex_prices: Vec<Option<FeeAdjustedQuote>>,
         metadata: &Metadata,
+        tx_hash: &TxHash,
     ) -> Option<PossibleCexDex> {
         PossibleCexDex::from_exchange_legs(
             swaps
@@ -258,7 +260,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 .zip(cex_prices)
                 .map(|(swap, quote)| {
                     if let Some(q) = quote {
-                        self.profit_classifier(swap, q, metadata)
+                        self.profit_classifier(swap, q, metadata, tx_hash)
                     } else {
                         None
                     }
@@ -274,6 +276,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         swap: &NormalizedSwap,
         cex_quote: FeeAdjustedQuote,
         metadata: &Metadata,
+        tx_hash: &TxHash,
     ) -> Option<ExchangeLeg> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
@@ -307,6 +310,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             &Pair(swap.token_in.address, self.utils.quote),
             &cex_quote.exchange,
             None,
+            Some(tx_hash),
         )?;
 
         let token_maker_taker_mid = token_price.maker_taker_mid();
@@ -339,6 +343,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
         exchange: &CexExchange,
+        tx_hash: &TxHash,
     ) -> Vec<Option<FeeAdjustedQuote>> {
         dex_swaps
             .iter()
@@ -347,7 +352,12 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
                 metadata
                     .cex_quotes
-                    .get_quote_direct_or_via_intermediary(&pair, exchange, Some(swap))
+                    .get_quote_direct_or_via_intermediary(
+                        &pair,
+                        exchange,
+                        Some(swap),
+                        Some(tx_hash),
+                    )
                     .or_else(|| {
                         debug!(
                             "No CEX quote found for pair: {}, {} at exchange: {:?}",

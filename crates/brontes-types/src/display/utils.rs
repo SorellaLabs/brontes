@@ -749,15 +749,34 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
         writeln!(f, "\n{}:\n    - {}", format!("Swap {}", i + 1).bold().blue().underline(), swap)?;
 
-        writeln!(f, "   - {}:", "Max Profit Arb".purple().bold().underline())?;
-        writeln!(f, "   - {}", &cex_dex_data.optimal_route_details[i])?;
+        if i < cex_dex_data.optimal_route_details.len() {
+            writeln!(f, "   - {}", &cex_dex_data.optimal_route_details[i])?;
+        } else {
+            writeln!(f, "   - Error: No optimal route detail available for swap {}", i + 1)?;
+        }
 
         writeln!(f, "   - {}:", "Global VMAP".purple().bold().underline())?;
-        writeln!(f, "   - {}", &cex_dex_data.global_vmap_details[i])?;
+        if i < cex_dex_data.global_vmap_details.len() {
+            writeln!(f, "   - {}", &cex_dex_data.global_vmap_details[i])?;
+        } else {
+            writeln!(f, "   - Error: No global VMAP detail available for swap {}", i + 1)?;
+        }
 
         writeln!(f, "   - {}:", "Per Exchange Arb Details".purple().bold().underline())?;
-        for details in cex_dex_data.per_exchange_details.iter() {
-            writeln!(f, "{}", details[i])?;
+        if i < cex_dex_data.per_exchange_details.len() {
+            for details in cex_dex_data.per_exchange_details.iter() {
+                if i < details.len() {
+                    writeln!(f, "{}", details[i])?;
+                } else {
+                    writeln!(
+                        f,
+                        "   - Error: No per exchange arb detail available for swap {}",
+                        i + 1
+                    )?;
+                }
+            }
+        } else {
+            writeln!(f, "   - Error: No per exchange arb details available for swap {}", i + 1)?;
         }
     }
     bundle

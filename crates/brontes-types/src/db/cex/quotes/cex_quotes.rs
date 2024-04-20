@@ -24,6 +24,7 @@ use std::{
 use alloy_primitives::Address;
 use clickhouse::Row;
 use colored::*;
+use itertools::Itertools;
 use malachite::{
     num::{
         arithmetic::traits::{Reciprocal, ReciprocalAssign},
@@ -33,6 +34,7 @@ use malachite::{
     Rational,
 };
 use redefined::{self_convert_redefined, Redefined, RedefinedConvert};
+use reth_primitives::TxHash;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 #[allow(unused_imports)]
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
@@ -248,6 +250,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         dex_swap: Option<&NormalizedSwap>,
+        tx_hash: Option<&TxHash>,
     ) -> Option<FeeAdjustedQuote> {
         let intermediaries = exchange.most_common_quote_assets();
 
@@ -299,6 +302,7 @@ impl CexPriceMap {
                                 &quote1,
                                 &quote2,
                                 &intermediary.to_string(),
+                                tx_hash,
                             );
                             None
                         } else {
@@ -321,9 +325,10 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         dex_swap: Option<&NormalizedSwap>,
+        tx_hash: Option<&TxHash>,
     ) -> Option<FeeAdjustedQuote> {
         self.get_quote(pair, exchange)
-            .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap))
+            .or_else(|| self.get_quote_via_intermediary(pair, exchange, dex_swap, tx_hash))
     }
 
     pub fn get_volume_weighted_quote(
@@ -367,6 +372,11 @@ impl CexPriceMap {
 
         if smaller * Rational::from(2) < larger {
             log_significant_cross_exchange_vmap_difference(
+                exchange_quotes
+                    .iter()
+                    .map(|q| q.exchange.to_string())
+                    .collect_vec()
+                    .join(", "),
                 dex_swap,
                 volume_weighted_ask_maker,
                 &dex_swap.token_out.address,
@@ -393,18 +403,19 @@ fn log_significant_price_difference(
     quote1: &FeeAdjustedQuote,
     quote2: &FeeAdjustedQuote,
     intermediary: &str,
+    tx_hash: Option<&TxHash>,
 ) {
     error!(
-        "\n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
-        - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-        - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
-        - Intermediary Prices:\n\
-        * First Leg Price: {:.7}\n\
-        * Second Leg Price: {:.7}\n\
-        - Token Contracts:\n\
-        * Token Out: https://etherscan.io/address/{}\n\
-        * Intermediary: https://etherscan.io/address/{}\n\
-        * Token In: https://etherscan.io/address/{}",
+        "   \n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
+                - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
+                    * First Leg Price: {:.7}\n\
+                    * Second Leg Price: {:.7}\n\
+                - Token Contracts:\n\
+                    * Token Out: https://etherscan.io/address/{}\n\
+                    * Intermediary: https://etherscan.io/address/{}\n\
+                    * Token In: https://etherscan.io/address/{}\n\
+                {}",
         dex_swap.token_out_symbol(),
         dex_swap.token_in_symbol(),
         exchange,
@@ -415,26 +426,30 @@ fn log_significant_price_difference(
         dex_swap.token_out.address,
         intermediary,
         dex_swap.token_in.address,
+        tx_hash.map_or(String::new(), |hash| format!("- Transaction Hash: https://etherscan.io/tx/{}", hash))
     );
 }
 
 fn log_significant_cross_exchange_vmap_difference(
+    exchange_list: String,
     dex_swap: &NormalizedSwap,
     vmap_quote: Rational,
     token_out_address: &Address,
     token_in_address: &Address,
 ) {
     error!(
-        "\n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on VWAP:\x1b[0m\n\
-        - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
-        - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\
-        - Token Contracts:\n\
-        * Token Out: https://etherscan.io/address/{}\n\
-        * Token In: https://etherscan.io/address/{}",
+        "   \n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on VWAP:\x1b[0m\n\
+                - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
+                - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\
+                - \x1b[1;34mExchanges:\x1b[0m {}\n\
+                - Token Contracts:\n\
+                * Token Out: https://etherscan.io/address/{}\n\
+                * Token In: https://etherscan.io/address/{}",
         dex_swap.token_out_symbol(),
         dex_swap.token_in_symbol(),
         dex_swap.swap_rate().to_float(),
         vmap_quote.to_float(),
+        exchange_list,
         token_out_address,
         token_in_address,
     );
