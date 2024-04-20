@@ -204,7 +204,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 let some_quotes: Vec<&FeeAdjustedQuote> =
                     row.iter().filter_map(|quote| quote.as_ref()).collect();
                 if some_quotes.is_empty() {
-                    None
+                    return None;
                 } else {
                     metadata
                         .cex_quotes
