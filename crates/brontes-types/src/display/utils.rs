@@ -664,36 +664,14 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     // Cex-Dex specific details
     writeln!(f, "\n{}", "Cex-Dex Details:\n".bold().bright_yellow().underline())?;
     writeln!(f, "  - {}: Global VMAP PnL", "PnL".bright_blue())?;
-    writeln!(
-        f,
-        "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data.global_vmap_pnl.maker_taker_mid.0,
-        cex_dex_data.global_vmap_pnl.maker_taker_mid.1,
-        cex_dex_data.global_vmap_pnl.maker_taker_ask.0,
-        cex_dex_data.global_vmap_pnl.maker_taker_ask.1
-    )?;
+    writeln!(f, "    - {} ", cex_dex_data.global_vmap_pnl,)?;
 
     writeln!(f, "  - {}: Optimal Route PnL", "PnL".bright_blue())?;
-    writeln!(
-        f,
-        "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data.optimal_route_pnl.maker_taker_mid.0,
-        cex_dex_data.optimal_route_pnl.maker_taker_mid.1,
-        cex_dex_data.optimal_route_pnl.maker_taker_ask.0,
-        cex_dex_data.optimal_route_pnl.maker_taker_ask.1
-    )?;
+    writeln!(f, "    - {}", cex_dex_data.optimal_route_pnl,)?;
 
     writeln!(f, "  - Per Exchange PnL:")?;
     for (exchange, pnl) in &cex_dex_data.per_exchange_pnl {
-        writeln!(
-            f,
-            "    {}: Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-            exchange,
-            pnl.maker_taker_mid.0,
-            pnl.maker_taker_mid.1,
-            pnl.maker_taker_ask.0,
-            pnl.maker_taker_ask.1
-        )?;
+        writeln!(f, "    {}: ", exchange, pnl)?;
     }
 
     // Display swaps and corresponding ArbDetails
