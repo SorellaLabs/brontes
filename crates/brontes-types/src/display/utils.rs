@@ -4,7 +4,10 @@ use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
-use crate::mev::{Bundle, BundleData};
+use crate::{
+    mev::{Bundle, BundleData},
+    utils::ToFloatNearest,
+};
 
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
