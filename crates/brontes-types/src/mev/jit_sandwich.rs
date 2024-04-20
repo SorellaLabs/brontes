@@ -4,6 +4,7 @@ use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
 #[allow(unused)]
 use clickhouse::row::*;
+use malachite::strings::ToDebugString;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -134,6 +135,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
     // because sandwich runs based off of transactions, if the profit is the
     // same, we know that the sandwich is actually just a jit and we
     // shouldn't compose.
+    tracing::info!(?jit_classified, ?classified_sandwich);
     if (jit_classified.profit_usd.abs() - classified_sandwich.profit_usd.abs()).abs() < 0.2 {
         return None
     }
