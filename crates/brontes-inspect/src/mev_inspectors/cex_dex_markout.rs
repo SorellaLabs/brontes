@@ -33,6 +33,7 @@ use crate::atomic_arb::is_stable_pair;
 // The threshold for the number of CEX-DEX trades an address is required to make
 // to classify a a negative pnl cex-dex trade as a CEX-DEX trade
 pub const FILTER_THRESHOLD: u64 = 20;
+pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000);
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
@@ -374,37 +375,42 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         info: &TxInfo,
     ) -> Option<(f64, BundleData)> {
         let sanity_check_arb = possible_cex_dex.arb_sanity_check();
+        let is_profitable_outlier = sanity_check_arb.is_profitable_outlier();
 
-        if !sanity_check_arb.profitable_exchanges.is_empty() {
-            return possible_cex_dex.into_bundle(info)
-        }
+        let is_cex_dex_bot_with_significant_activity =
+            info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 2);
+        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDex);
 
-        let has_outlier_pnl = sanity_check_arb.profitable_exchanges.len() < 2
-            && !sanity_check_arb.profitable_exchanges.is_empty()
-            && sanity_check_arb.profitable_exchanges[0].1.maker_taker_ask.1 > 10000
-            && (sanity_check_arb.profitable_exchanges[0].0 == CexExchange::Kucoin
-                || sanity_check_arb.profitable_exchanges[0].0 == CexExchange::Okex);
+        let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges_ask.len() == 1
+            || sanity_check_arb.profitable_exchanges_mid.len() == 1;
 
-        let has_positive_exchange_pnl = !sanity_check_arb.profitable_exchanges.is_empty();
+        let should_include_based_on_pnl = sanity_check_arb.global_profitability.0
+            || sanity_check_arb.global_profitability.1
+            || sanity_check_arb.profitable_exchanges_ask.len() > 2
+            || sanity_check_arb.profitable_exchanges_mid.len() > 2;
 
-        if has_positive_exchange_pnl && !has_outlier_pnl
-            || (!info.is_classified
-                && (info.gas_details.coinbase_transfer.is_some()
-                    && info.is_private
-                    && info.is_searcher_of_type_with_count_threshold(
-                        MevType::CexDex,
-                        FILTER_THRESHOLD,
-                    )
-                    || info.is_cex_dex_call))
-            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 5)
-                && sanity_check_arb.profitable_cross_exchange
-                && !sanity_check_arb.is_stable_swaps
-            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
-                && has_outlier_pnl
-                && !sanity_check_arb.is_stable_swaps
-            || info.is_labelled_searcher_of_type(MevType::CexDex)
-            || sanity_check_arb.global_profitability
-                && sanity_check_arb.profitable_exchanges.len() > 3
+        let is_outlier_but_not_stable_swaps =
+            is_profitable_outlier && !sanity_check_arb.is_stable_swaps;
+
+        let is_profitable_one_exchange_but_not_stable_swaps =
+            is_profitable_on_one_exchange && !sanity_check_arb.is_stable_swaps;
+
+        let tx_attributes_meet_cex_dex_criteria = !info.is_classified
+            && info.is_private
+            && (info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD)
+                || info
+                    .contract_type
+                    .as_ref()
+                    .map_or(false, |contract_type| contract_type.could_be_mev_contract()));
+
+        let is_cex_dex_based_on_historical_activity =
+            is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
+
+        if should_include_based_on_pnl
+            || is_cex_dex_based_on_historical_activity
+            || tx_attributes_meet_cex_dex_criteria
+            || is_profitable_one_exchange_but_not_stable_swaps
+            || is_outlier_but_not_stable_swaps
         {
             possible_cex_dex.into_bundle(info)
         } else {
@@ -560,26 +566,39 @@ impl CexDexProcessing {
     }
 
     fn arb_sanity_check(&self) -> ArbSanityCheck {
-        let profitable_exchanges: Vec<(CexExchange, ArbPnl)> = self
+        let (profitable_exchanges_mid, profitable_exchanges_ask) = self
             .per_exchange_pnl
             .iter()
             .filter_map(|p| p.as_ref())
-            .filter(|p| {
-                p.aggregate_pnl.maker_taker_mid.1 > Rational::ZERO
-                    || p.aggregate_pnl.maker_taker_ask.1 > Rational::ZERO
-            })
-            .map(|p| (p.arb_legs[0].as_ref().unwrap().cex_quote.exchange, p.aggregate_pnl.clone()))
-            .collect();
+            .fold((Vec::new(), Vec::new()), |(mut mid, mut ask), p| {
+                if p.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO {
+                    mid.push((
+                        p.arb_legs[0].as_ref().unwrap().cex_quote.exchange,
+                        p.aggregate_pnl.clone(),
+                    ));
+                }
+                if p.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO {
+                    ask.push((
+                        p.arb_legs[0].as_ref().unwrap().cex_quote.exchange,
+                        p.aggregate_pnl.clone(),
+                    ));
+                }
+                (mid, ask)
+            });
 
-        let profitable_cross_exchange = self
-            .max_profit
-            .as_ref()
-            .unwrap()
-            .aggregate_pnl
-            .maker_taker_mid
-            .0
-            > Rational::ZERO
-            || self
+        let profitable_cross_exchange = {
+            let mid_price_profitability = self
+                .max_profit
+                .as_ref()
+                .expect(
+                    "Max profit should always exist, CexDex inspector should have returned early",
+                )
+                .aggregate_pnl
+                .maker_taker_mid
+                .0
+                > Rational::ZERO;
+
+            let ask_price_profitability = self
                 .max_profit
                 .as_ref()
                 .unwrap()
@@ -588,15 +607,24 @@ impl CexDexProcessing {
                 .0
                 > Rational::ZERO;
 
-        let global_profitability = self.global_vmam_cex_dex.as_ref().map_or(false, |global| {
-            global.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO
-                || global.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO
-        });
+            (mid_price_profitability, ask_price_profitability)
+        };
+
+        let global_profitability =
+            self.global_vmam_cex_dex
+                .as_ref()
+                .map_or((false, false), |global| {
+                    (
+                        global.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO,
+                        global.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO,
+                    )
+                });
 
         let is_stable_swaps = self.is_stable_swaps();
 
         ArbSanityCheck {
-            profitable_exchanges,
+            profitable_exchanges_mid,
+            profitable_exchanges_ask,
             profitable_cross_exchange,
             global_profitability,
             is_stable_swaps,
@@ -744,6 +772,25 @@ pub struct ArbSanityCheck {
     pub profitable_cross_exchange: bool,
     pub global_profitability:      bool,
     pub is_stable_swaps:           bool,
+}
+
+impl ArbSanityCheck {
+    /// Determines if the CEX-DEX arbitrage is a highly profitable outlier.
+    ///
+    /// This function checks if the arbitrage is only profitable on a single
+    /// exchange based on the ask price, and if the profit on this exchange
+    /// exceeds a high profit threshold (e.g., $10,000). Additionally, it
+    /// verifies if the exchange is either Kucoin or Okex.
+    ///
+    /// Returns `true` if all conditions are met, indicating a highly profitable
+    /// outlier.
+    pub fn is_profitable_outlier(&self) -> bool {
+        !self.profitable_exchanges_ask.is_empty()
+            && self.profitable_exchanges_ask.len() == 1
+            && self.profitable_exchanges_ask[0].1.maker_taker_ask.1 > HIGH_PROFIT_THRESHOLD
+            && (self.profitable_exchanges_ask[0].0 == CexExchange::Kucoin
+                || self.profitable_exchanges_ask[0].0 == CexExchange::Okex)
+    }
 }
 
 impl fmt::Display for ArbSanityCheck {
