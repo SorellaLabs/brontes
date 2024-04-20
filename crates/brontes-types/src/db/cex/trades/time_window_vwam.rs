@@ -246,6 +246,10 @@ impl<'a> TimeWindowTrades<'a> {
         let mut global_taker = Rational::ZERO;
 
         for (ex, (vxp_maker, vxp_taker, trade_vol_weight, trade_vol)) in exchange_vxp {
+            if trade_vol_weight == Rational::ZERO {
+                tracing::warn!("no trade vol weight");
+                continue
+            }
             let maker_price = vxp_maker / &trade_vol_weight;
             let taker_price = vxp_taker / &trade_vol_weight;
 
@@ -254,6 +258,10 @@ impl<'a> TimeWindowTrades<'a> {
 
             maker.insert(ex, (maker_price, trade_vol.clone()));
             taker.insert(ex, (taker_price, trade_vol));
+        }
+        if trade_volume_global == Rational::ZERO {
+            tracing::warn!("no trade vol global weight");
+            return None
         }
 
         let global_maker = global_maker / &trade_volume_global;
