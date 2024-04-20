@@ -258,6 +258,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let taker_delta = &cex_quote.1 - swap.swap_rate();
 
         let vol = Rational::ONE;
+        let pair = Pair(swap.token_in.address, self.utils.quote);
         let token_price = metadata
             .cex_trades
             .as_ref()
@@ -265,14 +266,14 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .lock()
             .calculate_time_window_vwam(
                 &self.cex_exchanges,
-                Pair(self.utils.quote, swap.token_in.address),
+                pair,
                 &vol,
                 metadata.block_timestamp * 1000000,
             )?
             .0
             .global_exchange_price;
 
-        tracing::info!(?Pair(swap.token_in.address, self.utils.quote), ?token_price, "token price");
+        tracing::info!(?pair, ?token_price, "toke price calc");
 
         let pnl_mid = (
             &maker_delta * &swap.amount_out * &token_price,
