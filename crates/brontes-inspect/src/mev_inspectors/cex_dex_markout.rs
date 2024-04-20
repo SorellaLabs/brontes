@@ -12,7 +12,10 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::basic::traits::{Two, Zero},
+    Rational,
+};
 use reth_primitives::Address;
 
 // The threshold for the number of CEX-DEX trades an address is required to make
