@@ -194,6 +194,10 @@ impl<'a> TimeWindowTrades<'a> {
                 .map(|(ex, (idx, trades))| ((ex, (idx + 1, *idx)), (ex, *trades)))
                 .unzip();
 
+        if trades.is_empty() {
+            return None
+        }
+
         let mut walker = PairTradeWalker::new(
             trades,
             ptrs,
