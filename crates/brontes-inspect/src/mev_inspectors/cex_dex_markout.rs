@@ -1,14 +1,20 @@
-use std::sync::Arc;
+use std::{mem::take, sync::Arc};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
-    db::{cex::CexExchange, cex_trades::ExchangePrice, dex::PriceAt},
-    mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails, StatArbPnl},
+    db::{
+        cex::{
+            time_window_vwam::MakerTakerWindowVwam, vwam::MakerTaker, CexExchange, FeeAdjustedQuote,
+        },
+        dex::PriceAt,
+    },
+    mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails},
     normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, FastHashMap, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
+use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
@@ -16,7 +22,7 @@ use reth_primitives::Address;
 // to classify a a negative pnl cex-dex trade as a CEX-DEX trade
 pub const FILTER_THRESHOLD: u64 = 20;
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+use crate::{cex_dex::PossibleCexDex, shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     utils:         SharedInspectorUtils<'db, DB>,
@@ -104,89 +110,101 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
     ) -> Option<CexDexProcessing> {
-        let quotes = self
-            .cex_exchanges
-            .iter()
-            .map(|exchange| self.cex_quotes_for_swap(&dex_swaps, metadata, exchange))
-            .collect_vec();
+        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata);
 
-        let mut transposed_quotes: Vec<Vec<&Option<FeeAdjustedQuote>>> =
-            vec![Vec::new(); quotes[0].len()];
-
-        quotes.iter().for_each(|q| {
-            q.iter().enumerate().for_each(|(index, quote)| {
-                transposed_quotes[index].push(quote);
-            })
-        });
-
-        let quotes_vwam: Vec<Option<FeeAdjustedQuote>> = transposed_quotes
+        // pricing window
+        let pricing_window_vwam = pricing
             .iter()
             .enumerate()
-            .map(|(index, row)| {
-                let some_quotes: Vec<&FeeAdjustedQuote> =
-                    row.iter().filter_map(|quote| quote.as_ref()).collect();
-                if some_quotes.is_empty() {
-                    None
-                } else {
-                    metadata
-                        .cex_quotes
-                        .get_volume_weighted_quote(&some_quotes, &dex_swaps[index])
-                }
+            .map(|(index, trade)| {
+                let some_pricings = trade.as_ref()?.0?;
+                Some((some_pricings.0.global_exchange_price, some_pricings.1.global_exchange_price))
             })
-            .collect();
+            .collect_vec();
 
-        let global_vwam_cex_dex =
-            self.detect_cex_dex_opportunity(&dex_swaps, quotes_vwam, metadata);
+        // optimistic volume clearance
+        let pricing_vwam = pricing
+            .iter()
+            .enumerate()
+            .map(|(index, trade)| {
+                let some_pricings = trade.as_ref()?.1?;
+                Some((some_pricings.0.price, some_pricings.1.price))
+            })
+            .collect_vec();
 
-        let per_exchange_pnl = quotes
-            .into_iter()
-            .map(|quotes| self.detect_cex_dex_opportunity(&dex_swaps, quotes, metadata))
-            .collect();
+        // per exchange volumes
+        let pricing_window_vwam_per_ex = pricing
+            .iter()
+            .enumerate()
+            .map(|(index, trade)| {
+                let some_pricings = trade.as_ref()?.0?;
+                Some((
+                    some_pricings.0.exchange_price_with_volume_direct,
+                    some_pricings.1.exchange_price_with_volume_direct,
+                ))
+            })
+            .collect_vec();
 
-        let mut cex_dex = CexDexProcessing {
-            dex_swaps,
-            global_vmam_cex_dex: global_vwam_cex_dex,
-            per_exchange_pnl,
-            max_profit: None,
-        };
+        // use the setup that has more hops. if they are equal,
+        // use the new version.
+        let calcuation_vwam = (pricing_window_vwam.iter().flatten().count()
+            >= pricing_vwam.iter().flatten().count())
+        .then_some(pricing_window_vwam)
+        .or(Some(pricing_vwam))
+        .unwrap();
 
-        cex_dex.construct_max_profit_route()?;
-
-        Some(cex_dex)
-    }
-
-    /// Detects potential CEX-DEX arbitrage opportunities for a sequence of
-    /// swaps
-    ///
-    /// # Arguments
-    ///
-    /// * `swap` - The swaps to analyze.
-    /// * `metadata` - Combined metadata for additional context in analysis.
-    /// * `cex_prices` - Fee adjusted CEX quotes for the corresponding swaps.
-    ///
-    /// # Returns
-    ///
-    /// An option containing a `PossibleCexDex` if an opportunity is found,
-    /// otherwise `None`.
-    pub fn detect_cex_dex_opportunity(
-        &self,
-        swaps: &[NormalizedSwap],
-        cex_prices: Vec<Option<FeeAdjustedQuote>>,
-        metadata: &Metadata,
-    ) -> Option<PossibleCexDex> {
-        PossibleCexDex::from_exchange_legs(
-            swaps
+        let vwam_result = PossibleCexDex::from_exchange_legs(
+            dex_swaps
                 .iter()
-                .zip(cex_prices)
-                .map(|(swap, quote)| {
-                    if let Some(q) = quote {
-                        self.profit_classifier(swap, q, metadata)
-                    } else {
-                        None
-                    }
+                .zip(calcuation_vwam)
+                .filter_map(|(swap, possible_pricing)| {
+                    Some(self.profit_classifier(
+                        swap,
+                        possible_pricing?,
+                        metadata,
+                        CexExchange::VWAP,
+                    ))
                 })
                 .collect_vec(),
-        )
+        );
+
+        let per_exchange_pnl = pricing_window_vwam_per_ex
+            .iter()
+            .enumerate()
+            .filter_map(|(i, stuff)| {
+                let (maker, taker) = stuff.as_ref()?;
+
+                Some(
+                    maker
+                        .into_iter()
+                        .map(|(ex, (m_price, _))| {
+                            (
+                                ex,
+                                self.profit_classifier(
+                                    &dex_swaps[i],
+                                    (m_price.clone(), taker.get(&ex).map(|p| p.0).unwrap().clone()),
+                                    metadata,
+                                    ex,
+                                ),
+                            )
+                        })
+                        .collect_vec(),
+                )
+            })
+            .fold(
+                FastHashMap::default(),
+                |mut acc: FastHashMap<CexExchange, Vec<Option<ExchangeLeg>>>, x| {
+                    for (ex, data) in x {
+                        acc.entry(*ex).or_default().push(data);
+                    }
+                    acc
+                },
+            )
+            .into_values()
+            .map(|swaps| PossibleCexDex::from_exchange_legs(swaps))
+            .collect_vec();
+
+        CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl)
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
@@ -194,23 +212,23 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
-        cex_quote: FeeAdjustedQuote,
+        cex_quote: (Rational, Rational),
         metadata: &Metadata,
+        exchange: CexExchange,
     ) -> Option<ExchangeLeg> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
         let swap_rate = swap.swap_rate();
-        let smaller = min(&swap_rate, &cex_quote.price_maker.1);
-        let larger = max(&swap_rate, &cex_quote.price_maker.1);
+        let smaller = min(&swap_rate, &cex_quote.0);
+        let larger = max(&swap_rate, &cex_quote.0);
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
-                &cex_quote.exchange,
                 swap.swap_rate().clone().to_float(),
-                cex_quote.price_maker.1.clone().to_float(),
+                cex_quote.0.clone().to_float(),
                 &swap.token_in.address,
                 &swap.token_out.address,
             );
@@ -220,65 +238,63 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
-        let maker_taker_mid = cex_quote.maker_taker_mid();
 
-        let maker_mid_delta = &maker_taker_mid.0 - swap.swap_rate();
-        let taker_mid_delta = &maker_taker_mid.1 - swap.swap_rate();
+        let maker_delta = cex_quote.0 - swap.swap_rate();
+        let taker_delta = cex_quote.1 - swap.swap_rate();
 
-        let token_price = metadata.cex_quotes.get_quote_direct_or_via_intermediary(
-            &Pair(swap.token_in.address, self.utils.quote),
-            &cex_quote.exchange,
-            None,
-        )?;
-
-        let token_maker_taker_mid = token_price.maker_taker_mid();
+        let vol = Rational::ZERO;
+        let token_price = metadata
+            .cex_trades
+            .as_ref()
+            .unwrap()
+            .calculate_time_window_vwam(
+                &self.cex_exchanges,
+                &Pair(swap.token_in.address, self.utils.quote),
+                &vol,
+                metadata.block_timestamp,
+            )?
+            .0
+            .global_exchange_price;
 
         let pnl_mid = (
-            &maker_mid_delta * &swap.amount_out * &token_maker_taker_mid.0,
-            &taker_mid_delta * &swap.amount_out * &token_maker_taker_mid.1,
+            &maker_delta * &swap.amount_out * &token_price.0,
+            &taker_delta * &swap.amount_out * &token_price.1,
         );
 
-        let maker_ask_delta = &cex_quote.price_maker.1 - swap.swap_rate();
-        let taker_ask_delta = &cex_quote.price_taker.1 - swap.swap_rate();
-
-        let token_maker_taker_ask = token_price.maker_taker_ask();
-
-        let pnl_ask = (
-            &maker_ask_delta * &swap.amount_out * &token_maker_taker_ask.0,
-            &taker_ask_delta * &swap.amount_out * &token_maker_taker_ask.1,
-        );
+        let quote = FeeAdjustedQuote {
+            timestamp: metadata.block_timestamp,
+            price_maker: (cex_quote.0.clone(), cex_quote.0.clone()),
+            price_taker: (cex_quote.1.clone(), cex_quote.1.clone()),
+            amount: (Rational::ZERO, Rational::ZERO),
+            token0: Address::ZERO,
+            exchange,
+        };
 
         Some(ExchangeLeg {
-            cex_quote: cex_quote.clone(),
-            pnl:       ArbPnl { maker_taker_mid: pnl_mid, maker_taker_ask: pnl_ask },
+            cex_quote: quote,
+            pnl:       ArbPnl { maker_taker_mid: pnl_mid.clone(), maker_taker_ask: pnl_mid },
         })
     }
 
     /// Retrieves CEX quotes for a DEX swap, analyzing both direct and
     /// intermediary token pathways.
-    fn cex_quotes_for_swap(
+    fn cex_trades_for_swap(
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
-        exchange: &CexExchange,
-    ) -> Vec<Option<FeeAdjustedQuote>> {
+    ) -> Vec<Option<(Option<MakerTakerWindowVwam>, Option<MakerTaker>)>> {
         dex_swaps
             .iter()
             .map(|swap| {
                 let pair = Pair(swap.token_out.address, swap.token_in.address);
 
-                metadata
-                    .cex_quotes
-                    .get_quote_direct_or_via_intermediary(&pair, exchange, Some(swap))
-                    .or_else(|| {
-                        debug!(
-                            "No CEX quote found for pair: {}, {} at exchange: {:?}",
-                            swap.token_in_symbol(),
-                            swap.token_out_symbol(),
-                            exchange
-                        );
-                        None
-                    })
+                metadata.cex_trades.as_ref().unwrap().calculate_all_methods(
+                    &self.cex_exchanges,
+                    pair,
+                    &swap.amount_out,
+                    metadata.block_timestamp,
+                    None,
+                )
             })
             .collect()
     }
@@ -399,45 +415,17 @@ pub struct CexDexProcessing {
     pub max_profit:          Option<PossibleCexDex>,
 }
 
-impl fmt::Display for CexDexProcessing {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}", "Cex-Dex Processing Details:".bold().underline())?;
-
-        writeln!(f, "{}", "Dex Swaps:".bold())?;
-        for swap in &self.dex_swaps {
-            writeln!(f, "  - {}", swap)?;
-        }
-
-        writeln!(f, "{}", "Global VMAM CEX/DEX:".bold())?;
-        if let Some(ref vmam) = self.global_vmam_cex_dex {
-            writeln!(f, "  - {}", vmam)?;
-        } else {
-            writeln!(f, "  - Not available")?;
-        }
-
-        writeln!(f, "{}", "Per Exchange PnL:".bold())?;
-        for (index, exchange_pnl) in self.per_exchange_pnl.iter().enumerate() {
-            writeln!(
-                f,
-                "  - Exchange {}: {}",
-                index + 1,
-                exchange_pnl
-                    .as_ref()
-                    .map_or("PnL data not available".to_string(), |pnl| pnl.to_string())
-            )?;
-        }
-
-        writeln!(f, "{}", "Max Profit:".bold())?;
-        match self.max_profit {
-            Some(ref max) => writeln!(f, "  - {}", max)?,
-            None => writeln!(f, "  - Not available")?,
-        }
-
-        Ok(())
-    }
-}
-
 impl CexDexProcessing {
+    pub fn new(
+        dex_swaps: Vec<NormalizedSwap>,
+        global_vmam_cex_dex: Option<PossibleCexDex>,
+        per_exchange_pnl: Vec<Option<PossibleCexDex>>,
+    ) -> Option<Self> {
+        let mut this = Self { per_exchange_pnl, dex_swaps, max_profit: None, global_vmam_cex_dex };
+        this.construct_max_profit_route()?;
+        Some(this)
+    }
+
     pub fn construct_max_profit_route(&mut self) -> Option<()> {
         if self.per_exchange_pnl.iter().all(Option::is_none) {
             return None
@@ -603,6 +591,134 @@ impl CexDexProcessing {
     }
 }
 
+impl fmt::Display for CexDexProcessing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}", "Cex-Dex Processing Details:".bold().underline())?;
+
+        writeln!(f, "{}", "Dex Swaps:".bold())?;
+        for swap in &self.dex_swaps {
+            writeln!(f, "  - {}", swap)?;
+        }
+
+        writeln!(f, "{}", "Global VMAM CEX/DEX:".bold())?;
+        if let Some(ref vmam) = self.global_vmam_cex_dex {
+            writeln!(f, "  - {}", vmam)?;
+        } else {
+            writeln!(f, "  - Not available")?;
+        }
+
+        writeln!(f, "{}", "Per Exchange PnL:".bold())?;
+        for (index, exchange_pnl) in self.per_exchange_pnl.iter().enumerate() {
+            writeln!(
+                f,
+                "  - Exchange {}: {}",
+                index + 1,
+                exchange_pnl
+                    .as_ref()
+                    .map_or("PnL data not available".to_string(), |pnl| pnl.to_string())
+            )?;
+        }
+
+        writeln!(f, "{}", "Max Profit:".bold())?;
+        match self.max_profit {
+            Some(ref max) => writeln!(f, "  - {}", max)?,
+            None => writeln!(f, "  - Not available")?,
+        }
+
+        Ok(())
+    }
+}
+#[derive(Debug, Default)]
+pub struct PossibleCexDex {
+    pub arb_legs:      Vec<Option<ExchangeLeg>>,
+    pub aggregate_pnl: ArbPnl,
+}
+
+impl PossibleCexDex {
+    pub fn from_exchange_legs(mut exchange_legs: Vec<Option<ExchangeLeg>>) -> Option<Self> {
+        if exchange_legs.iter().all(Option::is_none) {
+            return None
+        }
+        let mut total_mid_maker = Rational::ZERO;
+        let mut total_mid_taker = Rational::ZERO;
+        let mut total_ask_maker = Rational::ZERO;
+        let mut total_ask_taker = Rational::ZERO;
+
+        for leg in exchange_legs.iter_mut() {
+            if let Some(leg) = leg {
+                total_mid_maker += &leg.pnl.maker_taker_mid.0;
+                total_mid_taker += &leg.pnl.maker_taker_mid.1;
+                total_ask_maker += &leg.pnl.maker_taker_ask.0;
+                total_ask_taker += &leg.pnl.maker_taker_ask.1;
+            }
+        }
+
+        let aggregate_pnl = ArbPnl {
+            maker_taker_mid: (total_mid_maker, total_mid_taker),
+            maker_taker_ask: (total_ask_maker, total_ask_taker),
+        };
+
+        Some(PossibleCexDex { arb_legs: exchange_legs, aggregate_pnl })
+    }
+
+    pub fn adjust_for_gas_cost(&mut self, gas_cost: &Rational) {
+        let maker_taker_mid = (
+            &self.aggregate_pnl.maker_taker_mid.0 - gas_cost,
+            &self.aggregate_pnl.maker_taker_mid.1 - gas_cost,
+        );
+
+        let maker_taker_ask = (
+            &self.aggregate_pnl.maker_taker_ask.0 - gas_cost,
+            &self.aggregate_pnl.maker_taker_ask.1 - gas_cost,
+        );
+
+        self.aggregate_pnl = ArbPnl { maker_taker_mid, maker_taker_ask };
+    }
+
+    pub fn generate_arb_details(&self, normalized_swaps: &[NormalizedSwap]) -> Vec<ArbDetails> {
+        self.arb_legs
+            .iter()
+            .enumerate()
+            .filter_map(|(index, arb_leg)| {
+                arb_leg.as_ref().and_then(|leg| {
+                    normalized_swaps.get(index).map(|swap| ArbDetails {
+                        cex_exchange:   leg.cex_quote.exchange,
+                        best_bid_maker: leg.cex_quote.price_maker.0.clone(),
+                        best_ask_maker: leg.cex_quote.price_maker.1.clone(),
+                        best_bid_taker: leg.cex_quote.price_taker.0.clone(),
+                        best_ask_taker: leg.cex_quote.price_taker.1.clone(),
+                        dex_exchange:   swap.protocol,
+                        dex_price:      swap.swap_rate(),
+                        dex_amount:     swap.amount_out.clone(),
+                        pnl_pre_gas:    leg.pnl.clone(),
+                    })
+                })
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
+impl fmt::Display for PossibleCexDex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}", "Aggregate PnL:".bold().underline())?;
+        writeln!(f, "  {}", self.aggregate_pnl)?;
+
+        writeln!(f, "{}", "Arbitrage Legs:".bold().underline())?;
+        if !self.arb_legs.is_empty() {
+            for (index, leg) in self.arb_legs.iter().enumerate() {
+                match leg {
+                    Some(leg) => writeln!(f, "  - Leg {}: {}", index + 1, leg)?,
+                    None => writeln!(f, "  - Leg {}: No data available", index + 1)?,
+                }
+            }
+        } else {
+            writeln!(f, "  No arbitrage legs data available")?;
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct ArbSanityCheck {
     pub profitable_exchanges:      Vec<(CexExchange, ArbPnl)>,
@@ -658,14 +774,13 @@ pub struct ExchangeLeg {
 fn log_price_delta(
     token_in_symbol: &str,
     token_out_symbol: &str,
-    exchange: &CexExchange,
     dex_swap_rate: f64,
     cex_price: f64,
     token_in_address: &Address,
     token_out_address: &Address,
 ) {
     error!(
-        "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
+        "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
          - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
          - Token Contracts:\n\
@@ -673,7 +788,6 @@ fn log_price_delta(
            * Token Out: https://etherscan.io/address/{}",
         token_in_symbol,
         token_out_symbol,
-        exchange,
         dex_swap_rate,
         cex_price,
         token_in_address,
