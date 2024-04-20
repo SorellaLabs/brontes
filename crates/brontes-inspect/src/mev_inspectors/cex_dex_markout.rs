@@ -267,7 +267,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &self.cex_exchanges,
                 Pair(swap.token_in.address, self.utils.quote),
                 &vol,
-                metadata.block_timestamp,
+                metadata.block_timestamp * 1000000,
             )?
             .0
             .global_exchange_price;
@@ -313,7 +313,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         &self.cex_exchanges,
                         pair,
                         &swap.amount_out,
-                        metadata.block_timestamp,
+                        metadata.block_timestamp * 1000000,
                         None,
                     )
             })
