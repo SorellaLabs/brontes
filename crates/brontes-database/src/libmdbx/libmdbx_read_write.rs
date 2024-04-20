@@ -8,7 +8,9 @@ use std::{
 use alloy_primitives::Address;
 use brontes_pricing::{Protocol, SubGraphEdge};
 #[cfg(feature = "cex-dex-markout")]
-use brontes_types::db::{cex_trades::CexTradeMap, initialized_state::CEX_TRADES_FLAG};
+use brontes_types::db::cex::cex_trades::CexTradeMap;
+#[cfg(feature = "cex-dex-markout")]
+use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use brontes_types::{
     constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{

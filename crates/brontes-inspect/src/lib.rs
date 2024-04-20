@@ -102,7 +102,7 @@ use brontes_types::{
 };
 #[cfg(not(feature = "cex-dex-markout"))]
 use cex_dex::CexDexInspector;
-// #[cfg(feature = "cex-dex-markout")]
+#[cfg(feature = "cex-dex-markout")]
 use cex_dex_markout::CexDexMarkoutInspector;
 use jit::JitInspector;
 use liquidations::LiquidationInspector;
