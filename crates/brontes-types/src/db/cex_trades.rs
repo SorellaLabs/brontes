@@ -55,6 +55,28 @@ const POST_DECAY: f64 = -0.2;
 pub struct CexTradeMap2(pub FastHashMap<CexExchange, FastHashMap<Pair, (usize, Vec<CexTrades>)>>);
 
 impl CexTradeMap2 {
+    pub fn get_price(
+        &self,
+        exchanges: &[CexExchange],
+        pair: Pair,
+        volume: &Rational,
+        timestamp: u128,
+    ) -> Option<(Rational, Rational)> {
+        if pair.0 == pair.1 {
+            return Some((Rational::ZERO, Rational::ZERO))
+        }
+
+        let res = self
+            .get_vwam_price(exchanges, pair, volume, timestamp)
+            .or_else(|| self.get_vwam_price_via_intermediary(exchanges, &pair, volume, timestamp));
+
+        if res.is_none() {
+            tracing::debug!(?pair, "no vwam found");
+        }
+
+        res
+    }
+
     fn get_vwam_price_via_intermediary(
         &self,
         exchanges: &[CexExchange],
@@ -87,16 +109,16 @@ impl CexTradeMap2 {
                 }
 
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
-                let (i, res) =
-                    (intermediary, self.get_vwam_price(exchanges, pair0, volume, timestamp)?);
+                let res = self.get_vwam_price(exchanges, pair0, volume, timestamp)?;
                 let new_vol = volume * &res.0;
                 let pair1_v = self.get_vwam_price(exchanges, pair1, &new_vol, timestamp)?;
 
                 let maker = res.0 * pair1_v.0;
                 let taker = res.1 * pair1_v.1;
+
                 Some((maker, taker))
             })
-            .max_by_key(|a| a.0)
+            .max_by_key(|a| a.0.clone())
     }
 
     fn get_vwam_price(
