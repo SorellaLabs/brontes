@@ -1,5 +1,7 @@
 use arrow::{
-    array::{ArrayBuilder, Float64Builder, ListArray, StringBuilder},
+    array::{
+        Array, ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
+    },
     datatypes::{DataType, Field},
     error::ArrowError,
     record_batch::RecordBatch,
@@ -10,6 +12,7 @@ use brontes_types::{
     ToFloatNearest,
 };
 use itertools::Itertools;
+use polars::prelude::*;
 
 use crate::parquet::{
     normalized_actions::{
