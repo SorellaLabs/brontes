@@ -330,9 +330,9 @@ fn calcuate_weight(block_time: u64, trade_time: u64) -> Rational {
 
     let res = Rational::try_from_float_simplest({
         let floated = if pre {
-            E.powf(PRE_DECAY * (block_time - trade_time) as f64)
+            E.powf(PRE_DECAY * ((block_time - trade_time) / 1_000_000) as f64)
         } else {
-            E.powf(POST_DECAY * (trade_time - block_time) as f64)
+            E.powf(POST_DECAY * ((trade_time - block_time) / 1_000_000) as f64)
         };
         tracing::info!(?block_time, ?trade_time, weight = floated);
         floated
