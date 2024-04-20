@@ -294,6 +294,7 @@ impl<'a> TimeWindowTrades<'a> {
             exchange_price_with_volume_direct: taker,
             global_exchange_price:             global_taker,
         };
+        tracing::info!(?maker_ret, ?taker_ret);
 
         Some((maker_ret, taker_ret))
     }
