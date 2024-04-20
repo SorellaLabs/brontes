@@ -1,4 +1,9 @@
-use std::{mem::take, sync::Arc};
+use std::{
+    cmp::{max, min},
+    fmt,
+    fmt::Display,
+    sync::Arc,
+};
 
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
@@ -8,21 +13,28 @@ use brontes_types::{
         },
         dex::PriceAt,
     },
-    mev::{Bundle, BundleData, CexDex, MevType, StatArbDetails},
+    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
     normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
     ActionIter, FastHashMap, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
+use colored::Colorize;
 use itertools::Itertools;
-use malachite::{num::basic::traits::Zero, Rational};
+use malachite::{
+    num::basic::traits::{One, Two, Zero},
+    Rational,
+};
 use reth_primitives::Address;
+use tracing::error;
+
+use crate::atomic_arb::is_stable_pair;
 
 // The threshold for the number of CEX-DEX trades an address is required to make
 // to classify a a negative pnl cex-dex trade as a CEX-DEX trade
 pub const FILTER_THRESHOLD: u64 = 20;
 
-use crate::{cex_dex::PossibleCexDex, shared_utils::SharedInspectorUtils, Inspector, Metadata};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     utils:         SharedInspectorUtils<'db, DB>,
@@ -115,32 +127,32 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // pricing window
         let pricing_window_vwam = pricing
             .iter()
-            .enumerate()
-            .map(|(index, trade)| {
-                let some_pricings = trade.as_ref()?.0?;
-                Some((some_pricings.0.global_exchange_price, some_pricings.1.global_exchange_price))
+            .map(|trade| {
+                let some_pricings = trade.0.as_ref()?;
+                Some((
+                    some_pricings.0.global_exchange_price.clone(),
+                    some_pricings.1.global_exchange_price.clone(),
+                ))
             })
             .collect_vec();
 
         // optimistic volume clearance
         let pricing_vwam = pricing
             .iter()
-            .enumerate()
-            .map(|(index, trade)| {
-                let some_pricings = trade.as_ref()?.1?;
-                Some((some_pricings.0.price, some_pricings.1.price))
+            .map(|trade| {
+                let some_pricings = trade.1.as_ref()?;
+                Some((some_pricings.0.price.clone(), some_pricings.1.price.clone()))
             })
             .collect_vec();
 
         // per exchange volumes
         let pricing_window_vwam_per_ex = pricing
             .iter()
-            .enumerate()
-            .map(|(index, trade)| {
-                let some_pricings = trade.as_ref()?.0?;
+            .map(|trade| {
+                let some_pricings = trade.0.as_ref()?;
                 Some((
-                    some_pricings.0.exchange_price_with_volume_direct,
-                    some_pricings.1.exchange_price_with_volume_direct,
+                    some_pricings.0.exchange_price_with_volume_direct.clone(),
+                    some_pricings.1.exchange_price_with_volume_direct.clone(),
                 ))
             })
             .collect_vec();
@@ -182,9 +194,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 ex,
                                 self.profit_classifier(
                                     &dex_swaps[i],
-                                    (m_price.clone(), taker.get(&ex).map(|p| p.0).unwrap().clone()),
+                                    (
+                                        m_price.clone(),
+                                        taker.get(&ex).map(|p| p.0.clone()).unwrap().clone(),
+                                    ),
                                     metadata,
-                                    ex,
+                                    *ex,
                                 ),
                             )
                         })
@@ -239,17 +254,18 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
 
-        let maker_delta = cex_quote.0 - swap.swap_rate();
-        let taker_delta = cex_quote.1 - swap.swap_rate();
+        let maker_delta = &cex_quote.0 - swap.swap_rate();
+        let taker_delta = &cex_quote.1 - swap.swap_rate();
 
-        let vol = Rational::ZERO;
+        let vol = Rational::ONE;
         let token_price = metadata
             .cex_trades
             .as_ref()
             .unwrap()
+            .lock()
             .calculate_time_window_vwam(
                 &self.cex_exchanges,
-                &Pair(swap.token_in.address, self.utils.quote),
+                Pair(swap.token_in.address, self.utils.quote),
                 &vol,
                 metadata.block_timestamp,
             )?
@@ -257,8 +273,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .global_exchange_price;
 
         let pnl_mid = (
-            &maker_delta * &swap.amount_out * &token_price.0,
-            &taker_delta * &swap.amount_out * &token_price.1,
+            &maker_delta * &swap.amount_out * &token_price,
+            &taker_delta * &swap.amount_out * &token_price,
         );
 
         let quote = FeeAdjustedQuote {
@@ -282,19 +298,24 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
-    ) -> Vec<Option<(Option<MakerTakerWindowVwam>, Option<MakerTaker>)>> {
+    ) -> Vec<(Option<MakerTakerWindowVwam>, Option<MakerTaker>)> {
         dex_swaps
             .iter()
             .map(|swap| {
                 let pair = Pair(swap.token_out.address, swap.token_in.address);
 
-                metadata.cex_trades.as_ref().unwrap().calculate_all_methods(
-                    &self.cex_exchanges,
-                    pair,
-                    &swap.amount_out,
-                    metadata.block_timestamp,
-                    None,
-                )
+                metadata
+                    .cex_trades
+                    .as_ref()
+                    .unwrap()
+                    .lock()
+                    .calculate_all_methods(
+                        &self.cex_exchanges,
+                        pair,
+                        &swap.amount_out,
+                        metadata.block_timestamp,
+                        None,
+                    )
             })
             .collect()
     }

@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
+use parking_lot::Mutex;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
@@ -59,9 +62,10 @@ pub struct Metadata {
     #[as_ref]
     pub block_metadata: BlockMetadata,
     pub cex_quotes:     CexPriceMap,
+    // not a fan but only way todo without unsafe
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
-    pub cex_trades:     Option<CexTradeMap>,
+    pub cex_trades:     Option<Arc<Mutex<CexTradeMap>>>,
 }
 
 impl Metadata {
@@ -88,7 +92,13 @@ impl Metadata {
                                 tracing::debug!("getting eth price");
                                 Some(
                                     trade_map
-                                        .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                        .lock()
+                                        .get_price_vwam(
+                                            &trades,
+                                            &pair,
+                                            &baseline_for_tokeprice,
+                                            None,
+                                        )?
                                         .0
                                         .price,
                                 )
@@ -115,7 +125,7 @@ impl Metadata {
                         CexExchange::Okex,
                         CexExchange::Kucoin,
                     ];
-                    let baseline_for_tokeprice = Rational::from(100);
+                    let baseline_for_tokeprice = Rational::from(1);
                     let pair = Pair(WETH_ADDRESS, quote_token);
 
                     self.cex_trades
@@ -124,7 +134,8 @@ impl Metadata {
                             tracing::debug!("getting eth price");
                             Some(
                                 trade_map
-                                    .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                    .lock()
+                                    .get_price_vwam(&trades, &pair, &baseline_for_tokeprice, None)?
                                     .0
                                     .price,
                             )
@@ -206,6 +217,12 @@ impl BlockMetadata {
         builder_info: Option<BuilderInfo>,
         cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
-        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades }
+        Metadata {
+            block_metadata: self,
+            cex_quotes,
+            dex_quotes,
+            builder_info,
+            cex_trades: cex_trades.map(|c| Arc::new(Mutex::new(c))),
+        }
     }
 }
