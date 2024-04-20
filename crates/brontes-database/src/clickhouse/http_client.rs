@@ -112,13 +112,13 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 block_meta.value.p2p_timestamp,
                 block_meta.value.proposer_fee_recipient,
                 block_meta.value.proposer_mev_reward,
-                max(eth_prices.price.0, eth_prices.price.1),
+                max(eth_prices.price_maker.0, eth_prices.price_maker.1),
                 block_meta.value.private_flow.into_iter().collect(),
             );
             #[cfg(feature = "cex-dex-markout")]
             let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
             #[cfg(not(feature = "cex-dex-markout"))]
-            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None);
+            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
             metadata
         })
     }

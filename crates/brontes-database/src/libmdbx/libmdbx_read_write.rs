@@ -15,7 +15,7 @@ use brontes_types::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{CexPriceMap, CexQuote},
+        cex::{CexPriceMap, FeeAdjustedQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{
             InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
@@ -348,7 +348,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             block_meta.p2p_timestamp,
             block_meta.proposer_fee_recipient,
             block_meta.proposer_mev_reward,
-            max(eth_prices.price.0, eth_prices.price.1),
+            max(eth_prices.price_maker.0, eth_prices.price_maker.1),
             block_meta.private_flow.into_iter().collect(),
         )
         .into_metadata(
@@ -357,6 +357,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
             None,
             #[cfg(feature = "cex-dex-markout")]
             trades,
+            #[cfg(not(feature = "cex-dex-markout"))]
+            None,
         ))
     }
 
@@ -380,7 +382,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-                max(eth_prices.price.0, eth_prices.price.1),
+                max(eth_prices.price_maker.0, eth_prices.price_maker.1),
                 block_meta.private_flow.into_iter().collect(),
             )
             .into_metadata(
@@ -389,6 +391,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 None,
                 #[cfg(feature = "cex-dex-markout")]
                 trades,
+                #[cfg(not(feature = "cex-dex-markout"))]
+                None,
             )
         })
     }
@@ -998,7 +1002,7 @@ impl LibmdbxReadWriter {
     }
 }
 
-pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> CexQuote {
+pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> FeeAdjustedQuote {
     if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
         eth_usdt
     } else {

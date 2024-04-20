@@ -23,7 +23,7 @@ use crate::{
         redefined_types::{malachite::*, primitives::*},
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
-    mev::StatArbDetails,
+    mev::ArbDetails,
     rational_to_u256_fraction, Protocol, ToFloatNearest,
 };
 
@@ -77,6 +77,14 @@ impl NormalizedSwap {
 
     pub fn to_action(&self) -> Actions {
         Actions::Swap(self.clone())
+    }
+
+    pub fn token_in_symbol(&self) -> &str {
+        self.token_in.symbol.as_str()
+    }
+
+    pub fn token_out_symbol(&self) -> &str {
+        self.token_out.symbol.as_str()
     }
 }
 
@@ -220,58 +228,69 @@ impl TryFrom<(Vec<Vec<TxHash>>, Vec<Vec<NormalizedSwap>>)> for ClickhouseDoubleV
 }
 
 #[derive(Default)]
-pub struct ClickhouseStatArbDetails {
-    pub cex_exchange:     String,
-    pub cex_price:        ([u8; 32], [u8; 32]),
-    pub dex_exchange:     String,
-    pub dex_price:        ([u8; 32], [u8; 32]),
-    pub pnl_maker_profit: ([u8; 32], [u8; 32]),
-    pub pnl_taker_profit: ([u8; 32], [u8; 32]),
+pub struct ClickhouseArbDetails {
+    pub cex_exchange:  String,
+    pub cex_price:     ([u8; 32], [u8; 32]),
+    pub dex_exchange:  String,
+    pub dex_price:     ([u8; 32], [u8; 32]),
+    pub pnl_maker_mid: ([u8; 32], [u8; 32]),
+    pub pnl_taker_mid: ([u8; 32], [u8; 32]),
+    pub pnl_maker_ask: ([u8; 32], [u8; 32]),
+    pub pnl_taker_ask: ([u8; 32], [u8; 32]),
 }
 
-impl TryFrom<StatArbDetails> for ClickhouseStatArbDetails {
+impl TryFrom<ArbDetails> for ClickhouseArbDetails {
     type Error = eyre::Report;
 
-    fn try_from(value: StatArbDetails) -> eyre::Result<Self> {
+    fn try_from(value: ArbDetails) -> eyre::Result<Self> {
+        todo!();
+        /*
+
         Ok(Self {
-            cex_exchange:     value.cex_exchange.to_string(),
-            cex_price:        rational_to_u256_fraction(&value.cex_price)?,
-            dex_exchange:     value.dex_exchange.to_string(),
-            dex_price:        rational_to_u256_fraction(&value.dex_price)?,
-            pnl_maker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.maker_profit)?,
-            pnl_taker_profit: rational_to_u256_fraction(&value.pnl_pre_gas.taker_profit)?,
-        })
+            cex_exchange:  value.cex_exchange.to_string(),
+            cex_price:     rational_to_u256_fraction(&value.cex_price)?,
+            dex_exchange:  value.dex_exchange.to_string(),
+            dex_price:     rational_to_u256_fraction(&value.dex_price)?,
+            pnl_maker_mid: rational_to_u256_fraction(&value.pnl_pre_gas.maker_taker_mid.0)?,
+            pnl_taker_mid: rational_to_u256_fraction(&value.pnl_pre_gas.maker_taker_mid.1)?,
+            pnl_maker_ask: rational_to_u256_fraction(&value.pnl_pre_gas.maker_taker_ask.0)?,
+            pnl_taker_ask: rational_to_u256_fraction(&value.pnl_pre_gas.maker_taker_ask.1)?,
+        })*/
     }
 }
 
 #[derive(Default)]
-pub struct ClickhouseVecStatArbDetails {
-    pub cex_exchanges:    Vec<String>,
-    pub cex_price:        Vec<([u8; 32], [u8; 32])>,
-    pub dex_exchange:     Vec<String>,
-    pub dex_price:        Vec<([u8; 32], [u8; 32])>,
-    pub pnl_maker_profit: Vec<([u8; 32], [u8; 32])>,
-    pub pnl_taker_profit: Vec<([u8; 32], [u8; 32])>,
+pub struct ClickhouseVecArbDetails {
+    pub cex_exchanges: Vec<String>,
+    pub cex_price:     Vec<([u8; 32], [u8; 32])>,
+    pub dex_exchange:  Vec<String>,
+    pub dex_price:     Vec<([u8; 32], [u8; 32])>,
+    pub pnl_maker_mid: Vec<([u8; 32], [u8; 32])>,
+    pub pnl_taker_mid: Vec<([u8; 32], [u8; 32])>,
+    pub pnl_maker_ask: Vec<([u8; 32], [u8; 32])>,
+    pub pnl_taker_ask: Vec<([u8; 32], [u8; 32])>,
 }
 
-impl TryFrom<Vec<StatArbDetails>> for ClickhouseVecStatArbDetails {
+impl TryFrom<Vec<ArbDetails>> for ClickhouseVecArbDetails {
     type Error = eyre::Report;
 
-    fn try_from(value: Vec<StatArbDetails>) -> eyre::Result<Self> {
+    fn try_from(value: Vec<ArbDetails>) -> eyre::Result<Self> {
         let mut this = Self::default();
 
         value
             .into_iter()
             .map(|exch| exch.try_into())
-            .collect::<eyre::Result<Vec<ClickhouseStatArbDetails>>>()?
+            .collect::<eyre::Result<Vec<ClickhouseArbDetails>>>()?
             .into_iter()
             .for_each(|val| {
                 this.cex_exchanges.push(val.cex_exchange);
                 this.cex_price.push(val.cex_price);
                 this.dex_exchange.push(val.dex_exchange);
                 this.dex_price.push(val.dex_price);
-                this.pnl_maker_profit.push(val.pnl_maker_profit);
-                this.pnl_taker_profit.push(val.pnl_taker_profit);
+                this.pnl_maker_mid.push(val.pnl_maker_mid);
+                this.pnl_taker_mid.push(val.pnl_taker_mid);
+                this.pnl_maker_ask.push(val.pnl_maker_ask);
+                this.pnl_taker_ask.push(val.pnl_taker_ask);
             });
 
         Ok(this)

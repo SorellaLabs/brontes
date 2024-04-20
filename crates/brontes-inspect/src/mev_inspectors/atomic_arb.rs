@@ -315,7 +315,7 @@ fn is_stable_arb(swaps: &[NormalizedSwap], jump_index: usize) -> bool {
     is_stable_pair(token_sold, token_bought)
 }
 
-fn is_stable_pair(token_in: &str, token_out: &str) -> bool {
+pub fn is_stable_pair(token_in: &str, token_out: &str) -> bool {
     if let Some(stable_type) = get_stable_type(token_in) {
         match stable_type {
             StableType::USD => is_usd_stable(token_out),

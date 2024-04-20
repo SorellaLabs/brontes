@@ -9,7 +9,7 @@ use arrow::{
     record_batch::RecordBatch,
 };
 use brontes_types::{
-    mev::{CexDex, StatArbDetails},
+    mev::{ArbDetails, CexDex},
     ToFloatNearest,
 };
 use itertools::Itertools;
@@ -22,6 +22,8 @@ use crate::parquet::{
 };
 
 pub fn cex_dex_to_record_batch(cex_dex_arbs: Vec<CexDex>) -> Result<RecordBatch, ArrowError> {
+    todo!()
+    /*
     let tx_hash_array = get_string_array_from_owned(
         cex_dex_arbs
             .iter()
@@ -79,10 +81,13 @@ pub fn cex_dex_to_record_batch(cex_dex_arbs: Vec<CexDex>) -> Result<RecordBatch,
             Arc::new(taker_pnl_array),
             Arc::new(gas_details_array),
         ],
-    )
+    )*/
 }
 
-fn get_stat_arb_details_list_array(stat_arb_details_list: Vec<&Vec<StatArbDetails>>) -> ListArray {
+fn get_stat_arb_details_list_array(stat_arb_details_list: Vec<&Vec<ArbDetails>>) -> ListArray {
+    //TODO:
+    todo!();
+    /*
     let fields = stat_arb_details_fields();
     let builder_array = stat_arb_details_struct_builder();
 
@@ -129,6 +134,7 @@ fn get_stat_arb_details_list_array(stat_arb_details_list: Vec<&Vec<StatArbDetail
     }
 
     list_builder.finish()
+    */
 }
 
 fn stat_arb_details_fields() -> Vec<Field> {

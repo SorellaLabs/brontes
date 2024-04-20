@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::redefined_types::primitives::AddressRedefined;
 
-/// Pair has a custom hash impl that will always make sure the pair is ordered
-/// before hashing aswell as on equals
 #[derive(
     Debug,
     Default,
