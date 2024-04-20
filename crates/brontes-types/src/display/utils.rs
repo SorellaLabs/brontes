@@ -6,7 +6,7 @@ use indoc::indoc;
 
 use crate::{
     mev::{Bundle, BundleData},
-    ToFloatNearest,
+    utils::ToFloatNearest,
 };
 
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {

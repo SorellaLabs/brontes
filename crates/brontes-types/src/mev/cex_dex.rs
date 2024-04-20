@@ -7,7 +7,6 @@ use std::{
 
 use ::clickhouse::DbRow;
 use ::serde::ser::{
-    //SerializeStruct,
     Serializer,
 };
 use ahash::HashSet;
@@ -26,9 +25,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
-    Protocol,
-    ToFloatNearest,
-    //rational_to_u256_fraction
+    Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use arrow::{
     array::{
         Array, ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
@@ -14,6 +12,7 @@ use brontes_types::{
     ToFloatNearest,
 };
 use itertools::Itertools;
+use polars::prelude::*;
 
 use crate::parquet::{
     normalized_actions::{
