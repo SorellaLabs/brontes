@@ -206,7 +206,7 @@ impl fmt::Display for ArbDetails {
         write!(
             f,
             "   - PnL pre-gas (Ask Prices): Maker Ask: {}, Taker Ask: {}",
-            self.pnl_pre_gas.maker_taker_ask.0.clone().to_float,
+            self.pnl_pre_gas.maker_taker_ask.0.clone().to_float(),
             self.pnl_pre_gas.maker_taker_ask.1.clone().to_float()
         )
     }
