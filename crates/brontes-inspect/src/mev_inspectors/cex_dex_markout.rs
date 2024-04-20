@@ -798,23 +798,39 @@ impl fmt::Display for ArbSanityCheck {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "\x1b[1m\x1b[4mCex Dex Sanity Check\x1b[0m\x1b[24m")?;
 
-        writeln!(f, "Profitable Exchanges:")?;
-        for (index, (exchange, pnl)) in self.profitable_exchanges.iter().enumerate() {
+        writeln!(f, "Profitable Exchanges Based on Mid Price:")?;
+        for (index, (exchange, pnl)) in self.profitable_exchanges_mid.iter().enumerate() {
             writeln!(f, "    - Exchange {}: {}", index + 1, exchange)?;
             writeln!(f, "        - ARB PNL: {}", pnl)?;
         }
 
-        if self.profitable_cross_exchange {
-            writeln!(f, "Is profitable cross exchange")?;
-        } else {
-            writeln!(f, "Is not profitable cross exchange")?;
+        writeln!(f, "Profitable Exchanges Based on Ask Price:")?;
+        for (index, (exchange, pnl)) in self.profitable_exchanges_ask.iter().enumerate() {
+            writeln!(f, "    - Exchange {}: {}", index + 1, exchange)?;
+            writeln!(f, "        - ARB PNL: {}", pnl)?;
         }
 
-        if self.global_profitability {
-            writeln!(f, "Is globally profitable based on cross exchange VMAP")?;
-        } else {
-            writeln!(f, "Is not globally profitable based on cross exchange VMAP")?;
-        }
+        writeln!(
+            f,
+            "Is profitable cross exchange (Mid Price): {}",
+            if self.profitable_cross_exchange.0 { "Yes" } else { "No" }
+        )?;
+        writeln!(
+            f,
+            "Is profitable cross exchange (Ask Price): {}",
+            if self.profitable_cross_exchange.1 { "Yes" } else { "No" }
+        )?;
+
+        writeln!(
+            f,
+            "Is globally profitable based on cross exchange VMAP (Mid Price): {}",
+            if self.global_profitability.0 { "Yes" } else { "No" }
+        )?;
+        writeln!(
+            f,
+            "Is globally profitable based on cross exchange VMAP (Ask Price): {}",
+            if self.global_profitability.1 { "Yes" } else { "No" }
+        )?;
 
         if self.is_stable_swaps {
             writeln!(f, "Is a stable swap")?;
