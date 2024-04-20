@@ -191,19 +191,23 @@ impl fmt::Display for ArbDetails {
         writeln!(
             f,
             "   - Price on CEX ({:?}): Best Bid: {}, Best Ask: {}",
-            self.cex_exchange, self.best_bid_maker, self.best_ask_maker
+            self.cex_exchange,
+            self.best_bid_maker.clone().to_float(),
+            self.best_ask_maker.clone().to_float()
         )?;
         writeln!(f, "   - Price on DEX {}: {}", self.dex_exchange, self.dex_price)?;
         writeln!(f, "   - Amount: {}", self.dex_amount)?;
         writeln!(
             f,
             "   - PnL pre-gas (Mid Prices): Maker Mid: {}, Taker Mid: {}",
-            self.pnl_pre_gas.maker_taker_mid.0, self.pnl_pre_gas.maker_taker_mid.1
+            self.pnl_pre_gas.maker_taker_mid.0.clone().to_float(),
+            self.pnl_pre_gas.maker_taker_mid.1.clone().to_float()
         )?;
         write!(
             f,
             "   - PnL pre-gas (Ask Prices): Maker Ask: {}, Taker Ask: {}",
-            self.pnl_pre_gas.maker_taker_ask.0, self.pnl_pre_gas.maker_taker_ask.1
+            self.pnl_pre_gas.maker_taker_ask.0.clone().to_float,
+            self.pnl_pre_gas.maker_taker_ask.1.clone().to_float()
         )
     }
 }
