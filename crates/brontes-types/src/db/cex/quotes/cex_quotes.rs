@@ -446,7 +446,7 @@ type CexPriceMapDeser =
 
 #[allow(dead_code)]
 impl Serialize for CexPriceMap {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -479,7 +479,7 @@ impl Serialize for CexPriceMap {
 
 #[allow(dead_code)]
 impl<'de> serde::Deserialize<'de> for CexPriceMap {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

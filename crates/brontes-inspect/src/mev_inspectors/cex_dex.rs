@@ -58,7 +58,6 @@ use brontes_types::{
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use colored::Colorize;
 use malachite::{
     num::basic::traits::{Two, Zero},
     Rational,
