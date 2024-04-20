@@ -34,7 +34,7 @@ macro_rules! mev_composability {
     };
 }
 
-pub type ComposeFunction = Box<dyn Fn(Vec<Bundle>) -> Bundle + Send + Sync>;
+pub type ComposeFunction = Box<dyn Fn(Vec<Bundle>) -> Option<Bundle> + Send + Sync>;
 
 pub fn get_compose_fn(mev_type: MevType) -> ComposeFunction {
     match mev_type {
@@ -96,6 +96,6 @@ define_mev_precedence!(
     Unknown, SearcherTx, CexDex => AtomicArb;
     Unknown, SearcherTx, AtomicArb, CexDex => Liquidation;
     Unknown, SearcherTx, AtomicArb, CexDex => Sandwich;
-    Unknown, SearcherTx, AtomicArb, CexDex => Jit;
-    Unknown, SearcherTx, AtomicArb, CexDex, Sandwich, Jit => JitSandwich;
+    Unknown, SearcherTx, AtomicArb, CexDex, Sandwich => Jit;
+    Unknown, SearcherTx, AtomicArb, CexDex, Jit, Sandwich => JitSandwich;
 );
