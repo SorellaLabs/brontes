@@ -43,7 +43,7 @@ impl<'a> PairTradeWalker<'a> {
             };
 
             // add lower
-            if *lower_idx > 0 {
+            if *lower_idx > 0 && *lower_idx <= trades.len() {
                 loop {
                     let next_trade = &trades[*lower_idx - 1];
                     if next_trade.timestamp >= self.min_timestamp {
