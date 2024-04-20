@@ -726,7 +726,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             .to_float()
     )?;
 
-    writeln!(f, "{}", "  - Per Exchange PnL:".bold().underline().purple())?;
+    writeln!(f, "  - {}", "Per Exchange PnL:".bold().underline().purple())?;
     for (exchange, pnl) in &cex_dex_data.per_exchange_pnl {
         writeln!(f, "    - {}:", exchange.to_string().bold().underline().green())?;
         writeln!(
