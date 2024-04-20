@@ -195,21 +195,22 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
             })
         });
 
-        let quotes_vwam: Vec<Option<FeeAdjustedQuote>> = transposed_quotes
-            .iter()
-            .enumerate()
-            .map(|(index, row)| {
-                let some_quotes: Vec<&FeeAdjustedQuote> =
-                    row.iter().filter_map(|quote| quote.as_ref()).collect();
-                if some_quotes.is_empty() {
-                    return None;
-                } else {
+        let mut quotes_vwam = Vec::new();
+
+        for (index, quotes) in transposed_quotes.iter().enumerate() {
+            let some_quotes: Vec<&FeeAdjustedQuote> =
+                quotes.iter().filter_map(|quote| quote.as_ref()).collect();
+
+            if some_quotes.is_empty() {
+                return None;
+            } else {
+                quotes_vwam.push(
                     metadata
                         .cex_quotes
-                        .get_volume_weighted_quote(&some_quotes, &dex_swaps[index])
-                }
-            })
-            .collect();
+                        .get_volume_weighted_quote(&some_quotes, &dex_swaps[index]),
+                );
+            }
+        }
 
         let global_vwam_cex_dex =
             self.detect_cex_dex_opportunity(&dex_swaps, quotes_vwam, metadata, tx_hash);
