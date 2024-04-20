@@ -205,7 +205,10 @@ impl<'a> TimeWindowTrades<'a> {
         let mut exchange_vxp = FastHashMap::default();
 
         while trade_volume_global.le(vol) {
-            for trade in walker.get_trades_for_window() {
+            let trades = walker.get_trades_for_window();
+            tracing::info!(?pair, trade_am = trades.len(), "trades");
+
+            for trade in trades {
                 let trade = trade.get();
                 let (m_fee, t_fee) = trade.exchange.fees();
                 let weight = calcuate_weight(timestamp, trade.timestamp);
