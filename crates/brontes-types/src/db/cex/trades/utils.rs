@@ -38,7 +38,7 @@ impl<'a> PairTradeWalker<'a> {
         let mut trade_res: Vec<CexTradePtr<'a>> = Vec::with_capacity(420);
 
         for (exchange, trades) in &self.trades {
-            let Some((lower_idx, upper_idx)) = self.exchange_ptrs.get_mut(&exchange) else {
+            let Some((lower_idx, upper_idx)) = self.exchange_ptrs.get_mut(exchange) else {
                 continue
             };
 

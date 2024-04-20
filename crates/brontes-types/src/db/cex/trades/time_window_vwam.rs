@@ -208,7 +208,7 @@ impl<'a> TimeWindowTrades<'a> {
             for trade in walker.get_trades_for_window() {
                 let trade = trade.get();
                 let (m_fee, t_fee) = trade.exchange.fees();
-                let weight = calcuate_weight(timestamp as u64, trade.timestamp as u64);
+                let weight = calcuate_weight(timestamp, trade.timestamp);
 
                 let (vxp_maker, vxp_taker, trade_volume_weight, trade_volume_ex) = exchange_vxp
                     .entry(trade.exchange)

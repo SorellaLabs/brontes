@@ -1,25 +1,10 @@
-use std::sync::Arc;
-
 use arrow::{
-    array::{
-        Array, ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
-    },
-    datatypes::{DataType, Field, Schema},
+    array::{ArrayBuilder, Float64Builder, ListArray, StringBuilder},
+    datatypes::{DataType, Field},
     error::ArrowError,
     record_batch::RecordBatch,
 };
-use brontes_types::{
-    mev::{ArbDetails, CexDex},
-    ToFloatNearest,
-};
-use itertools::Itertools;
-
-use crate::parquet::{
-    normalized_actions::{
-        gas_details::get_gas_details_array, swaps::get_normalized_swap_list_array,
-    },
-    utils::{build_float64_array, get_string_array_from_owned},
-};
+use brontes_types::mev::{ArbDetails, CexDex};
 
 pub fn cex_dex_to_record_batch(cex_dex_arbs: Vec<CexDex>) -> Result<RecordBatch, ArrowError> {
     todo!()

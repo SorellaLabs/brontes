@@ -4,10 +4,7 @@ use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 
-use crate::{
-    mev::{Bundle, BundleData},
-    ToFloatNearest,
-};
+use crate::mev::{Bundle, BundleData};
 
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
@@ -670,20 +667,20 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(
         f,
         "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data.global_vmap_pnl.maker_taker_mid.0.to_string(),
-        cex_dex_data.global_vmap_pnl.maker_taker_mid.1.to_string(),
-        cex_dex_data.global_vmap_pnl.maker_taker_ask.0.to_string(),
-        cex_dex_data.global_vmap_pnl.maker_taker_ask.1.to_string()
+        cex_dex_data.global_vmap_pnl.maker_taker_mid.0,
+        cex_dex_data.global_vmap_pnl.maker_taker_mid.1,
+        cex_dex_data.global_vmap_pnl.maker_taker_ask.0,
+        cex_dex_data.global_vmap_pnl.maker_taker_ask.1
     )?;
 
     writeln!(f, "  - {}: Optimal Route PnL", "PnL".bright_blue())?;
     writeln!(
         f,
         "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data.optimal_route_pnl.maker_taker_mid.0.to_string(),
-        cex_dex_data.optimal_route_pnl.maker_taker_mid.1.to_string(),
-        cex_dex_data.optimal_route_pnl.maker_taker_ask.0.to_string(),
-        cex_dex_data.optimal_route_pnl.maker_taker_ask.1.to_string()
+        cex_dex_data.optimal_route_pnl.maker_taker_mid.0,
+        cex_dex_data.optimal_route_pnl.maker_taker_mid.1,
+        cex_dex_data.optimal_route_pnl.maker_taker_ask.0,
+        cex_dex_data.optimal_route_pnl.maker_taker_ask.1
     )?;
 
     writeln!(f, "  - Per Exchange PnL:")?;
@@ -692,10 +689,10 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             f,
             "    {}: Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
             exchange,
-            pnl.maker_taker_mid.0.to_string(),
-            pnl.maker_taker_mid.1.to_string(),
-            pnl.maker_taker_ask.0.to_string(),
-            pnl.maker_taker_ask.1.to_string()
+            pnl.maker_taker_mid.0,
+            pnl.maker_taker_mid.1,
+            pnl.maker_taker_ask.0,
+            pnl.maker_taker_ask.1
         )?;
     }
 
