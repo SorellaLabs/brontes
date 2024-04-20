@@ -265,7 +265,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .lock()
             .calculate_time_window_vwam(
                 &self.cex_exchanges,
-                Pair(swap.token_in.address, self.utils.quote),
+                Pair(self.utils.quote, swap.token_in.address),
                 &vol,
                 metadata.block_timestamp * 1000000,
             )?
@@ -312,7 +312,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .calculate_all_methods(
                         &self.cex_exchanges,
                         pair,
-                        &swap.amount_in,
+                        &swap.amount_out,
                         metadata.block_timestamp * 1000000,
                         None,
                     )
