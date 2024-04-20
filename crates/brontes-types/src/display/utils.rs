@@ -671,7 +671,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     writeln!(f, "  - Per Exchange PnL:")?;
     for (exchange, pnl) in &cex_dex_data.per_exchange_pnl {
-        writeln!(f, "    {}: ", exchange, pnl)?;
+        writeln!(f, "    {}: {}", exchange, pnl)?;
     }
 
     // Display swaps and corresponding ArbDetails
