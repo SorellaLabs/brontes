@@ -265,7 +265,6 @@ impl<'a> TimeWindowTrades<'a> {
 
         for (ex, (vxp_maker, vxp_taker, trade_vol_weight, trade_vol)) in exchange_vxp {
             if trade_vol_weight == Rational::ZERO {
-                tracing::warn!("no trade vol weight");
                 continue
             }
             let maker_price = vxp_maker / &trade_vol_weight;
@@ -279,7 +278,6 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if trade_volume_global == Rational::ZERO {
-            tracing::warn!("no trade vol global weight");
             return None
         }
 
@@ -294,7 +292,6 @@ impl<'a> TimeWindowTrades<'a> {
             exchange_price_with_volume_direct: taker,
             global_exchange_price:             global_taker,
         };
-        tracing::info!(?maker_ret, ?taker_ret);
 
         Some((maker_ret, taker_ret))
     }
@@ -328,17 +325,10 @@ impl<'a> TimeWindowTrades<'a> {
 fn calcuate_weight(block_time: u64, trade_time: u64) -> Rational {
     let pre = trade_time < block_time;
 
-    let res = Rational::try_from_float_simplest({
-        let floated = if pre {
-            E.powf(PRE_DECAY * ((block_time - trade_time) / 1_000_000) as f64)
-        } else {
-            E.powf(POST_DECAY * ((trade_time - block_time) / 1_000_000) as f64)
-        };
-        tracing::info!(?block_time, ?trade_time, weight = floated);
-        floated
+    Rational::try_from_float_simplest(if pre {
+        E.powf(PRE_DECAY * ((block_time - trade_time) / 1_000_000) as f64)
+    } else {
+        E.powf(POST_DECAY * ((trade_time - block_time) / 1_000_000) as f64)
     })
-    .unwrap();
-
-    tracing::info!(?block_time, ?trade_time, weight = res.clone().to_float());
-    res
+    .unwrap()
 }

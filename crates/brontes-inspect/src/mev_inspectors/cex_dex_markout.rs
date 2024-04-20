@@ -302,7 +302,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         dex_swaps
             .iter()
             .map(|swap| {
-                let pair = Pair(swap.token_out.address, swap.token_in.address);
+                let pair = Pair(swap.token_in.address, swap.token_out.address);
 
                 metadata
                     .cex_trades
