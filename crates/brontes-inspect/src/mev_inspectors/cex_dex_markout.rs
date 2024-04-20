@@ -343,6 +343,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) {
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
+        tracing::info!(?gas_cost);
 
         cex_dex.adjust_for_gas_cost(&gas_cost);
 
