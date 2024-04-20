@@ -94,10 +94,6 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     }
 }
 
-// TODO: Instead of doing instantaneous highest quote on single exchange
-//TODO: Take all quotes 0 +.5 block time and weight by exchange + by best bid &
-// ask amount
-
 impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
@@ -146,6 +142,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
                     .collect_action_vec(Actions::try_swaps_merged);
 
+                // Early return to filter out triangular arbitrage
                 if self.is_triangular_arb(&dex_swaps) {
                     return None
                 }
@@ -239,7 +236,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ///
     /// # Arguments
     ///
-    /// * `swap` - The swaps to analyze.
+    /// * `dex_swaps` - The DEX swaps to analyze.
     /// * `metadata` - Combined metadata for additional context in analysis.
     /// * `cex_prices` - Fee adjusted CEX quotes for the corresponding swaps.
     ///
@@ -249,18 +246,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     /// otherwise `None`.
     pub fn detect_cex_dex_opportunity(
         &self,
-        swaps: &[NormalizedSwap],
+        dex_swaps: &[NormalizedSwap],
         cex_prices: Vec<Option<FeeAdjustedQuote>>,
         metadata: &Metadata,
         tx_hash: &TxHash,
     ) -> Option<PossibleCexDex> {
         PossibleCexDex::from_exchange_legs(
-            swaps
+            dex_swaps
                 .iter()
                 .zip(cex_prices)
-                .map(|(swap, quote)| {
+                .map(|(dex_swap, quote)| {
                     if let Some(q) = quote {
-                        self.profit_classifier(swap, q, metadata, tx_hash)
+                        self.profit_classifier(dex_swap, q, metadata, tx_hash)
                     } else {
                         None
                     }
@@ -269,31 +266,30 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         )
     }
 
-    /// For a given swap & CEX quote, calculates the potential profit from
+    /// For a given DEX swap & CEX quote, calculates the potential profit from
     /// buying on DEX and selling on CEX.
     fn profit_classifier(
         &self,
-        swap: &NormalizedSwap,
+        dex_swap: &NormalizedSwap,
         cex_quote: FeeAdjustedQuote,
         metadata: &Metadata,
         tx_hash: &TxHash,
     ) -> Option<ExchangeLeg> {
         // If the price difference between the DEX and CEX is greater than 2x, the
-        // quote is likely invalid
-
-        let swap_rate = swap.swap_rate();
-        let smaller = min(&swap_rate, &cex_quote.price_maker.1);
-        let larger = max(&swap_rate, &cex_quote.price_maker.1);
+        // quote is likely invalid.
+        let dex_swap_rate = dex_swap.swap_rate();
+        let smaller = min(&dex_swap_rate, &cex_quote.price_maker.1);
+        let larger = max(&dex_swap_rate, &cex_quote.price_maker.1);
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
-                swap.token_in_symbol(),
-                swap.token_out_symbol(),
+                dex_swap.token_in_symbol(),
+                dex_swap.token_out_symbol(),
                 &cex_quote.exchange,
-                swap.swap_rate().clone().to_float(),
+                dex_swap.swap_rate().clone().to_float(),
                 cex_quote.price_maker.1.clone().to_float(),
-                &swap.token_in.address,
-                &swap.token_out.address,
+                &dex_swap.token_in.address,
+                &dex_swap.token_out.address,
             );
 
             return None;
@@ -303,11 +299,11 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         // and selling on CEX.
         let maker_taker_mid = cex_quote.maker_taker_mid();
 
-        let maker_mid_delta = &maker_taker_mid.0 - swap.swap_rate();
-        let taker_mid_delta = &maker_taker_mid.1 - swap.swap_rate();
+        let maker_mid_delta = &maker_taker_mid.0 - &dex_swap_rate;
+        let taker_mid_delta = &maker_taker_mid.1 - &dex_swap_rate;
 
         let token_price = metadata.cex_quotes.get_quote_direct_or_via_intermediary(
-            &Pair(swap.token_in.address, self.utils.quote),
+            &Pair(dex_swap.token_in.address, self.utils.quote),
             &cex_quote.exchange,
             None,
             Some(tx_hash),
@@ -316,18 +312,18 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         let token_maker_taker_mid = token_price.maker_taker_mid();
 
         let pnl_mid = (
-            &maker_mid_delta * &swap.amount_out * &token_maker_taker_mid.0,
-            &taker_mid_delta * &swap.amount_out * &token_maker_taker_mid.1,
+            &maker_mid_delta * &dex_swap.amount_out * &token_maker_taker_mid.0,
+            &taker_mid_delta * &dex_swap.amount_out * &token_maker_taker_mid.1,
         );
 
-        let maker_ask_delta = &cex_quote.price_maker.1 - swap.swap_rate();
-        let taker_ask_delta = &cex_quote.price_taker.1 - swap.swap_rate();
+        let maker_ask_delta = &cex_quote.price_maker.1 - &dex_swap_rate;
+        let taker_ask_delta = &cex_quote.price_taker.1 - &dex_swap_rate;
 
         let token_maker_taker_ask = token_price.maker_taker_ask();
 
         let pnl_ask = (
-            &maker_ask_delta * &swap.amount_out * &token_maker_taker_ask.0,
-            &taker_ask_delta * &swap.amount_out * &token_maker_taker_ask.1,
+            &maker_ask_delta * &dex_swap.amount_out * &token_maker_taker_ask.0,
+            &taker_ask_delta * &dex_swap.amount_out * &token_maker_taker_ask.1,
         );
 
         Some(ExchangeLeg {
@@ -347,22 +343,22 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     ) -> Vec<Option<FeeAdjustedQuote>> {
         dex_swaps
             .iter()
-            .map(|swap| {
-                let pair = Pair(swap.token_out.address, swap.token_in.address);
+            .map(|dex_swap| {
+                let pair = Pair(dex_swap.token_out.address, dex_swap.token_in.address);
 
                 metadata
                     .cex_quotes
                     .get_quote_direct_or_via_intermediary(
                         &pair,
                         exchange,
-                        Some(swap),
+                        Some(dex_swap),
                         Some(tx_hash),
                     )
                     .or_else(|| {
                         debug!(
                             "No CEX quote found for pair: {}, {} at exchange: {:?}",
-                            swap.token_in_symbol(),
-                            swap.token_out_symbol(),
+                            dex_swap.token_in_symbol(),
+                            dex_swap.token_out_symbol(),
                             exchange
                         );
                         None
@@ -374,19 +370,6 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
     /// Accounts for gas costs in the calculation of potential arbitrage
     /// profits. This function calculates the final pnl for the transaction by
     /// subtracting gas costs from the total potential arbitrage profits.
-    ///
-    /// # Arguments
-    /// * `swaps_with_profit_by_exchange` - A vector of `PossibleCexDexLeg`
-    ///   instances to be analyzed.
-    /// * `gas_details` - Details of the gas costs associated with the
-    ///   transaction.
-    /// * `metadata` - Shared metadata providing additional context and price
-    ///   data.
-    ///
-    /// # Returns
-    /// A `PossibleCexDex` instance representing the finalized arbitrage
-    /// opportunity after accounting for gas costs.
-
     fn gas_accounting(
         &self,
         cex_dex: &mut CexDexProcessing,
@@ -425,37 +408,42 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
         info: &TxInfo,
     ) -> Option<(f64, BundleData)> {
         let sanity_check_arb = possible_cex_dex.arb_sanity_check();
+        let is_profitable_outlier = sanity_check_arb.is_profitable_outlier();
 
-        if !sanity_check_arb.profitable_exchanges.is_empty() {
-            return possible_cex_dex.into_bundle(info);
-        }
+        let is_cex_dex_bot_with_significant_activity =
+            info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 2);
+        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDex);
 
-        let has_outlier_pnl = sanity_check_arb.profitable_exchanges.len() < 2
-            && !sanity_check_arb.profitable_exchanges.is_empty()
-            && sanity_check_arb.profitable_exchanges[0].1.maker_taker_ask.1 > HIGH_PROFIT_THRESHOLD
-            && (sanity_check_arb.profitable_exchanges[0].0 == CexExchange::Kucoin
-                || sanity_check_arb.profitable_exchanges[0].0 == CexExchange::Okex);
+        let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges_ask.len() == 1
+            || sanity_check_arb.profitable_exchanges_mid.len() == 1;
 
-        let has_positive_exchange_pnl = !sanity_check_arb.profitable_exchanges.is_empty();
+        let should_include_based_on_pnl = sanity_check_arb.global_profitability.0
+            || sanity_check_arb.global_profitability.1
+            || sanity_check_arb.profitable_exchanges_ask.len() > 2
+            || sanity_check_arb.profitable_exchanges_mid.len() > 2;
 
-        if has_positive_exchange_pnl && !has_outlier_pnl
-            || (!info.is_classified
-                && (info.gas_details.coinbase_transfer.is_some()
-                    && info.is_private
-                    && info.is_searcher_of_type_with_count_threshold(
-                        MevType::CexDex,
-                        FILTER_THRESHOLD,
-                    )
-                    || info.is_cex_dex_call))
-            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 5)
-                && sanity_check_arb.profitable_cross_exchange
-                && !sanity_check_arb.is_stable_swaps
-            || info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 3)
-                && has_outlier_pnl
-                && !sanity_check_arb.is_stable_swaps
-            || info.is_labelled_searcher_of_type(MevType::CexDex)
-            || sanity_check_arb.global_profitability
-                && sanity_check_arb.profitable_exchanges.len() > 3
+        let is_outlier_but_not_stable_swaps =
+            is_profitable_outlier && !sanity_check_arb.is_stable_swaps;
+
+        let is_profitable_one_exchange_but_not_stable_swaps =
+            is_profitable_on_one_exchange && !sanity_check_arb.is_stable_swaps;
+
+        let tx_attributes_meet_cex_dex_criteria = !info.is_classified
+            && info.is_private
+            && (info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD)
+                || info
+                    .contract_type
+                    .as_ref()
+                    .map_or(false, |contract_type| contract_type.could_be_mev_contract()));
+
+        let is_cex_dex_based_on_historical_activity =
+            is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
+
+        if should_include_based_on_pnl
+            || is_cex_dex_based_on_historical_activity
+            || tx_attributes_meet_cex_dex_criteria
+            || is_profitable_one_exchange_but_not_stable_swaps
+            || is_outlier_but_not_stable_swaps
         {
             possible_cex_dex.into_bundle(info)
         } else {
@@ -465,7 +453,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
 
     /// Filters out triangular arbitrage
     pub fn is_triangular_arb(&self, dex_swaps: &[NormalizedSwap]) -> bool {
-        // Not enough swaps to form a cycle, thus cannot be arbitrage.
+        // Not enough swaps to form a cycle, thus cannot be an atomic triangular
+        // arbitrage.
         if dex_swaps.len() < 2 {
             return false
         }
@@ -662,26 +651,39 @@ impl CexDexProcessing {
     }
 
     fn arb_sanity_check(&self) -> ArbSanityCheck {
-        let profitable_exchanges: Vec<(CexExchange, ArbPnl)> = self
+        let (profitable_exchanges_mid, profitable_exchanges_ask) = self
             .per_exchange_pnl
             .iter()
             .filter_map(|p| p.as_ref())
-            .filter(|p| {
-                p.aggregate_pnl.maker_taker_mid.1 > Rational::ZERO
-                    || p.aggregate_pnl.maker_taker_ask.1 > Rational::ZERO
-            })
-            .map(|p| (p.arb_legs[0].as_ref().unwrap().cex_quote.exchange, p.aggregate_pnl.clone()))
-            .collect();
+            .fold((Vec::new(), Vec::new()), |(mut mid, mut ask), p| {
+                if p.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO {
+                    mid.push((
+                        p.arb_legs[0].as_ref().unwrap().cex_quote.exchange,
+                        p.aggregate_pnl.clone(),
+                    ));
+                }
+                if p.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO {
+                    ask.push((
+                        p.arb_legs[0].as_ref().unwrap().cex_quote.exchange,
+                        p.aggregate_pnl.clone(),
+                    ));
+                }
+                (mid, ask)
+            });
 
-        let profitable_cross_exchange = self
-            .max_profit
-            .as_ref()
-            .unwrap()
-            .aggregate_pnl
-            .maker_taker_mid
-            .0
-            > Rational::ZERO
-            || self
+        let profitable_cross_exchange = {
+            let mid_price_profitability = self
+                .max_profit
+                .as_ref()
+                .expect(
+                    "Max profit should always exist, CexDex inspector should have returned early",
+                )
+                .aggregate_pnl
+                .maker_taker_mid
+                .0
+                > Rational::ZERO;
+
+            let ask_price_profitability = self
                 .max_profit
                 .as_ref()
                 .unwrap()
@@ -690,15 +692,24 @@ impl CexDexProcessing {
                 .0
                 > Rational::ZERO;
 
-        let global_profitability = self.global_vmam_cex_dex.as_ref().map_or(false, |global| {
-            global.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO
-                || global.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO
-        });
+            (mid_price_profitability, ask_price_profitability)
+        };
+
+        let global_profitability =
+            self.global_vmam_cex_dex
+                .as_ref()
+                .map_or((false, false), |global| {
+                    (
+                        global.aggregate_pnl.maker_taker_mid.0 > Rational::ZERO,
+                        global.aggregate_pnl.maker_taker_ask.0 > Rational::ZERO,
+                    )
+                });
 
         let is_stable_swaps = self.is_stable_swaps();
 
         ArbSanityCheck {
-            profitable_exchanges,
+            profitable_exchanges_mid,
+            profitable_exchanges_ask,
             profitable_cross_exchange,
             global_profitability,
             is_stable_swaps,
@@ -714,33 +725,69 @@ impl CexDexProcessing {
 
 #[derive(Debug, Default)]
 pub struct ArbSanityCheck {
-    pub profitable_exchanges:      Vec<(CexExchange, ArbPnl)>,
-    pub profitable_cross_exchange: bool,
-    pub global_profitability:      bool,
+    pub profitable_exchanges_mid:  Vec<(CexExchange, ArbPnl)>,
+    pub profitable_exchanges_ask:  Vec<(CexExchange, ArbPnl)>,
+    pub profitable_cross_exchange: (bool, bool),
+    pub global_profitability:      (bool, bool),
     pub is_stable_swaps:           bool,
+}
+
+impl ArbSanityCheck {
+    /// Determines if the CEX-DEX arbitrage is a highly profitable outlier.
+    ///
+    /// This function checks if the arbitrage is only profitable on a single
+    /// exchange based on the ask price, and if the profit on this exchange
+    /// exceeds a high profit threshold (e.g., $10,000). Additionally, it
+    /// verifies if the exchange is either Kucoin or Okex.
+    ///
+    /// Returns `true` if all conditions are met, indicating a highly profitable
+    /// outlier.
+    pub fn is_profitable_outlier(&self) -> bool {
+        !self.profitable_exchanges_ask.is_empty()
+            && self.profitable_exchanges_ask.len() == 1
+            && self.profitable_exchanges_ask[0].1.maker_taker_ask.1 > HIGH_PROFIT_THRESHOLD
+            && (self.profitable_exchanges_ask[0].0 == CexExchange::Kucoin
+                || self.profitable_exchanges_ask[0].0 == CexExchange::Okex)
+    }
 }
 
 impl fmt::Display for ArbSanityCheck {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "\x1b[1m\x1b[4mCex Dex Sanity Check\x1b[0m\x1b[24m")?;
 
-        writeln!(f, "Profitable Exchanges:")?;
-        for (index, (exchange, pnl)) in self.profitable_exchanges.iter().enumerate() {
+        writeln!(f, "Profitable Exchanges Based on Mid Price:")?;
+        for (index, (exchange, pnl)) in self.profitable_exchanges_mid.iter().enumerate() {
             writeln!(f, "    - Exchange {}: {}", index + 1, exchange)?;
             writeln!(f, "        - ARB PNL: {}", pnl)?;
         }
 
-        if self.profitable_cross_exchange {
-            writeln!(f, "Is profitable cross exchange")?;
-        } else {
-            writeln!(f, "Is not profitable cross exchange")?;
+        writeln!(f, "Profitable Exchanges Based on Ask Price:")?;
+        for (index, (exchange, pnl)) in self.profitable_exchanges_ask.iter().enumerate() {
+            writeln!(f, "    - Exchange {}: {}", index + 1, exchange)?;
+            writeln!(f, "        - ARB PNL: {}", pnl)?;
         }
 
-        if self.global_profitability {
-            writeln!(f, "Is globally profitable based on cross exchange VMAP")?;
-        } else {
-            writeln!(f, "Is not globally profitable based on cross exchange VMAP")?;
-        }
+        writeln!(
+            f,
+            "Is profitable cross exchange (Mid Price): {}",
+            if self.profitable_cross_exchange.0 { "Yes" } else { "No" }
+        )?;
+        writeln!(
+            f,
+            "Is profitable cross exchange (Ask Price): {}",
+            if self.profitable_cross_exchange.1 { "Yes" } else { "No" }
+        )?;
+
+        writeln!(
+            f,
+            "Is globally profitable based on cross exchange VMAP (Mid Price): {}",
+            if self.global_profitability.0 { "Yes" } else { "No" }
+        )?;
+        writeln!(
+            f,
+            "Is globally profitable based on cross exchange VMAP (Ask Price): {}",
+            if self.global_profitability.1 { "Yes" } else { "No" }
+        )?;
 
         if self.is_stable_swaps {
             writeln!(f, "Is a stable swap")?;

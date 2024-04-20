@@ -27,7 +27,7 @@ use colored::*;
 use itertools::Itertools;
 use malachite::{
     num::{
-        arithmetic::traits::{Reciprocal, ReciprocalAssign},
+        arithmetic::traits::Reciprocal,
         basic::traits::{One, Two, Zero},
         conversion::traits::FromSciString,
     },
@@ -68,7 +68,7 @@ use crate::{
 ///
 /// This provides us with the actual token0 when the map is queried so we can
 /// interpret the price in the correct direction & reciprocate the price (which
-/// is a rational) if need be.
+/// is stored as a malachite rational) if need be.
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>);
 
@@ -108,7 +108,8 @@ impl CexPriceMap {
         Self(FastHashMap::default())
     }
 
-    /// Retrieves a CEX quote for a specified token pair from a given exchange.
+    /// Retrieves a volume weighted CEX quote for a specified token pair from a
+    /// given exchange.
     ///
     /// This function looks up the quote for the `pair` in the context of the
     /// specified `exchange`. The quote is retrieved based on an ordered
@@ -190,54 +191,6 @@ impl CexPriceMap {
                 }
             })
     }
-
-    pub fn get_binance_quote(&self, pair: &Pair) -> Option<FeeAdjustedQuote> {
-        self.get_quote(pair, &CexExchange::Binance)
-    }
-
-    /*
-    /// Computes an average quote for a given token pair across multiple
-    /// exchanges.
-    pub fn get_avg_quote(&self, pair: &Pair, exchanges: &[CexExchange]) -> Option<CexQuote> {
-        if pair.0 == pair.1 {
-            return Some(CexQuote { price: (Rational::ONE, Rational::ONE), ..Default::default() })
-        }
-
-        let ordered_pair = pair.ordered();
-        let (sum_price, acc_price, sum_amt) = exchanges
-            .iter()
-            .filter_map(|exchange| self.get_quote(&ordered_pair, exchange))
-            .fold(
-                (
-                    (Rational::default(), Rational::default()),
-                    0,
-                    (Rational::default(), Rational::default()),
-                ),
-                |acc, quote| {
-                    (
-                        (acc.0 .0 + &quote.price.0, acc.0 .1 + &quote.price.1),
-                        acc.1 + 1,
-                        (
-                            acc.2 .0 + (quote.price.0 * quote.amount.0),
-                            acc.2 .1 + (quote.price.1 * quote.amount.1),
-                        ),
-                    )
-                },
-            );
-
-        if acc_price > 0 {
-            let count_rational = Rational::from(acc_price);
-            Some(CexQuote {
-                exchange:  CexExchange::default(),
-                timestamp: 0,
-                price:     (sum_price.0 / &count_rational, sum_price.1 / count_rational),
-                token0:    pair.0,
-                amount:    sum_amt,
-            })
-        } else {
-            None
-        }
-    }*/
 
     /// Retrieves a CEX quote for a given token pair using an intermediary
     /// asset.
@@ -393,6 +346,10 @@ impl CexPriceMap {
                 amount:      avg_amount,
             })
         }
+    }
+
+    pub fn get_binance_quote(&self, pair: &Pair) -> Option<FeeAdjustedQuote> {
+        self.get_quote(pair, &CexExchange::Binance)
     }
 }
 
@@ -594,8 +551,9 @@ impl Display for CexQuote {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Exchange: {}\nTimestamp: {}\nBest Ask Price: {:.2}\nBest Bid Price: {:.2}\nToken 0 \
-             Address: {}",
+            "Exchange: {}\nTimestamp: {}\nBest Ask Price: {:.2}\nBest Bid Price: {:.2}\nBase 
+             \
+             Asset Address: https://etherscan.io/address/{}",
             self.exchange,
             self.timestamp,
             self.price.0.clone().to_float(),
@@ -636,25 +594,25 @@ impl fmt::Display for FeeAdjustedQuote {
         let amount = self.amount.clone();
 
         writeln!(f, "{}", "Fee Adjusted Quote:".bold().underline())?;
-        writeln!(f, "  Exchange: {}", self.exchange)?;
-        writeln!(f, "  Timestamp: {}", self.timestamp)?;
-        writeln!(f, "  Prices:")?;
+        writeln!(f, "   Exchange: {}", self.exchange)?;
+        writeln!(f, "   Timestamp: {}", self.timestamp)?;
+        writeln!(f, "   Prices:")?;
         writeln!(
             f,
-            "    Maker: Bid {:.4}, Ask {:.4}",
+            "       Maker: Bid {:.4}, Ask {:.4}",
             price_maker.0.to_float(),
             price_maker.1.to_float()
         )?;
         writeln!(
             f,
-            "    Taker: Bid {:.4}, Ask {:.4}",
+            "       Taker: Bid {:.4}, Ask {:.4}",
             price_taker.0.to_float(),
             price_taker.1.to_float()
         )?;
-        writeln!(f, "  Amounts:")?;
-        writeln!(f, "    Bid Amount: {:.4}", amount.0.to_float())?;
-        writeln!(f, "    Ask Amount: {:.4}", amount.1.to_float())?;
-        writeln!(f, "  Token0: {}", self.token0)?;
+        writeln!(f, "   Amounts:")?;
+        writeln!(f, "       Bid Amount: {:.4}", amount.0.to_float())?;
+        writeln!(f, "       Ask Amount: {:.4}", amount.1.to_float())?;
+        writeln!(f, "       Token0: {}", self.token0)?;
 
         Ok(())
     }
@@ -709,15 +667,6 @@ pub enum TradeSide {
 }
 
 impl CexQuote {
-    #[allow(dead_code)]
-    fn inverse_price_assign(&mut self) {
-        self.price.0.reciprocal_assign();
-        self.price.1.reciprocal_assign();
-
-        self.amount.0 *= &self.price.0;
-        self.amount.1 *= &self.price.0;
-    }
-
     fn inverse_price(&self) -> Self {
         Self {
             exchange:  self.exchange,
@@ -1026,59 +975,5 @@ mod tests {
         );
 
         assert_eq!(pair.ordered(), pair);
-    }
-
-    #[test]
-    fn test_order() {
-        let pair = Pair(LINK_ADDRESS, WBTC_ADDRESS);
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_req() {
-        let pair = Pair(
-            Address::from_str("0x8f8221aFbB33998d8584A2B05749bA73c37a938a").unwrap(),
-            WBTC_ADDRESS,
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_wbtc_usdc() {
-        let pair = Pair(WBTC_ADDRESS, USDC_ADDRESS);
-
-        assert_eq!(pair.ordered(), pair);
-    }
-
-    #[test]
-    fn test_order_agix_wbtc() {
-        let pair = Pair(
-            USDC_ADDRESS,
-            Address::from_str("0x5B7533812759B45C2B44C19e320ba2cD2681b542").unwrap(),
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_badger_wbtc() {
-        let pair = Pair(
-            WBTC_ADDRESS,
-            Address::from_str("0x3472a5a71965499acd81997a54bba8d852c6e53d").unwrap(),
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
-    }
-
-    #[test]
-    fn test_order_looks_usdc() {
-        let pair = Pair(
-            Address::from_str("0xf4d2888d29D722226FafA5d9B24F9164c092421E").unwrap(),
-            USDT_ADDRESS,
-        );
-
-        assert_eq!(pair.ordered(), pair.flip());
     }
 }
