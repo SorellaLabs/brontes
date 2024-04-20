@@ -141,6 +141,7 @@ impl<'a> TimeWindowTrades<'a> {
         volume: &Rational,
         timestamp: u64,
     ) -> Option<MakerTakerWindowVwam> {
+        tracing::info!(?pair, "going intermediary");
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_par_iter()
             .filter_map(|intermediary| {

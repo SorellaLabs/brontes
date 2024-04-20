@@ -258,6 +258,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let taker_delta = &cex_quote.1 - swap.swap_rate();
 
         let vol = Rational::ONE;
+
         let token_price = metadata
             .cex_trades
             .as_ref()
@@ -302,7 +303,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         dex_swaps
             .iter()
             .map(|swap| {
-                let pair = Pair(swap.token_in.address, swap.token_out.address);
+                let pair = Pair(swap.token_out.address, swap.token_in.address);
 
                 metadata
                     .cex_trades
