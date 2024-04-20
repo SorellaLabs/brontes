@@ -248,6 +248,13 @@ impl<'a> TimeWindowTrades<'a> {
                 "not enough vol"
             );
             return None
+        } else {
+            tracing::info!(
+                ?pair,
+                trade_vol = trade_volume_global.clone().to_float(),
+                needed_vol = vol.clone().to_float(),
+                "got volume lfg"
+            );
         }
 
         let mut maker = FastHashMap::default();
