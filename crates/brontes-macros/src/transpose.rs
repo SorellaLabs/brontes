@@ -24,14 +24,14 @@ pub fn parse(item: ItemStruct) -> syn::Result<TokenStream> {
             #item
 
             impl From<Vec<#item>> for #transposed_struct {
-                fn from(items: Vec<#item>) -> Self {
+                fn from(_i: Vec<#item>) -> Self {
                     #(
                         let mut #f_name = Vec::new();
                     )*
 
-                    for item in items {
+                    for _items in _i {
                         #(
-                            #f_name.push(item.#f_name);
+                            #f_name.push(_items.#f_name);
                         )*
                     }
 
