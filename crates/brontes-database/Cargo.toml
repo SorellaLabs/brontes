@@ -138,4 +138,8 @@ local-reth = [
   "brontes-types/local-reth",
 ]
 
-local-clickhouse = ["db-interfaces", "brontes-core/local-clickhouse"]
+local-clickhouse = [
+  "db-interfaces",
+  "brontes-core/local-clickhouse",
+  "brontes-database/local-clickhouse",
+]
