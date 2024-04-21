@@ -827,7 +827,6 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_all_inserts() {
-        dotenv::dotenv().ok();
         init_threadpools(10);
         let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
 
@@ -841,8 +840,6 @@ mod tests {
     #[cfg(feature = "cex-dex-markout")]
     #[brontes_macros::test]
     async fn test_db_trades() {
-        dotenv::dotenv().ok();
-
         let db_client = Clickhouse {
             client:              ClickhouseClient::<BrontesClickhouseTables>::default(),
             cex_download_config: Default::default(),
@@ -888,7 +885,6 @@ mod tests {
             .get(&pair)
             .unwrap();
 
-        println!();
         for t in trades {
             println!("UNORDERED: {:?}", t);
         }
