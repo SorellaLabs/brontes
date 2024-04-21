@@ -28,7 +28,7 @@ use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
 use tracing::info;
 
-#[cfg(not(all(feature = "local-clickhouse", feature = "local-no-inserts")))]
+#[cfg(not(any(feature = "local-clickhouse", feature = "local-no-inserts")))]
 pub fn load_database(
     _executor: &BrontesTaskExecutor,
     db_endpoint: String,
