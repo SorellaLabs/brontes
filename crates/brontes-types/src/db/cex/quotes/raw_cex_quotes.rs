@@ -1,13 +1,17 @@
+use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
 use serde::Deserialize;
 
-use super::{
-    block_times::{BlockTimes, CexBlockTimes},
-    cex::{CexExchange, CexPriceMap},
-    cex_symbols::CexSymbols,
+use crate::{
+    constants::USDC_ADDRESS,
+    db::{
+        block_times::{BlockTimes, CexBlockTimes},
+        cex::{CexExchange, CexPriceMap, CexSymbols},
+    },
+    serde_utils::cex_exchange,
+    FastHashMap,
 };
-use crate::{serde_utils::cex_exchange, FastHashMap};
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct RawCexQuotes {
@@ -33,7 +37,7 @@ impl CexQuotesConverter {
         block_times: Vec<BlockTimes>,
         symbols: Vec<CexSymbols>,
         quotes: Vec<RawCexQuotes>,
-        time_window: (u64, u64),
+        time_window: (f64, f64),
     ) -> Self {
         let symbols = symbols
             .into_iter()
@@ -56,7 +60,7 @@ impl CexQuotesConverter {
         }
     }
 
-    pub fn convert_to_prices(self) -> Vec<(u64, CexPriceMap)> {
+    pub fn convert_to_prices(mut self) -> Vec<(u64, CexPriceMap)> {
         let mut block_num_map = FastHashMap::default();
 
         self.quotes
@@ -94,11 +98,22 @@ impl CexQuotesConverter {
                         quotes.into_iter().for_each(|quote| {
                             let symbol = self
                                 .symbols
-                                .get(&(quote.exchange, quote.symbol.clone()))
+                                .get_mut(&(quote.exchange, quote.symbol.clone()))
                                 .unwrap();
 
+                            //TODO: Joe, please fix USDC to not be dollar lmao
+                            if symbol.address_pair.1
+                                == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
+                            {
+                                symbol.address_pair.1 = USDC_ADDRESS;
+                            } else if symbol.address_pair.0
+                                == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
+                            {
+                                symbol.address_pair.0 = USDC_ADDRESS;
+                            }
+
                             exchange_symbol_map
-                                .entry(&symbol.address_pair)
+                                .entry(symbol.address_pair)
                                 .or_insert(Vec::new())
                                 .push(quote);
                         });
@@ -106,11 +121,13 @@ impl CexQuotesConverter {
                         let symbol_price_map = exchange_symbol_map
                             .into_iter()
                             .map(|(pair, quotes)| {
-                                let best_quote =
-                                    quotes.into_iter().max_by_key(|q| q.timestamp).unwrap();
-                                let pair_quote = (*pair, best_quote);
-
-                                (pair.ordered(), pair_quote.into())
+                                (
+                                    pair.ordered(),
+                                    quotes
+                                        .into_iter()
+                                        .map(|quote| (pair, quote).into())
+                                        .collect_vec(),
+                                )
                             })
                             .collect::<FastHashMap<_, _>>();
 

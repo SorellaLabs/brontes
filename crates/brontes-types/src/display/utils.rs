@@ -6,7 +6,7 @@ use indoc::indoc;
 
 use crate::{
     mev::{Bundle, BundleData},
-    ToFloatNearest,
+    utils::ToFloatNearest,
 };
 
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
@@ -656,53 +656,133 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     // Mev section
     writeln!(f, "\n{}", "MEV:\n".bold().underline().bright_yellow())?;
-    writeln!(f, "   - Bundle Profit (USD): {}", format_profit(bundle.header.profit_usd))?;
+    writeln!(f, "   - Max Profit Route (USD): {}", format_profit(bundle.header.profit_usd))?;
     writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
 
     // Cex-dex specific details
     writeln!(f, "\n{}", "Cex-Dex Details:\n".bold().bright_yellow().underline())?;
+
     writeln!(f, "  - {}:", "PnL".bright_blue())?;
+
+    // Cex-Dex specific details
+    writeln!(f, "\n{}", "Cex-Dex Details:\n".bold().bright_yellow().underline())?;
+    writeln!(f, "  - {}: Global VMAP PnL", "PnL".bright_blue())?;
     writeln!(
         f,
-        "    - Maker: {}\n    - Taker: {}",
-        cex_dex_data.pnl.maker_profit.clone().to_float(),
-        cex_dex_data.pnl.taker_profit.clone().to_float()
+        "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_mid
+            .0
+            .clone()
+            .to_float(),
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_mid
+            .1
+            .clone()
+            .to_float(),
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_ask
+            .0
+            .clone()
+            .to_float(),
+        cex_dex_data
+            .global_vmap_pnl
+            .maker_taker_ask
+            .1
+            .clone()
+            .to_float(),
     )?;
 
-    writeln!(f, "  - {}", "Swaps:".bright_blue())?;
-    for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
-        writeln!(f, "    {}: {}", format!(" - {}", i + 1).green(), swap)?;
-        if let Some(stat_arb_detail) = cex_dex_data.stat_arb_details.get(i) {
-            writeln!(f, "      - {}:", "Arb Leg Details".bright_blue())?;
-            writeln!(
-                f,
-                "        - Price on {:#?}: {}",
-                stat_arb_detail.cex_exchange.clone(),
-                stat_arb_detail.cex_price.clone().to_float()
-            )?;
-            writeln!(
-                f,
-                "        - Price on {}: {}",
-                stat_arb_detail.dex_exchange.clone(),
-                stat_arb_detail.dex_price.clone().to_float()
-            )?;
-            writeln!(f, "      - {}:", "Pnl pre-gas".bright_blue())?;
-            writeln!(
-                f,
-                "        - Maker: {}\n        - Taker: {}",
-                cex_dex_data.pnl.maker_profit.clone().to_float(),
-                cex_dex_data.pnl.taker_profit.clone().to_float()
-            )?;
-        } else {
-            writeln!(f, "   No arbitrage details found for this swap.")?;
-        }
+    writeln!(f, "  - {}: Optimal Route PnL", "PnL".bright_blue())?;
+    writeln!(
+        f,
+        "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_mid
+            .0
+            .clone()
+            .to_float(),
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_mid
+            .1
+            .clone()
+            .to_float(),
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_ask
+            .0
+            .clone()
+            .to_float(),
+        cex_dex_data
+            .optimal_route_pnl
+            .maker_taker_ask
+            .1
+            .clone()
+            .to_float()
+    )?;
+
+    writeln!(f, "  - {}", "Per Exchange PnL:".bold().underline().purple())?;
+    for (exchange, pnl) in &cex_dex_data.per_exchange_pnl {
+        writeln!(f, "    - {}:", exchange.to_string().bold().underline().green())?;
+        writeln!(
+            f,
+            "      - Maker Mid: {:.6} Taker Mid: {:.6}",
+            pnl.maker_taker_mid.0.clone().to_float(),
+            pnl.maker_taker_mid.1.clone().to_float()
+        )?;
+        writeln!(
+            f,
+            "      - Maker Ask: {:.6} Taker Ask: {:.6}",
+            pnl.maker_taker_ask.0.clone().to_float(),
+            pnl.maker_taker_ask.1.clone().to_float()
+        )?;
     }
 
-    bundle
-        .header
-        .balance_deltas
-        .iter()
-        .for_each(|tx_delta| writeln!(f, "{}", tx_delta).expect("Failed to write balance deltas"));
+    writeln!(f, "\n----------------------------------------")?;
+    writeln!(f, "{}", "Arb Details".bold().red().underline())?;
+
+    for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
+        writeln!(f, "\n{}: - {}", format!("Swap {}", i + 1).bold().blue().underline(), swap)?;
+
+        writeln!(f, "   - {}:", "Max Profit Route".purple().bold().underline())?;
+        if i < cex_dex_data.optimal_route_details.len() {
+            writeln!(f, "   {}", &cex_dex_data.optimal_route_details[i])?;
+        } else {
+            writeln!(f, "   - Error: No optimal route detail available for swap {}", i + 1)?;
+        }
+
+        writeln!(f, "   - {}:", "Global VMAP".purple().bold().underline())?;
+        if i < cex_dex_data.global_vmap_details.len() {
+            writeln!(f, "    {}", &cex_dex_data.global_vmap_details[i])?;
+        } else {
+            writeln!(f, "   - Error: No global VMAP detail available for swap {}", i + 1)?;
+        }
+
+        writeln!(f, "   {}:", "Per Exchange Arb Details".purple().bold().underline())?;
+        if i < cex_dex_data.per_exchange_details.len() {
+            for details in cex_dex_data.per_exchange_details.iter() {
+                if i < details.len() {
+                    writeln!(f, "   {}", details[i])?;
+                } else {
+                    writeln!(
+                        f,
+                        "   - Error: No per exchange arb detail available for swap {}",
+                        i + 1
+                    )?;
+                }
+            }
+        } else {
+            writeln!(f, "   - Error: No per exchange arb details available for swap {}", i + 1)?;
+        }
+    }
+    bundle.header.balance_deltas.iter().for_each(|tx_delta| {
+        writeln!(f, "\n\n{}", tx_delta).expect("Failed to write balance deltas")
+    });
 
     Ok(())
 }
