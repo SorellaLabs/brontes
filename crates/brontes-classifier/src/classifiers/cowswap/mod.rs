@@ -144,7 +144,7 @@ mod tests {
                     .to_scaled_rational(18),
                 msg_value:   U256::ZERO,
             }],
-            solver_swaps:        None,
+            solver_swaps:        Some(vec![]),
             msg_value:           U256::ZERO,
         });
 
