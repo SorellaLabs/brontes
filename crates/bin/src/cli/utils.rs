@@ -38,7 +38,7 @@ pub fn load_database(
 
 /// This version is used when `local-clickhouse` is enabled but
 /// `local-no-inserts` is not.
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
 pub fn load_database(
     _executor: &BrontesTaskExecutor,
     db_endpoint: String,
@@ -50,7 +50,7 @@ pub fn load_database(
 
 /// This version is used when `local-clickhouse` and
 /// `local-no-inserts` is enabled
-#[cfg(all(feature = "sorella-server", feature = "local-no-inserts"))]
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
@@ -148,7 +148,7 @@ pub fn get_env_vars() -> eyre::Result<String> {
     Ok(db_path)
 }
 
-#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
