@@ -98,7 +98,7 @@ strum_macros = "0.25"
 async-trait = "0.1.73"
 reqwest = { workspace = true, features = ["stream"] }
 toml = "0.8.9"
-indicatif.workspace = true 
+indicatif.workspace = true
 
 # benches
 criterion = "0.5"
@@ -129,6 +129,7 @@ alloy-primitives.workspace = true
 
 [features]
 default = []
+sorella-server = ["local-reth", "local-clickhouse"]
 cex-dex-markout = ["brontes-types/cex-dex-markout"]
 tests = ["reth-tasks", "brontes-pricing/tests"]
 local-reth = [
@@ -137,7 +138,4 @@ local-reth = [
   "brontes-types/local-reth",
 ]
 
-local-clickhouse = [
-  "db-interfaces",
-  "brontes-core/local-clickhouse",
-]
+local-clickhouse = ["db-interfaces", "brontes-core/local-clickhouse"]
