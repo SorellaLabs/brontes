@@ -15,7 +15,7 @@ pub struct ClickhouseBuffered {
     rx:          UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
     value_map:   FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
     buffer_size: usize,
-    futs:        FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send >>>,
+    futs:        FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
 }
 
 impl ClickhouseBuffered {
@@ -83,18 +83,18 @@ impl ClickhouseBuffered {
                     .insert_many::<ClickhouseMevBlocks>(&insert_data)
                     .await?
             }
-            BrontesClickhouseTables::ClickhouseCexDex => {
+            BrontesClickhouseTables::ClickhouseCexDexNew => {
                 let insert_data = data
                     .into_iter()
                     .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::CexDex(inner_data) => Some(inner_data),
+                        BrontesClickhouseTableDataTypes::CexDexNew(inner_data) => Some(inner_data),
                         _ => None,
                     })
                     .collect::<Vec<_>>();
                 if insert_data.is_empty() {
                     panic!("you did this wrong idiot");
                 }
-                client.insert_many::<ClickhouseCexDex>(&insert_data).await?
+                client.insert_many::<ClickhouseCexDexNew>(&insert_data).await?
             }
             BrontesClickhouseTables::ClickhouseSearcherTx => {
                 let insert_data = data

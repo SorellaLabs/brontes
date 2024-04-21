@@ -201,7 +201,7 @@ db_types!(
     (BundleHeader, BundleHeader),
     (SearcherTx, SearcherTx),
     (JoinedSearcherInfo, SearcherInfo),
-    (CexDex, CexDex),
+    (CexDex, CexDexNew),
     (Liquidation, Liquidations),
     (JitLiquiditySandwich, JitSandwich),
     (JitLiquidity, Jit),
