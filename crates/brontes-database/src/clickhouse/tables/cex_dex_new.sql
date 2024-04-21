@@ -60,4 +60,4 @@ CREATE TABLE mev.cex_dex_new ON CLUSTER eth_cluster0
 ) 
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/cex_dex_new', '{replica}', `last_updated`)
 PRIMARY KEY (`tx_hash`)
-ORDER BY (`tx_hash`, `last_updated`)
+ORDER BY (`tx_hash`)
