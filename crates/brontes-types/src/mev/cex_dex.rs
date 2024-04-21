@@ -369,7 +369,10 @@ impl Serialize for CexDex {
 
         let (cex_ex, arb_pnl): (Vec<_>, Vec<_>) = self.per_exchange_pnl.iter().cloned().unzip();
 
-        ser_struct.serialize_field("per_exchange_pnl.cex_exchange", &cex_ex)?;
+        ser_struct.serialize_field(
+            "per_exchange_pnl.cex_exchange",
+            &cex_ex.iter().map(|e| (*e).to_string()).collect::<Vec<_>>(),
+        )?;
         ser_struct.serialize_field("per_exchange_pnl.arb_pnl", &arb_pnl)?;
 
         let gas_details = (
