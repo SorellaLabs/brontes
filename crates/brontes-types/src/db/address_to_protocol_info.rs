@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
-    serde_utils::{addresss, option_addresss, static_bindings},
+    serde_utils::{addresss, option_addresss,protocol},
     Protocol,
 };
 
@@ -25,7 +25,7 @@ use crate::{
     Hash
 ))]
 pub struct ProtocolInfo {
-    #[serde(with = "static_bindings")]
+    #[serde(with = "protocol")]
     #[redefined(same_fields)]
     pub protocol:       Protocol,
     #[serde(with = "addresss")]

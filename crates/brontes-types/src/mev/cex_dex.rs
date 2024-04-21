@@ -103,7 +103,14 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
         let transposed: ArbDetailsTransposed = self.global_vmap_details.clone().into();
-        ser_struct.serialize_field("global_vmap_details.cex_exchange", &transposed.cex_exchange)?;
+        ser_struct.serialize_field(
+            "global_vmap_details.cex_exchange",
+            &transposed
+                .cex_exchange
+                .iter()
+                .map(|ex| (*ex).to_string())
+                .collect::<Vec<_>>(),
+        )?;
         ser_struct.serialize_field(
             "global_vmap_details.best_bid_maker",
             &transposed
@@ -141,7 +148,14 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
 
-        ser_struct.serialize_field("global_vmap_details.dex_exchange", &transposed.dex_exchange)?;
+        ser_struct.serialize_field(
+            "global_vmap_details.dex_exchange",
+            &transposed
+                .dex_exchange
+                .iter()
+                .map(|e| (*e).to_string())
+                .collect::<Vec<_>>(),
+        )?;
         ser_struct.serialize_field(
             "global_vmap_details.dex_price",
             &transposed
@@ -153,7 +167,7 @@ impl Serialize for CexDex {
         )?;
 
         ser_struct.serialize_field(
-            "global_vmap_details.dex_price",
+            "global_vmap_details.dex_amount",
             &transposed
                 .dex_amount
                 .iter()
@@ -161,11 +175,18 @@ impl Serialize for CexDex {
                 .flatten()
                 .collect::<Vec<_>>(),
         )?;
-        ser_struct.serialize_field("global_vmap_details.dex_price", &transposed.pnl_pre_gas)?;
+        ser_struct.serialize_field("global_vmap_details.pnl_pre_gas", &transposed.pnl_pre_gas)?;
         ser_struct.serialize_field("global_vmap_pnl", &self.global_vmap_pnl)?;
 
         let transposed: ArbDetailsTransposed = self.optimal_route_details.clone().into();
-        ser_struct.serialize_field("optimal_route_pnl.cex_exchange", &transposed.cex_exchange)?;
+        ser_struct.serialize_field(
+            "optimal_route_pnl.cex_exchange",
+            &transposed
+                .cex_exchange
+                .iter()
+                .map(|e| (*e).to_string())
+                .collect::<Vec<_>>(),
+        )?;
         ser_struct.serialize_field(
             "optimal_route_pnl.best_bid_maker",
             &transposed
@@ -203,7 +224,14 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
 
-        ser_struct.serialize_field("optimal_route_pnl.dex_exchange", &transposed.dex_exchange)?;
+        ser_struct.serialize_field(
+            "optimal_route_pnl.dex_exchange",
+            &transposed
+                .dex_exchange
+                .iter()
+                .map(|e| (*e).to_string())
+                .collect::<Vec<_>>(),
+        )?;
         ser_struct.serialize_field(
             "optimal_route_pnl.dex_price",
             &transposed
@@ -215,7 +243,7 @@ impl Serialize for CexDex {
         )?;
 
         ser_struct.serialize_field(
-            "optimal_route_pnl.dex_price",
+            "optimal_route_pnl.dex_amount",
             &transposed
                 .dex_amount
                 .iter()
@@ -223,7 +251,7 @@ impl Serialize for CexDex {
                 .flatten()
                 .collect::<Vec<_>>(),
         )?;
-        ser_struct.serialize_field("optimal_route_pnl.dex_price", &transposed.pnl_pre_gas)?;
+        ser_struct.serialize_field("optimal_route_pnl.pnl_pre_gas", &transposed.pnl_pre_gas)?;
         ser_struct.serialize_field("optimal_route_pnl", &self.optimal_route_pnl)?;
 
         // per ex
@@ -239,7 +267,13 @@ impl Serialize for CexDex {
 
         for ex in &self.per_exchange_details {
             let transposed: ArbDetailsTransposed = ex.clone().into();
-            cex_exchange.push(transposed.cex_exchange);
+            cex_exchange.push(
+                transposed
+                    .cex_exchange
+                    .iter()
+                    .map(|e| (*e).to_string())
+                    .collect::<Vec<_>>(),
+            );
             best_bid_maker.push(transposed.best_bid_maker);
             best_ask_maker.push(transposed.best_ask_maker);
             best_bid_taker.push(transposed.best_bid_taker);
@@ -314,7 +348,7 @@ impl Serialize for CexDex {
         )?;
 
         ser_struct.serialize_field(
-            "per_exchange_details.dex_price",
+            "per_exchange_details.dex_amount",
             &dex_amount
                 .iter()
                 .map(|f| {
@@ -325,7 +359,7 @@ impl Serialize for CexDex {
                 })
                 .collect::<Vec<_>>(),
         )?;
-        ser_struct.serialize_field("per_exchange_details.dex_price", &pnl_pre_gas)?;
+        ser_struct.serialize_field("per_exchange_details.pnl_pre_gas", &pnl_pre_gas)?;
 
         let (cex_ex, arb_pnl): (Vec<_>, Vec<_>) = self.per_exchange_pnl.iter().cloned().unzip();
 
