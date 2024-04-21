@@ -2,9 +2,10 @@ mod action_classifier;
 mod bench_struct_methods;
 mod discovery_classifier;
 mod libmdbx_test;
+mod transpose;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, ItemFn};
+use syn::{parse_macro_input, ItemFn, ItemStruct};
 
 use crate::action_classifier::{ActionDispatch, ActionMacro};
 
@@ -207,6 +208,14 @@ pub fn test(attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn bench_time(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemFn);
     bench_struct_methods::parse(item, attr.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_derive(Transposable)]
+pub fn transposable(item: TokenStream) -> TokenStream {
+    let i_struct = parse_macro_input!(item as ItemStruct);
+    transpose::parse(i_struct)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
