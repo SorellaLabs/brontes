@@ -36,7 +36,7 @@ impl SearcherBuilder {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
-        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        let libmdbx = static_object(load_database(&ctx.task_executor, brontes_db_endpoint)?);
 
         let task_executor = ctx.task_executor;
 
