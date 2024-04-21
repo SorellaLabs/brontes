@@ -58,7 +58,7 @@ pub fn load_database(
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    spawn_db_writer_thread(rx);
+    spawn_db_writer_thread(executor, rx);
     let clickhouse = Clickhouse::new(Default::default(), Default::default(), Some(tx));
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
