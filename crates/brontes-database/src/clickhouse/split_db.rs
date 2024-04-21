@@ -1,9 +1,9 @@
 use std::{
-    collections::HashMap,
     pin::Pin,
     task::{Context, Poll},
 };
 
+use brontes_types::FastHashMap;
 use db_interfaces::{clickhouse::client::ClickhouseClient, Database};
 use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -13,7 +13,7 @@ use crate::clickhouse::dbms::*;
 pub struct ClickhouseBuffered {
     client:      ClickhouseClient<BrontesClickhouseTables>,
     rx:          UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
-    value_map:   HashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
+    value_map:   FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
     buffer_size: usize,
     futs:        FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>>>>>,
 }
@@ -26,7 +26,7 @@ impl ClickhouseBuffered {
         Self {
             client: ClickhouseClient::default(),
             rx,
-            value_map: HashMap::new(),
+            value_map: FastHashMap::default(),
             buffer_size,
             futs: FuturesUnordered::default(),
         }
