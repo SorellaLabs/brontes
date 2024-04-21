@@ -3,11 +3,14 @@ use clickhouse::Row;
 use itertools::Itertools;
 use serde::Deserialize;
 
-use super::{
-    block_times::BlockTimes, cex::CexExchange, cex_symbols::CexSymbols, cex_trades::CexTradeMap,
-};
 use crate::{
-    constants::USDC_ADDRESS, db::block_times::CexBlockTimes, serde_utils::cex_exchange, FastHashMap,
+    constants::USDC_ADDRESS,
+    db::{
+        block_times::{BlockTimes, CexBlockTimes},
+        cex::{cex_symbols::CexSymbols, cex_trades::CexTradeMap, CexExchange},
+    },
+    serde_utils::cex_exchange,
+    FastHashMap,
 };
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
@@ -32,7 +35,7 @@ impl CexTradesConverter {
         block_times: Vec<BlockTimes>,
         symbols: Vec<CexSymbols>,
         trades: Vec<RawCexTrades>,
-        time_window: (u64, u64),
+        time_window: (f64, f64),
     ) -> Self {
         let symbols = symbols
             .into_iter()

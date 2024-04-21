@@ -5,11 +5,11 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 #[cfg(not(feature = "cex-dex-markout"))]
-use brontes_types::db::raw_cex_quotes::{CexQuotesConverter, RawCexQuotes};
+use brontes_types::db::cex::{CexQuotesConverter, RawCexQuotes};
 #[cfg(feature = "cex-dex-markout")]
-use brontes_types::db::raw_cex_trades::{CexTradesConverter, RawCexTrades};
+use brontes_types::db::cex::{CexTradesConverter, RawCexTrades};
 #[cfg(feature = "local-clickhouse")]
-use brontes_types::db::{block_times::BlockTimes, cex_symbols::CexSymbols};
+use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
@@ -48,6 +48,7 @@ use crate::{
     libmdbx::{tables::BlockInfoData, types::LibmdbxData},
     CompressedTable,
 };
+const SECONDS_TO_US: f64 = 1_000_000.0;
 
 #[derive(Default)]
 pub struct Clickhouse {
@@ -253,10 +254,10 @@ impl ClickhouseHandle for Clickhouse {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-                max(eth_prices.price.0, eth_prices.price.1),
+                max(eth_prices.price_maker.1, eth_prices.price_taker.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes.value, None, None))
+            .into_metadata(cex_quotes.value, None, None, None))
         }
 
         #[cfg(feature = "cex-dex-markout")]
@@ -377,19 +378,21 @@ impl ClickhouseHandle for Clickhouse {
 
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
-                let start_time = block_times
+                let start_time = (block_times
                     .iter()
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap()
-                    - self.cex_download_config.time_window.0 * 1000000;
+                    .unwrap() as f64
+                    - self.cex_download_config.time_window.0)
+                    * SECONDS_TO_US;
 
-                let end_time = block_times
+                let end_time = (block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap()
-                    + self.cex_download_config.time_window.1 * 1000000;
+                    .unwrap() as f64
+                    + self.cex_download_config.time_window.1)
+                    * SECONDS_TO_US;
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -404,8 +407,8 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .map(|b| {
                         b.convert_to_timestamp_query(
-                            self.cex_download_config.time_window.0 * 1000000,
-                            self.cex_download_config.time_window.1 * 1000000,
+                            self.cex_download_config.time_window.0 * SECONDS_TO_US,
+                            self.cex_download_config.time_window.1 * SECONDS_TO_US,
                         )
                     })
                     .collect::<Vec<_>>()
@@ -473,19 +476,21 @@ impl ClickhouseHandle for Clickhouse {
 
         let data: Vec<RawCexTrades> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
-                let start_time = block_times
+                let start_time = (block_times
                     .iter()
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap()
-                    - self.cex_download_config.time_window.0 * 1000000;
+                    .unwrap() as f64
+                    - self.cex_download_config.time_window.0)
+                    * SECONDS_TO_US;
 
-                let end_time = block_times
+                let end_time = (block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap()
-                    + self.cex_download_config.time_window.1 * 1000000;
+                    .unwrap() as f64
+                    + self.cex_download_config.time_window.1)
+                    * SECONDS_TO_US;
 
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
@@ -500,8 +505,8 @@ impl ClickhouseHandle for Clickhouse {
                     .iter()
                     .map(|b| {
                         b.convert_to_timestamp_query(
-                            self.cex_download_config.time_window.0 * 1000000,
-                            self.cex_download_config.time_window.1 * 1000000,
+                            self.cex_download_config.time_window.0 * SECONDS_TO_US,
+                            self.cex_download_config.time_window.1 * SECONDS_TO_US,
                         )
                     })
                     .collect::<Vec<_>>()
