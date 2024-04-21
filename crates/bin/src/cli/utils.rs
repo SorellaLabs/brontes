@@ -153,12 +153,15 @@ fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
-    executor.spawn_critical("Clickhouse Insert Process", async move {
-        let mut clickhouse_writer = ClickhouseBuffered::new(buffered_rx, 10);
-        while let Some(val) = clickhouse_writer.next().await {
-            if let Err(e) = val {
-                tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+    executor.spawn_critical(
+        "Clickhouse Insert Process",
+        Box::pin(async move {
+            let mut clickhouse_writer = ClickhouseBuffered::new(buffered_rx, 10);
+            while let Some(val) = clickhouse_writer.next().await {
+                if let Err(e) = val {
+                    tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+                }
             }
-        }
-    });
+        }),
+    );
 }
