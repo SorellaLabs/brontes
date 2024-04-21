@@ -116,8 +116,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_bid_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
@@ -125,8 +124,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_ask_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
@@ -134,8 +132,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_bid_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
@@ -143,8 +140,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_ask_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
 
@@ -161,8 +157,7 @@ impl Serialize for CexDex {
             &transposed
                 .dex_price
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
 
@@ -171,8 +166,7 @@ impl Serialize for CexDex {
             &transposed
                 .dex_amount
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field("global_vmap_details.pnl_pre_gas", &transposed.pnl_pre_gas)?;
@@ -192,8 +186,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_bid_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
@@ -201,8 +194,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_ask_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
@@ -210,8 +202,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_bid_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
@@ -219,8 +210,7 @@ impl Serialize for CexDex {
             &transposed
                 .best_ask_maker
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
 
@@ -237,8 +227,7 @@ impl Serialize for CexDex {
             &transposed
                 .dex_price
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
 
@@ -247,8 +236,7 @@ impl Serialize for CexDex {
             &transposed
                 .dex_amount
                 .iter()
-                .map(rational_to_u256_fraction)
-                .flatten()
+                .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field("optimal_route_pnl.pnl_pre_gas", &transposed.pnl_pre_gas)?;
@@ -296,8 +284,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|f| {
                     f.iter()
-                        .map(rational_to_u256_fraction)
-                        .flatten()
+                        .flat_map(rational_to_u256_fraction)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>(),
@@ -308,8 +295,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|f| {
                     f.iter()
-                        .map(rational_to_u256_fraction)
-                        .flatten()
+                        .flat_map(rational_to_u256_fraction)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>(),
@@ -320,8 +306,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|f| {
                     f.iter()
-                        .map(rational_to_u256_fraction)
-                        .flatten()
+                        .flat_map(rational_to_u256_fraction)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>(),
@@ -332,8 +317,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|f| {
                     f.iter()
-                        .map(rational_to_u256_fraction)
-                        .flatten()
+                        .flat_map(rational_to_u256_fraction)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>(),
@@ -346,8 +330,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|f| {
                     f.iter()
-                        .map(rational_to_u256_fraction)
-                        .flatten()
+                        .flat_map(rational_to_u256_fraction)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>(),
@@ -359,8 +342,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|f| {
                     f.iter()
-                        .map(rational_to_u256_fraction)
-                        .flatten()
+                        .flat_map(rational_to_u256_fraction)
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>(),

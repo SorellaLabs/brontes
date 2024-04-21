@@ -10,7 +10,7 @@ pub fn parse(item: DeriveInput) -> syn::Result<TokenStream> {
     };
 
     let d_name = &item.ident;
-    let name = Ident::new(&format!("{}Transposed", item.ident.to_string()), item.ident.span());
+    let name = Ident::new(&format!("{}Transposed", item.ident), item.ident.span());
 
     let (f_name, f_type): (Vec<_>, Vec<_>) = data
         .fields
