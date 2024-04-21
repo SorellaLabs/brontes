@@ -214,7 +214,7 @@ impl DbRow for CexDex {
 
 #[serde_as]
 #[derive(
-    Debug, Deserialize, PartialEq, Clone, Default, Redefined, brontes::macros::Transposable,
+    Debug, Deserialize, PartialEq, Clone, Default, Redefined, brontes_macros::Transposable,
 )]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ArbDetails {

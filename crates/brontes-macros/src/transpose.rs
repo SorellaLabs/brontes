@@ -21,10 +21,11 @@ pub fn parse(item: ItemStruct) -> syn::Result<TokenStream> {
     );
 
     Ok(quote!(
-            #transposed_struct
             #item
 
-            impl From<Vec<#d_name>> for #transposed_struct {
+            #transposed_struct
+
+            impl From<Vec<#d_name>> for #name {
                 fn from(_i: Vec<#d_name>) -> Self {
                     #(
                         let mut #f_name = Vec::new();
