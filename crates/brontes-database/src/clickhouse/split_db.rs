@@ -15,7 +15,7 @@ pub struct ClickhouseBuffered {
     rx:          UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
     value_map:   FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
     buffer_size: usize,
-    futs:        FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>>>>>,
+    futs:        FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send >>>,
 }
 
 impl ClickhouseBuffered {
