@@ -105,7 +105,7 @@ impl Node {
             if let Some(inner) = self.inner.first_mut() {
                 return inner.get_all_children_for_complex_classification(head, nodes)
             }
-            error!("was not able to find node in tree");
+            error!("was not able to find node in tree for complex classification");
             return
         }
 
@@ -430,7 +430,7 @@ impl Node {
             if let Some(inner) = self.inner.first_mut() {
                 return inner.remove_node_and_children(index, data)
             }
-            error!("was not able to find node in tree for clearing node data");
+            error!("was not able to find node in tree for removing node data");
             return
         }
 
