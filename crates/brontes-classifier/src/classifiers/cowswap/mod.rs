@@ -134,7 +134,7 @@ mod tests {
                 token_out:   TokenInfoWithAddress {
                     address: Address::from_str("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
                         .unwrap(),
-                    inner:   TokenInfo { decimals: 18, symbol: "ETH".to_string() },
+                    inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
                 },
                 amount_in:   U256::from_str("750005967291428997")
                     .unwrap()
