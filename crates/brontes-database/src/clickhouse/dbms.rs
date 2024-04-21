@@ -14,7 +14,7 @@ clickhouse_dbms!(
     [
         ClickhouseBundleHeader,
         ClickhouseMevBlocks,
-        ClickhouseCexDex,
+        ClickhouseCexDexNew,
         ClickhouseSearcherTx,
         ClickhouseJit,
         ClickhouseJitSandwich,
@@ -82,7 +82,7 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "mev",
-    ClickhouseCexDex,
+    ClickhouseCexDexNew,
     CexDex,
     "crates/brontes-database/src/clickhouse/tables/"
 );
