@@ -27,7 +27,6 @@ pub fn parse(item: DeriveInput) -> syn::Result<TokenStream> {
     );
 
     Ok(quote!(
-            #item
             #transposed_struct
 
             impl From<Vec<#d_name>> for #name {
