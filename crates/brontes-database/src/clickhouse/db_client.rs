@@ -48,6 +48,7 @@ use crate::{
     libmdbx::{tables::BlockInfoData, types::LibmdbxData},
     CompressedTable,
 };
+
 const SECONDS_TO_US: f64 = 1_000_000.0;
 
 #[derive(Default)]
