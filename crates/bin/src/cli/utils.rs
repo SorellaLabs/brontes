@@ -50,7 +50,7 @@ pub fn load_database(
 
 /// This version is used when `local-clickhouse` and
 /// `local-no-inserts` is enabled
-#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
+#[cfg(all(feature = "sorella-server", feature = "local-no-inserts"))]
 pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
