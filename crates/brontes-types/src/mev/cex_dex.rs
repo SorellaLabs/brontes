@@ -102,6 +102,8 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
+        let transposed: ArbDetailsTransposed = self.arb_details.into();
+
         // "global_vmap_details.cex_exchange",
         // "global_vmap_details.best_bid_maker",
         // "global_vmap_details.best_ask_maker",
@@ -121,7 +123,6 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.token_out", &swaps.token_out)?;
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
-
 
         let stat_arb_details: ClickhouseVecStatArbDetails = self
             .stat_arb_details
@@ -212,7 +213,9 @@ impl DbRow for CexDex {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined, brontes::macros::Transposable)]
+#[derive(
+    Debug, Deserialize, PartialEq, Clone, Default, Redefined, brontes::macros::Transposable,
+)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ArbDetails {
     #[redefined(same_fields)]

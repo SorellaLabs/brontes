@@ -1,14 +1,15 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Ident, ItemStruct};
+
 pub fn parse(item: ItemStruct) -> syn::Result<TokenStream> {
     let d_name = &item.ident;
     let name = Ident::new(&format!("{}Transposed", item.ident.to_string()), item.ident.span());
 
     let (f_name, f_type): (Vec<_>, Vec<_>) = item
         .fields
-        .into_iter()
-        .filter_map(|f| Some((f.ident?, f.ty)))
+        .iter()
+        .filter_map(|f| Some((f.ident.as_ref()?, f.ty.clone())))
         .unzip();
 
     let transposed_struct = quote!(
@@ -23,8 +24,8 @@ pub fn parse(item: ItemStruct) -> syn::Result<TokenStream> {
             #transposed_struct
             #item
 
-            impl From<Vec<#item>> for #transposed_struct {
-                fn from(_i: Vec<#item>) -> Self {
+            impl From<Vec<#d_name>> for #transposed_struct {
+                fn from(_i: Vec<#d_name>) -> Self {
                     #(
                         let mut #f_name = Vec::new();
                     )*
@@ -36,7 +37,9 @@ pub fn parse(item: ItemStruct) -> syn::Result<TokenStream> {
                     }
 
                     Self {
-                        #f_name
+                        #(
+                            #f_name,
+                        )*
                     }
                 }
 
