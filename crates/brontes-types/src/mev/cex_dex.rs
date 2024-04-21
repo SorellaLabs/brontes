@@ -278,7 +278,13 @@ impl Serialize for CexDex {
             best_ask_maker.push(transposed.best_ask_maker);
             best_bid_taker.push(transposed.best_bid_taker);
             best_ask_taker.push(transposed.best_ask_taker);
-            dex_exchange.push(transposed.dex_exchange);
+            dex_exchange.push(
+                transposed
+                    .dex_exchange
+                    .iter()
+                    .map(|e| (*e).to_string())
+                    .collect::<Vec<_>>(),
+            );
             dex_price.push(transposed.dex_price);
             dex_amount.push(transposed.dex_amount);
             pnl_pre_gas.push(transposed.pnl_pre_gas);
