@@ -106,7 +106,7 @@ impl RunArgs {
         task_executor.spawn_critical("metrics", metrics_listener);
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
-        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
         let cex_download_config = CexDownloadConfig::new(

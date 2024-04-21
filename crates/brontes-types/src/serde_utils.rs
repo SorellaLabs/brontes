@@ -314,7 +314,7 @@ pub mod address {
     }
 }
 
-pub mod static_bindings {
+pub mod protocol {
 
     use serde::{
         de::{Deserialize, Deserializer},
