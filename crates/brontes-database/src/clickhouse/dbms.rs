@@ -14,7 +14,7 @@ clickhouse_dbms!(
     [
         ClickhouseBundleHeader,
         ClickhouseMevBlocks,
-        ClickhouseCexDexNew,
+        ClickhouseCexDex,
         ClickhouseSearcherTx,
         ClickhouseJit,
         ClickhouseJitSandwich,
@@ -82,7 +82,7 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "mev",
-    ClickhouseCexDexNew,
+    ClickhouseCexDex,
     CexDex,
     "crates/brontes-database/src/clickhouse/tables/"
 );
@@ -201,7 +201,7 @@ db_types!(
     (BundleHeader, BundleHeader),
     (SearcherTx, SearcherTx),
     (JoinedSearcherInfo, SearcherInfo),
-    (CexDex, CexDexNew),
+    (CexDex, CexDex),
     (Liquidation, Liquidations),
     (JitLiquiditySandwich, JitSandwich),
     (JitLiquidity, Jit),

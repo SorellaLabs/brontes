@@ -680,7 +680,7 @@ mod tests {
     async fn cex_dex(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = CexDex::default();
 
-        db.insert_one::<ClickhouseCexDexNew>(&case0).await.unwrap();
+        db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
     }
 
     async fn jit(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {

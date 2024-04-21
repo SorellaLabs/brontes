@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
-    serde_utils::{addresss, option_addresss,protocol},
+    serde_utils::{addresss, option_addresss, protocol},
     Protocol,
 };
 
