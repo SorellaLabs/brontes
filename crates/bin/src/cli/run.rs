@@ -41,23 +41,23 @@ pub struct RunArgs {
     #[cfg(not(feature = "cex-dex-markout"))]
     /// The sliding time window (BEFORE) for cex prices relative to the block
     /// timestamp
-    #[arg(long = "price-tw-before", default_value = "6")]
-    pub cex_time_window_before: u64,
+    #[arg(long = "price-tw-before", default_value = "0.5")]
+    pub cex_time_window_before: f64,
     #[cfg(not(feature = "cex-dex-markout"))]
     /// The sliding time window (AFTER) for cex prices relative to the block
     /// timestamp
-    #[arg(long = "price-tw-after", default_value = "6")]
-    pub cex_time_window_after:  u64,
+    #[arg(long = "price-tw-after", default_value = "2.0")]
+    pub cex_time_window_after:  f64,
     #[cfg(feature = "cex-dex-markout")]
     /// The sliding time window (BEFORE) for cex trades relative to the block
     /// timestamp
-    #[arg(long = "trades-tw-before", default_value = "6")]
-    pub cex_time_window_before: u64,
+    #[arg(long = "trades-tw-before", default_value = "3.0")]
+    pub cex_time_window_before: f64,
     #[cfg(feature = "cex-dex-markout")]
     /// The sliding time window (AFTER) for cex trades relative to the block
     /// timestamp
-    #[arg(long = "trades-tw-after", default_value = "6")]
-    pub cex_time_window_after:  u64,
+    #[arg(long = "trades-tw-after", default_value = "5.0")]
+    pub cex_time_window_after:  f64,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(
         long,

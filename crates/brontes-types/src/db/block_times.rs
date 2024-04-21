@@ -8,11 +8,11 @@ pub struct BlockTimes {
 }
 
 impl BlockTimes {
-    pub fn convert_to_timestamp_query(&self, before_block: u64, after_block: u64) -> String {
+    pub fn convert_to_timestamp_query(&self, before_block: f64, after_block: f64) -> String {
         format!(
             "(timestamp >= {} AND timestamp < {})",
-            self.timestamp - before_block,
-            self.timestamp + after_block
+            self.timestamp as f64 - before_block,
+            self.timestamp as f64 + after_block
         )
     }
 }
@@ -25,10 +25,10 @@ pub struct CexBlockTimes {
 }
 
 impl CexBlockTimes {
-    pub fn add_time_window(value: BlockTimes, time_window: (u64, u64)) -> Self {
+    pub fn add_time_window(value: BlockTimes, time_window: (f64, f64)) -> Self {
         Self {
-            start_timestamp: value.timestamp - time_window.0 * 1000000,
-            end_timestamp:   value.timestamp + time_window.1 * 1000000,
+            start_timestamp: (value.timestamp as f64 - time_window.0 * 1000000.0) as u64,
+            end_timestamp:   (value.timestamp as f64 + time_window.1 * 1000000.0) as u64,
             block_number:    value.block_number,
         }
     }

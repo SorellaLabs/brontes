@@ -1,28 +1,22 @@
-use std::{cmp::max, f64::consts::E, fmt::Display, marker::PhantomData};
+use std::{cmp::max, fmt::Display};
 
 use alloy_primitives::Address;
-use clickhouse::Row;
 use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use redefined::{Redefined, RedefinedConvert};
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{Deserialize, Serialize};
 
-use super::{cex::CexExchange, raw_cex_trades::RawCexTrades};
-use crate::{
-    db::redefined_types::malachite::RationalRedefined,
-    implement_table_value_codecs_with_zc,
-    pair::{Pair, PairRedefined},
-    utils::ToFloatNearest,
-    FastHashMap, FastHashSet,
+use super::{
+    cex_trades::CexTradeMap,
+    utils::{CexTradePtr, PairTradeQueue},
 };
+use crate::{db::cex::CexExchange, pair::Pair, utils::ToFloatNearest, FastHashMap, FastHashSet};
 
 /// TODO: lets prob not set this to 100%
 const BASE_EXECUTION_QUALITY: usize = 45;
+
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
 const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(10, 100);
@@ -43,107 +37,7 @@ impl Display for ExchangePrice {
     }
 }
 
-type MakerTaker = (ExchangePrice, ExchangePrice);
-type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
-
-// cex trades are sorted from lowest fill price to highest fill price
-#[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize)]
-pub struct CexTradeMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>);
-
-impl CexTradeMap {
-    pub fn from_redefined(map: Vec<(CexExchange, RedefinedTradeMapVec)>) -> Self {
-        Self(
-            map.into_iter()
-                .map(|(ex, trades)| {
-                    (
-                        ex,
-                        trades.into_iter().fold(
-                            FastHashMap::default(),
-                            |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
-                                acc.entry(pair.to_source()).or_default().extend(
-                                    trades
-                                        .into_iter()
-                                        .map(|t| t.to_source())
-                                        .sorted_unstable_by_key(|a| a.price.clone()),
-                                );
-                                acc
-                            },
-                        ),
-                    )
-                })
-                .collect(),
-        )
-    }
-}
-
-type ClickhouseTradeMap = Vec<(CexExchange, Vec<((String, String), Vec<RawCexTrades>)>)>;
-
-impl<'de> Deserialize<'de> for CexTradeMap {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let data: ClickhouseTradeMap = Deserialize::deserialize(deserializer)?;
-
-        Ok(CexTradeMap(data.into_iter().fold(
-            FastHashMap::default(),
-            |mut acc: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>, (key, value)| {
-                acc.entry(key).or_default().extend(value.into_iter().fold(
-                    FastHashMap::default(),
-                    |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
-                        let pair = Pair(pair.0.parse().unwrap(), pair.1.parse().unwrap());
-                        acc.entry(pair).or_default().extend(
-                            trades
-                                .into_iter()
-                                .map(Into::into)
-                                .sorted_unstable_by_key(|a: &CexTrades| a.price.clone()),
-                        );
-                        acc
-                    },
-                ));
-
-                acc
-            },
-        )))
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive, Redefined)]
-#[redefined(CexTradeMap)]
-#[redefined_attr(
-    to_source = "CexTradeMap::from_redefined(self.map)",
-    from_source = "CexTradeMapRedefined::new(src.0)"
-)]
-pub struct CexTradeMapRedefined {
-    pub map: Vec<(CexExchange, RedefinedTradeMapVec)>,
-}
-
-impl CexTradeMapRedefined {
-    fn new(map: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>) -> Self {
-        Self {
-            map: map
-                .into_iter()
-                .map(|(exch, inner_map)| {
-                    (
-                        exch,
-                        inner_map
-                            .into_iter()
-                            .map(|(a, b)| {
-                                (
-                                    PairRedefined::from_source(a),
-                                    Vec::<CexTradesRedefined>::from_source(b),
-                                )
-                            })
-                            .collect_vec(),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        }
-    }
-}
-
-implement_table_value_codecs_with_zc!(CexTradeMapRedefined);
-
+pub type MakerTaker = (ExchangePrice, ExchangePrice);
 type FoldVWAM = FastHashMap<Address, Vec<MakerTakerWithVolumeFilled>>;
 
 impl CexTradeMap {
@@ -170,8 +64,8 @@ impl CexTradeMap {
     // - 3. Selects most profitable route and returns it as the Price
     // -- It should be noted here that this will not aggregate multiple possible
     // routes
-    pub fn get_price(
-        &self,
+    pub(crate) fn get_price(
+        &mut self,
         exchanges: &[CexExchange],
         pair: &Pair,
         volume: &Rational,
@@ -184,6 +78,9 @@ impl CexTradeMap {
             ))
         }
 
+        // order the possible trade pairs.
+        self.ensure_proper_order(exchanges, pair);
+
         let res = self
             .get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref())
             .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()));
@@ -193,6 +90,24 @@ impl CexTradeMap {
         }
 
         res
+    }
+
+    fn ensure_proper_order(&mut self, exchanges: &[CexExchange], pair: &Pair) {
+        self.0.iter_mut().for_each(|(ex, pairs)| {
+            if !exchanges.contains(ex) || pair.0 == pair.1 {
+                return
+            }
+            pairs.iter_mut().for_each(|(ex_pair, trades)| {
+                if !(pair.0 == ex_pair.0
+                    || pair.0 == ex_pair.1
+                    || pair.1 == ex_pair.0
+                    || pair.1 == ex_pair.1)
+                {
+                    return
+                }
+                trades.sort_unstable_by_key(|k| k.price.clone());
+            });
+        })
     }
 
     fn calculate_intermediary_addresses(
@@ -295,7 +210,7 @@ impl CexTradeMap {
         calculate_multi_cross_pair(pair0_vwams, pair1_vwams, volume)
     }
 
-    pub fn get_vwam_via_intermediary_spread(
+    fn get_vwam_via_intermediary_spread(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
@@ -543,107 +458,6 @@ impl CexTradeMap {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Redefined, PartialEq, Eq)]
-#[redefined_attr(derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Hash,
-    Serialize,
-    rSerialize,
-    rDeserialize,
-    Archive
-))]
-pub struct CexTrades {
-    #[redefined(same_fields)]
-    pub exchange: CexExchange,
-    pub price:    Rational,
-    pub amount:   Rational,
-}
-
-impl From<RawCexTrades> for CexTrades {
-    fn from(value: RawCexTrades) -> Self {
-        Self {
-            exchange: value.exchange,
-            price:    Rational::try_from_float_simplest(value.price).unwrap(),
-            amount:   Rational::try_from_float_simplest(value.amount).unwrap(),
-        }
-    }
-}
-
-/// Its ok that we create 2 of these for pair price and intermediary price
-/// as it runs off of borrowed data so there is no overhead we occur
-pub struct PairTradeQueue<'a> {
-    exchange_depth: FastHashMap<CexExchange, usize>,
-    trades:         Vec<(CexExchange, Vec<&'a CexTrades>)>,
-}
-
-impl<'a> PairTradeQueue<'a> {
-    /// Assumes the trades are sorted based off the side that's passed in
-    pub fn new(
-        trades: Vec<(CexExchange, Vec<&'a CexTrades>)>,
-        execution_quality_pct: Option<FastHashMap<CexExchange, usize>>,
-    ) -> Self {
-        // calculate the ending index (depth) based of the quality pct for the given
-        // exchange and pair.
-        // -- quality percent is the assumed percent of good trades the arber is
-        // capturing for the relevant pair on a given exchange
-        // -- a lower quality percentage means we need to assess more trades because
-        // it's possible the arber was getting bad execution. Vice versa for a
-        // high quality percent
-        let exchange_depth = if let Some(quality_pct) = execution_quality_pct {
-            trades
-                .iter()
-                .map(|(exchange, data)| {
-                    let length = data.len();
-                    let quality = quality_pct.get(exchange).copied().unwrap_or(100);
-                    let idx = length - (length * quality / 100);
-                    (*exchange, idx)
-                })
-                .collect::<FastHashMap<_, _>>()
-        } else {
-            FastHashMap::default()
-        };
-
-        Self { exchange_depth, trades }
-    }
-
-    fn next_best_trade(&mut self) -> Option<CexTradePtr<'a>> {
-        let mut next: Option<CexTradePtr<'a>> = None;
-
-        for (exchange, trades) in &self.trades {
-            let exchange_depth = *self.exchange_depth.entry(*exchange).or_insert(0);
-            let len = trades.len() - 1;
-
-            // hit max depth
-            if exchange_depth > len {
-                continue
-            }
-
-            if let Some(trade) = trades.get(len - exchange_depth) {
-                if let Some(cur_best) = next.as_ref() {
-                    // found a better price
-
-                    if trade.price.gt(&cur_best.get().price) {
-                        next = Some(CexTradePtr::new(trade));
-                    }
-                // not set
-                } else {
-                    next = Some(CexTradePtr::new(trade));
-                }
-            }
-        }
-
-        // increment ptr
-        if let Some(next) = next.as_ref() {
-            *self.exchange_depth.get_mut(&next.get().exchange).unwrap() += 1;
-        }
-
-        next
-    }
-}
-
 /// take all intermediaries that we have collected, convert them into the full
 /// pair price with the amount of volume that they have cleared. We then will
 /// take the best price up-to our target volume and do a weighted average of the
@@ -769,40 +583,8 @@ fn _closest<'a>(
         .find_map(|(m_vol, set)| m_vol.ge(vol).then_some(set))
 }
 
-struct CexTradePtr<'ptr> {
-    raw: *const CexTrades,
-    /// used to bound the raw ptr so we can't use it if it goes out of scope.
-    _p:  PhantomData<&'ptr u8>,
-}
-
-unsafe impl<'a> Send for CexTradePtr<'a> {}
-unsafe impl<'a> Sync for CexTradePtr<'a> {}
-
-impl<'ptr> CexTradePtr<'ptr> {
-    fn new(raw: &CexTrades) -> Self {
-        Self { raw: raw as *const _, _p: PhantomData }
-    }
-
-    fn get(&'ptr self) -> &'ptr CexTrades {
-        unsafe { &*self.raw }
-    }
-}
-
 #[derive(Debug)]
 pub struct MakerTakerWithVolumeFilled {
     volume_looked_at: Rational,
     prices:           MakerTaker,
-}
-
-#[allow(dead_code)]
-fn time_weight(t: i64, block_time: u64, lambda_pre: f64, lambda_post: f64) -> f64 {
-    let time_difference = (t - block_time as i64).abs() as f64;
-
-    if t < block_time as i64 {
-        let exponent = lambda_pre * time_difference;
-        E.powf(-exponent)
-    } else {
-        let exponent = lambda_post * time_difference;
-        E.powf(-exponent)
-    }
 }

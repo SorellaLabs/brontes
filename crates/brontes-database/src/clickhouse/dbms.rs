@@ -163,6 +163,7 @@ macro_rules! db_types {
     ($(($db_type:ident, $db_table:ident)),*) => {
         #[derive(Debug, Clone, serde::Serialize)]
         #[serde(untagged)]
+        #[allow(clippy::large_enum_variant)]
         pub enum BrontesClickhouseTableDataTypes {
             $(
                 $db_type($db_type),

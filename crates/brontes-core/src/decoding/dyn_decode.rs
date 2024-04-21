@@ -174,7 +174,7 @@ fn value_parse(sol_value: &[DynSolValue], tuple: bool) -> String {
             DynSolValue::FixedArray(a) => value_parse(a, false),
             DynSolValue::CustomStruct { .. } => unreachable!("only eip-712"),
         })
-        .fold(ty, |a, b| a + "," + &b);
+        .fold(ty, |a, b| a + "," + b.as_str());
 
     if tuple {
         unclosed + ")"
