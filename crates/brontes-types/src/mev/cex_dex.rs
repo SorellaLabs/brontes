@@ -1,8 +1,14 @@
-use std::{fmt, fmt::Debug};
+use std::{
+    cmp::Ordering,
+    fmt,
+    fmt::Debug,
+    ops::{Add, AddAssign},
+};
 
 use ::clickhouse::DbRow;
-use ::serde::ser::{SerializeStruct, Serializer};
+use ::serde::ser::Serializer;
 use ahash::HashSet;
+use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
@@ -17,7 +23,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
-    rational_to_u256_fraction, Protocol, ToFloatNearest,
+    Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -30,12 +36,20 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDex {
-    pub tx_hash:          B256,
-    pub swaps:            Vec<NormalizedSwap>,
-    pub stat_arb_details: Vec<StatArbDetails>,
-    pub pnl:              StatArbPnl,
+    pub tx_hash:               B256,
+    pub swaps:                 Vec<NormalizedSwap>,
+    // Represents the arb details, using the cross exchange VMAP quote
+    pub global_vmap_details:   Vec<ArbDetails>,
+    pub global_vmap_pnl:       ArbPnl,
+    // Arb details taking the most optimal route across all exchanges
+    pub optimal_route_details: Vec<ArbDetails>,
+    pub optimal_route_pnl:     ArbPnl,
+    // Arb details using quotes from each exchange for each leg
+    pub per_exchange_details:  Vec<Vec<ArbDetails>>,
+    #[redefined(field((CexExchange, same)))]
+    pub per_exchange_pnl:      Vec<(CexExchange, ArbPnl)>,
     #[redefined(same_fields)]
-    pub gas_details:      GasDetails,
+    pub gas_details:           GasDetails,
 }
 
 impl Mev for CexDex {
@@ -65,10 +79,12 @@ impl Mev for CexDex {
 }
 
 impl Serialize for CexDex {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
+        todo!();
+        /*
         let mut ser_struct = serializer.serialize_struct("CexDex", 34)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
@@ -126,7 +142,7 @@ impl Serialize for CexDex {
 
         ser_struct.serialize_field("gas_details", &(gas_details))?;
 
-        ser_struct.end()
+        ser_struct.end()  */
     }
 }
 
@@ -155,46 +171,134 @@ impl DbRow for CexDex {
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct StatArbDetails {
+pub struct ArbDetails {
     #[redefined(same_fields)]
-    pub cex_exchange: CexExchange,
-    pub cex_price:    Rational,
+    pub cex_exchange:   CexExchange,
+    pub best_bid_maker: Rational,
+    pub best_ask_maker: Rational,
+    pub best_bid_taker: Rational,
+    pub best_ask_taker: Rational,
     #[redefined(same_fields)]
-    pub dex_exchange: Protocol,
-    pub dex_price:    Rational,
+    pub dex_exchange:   Protocol,
+    pub dex_price:      Rational,
+    pub dex_amount:     Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
-    pub pnl_pre_gas:  StatArbPnl,
+    pub pnl_pre_gas:    ArbPnl,
 }
 
-impl fmt::Display for StatArbDetails {
+impl fmt::Display for ArbDetails {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Arb Leg Details:")?;
         writeln!(
             f,
-            "   - Price on {:#?}: {}",
-            self.cex_exchange,
-            self.cex_price.clone().to_float()
+            "   - {}: {}",
+            "Exchange".bold().underline().cyan(),
+            self.cex_exchange.to_string().bold()
         )?;
-        writeln!(f, "   - Price on {}: {}", self.dex_exchange, self.dex_price.clone().to_float())?;
-        write!(f, "   - Pnl pre-gas: {}", self.pnl_pre_gas)
+        writeln!(f, "       - Dex Price: {:.6}", self.dex_price.clone().to_float().to_string())?;
+        writeln!(
+            f,
+            "       - CEX Prices: Maker Bid: {:.6} (-{:.5}), Maker Ask: {:.6} (-{:.5})",
+            self.best_bid_maker.clone().to_float().to_string(),
+            (&self.best_bid_maker - &self.best_bid_taker)
+                .to_float()
+                .to_string(),
+            self.best_ask_maker.clone().to_float().to_string(),
+            (&self.best_ask_maker - &self.best_ask_taker)
+                .to_float()
+                .to_string()
+        )?;
+        writeln!(f, "       - {}", "PnL Pre-Gas:".bold().underline().green())?;
+        writeln!(
+            f,
+            "           - Mid Price PnL: Maker: {:.6}, Taker: {:.6}",
+            self.pnl_pre_gas
+                .maker_taker_mid
+                .0
+                .clone()
+                .to_float()
+                .to_string(),
+            self.pnl_pre_gas
+                .maker_taker_mid
+                .1
+                .clone()
+                .to_float()
+                .to_string()
+        )?;
+        writeln!(
+            f,
+            "           - Ask PnL: Maker: {:.6}, Taker: {:.6}",
+            self.pnl_pre_gas
+                .maker_taker_ask
+                .0
+                .clone()
+                .to_float()
+                .to_string(),
+            self.pnl_pre_gas
+                .maker_taker_ask
+                .1
+                .clone()
+                .to_float()
+                .to_string()
+        )?;
+
+        Ok(())
+    }
+}
+#[serde_as]
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined, Eq)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct ArbPnl {
+    pub maker_taker_mid: (Rational, Rational),
+    pub maker_taker_ask: (Rational, Rational),
+}
+
+impl PartialOrd for ArbPnl {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
-#[serde_as]
-#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
-#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
-pub struct StatArbPnl {
-    pub maker_profit: Rational,
-    pub taker_profit: Rational,
+impl Add for ArbPnl {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        ArbPnl {
+            maker_taker_mid: (
+                self.maker_taker_mid.0 + other.maker_taker_mid.0,
+                self.maker_taker_mid.1 + other.maker_taker_mid.1,
+            ),
+            maker_taker_ask: (
+                self.maker_taker_ask.0 + other.maker_taker_ask.0,
+                self.maker_taker_ask.1 + other.maker_taker_ask.1,
+            ),
+        }
+    }
 }
 
-impl fmt::Display for StatArbPnl {
+impl AddAssign for ArbPnl {
+    fn add_assign(&mut self, other: Self) {
+        self.maker_taker_mid.0 += other.maker_taker_mid.0;
+        self.maker_taker_mid.1 += other.maker_taker_mid.1;
+        self.maker_taker_ask.0 += other.maker_taker_ask.0;
+        self.maker_taker_ask.1 += other.maker_taker_ask.1;
+    }
+}
+
+impl Ord for ArbPnl {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.maker_taker_mid.0.cmp(&other.maker_taker_mid.0)
+    }
+}
+
+impl fmt::Display for ArbPnl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "\n - Maker: {}\n - Taker: {}",
-            self.maker_profit.clone().to_float(),
-            self.taker_profit.clone().to_float()
+            "ArbPnl:\n - Maker Mid: {}\n - Taker Mid: {}\n - Maker Ask: {}\n - Taker Ask: {}",
+            self.maker_taker_mid.0.clone().to_float(),
+            self.maker_taker_mid.1.clone().to_float(),
+            self.maker_taker_ask.0.clone().to_float(),
+            self.maker_taker_ask.1.clone().to_float()
         )?;
 
         Ok(())

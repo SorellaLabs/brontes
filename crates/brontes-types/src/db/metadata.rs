@@ -1,16 +1,21 @@
+use std::sync::Arc;
+
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
+use parking_lot::Mutex;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use serde_with::serde_as;
 
+use super::{
+    builder::BuilderInfo,
+    cex::{CexPriceMap, CexTradeMap},
+    dex::DexQuotes,
+};
 #[cfg(feature = "cex-dex-markout")]
-use super::cex::CexExchange;
-#[cfg(feature = "cex-dex-markout")]
-use super::cex_trades::CexTradeMap;
-use super::{builder::BuilderInfo, cex::CexPriceMap, dex::DexQuotes};
+use crate::db::cex::CexExchange;
 use crate::{
     constants::WETH_ADDRESS,
     db::redefined_types::primitives::*,
@@ -57,10 +62,10 @@ pub struct Metadata {
     #[as_ref]
     pub block_metadata: BlockMetadata,
     pub cex_quotes:     CexPriceMap,
+    // not a fan but only way todo without unsafe
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
-    #[cfg(feature = "cex-dex-markout")]
-    pub cex_trades:     Option<CexTradeMap>,
+    pub cex_trades:     Option<Arc<Mutex<CexTradeMap>>>,
 }
 
 impl Metadata {
@@ -78,8 +83,8 @@ impl Metadata {
                             CexExchange::Okex,
                             CexExchange::Kucoin,
                         ];
-                        let baseline_for_tokeprice = Rational::from(1);
-                        let pair = Pair(WETH_ADDRESS, quote_token);
+                        let baseline_for_tokeprice = Rational::from_unsigneds(1u32, 10u32);
+                        let pair = Pair(quote_token, WETH_ADDRESS);
 
                         self.cex_trades
                             .as_ref()
@@ -87,7 +92,13 @@ impl Metadata {
                                 tracing::debug!("getting eth price");
                                 Some(
                                     trade_map
-                                        .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                        .lock()
+                                        .get_price_vwam(
+                                            &trades,
+                                            &pair,
+                                            &baseline_for_tokeprice,
+                                            None,
+                                        )?
                                         .0
                                         .price,
                                 )
@@ -114,8 +125,8 @@ impl Metadata {
                         CexExchange::Okex,
                         CexExchange::Kucoin,
                     ];
-                    let baseline_for_tokeprice = Rational::from(100);
-                    let pair = Pair(WETH_ADDRESS, quote_token);
+                    let baseline_for_tokeprice = Rational::from_unsigneds(1u32, 10u32);
+                    let pair = Pair(quote_token, WETH_ADDRESS);
 
                     self.cex_trades
                         .as_ref()
@@ -123,7 +134,8 @@ impl Metadata {
                             tracing::debug!("getting eth price");
                             Some(
                                 trade_map
-                                    .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                    .lock()
+                                    .get_price_vwam(&trades, &pair, &baseline_for_tokeprice, None)?
                                     .0
                                     .price,
                             )
@@ -203,15 +215,14 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
-        #[cfg(feature = "cex-dex-markout")] cex_trades: Option<CexTradeMap>,
+        cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
         Metadata {
             block_metadata: self,
             cex_quotes,
             dex_quotes,
             builder_info,
-            #[cfg(feature = "cex-dex-markout")]
-            cex_trades,
+            cex_trades: cex_trades.map(|c| Arc::new(Mutex::new(c))),
         }
     }
 }

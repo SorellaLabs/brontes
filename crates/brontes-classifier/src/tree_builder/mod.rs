@@ -90,7 +90,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .map(|root_data| {
                 tree.insert_root(root_data.root);
                 root_data.pool_updates.into_iter().for_each(|update| {
-                    tracing::debug!("sending update");
+                    tracing::trace!("sending dex price update: {:?}", update);
                     self.pricing_update_sender.send(update).unwrap();
                 });
 
@@ -113,7 +113,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .map(|(tx_idx, mut trace)| async move {
                     // here only traces where the root tx failed are filtered out
                     if trace.trace.is_empty() || !trace.is_success {
-                        tracing::debug!(
+                        tracing::trace!(
                             empty = trace.trace.is_empty(),
                             is_success = trace.is_success
                         );
