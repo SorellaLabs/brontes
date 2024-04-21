@@ -87,14 +87,16 @@ impl ClickhouseBuffered {
                 let insert_data = data
                     .into_iter()
                     .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::CexDexNew(inner_data) => Some(inner_data),
+                        BrontesClickhouseTableDataTypes::CexDex(inner_data) => Some(inner_data),
                         _ => None,
                     })
                     .collect::<Vec<_>>();
                 if insert_data.is_empty() {
                     panic!("you did this wrong idiot");
                 }
-                client.insert_many::<ClickhouseCexDexNew>(&insert_data).await?
+                client
+                    .insert_many::<ClickhouseCexDexNew>(&insert_data)
+                    .await?
             }
             BrontesClickhouseTables::ClickhouseSearcherTx => {
                 let insert_data = data
