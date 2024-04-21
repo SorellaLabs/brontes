@@ -28,17 +28,39 @@ use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
 use tracing::info;
 
-#[cfg(any(not(feature = "local-clickhouse"), feature = "local-no-inserts"))]
-pub fn load_database(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
+#[cfg(not(any(feature = "local-clickhouse", feature = "local-no-inserts")))]
+pub fn load_database(
+    _executor: &BrontesTaskExecutor,
+    db_endpoint: String,
+) -> eyre::Result<LibmdbxReadWriter> {
     LibmdbxReadWriter::init_db(db_endpoint, None)
 }
 
-// This version is used when `local-clickhouse` is enabled but
-// `local-no-inserts` is not.
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
-pub fn load_database(db_endpoint: String) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
+/// This version is used when `local-clickhouse` is enabled but
+/// `local-no-inserts` is not.
+#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
+pub fn load_database(
+    _executor: &BrontesTaskExecutor,
+    db_endpoint: String,
+) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
     let clickhouse = Clickhouse::default();
+    Ok(ClickhouseMiddleware::new(clickhouse, inner))
+}
+
+/// This version is used when `local-clickhouse` and
+/// `local-no-inserts` is enabled
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+pub fn load_database(
+    executor: &BrontesTaskExecutor,
+    db_endpoint: String,
+) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    spawn_db_writer_thread(executor, rx);
+    let clickhouse = Clickhouse::new(Default::default(), Default::default(), Some(tx));
+
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
 }
 
@@ -57,19 +79,9 @@ pub fn load_libmdbx(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
 
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse(
-    _cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
+    cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
 ) -> eyre::Result<Clickhouse> {
-    #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
-    {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        spawn_db_writer_thread(rx);
-        Ok(Clickhouse::new(Default::default(), _cex_download_config, Some(tx)))
-    }
-
-    #[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
-    {
-        Ok(Clickhouse::default())
-    }
+    Ok(Clickhouse::new(Default::default(), cex_download_config, None))
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
@@ -138,17 +150,18 @@ pub fn get_env_vars() -> eyre::Result<String> {
 
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 fn spawn_db_writer_thread(
+    executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
-    let handle = tokio::runtime::Handle::current();
-    std::thread::spawn(move || {
-        handle.block_on(async move {
+    executor.spawn_critical(
+        "Clickhouse Insert Process",
+        Box::pin(async move {
             let mut clickhouse_writer = ClickhouseBuffered::new(buffered_rx, 10);
             while let Some(val) = clickhouse_writer.next().await {
                 if let Err(e) = val {
                     tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
                 }
             }
-        })
-    });
+        }),
+    );
 }
