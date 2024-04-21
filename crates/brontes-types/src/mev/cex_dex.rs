@@ -102,7 +102,7 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
-        let transposed: ArbDetailsTransposed = self.arb_details.into();
+        let transposed: ArbDetailsTransposed = self.global_vmap_details.into();
 
         // "global_vmap_details.cex_exchange",
         // "global_vmap_details.best_bid_maker",
