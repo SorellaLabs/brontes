@@ -315,7 +315,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         &self.cex_exchanges,
                         pair,
                         &swap.amount_out,
-                        metadata.block_timestamp * 1000000,
+                        metadata.microseconds_block_timestamp(),
                         None,
                     )
             })

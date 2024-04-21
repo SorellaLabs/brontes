@@ -210,7 +210,7 @@ impl CexTradeMap {
         calculate_multi_cross_pair(pair0_vwams, pair1_vwams, volume)
     }
 
-    fn get_vwam_via_intermediary_spread(
+    pub fn get_vwam_via_intermediary_spread(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,
@@ -404,26 +404,6 @@ impl CexTradeMap {
         if &cur_vol < volume {
             return None
         }
-
-        // // Groups trades into a set of iterators, first including all trades, then
-        // all // combinations of 2 trades, then all combinations of 3 trades,
-        // then all // combinations of 4 trades
-        // // - The assumption here is we don't frequently need to evaluate more than a
-        // set //   of 4 trades
-        // //TODO: Bench & check if it's it worth to parallelize
-        // let trade_buckets_iterator = trades
-        //     .iter()
-        //     .map(|t| vec![t])
-        //     .chain(
-        //         trades
-        //             .iter()
-        //             .combinations(2)
-        //             .chain(trades.iter().combinations(3)),
-        //     )
-        //     .collect::<Vec<_>>();
-        // // Gets the vec of trades that's closest to the volume of the stat arb swap
-        // // Will not return a vec that does not have enough volume to fill the arb
-        // let closest = closest(trade_buckets_iterator.into_par_iter(), volume)?;
 
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
