@@ -11,8 +11,8 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use super::{utils::PairTradeWalker, CexTrades};
 use crate::{db::cex::CexExchange, pair::Pair, FastHashMap, FastHashSet};
 
-const PRE_DECAY: f64 = -0.5;
-const POST_DECAY: f64 = -0.2;
+const PRE_DECAY: f64 = -0.0000005;
+const POST_DECAY: f64 = -0.0000002;
 
 const START_POST_TIME_US: u64 = 2_000_000;
 const START_PRE_TIME_US: u64 = 500_000;
@@ -215,7 +215,7 @@ impl<'a> TimeWindowTrades<'a> {
             for trade in trades {
                 let trade = trade.get();
                 let (m_fee, t_fee) = trade.exchange.fees();
-                let weight = calcuate_weight(timestamp, trade.timestamp);
+                let weight = calculate_weight(timestamp, trade.timestamp);
 
                 let (vxp_maker, vxp_taker, trade_volume_weight, trade_volume_ex) = exchange_vxp
                     .entry(trade.exchange)
@@ -311,13 +311,13 @@ impl<'a> TimeWindowTrades<'a> {
     }
 }
 
-fn calcuate_weight(block_time: u64, trade_time: u64) -> Rational {
+fn calculate_weight(block_time: u64, trade_time: u64) -> Rational {
     let pre = trade_time < block_time;
 
     Rational::try_from_float_simplest(if pre {
-        E.powf(PRE_DECAY * ((block_time - trade_time) / 1_000_000) as f64)
+        E.powf(PRE_DECAY * (block_time - trade_time) as f64)
     } else {
-        E.powf(POST_DECAY * ((trade_time - block_time) / 1_000_000) as f64)
+        E.powf(POST_DECAY * (trade_time - block_time) as f64)
     })
     .unwrap()
 }
