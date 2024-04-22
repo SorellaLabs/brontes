@@ -197,7 +197,7 @@ impl PairSubGraph {
 
     pub fn save_last_verification_liquidity<T: ProtocolState>(
         &mut self,
-        state: &FastHashMap<Address, T>,
+        state: &FastHashMap<Address, &T>,
     ) {
         let init_tvl = self
             .graph
@@ -574,11 +574,11 @@ impl PairSubGraph {
             .for_each(|(k, bad_edge_to_pool, direction)| {
                 let Some(n0) = self.token_to_index.get(&k.0) else {
                     tracing::error!("no token 0 in token to index");
-                    return ;
+                    return;
                 };
                 let Some(n1) = self.token_to_index.get(&k.1) else {
                     tracing::error!("no token 1 in token to index");
-                    return ;
+                    return;
                 };
                 let n0 = *n0;
                 let n1 = *n1;
@@ -614,20 +614,20 @@ impl PairSubGraph {
         data.into_iter()
             .filter_map(|(k, bad_edge_to_pool)| {
                 let Some(n0) = self.token_to_index.get(&k.0) else {
-                tracing::error!("no token 0 in token to index");
-                return None;
-            };
+                    tracing::error!("no token 0 in token to index");
+                    return None;
+                };
                 let Some(n1) = self.token_to_index.get(&k.1) else {
-                tracing::error!("no token 1 in token to index");
-                return None;
-            };
+                    tracing::error!("no token 1 in token to index");
+                    return None;
+                };
                 let n0 = *n0;
                 let n1 = *n1;
 
                 let Some((e, dir)) = self.graph.find_edge_undirected(n0.into(), n1.into()) else {
-                tracing::error!("no edge found");
-                return None;
-            };
+                    tracing::error!("no edge found");
+                    return None;
+                };
 
                 let mut removed_weights = Vec::new();
                 let mut weights = self.graph.remove_edge(e).unwrap();

@@ -172,7 +172,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             complete_pair,
             block,
             edges,
-            &self.graph_state,
+            &mut self.graph_state,
         )
     }
 
@@ -197,7 +197,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             tracing::error!(error=%e, "failed to save new subgraph pair");
         }
         self.sub_graph_registry
-            .add_verified_subgraph(subgraph, &self.graph_state.all_state(block))
+            .add_verified_subgraph(subgraph, self.graph_state.all_state(block))
     }
 
     pub fn remove_pair_graph_address(
@@ -308,7 +308,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             pair,
             goes_through,
             block,
-            &self.graph_state,
+            &mut self.graph_state,
             frayed_end_extensions,
         )
     }

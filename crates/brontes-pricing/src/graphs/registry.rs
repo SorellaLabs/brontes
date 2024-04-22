@@ -161,9 +161,9 @@ impl SubGraphRegistry {
     pub fn add_verified_subgraph(
         &mut self,
         mut subgraph: PairSubGraph,
-        graph_state: &FastHashMap<Address, PoolState>,
+        graph_state: FastHashMap<Address, &PoolState>,
     ) {
-        subgraph.save_last_verification_liquidity(graph_state);
+        subgraph.save_last_verification_liquidity(&graph_state);
 
         self.sub_graphs
             .entry(subgraph.complete_pair().ordered())
