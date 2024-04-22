@@ -35,9 +35,10 @@ impl LoadResult {
 }
 
 pub struct LazyResult {
-    pub state:       Option<PoolState>,
-    pub block:       u64,
-    pub load_result: LoadResult,
+    pub state:           Option<PoolState>,
+    pub block:           u64,
+    pub load_result:     LoadResult,
+    pub dependent_count: u64,
 }
 
 #[derive(Debug)]
@@ -282,9 +283,14 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         if let Poll::Ready(Some(result)) = self.pool_load_futures.poll_next_unpin(cx) {
             match result {
                 Ok((block, addr, state, load)) => {
-                    self.remove_state_trackers(block, &addr);
+                    let deps = self.remove_state_trackers(block, &addr);
 
-                    let res = LazyResult { block, state: Some(state), load_result: load };
+                    let res = LazyResult {
+                        block,
+                        state: Some(state),
+                        load_result: load,
+                        dependent_count: deps.len() as u64,
+                    };
                     Poll::Ready(Some(res))
                 }
                 Err((pool_address, dex, block, pool_pair, full_pair, _)) => {
@@ -296,6 +302,7 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
                     let res = LazyResult {
                         state: None,
                         block,
+                        dependent_count: dependent_pairs.len() as u64,
                         load_result: LoadResult::Err {
                             pool_pair,
                             full_pair,

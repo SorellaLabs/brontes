@@ -44,7 +44,7 @@ impl SubGraphRegistry {
                     pair.ordered(),
                     vec![(
                         goes_through,
-                        PairSubGraph::init(pair, complete_pair, goes_through, extends_to, edges),
+                        PairSubGraph::init(pair, complete_pair, goes_through, extends_to, edges, 0),
                     )],
                 )
             })
@@ -74,6 +74,38 @@ impl SubGraphRegistry {
             });
     }
 
+    // for all subgraphs that haven't been used in a given time period, will
+    // remove them from and return each pool with the amount to decrement.
+    pub fn prune_dead_subgraphs(&mut self, block: u64) -> FastHashMap<Address, u64> {
+        let mut removals = FastHashMap::default();
+
+        self.sub_graphs.retain(|_, vec| {
+            vec.retain(|(_, subgraph)| {
+                if subgraph.is_expired_subgraph(block) || subgraph.ready_to_remove(block) {
+                    subgraph.get_all_pools().flatten().for_each(|edge| {
+                        *removals.entry(edge.pool_addr).or_default() += 1;
+                    });
+                    return false
+                }
+                true
+            });
+
+            !vec.is_empty()
+        });
+        removals
+    }
+
+    pub fn mark_future_use(&self, pair: &Pair, goes_through: &Pair, block: u64) {
+        // we unwrap as this should never fail.
+        let graph = self.sub_graphs.get(&pair.ordered()).unwrap();
+        graph
+            .iter()
+            .find(|(inner_gt, _)| (inner_gt == goes_through))
+            .unwrap()
+            .1
+            .future_use(block);
+    }
+
     pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
         self.sub_graphs
             .get(&pair.ordered())
@@ -96,15 +128,23 @@ impl SubGraphRegistry {
     // check's to see if a subgraph that shares an edge exists.
     pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
         self.sub_graphs
-            .keys()
-            .find(|cur_graphs| cur_graphs.0 == pair.1 && cur_graphs.1 == quote)
+            .iter()
+            .find(|(cur_graphs, sub)| {
+                cur_graphs.0 == pair.1
+                    && cur_graphs.1 == quote
+                    && sub.iter().all(|(_, s)| s.should_use_for_new())
+            })
+            .map(|(k, _)| k)
             .copied()
     }
 
     pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
         self.sub_graphs
             .get(&pair.ordered())
-            .filter(|g| g.iter().any(|(gt, _)| gt == goes_through))
+            .filter(|g| {
+                g.iter()
+                    .any(|(gt, s)| gt == goes_through && s.should_use_for_new())
+            })
             .is_some()
     }
 
@@ -124,6 +164,7 @@ impl SubGraphRegistry {
         graph_state: &FastHashMap<Address, PoolState>,
     ) {
         subgraph.save_last_verification_liquidity(graph_state);
+
         self.sub_graphs
             .entry(subgraph.complete_pair().ordered())
             .or_default()
@@ -132,9 +173,9 @@ impl SubGraphRegistry {
 
     /// looks through the subgraph for any pools that have had significant
     /// liquidity drops. when this occurs. removes the pair
-    pub fn audit_subgraphs(&mut self, graph_state: &FastHashMap<Address, PoolState>) {
+    pub fn audit_subgraphs(&mut self, graph_state: FastHashMap<Address, &PoolState>) {
         self.sub_graphs.retain(|_, v| {
-            v.retain(|(_, sub)| !sub.has_stale_liquidity(graph_state));
+            v.retain(|(_, sub)| !sub.has_stale_liquidity(&graph_state));
             !v.is_empty()
         });
     }
@@ -160,31 +201,21 @@ impl SubGraphRegistry {
         goes_through: &Pair,
         start: Address,
         start_price: Rational,
-        state: &FastHashMap<Address, T>,
-    ) -> Option<bool> {
-        let mut requery = false;
-        self.sub_graphs.retain(|g_pair, sub| {
+        state: &FastHashMap<Address, &T>,
+        block: u64,
+    ) {
+        self.sub_graphs.iter_mut().for_each(|(g_pair, sub)| {
             // wrong pair, then retain
             if *g_pair != pair.ordered() {
-                return true
+                return
             }
 
-            sub.retain_mut(|(gt, graph)| {
+            sub.iter_mut().for_each(|(gt, graph)| {
                 if goes_through == gt {
-                    let res = graph.rundown_subgraph_check(start, start_price.clone(), state);
-                    // shit is disjoint
-                    if res.should_abandon {
-                        requery = true;
-                        return false
-                    }
+                    graph.has_valid_liquidity(start, start_price.clone(), state, block)
                 }
-                true
             });
-
-            !sub.is_empty()
         });
-
-        Some(requery)
     }
 
     pub fn get_price(
@@ -192,7 +223,7 @@ impl SubGraphRegistry {
         unordered_pair: Pair,
         goes_through: Pair,
         goes_through_address: Option<Address>,
-        edge_state: &FastHashMap<Address, PoolState>,
+        edge_state: &FastHashMap<Address, &PoolState>,
     ) -> Option<Rational> {
         let (next, complete_pair, default_price) =
             self.get_price_once(unordered_pair, goes_through, goes_through_address, edge_state)?;
@@ -220,7 +251,7 @@ impl SubGraphRegistry {
         unordered_pair: Pair,
         goes_through: Pair,
         goes_through_address: Option<Address>,
-        edge_state: &FastHashMap<Address, PoolState>,
+        edge_state: &FastHashMap<Address, &PoolState>,
     ) -> Option<(Option<Pair>, Pair, Rational)> {
         let pair = unordered_pair.ordered();
 
@@ -254,7 +285,7 @@ impl SubGraphRegistry {
     pub(crate) fn get_price_all(
         &self,
         unordered_pair: Pair,
-        edge_state: &FastHashMap<Address, PoolState>,
+        edge_state: &FastHashMap<Address, &PoolState>,
     ) -> Option<Rational> {
         let pair = unordered_pair.ordered();
 
@@ -262,9 +293,10 @@ impl SubGraphRegistry {
             let mut cnt = Rational::ZERO;
             let mut acc = Rational::ZERO;
             for (_, graph) in f {
-                if graph.extends_to().is_some() {
+                if graph.extends_to().is_some() || !graph.should_use_for_new() {
                     continue
                 };
+
                 let Some(next) = graph.fetch_price(edge_state, None) else {
                     continue;
                 };

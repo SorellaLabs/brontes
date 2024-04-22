@@ -71,7 +71,7 @@ impl ClickhouseBuffered {
                                 .insert_many::<$table>(&insert_data)
                                 .await?
                         }
-                    )*
+                    )+
                 }
             };
         }

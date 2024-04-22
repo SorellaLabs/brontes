@@ -24,6 +24,8 @@ use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+
+use crate::graphs::StateWithDependencies;
 mod function_call_bench;
 mod graphs;
 pub mod protocols;
@@ -225,15 +227,16 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let Some(pair) = msg.get_pair(self.quote_asset) else { return };
             let is_transfer = msg.is_transfer();
 
+            let block = msg.block;
             let pair0 = Pair(pair.0, self.quote_asset);
             let pair1 = Pair(pair.1, self.quote_asset);
 
             let gt = Some(pair).filter(|_| !is_transfer).unwrap_or_default();
 
             self.graph_manager
-                .prune_low_liq_subgraphs(pair0, &gt, self.quote_asset);
+                .prune_low_liq_subgraphs(pair0, &gt, self.quote_asset, block);
             self.graph_manager
-                .prune_low_liq_subgraphs(pair1, &gt.flip(), self.quote_asset);
+                .prune_low_liq_subgraphs(pair1, &gt.flip(), self.quote_asset, block);
         });
 
         tracing::debug!("search triggered by pool updates");
@@ -583,10 +586,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     #[brontes_macros::bench_time(ptr=self.bench)]
     fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult { block, state, load_result } = state;
+        let LazyResult { block, state, load_result, dependent_count } = state;
 
         if let Some(state) = state {
             let addr = state.address();
+            let state = StateWithDependencies { state, dependents: dependent_count };
 
             self.graph_manager.new_state(addr, state);
 
@@ -1053,6 +1057,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .unwrap_or(DexQuotes(vec![]));
 
         self.handle_drastic_price_changes(&mut res);
+        // prune dead subgraphs
+        self.graph_manager
+            .prune_dead_subgraphs(self.completed_block);
 
         self.completed_block += 1;
 
@@ -1161,6 +1168,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .unwrap_or(DexQuotes(vec![]));
 
         self.handle_drastic_price_changes(&mut res);
+        // prune dead subgraphs
+        self.graph_manager
+            .prune_dead_subgraphs(self.completed_block);
 
         self.completed_block += 1;
 

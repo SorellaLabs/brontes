@@ -157,7 +157,7 @@ impl SubgraphVerifier {
         complete_pair: Pair,
         block: u64,
         path: Vec<SubGraphEdge>,
-        state_tracker: &StateTracker,
+        state_tracker: &mut StateTracker,
     ) -> Vec<PoolPairInfoDirection> {
         // if we find a subgraph that is the same, we return.
         if self
@@ -170,7 +170,8 @@ impl SubgraphVerifier {
         };
 
         let query_state = state_tracker.missing_state(block, &path);
-        let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
+        let subgraph =
+            PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path, block);
 
         self.pending_subgraphs
             .entry(complete_pair.ordered())
@@ -277,7 +278,7 @@ impl SubgraphVerifier {
         pair: Pair,
         goes_through: &Pair,
         block: u64,
-        state_tracker: &StateTracker,
+        state_tracker: &mut StateTracker,
         frayed_end_extensions: Vec<SubGraphEdge>,
     ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         Some((
@@ -337,6 +338,13 @@ impl SubgraphVerifier {
                         v.push((goes_through, Default::default()));
                         &default
                     };
+
+                    // for all of the removals we did from graph. decrement the state tracker.
+                    result.removals.values().for_each(|v| {
+                        v.into_iter().for_each(|edge| {
+                            state_tracker.decrement_verification_state(edge.pool_address, block);
+                        });
+                    });
 
                     let ignores = state.get_nodes_to_ignore();
 

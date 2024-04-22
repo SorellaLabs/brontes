@@ -20,7 +20,9 @@ use malachite::{num::basic::traits::One, Rational};
 use tracing::error_span;
 
 pub use self::{
-    registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
+    registry::SubGraphRegistry,
+    state_tracker::{StateTracker, StateWithDependencies},
+    subgraph::PairSubGraph,
     subgraph_verifier::*,
 };
 use super::PoolUpdate;
@@ -174,6 +176,16 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         )
     }
 
+    /// prunes dead sup_graphs and empty state.
+    pub fn prune_dead_subgraphs(&mut self, block: u64) {
+        self.sub_graph_registry
+            .prune_dead_subgraphs(block)
+            .into_iter()
+            .for_each(|(pool, amount)| {
+                self.graph_state.remove_finalized_state_dep(pool, amount);
+            })
+    }
+
     // feature flagged
     #[allow(unused_variables)]
     pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
@@ -223,11 +235,11 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             pair,
             goes_through,
             goes_through_address,
-            self.graph_state.finalized_state(),
+            &self.graph_state.finalized_state(),
         )
     }
 
-    pub fn new_state(&mut self, address: Address, state: PoolState) {
+    pub fn new_state(&mut self, address: Address, state: StateWithDependencies) {
         self.graph_state.new_state_for_verification(address, state);
     }
 
@@ -251,7 +263,13 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     // returns true if the subgraph should be requeried. This will
     // also remove the given subgraph from the registry
-    pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
+    pub fn prune_low_liq_subgraphs(
+        &mut self,
+        pair: Pair,
+        goes_through: &Pair,
+        quote: Address,
+        block: u64,
+    ) {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
             let state = self.graph_state.finalized_state();
@@ -261,19 +279,20 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 .map(|jump_pair| {
                     (
                         self.sub_graph_registry
-                            .get_price_all(jump_pair.flip(), state)
+                            .get_price_all(jump_pair.flip(), &state)
                             .unwrap_or(Rational::ONE),
                         jump_pair.0,
                     )
                 })
                 .unwrap_or_else(|| (Rational::ONE, quote));
 
-            let _ = self.sub_graph_registry.verify_current_subgraphs(
+            self.sub_graph_registry.verify_current_subgraphs(
                 pair,
                 goes_through,
                 start_addr,
                 start_price,
-                state,
+                &state,
+                block,
             );
         });
     }
@@ -301,7 +320,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     ) -> Vec<VerificationResults> {
         let pairs = pairs
             .into_iter()
-            .flat_map(|(a, b, pair, goes_throughs)| {
+            .flat_map(|(block, id, pair, goes_throughs)| {
                 goes_throughs
                     .into_iter()
                     .unique()
@@ -310,20 +329,22 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                             .get_subgraph_extends(&pair, &goes_through)
                             .map(|jump_pair| {
                                 (
-                                    a,
-                                    b,
+                                    block,
+                                    id,
                                     pair,
                                     self.sub_graph_registry
                                         .get_price_all(
                                             jump_pair.flip(),
-                                            self.graph_state.finalized_state(),
+                                            &self.graph_state.finalized_state(),
                                         )
                                         .unwrap_or(Rational::ONE),
                                     jump_pair.0,
                                     goes_through,
                                 )
                             })
-                            .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote, goes_through))
+                            .unwrap_or_else(|| {
+                                (block, id, pair, Rational::ONE, quote, goes_through)
+                            })
                     })
                     .collect_vec()
             })
