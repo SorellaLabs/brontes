@@ -155,7 +155,7 @@ impl StateTracker {
                         }
                         std::collections::hash_map::Entry::Occupied(mut o) => {
                             let old_state = o.get_mut();
-                            if state.state.last_update >= block {
+                            if state.state.last_update > block {
                                 panic!("finalized state was ahead of regular state");
                             }
                             old_state.dependents += state.dependents;
