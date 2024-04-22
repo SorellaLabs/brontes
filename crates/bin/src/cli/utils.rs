@@ -7,6 +7,8 @@ use brontes_core::local_provider::LocalProvider;
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
 use brontes_database::clickhouse::ClickhouseHttpClient;
+#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
+use brontes_database::clickhouse::ClickhouseMiddleware;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_database::clickhouse::ClickhouseMiddleware;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
