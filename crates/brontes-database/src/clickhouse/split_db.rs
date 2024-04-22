@@ -50,260 +50,51 @@ impl ClickhouseBuffered {
         data: Vec<BrontesClickhouseTableDataTypes>,
         table: BrontesClickhouseTables,
     ) -> eyre::Result<()> {
-        match table {
-            BrontesClickhouseTables::ClickhouseBundleHeader => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::BundleHeader(inner_data) => {
-                            Some(inner_data)
+        macro_rules! inserts {
+            ($($table:ident $inner:ident),+) => {
+                match table {
+                    $(
+                        BrontesClickhouseTables::$table => {
+                            let insert_data = data
+                                .into_iter()
+                                .filter_map(|d| match d {
+                                    BrontesClickhouseTableDataTypes::$inner(inner_data) => {
+                                        Some(inner_data)
+                                    }
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>();
+                            if insert_data.is_empty() {
+                                panic!("you did this wrong idiot");
+                            }
+                            client
+                                .insert_many::<$table>(&insert_data)
+                                .await?
                         }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
+                    )*
                 }
-                client
-                    .insert_many::<ClickhouseBundleHeader>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseMevBlocks => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::MevBlock(inner_data) => Some(inner_data),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseMevBlocks>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseCexDex => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::CexDex(inner_data) => Some(inner_data),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client.insert_many::<ClickhouseCexDex>(&insert_data).await?
-            }
-            BrontesClickhouseTables::ClickhouseSearcherTx => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::SearcherTx(inner_data) => Some(inner_data),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseSearcherTx>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseJit => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::JitLiquidity(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client.insert_many::<ClickhouseJit>(&insert_data).await?
-            }
-            BrontesClickhouseTables::ClickhouseJitSandwich => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::JitLiquiditySandwich(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseJitSandwich>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseSandwiches => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::Sandwich(inner_data) => Some(inner_data),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseSandwiches>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseAtomicArbs => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::AtomicArb(inner_data) => Some(inner_data),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseAtomicArbs>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseLiquidations => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::Liquidation(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseLiquidations>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseSearcherInfo => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::JoinedSearcherInfo(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseSearcherInfo>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseDexPriceMapping => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::DexQuotesWithBlockNumber(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseDexPriceMapping>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseTxTraces => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::TxTrace(inner_data) => Some(inner_data),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseTxTraces>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseTokenInfo => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::TokenInfoWithAddress(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseTokenInfo>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhousePools => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::ProtocolInfoClickhouse(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client.insert_many::<ClickhousePools>(&insert_data).await?
-            }
-            BrontesClickhouseTables::ClickhouseBuilderInfo => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::BuilderInfoWithAddress(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client
-                    .insert_many::<ClickhouseBuilderInfo>(&insert_data)
-                    .await?
-            }
-            BrontesClickhouseTables::ClickhouseTree => {
-                let insert_data = data
-                    .into_iter()
-                    .filter_map(|d| match d {
-                        BrontesClickhouseTableDataTypes::TransactionRoot(inner_data) => {
-                            Some(inner_data)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                if insert_data.is_empty() {
-                    panic!("you did this wrong idiot");
-                }
-                client.insert_many::<ClickhouseTree>(&insert_data).await?
-            }
+            };
         }
+
+        inserts!(
+            (ClickhouseBundleHeader, BundleHeader),
+            (ClickhouseMevBlocks, MevBlock),
+            (ClickhouseCexDex, CexDex),
+            (ClickhouseSearcherTx, SearcherTx),
+            (ClickhouseJit, JitLiquidity),
+            (ClickhouseJitSandwich, JitLiquiditySandwich),
+            (ClickhouseJitSandwich, JitLiquiditySandwich),
+            (ClickhouseSandwiches, Sandwich),
+            (ClickhouseAtomicArbs, AtomicArb),
+            (ClickhouseLiquidations, Liquidation),
+            (ClickhouseSearcherInfo, JoinedSearcherInfo),
+            (ClickhouseDexPriceMapping, DexQuotesWithBlockNumber),
+            (ClickhouseTxTraces, TxTrace),
+            (ClickhouseTokenInfo, TokenInfoWithAddress),
+            (ClickhousePools, ProtocolInfoClickhouse),
+            (ClickhouseBuilderInfo, BuilderInfoWithAddress),
+            (ClickhouseTree, TransactionRoot)
+        );
 
         Ok(())
     }
