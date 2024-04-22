@@ -232,7 +232,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let pair1 = Pair(pair.1, self.quote_asset);
 
             let gt = Some(pair).filter(|_| !is_transfer).unwrap_or_default();
+            // mark that they will be used
+            self.graph_manager.mark_future_use(&pair0, &gt, block);
+            self.graph_manager
+                .mark_future_use(&pair1, &gt.flip(), block);
 
+            // mark low liq ones for removal when this block is completed
             self.graph_manager
                 .prune_low_liq_subgraphs(pair0, &gt, self.quote_asset, block);
             self.graph_manager

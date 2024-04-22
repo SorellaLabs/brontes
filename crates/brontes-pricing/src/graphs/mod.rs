@@ -118,6 +118,11 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.sub_graph_registry.has_extension(pair, quote)
     }
 
+    pub fn mark_future_use(&self, pair: &Pair, goes_through: &Pair, block: u64) {
+        self.sub_graph_registry
+            .mark_future_use(pair, goes_through, block);
+    }
+
     /// creates a subgraph returning the edges and the state to load.
     /// this is done so that this isn't mut and be ran in parallel
     pub fn create_subgraph(
@@ -211,7 +216,11 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn remove_subgraph(&mut self, pool_pair: Pair, goes_through: Pair) {
         self.sub_graph_registry
-            .remove_subgraph(&pool_pair, &goes_through);
+            .remove_subgraph(&pool_pair, &goes_through)
+            .into_iter()
+            .for_each(|(pool, amount)| {
+                self.graph_state.remove_finalized_state_dep(pool, amount);
+            })
     }
 
     /// Returns all pairs that have been ignored from lowest to highest
@@ -261,8 +270,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.graph_state.remove_state(address)
     }
 
-    // returns true if the subgraph should be requeried. This will
-    // also remove the given subgraph from the registry
+    // returns true if the subgraph should be requeried. will mark it for removal
+    // at the current block and it won't be used in pricing in the future
     pub fn prune_low_liq_subgraphs(
         &mut self,
         pair: Pair,

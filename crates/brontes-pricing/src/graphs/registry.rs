@@ -148,14 +148,28 @@ impl SubGraphRegistry {
             .is_some()
     }
 
-    pub fn remove_subgraph(&mut self, pair: &Pair, goes_through: &Pair) {
+    pub fn remove_subgraph(
+        &mut self,
+        pair: &Pair,
+        goes_through: &Pair,
+    ) -> FastHashMap<Address, u64> {
+        let mut removals = FastHashMap::default();
         self.sub_graphs.retain(|k, v| {
             if k != pair {
                 return true
             }
-            v.retain(|(gt, _)| gt != goes_through);
+            v.retain(|(gt, s)| {
+                let res = gt != goes_through;
+                if !res {
+                    s.get_all_pools().flatten().for_each(|edge| {
+                        *removals.entry(edge.pool_addr).or_default() += 1;
+                    });
+                }
+                res
+            });
             !v.is_empty()
         });
+        removals
     }
 
     pub fn add_verified_subgraph(

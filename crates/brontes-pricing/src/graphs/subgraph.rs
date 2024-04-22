@@ -98,7 +98,6 @@ pub struct PairSubGraph {
     /// if it has been more than a certain amount of blocks, we will
     /// remove this graph to save on memory
     last_block_for_pricing: Arc<AtomicU64>,
-    supplying_extend_count: Arc<AtomicU64>,
     /// to avoid removing when there is a dependency
     /// we mark the removal time and all new subgraphs past this block,
     /// will generate a new subgrpah.
@@ -155,7 +154,6 @@ impl PairSubGraph {
 
         Self {
             last_block_for_pricing: Arc::new(AtomicU64::new(last_block_for_pricing)),
-            supplying_extend_count: Arc::new(AtomicU64::new(0)),
             remove_at: None,
             pair,
             complete_pair,
@@ -375,7 +373,6 @@ impl PairSubGraph {
     /// used to handle our memory management.
     pub fn is_expired_subgraph(&self, block: u64) -> bool {
         (block - self.last_block_for_pricing.load(SeqCst)) > INACTIVE_REMOVAL_PERIOD
-            && self.supplying_extend_count.load(SeqCst) == 0
     }
 
     pub fn future_use(&self, block: u64) {
@@ -412,12 +409,6 @@ impl PairSubGraph {
         let pruned = self.tmp_prune(edges);
         let disjoint = self.dijkstra_path(state, None).is_none();
         self.add_tmp_pruned(pruned);
-
-        if self.supplying_extend_count.load(SeqCst) != 0 && disjoint {
-            tracing::error!(pair=?self.complete_pair, %block,"pool with invalid liqudity is curretly,
-                            being extended");
-            return
-        }
 
         if disjoint {
             self.remove_at = Some(block);
