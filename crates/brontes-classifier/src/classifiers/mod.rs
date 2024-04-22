@@ -203,5 +203,6 @@ action_dispatch!(
     ZeroXFillOrKillRfqOrderCall,
     BancorV3TradeBySourceAmountCall,
     BancorV3TradeByTargetAmountCall,
+    BancorV3DepositCall,
     BancorV3FlashLoanCall
 );
