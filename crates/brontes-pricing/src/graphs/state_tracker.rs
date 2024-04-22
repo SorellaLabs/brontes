@@ -59,12 +59,13 @@ impl StateTracker {
     }
 
     pub fn decrement_verification_state(&mut self, pool: Address, block: u64) {
-        self.verification_edge_state
+        if let Some(s) = self
+            .verification_edge_state
             .get_mut(&pool)
             .filter(|pool_state| pool_state.contains_block_state(block))
-            .map(|s| {
-                s.dec_state(block);
-            });
+        {
+            s.dec_state(block);
+        };
     }
 
     pub fn finalized_state(&self) -> FastHashMap<Address, &PoolState> {
@@ -77,7 +78,7 @@ impl StateTracker {
     pub fn all_state(&self, block: u64) -> FastHashMap<Address, &PoolState> {
         self.state_for_verification(block)
             .into_iter()
-            .chain(self.finalized_state().into_iter())
+            .chain(self.finalized_state())
             .collect()
     }
 
@@ -99,6 +100,7 @@ impl StateTracker {
 
     /// will return state that is to be fetched but also will increment state
     /// dep counters
+    #[allow(clippy::blocks_in_conditions)]
     pub fn missing_state(
         &mut self,
         block: u64,
@@ -214,19 +216,25 @@ impl PoolStateWithBlock {
     }
 
     pub fn inc_state(&mut self, block: u64) {
-        self.0
+        if let Some(state) = self
+            .0
             .iter_mut()
             .map(|(_, state)| state)
             .find(|state| block == state.last_update)
-            .map(|state| state.inc(1));
+        {
+            state.inc(1);
+        }
     }
 
     pub fn dec_state(&mut self, block: u64) {
-        self.0
+        if let Some(state) = self
+            .0
             .iter_mut()
             .map(|(_, state)| state)
             .find(|state| block == state.last_update)
-            .map(|state| state.dec(1));
+        {
+            state.dec(1);
+        }
     }
 
     pub fn get_state(&self, block: u64) -> Option<&PoolState> {

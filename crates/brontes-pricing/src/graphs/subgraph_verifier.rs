@@ -341,7 +341,7 @@ impl SubgraphVerifier {
 
                     // for all of the removals we did from graph. decrement the state tracker.
                     result.removals.values().for_each(|v| {
-                        v.into_iter().for_each(|edge| {
+                        v.iter().for_each(|edge| {
                             state_tracker.decrement_verification_state(edge.pool_address, block);
                         });
                     });

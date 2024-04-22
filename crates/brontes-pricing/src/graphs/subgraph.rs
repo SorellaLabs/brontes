@@ -433,7 +433,7 @@ impl PairSubGraph {
             .removal_state
             .iter()
             .flat_map(|(pair, v)| {
-                v.into_iter()
+                v.iter()
                     .zip(vec![pair].into_iter().cycle())
                     .sorted_by(|a, b| a.0.liquidity.cmp(&b.0.liquidity))
             })
@@ -629,7 +629,7 @@ impl PairSubGraph {
                 weights.retain(|node| {
                     let res = bad_edge_to_pool != node.pool_addr;
                     if !res {
-                        removed_weights.push(node.clone());
+                        removed_weights.push(*node);
                     }
                     res
                 });
@@ -1104,12 +1104,12 @@ pub mod test {
         // t1 / t0 == 10
         let e0_price =
             MockPoolState::new(Rational::from(10), Rational::from(10_000), Rational::from(10_000));
-        state_map.insert(t0, e0_price);
+        state_map.insert(t0, &e0_price);
 
         // t2 / t1 == 20
         let e1_price =
             MockPoolState::new(Rational::from(20), Rational::from(10_000), Rational::from(10_000));
-        state_map.insert(t1, e1_price);
+        state_map.insert(t1, &e1_price);
 
         // t3 / t2 == 1 / 1500
         let e2_price = MockPoolState::new(
@@ -1117,7 +1117,7 @@ pub mod test {
             Rational::from(10_000),
             Rational::from(10_000),
         );
-        state_map.insert(t2, e2_price);
+        state_map.insert(t2, &e2_price);
 
         // t4 / t3 ==  1/52
         let e3_price = MockPoolState::new(
@@ -1125,7 +1125,7 @@ pub mod test {
             Rational::from(10_000),
             Rational::from(10_000),
         );
-        state_map.insert(t3, e3_price);
+        state_map.insert(t3, &e3_price);
 
         // (t4 / t0) = 10 * 20 * 1 /500 * 1/52 = 1/130
         let price = graph.fetch_price(&state_map, None).unwrap();
