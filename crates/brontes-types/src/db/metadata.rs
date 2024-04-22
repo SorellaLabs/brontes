@@ -210,6 +210,10 @@ impl BlockMetadata {
         }
     }
 
+    pub fn microseconds_block_timestamp(&self) -> u64 {
+        self.block_timestamp * 1_000_000
+    }
+
     pub fn into_metadata(
         self,
         cex_quotes: CexPriceMap,
