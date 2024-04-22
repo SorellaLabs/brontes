@@ -63,6 +63,7 @@ zstd = "0.13"
 paste = "1.0.14"
 pin-project = "1.1.4"
 clap.workspace = true
+brontes-macros.workspace = true
 
 # stats
 statrs = "0.16"

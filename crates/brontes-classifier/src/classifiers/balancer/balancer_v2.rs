@@ -332,7 +332,7 @@ mod tests {
                 0,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Actions::is_flash_loan),
-                &["child_actions"],
+                &["child_actions", "repayments"],
             )
             .await
             .unwrap();

@@ -41,23 +41,23 @@ pub struct RunArgs {
     #[cfg(not(feature = "cex-dex-markout"))]
     /// The sliding time window (BEFORE) for cex prices relative to the block
     /// timestamp
-    #[arg(long = "price-tw-before", default_value = "6")]
-    pub cex_time_window_before: u64,
+    #[arg(long = "price-tw-before", default_value = "0.5")]
+    pub cex_time_window_before: f64,
     #[cfg(not(feature = "cex-dex-markout"))]
     /// The sliding time window (AFTER) for cex prices relative to the block
     /// timestamp
-    #[arg(long = "price-tw-after", default_value = "6")]
-    pub cex_time_window_after:  u64,
+    #[arg(long = "price-tw-after", default_value = "2.0")]
+    pub cex_time_window_after:  f64,
     #[cfg(feature = "cex-dex-markout")]
     /// The sliding time window (BEFORE) for cex trades relative to the block
     /// timestamp
-    #[arg(long = "trades-tw-before", default_value = "6")]
-    pub cex_time_window_before: u64,
+    #[arg(long = "trades-tw-before", default_value = "3.0")]
+    pub cex_time_window_before: f64,
     #[cfg(feature = "cex-dex-markout")]
     /// The sliding time window (AFTER) for cex trades relative to the block
     /// timestamp
-    #[arg(long = "trades-tw-after", default_value = "6")]
-    pub cex_time_window_after:  u64,
+    #[arg(long = "trades-tw-after", default_value = "5.0")]
+    pub cex_time_window_after:  f64,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(
         long,
@@ -106,7 +106,7 @@ impl RunArgs {
         task_executor.spawn_critical("metrics", metrics_listener);
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
-        let libmdbx = static_object(load_database(brontes_db_endpoint)?);
+        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
         let cex_download_config = CexDownloadConfig::new(
