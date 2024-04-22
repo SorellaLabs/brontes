@@ -90,7 +90,7 @@ impl<'a> PairTradeWalker<'a> {
 
             // Gets trades after the block timestamp that are within the current post block
             // time window
-            let max = trades.len();
+            let max = trades.len() - 1;
             if *upper_idx < max {
                 loop {
                     let next_trade = &trades[*upper_idx + 1];
