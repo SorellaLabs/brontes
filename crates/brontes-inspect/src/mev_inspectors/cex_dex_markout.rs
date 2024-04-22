@@ -160,16 +160,18 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         // use the setup that has more hops. if they are equal,
         // use the new version.
-        let calcuation_vwam = (pricing_window_vwam.iter().flatten().count()
-            >= pricing_vwam.iter().flatten().count())
-        .then_some(pricing_window_vwam)
-        .or(Some(pricing_vwam))
-        .unwrap();
+        let calculation_vwam = if pricing_window_vwam.iter().flatten().count()
+            >= pricing_vwam.iter().flatten().count()
+        {
+            pricing_window_vwam
+        } else {
+            pricing_vwam
+        };
 
         let vwam_result = PossibleCexDex::from_exchange_legs(
             dex_swaps
                 .iter()
-                .zip(calcuation_vwam)
+                .zip(calculation_vwam)
                 .filter_map(|(swap, possible_pricing)| {
                     Some(self.profit_classifier(
                         swap,
@@ -189,7 +191,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 Some(
                     maker
-                        .into_iter()
+                        .iter()
                         .map(|(ex, (m_price, _))| {
                             (
                                 ex,
@@ -197,7 +199,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     &dex_swaps[i],
                                     (
                                         m_price.clone(),
-                                        taker.get(&ex).map(|p| p.0.clone()).unwrap().clone(),
+                                        taker.get(ex).map(|p| p.0.clone()).unwrap().clone(),
                                     ),
                                     metadata,
                                     *ex,
@@ -217,7 +219,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 },
             )
             .into_values()
-            .map(|swaps| PossibleCexDex::from_exchange_legs(swaps))
+            .map(PossibleCexDex::from_exchange_legs)
             .collect_vec();
 
         CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl)
@@ -691,14 +693,12 @@ impl PossibleCexDex {
         let mut total_ask_maker = Rational::ZERO;
         let mut total_ask_taker = Rational::ZERO;
 
-        for leg in exchange_legs.iter_mut() {
-            if let Some(leg) = leg {
-                total_mid_maker += &leg.pnl.maker_taker_mid.0;
-                total_mid_taker += &leg.pnl.maker_taker_mid.1;
-                total_ask_maker += &leg.pnl.maker_taker_ask.0;
-                total_ask_taker += &leg.pnl.maker_taker_ask.1;
-            }
-        }
+        exchange_legs.iter_mut().flatten().for_each(|leg| {
+            total_mid_maker += &leg.pnl.maker_taker_mid.0;
+            total_mid_taker += &leg.pnl.maker_taker_mid.1;
+            total_ask_maker += &leg.pnl.maker_taker_ask.0;
+            total_ask_taker += &leg.pnl.maker_taker_ask.1;
+        });
 
         let aggregate_pnl = ArbPnl {
             maker_taker_mid: (total_mid_maker, total_mid_taker),

@@ -51,10 +51,10 @@ impl ClickhouseBuffered {
         table: BrontesClickhouseTables,
     ) -> eyre::Result<()> {
         macro_rules! inserts {
-            ($($table:ident $inner:ident),+) => {
+            ($(($table_id:ident, $inner:ident)),+) => {
                 match table {
                     $(
-                        BrontesClickhouseTables::$table => {
+                        BrontesClickhouseTables::$table_id => {
                             let insert_data = data
                                 .into_iter()
                                 .filter_map(|d| match d {
@@ -68,10 +68,10 @@ impl ClickhouseBuffered {
                                 panic!("you did this wrong idiot");
                             }
                             client
-                                .insert_many::<$table>(&insert_data)
+                                .insert_many::<$table_id>(&insert_data)
                                 .await?
-                        }
-                    )*
+                        },
+                    )+
                 }
             };
         }
@@ -82,7 +82,6 @@ impl ClickhouseBuffered {
             (ClickhouseCexDex, CexDex),
             (ClickhouseSearcherTx, SearcherTx),
             (ClickhouseJit, JitLiquidity),
-            (ClickhouseJitSandwich, JitLiquiditySandwich),
             (ClickhouseJitSandwich, JitLiquiditySandwich),
             (ClickhouseSandwiches, Sandwich),
             (ClickhouseAtomicArbs, AtomicArb),
