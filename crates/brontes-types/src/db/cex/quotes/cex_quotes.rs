@@ -898,7 +898,11 @@ impl CexExchange {
 
     /// Returns the maker & taker fees by exchange
     /// Assumes best possible fee structure e.g Binanace VIP 9 for example
-    /// Does not account for special market maker rebate programs
+    /// Does not account for special market maker rebate programs or special
+    /// pairs
+    ///
+    /// TODO: Account for special fee pairs & stableswap rates
+    /// TODO: Account for futures & spot fee deltas
     pub fn fees(&self) -> (Rational, Rational) {
         match self {
             CexExchange::Binance => (
