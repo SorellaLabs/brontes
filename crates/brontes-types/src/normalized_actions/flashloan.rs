@@ -5,8 +5,11 @@ use malachite::Rational;
 use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
-use super::accounting::{AddressDeltas, TokenAccounting};
-pub use super::{Action, NormalizedSwap, NormalizedTransfer};
+use super::{
+    accounting::{AddressDeltas, TokenAccounting},
+    NormalizedEthTransfer,
+};
+pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
@@ -29,10 +32,25 @@ pub struct NormalizedFlashLoan {
     //  - Mints
     //  - Burns
     //  - Transfers
-    pub child_actions: Vec<Action>,
-    pub repayments:    Vec<NormalizedTransfer>,
+    pub child_actions: Vec<Actions>,
+    pub repayments:    Vec<Repayment>,
     pub fees_paid:     Vec<Rational>,
     pub msg_value:     U256,
+}
+
+#[derive(Debug, Serialize, Clone, Deserialize, PartialEq, Eq)]
+pub enum Repayment {
+    Token(NormalizedTransfer),
+    Eth(NormalizedEthTransfer),
+}
+
+impl From<Repayment> for Actions {
+    fn from(repayment: Repayment) -> Self {
+        match repayment {
+            Repayment::Token(transfer) => Actions::Transfer(transfer),
+            Repayment::Eth(eth_transfer) => Actions::EthTransfer(eth_transfer),
+        }
+    }
 }
 
 impl TokenAccounting for NormalizedFlashLoan {

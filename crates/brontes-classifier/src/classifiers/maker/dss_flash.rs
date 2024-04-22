@@ -46,7 +46,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::{Action, NormalizedTransfer},
+        normalized_actions::{Actions, NormalizedTransfer, Repayment},
         TreeSearchBuilder,
     };
     use reth_primitives::U256;
@@ -75,15 +75,14 @@ mod tests {
             aave_mode:         None,
             // Ignore child actions as we only need to focus on pruning necessary nodes.
             child_actions:     vec![],
-            repayments:        vec![NormalizedTransfer {
-                msg_value:   U256::ZERO,
+            repayments:        vec![Repayment::Token(NormalizedTransfer {
                 trace_index: 238,
                 from:        Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
                 to:          Address::new(hex!("60744434d6339a6b27d73d9eda62b6f66a0a04fa")),
                 token:       dai,
                 amount:      U256::from_str("100000000").unwrap().to_scaled_rational(0),
                 fee:         U256::ZERO.to_scaled_rational(0),
-            }],
+            })],
             fees_paid:         vec![],
             msg_value:         U256::ZERO,
         });

@@ -1,7 +1,11 @@
+use std::collections::HashSet;
+
 use brontes_types::{
-    db::token_info::TokenInfoWithAddress, normalized_actions::{
-        Actions, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest,
-    }, Protocol, TreeSearchBuilder
+    db::token_info::TokenInfoWithAddress,
+    normalized_actions::{
+        Actions, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest, Repayment,
+    },
+    Protocol, ToScaledRational, TreeSearchBuilder,
 };
 use tracing::warn;
 
@@ -26,34 +30,57 @@ impl MultiCallFrameClassifier for BancorV3 {
                 let this = this_action.try_flash_loan_mut().unwrap();
                 let mut nodes_to_prune = Vec::new();
                 let mut repay_transfers = Vec::new();
+                let mut unique_transfers = HashSet::new();
 
                 for (index, action) in child_nodes.into_iter() {
                     match &action {
-                        Actions::Swap(_) | Actions::SwapWithFee(_) | Actions::EthTransfer(_) => {
+                        Actions::Swap(_) | Actions::SwapWithFee(_) => {
                             this.child_actions.push(action);
                             nodes_to_prune.push(index);
-                        },
+                        }
                         Actions::Transfer(t) => {
-                            if t.from == this.receiver_contract && this.pool == t.to {
-                                if let Some(i) = this.assets.iter().position(|x| *x == t.token) {
-                                    if t.amount >= this.amounts[i] {
-                                        repay_transfers.push(t.clone());
-                                        nodes_to_prune.push(index);
-                                        continue
-                                    }
-                                }
+                            let transfer_key = (t.from, t.to, t.token.address, t.amount.clone());
+                            if this.pool == t.to
+                                && this.assets.iter().any(|x| *x == t.token)
+                                && this.amounts.iter().any(|amount| t.amount >= *amount)
+                                && unique_transfers.insert(transfer_key)
+                            {
+                                repay_transfers.push(Repayment::Token(t.clone()));
+                                nodes_to_prune.push(index);
+                                continue;
                             }
                             this.child_actions.push(action);
-                            nodes_to_prune.push(index);
-                        },
+                        }
+                        Actions::EthTransfer(t) => {
+                            let transfer_key = (
+                                t.from,
+                                t.to,
+                                TokenInfoWithAddress::weth().address,
+                                t.value.to_scaled_rational(18),
+                            );
+                            if this.pool == t.to
+                                && this
+                                    .assets
+                                    .iter()
+                                    .any(|x| *x == TokenInfoWithAddress::weth())
+                                && this
+                                    .amounts
+                                    .iter()
+                                    .any(|amount| t.value.to_scaled_rational(18) >= *amount)
+                                && unique_transfers.insert(transfer_key)
+                            {
+                                repay_transfers.push(Repayment::Eth(t.clone()));
+                                nodes_to_prune.push(index);
+                                continue;
+                            }
+                            this.child_actions.push(action);
+                        }
                         _ => {
-                            warn!("Bancor V3 flashloan, unknown call");
-                            continue
+                            warn!("Bancor V3 flashloan, unknown call: {:?}", action);
                         }
                     }
                 }
 
-                // no fee
                 this.fees_paid = vec![];
                 this.repayments = repay_transfers;
 

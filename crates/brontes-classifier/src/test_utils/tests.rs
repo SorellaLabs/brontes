@@ -461,8 +461,6 @@ impl ClassifierTestUtils {
 
         let root = tree.tx_roots.remove(0);
 
-        println!("{:#?}", root.collect(&tree_collect_builder));
-
         let mut actions = root.collect(&tree_collect_builder);
         assert!(
             !actions.is_empty(),

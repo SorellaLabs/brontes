@@ -1,9 +1,15 @@
+use alloy_primitives::{hex, Address};
 use brontes_macros::action_impl;
 use brontes_types::{
     normalized_actions::{NormalizedFlashLoan, NormalizedMint, NormalizedSwap},
     structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
+
+pub const BANCOR_V3_MASTER_VAULT: Address = Address::new(hex!(
+    "649765821D9f64198c905eC0B2B037a4a52Bc373
+    "
+));
 
 action_impl!(
     Protocol::BancorV3,
@@ -24,7 +30,7 @@ action_impl!(
         Ok(NormalizedSwap {
             protocol: Protocol::BancorV3,
             trace_index: call_info.trace_idx,
-            pool: call_info.target_address,
+            pool: BANCOR_V3_MASTER_VAULT,
             from: log.trader,
             recipient: log.trader,
             token_in,
@@ -55,7 +61,7 @@ action_impl!(
         Ok(NormalizedSwap {
             protocol: Protocol::BancorV3,
             trace_index: call_info.trace_idx,
-            pool: call_info.target_address,
+            pool: BANCOR_V3_MASTER_VAULT,
             from: log.trader,
             recipient: log.trader,
             token_in,
@@ -81,7 +87,7 @@ action_impl!(
         Ok(NormalizedMint {
             protocol: Protocol::BancorV3,
             trace_index: call_info.trace_idx,
-            pool: call_info.target_address,
+            pool: BANCOR_V3_MASTER_VAULT,
             from: call_info.from_address,
             recipient: call_info.from_address,
             token: vec![token],
@@ -104,7 +110,7 @@ action_impl!(
         Ok(NormalizedMint {
             protocol: Protocol::BancorV3,
             trace_index: call_info.trace_idx,
-            pool: call_info.target_address,
+            pool: BANCOR_V3_MASTER_VAULT,
             from: call_info.from_address,
             recipient: call_data.provider,
             token: vec![token],
@@ -127,7 +133,7 @@ action_impl!(
         Ok(NormalizedFlashLoan {
             protocol: Protocol::BancorV3,
             trace_index: call_info.trace_idx,
-            pool: call_info.target_address,
+            pool: BANCOR_V3_MASTER_VAULT,
             from: call_info.from_address,
             receiver_contract: call_data.recipient,
             aave_mode: None,
@@ -146,11 +152,11 @@ action_impl!(
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, Address, B256, U256};
+    use alloy_primitives::{B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::{Actions, NormalizedEthTransfer, Repayment},
         Protocol::BancorV3,
         TreeSearchBuilder,
     };
@@ -183,7 +189,7 @@ mod tests {
             trace_index: 0,
             from: Address::new(hex!("279DDbe45D9c34025DD38F627Bc4C6dc92BC665A")),
             recipient: Address::new(hex!("279DDbe45D9c34025DD38F627Bc4C6dc92BC665A")),
-            pool: Address::new(hex!("eEF417e1D5CC832e619ae18D2F140De2999dD4fB")),
+            pool: BANCOR_V3_MASTER_VAULT,
             token_in,
             amount_in,
             token_out,
@@ -228,7 +234,7 @@ mod tests {
             trace_index: 0,
             from: Address::new(hex!("1B0ad245b944EEF1Bd647276b7f407277c700654")),
             recipient: Address::new(hex!("1B0ad245b944EEF1Bd647276b7f407277c700654")),
-            pool: Address::new(hex!("eEF417e1D5CC832e619ae18D2F140De2999dD4fB")),
+            pool: BANCOR_V3_MASTER_VAULT,
             token_in,
             amount_in,
             token_out,
@@ -253,20 +259,25 @@ mod tests {
         let flash_loan =
             B256::from(hex!("84b5586863e52e9f70b0ed8e7d832fc39e25ca7ea28e7a9aa4220587ddd682d3"));
 
-            let eq_action = Actions::FlashLoan(NormalizedFlashLoan {
+        let eq_action = Actions::FlashLoan(NormalizedFlashLoan {
             protocol:          Protocol::BancorV3,
             trace_index:       2,
             from:              Address::new(hex!("41eeba3355d7d6ff628b7982f3f9d055c39488cb")),
-            pool:              Address::new(hex!("eef417e1d5cc832e619ae18d2f140de2999dd4fb")),
+            pool:              BANCOR_V3_MASTER_VAULT,
             receiver_contract: Address::new(hex!("41eeba3355d7d6ff628b7982f3f9d055c39488cb")),
             assets:            vec![TokenInfoWithAddress::weth()],
             amounts:           vec![U256::from_str("4387616000000000000")
                 .unwrap()
-                .to_scaled_rational(18)
-                ],
+                .to_scaled_rational(18)],
             aave_mode:         None,
             child_actions:     vec![],
-            repayments:        vec![],
+            repayments:        vec![Repayment::Eth(NormalizedEthTransfer {
+                trace_index:       18,
+                from:              Address::new(hex!("eef417e1d5cc832e619ae18d2f140de2999dd4fb")),
+                to:                Address::new(hex!("649765821d9f64198c905ec0b2b037a4a52bc373")),
+                value:             U256::from_str("4387616000000000000").unwrap(),
+                coinbase_transfer: false,
+            })],
             fees_paid:         vec![],
             msg_value:         U256::ZERO,
         });
