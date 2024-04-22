@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::{
         cex::{
-            time_window_vwam::MakerTakerWindowVwam, vwam::MakerTaker, CexExchange, FeeAdjustedQuote,
+            time_window_vwam::MakerTakerWindowVWAP, vwam::MakerTaker, CexExchange, FeeAdjustedQuote,
         },
         dex::PriceAt,
     },
@@ -37,6 +37,7 @@ pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000)
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
+//TODO: Create distinct cex-dex-markout type
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     utils:         SharedInspectorUtils<'db, DB>,
     cex_exchanges: Vec<CexExchange>,
@@ -302,7 +303,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
-    ) -> Vec<(Option<MakerTakerWindowVwam>, Option<MakerTaker>)> {
+    ) -> Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> {
         dex_swaps
             .iter()
             .map(|swap| {
