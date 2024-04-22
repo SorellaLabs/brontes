@@ -97,13 +97,13 @@ impl SubGraphRegistry {
 
     pub fn mark_future_use(&self, pair: &Pair, goes_through: &Pair, block: u64) {
         // we unwrap as this should never fail.
-        let graph = self.sub_graphs.get(&pair.ordered()).unwrap();
-        graph
+        let Some(graph) = self.sub_graphs.get(&pair.ordered()) else { return };
+        if let Some(graph) = graph
             .iter()
             .find(|(inner_gt, _)| (inner_gt == goes_through))
-            .unwrap()
-            .1
-            .future_use(block);
+        {
+            graph.1.future_use(block);
+        }
     }
 
     pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
