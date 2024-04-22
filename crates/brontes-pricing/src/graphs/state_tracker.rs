@@ -48,12 +48,6 @@ impl StateTracker {
         }
     }
 
-    pub fn add_finalized_state_dep(&mut self, pool: Address, amount: u64) {
-        self.finalized_edge_state
-            .get_mut(&pool)
-            .map(|state| state.inc(amount));
-    }
-
     pub fn remove_finalized_state_dep(&mut self, pool: Address, amount: u64) {
         self.finalized_edge_state.retain(|i_pool, state| {
             if pool != *i_pool {
@@ -91,16 +85,6 @@ impl StateTracker {
         self.verification_edge_state
             .iter()
             .filter_map(|(addr, state)| Some((*addr, state.get_state(block)?)))
-            .chain(
-                self.finalized_edge_state
-                    .iter()
-                    .filter_map(|(addr, state)| {
-                        if state.state.last_update == block {
-                            return Some((*addr, &state.state))
-                        }
-                        None
-                    }),
-            )
             .collect()
     }
 
@@ -123,23 +107,31 @@ impl StateTracker {
         edges
             .iter()
             .filter_map(|edge| {
-                self.verification_edge_state
+                if self
+                    .verification_edge_state
                     .get_mut(&edge.pool_addr)
                     .filter(|pool_state| pool_state.contains_block_state(block))
                     .map(|s| {
                         s.inc_state(block);
-                        None
                     })
-                    .or_else(|| {
-                        self.finalized_edge_state
-                            .get_mut(&edge.pool_addr)
-                            .filter(|state| state.state.last_update == block)
-                            .map(|s| {
-                                s.inc(1);
-                                None
-                            })
+                    .is_some()
+                {
+                    return None
+                }
+
+                if self
+                    .finalized_edge_state
+                    .get_mut(&edge.pool_addr)
+                    .filter(|state| state.state.last_update == block)
+                    .map(|s| {
+                        s.inc(1);
                     })
-                    .or(Some(Some(edge.info)))?
+                    .is_some()
+                {
+                    return None
+                }
+
+                Some(edge.info)
             })
             .collect_vec()
     }
@@ -155,7 +147,18 @@ impl StateTracker {
                 };
 
                 if should_finalize {
-                    self.finalized_edge_state.insert(*pool, state);
+                    match self.finalized_edge_state.entry(*pool) {
+                        std::collections::hash_map::Entry::Vacant(v) => {
+                            v.insert(state);
+                        }
+                        std::collections::hash_map::Entry::Occupied(mut o) => {
+                            let old_state = o.get_mut();
+                            if state.state.last_update >= block {
+                                panic!("finalized state was ahead of regular state");
+                            }
+                            old_state.dependents += state.dependents;
+                        }
+                    }
                 }
             });
     }
@@ -186,6 +189,7 @@ pub struct StateWithDependencies {
     pub state:      PoolState,
     pub dependents: u64,
 }
+
 impl StateWithDependencies {
     pub fn inc(&mut self, am: u64) {
         self.dependents += am;

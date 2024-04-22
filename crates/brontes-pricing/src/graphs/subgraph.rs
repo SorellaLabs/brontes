@@ -12,6 +12,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use alloy_sol_types::sol_data::Address;
 use brontes_types::{price_graph_types::*, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use malachite::{
@@ -237,8 +238,10 @@ impl PairSubGraph {
             .any(|n| n)
     }
 
-    pub fn extend_subgraph(&mut self, edges: Vec<SubGraphEdge>) {
+    // returns list of pools we already have so we can derement there state tracker.
+    pub fn extend_subgraph(&mut self, edges: Vec<SubGraphEdge>) -> Vec<Address> {
         let mut connections: FastHashMap<(u16, u16), Vec<SubGraphEdge>> = FastHashMap::default();
+        let mut has = Vec::new();
 
         for edge in edges {
             let token_0 = edge.token_0;
@@ -265,6 +268,7 @@ impl PairSubGraph {
                 if !edge_weight.contains(&edge) {
                     edge_weight.push(edge);
                 }
+                has.push(edge.pool_addr);
                 continue
             }
 
@@ -277,6 +281,7 @@ impl PairSubGraph {
                 .map(|((n0, n1), v)| (n0, n1, v))
                 .collect::<Vec<_>>(),
         );
+        has
     }
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {

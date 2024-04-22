@@ -317,7 +317,7 @@ impl SubgraphVerifier {
     ) -> Vec<VerificationResults> {
         let span = error_span!("Subgraph Verifier");
         span.in_scope(|| {
-            let pairs = self.get_subgraphs(pair);
+            let pairs = self.get_subgraphs(state_tracker, pair);
             let res = self.verify_par(pairs, state_tracker);
 
             res.into_iter()
@@ -395,6 +395,7 @@ impl SubgraphVerifier {
 
     fn get_subgraphs(
         &mut self,
+        state_tracker: &mut StateTracker,
         pair: Vec<(u64, Option<u64>, Pair, Rational, Address, Pair)>,
     ) -> Vec<(Pair, u64, bool, Subgraph, Rational, Address)> {
         pair.into_iter()
@@ -436,7 +437,13 @@ impl SubgraphVerifier {
                         .remove(&frayed)
                         .unwrap_or_default();
 
-                    subgraph.subgraph.extend_subgraph(extensions);
+                    subgraph
+                        .subgraph
+                        .extend_subgraph(extensions)
+                        .into_iter()
+                        .for_each(|pool| {
+                            state_tracker.decrement_verification_state(pool, block);
+                        });
                 }
                 subgraph.iters += 1;
 
