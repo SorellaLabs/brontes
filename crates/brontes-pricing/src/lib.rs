@@ -257,7 +257,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         tracing::debug!("search triggered by pool updates");
         let (state, pools) = execute_on!(target = pricing, {
-            graph_search_par(&self.graph_manager, self.quote_asset, updates)
+            graph_search_par(&self.graph_manager, self.quote_asset, updates, self.completed_block)
         });
         tracing::debug!("search triggered by on pool updates completed");
 
@@ -625,6 +625,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             pair,
                             extends_pair: None,
                             block,
+                            completed_block: self.completed_block,
                             frayed_ends: Default::default(),
                             ignore_state: Default::default(),
                         }
@@ -694,6 +695,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         block:        failed.block,
                         frayed_ends:  failed.frayed_ends,
                         ignore_state: failed.ignore_state,
+                        completed_block: self.completed_block
                     })
                 }
                 VerificationResults::Abort(pair, block) => {
