@@ -272,7 +272,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     ) {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
-            let state = self.graph_state.all_state(current_block);
+            let state = self.graph_state.all_state(completed_block);
 
             let (start_price, start_addr) = self
                 .sub_graph_registry
