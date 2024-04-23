@@ -242,9 +242,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
             // mark low liq ones for removal when this block is completed
             self.graph_manager
-                .prune_low_liq_subgraphs(pair0, self.quote_asset, block);
+                .prune_low_liq_subgraphs(pair0, self.quote_asset, block, self.completed_block);
             self.graph_manager
-                .prune_low_liq_subgraphs(pair1, self.quote_asset, block);
+                .prune_low_liq_subgraphs(pair1, self.quote_asset, block, self.completed_block);
         });
 
         tracing::debug!("search triggered by pool updates");

@@ -1,3 +1,5 @@
+use std::ops::{RangeBounds, RangeInclusive};
+
 use alloy_primitives::Address;
 use brontes_types::FastHashMap;
 use itertools::Itertools;
@@ -80,6 +82,23 @@ impl StateTracker {
         self.state_for_verification(block)
             .into_iter()
             .chain(self.finalized_state())
+            .collect()
+    }
+
+    pub fn all_state_range(&self, block: RangeInclusive<u64>) -> FastHashMap<Address, &PoolState> {
+        self.state_for_verification_range(block)
+            .into_iter()
+            .chain(self.finalized_state())
+            .collect()
+    }
+
+    pub fn state_for_verification_range(
+        &self,
+        block: RangeInclusive<u64>,
+    ) -> FastHashMap<Address, &PoolState> {
+        self.verification_edge_state
+            .iter()
+            .filter_map(|(addr, state)| Some((*addr, state.get_state_range(&block)?)))
             .collect()
     }
 
@@ -220,6 +239,14 @@ impl PoolStateWithBlock {
         {
             state.dec(1);
         }
+    }
+
+    pub fn get_state_range(&self, block: &RangeInclusive<u64>) -> Option<&PoolState> {
+        self.0
+            .iter()
+            .map(|(_, state)| state)
+            .find(|&state| block.contains(&state.last_update))
+            .map(|state| &state.state)
     }
 
     pub fn get_state(&self, block: u64) -> Option<&PoolState> {

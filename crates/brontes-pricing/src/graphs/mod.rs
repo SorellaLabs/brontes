@@ -261,11 +261,16 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         &mut self,
         pair: PairWithFirstPoolHop,
         quote: Address,
-        block: u64,
+        // the block of the query that triggered this.
+        current_block: u64,
+        // the block of the current process.
+        processing_block: u64,
     ) {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
-            let state = self.graph_state.finalized_state();
+            let state = self
+                .graph_state
+                .all_state_range(processing_block..=current_block);
 
             let (start_price, start_addr) = self
                 .sub_graph_registry
@@ -285,7 +290,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 start_addr,
                 start_price,
                 &state,
-                block,
+                current_block,
             );
         });
     }
