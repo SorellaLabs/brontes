@@ -285,11 +285,11 @@ impl PairSubGraph {
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
         let Some(n0) = self.token_to_index.get(&pool_pair.0) else {
-            tracing::warn!("failed to remove bad edge");
+            tracing::warn!(?pool_address,"failed to remove bad edge");
             return false;
         };
         let Some(n1) = self.token_to_index.get(&pool_pair.1) else {
-            tracing::warn!("failed to remove bad edge");
+            tracing::warn!(?pool_address,"failed to remove bad edge");
             return false;
         };
 
