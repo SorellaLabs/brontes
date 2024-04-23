@@ -3,7 +3,25 @@ use std::marker::PhantomData;
 use super::CexTrades;
 use crate::{db::cex::CexExchange, FastHashMap};
 
-/// used for time window vwam
+/// Manages the traversal and collection of trade data within dynamically
+/// adjustable time windows.
+///
+/// `PairTradeWalker` is initialized with a set of trades and a time window that
+/// can be expanded based on trading volume. It uses `exchange_ptrs`
+/// to manage the current position within trade lists for each
+/// exchange.
+///
+/// # Fields
+/// - `min_timestamp`: Lower bound of the time window (in microseconds).
+/// - `max_timestamp`: Upper bound of the time window (in microseconds).
+/// - `exchange_ptrs`: Hash map storing pointers to the current trade indices
+///   for each exchange. The lower index points to the last trade before the
+///   block timestamp (i.e., the most recent trade just before the block time),
+///   and the upper index points to the first trade after the block timestamp
+///   (i.e., the earliest trade just after the block time).
+/// - `trades`: Vector of tuples associating each exchange with a reference to
+///   its trade data.
+
 pub struct PairTradeWalker<'a> {
     min_timestamp: u64,
     max_timestamp: u64,
@@ -34,6 +52,16 @@ impl<'a> PairTradeWalker<'a> {
         self.max_timestamp += max;
     }
 
+    /// Retrieves trades within the specified time window for each exchange.
+    ///
+    /// Iterates over trades for each exchange listed in `trades`, adjusting
+    /// `exchange_ptrs` to include only trades within the current bounds
+    /// defined by `min_timestamp` and `max_timestamp`.
+    ///
+    /// # Returns
+    /// A vector of `CexTradePtr` pointing to the trades that meet the time
+    /// window criteria.
+
     pub(crate) fn get_trades_for_window(&mut self) -> Vec<CexTradePtr<'a>> {
         let mut trade_res: Vec<CexTradePtr<'a>> = Vec::with_capacity(420);
 
@@ -42,12 +70,8 @@ impl<'a> PairTradeWalker<'a> {
                 continue
             };
 
-            // add lower
-            // deal with only before trades
-            if *lower_idx > trades.len() {
-                *lower_idx -= 1;
-            }
-
+            // Gets trades before the block timestamp that are within the current pre block
+            // time window
             if *lower_idx > 0 {
                 loop {
                     let next_trade = &trades[*lower_idx - 1];
@@ -64,6 +88,8 @@ impl<'a> PairTradeWalker<'a> {
                 }
             }
 
+            // Gets trades after the block timestamp that are within the current post block
+            // time window
             let max = trades.len() - 1;
             if *upper_idx < max {
                 loop {

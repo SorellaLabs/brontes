@@ -7,7 +7,7 @@ use reth_db::table::{Decode, Encode};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::db::redefined_types::primitives::AddressRedefined;
+use crate::{constants::USD_STABLES_BY_ADDRESS, db::redefined_types::primitives::AddressRedefined};
 
 #[derive(
     Debug,
@@ -84,6 +84,10 @@ impl Pair {
         } else {
             (true, Pair(self.1, self.0))
         }
+    }
+
+    pub fn is_usd_stable_pair(&self) -> bool {
+        USD_STABLES_BY_ADDRESS.contains(&self.0) && USD_STABLES_BY_ADDRESS.contains(&self.1)
     }
 }
 

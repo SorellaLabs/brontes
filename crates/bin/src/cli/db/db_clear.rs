@@ -49,7 +49,6 @@ impl Clear {
                 AddressMeta,
                 SearcherEOAs,
                 SearcherContracts,
-                SubGraphs,
                 TxTraces
             )
         });

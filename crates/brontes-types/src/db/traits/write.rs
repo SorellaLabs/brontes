@@ -10,9 +10,8 @@ use crate::{
     },
     mev::{Bundle, MevBlock},
     normalized_actions::Actions,
-    pair::Pair,
     structured_trace::TxTrace,
-    BlockTree, Protocol, SubGraphEdge,
+    BlockTree, Protocol,
 };
 
 #[auto_impl::auto_impl(&)]
@@ -37,10 +36,6 @@ pub trait DBWriter: Send + Unpin + 'static {
         symbol: String,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().write_token_info(address, decimals, symbol)
-    }
-
-    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
-        self.inner().save_pair_at(block, pair, edges)
     }
 
     fn save_mev_blocks(

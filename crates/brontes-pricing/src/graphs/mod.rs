@@ -142,11 +142,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         is_extension: bool,
         trying_extensions_quote: Option<Address>,
     ) -> (Vec<SubGraphEdge>, Option<Pair>) {
-        #[cfg(not(feature = "tests"))]
-        if let Ok((_, edges)) = self.db.try_load_pair_before(block, pair) {
-            return (edges, None)
-        }
-
         let possible_exts = trying_extensions_quote
             .map(|quote| self.sub_graph_registry.all_pairs_with_quote(quote))
             .unwrap_or_default();

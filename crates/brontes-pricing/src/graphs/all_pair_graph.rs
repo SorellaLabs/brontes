@@ -1,6 +1,6 @@
 use std::{
     cmp::max,
-    ops::{Deref, DerefMut},
+    ops::Deref,
     time::{Duration, SystemTime},
 };
 
@@ -15,7 +15,7 @@ use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, Sub
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EdgeWithInsertBlock {
-    pub inner:        PoolPairInformation,
+    pub inner:        &'static PoolPairInformation,
     pub insert_block: u64,
 }
 
@@ -28,7 +28,9 @@ impl EdgeWithInsertBlock {
         block_added: u64,
     ) -> Self {
         Self {
-            inner:        PoolPairInformation::new(pool_addr, dex, token0, token1),
+            inner:        Box::leak(Box::new(PoolPairInformation::new(
+                pool_addr, dex, token0, token1,
+            ))),
             insert_block: block_added,
         }
     }
@@ -38,15 +40,10 @@ impl Deref for EdgeWithInsertBlock {
     type Target = PoolPairInformation;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        self.inner
     }
 }
 
-impl DerefMut for EdgeWithInsertBlock {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
 /// [`AllPairGraph`] Represents the interconnected network of token pairs in
 /// decentralized exchanges (DEXs), crucial for the BrontesBatchPricer system's
 /// ability to analyze and calculate token prices.
@@ -270,13 +267,11 @@ impl AllPairGraph {
         )
         .into_iter()
         .map(|(nodes, _)| {
-            let path_length = nodes.len();
             nodes
                 .into_iter()
                 // default entry
                 .filter(|(n0, n1)| n0 != n1)
-                .enumerate()
-                .map(|(i, (node0, node1))| {
+                .map(|(node0, node1)| {
                     self.graph
                         .edge_weight(
                             self.graph
@@ -284,8 +279,7 @@ impl AllPairGraph {
                                 .expect("no edge found"),
                         )
                         .unwrap()
-                        .clone()
-                        .into_iter()
+                        .iter()
                         .filter(|info| info.insert_block <= block)
                         .map(|info| {
                             let created_pair = Pair(info.token_0, info.token_1).ordered();
@@ -293,14 +287,10 @@ impl AllPairGraph {
                                 tracing::error!("ignore pair found in result");
                             }
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
-                            SubGraphEdge::new(
-                                PoolPairInfoDirection {
-                                    info:       *info,
-                                    token_0_in: node0 == index,
-                                },
-                                i as u8,
-                                (path_length - i) as u8,
-                            )
+                            SubGraphEdge::new(PoolPairInfoDirection {
+                                info:       info.inner,
+                                token_0_in: node0 == index,
+                            })
                         })
                         .collect_vec()
                 })
