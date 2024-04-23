@@ -47,7 +47,6 @@ impl Insert {
             MevBlocks,
             AddressToProtocolInfo,
             TokenDecimals,
-            SubGraphs,
             TxTraces,
             Builder,
             AddressMeta,
