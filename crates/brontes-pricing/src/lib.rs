@@ -531,6 +531,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .is_verifying_with_block(PairWithFirstPoolHop::from_pair_gt(pair0, pool_pair), block)
         {
             error!(?tx_idx, ?block, ?pair0, ?pool_pair, "pair is currently being verified");
+        } else {
+            error!(?tx_idx, ?block, ?pair0, ?pool_pair, "no pricing for pair");
         }
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
@@ -573,6 +575,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .is_verifying_with_block(PairWithFirstPoolHop::from_pair_gt(pair1, flipped_pool), block)
         {
             error!(?tx_idx, ?block, ?pair1, ?flipped_pool, "pair is currently being verified");
+        } else {
+            error!(?tx_idx, ?block, ?pair0, ?pool_pair, "no pricing for pair");
         }
     }
 
@@ -656,7 +660,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let requery = self
             .graph_manager
-            .verify_subgraph(pairs, self.quote_asset,self.completed_block)
+            .verify_subgraph(pairs, self.quote_asset, self.completed_block)
             .into_iter()
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
