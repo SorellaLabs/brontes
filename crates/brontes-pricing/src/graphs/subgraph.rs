@@ -815,6 +815,7 @@ impl PairSubGraph {
         let mut node_price = FastHashMap::default();
         let mut visit_next = BinaryHeap::new();
         let zero_score = Rational::ZERO;
+
         scores.insert(start, zero_score.clone());
         visit_next.push(MinScored(zero_score, start));
 
@@ -892,7 +893,7 @@ impl PairSubGraph {
 
                 let ensure_only_gt_pool = if !has_gone_through_pool {
                     // if not pair, then con't
-                    let w = edge_weight.first().unwrap();
+                    let Some(w) = edge_weight.first() else { continue; };
                     if w.get_pair().ordered() != self.must_go_through.ordered() {
                         continue
                     }
