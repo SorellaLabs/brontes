@@ -232,12 +232,15 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         goes_through: Pair,
         goes_through_address: Option<Address>,
     ) -> Option<Rational> {
-        self.sub_graph_registry.get_price(
-            pair,
-            goes_through,
-            goes_through_address,
-            &self.graph_state.finalized_state(),
-        )
+        let span = error_span!("price generation for block");
+        span.in_scope(|| {
+            self.sub_graph_registry.get_price(
+                pair,
+                goes_through,
+                goes_through_address,
+                &self.graph_state.finalized_state(),
+            )
+        })
     }
 
     pub fn new_state(&mut self, address: Address, state: StateWithDependencies) {
@@ -263,6 +266,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
             let state = self.graph_state.finalized_state();
+
             let (start_price, start_addr) = self
                 .sub_graph_registry
                 .get_subgraph_extends(pair)
@@ -305,28 +309,37 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
-        let pairs = pairs
-            .into_iter()
-            .map(|(block, id, pair)| {
-                self.subgraph_verifier
-                    .get_subgraph_extends(pair)
-                    .map(|jump_pair| {
-                        (
-                            block,
-                            id,
-                            pair,
-                            self.sub_graph_registry
-                                .get_price_all(jump_pair.flip(), &self.graph_state.all_state(block))
-                                .unwrap_or(Rational::ONE),
-                            jump_pair.0,
-                        )
-                    })
-                    .unwrap_or_else(|| (block, id, pair, Rational::ONE, quote))
-            })
-            .collect_vec();
+        let span = error_span!("verifying subgraph");
+        span.in_scope(|| {
+            let pairs = pairs
+                .into_iter()
+                .map(|(block, id, pair)| {
+                    self.subgraph_verifier
+                        .get_subgraph_extends(pair)
+                        .map(|jump_pair| {
+                            (
+                                block,
+                                id,
+                                pair,
+                                self.sub_graph_registry
+                                    .get_price_all(
+                                        jump_pair.flip(),
+                                        &self.graph_state.all_state(block),
+                                    )
+                                    .unwrap_or(Rational::ONE),
+                                jump_pair.0,
+                            )
+                        })
+                        .unwrap_or_else(|| (block, id, pair, Rational::ONE, quote))
+                })
+                .collect_vec();
 
-        self.subgraph_verifier
-            .verify_subgraph(pairs, &self.all_pair_graph, &mut self.graph_state)
+            self.subgraph_verifier.verify_subgraph(
+                pairs,
+                &self.all_pair_graph,
+                &mut self.graph_state,
+            )
+        })
     }
 
     pub fn finalize_block(&mut self, block: u64) {

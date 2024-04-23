@@ -656,10 +656,10 @@ impl PairSubGraph {
             if !weights.is_empty() {
                 match dir {
                     Direction::Incoming => {
-                        self.graph.add_edge(n1.into(), n0.into(), weights);
+                        self.graph.update_edge(n1.into(), n0.into(), weights);
                     }
                     Direction::Outgoing => {
-                        self.graph.add_edge(n0.into(), n1.into(), weights);
+                        self.graph.update_edge(n0.into(), n1.into(), weights);
                     }
                 }
             }
@@ -691,10 +691,10 @@ impl PairSubGraph {
             if !weights.is_empty() {
                 match dir {
                     Direction::Incoming => {
-                        self.graph.add_edge(n1.into(), n0.into(), weights);
+                        self.graph.update_edge(n1.into(), n0.into(), weights);
                     }
                     Direction::Outgoing => {
-                        self.graph.add_edge(n0.into(), n1.into(), weights);
+                        self.graph.update_edge(n0.into(), n1.into(), weights);
                     }
                 }
             }
