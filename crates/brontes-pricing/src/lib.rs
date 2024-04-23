@@ -607,6 +607,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         .graph_manager
                         .pool_dep_failure(&pair, pool_address, pool_pair))
                     .then(|| {
+                        self.lazy_loader.full_failure(pair);
                         tracing::debug!(?pair, "failed state query dep");
                         RequeryPairs {
                             pair,
