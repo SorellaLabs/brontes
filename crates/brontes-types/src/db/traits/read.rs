@@ -9,7 +9,7 @@ use crate::{
     },
     pair::Pair,
     structured_trace::TxTrace,
-    FastHashMap, Protocol, SubGraphEdge,
+    FastHashMap, Protocol,
 };
 pub type AllSearcherInfo = (Vec<(Address, SearcherInfo)>, Vec<(Address, SearcherInfo)>);
 pub type ProtocolCreatedRange = FastHashMap<u64, Vec<(Address, Protocol, Pair)>>;
@@ -97,12 +97,6 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         start_block: u64,
         end_block: u64,
     ) -> eyre::Result<ProtocolCreatedRange>;
-
-    fn try_load_pair_before(
-        &self,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)>;
 
     fn get_protocol(&self, address: Address) -> eyre::Result<Protocol> {
         self.get_protocol_details(address).map(|res| res.protocol)
