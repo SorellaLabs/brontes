@@ -791,7 +791,7 @@ const MAX_TVL_WEIGHT: Rational = Rational::const_from_unsigned(100_000_000_000u6
 fn add_edge(
     graph: &mut DiGraph<(), Vec<SubGraphEdge>, u16>,
     edge_idx: EdgeIndex<u16>,
-    edge_info: *const PoolPairInformation,
+    edge_info: &'static PoolPairInformation,
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
