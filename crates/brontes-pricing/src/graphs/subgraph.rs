@@ -501,7 +501,7 @@ impl PairSubGraph {
 
                 let node_weights = edge.weight();
                 if node_weights.is_empty() {
-                    tracing::error!("found a node with no weight");
+                    return None
                 }
 
                 for info in node_weights {
