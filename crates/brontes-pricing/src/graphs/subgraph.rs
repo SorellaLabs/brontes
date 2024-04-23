@@ -905,17 +905,17 @@ impl PairSubGraph {
             for edge in graph.edges(node) {
                 let edge_weight = edge.weight();
 
-                let ensure_only_gt_pool = if !has_gone_through_pool {
-                    // if not pair, then con't
-                    let Some(w) = edge_weight.first() else { continue; };
-                    if w.get_pair().ordered() != self.must_go_through.ordered() {
-                        continue
-                    }
-                    has_gone_through_pool = true;
-                    true
-                } else {
-                    false
-                };
+                // let ensure_only_gt_pool = if !has_gone_through_pool {
+                //     // if not pair, then con't
+                //     let Some(w) = edge_weight.first() else { continue; };
+                //     if w.get_pair().ordered() != self.must_go_through.ordered() {
+                //         continue
+                //     }
+                //     has_gone_through_pool = true;
+                //     true
+                // } else {
+                //     false
+                // };
 
                 let next = edge.target();
                 if visited.is_visited(&next) {
@@ -932,11 +932,11 @@ impl PairSubGraph {
                 for info in edge_weight {
                     // if we are only looking for pricing through a specific pool for the first hop
                     // and we don't find it. we continue
-                    if ensure_only_gt_pool
-                        && must_go_through_pool.as_ref().unwrap() != &info.pool_addr
-                    {
-                        continue
-                    }
+                    // if ensure_only_gt_pool
+                    //     && must_go_through_pool.as_ref().unwrap() != &info.pool_addr
+                    // {
+                    //     continue
+                    // }
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
                         tracing::warn!(addr=?info.pool_addr,"failed to fetch pool state while generating price");
