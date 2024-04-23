@@ -39,10 +39,6 @@ pub trait DBWriter: Send + Unpin + 'static {
         self.inner().write_token_info(address, decimals, symbol)
     }
 
-    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
-        self.inner().save_pair_at(block, pair, edges)
-    }
-
     fn save_mev_blocks(
         &self,
         block_number: u64,

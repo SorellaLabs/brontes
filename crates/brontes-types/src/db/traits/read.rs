@@ -98,12 +98,6 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         end_block: u64,
     ) -> eyre::Result<ProtocolCreatedRange>;
 
-    fn try_load_pair_before(
-        &self,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)>;
-
     fn get_protocol(&self, address: Address) -> eyre::Result<Protocol> {
         self.get_protocol_details(address).map(|res| res.protocol)
     }

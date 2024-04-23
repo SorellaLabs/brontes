@@ -79,7 +79,6 @@ impl DatabaseQuery {
                 AddressMeta,
                 SearcherEOAs,
                 SearcherContracts,
-                SubGraphs,
                 TxTraces
             );
         } else {
@@ -99,7 +98,6 @@ impl DatabaseQuery {
                 AddressMeta,
                 SearcherEOAs,
                 SearcherContracts,
-                SubGraphs,
                 TxTraces,
                 PoolCreationBlocks = &self.key
             );

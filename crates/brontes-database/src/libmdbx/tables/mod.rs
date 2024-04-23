@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use brontes_pricing::SubGraphsEntry;
 use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, AddressMetadataRedefined},
@@ -25,7 +24,6 @@ use brontes_types::{
         traits::LibmdbxReader,
     },
     pair::Pair,
-    price_graph_types::SubGraphsEntryRedefined,
     serde_utils::*,
     traits::TracingProvider,
 };
@@ -46,7 +44,7 @@ use reth_db::TableType;
 
 use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
 
-pub const NUM_TABLES: usize = 15;
+pub const NUM_TABLES: usize = 14;
 
 macro_rules! tables {
     ($($table:ident),*) => {
@@ -232,7 +230,6 @@ impl Tables {
             }
             Tables::DexPrice => Ok(()),
             Tables::MevBlocks => Ok(()),
-            Tables::SubGraphs => Ok(()),
             Tables::TxTraces => {
                 initializer
                     .initialize_table_from_clickhouse::<TxTraces, TxTracesData>(
@@ -321,7 +318,6 @@ impl Tables {
             }
             Tables::DexPrice => Ok(()),
             Tables::MevBlocks => Ok(()),
-            Tables::SubGraphs => Ok(()),
             Tables::TxTraces => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
@@ -387,7 +383,6 @@ tables!(
     DexPrice,
     PoolCreationBlocks,
     MevBlocks,
-    SubGraphs,
     TxTraces,
     Builder,
     AddressMeta,
@@ -728,24 +723,6 @@ compressed_table!(
             key: u64,
             value: MevBlockWithClassified,
             compressed_value: MevBlockWithClassifiedRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Other,
-            http_endpoint: None
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table SubGraphs {
-        Data {
-            key: Pair,
-            value: SubGraphsEntry,
-            compressed_value: SubGraphsEntryRedefined
         },
         Init {
             init_size: None,

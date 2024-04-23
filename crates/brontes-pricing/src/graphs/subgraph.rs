@@ -290,9 +290,9 @@ impl PairSubGraph {
         self.graph.edge_weights()
     }
 
-    pub fn add_new_edge(&mut self, edge_info: PoolPairInformation) -> bool {
-        let t0 = edge_info.token_0;
-        let t1 = edge_info.token_1;
+    pub fn add_new_edge(&mut self, edge_info: *const PoolPairInformation) -> bool {
+        let t0 = unsafe { &*edge_info }.token_0;
+        let t1 = unsafe { &*edge_info }.token_1;
 
         // tokens have to already be in the graph for this edge to be added
         let Some(n0) = self.token_to_index.get(&t0) else {
@@ -791,11 +791,14 @@ const MAX_TVL_WEIGHT: Rational = Rational::const_from_unsigned(100_000_000_000u6
 fn add_edge(
     graph: &mut DiGraph<(), Vec<SubGraphEdge>, u16>,
     edge_idx: EdgeIndex<u16>,
-    edge_info: PoolPairInformation,
+    edge_info: *const PoolPairInformation,
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
-    if weights.iter().any(|w| w.pool_addr == edge_info.pool_addr) {
+    if weights
+        .iter()
+        .any(|w| w.pool_addr == unsafe { &*edge_info }.pool_addr)
+    {
         return false
     }
 

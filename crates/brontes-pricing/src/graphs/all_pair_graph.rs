@@ -284,7 +284,6 @@ impl AllPairGraph {
                                 .expect("no edge found"),
                         )
                         .unwrap()
-                        .clone()
                         .into_iter()
                         .filter(|info| info.insert_block <= block)
                         .map(|info| {
@@ -295,7 +294,7 @@ impl AllPairGraph {
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
                                 PoolPairInfoDirection {
-                                    info:       *info,
+                                    info:       &info.inner as *const _,
                                     token_0_in: node0 == index,
                                 },
                                 i as u8,
