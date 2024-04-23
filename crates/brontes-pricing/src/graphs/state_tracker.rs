@@ -54,7 +54,8 @@ impl StateTracker {
                 return true
             }
             state.dec(amount);
-            state.dependents != 0
+            // state.dependents != 0
+            true
         });
     }
 
@@ -166,10 +167,6 @@ impl StateTracker {
             .entry(address)
             .or_default()
             .add_state(state);
-    }
-
-    pub fn remove_state(&mut self, address: &Address) {
-        self.verification_edge_state.remove(address);
     }
 }
 
