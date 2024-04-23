@@ -290,7 +290,7 @@ impl PairSubGraph {
         self.graph.edge_weights()
     }
 
-    pub fn add_new_edge(&mut self, edge_info: PoolPairInformation) -> bool {
+    pub fn add_new_edge(&mut self, edge_info: &'static PoolPairInformation) -> bool {
         let t0 = edge_info.token_0;
         let t1 = edge_info.token_1;
 
@@ -310,34 +310,11 @@ impl PairSubGraph {
         } else if let Some(edge) = self.graph.find_edge(node1, node0) {
             return add_edge(&mut self.graph, edge, edge_info, false)
         } else {
-            // find the edge with shortest path
-            let Some(to_start) = self
-                .graph
-                .edges(node0)
-                .map(|e| e.weight().first().unwrap().distance_to_start_node)
-                .min_by(|e0, e1| e0.cmp(e1))
-            else {
-                return false;
-            };
-
-            let Some(to_end) = self
-                .graph
-                .edges(node1)
-                .map(|e| e.weight().first().unwrap().distance_to_end_node)
-                .min_by(|e0, e1| e0.cmp(e1))
-            else {
-                return false;
-            };
-
-            if !(to_start <= 1 && to_end <= 1) {
-                return false
-            }
-
             let d0 = PoolPairInfoDirection { info: edge_info, token_0_in: true };
             let d1 = PoolPairInfoDirection { info: edge_info, token_0_in: false };
 
-            let new_edge0 = SubGraphEdge::new(d0, to_start, to_end);
-            let new_edge1 = SubGraphEdge::new(d1, to_start, to_end);
+            let new_edge0 = SubGraphEdge::new(d0);
+            let new_edge1 = SubGraphEdge::new(d1);
 
             self.graph.add_edge(node0, node1, vec![new_edge0]);
             self.graph.add_edge(node1, node0, vec![new_edge1]);
@@ -791,28 +768,19 @@ const MAX_TVL_WEIGHT: Rational = Rational::const_from_unsigned(100_000_000_000u6
 fn add_edge(
     graph: &mut DiGraph<(), Vec<SubGraphEdge>, u16>,
     edge_idx: EdgeIndex<u16>,
-    edge_info: PoolPairInformation,
+    edge_info: &'static PoolPairInformation,
     direction: bool,
 ) -> bool {
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
-    if weights.iter().any(|w| w.pool_addr == edge_info.pool_addr) {
+    if weights
+        .iter()
+        .any(|w| w.pool_addr == { edge_info }.pool_addr)
+    {
         return false
     }
 
-    let first = weights.first().unwrap();
-
-    let to_start = first.distance_to_start_node;
-    let to_end = first.distance_to_end_node;
-
-    if !(to_start <= 1 && to_end <= 1) {
-        return false
-    }
-
-    let new_edge = SubGraphEdge::new(
-        PoolPairInfoDirection { info: edge_info, token_0_in: direction },
-        to_start,
-        to_end,
-    );
+    let new_edge =
+        SubGraphEdge::new(PoolPairInfoDirection { info: edge_info, token_0_in: direction });
     weights.push(new_edge);
 
     true
@@ -899,15 +867,11 @@ pub mod test {
         }
     }
 
-    fn build_edge(lookup_pair: Address, t0: Address, t1: Address, d0: u8, d1: u8) -> SubGraphEdge {
-        SubGraphEdge::new(
-            PoolPairInfoDirection::new(
-                PoolPairInformation::new(lookup_pair, Protocol::UniswapV2, t0, t1),
-                true,
-            ),
-            d0,
-            d1,
-        )
+    fn build_edge(lookup_pair: Address, t0: Address, t1: Address) -> SubGraphEdge {
+        SubGraphEdge::new(PoolPairInfoDirection::new(
+            Box::leak(Box::new(PoolPairInformation::new(lookup_pair, Protocol::UniswapV2, t0, t1))),
+            true,
+        ))
     }
     macro_rules! addresses {
         ($($var:ident),*) => {
@@ -923,13 +887,13 @@ pub mod test {
     fn make_simple_graph() -> PairSubGraph {
         addresses!(t0, t1, t2, t3, t4);
         // t0 -> t1
-        let e0 = build_edge(t0, t0, t1, 0, 7);
+        let e0 = build_edge(t0, t0, t1);
         // t1 -> t2
-        let e1 = build_edge(t1, t1, t2, 1, 6);
+        let e1 = build_edge(t1, t1, t2);
         // t2 -> t3
-        let e2 = build_edge(t2, t2, t3, 2, 5);
+        let e2 = build_edge(t2, t2, t3);
         // t3 -> t4
-        let e3 = build_edge(t3, t3, t4, 3, 4);
+        let e3 = build_edge(t3, t3, t4);
 
         let pair = Pair(t0, t4);
         PairSubGraph::init(pair, pair, pair, None, vec![e0, e1, e2, e3])
