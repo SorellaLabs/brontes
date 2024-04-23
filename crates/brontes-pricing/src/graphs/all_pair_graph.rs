@@ -40,7 +40,7 @@ impl Deref for EdgeWithInsertBlock {
     type Target = PoolPairInformation;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        self.inner
     }
 }
 
@@ -279,7 +279,7 @@ impl AllPairGraph {
                                 .expect("no edge found"),
                         )
                         .unwrap()
-                        .into_iter()
+                        .iter()
                         .filter(|info| info.insert_block <= block)
                         .map(|info| {
                             let created_pair = Pair(info.token_0, info.token_1).ordered();

@@ -23,7 +23,6 @@ use brontes_types::{
         traces::{TxTracesInner, TxTracesInnerRedefined},
         traits::LibmdbxReader,
     },
-    pair::Pair,
     serde_utils::*,
     traits::TracingProvider,
 };

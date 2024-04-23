@@ -6,7 +6,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_pricing::{Protocol, SubGraphEdge};
+use brontes_pricing::Protocol;
 #[cfg(feature = "cex-dex-markout")]
 use brontes_types::db::cex::cex_trades::CexTradeMap;
 #[cfg(feature = "cex-dex-markout")]
@@ -35,7 +35,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree, FastHashMap, SubGraphsEntry,
+    BlockTree, FastHashMap,
 };
 use eyre::{eyre, ErrReport};
 use futures::Future;

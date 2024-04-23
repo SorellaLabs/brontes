@@ -9,7 +9,7 @@ use crate::{
     },
     pair::Pair,
     structured_trace::TxTrace,
-    FastHashMap, Protocol, SubGraphEdge,
+    FastHashMap, Protocol,
 };
 pub type AllSearcherInfo = (Vec<(Address, SearcherInfo)>, Vec<(Address, SearcherInfo)>);
 pub type ProtocolCreatedRange = FastHashMap<u64, Vec<(Address, Protocol, Pair)>>;

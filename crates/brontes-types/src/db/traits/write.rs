@@ -10,9 +10,8 @@ use crate::{
     },
     mev::{Bundle, MevBlock},
     normalized_actions::Actions,
-    pair::Pair,
     structured_trace::TxTrace,
-    BlockTree, Protocol, SubGraphEdge,
+    BlockTree, Protocol,
 };
 
 #[auto_impl::auto_impl(&)]

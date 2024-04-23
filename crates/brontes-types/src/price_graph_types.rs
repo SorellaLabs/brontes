@@ -1,14 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
 use alloy_primitives::Address;
-use redefined::Redefined;
-use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    db::redefined_types::primitives::*, implement_table_value_codecs_with_zc, pair::Pair,
-    FastHashMap, Protocol,
-};
+use crate::{pair::Pair, FastHashMap, Protocol};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SubGraphsEntry(pub FastHashMap<u64, Vec<SubGraphEdge>>);
@@ -66,13 +61,13 @@ impl Deref for PoolPairInfoDirection {
     type Target = PoolPairInformation;
 
     fn deref(&self) -> &Self::Target {
-        &*self.info
+        self.info
     }
 }
 
 impl PoolPairInfoDirection {
     fn info(&self) -> &PoolPairInformation {
-        &*self.info
+        self.info
     }
 
     pub fn get_token_with_direction(&self, outgoing: bool) -> Address {

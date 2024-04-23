@@ -774,7 +774,7 @@ fn add_edge(
     let weights = graph.edge_weight_mut(edge_idx).unwrap();
     if weights
         .iter()
-        .any(|w| w.pool_addr == { &*edge_info }.pool_addr)
+        .any(|w| w.pool_addr == { edge_info }.pool_addr)
     {
         return false
     }
