@@ -18,7 +18,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree, FastHashMap, Protocol, SubGraphEdge,
+    BlockTree, FastHashMap, Protocol,
 };
 use indicatif::ProgressBar;
 
@@ -310,14 +310,6 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.protocols_created_range(start_block, end_block)
     }
 
-    fn try_load_pair_before(
-        &self,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
-        self.inner.try_load_pair_before(block, pair)
-    }
-
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         self.inner.get_protocol_details(address)
     }
@@ -572,14 +564,6 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         end_block: u64,
     ) -> eyre::Result<ProtocolCreatedRange> {
         self.inner.protocols_created_range(start_block, end_block)
-    }
-
-    fn try_load_pair_before(
-        &self,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
-        self.inner.try_load_pair_before(block, pair)
     }
 
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
