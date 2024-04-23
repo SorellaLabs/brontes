@@ -121,18 +121,6 @@ impl StateTracker {
                     return None
                 }
 
-                if self
-                    .finalized_edge_state
-                    .get_mut(&edge.pool_addr)
-                    .filter(|state| state.state.last_update == block)
-                    .map(|s| {
-                        s.inc(1);
-                    })
-                    .is_some()
-                {
-                    return None
-                }
-
                 Some(edge.info)
             })
             .collect_vec()
