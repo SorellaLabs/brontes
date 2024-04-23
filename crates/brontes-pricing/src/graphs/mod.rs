@@ -26,7 +26,10 @@ pub use self::{
     subgraph_verifier::*,
 };
 use super::PoolUpdate;
-use crate::{types::PoolState, Protocol};
+use crate::{
+    types::{PairWithFirstPoolHop, PoolState},
+    Protocol,
+};
 
 /// [`GraphManager`] Is the manager for everything graph related. It is
 /// responsible for creating, updating, and maintaining the main token graph as
@@ -106,19 +109,21 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.all_pair_graph.add_node(pair, pool_addr, dex, block);
     }
 
-    pub fn all_verifying_pairs(&self) -> Vec<Pair> {
-        self.subgraph_verifier.all_pairs()
-    }
-
-    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: Pair) {
-        self.subgraph_verifier.pool_dep_failure(pair, &goes_through)
+    pub fn pool_dep_failure(
+        &mut self,
+        pair: &PairWithFirstPoolHop,
+        pool_addr: Address,
+        pool_pair: Pair,
+    ) -> bool {
+        self.subgraph_verifier
+            .pool_dep_failure(pair, pool_addr, pool_pair)
     }
 
     pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
         self.sub_graph_registry.has_extension(pair, quote)
     }
 
-    pub fn mark_future_use(&self, pair: &Pair, goes_through: &Pair, block: u64) {
+    pub fn mark_future_use(&self, pair: Pair, goes_through: Pair, block: u64) {
         self.sub_graph_registry
             .mark_future_use(pair, goes_through, block);
     }
@@ -163,18 +168,14 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn add_subgraph_for_verification(
         &mut self,
-        pair: Pair,
-        complete_pair: Pair,
-        goes_through: Pair,
+        pair: PairWithFirstPoolHop,
         extends_to: Option<Pair>,
         block: u64,
         edges: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
         self.subgraph_verifier.create_new_subgraph(
             pair,
-            goes_through,
             extends_to,
-            complete_pair,
             block,
             edges,
             &mut self.graph_state,
@@ -193,14 +194,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     // feature flagged
     #[allow(unused_variables)]
-    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
-        #[cfg(not(feature = "tests"))]
-        if let Err(e) =
-            self.db
-                .save_pair_at(block, pair, subgraph.get_all_pools().flatten().cloned().collect())
-        {
-            tracing::error!(error=%e, "failed to save new subgraph pair");
-        }
+    pub fn add_verified_subgraph(&mut self, subgraph: PairSubGraph, block: u64) {
         self.sub_graph_registry
             .add_verified_subgraph(subgraph, self.graph_state.all_state(block))
     }
@@ -214,9 +208,9 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .remove_empty_address(pool_pair, pool_address)
     }
 
-    pub fn remove_subgraph(&mut self, pool_pair: Pair, goes_through: Pair) {
+    pub fn remove_subgraph(&mut self, pair: PairWithFirstPoolHop) {
         self.sub_graph_registry
-            .remove_subgraph(&pool_pair, &goes_through)
+            .remove_subgraph(pair)
             .into_iter()
             .for_each(|(pool, amount)| {
                 self.graph_state.remove_finalized_state_dep(pool, amount);
@@ -227,11 +221,14 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     /// liquidity
     pub fn verify_subgraph_on_new_path_failure(
         &mut self,
-        pair: Pair,
-        goes_through: &Pair,
+        pair: PairWithFirstPoolHop,
     ) -> Option<Vec<Pair>> {
         self.subgraph_verifier
-            .verify_subgraph_on_new_path_failure(pair, goes_through)
+            .verify_subgraph_on_new_path_failure(pair)
+    }
+
+    pub fn subgraph_extends(&mut self, pair: PairWithFirstPoolHop) -> Option<Pair> {
+        self.subgraph_verifier.get_subgraph_extends(pair)
     }
 
     pub fn get_price(
@@ -256,26 +253,15 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.graph_state.update_pool_state(address, update);
     }
 
-    pub fn has_subgraph(&self, pair: Pair, goes_through: Pair) -> bool {
-        self.sub_graph_registry.has_subpool(&pair)
-            || self.subgraph_verifier.is_verifying(&pair, &goes_through)
-    }
-
-    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Pair) -> bool {
-        self.sub_graph_registry.has_go_through(&pair, &goes_through)
-            || self.subgraph_verifier.has_go_through(&pair, &goes_through)
-    }
-
-    pub fn remove_state(&mut self, address: &Address) {
-        self.graph_state.remove_state(address)
+    pub fn has_subgraph_goes_through(&self, pair: PairWithFirstPoolHop) -> bool {
+        self.sub_graph_registry.has_go_through(pair) || self.subgraph_verifier.has_go_through(pair)
     }
 
     // returns true if the subgraph should be requeried. will mark it for removal
     // at the current block and it won't be used in pricing in the future
     pub fn prune_low_liq_subgraphs(
         &mut self,
-        pair: Pair,
-        goes_through: &Pair,
+        pair: PairWithFirstPoolHop,
         quote: Address,
         block: u64,
     ) {
@@ -284,7 +270,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             let state = self.graph_state.finalized_state();
             let (start_price, start_addr) = self
                 .sub_graph_registry
-                .get_subgraph_extends(&pair, goes_through)
+                .get_subgraph_extends(pair)
                 .map(|jump_pair| {
                     (
                         self.sub_graph_registry
@@ -297,7 +283,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
             self.sub_graph_registry.verify_current_subgraphs(
                 pair,
-                goes_through,
                 start_addr,
                 start_price,
                 &state,
@@ -308,14 +293,12 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn add_frayed_end_extension(
         &mut self,
-        pair: Pair,
-        goes_through: &Pair,
+        pair: PairWithFirstPoolHop,
         block: u64,
         frayed_end_extensions: Vec<SubGraphEdge>,
     ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         self.subgraph_verifier.add_frayed_end_extension(
             pair,
-            goes_through,
             block,
             &mut self.graph_state,
             frayed_end_extensions,
@@ -324,38 +307,29 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn verify_subgraph(
         &mut self,
-        pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>,
+        pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
         let pairs = pairs
             .into_iter()
-            .flat_map(|(block, id, pair, goes_throughs)| {
-                goes_throughs
-                    .into_iter()
-                    .unique()
-                    .map(|goes_through| {
-                        self.subgraph_verifier
-                            .get_subgraph_extends(&pair, &goes_through)
-                            .map(|jump_pair| {
-                                (
-                                    block,
-                                    id,
-                                    pair,
-                                    self.sub_graph_registry
-                                        .get_price_all(
-                                            jump_pair.flip(),
-                                            &self.graph_state.finalized_state(),
-                                        )
-                                        .unwrap_or(Rational::ONE),
-                                    jump_pair.0,
-                                    goes_through,
+            .map(|(block, id, pair)| {
+                self.subgraph_verifier
+                    .get_subgraph_extends(pair)
+                    .map(|jump_pair| {
+                        (
+                            block,
+                            id,
+                            pair,
+                            self.sub_graph_registry
+                                .get_price_all(
+                                    jump_pair.flip(),
+                                    &self.graph_state.finalized_state(),
                                 )
-                            })
-                            .unwrap_or_else(|| {
-                                (block, id, pair, Rational::ONE, quote, goes_through)
-                            })
+                                .unwrap_or(Rational::ONE),
+                            jump_pair.0,
+                        )
                     })
-                    .collect_vec()
+                    .unwrap_or_else(|| (block, id, pair, Rational::ONE, quote))
             })
             .collect_vec();
 

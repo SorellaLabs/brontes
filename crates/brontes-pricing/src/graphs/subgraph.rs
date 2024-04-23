@@ -411,7 +411,7 @@ impl PairSubGraph {
             .collect_vec();
 
         let pruned = self.tmp_prune(edges);
-        let disjoint = self.dijkstra_path(state, None).is_none();
+        let disjoint = self.is_disjoint();
         self.add_tmp_pruned(pruned);
 
         if disjoint {
@@ -444,7 +444,7 @@ impl PairSubGraph {
 
         self.prune_subgraph_rundown(edges);
 
-        let disjoint = self.dijkstra_path(state, None).is_none();
+        let disjoint = self.is_disjoint();
 
         VerificationOutcome {
             should_requery: false,
@@ -467,7 +467,7 @@ impl PairSubGraph {
 
         self.prune_subgraph(&result.removal_state);
 
-        let disjoint = self.dijkstra_path(&state, None).is_none();
+        let disjoint = self.is_disjoint();
 
         tracing::debug!("disjoint: {disjoint}: bad: {}", result.removal_state.len());
 
@@ -825,6 +825,58 @@ impl PairSubGraph {
         tracing::debug!(?self.pair, "finished grabing frayed ends");
 
         frayed_ends
+    }
+
+    pub fn is_disjoint(&self) -> bool {
+        let graph = &self.graph;
+
+        let start: NodeIndex<u16> = self.start_node.into();
+        let goal: NodeIndex<u16> = self.end_node.into();
+
+        let mut visited = graph.visit_map();
+        let mut scores = FastHashMap::default();
+        let mut node_price = FastHashMap::default();
+        let mut visit_next = BinaryHeap::new();
+        let zero_score = Rational::ZERO;
+        scores.insert(start, zero_score.clone());
+        visit_next.push(MinScored(zero_score, start));
+
+        while let Some(MinScored(node_score, node)) = visit_next.pop() {
+            if visited.is_visited(&node) {
+                continue
+            }
+
+            if goal == node {
+                break
+            }
+
+            for edge in graph.edges(node) {
+                let next = edge.target();
+                if visited.is_visited(&next) {
+                    continue
+                }
+
+                let next_score = &node_score + Rational::ONE;
+
+                match scores.entry(next) {
+                    Occupied(ent) => {
+                        if next_score < *ent.get() {
+                            *ent.into_mut() = next_score.clone();
+                            visit_next.push(MinScored(next_score, next));
+                            node_price.insert(next, ());
+                        }
+                    }
+                    Vacant(ent) => {
+                        ent.insert(next_score.clone());
+                        visit_next.push(MinScored(next_score, next));
+                        node_price.insert(next, ());
+                    }
+                }
+            }
+            visited.visit(node);
+        }
+
+        node_price.remove(&goal).is_none()
     }
 
     pub fn dijkstra_path<T>(
