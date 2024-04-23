@@ -493,7 +493,7 @@ impl PairSubGraph {
                     let Ok(pool_price) =
                         pool_state.price(info.get_token_with_direction(is_outgoing))
                     else {
-                        tracing::warn!(addr=?info.pool_addr,?pair, "failed to fetch pool state");
+                        tracing::debug!(addr=?info.pool_addr,?pair, "failed to fetch pool price");
                         Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                         continue;
                     };
@@ -572,10 +572,12 @@ impl PairSubGraph {
                 } else {
                     match direction {
                         Direction::Incoming => {
-                            self.graph.add_edge(n1.into(), n0.into(), bad_edge_to_pool);
+                            self.graph
+                                .update_edge(n1.into(), n0.into(), bad_edge_to_pool);
                         }
                         Direction::Outgoing => {
-                            self.graph.add_edge(n0.into(), n1.into(), bad_edge_to_pool);
+                            self.graph
+                                .update_edge(n0.into(), n1.into(), bad_edge_to_pool);
                         }
                     }
                 }
