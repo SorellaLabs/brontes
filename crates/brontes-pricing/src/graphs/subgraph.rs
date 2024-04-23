@@ -508,7 +508,7 @@ impl PairSubGraph {
                     let pair = Pair(info.token_0, info.token_1);
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
-                        tracing::warn!(?pair, "failed to fetch pool state");
+                        tracing::warn!(addr=?info.pool_addr,?pair, "failed to fetch pool state");
                         Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                         continue;
                     };
@@ -516,7 +516,7 @@ impl PairSubGraph {
                     let Ok(pool_price) =
                         pool_state.price(info.get_token_with_direction(is_outgoing))
                     else {
-                        tracing::warn!(?pair, "failed to fetch pool state");
+                        tracing::warn!(addr=?info.pool_addr,?pair, "failed to fetch pool state");
                         Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                         continue;
                     };
@@ -895,7 +895,7 @@ impl PairSubGraph {
                     }
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
-                        tracing::warn!("failed to fetch pool state while generating price");
+                        tracing::warn!(addr=?info.pool_addr,"failed to fetch pool state while generating price");
                         continue;
                     };
 
