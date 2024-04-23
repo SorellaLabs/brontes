@@ -891,8 +891,6 @@ impl PairSubGraph {
         scores.insert(start, zero_score.clone());
         visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
 
-        let mut has_gone_through_pool = must_go_through_pool.is_none();
-
         while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
             if visited.is_visited(&node) {
                 continue
@@ -904,18 +902,6 @@ impl PairSubGraph {
 
             for edge in graph.edges(node) {
                 let edge_weight = edge.weight();
-
-                // let ensure_only_gt_pool = if !has_gone_through_pool {
-                //     // if not pair, then con't
-                //     let Some(w) = edge_weight.first() else { continue; };
-                //     if w.get_pair().ordered() != self.must_go_through.ordered() {
-                //         continue
-                //     }
-                //     has_gone_through_pool = true;
-                //     true
-                // } else {
-                //     false
-                // };
 
                 let next = edge.target();
                 if visited.is_visited(&next) {
@@ -930,14 +916,6 @@ impl PairSubGraph {
                 // calculate tvl of pool using the start token as the quote
 
                 for info in edge_weight {
-                    // if we are only looking for pricing through a specific pool for the first hop
-                    // and we don't find it. we continue
-                    // if ensure_only_gt_pool
-                    //     && must_go_through_pool.as_ref().unwrap() != &info.pool_addr
-                    // {
-                    //     continue
-                    // }
-
                     let Some(pool_state) = state.get(&info.pool_addr) else {
                         tracing::warn!(addr=?info.pool_addr,"failed to fetch pool state while generating price");
                         continue;
@@ -984,10 +962,6 @@ impl PairSubGraph {
                 }
             }
             visited.visit(node);
-        }
-
-        if !has_gone_through_pool {
-            tracing::debug!(?self.complete_pair,goes_through=?self.must_go_through,pool=?must_go_through_pool, "has gone through pool was never triggered");
         }
 
         node_price.remove(&goal)
