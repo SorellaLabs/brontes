@@ -818,6 +818,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             .map(|i| RequeryPairs {
                                 pair,
                                 extends_pair: extends,
+                                completed_block: self.completed_block,
                                 block,
                                 ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
                                 frayed_ends: vec![],
@@ -828,6 +829,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             extends_pair: extends,
                             pair,
                             block,
+                            completed_block: self.completed_block,
                             ignore_state: FastHashSet::default(),
                             frayed_ends: vec![],
                         }]
