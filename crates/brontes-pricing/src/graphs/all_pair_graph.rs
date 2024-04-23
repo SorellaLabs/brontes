@@ -1,6 +1,6 @@
 use std::{
     cmp::max,
-    ops::{Deref, DerefMut},
+    ops::Deref,
     time::{Duration, SystemTime},
 };
 
@@ -267,13 +267,11 @@ impl AllPairGraph {
         )
         .into_iter()
         .map(|(nodes, _)| {
-            let path_length = nodes.len();
             nodes
                 .into_iter()
                 // default entry
                 .filter(|(n0, n1)| n0 != n1)
-                .enumerate()
-                .map(|(i, (node0, node1))| {
+                .map(|(node0, node1)| {
                     self.graph
                         .edge_weight(
                             self.graph
@@ -289,14 +287,10 @@ impl AllPairGraph {
                                 tracing::error!("ignore pair found in result");
                             }
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
-                            SubGraphEdge::new(
-                                PoolPairInfoDirection {
-                                    info:       info.inner,
-                                    token_0_in: node0 == index,
-                                },
-                                i as u8,
-                                (path_length - i) as u8,
-                            )
+                            SubGraphEdge::new(PoolPairInfoDirection {
+                                info:       info.inner,
+                                token_0_in: node0 == index,
+                            })
                         })
                         .collect_vec()
                 })

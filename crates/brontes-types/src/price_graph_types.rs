@@ -15,9 +15,7 @@ pub struct SubGraphsEntry(pub FastHashMap<u64, Vec<SubGraphEdge>>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SubGraphEdge {
-    pub info:                   PoolPairInfoDirection,
-    pub distance_to_start_node: u8,
-    pub distance_to_end_node:   u8,
+    pub info: PoolPairInfoDirection,
 }
 impl Deref for SubGraphEdge {
     type Target = PoolPairInfoDirection;
@@ -33,12 +31,8 @@ impl DerefMut for SubGraphEdge {
 }
 
 impl SubGraphEdge {
-    pub fn new(
-        info: PoolPairInfoDirection,
-        distance_to_start_node: u8,
-        distance_to_end_node: u8,
-    ) -> Self {
-        Self { info, distance_to_end_node, distance_to_start_node }
+    pub fn new(info: PoolPairInfoDirection) -> Self {
+        Self { info }
     }
 }
 
