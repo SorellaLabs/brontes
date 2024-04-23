@@ -141,9 +141,13 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         timeout: Duration,
         is_extension: bool,
         trying_extensions_quote: Option<Address>,
+        completed_block: u64,
     ) -> (Vec<SubGraphEdge>, Option<Pair>) {
         let possible_exts = trying_extensions_quote
-            .map(|quote| self.sub_graph_registry.all_pairs_with_quote(quote))
+            .map(|quote| {
+                self.sub_graph_registry
+                    .all_pairs_with_quote(quote, completed_block)
+            })
             .unwrap_or_default();
 
         let (path, extends) = self.all_pair_graph.get_paths_ignoring(
@@ -231,6 +235,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         pair: Pair,
         goes_through: Pair,
         goes_through_address: Option<Address>,
+        completed_block: u64,
     ) -> Option<Rational> {
         let span = error_span!("price generation for block");
         span.in_scope(|| {
@@ -239,6 +244,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 goes_through,
                 goes_through_address,
                 &self.graph_state.finalized_state(),
+                completed_block,
             )
         })
     }
@@ -261,16 +267,12 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         &mut self,
         pair: PairWithFirstPoolHop,
         quote: Address,
-        // the block of the query that triggered this.
         current_block: u64,
-        // the block of the current process.
-        processing_block: u64,
+        completed_block: u64,
     ) {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
-            let state = self
-                .graph_state
-                .all_state_range(processing_block..=current_block);
+            let state = self.graph_state.all_state(current_block);
 
             let (start_price, start_addr) = self
                 .sub_graph_registry
@@ -278,7 +280,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 .map(|jump_pair| {
                     (
                         self.sub_graph_registry
-                            .get_price_all(jump_pair.flip(), &state)
+                            .get_price_all(jump_pair.flip(), &state, completed_block)
                             .unwrap_or(Rational::ONE),
                         jump_pair.0,
                     )
@@ -291,6 +293,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 start_price,
                 &state,
                 current_block,
+                completed_block,
             );
         });
     }
@@ -313,6 +316,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         &mut self,
         pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
         quote: Address,
+        completed_block: u64,
     ) -> Vec<VerificationResults> {
         let span = error_span!("verifying subgraph");
         span.in_scope(|| {
@@ -329,7 +333,8 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                                 self.sub_graph_registry
                                     .get_price_all(
                                         jump_pair.flip(),
-                                        &self.graph_state.all_state(block),
+                                        &self.graph_state.finalized_state(),
+                                        completed_block,
                                     )
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,

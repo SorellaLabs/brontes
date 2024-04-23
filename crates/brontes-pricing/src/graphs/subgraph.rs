@@ -88,6 +88,7 @@ pub struct PairSubGraph {
     token_to_index:           FastHashMap<Address, u16>,
     /// if this subgraph relies on another pair to calcuate the price.
     extends_to:               Option<Pair>,
+    init_block:               u64,
 
     /// if a nodes liquidity drops more than 50% from when validation
     /// was last ran on this subgraph. a re_query is triggered.
@@ -154,6 +155,7 @@ impl PairSubGraph {
 
         Self {
             last_block_for_pricing: Arc::new(AtomicU64::new(last_block_for_pricing)),
+            init_block: last_block_for_pricing,
             remove_at: None,
             pair,
             complete_pair,
@@ -165,6 +167,10 @@ impl PairSubGraph {
             must_go_through,
             start_nodes_liq: FastHashMap::default(),
         }
+    }
+
+    pub fn init_block(&self) -> u64 {
+        self.init_block
     }
 
     pub fn should_use_for_new(&self) -> bool {
@@ -305,6 +311,10 @@ impl PairSubGraph {
             weights.retain(|e| e.pool_addr != pool_address);
             weights.is_empty()
         } else {
+            tracing::warn!(
+                ?pool_address,
+                "failed to remove bad edge as no edge was found in the graph"
+            );
             false
         }
     }

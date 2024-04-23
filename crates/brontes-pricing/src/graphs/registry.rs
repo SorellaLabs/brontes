@@ -84,11 +84,13 @@ impl SubGraphRegistry {
             .flatten()
     }
 
-    pub fn all_pairs_with_quote(&self, addr: Address) -> Vec<Pair> {
+    pub fn all_pairs_with_quote(&self, addr: Address, completed_block: u64) -> Vec<Pair> {
         self.sub_graphs
-            .keys()
-            .copied()
-            .filter(|pair| pair.1 == addr)
+            .iter()
+            .filter(|(pair, sub)| {
+                pair.1 == addr && sub.values().any(|g| g.init_block() < completed_block)
+            })
+            .map(|(p, _)| *p)
             .collect_vec()
     }
 
@@ -179,6 +181,7 @@ impl SubGraphRegistry {
         start_price: Rational,
         state: &FastHashMap<Address, &T>,
         block: u64,
+        completed_block: u64,
     ) {
         let (pair, goes_through) = pair.pair_gt();
         self.sub_graphs.iter_mut().for_each(|(g_pair, sub)| {
@@ -187,11 +190,13 @@ impl SubGraphRegistry {
                 return
             }
 
-            sub.iter_mut().for_each(|(gt, graph)| {
-                if &goes_through == gt {
-                    graph.has_valid_liquidity(start, start_price.clone(), state, block)
-                }
-            });
+            sub.iter_mut()
+                .filter(|(_, g)| g.init_block() < completed_block)
+                .for_each(|(gt, graph)| {
+                    if &goes_through == gt {
+                        graph.has_valid_liquidity(start, start_price.clone(), state, block)
+                    }
+                });
         });
     }
 
@@ -201,12 +206,18 @@ impl SubGraphRegistry {
         goes_through: Pair,
         goes_through_address: Option<Address>,
         edge_state: &FastHashMap<Address, &PoolState>,
+        completed_block: u64,
     ) -> Option<Rational> {
-        let (next, complete_pair, default_price) =
-            self.get_price_once(unordered_pair, goes_through, goes_through_address, edge_state)?;
+        let (next, complete_pair, default_price) = self.get_price_once(
+            unordered_pair,
+            goes_through,
+            goes_through_address,
+            edge_state,
+            completed_block,
+        )?;
 
         if let Some(next) = next {
-            let next_price = self.get_price_all(next, edge_state);
+            let next_price = self.get_price_all(next, edge_state, completed_block);
             if next_price.is_none() {
                 self.remove_all_extensions_of(next);
                 return None
@@ -229,6 +240,7 @@ impl SubGraphRegistry {
         goes_through: Pair,
         goes_through_address: Option<Address>,
         edge_state: &FastHashMap<Address, &PoolState>,
+        completed_block: u64,
     ) -> Option<(Option<Pair>, Pair, Rational)> {
         let pair = unordered_pair.ordered();
 
@@ -251,7 +263,7 @@ impl SubGraphRegistry {
             // that way
             .or_else(|| {
                 Some(
-                    self.get_price_all(unordered_pair, edge_state)
+                    self.get_price_all(unordered_pair, edge_state, completed_block)
                         .map(|price| (None, unordered_pair, price)),
                 )
             })
@@ -263,6 +275,7 @@ impl SubGraphRegistry {
         &self,
         unordered_pair: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
+        completed_block: u64,
     ) -> Option<Rational> {
         let pair = unordered_pair.ordered();
 
@@ -270,7 +283,10 @@ impl SubGraphRegistry {
             let mut cnt = Rational::ZERO;
             let mut acc = Rational::ZERO;
             for (_, graph) in f {
-                if graph.extends_to().is_some() || !graph.should_use_for_new() {
+                if graph.extends_to().is_some()
+                    || !graph.should_use_for_new()
+                    || graph.init_block() < completed_block
+                {
                     continue
                 };
 
