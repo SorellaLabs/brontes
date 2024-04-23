@@ -867,7 +867,7 @@ pub mod test {
         }
     }
 
-    fn build_edge(lookup_pair: Address, t0: Address, t1: Address, d0: u8, d1: u8) -> SubGraphEdge {
+    fn build_edge(lookup_pair: Address, t0: Address, t1: Address) -> SubGraphEdge {
         SubGraphEdge::new(PoolPairInfoDirection::new(
             Box::leak(Box::new(PoolPairInformation::new(lookup_pair, Protocol::UniswapV2, t0, t1))),
             true,
@@ -887,13 +887,13 @@ pub mod test {
     fn make_simple_graph() -> PairSubGraph {
         addresses!(t0, t1, t2, t3, t4);
         // t0 -> t1
-        let e0 = build_edge(t0, t0, t1, 0, 7);
+        let e0 = build_edge(t0, t0, t1);
         // t1 -> t2
-        let e1 = build_edge(t1, t1, t2, 1, 6);
+        let e1 = build_edge(t1, t1, t2);
         // t2 -> t3
-        let e2 = build_edge(t2, t2, t3, 2, 5);
+        let e2 = build_edge(t2, t2, t3);
         // t3 -> t4
-        let e3 = build_edge(t3, t3, t4, 3, 4);
+        let e3 = build_edge(t3, t3, t4);
 
         let pair = Pair(t0, t4);
         PairSubGraph::init(pair, pair, pair, None, vec![e0, e1, e2, e3])

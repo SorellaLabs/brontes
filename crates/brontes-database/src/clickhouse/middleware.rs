@@ -18,7 +18,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree, FastHashMap, Protocol, SubGraphEdge,
+    BlockTree, FastHashMap, Protocol,
 };
 use indicatif::ProgressBar;
 
