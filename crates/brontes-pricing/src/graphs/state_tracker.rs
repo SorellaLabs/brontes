@@ -214,7 +214,6 @@ impl PoolStateWithBlock {
         for (finalized, state) in &mut self.0 {
             if block == state.last_update {
                 *finalized = true;
-                break
             }
         }
     }
