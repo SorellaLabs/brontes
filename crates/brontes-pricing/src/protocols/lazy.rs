@@ -63,7 +63,7 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_load_futures: MultiBlockPoolFutures,
     /// addresses currently being processed. to the blocks of the address we are
     /// fetching state for
-    pool_buf:          FastHashMap<Address, Vec<BlockNumber>>,
+    pool_buf:          FastHashMap<Address, FastHashSet<BlockNumber>>,
     /// requests we are processing for a given block.
     req_per_block:     FastHashMap<BlockNumber, u64>,
 
@@ -93,7 +93,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.req_per_block.get(block).copied().unwrap_or(0) == 0
     }
 
-    pub fn is_loading_block(&self, k: &Address) -> Option<Vec<u64>> {
+    pub fn is_loading_block(&self, k: &Address) -> Option<FastHashSet<u64>> {
         self.pool_buf.get(k).cloned()
     }
 
@@ -114,7 +114,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         pair: PairWithFirstPoolHop,
     ) {
         *self.req_per_block.entry(block).or_default() += 1;
-        self.pool_buf.entry(address).or_default().push(block);
+        self.pool_buf.entry(address).or_default().insert(block);
         self.add_protocol_parent(block, id, address, pair)
     }
 
@@ -137,6 +137,14 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         block: u64,
         address: &Address,
     ) -> Vec<PairWithFirstPoolHop> {
+        if let Some(i) = self.pool_buf.get_mut(address) {
+            i.remove(&block);
+        }
+
+        if let Some(block) = self.req_per_block.get_mut(&block) {
+            *block -= 1;
+        }
+
         self.state_tracking.remove_pool(*address, block)
     }
 
