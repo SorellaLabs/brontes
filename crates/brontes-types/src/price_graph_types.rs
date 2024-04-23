@@ -58,14 +58,12 @@ impl PoolPairInformation {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PoolPairInfoDirection {
-    pub info:       *const PoolPairInformation,
+    pub info:       &'static PoolPairInformation,
     pub token_0_in: bool,
 }
-unsafe impl Send for PoolPairInfoDirection {}
-unsafe impl Sync for PoolPairInfoDirection {}
 
 impl PoolPairInfoDirection {
-    pub fn new(info: *const PoolPairInformation, token_0_in: bool) -> Self {
+    pub fn new(info: &'static PoolPairInformation, token_0_in: bool) -> Self {
         Self { info, token_0_in }
     }
 }
@@ -74,13 +72,13 @@ impl Deref for PoolPairInfoDirection {
     type Target = PoolPairInformation;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.info }
+        &*self.info
     }
 }
 
 impl PoolPairInfoDirection {
     fn info(&self) -> &PoolPairInformation {
-        unsafe { &*self.info }
+        &*self.info
     }
 
     pub fn get_token_with_direction(&self, outgoing: bool) -> Address {

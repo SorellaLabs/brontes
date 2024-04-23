@@ -15,7 +15,7 @@ use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, Sub
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EdgeWithInsertBlock {
-    pub inner:        PoolPairInformation,
+    pub inner:        &'static PoolPairInformation,
     pub insert_block: u64,
 }
 
@@ -28,7 +28,9 @@ impl EdgeWithInsertBlock {
         block_added: u64,
     ) -> Self {
         Self {
-            inner:        PoolPairInformation::new(pool_addr, dex, token0, token1),
+            inner:        Box::leak(Box::new(PoolPairInformation::new(
+                pool_addr, dex, token0, token1,
+            ))),
             insert_block: block_added,
         }
     }
@@ -42,11 +44,6 @@ impl Deref for EdgeWithInsertBlock {
     }
 }
 
-impl DerefMut for EdgeWithInsertBlock {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
 /// [`AllPairGraph`] Represents the interconnected network of token pairs in
 /// decentralized exchanges (DEXs), crucial for the BrontesBatchPricer system's
 /// ability to analyze and calculate token prices.
@@ -294,7 +291,7 @@ impl AllPairGraph {
                             let index = *self.token_to_index.get(&info.token_0).unwrap();
                             SubGraphEdge::new(
                                 PoolPairInfoDirection {
-                                    info:       &info.inner as *const _,
+                                    info:       info.inner,
                                     token_0_in: node0 == index,
                                 },
                                 i as u8,

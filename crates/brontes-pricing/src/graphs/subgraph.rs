@@ -290,9 +290,9 @@ impl PairSubGraph {
         self.graph.edge_weights()
     }
 
-    pub fn add_new_edge(&mut self, edge_info: *const PoolPairInformation) -> bool {
-        let t0 = unsafe { &*edge_info }.token_0;
-        let t1 = unsafe { &*edge_info }.token_1;
+    pub fn add_new_edge(&mut self, edge_info: &'static PoolPairInformation) -> bool {
+        let t0 = edge_info.token_0;
+        let t1 = edge_info.token_1;
 
         // tokens have to already be in the graph for this edge to be added
         let Some(n0) = self.token_to_index.get(&t0) else {
