@@ -947,6 +947,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .graph_manager
             .subgraph_verifier
             .get_rem_for_block(self.completed_block);
+        tracing::info!("force flushing of pending verification");
 
         self.par_rundown(
             rem_block
