@@ -93,12 +93,7 @@ impl Metadata {
                                 Some(
                                     trade_map
                                         .lock()
-                                        .get_price_vwam(
-                                            &trades,
-                                            &pair,
-                                            &baseline_for_tokeprice,
-                                            None,
-                                        )?
+                                        .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
                                         .0
                                         .price,
                                 )
@@ -135,7 +130,12 @@ impl Metadata {
                             Some(
                                 trade_map
                                     .lock()
-                                    .get_price_vwam(&trades, &pair, &baseline_for_tokeprice, None)?
+                                    .get_optimistic_vmap(
+                                        &trades,
+                                        &pair,
+                                        &baseline_for_tokeprice,
+                                        None,
+                                    )?
                                     .0
                                     .price,
                             )
@@ -208,6 +208,10 @@ impl BlockMetadata {
             private_flow,
             block_timestamp,
         }
+    }
+
+    pub fn microseconds_block_timestamp(&self) -> u64 {
+        self.block_timestamp * 1_000_000
     }
 
     pub fn into_metadata(

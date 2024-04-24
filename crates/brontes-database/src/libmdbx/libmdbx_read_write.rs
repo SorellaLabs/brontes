@@ -6,7 +6,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_pricing::{Protocol, SubGraphEdge};
+use brontes_pricing::Protocol;
 #[cfg(feature = "cex-dex-markout")]
 use brontes_types::db::cex::cex_trades::CexTradeMap;
 #[cfg(feature = "cex-dex-markout")]
@@ -35,7 +35,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree, FastHashMap, SubGraphsEntry,
+    BlockTree, FastHashMap,
 };
 use eyre::{eyre, ErrReport};
 use futures::Future;
@@ -525,44 +525,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
         Ok(map)
     }
 
-    fn try_load_pair_before(
-        &self,
-        block: u64,
-        pair: Pair,
-    ) -> eyre::Result<(Pair, Vec<SubGraphEdge>)> {
-        let tx = self.0.ro_tx()?;
-        let subgraphs = tx
-            .get::<SubGraphs>(pair)?
-            .ok_or_else(|| eyre::eyre!("no subgraph found"))?;
-
-        // if we have dex prices for a block then we have a subgraph for the block
-        let (start_key, end_key) = make_filter_key_range(block);
-        if !tx
-            .new_cursor::<DexPrice>()?
-            .walk_range(start_key..=end_key)?
-            .all(|f| f.is_ok())
-        {
-            tracing::debug!(
-                ?pair,
-                ?block,
-                "no pricing for block. cannot verify most recent subgraph is valid"
-            );
-
-            return Err(eyre::eyre!("subgraph not inited at this block range"))
-        }
-
-        let mut last: Option<(Pair, Vec<SubGraphEdge>)> = None;
-
-        for (cur_block, update) in subgraphs.0 {
-            if cur_block > block {
-                break
-            }
-            last = Some((pair, update))
-        }
-
-        last.ok_or_else(|| eyre::eyre!("no pair found"))
-    }
-
     fn try_fetch_address_metadata(
         &self,
         address: Address,
@@ -801,29 +763,6 @@ impl DBWriter for LibmdbxReadWriter {
                 TokenInfo::new(decimals, symbol),
             )])
             .expect("libmdbx write failure");
-        Ok(())
-    }
-
-    fn save_pair_at(&self, block: u64, pair: Pair, edges: Vec<SubGraphEdge>) -> eyre::Result<()> {
-        let tx = self.0.ro_tx()?;
-
-        if let Some(mut entry) = tx.get::<SubGraphs>(pair).expect("libmdbx write failure") {
-            entry.0.insert(block, edges.into_iter().collect::<Vec<_>>());
-
-            let data = SubGraphsData::new(pair, entry);
-            self.0
-                .write_table::<SubGraphs, SubGraphsData>(&[data])
-                .expect("libmdbx write failure");
-        } else {
-            let mut map = FastHashMap::default();
-            map.insert(block, edges);
-            let subgraph_entry = SubGraphsEntry(map);
-            let data = SubGraphsData::new(pair, subgraph_entry);
-            self.0
-                .write_table::<SubGraphs, SubGraphsData>(&[data])
-                .expect("libmdbx write failure");
-        }
-
         Ok(())
     }
 
