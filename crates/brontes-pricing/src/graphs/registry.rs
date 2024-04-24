@@ -57,9 +57,9 @@ impl SubGraphRegistry {
         let mut removals = FastHashMap::default();
 
         self.sub_graphs.retain(|p, vec| {
-            vec.retain(|gt, subgraph| {
+            vec.retain(|_, subgraph| {
                 if subgraph.is_expired_subgraph(block) || subgraph.ready_to_remove(block) {
-                    tracing::info!(?gt,pair=?p, "remvoing subgraph");
+                    tracing::info!(pair=?p, "removing subgraph");
                     subgraph.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });
@@ -283,7 +283,7 @@ impl SubGraphRegistry {
             let mut cnt = Rational::ZERO;
             let mut acc = Rational::ZERO;
             for (_, graph) in f {
-                if graph.extends_to().is_some() || !graph.should_use_for_new() {
+                if graph.extends_to().is_some() {
                     continue
                 };
 
