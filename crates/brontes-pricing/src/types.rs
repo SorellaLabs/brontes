@@ -227,15 +227,15 @@ impl PoolUpdate {
         match &self.action {
             Actions::Swap(s) => Some(Pair(s.token_in.address, s.token_out.address)),
             Actions::Mint(m) => Some(Pair(
-                m.token.get(0)?.address,
+                m.token.first()?.address,
                 m.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
             Actions::Burn(b) => Some(Pair(
-                b.token.get(0)?.address,
+                b.token.first()?.address,
                 b.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
             Actions::Collect(b) => Some(Pair(
-                b.token.get(0)?.address,
+                b.token.first()?.address,
                 b.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
             Actions::Transfer(t) => Some(Pair(t.token.address, quote)),
