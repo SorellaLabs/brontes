@@ -137,17 +137,23 @@ impl SubgraphVerifier {
         let extend_pair = Pair(complete_pair.0, extends_to.map(|e| e.0).unwrap_or(complete_pair.1));
         let subgraph = PairSubGraph::init(extend_pair, complete_pair, gt, extends_to, path, block);
 
-        self.pending_subgraphs.insert(
-            pair,
-            Subgraph {
-                subgraph,
-                block,
-                frayed_end_extensions: FastHashMap::default(),
-                id: 0,
-                in_rundown: false,
-                iters: 0,
-            },
-        );
+        if self
+            .pending_subgraphs
+            .insert(
+                pair,
+                Subgraph {
+                    subgraph,
+                    block,
+                    frayed_end_extensions: FastHashMap::default(),
+                    id: 0,
+                    in_rundown: false,
+                    iters: 0,
+                },
+            )
+            .is_some()
+        {
+            tracing::error!(?pair, ?block, "duplicate subgraph");
+        };
 
         query_state
     }
