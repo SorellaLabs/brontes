@@ -2,6 +2,7 @@ use alloy_primitives::Address;
 use brontes_macros::discovery_impl;
 use brontes_pricing::Protocol;
 
+// rustfmt::skip
 discovery_impl!(
     DodoDVMDiscovery,
     crate::DodoDVMFactory::createDODOVendingMachineCall,
@@ -19,6 +20,7 @@ discovery_impl!(
     }
 );
 
+// rustfmt::skip
 discovery_impl!(
     DodoDSPDiscovery,
     crate::DodoDSPFactory::createDODOStablePoolCall,

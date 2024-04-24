@@ -1,9 +1,14 @@
 use brontes_macros::action_impl;
 use brontes_types::{
-    normalized_actions::{NormalizedFlashLoan, NormalizedNewPool, NormalizedSwap},
+    normalized_actions::{
+        NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedNewPool, NormalizedSwap,
+    },
     structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
+use reth_primitives::U256;
+
+use crate::DodoDSPPool::{buySharesReturn, sellSharesReturn};
 
 action_impl!(
     Protocol::Dodo,
@@ -119,6 +124,90 @@ action_impl!(
             repayments: vec![],
             fees_paid: vec![],
             msg_value: info.msg_value
+        })
+    }
+);
+
+action_impl!(
+    Protocol::Dodo,
+    crate::DodoDSPPool::buySharesCall,
+    Mint,
+    [BuyShares],
+    logs: true,
+    return_data: true,
+    |info: CallInfo, return_data: buySharesReturn, logs: DodoBuySharesCallLogs, db: &DB| {
+        let logs = logs.buy_shares_field?;
+
+        let details = db.get_protocol_details_sorted(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
+
+        let mut token = vec![];
+        let mut amount = vec![];
+
+        if return_data.baseInput > U256::ZERO {
+            let token_one = db.try_fetch_token_info(token_0)?;
+            let amount_one = return_data.baseInput.to_scaled_rational(token_one.decimals);
+            token.push(token_one);
+            amount.push(amount_one);
+        }
+
+        if return_data.quoteInput > U256::ZERO {
+            let token_two = db.try_fetch_token_info(token_1)?;
+            let amount_two = return_data.quoteInput.to_scaled_rational(token_two.decimals);
+            token.push(token_two);
+            amount.push(amount_two);
+        }
+
+        Ok(NormalizedMint {
+            protocol: Protocol::Dodo,
+            trace_index: info.trace_idx,
+            from: info.msg_sender,
+            recipient: logs.to,
+            pool: info.target_address,
+            token,
+            amount
+        })
+    }
+);
+
+action_impl!(
+    Protocol::Dodo,
+    crate::DodoDSPPool::sellSharesCall,
+    Burn,
+    [SellShares],
+    logs: true,
+    return_data: true,
+    |info: CallInfo, return_data: sellSharesReturn, logs: DodoSellSharesCallLogs, db: &DB| {
+        let logs = logs.sell_shares_field?;
+
+        let details = db.get_protocol_details_sorted(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
+
+        let mut token = vec![];
+        let mut amount = vec![];
+
+        if return_data.baseAmount > U256::ZERO {
+            let token_one = db.try_fetch_token_info(token_0)?;
+            let amount_one = return_data.baseAmount.to_scaled_rational(token_one.decimals);
+            token.push(token_one);
+            amount.push(amount_one);
+        }
+
+        if return_data.quoteAmount > U256::ZERO {
+            let token_two = db.try_fetch_token_info(token_1)?;
+            let amount_two = return_data.quoteAmount.to_scaled_rational(token_two.decimals);
+            token.push(token_two);
+            amount.push(amount_two);
+        }
+
+        Ok(NormalizedBurn {
+            protocol: Protocol::Dodo,
+            trace_index: info.trace_idx,
+            from: info.msg_sender,
+            recipient: logs.to,
+            pool: info.target_address,
+            token,
+            amount
         })
     }
 );
