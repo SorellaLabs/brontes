@@ -199,7 +199,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// Essentially, it ensures the graph manager remains synchronized with the
     /// latest block data, maintaining the integrity and accuracy of
     /// the decentralized exchange pricing mechanism.
-    #[brontes_macros::bench_time(ptr=self.bench)]
+    #[brontes_macros::bench_time(ptr = self.bench)]
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
             return
@@ -894,7 +894,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// The function returns a boolean indicating whether any lazy loading was
     /// triggered during its execution. This function ensures that all necessary
     /// pool states are loaded and ready for accurate subgraph verification.
-    #[brontes_macros::bench_time(ptr=self.bench)]
+    #[brontes_macros::bench_time(ptr = self.bench)]
     fn add_subgraph(
         &mut self,
         pair: PairWithFirstPoolHop,

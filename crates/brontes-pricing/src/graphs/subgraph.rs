@@ -291,11 +291,11 @@ impl PairSubGraph {
 
     pub fn remove_bad_node(&mut self, pool_pair: Pair, pool_address: Address) -> bool {
         let Some(n0) = self.token_to_index.get(&pool_pair.0) else {
-            tracing::debug!(?pool_address,"failed to remove bad edge");
+            tracing::debug!(?pool_address, "failed to remove bad edge");
             return false;
         };
         let Some(n1) = self.token_to_index.get(&pool_pair.1) else {
-            tracing::debug!(?pool_address,"failed to remove bad edge");
+            tracing::debug!(?pool_address, "failed to remove bad edge");
             return false;
         };
 
@@ -505,7 +505,6 @@ impl PairSubGraph {
                     let Ok(pool_price) =
                         pool_state.price(info.get_token_with_direction(is_outgoing))
                     else {
-                        tracing::debug!(addr=?info.pool_addr,?pair, "failed to fetch pool price");
                         Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                         continue;
                     };
