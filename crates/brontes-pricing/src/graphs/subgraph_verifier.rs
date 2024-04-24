@@ -423,7 +423,8 @@ pub struct VerificationFailed {
     pub frayed_ends:  Vec<Address>,
 }
 
-#[derive(Debug)]
+#[derive(Debug)],
+#[allow(clippy::large_enum_variant)]
 pub enum VerificationResults {
     Passed(VerificationPass),
     Failed(VerificationFailed),

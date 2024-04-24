@@ -270,7 +270,7 @@ impl SubGraphRegistry {
         self.sub_graphs.get(&pair).and_then(|f| {
             let mut cnt = Rational::ZERO;
             let mut acc = Rational::ZERO;
-            for (_, graph) in f {
+            for graph in f.values() {
                 if graph.extends_to().is_some() {
                     continue
                 };

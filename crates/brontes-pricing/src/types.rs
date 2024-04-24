@@ -18,7 +18,7 @@ wrap_fixed_bytes!(extra_derives:[],
 impl Display for PairWithFirstPoolHop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (pair, gt) = self.pair_gt();
-        write!(f, "{}", format!("pair={:?}, goes_through={:?}", pair, gt))
+        write!(f, "pair={:?}, goes_through={:?}", pair, gt)
     }
 }
 
