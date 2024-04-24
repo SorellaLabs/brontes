@@ -67,8 +67,8 @@ impl SubGraphRegistry {
     pub fn mark_future_use(&self, pair: Pair, gt: Pair, block: u64) {
         // we unwrap as this should never fail.
         let Some(graph) = self.sub_graphs.get(&pair.ordered()) else { return };
-        if let Some(graph) = graph.iter().find(|(inner_gt, _)| (*inner_gt == &gt)) {
-            graph.1.future_use(block);
+        if let Some(graph) = graph.get(&gt) {
+            graph.future_use(block);
         }
     }
 
@@ -219,7 +219,7 @@ impl SubGraphRegistry {
         if let Some(next) = next {
             let next_price = self.get_price_all(next, edge_state, completed_block);
             if next_price.is_none() {
-                self.remove_all_extensions_of(next);
+                // self.remove_all_extensions_of(next);
                 return None
             }
 
@@ -285,7 +285,7 @@ impl SubGraphRegistry {
             for (_, graph) in f {
                 if graph.extends_to().is_some()
                     || !graph.should_use_for_new()
-                    || graph.init_block() < completed_block
+                    || graph.init_block() <= completed_block
                 {
                     continue
                 };
