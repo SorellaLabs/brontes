@@ -44,15 +44,6 @@ pub struct SubgraphVerifier {
     subgraph_verification_state: FastHashMap<PairWithFirstPoolHop, SubgraphVerificationState>,
 }
 
-pub struct SubgraphBlockVerifier {
-    pending_subgraphs:           FastHashMap<PairWithFirstPoolHop, Subgraph>,
-    /// pruned edges of a subgraph that didn't meet liquidity params.
-    /// these are stored as in the case we have a subgraph that all critical
-    /// edges are below the liq threshold. we want to select the highest liq
-    /// pair and thus need to store this information
-    subgraph_verification_state: FastHashMap<PairWithFirstPoolHop, SubgraphVerificationState>,
-}
-
 impl Default for SubgraphVerifier {
     fn default() -> Self {
         Self::new()

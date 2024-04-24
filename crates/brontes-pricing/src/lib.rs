@@ -241,18 +241,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let pair1 = PairWithFirstPoolHop::from_pair_gt(pair1, gt.flip());
 
             // mark low liq ones for removal when this block is completed
-            self.graph_manager.prune_low_liq_subgraphs(
-                pair0,
-                self.quote_asset,
-                block,
-                self.completed_block,
-            );
-            self.graph_manager.prune_low_liq_subgraphs(
-                pair1,
-                self.quote_asset,
-                block,
-                self.completed_block,
-            );
+            self.graph_manager
+                .prune_low_liq_subgraphs(pair0, self.quote_asset, block);
+            self.graph_manager
+                .prune_low_liq_subgraphs(pair1, self.quote_asset, block);
         });
 
         tracing::debug!("search triggered by pool updates");
@@ -323,12 +315,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
-        self.graph_manager.get_price(
-            pool_pair,
-            goes_through,
-            goes_through_address,
-            self.completed_block + 1,
-        )
+        self.graph_manager
+            .get_price(pool_pair, goes_through, goes_through_address)
     }
 
     /// For a given block number and tx idx, finds the path to the following
@@ -629,7 +617,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             pair,
                             extends_pair: None,
                             block,
-                            completed_block: self.completed_block,
                             frayed_ends: Default::default(),
                             ignore_state: Default::default(),
                         }
@@ -660,7 +647,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         let requery = self
             .graph_manager
-            .verify_subgraph(pairs, self.quote_asset, self.completed_block)
+            .verify_subgraph(pairs, self.quote_asset)
             .into_iter()
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
@@ -699,7 +686,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                         block:        failed.block,
                         frayed_ends:  failed.frayed_ends,
                         ignore_state: failed.ignore_state,
-                        completed_block: self.completed_block
                     })
                 }
                 VerificationResults::Abort(pair, block) => {
@@ -822,7 +808,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             .map(|i| RequeryPairs {
                                 pair,
                                 extends_pair: extends,
-                                completed_block: self.completed_block,
                                 block,
                                 ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
                                 frayed_ends: vec![],
@@ -833,7 +818,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                             extends_pair: extends,
                             pair,
                             block,
-                            completed_block: self.completed_block,
                             ignore_state: FastHashSet::default(),
                             frayed_ends: vec![],
                         }]

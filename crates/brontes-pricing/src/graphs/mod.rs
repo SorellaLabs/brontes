@@ -141,13 +141,9 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         timeout: Duration,
         is_extension: bool,
         trying_extensions_quote: Option<Address>,
-        completed_block: u64,
     ) -> (Vec<SubGraphEdge>, Option<Pair>) {
         let possible_exts = trying_extensions_quote
-            .map(|quote| {
-                self.sub_graph_registry
-                    .all_pairs_with_quote(quote, completed_block)
-            })
+            .map(|quote| self.sub_graph_registry.all_pairs_with_quote(quote))
             .unwrap_or_default();
 
         let (path, extends) = self.all_pair_graph.get_paths_ignoring(
@@ -191,11 +187,12 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             })
     }
 
-    // feature flagged
-    #[allow(unused_variables)]
     pub fn add_verified_subgraph(&mut self, subgraph: PairSubGraph, block: u64) {
-        self.sub_graph_registry
-            .add_verified_subgraph(subgraph, self.graph_state.all_state(block))
+        self.sub_graph_registry.add_verified_subgraph(
+            subgraph,
+            self.graph_state.all_state(block),
+            block,
+        )
     }
 
     pub fn remove_pair_graph_address(
@@ -235,7 +232,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         pair: Pair,
         goes_through: Pair,
         goes_through_address: Option<Address>,
-        completed_block: u64,
     ) -> Option<Rational> {
         let span = error_span!("price generation for block");
         span.in_scope(|| {
@@ -244,7 +240,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 goes_through,
                 goes_through_address,
                 &self.graph_state.finalized_state(),
-                completed_block,
             )
         })
     }
@@ -268,11 +263,10 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         pair: PairWithFirstPoolHop,
         quote: Address,
         current_block: u64,
-        completed_block: u64,
     ) {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
-            let state = self.graph_state.all_state(completed_block);
+            let state = self.graph_state.finalized_state();
 
             let (start_price, start_addr) = self
                 .sub_graph_registry
@@ -280,7 +274,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 .map(|jump_pair| {
                     (
                         self.sub_graph_registry
-                            .get_price_all(jump_pair.flip(), &state, completed_block)
+                            .get_price_all(jump_pair.flip(), &state)
                             .unwrap_or(Rational::ONE),
                         jump_pair.0,
                     )
@@ -293,7 +287,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                 start_price,
                 &state,
                 current_block,
-                completed_block,
             );
         });
     }
@@ -316,7 +309,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         &mut self,
         pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
         quote: Address,
-        completed_block: u64,
     ) -> Vec<VerificationResults> {
         let span = error_span!("verifying subgraph");
         span.in_scope(|| {
@@ -333,8 +325,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
                                 self.sub_graph_registry
                                     .get_price_all(
                                         jump_pair.flip(),
-                                        &self.graph_state.all_state(completed_block),
-                                        completed_block,
+                                        &self.graph_state.finalized_state(),
                                     )
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,
@@ -354,6 +345,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn finalize_block(&mut self, block: u64) {
         self.graph_state.finalize_block(block);
+        self.sub_graph_registry.finalize_block(block);
     }
 
     /// removes all subgraphs that have a pool that's current liquidity

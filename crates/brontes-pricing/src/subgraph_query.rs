@@ -53,12 +53,11 @@ pub fn graph_search_par<DB: DBWriter + LibmdbxReader>(
 type ParStateQueryRes = Vec<StateQueryRes>;
 
 pub struct RequeryPairs {
-    pub pair:            PairWithFirstPoolHop,
-    pub extends_pair:    Option<Pair>,
-    pub block:           u64,
-    pub ignore_state:    FastHashSet<Pair>,
-    pub frayed_ends:     Vec<Address>,
-    pub completed_block: u64,
+    pub pair:         PairWithFirstPoolHop,
+    pub extends_pair: Option<Pair>,
+    pub block:        u64,
+    pub ignore_state: FastHashSet<Pair>,
+    pub frayed_ends:  Vec<Address>,
 }
 
 pub struct NewGraphDetails {
@@ -82,70 +81,59 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
 ) -> ParStateQueryRes {
     pairs
         .into_par_iter()
-        .map(
-            |RequeryPairs {
-                 pair,
-                 block,
-                 ignore_state,
-                 frayed_ends,
-                 extends_pair,
-                 completed_block,
-             }| {
-                let gt = pair.get_goes_through();
-                let full_pair = pair.get_pair();
-                let default_extends_pair = graph.has_extension(&gt, full_pair.1);
+        .map(|RequeryPairs { pair, block, ignore_state, frayed_ends, extends_pair }| {
+            let gt = pair.get_goes_through();
+            let full_pair = pair.get_pair();
+            let default_extends_pair = graph.has_extension(&gt, full_pair.1);
 
-                // if we have no direct extensions we are looking for, we will search the l
-                if frayed_ends.is_empty() {
-                    let search_pair = extends_pair
-                        .map(|extends| Pair(full_pair.0, extends.0))
-                        .unwrap_or(full_pair);
+            // if we have no direct extensions we are looking for, we will search the l
+            if frayed_ends.is_empty() {
+                let search_pair = extends_pair
+                    .map(|extends| Pair(full_pair.0, extends.0))
+                    .unwrap_or(full_pair);
 
-                    let (edges, extends_pair) = graph.create_subgraph(
-                        block,
-                        (!gt.is_zero()).then_some(gt),
-                        search_pair,
-                        ignore_state,
-                        100,
-                        None,
-                        Duration::from_millis(150),
-                        default_extends_pair.is_some(),
-                        None,
-                        completed_block,
-                    );
-
-                    return StateQueryRes { pair, extends_pair, edges: vec![edges], block }
-                }
-
-                StateQueryRes {
-                    edges: frayed_ends
-                        .into_iter()
-                        .zip(vec![pair.get_pair().0].into_iter().cycle())
-                        .collect_vec()
-                        .into_par_iter()
-                        .map(|(end, start)| {
-                            graph
-                                .create_subgraph(
-                                    block,
-                                    (!gt.is_zero()).then_some(gt),
-                                    Pair(start, end),
-                                    ignore_state.clone(),
-                                    0,
-                                    None,
-                                    Duration::from_millis(150),
-                                    default_extends_pair.is_some(),
-                                    None,
-                                    completed_block,
-                                )
-                                .0
-                        })
-                        .collect::<Vec<_>>(),
-                    pair,
+                let (edges, extends_pair) = graph.create_subgraph(
                     block,
-                    extends_pair: default_extends_pair,
-                }
-            },
-        )
+                    (!gt.is_zero()).then_some(gt),
+                    search_pair,
+                    ignore_state,
+                    100,
+                    None,
+                    Duration::from_millis(150),
+                    default_extends_pair.is_some(),
+                    None,
+                );
+
+                return StateQueryRes { pair, extends_pair, edges: vec![edges], block }
+            }
+
+            StateQueryRes {
+                edges: frayed_ends
+                    .into_iter()
+                    .zip(vec![pair.get_pair().0].into_iter().cycle())
+                    .collect_vec()
+                    .into_par_iter()
+                    .map(|(end, start)| {
+                        graph
+                            .create_subgraph(
+                                block,
+                                (!gt.is_zero()).then_some(gt),
+                                Pair(start, end),
+                                ignore_state.clone(),
+                                0,
+                                None,
+                                Duration::from_millis(150),
+                                default_extends_pair.is_some(),
+                                None,
+                            )
+                            .0
+                    })
+                    .collect::<Vec<_>>(),
+                pair,
+                block,
+                extends_pair: default_extends_pair,
+            }
+        })
         .collect::<Vec<_>>()
 }
 
@@ -223,7 +211,6 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
             Duration::from_millis(300),
             default_extend_to.is_some(),
             Some(pair.1),
-            completed_block,
         );
 
         let pair = PairWithFirstPoolHop::from_pair_gt(pair, must_include);
