@@ -241,10 +241,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let pair1 = PairWithFirstPoolHop::from_pair_gt(pair1, gt.flip());
 
             // mark low liq ones for removal when this block is completed
-            self.graph_manager
-                .prune_low_liq_subgraphs(pair0, self.quote_asset, block);
-            self.graph_manager
-                .prune_low_liq_subgraphs(pair1, self.quote_asset, block);
+            // self.graph_manager
+            //     .prune_low_liq_subgraphs(pair0, self.quote_asset, block);
+            // self.graph_manager
+            //     .prune_low_liq_subgraphs(pair1, self.quote_asset, block);
         });
 
         tracing::debug!("search triggered by pool updates");
