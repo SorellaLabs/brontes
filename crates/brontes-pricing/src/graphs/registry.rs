@@ -194,19 +194,6 @@ impl SubGraphRegistry {
             .insert(subgraph.must_go_through(), subgraph);
     }
 
-    /// looks through the subgraph for any pools that have had significant
-    /// liquidity drops. when this occurs. removes the pair
-    pub fn audit_subgraphs(&mut self, graph_state: FastHashMap<Address, &PoolState>) {
-        self.sub_graphs.retain(|_, v| {
-            v.retain(|_, sub| !sub.has_stale_liquidity(&graph_state));
-            !v.is_empty()
-        });
-    }
-
-    pub fn has_subpool(&self, pair: &Pair) -> bool {
-        self.sub_graphs.contains_key(&pair.ordered())
-    }
-
     pub fn verify_current_subgraphs<T: ProtocolState>(
         &mut self,
         pair: PairWithFirstPoolHop,

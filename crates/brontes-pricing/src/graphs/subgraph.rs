@@ -398,7 +398,7 @@ impl PairSubGraph {
         self.add_tmp_pruned(pruned);
 
         if disjoint {
-            tracing::info!(pair=?self.pair, ?block, "invalid liquidity");
+            tracing::info!(pair=?self.complete_pair, ?block, "invalid liquidity");
             self.remove_at = Some(block);
         }
     }

@@ -348,15 +348,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.sub_graph_registry.finalize_block(block);
     }
 
-    /// removes all subgraphs that have a pool that's current liquidity
-    /// is less than its liquidity when it was verified.
-    /// nothing is done as we won't bother re-verifying until pricing for the
-    /// graph is needed again
-    pub fn audit_subgraphs(&mut self) {
-        self.sub_graph_registry
-            .audit_subgraphs(self.graph_state.finalized_state())
-    }
-
     pub fn verification_done_for_block(&self, block: u64) -> bool {
         self.subgraph_verifier.is_done_block(block)
     }
