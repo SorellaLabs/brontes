@@ -360,7 +360,7 @@ impl LoadingStateTracker {
                 res.push((*block, id.take(), *pair));
                 return false
             }
-            return true
+            true
         });
 
         res

@@ -598,21 +598,21 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
             let failed_queries = deps
                 .into_iter()
-                .filter_map(|pair| {
+                .filter(|&pair| {
                     (self
                         .graph_manager
                         .pool_dep_failure(&pair, pool_address, pool_pair))
-                    .then(|| {
-                        self.lazy_loader.full_failure(pair);
-                        tracing::debug!(?pair, "failed state query dep");
-                        RequeryPairs {
-                            pair,
-                            extends_pair: None,
-                            block,
-                            frayed_ends: Default::default(),
-                            ignore_state: Default::default(),
-                        }
-                    })
+                })
+                .map(|pair| {
+                    self.lazy_loader.full_failure(pair);
+                    tracing::debug!(?pair, "failed state query dep");
+                    RequeryPairs {
+                        pair,
+                        extends_pair: None,
+                        block,
+                        frayed_ends: Default::default(),
+                        ignore_state: Default::default(),
+                    }
                 })
                 .collect_vec();
 
@@ -944,7 +944,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             rem_block
                 .into_iter()
                 .zip(vec![self.completed_block].into_iter().cycle())
-                .map(|(pair, block)| (pair, block))
                 .collect_vec(),
         );
     }

@@ -116,7 +116,7 @@ impl SubgraphVerifier {
             self.pending_subgraphs.remove(pair);
             return true
         }
-        return false
+        false
     }
 
     // creates a new subgraph returning

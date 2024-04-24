@@ -134,12 +134,11 @@ impl SubGraphRegistry {
                 Some(
                     self.pending_finalized_graphs
                         .values()
-                        .map(|sg| {
+                        .filter_map(|sg| {
                             sg.sub_graphs
                                 .get(&pair.ordered())
                                 .map(|s| s.get(&gt.ordered()).is_some())
                         })
-                        .flatten()
                         .any(|f| f),
                 )
                 .filter(|f| *f)
