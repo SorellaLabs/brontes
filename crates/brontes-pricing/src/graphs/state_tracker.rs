@@ -56,8 +56,11 @@ impl StateTracker {
                 return true
             }
             state.dec(amount);
-            // state.dependents != 0
-            true
+            let keep = state.dependents != 0;
+            if !keep {
+                info!(?pool, "removing state");
+            }
+            keep
         });
     }
 
