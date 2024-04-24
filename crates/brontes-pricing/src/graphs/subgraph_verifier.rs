@@ -108,7 +108,7 @@ impl SubgraphVerifier {
     ) -> bool {
         tracing::debug!(%pair, "dep failure");
 
-        let Some(graph) = self.pending_subgraphs.get_mut(pair) else { return false };
+        let Some(graph) = self.pending_subgraphs.get_mut(pair) else { return true };
         graph.subgraph.remove_bad_node(pool_pair, pool_addr);
 
         if graph.subgraph.is_disjoint() {
