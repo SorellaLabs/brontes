@@ -261,14 +261,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
-        // ensure valid pricing
-        let mut has_dex_price = true;
-        for (swaps, info) in front_run_swaps.iter().zip(&possible_front_runs_info) {
-            has_dex_price &= self.valid_pricing(metadata.clone(), swaps, info.tx_index as usize);
-        }
-        has_dex_price &=
-            self.valid_pricing(metadata.clone(), &back_run_swaps, backrun_info.tx_index as usize);
-
         let (frontrun_tx_hash, frontrun_gas_details): (Vec<_>, Vec<_>) = possible_front_runs_info
             .clone()
             .into_iter()
@@ -299,6 +291,23 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .chain(back_run_actions)
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
             .account_for_actions();
+
+        // ensure valid pricing
+        let mut has_dex_price = true;
+        for (swaps, info) in front_run_swaps.iter().zip(&possible_front_runs_info) {
+            has_dex_price &= self.valid_pricing(
+                metadata.clone(),
+                swaps,
+                searcher_deltas.values().flat_map(|k| k.keys()).unique(),
+                info.tx_index as usize,
+            );
+        }
+        has_dex_price &= self.valid_pricing(
+            metadata.clone(),
+            &back_run_swaps,
+            searcher_deltas.values().flat_map(|k| k.keys()).unique(),
+            backrun_info.tx_index as usize,
+        );
 
         let mut mev_addresses: FastHashSet<Address> =
             collect_address_set_for_accounting(&possible_front_runs_info);
@@ -373,54 +382,67 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
 
-    fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
+    fn valid_pricing<'a>(
+        &self,
+        metadata: Arc<Metadata>,
+        swaps: &[NormalizedSwap],
+        tokens: impl Iterator<Item = &'a Address>,
+        idx: usize,
+    ) -> bool {
         if swaps.is_empty() {
             return true
         }
 
-        let pcts = swaps
-            .iter()
-            .filter_map(|swap| {
-                let effective_price = swap.swap_rate();
+        let pcts = tokens
+            .flat_map(|token| {
+                swaps
+                    .iter()
+                    .filter(move |swap| {
+                        &swap.token_in.address == token || &swap.token_out.address == token
+                    })
+                    .filter_map(|swap| {
+                        let effective_price = swap.swap_rate();
 
-                let am_in_price = metadata
-                    .dex_quotes
-                    .as_ref()?
-                    .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
+                        let am_in_price = metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
 
-                let am_out_price = metadata
-                    .dex_quotes
-                    .as_ref()?
-                    .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
+                        let am_out_price = metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
 
-                // we reciprocal amount out because we won't have pricing for quote <> token out
-                // but we will have flipped
-                let dex_pricing_rate = (am_out_price.get_price(PriceAt::Average).reciprocal()
-                    * am_in_price.get_price(PriceAt::Average))
-                .reciprocal();
+                        // we reciprocal amount out because we won't have pricing for quote <> token
+                        // out but we will have flipped
+                        let dex_pricing_rate =
+                            (am_out_price.get_price(PriceAt::Average).reciprocal()
+                                * am_in_price.get_price(PriceAt::Average))
+                            .reciprocal();
 
-                let pct = if effective_price > dex_pricing_rate {
-                    if effective_price == Rational::ZERO {
-                        return None
-                    }
-                    (&effective_price - &dex_pricing_rate) / &effective_price
-                } else {
-                    if dex_pricing_rate == Rational::ZERO {
-                        return None
-                    }
-                    (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
-                };
+                        let pct = if effective_price > dex_pricing_rate {
+                            if effective_price == Rational::ZERO {
+                                return None
+                            }
+                            (&effective_price - &dex_pricing_rate) / &effective_price
+                        } else {
+                            if dex_pricing_rate == Rational::ZERO {
+                                return None
+                            }
+                            (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                        };
 
-                if pct > MAX_PRICE_DIFF {
-                    tracing::warn!(
-                        ?effective_price,
-                        ?dex_pricing_rate,
-                        ?swap,
-                        "to big of a delta for pricing on sandwich"
-                    );
-                }
+                        if pct > MAX_PRICE_DIFF {
+                            tracing::warn!(
+                                ?effective_price,
+                                ?dex_pricing_rate,
+                                ?swap,
+                                "to big of a delta for pricing on atomic arbs"
+                            );
+                        }
 
-                Some(pct)
+                        Some(pct)
+                    })
             })
             .collect_vec();
 

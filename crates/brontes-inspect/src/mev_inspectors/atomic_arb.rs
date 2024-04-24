@@ -91,15 +91,19 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
-        let mut has_dex_price =
-            self.valid_pricing(metadata.clone(), &swaps, info.tx_index as usize);
-
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
         let account_deltas = transfers
             .into_iter()
             .map(Actions::from)
             .chain(eth_transfers.into_iter().map(Actions::from))
             .account_for_actions();
+
+        let mut has_dex_price = self.valid_pricing(
+            metadata.clone(),
+            &swaps,
+            account_deltas.values().flat_map(|k| k.keys()).unique(),
+            info.tx_index as usize,
+        );
 
         let rev = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
@@ -219,54 +223,67 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             || tx_info.mev_contract.is_some()
     }
 
-    fn valid_pricing(&self, metadata: Arc<Metadata>, swaps: &[NormalizedSwap], idx: usize) -> bool {
+    fn valid_pricing<'a>(
+        &self,
+        metadata: Arc<Metadata>,
+        swaps: &[NormalizedSwap],
+        tokens: impl Iterator<Item = &'a Address>,
+        idx: usize,
+    ) -> bool {
         if swaps.is_empty() {
             return true
         }
 
-        let pcts = swaps
-            .iter()
-            .filter_map(|swap| {
-                let effective_price = swap.swap_rate();
+        let pcts = tokens
+            .flat_map(|token| {
+                swaps
+                    .iter()
+                    .filter(move |swap| {
+                        &swap.token_in.address == token || &swap.token_out.address == token
+                    })
+                    .filter_map(|swap| {
+                        let effective_price = swap.swap_rate();
 
-                let am_in_price = metadata
-                    .dex_quotes
-                    .as_ref()?
-                    .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
+                        let am_in_price = metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
 
-                let am_out_price = metadata
-                    .dex_quotes
-                    .as_ref()?
-                    .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
+                        let am_out_price = metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
 
-                // we reciprocal amount out because we won't have pricing for quote <> token out
-                // but we will have flipped
-                let dex_pricing_rate = (am_out_price.get_price(PriceAt::Average).reciprocal()
-                    * am_in_price.get_price(PriceAt::Average))
-                .reciprocal();
+                        // we reciprocal amount out because we won't have pricing for quote <> token
+                        // out but we will have flipped
+                        let dex_pricing_rate =
+                            (am_out_price.get_price(PriceAt::Average).reciprocal()
+                                * am_in_price.get_price(PriceAt::Average))
+                            .reciprocal();
 
-                let pct = if effective_price > dex_pricing_rate {
-                    if effective_price == Rational::ZERO {
-                        return None
-                    }
-                    (&effective_price - &dex_pricing_rate) / &effective_price
-                } else {
-                    if dex_pricing_rate == Rational::ZERO {
-                        return None
-                    }
-                    (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
-                };
+                        let pct = if effective_price > dex_pricing_rate {
+                            if effective_price == Rational::ZERO {
+                                return None
+                            }
+                            (&effective_price - &dex_pricing_rate) / &effective_price
+                        } else {
+                            if dex_pricing_rate == Rational::ZERO {
+                                return None
+                            }
+                            (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                        };
 
-                if pct > MAX_PRICE_DIFF {
-                    tracing::warn!(
-                        ?effective_price,
-                        ?dex_pricing_rate,
-                        ?swap,
-                        "to big of a delta for pricing on atomic arbs"
-                    );
-                }
+                        if pct > MAX_PRICE_DIFF {
+                            tracing::warn!(
+                                ?effective_price,
+                                ?dex_pricing_rate,
+                                ?swap,
+                                "to big of a delta for pricing on atomic arbs"
+                            );
+                        }
 
-                Some(pct)
+                        Some(pct)
+                    })
             })
             .collect_vec();
 
