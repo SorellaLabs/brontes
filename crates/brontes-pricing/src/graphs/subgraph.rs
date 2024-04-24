@@ -150,7 +150,7 @@ impl PairSubGraph {
         let end_node = *token_to_index.get(&pair.1).unwrap();
 
         let comp = connected_components(&graph);
-        assert!(comp == 1, "have a disjoint graph {comp} {pair:?}");
+        assert!(comp == 1, "have a disjoint graph {comp} {complete_pair:?}");
 
         Self {
             last_block_for_pricing: Arc::new(AtomicU64::new(last_block_for_pricing)),
@@ -443,10 +443,10 @@ impl PairSubGraph {
         start_price: Rational,
         state: FastHashMap<Address, &T>,
     ) -> VerificationOutcome {
-        tracing::debug!(?self.pair, "verification starting");
+        tracing::debug!(?self.complete_pair, "verification starting");
         let result = self.run_bfs_with_liquidity_params(start, start_price, &state, false);
 
-        tracing::debug!(?self.pair, "completed bfs with liq");
+        tracing::debug!(?self.complete_pair, "completed bfs with liq");
 
         self.prune_subgraph(&result.removal_state);
 
@@ -458,7 +458,7 @@ impl PairSubGraph {
             .then(|| self.disjoint_furthest_nodes())
             .unwrap_or_default();
 
-        tracing::debug!(?self.pair, "verification ending");
+        tracing::debug!(?self.complete_pair, "verification ending");
         // if we not disjoint, do a bad pool check.
         VerificationOutcome {
             should_requery: disjoint,
@@ -491,7 +491,7 @@ impl PairSubGraph {
                     let pair = Pair(info.token_0, info.token_1);
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
-                        tracing::warn!(addr=?info.pool_addr,?pair, "failed to fetch pool state");
+                        tracing::warn!(addr=?info.pool_addr,?complete_pair, "failed to fetch pool state");
                         Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                         continue;
                     };
