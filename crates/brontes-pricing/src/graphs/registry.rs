@@ -82,7 +82,7 @@ impl SubGraphRegistry {
                         .sub_graphs
                         .entry(pair.ordered())
                         .or_default()
-                        .insert(gt, graph)
+                        .insert(gt.ordered(), graph)
                         .is_some()
                     {
                         tracing::warn!(?pair, ?gt, "replaced a subgraph we already had");
@@ -95,7 +95,7 @@ impl SubGraphRegistry {
     pub fn mark_future_use(&self, pair: Pair, gt: Pair, block: u64) {
         // we unwrap as this should never fail.
         let Some(graph) = self.sub_graphs.get(&pair.ordered()) else { return };
-        if let Some(graph) = graph.get(&gt) {
+        if let Some(graph) = graph.get(&gt.ordered()) {
             graph.future_use(block);
         }
     }
@@ -104,11 +104,7 @@ impl SubGraphRegistry {
         let (pair, gt) = pair.pair_gt();
         self.sub_graphs
             .get(&pair.ordered())
-            .and_then(|graph| {
-                graph
-                    .iter()
-                    .find_map(|(inner_gt, s)| (inner_gt == &gt).then(|| s.extends_to()))
-            })
+            .and_then(|graph| graph.get(&gt.ordered()).map(|s| s.extends_to()))
             .flatten()
     }
 
@@ -137,7 +133,7 @@ impl SubGraphRegistry {
         let (pair, gt) = pair.pair_gt();
         self.sub_graphs
             .get(&pair.ordered())
-            .and_then(|s| s.get(&gt).map(|s| s.should_use_for_new()))
+            .and_then(|s| s.get(&gt.ordered()).map(|s| s.should_use_for_new()))
             .or_else(|| {
                 Some(
                     self.pending_finalized_graphs
@@ -145,7 +141,7 @@ impl SubGraphRegistry {
                         .map(|sg| {
                             sg.sub_graphs
                                 .get(&pair.ordered())
-                                .map(|s| s.get(&gt).is_some())
+                                .map(|s| s.get(&gt.ordered()).is_some())
                         })
                         .flatten()
                         .any(|f| f),
@@ -160,11 +156,11 @@ impl SubGraphRegistry {
 
         let mut removals = FastHashMap::default();
         self.sub_graphs.retain(|k, v| {
-            if k != &pair {
+            if k != &pair.ordered() {
                 return true
             }
             v.retain(|gt, s| {
-                let res = gt != &goes_through;
+                let res = gt != &goes_through.ordered();
                 if !res {
                     s.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
@@ -191,7 +187,7 @@ impl SubGraphRegistry {
             .sub_graphs
             .entry(subgraph.complete_pair().ordered())
             .or_default()
-            .insert(subgraph.must_go_through(), subgraph);
+            .insert(subgraph.must_go_through().ordered(), subgraph);
     }
 
     pub fn verify_current_subgraphs<T: ProtocolState>(
@@ -210,7 +206,7 @@ impl SubGraphRegistry {
             }
 
             sub.iter_mut().for_each(|(gt, graph)| {
-                if &goes_through == gt {
+                if &goes_through.ordered() == gt {
                     graph.has_valid_liquidity(start, start_price.clone(), state, block)
                 }
             });
@@ -252,7 +248,7 @@ impl SubGraphRegistry {
 
         self.sub_graphs
             .get(&pair)
-            .and_then(|g| g.get(&goes_through))
+            .and_then(|g| g.get(&goes_through.ordered()))
             .map(|graph| {
                 tracing::debug!("has graph for goes through");
                 Some((
