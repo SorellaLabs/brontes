@@ -689,7 +689,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     })
                 }
                 VerificationResults::Abort(pair, block) => {
-                    tracing::debug!(target: "brontes::missing_pricing", ?pair,  ?block, "aborted verification process");
+                    tracing::debug!(target: "brontes_pricing::missing_pricing", ?pair,  ?block, "aborted verification process");
                     self.failed_pairs
                         .entry(block)
                         .or_default()
