@@ -316,9 +316,8 @@ impl PairSubGraph {
     pub fn fetch_price<T: ProtocolState>(
         &self,
         edge_state: &FastHashMap<Address, &T>,
-        must_go_through_pool: Option<Address>,
     ) -> Option<Rational> {
-        self.dijkstra_path(edge_state, must_go_through_pool)
+        self.dijkstra_path(edge_state)
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -402,7 +401,7 @@ impl PairSubGraph {
         self.add_tmp_pruned(pruned);
 
         if disjoint {
-            tracing::info!(pair=?self.complete_pair, ?block, "invalid liquidity");
+            tracing::debug!(pair=?self.complete_pair, ?block, "invalid liquidity");
             self.remove_at = Some(block);
         }
     }
@@ -868,11 +867,7 @@ impl PairSubGraph {
         node_price.remove(&goal).is_none()
     }
 
-    pub fn dijkstra_path<T>(
-        &self,
-        state: &FastHashMap<Address, &T>,
-        must_go_through_pool: Option<Address>,
-    ) -> Option<Rational>
+    pub fn dijkstra_path<T>(&self, state: &FastHashMap<Address, &T>) -> Option<Rational>
     where
         T: ProtocolState,
     {

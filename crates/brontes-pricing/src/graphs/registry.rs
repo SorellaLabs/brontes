@@ -59,7 +59,7 @@ impl SubGraphRegistry {
         self.sub_graphs.retain(|p, vec| {
             vec.retain(|_, subgraph| {
                 if subgraph.is_expired_subgraph(block) || subgraph.ready_to_remove(block) {
-                    tracing::info!(pair=?p, "removing subgraph");
+                    tracing::debug!(pair=?p, "removing subgraph");
                     subgraph.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });
@@ -79,15 +79,10 @@ impl SubGraphRegistry {
         if let Some(subgraphs) = self.pending_finalized_graphs.remove(&block) {
             subgraphs.sub_graphs.into_iter().for_each(|(pair, gts)| {
                 for (gt, graph) in gts {
-                    if self
-                        .sub_graphs
+                    self.sub_graphs
                         .entry(pair.ordered())
                         .or_default()
-                        .insert(gt.ordered(), graph)
-                        .is_some()
-                    {
-                        tracing::warn!(?pair, ?gt, "replaced a subgraph we already had");
-                    }
+                        .insert(gt.ordered(), graph);
                 }
             });
         }
@@ -218,11 +213,10 @@ impl SubGraphRegistry {
         &mut self,
         unordered_pair: Pair,
         goes_through: Pair,
-        goes_through_address: Option<Address>,
         edge_state: &FastHashMap<Address, &PoolState>,
     ) -> Option<Rational> {
         let (next, complete_pair, default_price) =
-            self.get_price_once(unordered_pair, goes_through, goes_through_address, edge_state)?;
+            self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         if let Some(next) = next {
             let next_price = self.get_price_all(next, edge_state)?;
@@ -242,7 +236,6 @@ impl SubGraphRegistry {
         &self,
         unordered_pair: Pair,
         goes_through: Pair,
-        goes_through_address: Option<Address>,
         edge_state: &FastHashMap<Address, &PoolState>,
     ) -> Option<(Option<Pair>, Pair, Rational)> {
         let pair = unordered_pair.ordered();

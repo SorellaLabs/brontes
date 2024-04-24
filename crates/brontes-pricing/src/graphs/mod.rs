@@ -227,18 +227,12 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.subgraph_verifier.get_subgraph_extends(pair)
     }
 
-    pub fn get_price(
-        &mut self,
-        pair: Pair,
-        goes_through: Pair,
-        goes_through_address: Option<Address>,
-    ) -> Option<Rational> {
+    pub fn get_price(&mut self, pair: Pair, goes_through: Pair) -> Option<Rational> {
         let span = error_span!("price generation for block");
         span.in_scope(|| {
             self.sub_graph_registry.get_price(
                 pair,
                 goes_through,
-                goes_through_address,
                 &self.graph_state.finalized_state(),
             )
         })
