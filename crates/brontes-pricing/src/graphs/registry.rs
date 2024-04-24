@@ -56,9 +56,10 @@ impl SubGraphRegistry {
     pub fn prune_dead_subgraphs(&mut self, block: u64) -> FastHashMap<Address, u64> {
         let mut removals = FastHashMap::default();
 
-        self.sub_graphs.retain(|_, vec| {
-            vec.retain(|_, subgraph| {
+        self.sub_graphs.retain(|p, vec| {
+            vec.retain(|gt, subgraph| {
                 if subgraph.is_expired_subgraph(block) || subgraph.ready_to_remove(block) {
+                    tracing::info!(?gt,pair=?p, "remvoing subgraph");
                     subgraph.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });

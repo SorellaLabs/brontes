@@ -318,7 +318,6 @@ impl PairSubGraph {
         edge_state: &FastHashMap<Address, &T>,
         must_go_through_pool: Option<Address>,
     ) -> Option<Rational> {
-        tracing::info!(?self.complete_pair, ?self.must_go_through, "fetching price");
         self.dijkstra_path(edge_state, must_go_through_pool)
     }
 
