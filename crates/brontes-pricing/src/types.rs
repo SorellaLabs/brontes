@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use alloy_primitives::{wrap_fixed_bytes, Address, FixedBytes, Log};
 use brontes_types::{
@@ -12,7 +12,15 @@ use crate::{
     Protocol, UpdatableProtocol,
 };
 
-wrap_fixed_bytes!(pub struct PairWithFirstPoolHop<80>;);
+wrap_fixed_bytes!(extra_derives:[],
+                  pub struct PairWithFirstPoolHop<80>;);
+
+impl Display for PairWithFirstPoolHop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (pair, gt) = self.pair_gt();
+        write!(f, "{}", format!("pair={:?}, goes_through={:?}", pair, gt))
+    }
+}
 
 impl PairWithFirstPoolHop {
     pub fn from_pair_gt(pair: Pair, goes_through: Pair) -> Self {

@@ -106,6 +106,8 @@ impl SubgraphVerifier {
         pool_addr: Address,
         pool_pair: Pair,
     ) -> bool {
+        tracing::debug!(%pair, "dep failure");
+
         let graph = self.pending_subgraphs.get_mut(pair).unwrap();
         graph.subgraph.remove_bad_node(pool_pair, pool_addr);
 
