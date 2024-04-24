@@ -599,9 +599,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             let failed_queries = deps
                 .into_iter()
                 .filter(|&pair| {
-                    (self
-                        .graph_manager
-                        .pool_dep_failure(&pair, pool_address, pool_pair))
+                    self.graph_manager
+                        .pool_dep_failure(&pair, pool_address, pool_pair)
                 })
                 .map(|pair| {
                     self.lazy_loader.full_failure(pair);

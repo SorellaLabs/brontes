@@ -1,4 +1,4 @@
-use std::ops::{RangeBounds, RangeInclusive};
+use std::ops::RangeInclusive;
 
 use alloy_primitives::Address;
 use brontes_types::FastHashMap;
