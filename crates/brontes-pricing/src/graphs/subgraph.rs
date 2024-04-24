@@ -363,7 +363,6 @@ impl PairSubGraph {
         if last > block {
             return false
         }
-        tracing::info!(?last, ?block, "checking expiry");
         (block - last) > INACTIVE_REMOVAL_PERIOD
     }
 
