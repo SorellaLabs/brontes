@@ -305,7 +305,7 @@ impl PairSubGraph {
             weights.retain(|e| e.pool_addr != pool_address);
             weights.is_empty()
         } else {
-            tracing::warn!(
+            tracing::debug!(
                 ?pool_address,
                 "failed to remove bad edge as no edge was found in the graph"
             );
@@ -494,7 +494,7 @@ impl PairSubGraph {
                     let pair = Pair(info.token_0, info.token_1);
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
-                        tracing::warn!(addr=?info.pool_addr,?pair, "failed to fetch pool state");
+                        tracing::debug!(addr=?info.pool_addr,?pair, "failed to fetch pool state");
                         Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                         continue;
                     };
@@ -909,7 +909,7 @@ impl PairSubGraph {
 
                 for info in edge_weight {
                     let Some(pool_state) = state.get(&info.pool_addr) else {
-                        tracing::warn!(addr=?info.pool_addr,"failed to fetch pool state while generating price");
+                        tracing::debug!(addr=?info.pool_addr,"failed to fetch pool state while generating price");
                         continue;
                     };
 
