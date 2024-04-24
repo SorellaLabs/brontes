@@ -68,7 +68,7 @@ use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tracing::{error, info,debug};
+use tracing::{debug, error, info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 use crate::types::PoolState;
@@ -249,7 +249,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         tracing::debug!("search triggered by pool updates");
         let (state, pools) = execute_on!(target = pricing, {
-            graph_search_par(&self.graph_manager, self.quote_asset, updates, self.completed_block)
+            graph_search_par(&self.graph_manager, self.quote_asset, updates)
         });
         tracing::debug!("search triggered by on pool updates completed");
 

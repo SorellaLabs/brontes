@@ -20,7 +20,6 @@ pub fn graph_search_par<DB: DBWriter + LibmdbxReader>(
     graph: &GraphManager<DB>,
     quote: Address,
     updates: Vec<PoolUpdate>,
-    completed_block: u64,
 ) -> GraphSeachParRes {
     let (state, pools): (Vec<_>, Vec<_>) = updates
         .into_par_iter()
@@ -41,7 +40,6 @@ pub fn graph_search_par<DB: DBWriter + LibmdbxReader>(
                 pair,
                 (!graph.has_subgraph_goes_through(key0)).then_some(pair0),
                 (!graph.has_subgraph_goes_through(key1)).then_some(pair1),
-                completed_block,
             );
             Some((state, path))
         })
@@ -145,7 +143,6 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     main_pair: Pair,
     pair0: Option<Pair>,
     pair1: Option<Pair>,
-    completed_block: u64,
 ) -> NewPoolPair {
     let block = msg.block;
 
@@ -159,16 +156,14 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
 
     // add first pair
     if let Some(pair0) = pair0 {
-        if let Some(path) = queue_loading_returns(graph, block, main_pair, pair0, completed_block) {
+        if let Some(path) = queue_loading_returns(graph, block, main_pair, pair0) {
             path_pending.push(path);
         }
     }
 
     // add second direction
     if let Some(pair1) = pair1 {
-        if let Some(path) =
-            queue_loading_returns(graph, block, main_pair.flip(), pair1, completed_block)
-        {
+        if let Some(path) = queue_loading_returns(graph, block, main_pair.flip(), pair1) {
             path_pending.push(path);
         }
     }
@@ -181,7 +176,6 @@ fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
     block: u64,
     must_include: Pair,
     pair: Pair,
-    completed_block: u64,
 ) -> Option<NewGraphDetails> {
     if pair.0 == pair.1 {
         return None
