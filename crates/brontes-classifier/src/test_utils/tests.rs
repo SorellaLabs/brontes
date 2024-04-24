@@ -612,9 +612,13 @@ impl ClassifierTestUtils {
         let calldata = call.input.clone();
         let trace_index = found_trace.trace_idx;
 
+        println!("{:#?}", found_trace);
+
+
         let res = DiscoveryProtocols::default()
             .dispatch(self.get_provider(), from_address, created_addr, trace_index, calldata)
             .await;
+
 
         cmp_fn(res);
 

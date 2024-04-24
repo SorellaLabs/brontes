@@ -62,7 +62,9 @@ discovery_dispatch!(
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
     BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery
+    BalancerV1SmartPoolDiscovery,
+    DodoDVMDiscovery,
+    DodoDSPDiscovery
 );
 
 action_dispatch!(
