@@ -58,7 +58,7 @@ impl StateTracker {
             state.dec(amount);
             let keep = state.dependents != 0;
             if !keep {
-                info!(?pool, "removing state");
+                tracing::info!(?pool, "removing state");
             }
             keep
         });
