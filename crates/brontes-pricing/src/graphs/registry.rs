@@ -246,11 +246,9 @@ impl SubGraphRegistry {
 
         self.sub_graphs
             .get(&pair)
-            .and_then(|g| {
-                g.iter()
-                    .find_map(|(gt, graph)| (*gt == goes_through).then_some(graph))
-            })
+            .and_then(|g| g.get(&goes_through))
             .map(|graph| {
+                tracing::debug!("has graph for goes through");
                 Some((
                     graph.extends_to(),
                     graph.complete_pair(),
