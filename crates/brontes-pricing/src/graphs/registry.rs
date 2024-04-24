@@ -245,11 +245,7 @@ impl SubGraphRegistry {
             .and_then(|g| g.get(&goes_through.ordered()))
             .map(|graph| {
                 tracing::debug!("has graph for goes through");
-                Some((
-                    graph.extends_to(),
-                    graph.complete_pair(),
-                    graph.fetch_price(edge_state, goes_through_address)?,
-                ))
+                Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
             })
             // this can happen when we have pools with a token that only has that one pool.
             // this causes a one way and we can't process price. Instead, in this case
@@ -280,7 +276,7 @@ impl SubGraphRegistry {
                     continue
                 };
 
-                let Some(next) = graph.fetch_price(edge_state, None) else {
+                let Some(next) = graph.fetch_price(edge_state) else {
                     continue;
                 };
                 let default_pair = graph.get_unordered_pair();
