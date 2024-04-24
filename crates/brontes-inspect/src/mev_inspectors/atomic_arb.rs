@@ -101,7 +101,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let mut has_dex_price = self.valid_pricing(
             metadata.clone(),
             &swaps,
-            account_deltas.values().flat_map(|k| k.keys()).unique(),
+            account_deltas
+                .values()
+                .flat_map(|k| {
+                    k.iter()
+                        .filter(|(_, v)| *v != &Rational::ZERO)
+                        .map(|(k, _)| k)
+                })
+                .unique(),
             info.tx_index as usize,
         );
 

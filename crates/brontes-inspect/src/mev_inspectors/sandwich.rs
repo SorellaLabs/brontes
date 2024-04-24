@@ -298,14 +298,28 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             has_dex_price &= self.valid_pricing(
                 metadata.clone(),
                 swaps,
-                searcher_deltas.values().flat_map(|k| k.keys()).unique(),
+                searcher_deltas
+                    .values()
+                    .flat_map(|k| {
+                        k.iter()
+                            .filter(|(_, v)| *v != &Rational::ZERO)
+                            .map(|(k, _)| k)
+                    })
+                    .unique(),
                 info.tx_index as usize,
             );
         }
         has_dex_price &= self.valid_pricing(
             metadata.clone(),
             &back_run_swaps,
-            searcher_deltas.values().flat_map(|k| k.keys()).unique(),
+            searcher_deltas
+                .values()
+                .flat_map(|k| {
+                    k.iter()
+                        .filter(|(_, v)| *v != &Rational::ZERO)
+                        .map(|(k, _)| k)
+                })
+                .unique(),
             backrun_info.tx_index as usize,
         );
 
