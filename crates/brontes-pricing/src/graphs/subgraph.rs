@@ -491,7 +491,7 @@ impl PairSubGraph {
                     let pair = Pair(info.token_0, info.token_1);
 
                     let Some(pool_state) = state.get(&info.pool_addr) else {
-                        tracing::warn!(addr=?info.pool_addr,?complete_pair, "failed to fetch pool state");
+                        tracing::warn!(addr=?info.pool_addr,?pair, "failed to fetch pool state");
                         Self::bad_state(pair, info, Rational::ZERO, &mut removal_map.removal_state);
                         continue;
                     };
