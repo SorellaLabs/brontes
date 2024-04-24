@@ -359,6 +359,8 @@ impl PairSubGraph {
 
     /// used to handle our memory management.
     pub fn is_expired_subgraph(&self, block: u64) -> bool {
+        let last = self.last_block_for_pricing.load(SeqCst);
+        tracing::info!(?last, ?block, "checking expiry");
         (block - self.last_block_for_pricing.load(SeqCst)) > INACTIVE_REMOVAL_PERIOD
     }
 
