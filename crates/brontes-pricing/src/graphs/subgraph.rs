@@ -1129,7 +1129,7 @@ pub mod test {
         state_map.insert(t3, &e3_price);
 
         // (t4 / t0) = 10 * 20 * 1 /500 * 1/52 = 1/130
-        let price = graph.fetch_price(&state_map, None).unwrap();
+        let price = graph.fetch_price(&state_map).unwrap();
 
         assert_eq!(price, Rational::from_unsigneds(1usize, 390usize))
     }
