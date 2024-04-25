@@ -1,5 +1,9 @@
 use std::{env, error::Error};
 
+#[cfg(all(feature = "jemalloc", unix))]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 use brontes::{
     cli::{Args, Commands},
     runner,
