@@ -1,6 +1,6 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
-use alloy_primitives::{Address, Log};
+use alloy_primitives::{wrap_fixed_bytes, Address, FixedBytes, Log};
 use brontes_types::{
     normalized_actions::{pool::NormalizedPoolConfigUpdate, Actions},
     pair::Pair,
@@ -11,6 +11,44 @@ use crate::{
     errors::ArithmeticError, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool, LoadState,
     Protocol, UpdatableProtocol,
 };
+
+wrap_fixed_bytes!(extra_derives:[],
+                  pub struct PairWithFirstPoolHop<80>;);
+
+impl Display for PairWithFirstPoolHop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (pair, gt) = self.pair_gt();
+        write!(f, "pair={:?}, goes_through={:?}", pair, gt)
+    }
+}
+
+impl PairWithFirstPoolHop {
+    pub fn from_pair_gt(pair: Pair, goes_through: Pair) -> Self {
+        let mut buf = [0u8; 80];
+        buf[0..20].copy_from_slice(&**pair.0);
+        buf[20..40].copy_from_slice(&**pair.1);
+        buf[40..60].copy_from_slice(&**goes_through.0);
+        buf[60..80].copy_from_slice(&**goes_through.1);
+
+        Self(FixedBytes::new(buf))
+    }
+
+    pub fn get_pair(&self) -> Pair {
+        let addr0 = Address::from_slice(&self.0[0..20]);
+        let addr1 = Address::from_slice(&self.0[20..40]);
+        Pair(addr0, addr1)
+    }
+
+    pub fn get_goes_through(&self) -> Pair {
+        let addr0 = Address::from_slice(&self.0[40..60]);
+        let addr1 = Address::from_slice(&self.0[60..80]);
+        Pair(addr0, addr1)
+    }
+
+    pub fn pair_gt(&self) -> (Pair, Pair) {
+        (self.get_pair(), self.get_goes_through())
+    }
+}
 
 pub trait ProtocolState: Debug {
     fn price(&self, base: Address) -> Result<Rational, ArithmeticError>;
@@ -189,15 +227,15 @@ impl PoolUpdate {
         match &self.action {
             Actions::Swap(s) => Some(Pair(s.token_in.address, s.token_out.address)),
             Actions::Mint(m) => Some(Pair(
-                m.token.get(0)?.address,
+                m.token.first()?.address,
                 m.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
             Actions::Burn(b) => Some(Pair(
-                b.token.get(0)?.address,
+                b.token.first()?.address,
                 b.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
             Actions::Collect(b) => Some(Pair(
-                b.token.get(0)?.address,
+                b.token.first()?.address,
                 b.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
             Actions::Transfer(t) => Some(Pair(t.token.address, quote)),
