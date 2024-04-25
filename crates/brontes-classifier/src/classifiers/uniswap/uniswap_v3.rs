@@ -72,7 +72,6 @@ action_impl!(
      info: CallInfo,
      call_data: mintCall,
      return_data: mintReturn, _logs: UniswapV3MintCallLogs,  db_tx: &DB| {
-        let owner = info.from_address;
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
@@ -87,7 +86,7 @@ action_impl!(
         Ok(NormalizedMint {
             protocol: Protocol::UniswapV3,
             trace_index: info.trace_idx,
-            from: owner,
+            from: info.from_address,
             recipient: call_data.recipient,
             pool: info.target_address,
             token: vec![t0_info, t1_info],

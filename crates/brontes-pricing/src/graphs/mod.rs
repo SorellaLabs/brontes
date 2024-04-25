@@ -20,11 +20,16 @@ use malachite::{num::basic::traits::One, Rational};
 use tracing::error_span;
 
 pub use self::{
-    registry::SubGraphRegistry, state_tracker::StateTracker, subgraph::PairSubGraph,
+    registry::SubGraphRegistry,
+    state_tracker::{StateTracker, StateWithDependencies},
+    subgraph::PairSubGraph,
     subgraph_verifier::*,
 };
 use super::PoolUpdate;
-use crate::{types::PoolState, Protocol};
+use crate::{
+    types::{PairWithFirstPoolHop, PoolState},
+    Protocol,
+};
 
 /// [`GraphManager`] Is the manager for everything graph related. It is
 /// responsible for creating, updating, and maintaining the main token graph as
@@ -104,16 +109,23 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.all_pair_graph.add_node(pair, pool_addr, dex, block);
     }
 
-    pub fn all_verifying_pairs(&self) -> Vec<Pair> {
-        self.subgraph_verifier.all_pairs()
-    }
-
-    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: Pair) {
-        self.subgraph_verifier.pool_dep_failure(pair, &goes_through)
+    pub fn pool_dep_failure(
+        &mut self,
+        pair: &PairWithFirstPoolHop,
+        pool_addr: Address,
+        pool_pair: Pair,
+    ) -> bool {
+        self.subgraph_verifier
+            .pool_dep_failure(pair, pool_addr, pool_pair)
     }
 
     pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
         self.sub_graph_registry.has_extension(pair, quote)
+    }
+
+    pub fn mark_future_use(&self, pair: Pair, goes_through: Pair, block: u64) {
+        self.sub_graph_registry
+            .mark_future_use(pair, goes_through, block);
     }
 
     /// creates a subgraph returning the edges and the state to load.
@@ -151,36 +163,36 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn add_subgraph_for_verification(
         &mut self,
-        pair: Pair,
-        complete_pair: Pair,
-        goes_through: Pair,
+        pair: PairWithFirstPoolHop,
         extends_to: Option<Pair>,
         block: u64,
         edges: Vec<SubGraphEdge>,
     ) -> Vec<PoolPairInfoDirection> {
         self.subgraph_verifier.create_new_subgraph(
             pair,
-            goes_through,
             extends_to,
-            complete_pair,
             block,
             edges,
-            &self.graph_state,
+            &mut self.graph_state,
         )
     }
 
-    // feature flagged
-    #[allow(unused_variables)]
-    pub fn add_verified_subgraph(&mut self, pair: Pair, subgraph: PairSubGraph, block: u64) {
-        #[cfg(not(feature = "tests"))]
-        if let Err(e) =
-            self.db
-                .save_pair_at(block, pair, subgraph.get_all_pools().flatten().cloned().collect())
-        {
-            tracing::error!(error=%e, "failed to save new subgraph pair");
-        }
+    /// prunes dead sup_graphs and empty state.
+    pub fn prune_dead_subgraphs(&mut self, block: u64) {
         self.sub_graph_registry
-            .add_verified_subgraph(subgraph, &self.graph_state.all_state(block))
+            .prune_dead_subgraphs(block)
+            .into_iter()
+            .for_each(|(pool, amount)| {
+                self.graph_state.remove_finalized_state_dep(pool, amount);
+            })
+    }
+
+    pub fn add_verified_subgraph(&mut self, subgraph: PairSubGraph, block: u64) {
+        self.sub_graph_registry.add_verified_subgraph(
+            subgraph,
+            self.graph_state.all_state(block),
+            block,
+        )
     }
 
     pub fn remove_pair_graph_address(
@@ -192,37 +204,41 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             .remove_empty_address(pool_pair, pool_address)
     }
 
-    pub fn remove_subgraph(&mut self, pool_pair: Pair, goes_through: Pair) {
+    pub fn remove_subgraph(&mut self, pair: PairWithFirstPoolHop) {
         self.sub_graph_registry
-            .remove_subgraph(&pool_pair, &goes_through);
+            .remove_subgraph(pair)
+            .into_iter()
+            .for_each(|(pool, amount)| {
+                self.graph_state.remove_finalized_state_dep(pool, amount);
+            })
     }
 
     /// Returns all pairs that have been ignored from lowest to highest
     /// liquidity
     pub fn verify_subgraph_on_new_path_failure(
         &mut self,
-        pair: Pair,
-        goes_through: &Pair,
+        pair: PairWithFirstPoolHop,
     ) -> Option<Vec<Pair>> {
         self.subgraph_verifier
-            .verify_subgraph_on_new_path_failure(pair, goes_through)
+            .verify_subgraph_on_new_path_failure(pair)
     }
 
-    pub fn get_price(
-        &mut self,
-        pair: Pair,
-        goes_through: Pair,
-        goes_through_address: Option<Address>,
-    ) -> Option<Rational> {
-        self.sub_graph_registry.get_price(
-            pair,
-            goes_through,
-            goes_through_address,
-            self.graph_state.finalized_state(),
-        )
+    pub fn subgraph_extends(&mut self, pair: PairWithFirstPoolHop) -> Option<Pair> {
+        self.subgraph_verifier.get_subgraph_extends(pair)
     }
 
-    pub fn new_state(&mut self, address: Address, state: PoolState) {
+    pub fn get_price(&mut self, pair: Pair, goes_through: Pair) -> Option<Rational> {
+        let span = error_span!("price generation for block");
+        span.in_scope(|| {
+            self.sub_graph_registry.get_price(
+                pair,
+                goes_through,
+                &self.graph_state.finalized_state(),
+            )
+        })
+    }
+
+    pub fn new_state(&mut self, address: Address, state: StateWithDependencies) {
         self.graph_state.new_state_for_verification(address, state);
     }
 
@@ -230,115 +246,100 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
         self.graph_state.update_pool_state(address, update);
     }
 
-    pub fn has_subgraph(&self, pair: Pair, goes_through: Pair) -> bool {
-        self.sub_graph_registry.has_subpool(&pair)
-            || self.subgraph_verifier.is_verifying(&pair, &goes_through)
+    pub fn has_subgraph_goes_through(&self, pair: PairWithFirstPoolHop) -> bool {
+        self.sub_graph_registry.has_go_through(pair) || self.subgraph_verifier.has_go_through(pair)
     }
 
-    pub fn has_subgraph_goes_through(&self, pair: Pair, goes_through: Pair) -> bool {
-        self.sub_graph_registry.has_go_through(&pair, &goes_through)
-            || self.subgraph_verifier.has_go_through(&pair, &goes_through)
-    }
-
-    pub fn remove_state(&mut self, address: &Address) {
-        self.graph_state.remove_state(address)
-    }
-
-    // returns true if the subgraph should be requeried. This will
-    // also remove the given subgraph from the registry
-    pub fn prune_low_liq_subgraphs(&mut self, pair: Pair, goes_through: &Pair, quote: Address) {
+    // returns true if the subgraph should be requeried. will mark it for removal
+    // at the current block and it won't be used in pricing in the future
+    pub fn prune_low_liq_subgraphs(
+        &mut self,
+        pair: PairWithFirstPoolHop,
+        quote: Address,
+        current_block: u64,
+    ) {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
             let state = self.graph_state.finalized_state();
+
             let (start_price, start_addr) = self
                 .sub_graph_registry
-                .get_subgraph_extends(&pair, goes_through)
+                .get_subgraph_extends(pair)
                 .map(|jump_pair| {
                     (
                         self.sub_graph_registry
-                            .get_price_all(jump_pair.flip(), state)
+                            .get_price_all(jump_pair.flip(), &state)
                             .unwrap_or(Rational::ONE),
                         jump_pair.0,
                     )
                 })
                 .unwrap_or_else(|| (Rational::ONE, quote));
 
-            let _ = self.sub_graph_registry.verify_current_subgraphs(
+            self.sub_graph_registry.verify_current_subgraphs(
                 pair,
-                goes_through,
                 start_addr,
                 start_price,
-                state,
+                &state,
+                current_block,
             );
         });
     }
 
     pub fn add_frayed_end_extension(
         &mut self,
-        pair: Pair,
-        goes_through: &Pair,
+        pair: PairWithFirstPoolHop,
         block: u64,
         frayed_end_extensions: Vec<SubGraphEdge>,
     ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         self.subgraph_verifier.add_frayed_end_extension(
             pair,
-            goes_through,
             block,
-            &self.graph_state,
+            &mut self.graph_state,
             frayed_end_extensions,
         )
     }
 
     pub fn verify_subgraph(
         &mut self,
-        pairs: Vec<(u64, Option<u64>, Pair, Vec<Pair>)>,
+        pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
         quote: Address,
     ) -> Vec<VerificationResults> {
-        let pairs = pairs
-            .into_iter()
-            .flat_map(|(a, b, pair, goes_throughs)| {
-                goes_throughs
-                    .into_iter()
-                    .unique()
-                    .map(|goes_through| {
-                        self.subgraph_verifier
-                            .get_subgraph_extends(&pair, &goes_through)
-                            .map(|jump_pair| {
-                                (
-                                    a,
-                                    b,
-                                    pair,
-                                    self.sub_graph_registry
-                                        .get_price_all(
-                                            jump_pair.flip(),
-                                            self.graph_state.finalized_state(),
-                                        )
-                                        .unwrap_or(Rational::ONE),
-                                    jump_pair.0,
-                                    goes_through,
-                                )
-                            })
-                            .unwrap_or_else(|| (a, b, pair, Rational::ONE, quote, goes_through))
-                    })
-                    .collect_vec()
-            })
-            .collect_vec();
+        let span = error_span!("verifying subgraph");
+        span.in_scope(|| {
+            let pairs = pairs
+                .into_iter()
+                .map(|(block, id, pair)| {
+                    self.subgraph_verifier
+                        .get_subgraph_extends(pair)
+                        .map(|jump_pair| {
+                            (
+                                block,
+                                id,
+                                pair,
+                                self.sub_graph_registry
+                                    .get_price_all(
+                                        jump_pair.flip(),
+                                        &self.graph_state.finalized_state(),
+                                    )
+                                    .unwrap_or(Rational::ONE),
+                                jump_pair.0,
+                            )
+                        })
+                        .unwrap_or_else(|| (block, id, pair, Rational::ONE, quote))
+                })
+                .collect_vec();
 
-        self.subgraph_verifier
-            .verify_subgraph(pairs, &self.all_pair_graph, &mut self.graph_state)
+            self.subgraph_verifier.verify_subgraph(
+                pairs,
+                &self.all_pair_graph,
+                &mut self.graph_state,
+            )
+        })
     }
 
     pub fn finalize_block(&mut self, block: u64) {
         self.graph_state.finalize_block(block);
-    }
-
-    /// removes all subgraphs that have a pool that's current liquidity
-    /// is less than its liquidity when it was verified.
-    /// nothing is done as we won't bother re-verifying until pricing for the
-    /// graph is needed again
-    pub fn audit_subgraphs(&mut self) {
-        self.sub_graph_registry
-            .audit_subgraphs(self.graph_state.finalized_state())
+        self.sub_graph_registry.finalize_block(block);
     }
 
     pub fn verification_done_for_block(&self, block: u64) -> bool {
