@@ -83,7 +83,6 @@ itertools.workspace = true
 fdlimit = "0.3.0"
 
 tikv-jemallocator = { version = "0.5.0", features = [
-  "profiling",
   "unprefixed_malloc_on_supported_platforms",
 ] }
 
@@ -98,6 +97,7 @@ default = [
 ]
 
 jemalloc = []
+jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
 
 sorella-server = ["local-reth", "local-clickhouse"]
 
