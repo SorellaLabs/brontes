@@ -82,10 +82,7 @@ metrics-process.workspace = true
 itertools.workspace = true
 fdlimit = "0.3.0"
 
-tikv-jemallocator = { version = "0.5.4", features = [
-  "profiling",
-  "unprefixed_malloc_on_supported_platforms",
-] }
+tikv-jemallocator = { version = "0.5.4" }
 
 [features]
 default = [
