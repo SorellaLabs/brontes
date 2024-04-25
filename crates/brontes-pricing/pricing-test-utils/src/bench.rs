@@ -144,7 +144,7 @@ impl BrontesPricingBencher {
                 self.inner.get_tracing_provider(),
                 block_number,
                 pool_pair,
-                pool_pair,
+                brontes_pricing::types::PairWithFirstPoolHop::from_pair_gt(pool_pair, pool_pair),
             ))
             .unwrap()
             .2;
@@ -173,7 +173,9 @@ impl BrontesPricingBencher {
                             self.inner.get_tracing_provider(),
                             block_number,
                             pool_pair,
-                            pool_pair,
+                            brontes_pricing::types::PairWithFirstPoolHop::from_pair_gt(
+                                pool_pair, pool_pair,
+                            ),
                         )
                         .await,
                 )

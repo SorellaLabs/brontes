@@ -9,7 +9,7 @@ use super::{
     state_tracker::StateTracker,
     subgraph::{BadEdge, PairSubGraph, VerificationOutcome},
 };
-use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
+use crate::{types::PairWithFirstPoolHop, AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
@@ -36,12 +36,12 @@ use crate::{AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
 ///   system.
 #[derive(Debug, Clone)]
 pub struct SubgraphVerifier {
-    pending_subgraphs:           FastHashMap<Pair, Vec<(Pair, Subgraph)>>,
+    pending_subgraphs:           FastHashMap<PairWithFirstPoolHop, Subgraph>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
-    subgraph_verification_state: FastHashMap<Pair, Vec<(Pair, SubgraphVerificationState)>>,
+    subgraph_verification_state: FastHashMap<PairWithFirstPoolHop, SubgraphVerificationState>,
 }
 
 impl Default for SubgraphVerifier {
@@ -58,125 +58,91 @@ impl SubgraphVerifier {
         }
     }
 
-    pub fn get_subgraph_extends(&self, pair: &Pair, goes_through: &Pair) -> Option<Pair> {
+    pub fn get_subgraph_extends(&self, pair: PairWithFirstPoolHop) -> Option<Pair> {
         self.pending_subgraphs
-            .get(&pair.ordered())
-            .and_then(|graph| {
-                graph
-                    .iter()
-                    .find_map(|(pair, s)| (pair == goes_through).then(|| s.subgraph.extends_to()))
-            })
-            .flatten()
+            .get(&pair)
+            .and_then(|graph| graph.subgraph.extends_to())
     }
 
-    pub fn has_go_through(&self, pair: &Pair, goes_through: &Pair) -> bool {
-        self.pending_subgraphs
-            .get(&pair.ordered())
-            .map(|f| f.iter().any(|(gt, _)| gt == goes_through))
-            .unwrap_or(false)
-    }
-
-    pub fn current_pairs(&self, pair: &Pair) -> usize {
-        self.pending_subgraphs
-            .get(&pair.ordered())
-            .map(|f| f.len())
-            .unwrap_or_default()
+    pub fn has_go_through(&self, pair: PairWithFirstPoolHop) -> bool {
+        self.pending_subgraphs.contains_key(&pair)
     }
 
     pub fn print_rem(&self, block: u64) {
         self.pending_subgraphs
             .values()
-            .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
+            .filter(|v| v.block == block)
             .for_each(|v| {
-                tracing::debug!(pair=?v.1.subgraph.complete_pair(), "pending");
+                tracing::debug!(pair=?v.subgraph.complete_pair(), "pending");
             })
     }
 
-    pub fn get_rem_for_block(&self, block: u64) -> Vec<(Pair, Pair, Pair)> {
+    pub fn get_rem_for_block(&self, block: u64) -> Vec<PairWithFirstPoolHop> {
         self.pending_subgraphs
-            .values()
-            .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
-            .map(|(gt, sub)| (sub.subgraph.pair, sub.subgraph.complete_pair(), *gt))
+            .iter()
+            .filter(|(_, v)| v.block == block)
+            .map(|(k, _)| *k)
             .collect()
     }
 
     pub fn is_done_block(&self, block: u64) -> bool {
         self.pending_subgraphs
             .values()
-            .flat_map(|v| v.iter().filter(|(_, s)| s.block == block))
+            .filter(|v| v.block == block)
             .count()
             == 0
     }
 
-    pub fn all_pairs(&self) -> Vec<Pair> {
-        self.pending_subgraphs.keys().copied().collect_vec()
-    }
-
-    pub fn is_verifying_with_block(&self, pair: &Pair, goes_through: &Pair, block: u64) -> bool {
+    pub fn is_verifying_with_block(&self, pair: PairWithFirstPoolHop, block: u64) -> bool {
         self.pending_subgraphs
-            .get(&pair.ordered())
-            .and_then(|a| {
-                a.iter()
-                    .find(|(p, s)| p == goes_through && s.block == block)
-            })
-            .is_some()
+            .get(&pair)
+            .map(|s| s.block == block)
+            .unwrap_or(false)
     }
 
-    pub fn is_verifying(&self, pair: &Pair, goes_through: &Pair) -> bool {
-        self.pending_subgraphs
-            .get(&pair.ordered())
-            .and_then(|a| a.iter().find(|(p, _)| p == goes_through))
-            .is_some()
-    }
+    pub fn pool_dep_failure(
+        &mut self,
+        pair: &PairWithFirstPoolHop,
+        pool_addr: Address,
+        pool_pair: Pair,
+    ) -> bool {
+        tracing::debug!(%pair, "dep failure");
 
-    pub fn pool_dep_failure(&mut self, pair: Pair, goes_through: &Pair) {
-        self.subgraph_verification_state.retain(|k, v| {
-            if *k != pair.ordered() {
-                return true
-            }
+        let Some(graph) = self.pending_subgraphs.get_mut(pair) else { return true };
+        graph.subgraph.remove_bad_node(pool_pair, pool_addr);
 
-            v.retain(|(k, _)| k != goes_through);
-            !v.is_empty()
-        });
-
-        self.pending_subgraphs.retain(|k, v| {
-            if *k != pair.ordered() {
-                return true
-            }
-            v.retain(|(k, _)| k != goes_through);
-            !v.is_empty()
-        });
+        if graph.subgraph.is_disjoint() {
+            self.subgraph_verification_state.remove(pair);
+            self.pending_subgraphs.remove(pair);
+            return true
+        }
+        false
     }
 
     // creates a new subgraph returning
     pub fn create_new_subgraph(
         &mut self,
-        pair: Pair,
-        goes_through: Pair,
+        pair: PairWithFirstPoolHop,
         extends_to: Option<Pair>,
-        complete_pair: Pair,
         block: u64,
         path: Vec<SubGraphEdge>,
-        state_tracker: &StateTracker,
+        state_tracker: &mut StateTracker,
     ) -> Vec<PoolPairInfoDirection> {
         // if we find a subgraph that is the same, we return.
-        if self
-            .pending_subgraphs
-            .get(&complete_pair.ordered())
-            .and_then(|v| v.iter().find(|(p, _)| *p == goes_through))
-            .is_some()
-        {
+        if self.pending_subgraphs.contains_key(&pair) {
             return vec![]
         };
 
         let query_state = state_tracker.missing_state(block, &path);
-        let subgraph = PairSubGraph::init(pair, complete_pair, goes_through, extends_to, path);
+        let complete_pair = pair.get_pair();
+        let gt = pair.get_goes_through();
+        let extend_pair = Pair(complete_pair.0, extends_to.map(|e| e.0).unwrap_or(complete_pair.1));
+        let subgraph = PairSubGraph::init(extend_pair, complete_pair, gt, extends_to, path, block);
 
-        self.pending_subgraphs
-            .entry(complete_pair.ordered())
-            .or_default()
-            .push((
-                goes_through,
+        if self
+            .pending_subgraphs
+            .insert(
+                pair,
                 Subgraph {
                     subgraph,
                     block,
@@ -185,7 +151,11 @@ impl SubgraphVerifier {
                     in_rundown: false,
                     iters: 0,
                 },
-            ));
+            )
+            .is_some()
+        {
+            tracing::error!(?pair, ?block, "duplicate subgraph");
+        };
 
         query_state
     }
@@ -193,48 +163,30 @@ impl SubgraphVerifier {
     #[instrument(skip(self), level = "trace")]
     pub fn verify_subgraph_on_new_path_failure(
         &mut self,
-        pair: Pair,
-        goes_through: &Pair,
+        pair: PairWithFirstPoolHop,
     ) -> Option<Vec<Pair>> {
         self.pending_subgraphs
-            .get_mut(&pair.ordered())
+            .get_mut(&pair)
             .or_else(|| {
                 tracing::debug!(?pair, "missing pending subgraph");
                 None
             })?
-            .iter_mut()
-            .find(|(p, _)| p == goes_through)
-            .or_else(|| {
-                tracing::debug!(?goes_through, "missing pending subgraph");
-                None
-            })?
-            .1
             .in_rundown = true;
 
         let state = self
             .subgraph_verification_state
-            .get_mut(&pair.ordered())
+            .get_mut(&pair)
             .or_else(|| {
                 tracing::debug!(?pair, "missing state");
                 None
             })?;
-
-        let state = &state
-            .iter_mut()
-            .find(|(p, _)| p == goes_through)
-            .or_else(|| {
-                tracing::debug!(?goes_through, "missing state");
-                None
-            })?
-            .1;
 
         Some(state.sorted_ignore_nodes_by_liquidity())
     }
 
     fn store_edges_with_liq(
         &mut self,
-        pair: Pair,
-        goes_through: Pair,
+        pair: PairWithFirstPoolHop,
         removals: &FastHashMap<Pair, FastHashSet<BadEdge>>,
         all_graph: &AllPairGraph,
     ) {
@@ -254,55 +206,27 @@ impl SubgraphVerifier {
             })
             .flatten()
             .for_each(|edge| {
-                // cache all edges that have been completey removed
-                let entry = self
-                    .subgraph_verification_state
-                    .entry(pair.ordered())
-                    .or_default();
-
-                if let Some(state) = entry.iter_mut().find(|(p, _)| *p == goes_through) {
-                    state.1.add_edge_with_liq(edge.pair.0, edge.clone());
-                    state.1.add_edge_with_liq(edge.pair.1, edge.clone());
-                } else {
-                    let mut state = SubgraphVerificationState::default();
-                    state.add_edge_with_liq(edge.pair.0, edge.clone());
-                    state.add_edge_with_liq(edge.pair.1, edge.clone());
-                    entry.push((goes_through, state));
-                };
+                let state = self.subgraph_verification_state.entry(pair).or_default();
+                state.add_edge_with_liq(edge.pair.0, edge.clone());
+                state.add_edge_with_liq(edge.pair.1, edge.clone());
             });
     }
 
     pub fn add_frayed_end_extension(
         &mut self,
-        pair: Pair,
-        goes_through: &Pair,
+        pair: PairWithFirstPoolHop,
         block: u64,
-        state_tracker: &StateTracker,
+        state_tracker: &mut StateTracker,
         frayed_end_extensions: Vec<SubGraphEdge>,
     ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         Some((
             state_tracker.missing_state(block, &frayed_end_extensions),
             self.pending_subgraphs
-                .get_mut(&pair.ordered())
+                .get_mut(&pair)
                 .or_else(|| {
-                    tracing::trace!(
-                        ?pair,
-                        ?goes_through,
-                        "frayed ext no pair in pending_subgraphs"
-                    );
+                    tracing::trace!("frayed ext no pair in pending_subgraphs");
                     None
                 })?
-                .iter_mut()
-                .find(|(p, _)| p == goes_through)
-                .or_else(|| {
-                    tracing::trace!(
-                        ?pair,
-                        ?goes_through,
-                        "frayed ext no goes through in pending_subgraphs"
-                    );
-                    None
-                })?
-                .1
                 .add_extension(frayed_end_extensions),
             true,
         ))
@@ -310,33 +234,28 @@ impl SubgraphVerifier {
 
     pub fn verify_subgraph(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair, Rational, Address, Pair)>,
+        pair: Vec<(u64, Option<u64>, PairWithFirstPoolHop, Rational, Address)>,
         all_graph: &AllPairGraph,
         state_tracker: &mut StateTracker,
     ) -> Vec<VerificationResults> {
         let span = error_span!("Subgraph Verifier");
         span.in_scope(|| {
-            let pairs = self.get_subgraphs(pair);
+            let pairs = self.get_subgraphs(state_tracker, pair);
             let res = self.verify_par(pairs, state_tracker);
 
             res.into_iter()
                 .map(|(pair, block, result, subgraph)| {
-                    let goes_through = subgraph.subgraph.must_go_through();
-                    self.store_edges_with_liq(pair, goes_through, &result.removals, all_graph);
+                    self.store_edges_with_liq(pair, &result.removals, all_graph);
 
                     // state that we want to be ignored on the next graph search.
-                    let v = self
-                        .subgraph_verification_state
-                        .entry(pair.ordered())
-                        .or_default();
+                    let state = self.subgraph_verification_state.entry(pair).or_default();
 
-                    let default = Default::default();
-                    let state = if let Some(state) = &v.iter().find(|(p, _)| *p == goes_through) {
-                        &state.1
-                    } else {
-                        v.push((goes_through, Default::default()));
-                        &default
-                    };
+                    // for all of the removals we did from graph. decrement the state tracker.
+                    result.removals.values().for_each(|v| {
+                        v.iter().for_each(|edge| {
+                            state_tracker.decrement_verification_state(edge.pool_address, block);
+                        });
+                    });
 
                     let ignores = state.get_nodes_to_ignore();
 
@@ -350,28 +269,18 @@ impl SubgraphVerifier {
 
                     if result.should_abandon {
                         tracing::trace!(?pair, "aborting");
-                        return VerificationResults::Abort(
-                            subgraph.subgraph.complete_pair(),
-                            subgraph.subgraph.must_go_through(),
-                            block,
-                        )
+                        return VerificationResults::Abort(pair, block)
                     }
 
                     if result.should_requery {
-                        let goes_through = subgraph.subgraph.must_go_through();
-                        let full_pair = subgraph.subgraph.complete_pair();
-
-                        self.pending_subgraphs
-                            .entry(full_pair.ordered())
-                            .or_default()
-                            .push((goes_through, subgraph));
+                        let extends = subgraph.subgraph.extends_to();
+                        self.pending_subgraphs.insert(pair, subgraph);
                         // anything that was fully remove gets cached
                         tracing::trace!(?pair, "requerying");
 
                         return VerificationResults::Failed(VerificationFailed {
                             pair,
-                            full_pair,
-                            goes_through,
+                            extends,
                             block,
                             prune_state: removals,
                             ignore_state: ignores,
@@ -387,40 +296,25 @@ impl SubgraphVerifier {
 
     fn get_subgraphs(
         &mut self,
-        pair: Vec<(u64, Option<u64>, Pair, Rational, Address, Pair)>,
-    ) -> Vec<(Pair, u64, bool, Subgraph, Rational, Address)> {
+        state_tracker: &mut StateTracker,
+        pair: Vec<(u64, Option<u64>, PairWithFirstPoolHop, Rational, Address)>,
+    ) -> Vec<(PairWithFirstPoolHop, u64, bool, Subgraph, Rational, Address)> {
         pair.into_iter()
-            .map(|(block, frayed, pair, price, quote, goes_through)| {
+            .map(|(block, frayed, pair, price, quote)| {
                 (
                     pair,
                     block,
                     frayed,
-                    self.pending_subgraphs
-                        .get_mut(&pair.ordered())
-                        .or_else(|| {
-                            tracing::debug!(?pair, ?goes_through, "not found in pending subgraphs");
-                            None
-                        })
-                        .and_then(|inner| {
-                            let mut idx = None;
-                            for (i, (pair, _)) in inner.iter().enumerate() {
-                                if pair == &goes_through {
-                                    idx = Some(i);
-                                    break
-                                }
-                            }
-
-                            if let Some(idx) = idx {
-                                return Some(inner.remove(idx))
-                            }
-                            None
-                        }),
+                    self.pending_subgraphs.remove(&pair).or_else(|| {
+                        tracing::debug!(?pair, "not found in pending subgraphs");
+                        None
+                    }),
                     price,
                     quote,
                 )
             })
             .filter_map(|(pair, block, frayed, subgraph, price, quote)| {
-                let (_, mut subgraph) = subgraph?;
+                let mut subgraph = subgraph?;
 
                 if let Some(frayed) = frayed {
                     let extensions = subgraph
@@ -428,7 +322,13 @@ impl SubgraphVerifier {
                         .remove(&frayed)
                         .unwrap_or_default();
 
-                    subgraph.subgraph.extend_subgraph(extensions);
+                    subgraph
+                        .subgraph
+                        .extend_subgraph(extensions)
+                        .into_iter()
+                        .for_each(|pool| {
+                            state_tracker.decrement_verification_state(pool, block);
+                        });
                 }
                 subgraph.iters += 1;
 
@@ -439,9 +339,9 @@ impl SubgraphVerifier {
 
     fn verify_par(
         &self,
-        pairs: Vec<(Pair, u64, bool, Subgraph, Rational, Address)>,
+        pairs: Vec<(PairWithFirstPoolHop, u64, bool, Subgraph, Rational, Address)>,
         state_tracker: &mut StateTracker,
-    ) -> Vec<(Pair, u64, VerificationOutcome, Subgraph)> {
+    ) -> Vec<(PairWithFirstPoolHop, u64, VerificationOutcome, Subgraph)> {
         pairs
             .into_par_iter()
             .map(|(pair, block, rundown, mut subgraph, price, quote)| {
@@ -461,23 +361,13 @@ impl SubgraphVerifier {
 
     fn passed_verification(
         &mut self,
-        pair: Pair,
+        pair: PairWithFirstPoolHop,
         block: u64,
         subgraph: Subgraph,
         removals: FastHashMap<Pair, FastHashSet<BadEdge>>,
         state_tracker: &mut StateTracker,
     ) -> VerificationResults {
-        let goes_through = subgraph.subgraph.must_go_through();
-
-        self.subgraph_verification_state.retain(|k, v| {
-            if *k != pair.ordered() {
-                return true
-            }
-
-            v.retain(|(p, _)| *p != goes_through);
-            !v.is_empty()
-        });
-
+        self.subgraph_verification_state.remove(&pair);
         // remove state for pair
         // mark used state finalized
         let subgraph = subgraph.subgraph;
@@ -515,16 +405,15 @@ impl Subgraph {
 
 #[derive(Debug)]
 pub struct VerificationPass {
-    pub pair:        Pair,
+    pub pair:        PairWithFirstPoolHop,
     pub block:       u64,
     pub subgraph:    PairSubGraph,
     pub prune_state: FastHashMap<Pair, FastHashSet<BadEdge>>,
 }
 #[derive(Debug)]
 pub struct VerificationFailed {
-    pub pair:         Pair,
-    pub full_pair:    Pair,
-    pub goes_through: Pair,
+    pub pair:         PairWithFirstPoolHop,
+    pub extends:      Option<Pair>,
     pub block:        u64,
     // prunes the partial edges of this state.
     pub prune_state:  FastHashMap<Pair, FastHashSet<BadEdge>>,
@@ -534,11 +423,12 @@ pub struct VerificationFailed {
     pub frayed_ends:  Vec<Address>,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum VerificationResults {
     Passed(VerificationPass),
     Failed(VerificationFailed),
-    Abort(Pair, Pair, u64),
+    Abort(PairWithFirstPoolHop, u64),
 }
 
 #[derive(Debug, Default, Clone)]
