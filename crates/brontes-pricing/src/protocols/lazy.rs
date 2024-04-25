@@ -7,9 +7,14 @@ use brontes_types::{
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
 
-use crate::{errors::AmmError, protocols::LoadState, types::PoolState, Protocol};
+use crate::{
+    errors::AmmError,
+    protocols::LoadState,
+    types::{PairWithFirstPoolHop, PoolState},
+    Protocol,
+};
 
-pub(crate) type PoolFetchError = (Address, Protocol, u64, Pair, Pair, AmmError);
+pub(crate) type PoolFetchError = (Address, Protocol, u64, Pair, PairWithFirstPoolHop, AmmError);
 pub(crate) type PoolFetchSuccess = (u64, Address, PoolState, LoadResult);
 
 pub enum LoadResult {
@@ -22,9 +27,9 @@ pub enum LoadResult {
     Err {
         protocol:     Protocol,
         pool_pair:    Pair,
-        full_pair:    Pair,
+        pair:         PairWithFirstPoolHop,
         pool_address: Address,
-        deps:         Vec<(Pair, Pair)>,
+        deps:         Vec<PairWithFirstPoolHop>,
         block:        u64,
     },
 }
@@ -35,9 +40,10 @@ impl LoadResult {
 }
 
 pub struct LazyResult {
-    pub state:       Option<PoolState>,
-    pub block:       u64,
-    pub load_result: LoadResult,
+    pub state:           Option<PoolState>,
+    pub block:           u64,
+    pub load_result:     LoadResult,
+    pub dependent_count: u64,
 }
 
 #[derive(Debug)]
@@ -45,7 +51,6 @@ pub struct PairStateLoadingProgress {
     pub block:         u64,
     pub id:            Option<u64>,
     pub pending_pools: FastHashSet<Address>,
-    pub goes_through:  Vec<Pair>,
 }
 
 type BoxedFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
@@ -54,32 +59,25 @@ type BlockNumber = u64;
 /// Deals with the lazy loading of new exchange state, and tracks loading of new
 /// state for a given block.
 pub struct LazyExchangeLoader<T: TracingProvider> {
-    provider: Arc<T>,
+    provider:          Arc<T>,
     pool_load_futures: MultiBlockPoolFutures,
     /// addresses currently being processed. to the blocks of the address we are
     /// fetching state for
-    pool_buf: FastHashMap<Address, Vec<BlockNumber>>,
+    pool_buf:          FastHashMap<Address, FastHashSet<BlockNumber>>,
     /// requests we are processing for a given block.
-    req_per_block: FastHashMap<BlockNumber, u64>,
-    /// all current parent pairs with all the state that is required for there
-    /// subgraph to be loaded
-    parent_pair_state_loading: FastHashMap<Pair, Vec<(Pair, PairStateLoadingProgress)>>,
-    /// All current request addresses to subgraph pair that requested the
-    /// loading. in the case that a pool fails to load, we need all subgraph
-    /// pairs that are dependent on the node in order to remove it from the
-    /// subgraph and possibly reconstruct it.
-    protocol_address_to_parent_pairs: FastHashMap<Address, Vec<(BlockNumber, Pair, Pair)>>,
+    req_per_block:     FastHashMap<BlockNumber, u64>,
+
+    state_tracking: LoadingStateTracker,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
     pub fn new(provider: Arc<T>) -> Self {
         Self {
+            state_tracking: LoadingStateTracker::default(),
             pool_buf: FastHashMap::default(),
             pool_load_futures: MultiBlockPoolFutures::new(),
             provider,
             req_per_block: FastHashMap::default(),
-            protocol_address_to_parent_pairs: FastHashMap::default(),
-            parent_pair_state_loading: FastHashMap::default(),
         }
     }
 
@@ -95,27 +93,17 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.req_per_block.get(block).copied().unwrap_or(0) == 0
     }
 
-    pub fn is_loading_block(&self, k: &Address) -> Option<Vec<u64>> {
+    pub fn is_loading_block(&self, k: &Address) -> Option<FastHashSet<u64>> {
         self.pool_buf.get(k).cloned()
     }
 
-    pub fn pairs_to_verify(&mut self) -> Vec<(u64, Option<u64>, Pair, Vec<Pair>)> {
-        let mut res = Vec::new();
-        self.parent_pair_state_loading.retain(|pair, entries| {
-            entries.retain(
-                |(_, PairStateLoadingProgress { block, id, pending_pools, goes_through })| {
-                    if pending_pools.is_empty() {
-                        res.push((*block, *id, *pair, goes_through.clone()));
-                        return false
-                    }
-                    true
-                },
-            );
+    /// subgraph to be loaded
+    pub fn pairs_to_verify(&mut self) -> Vec<(u64, Option<u64>, PairWithFirstPoolHop)> {
+        self.state_tracking.return_pairs_ready_for_loading()
+    }
 
-            !entries.is_empty()
-        });
-
-        res
+    pub fn full_failure(&mut self, pair: PairWithFirstPoolHop) {
+        self.state_tracking.pool_dep_failure(pair);
     }
 
     pub fn add_state_trackers(
@@ -123,150 +111,56 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         block: u64,
         id: Option<u64>,
         address: Address,
-        parent_pair: Pair,
-        goes_through: Pair,
+        pair: PairWithFirstPoolHop,
     ) {
         *self.req_per_block.entry(block).or_default() += 1;
-        self.pool_buf.entry(address).or_default().push(block);
-
-        self.add_protocol_parent(block, id, address, parent_pair, goes_through);
+        self.pool_buf.entry(address).or_default().insert(block);
+        self.add_protocol_parent(block, id, address, pair)
     }
 
     pub fn add_protocol_parent(
         &mut self,
-        parent_block: u64,
+        block: u64,
         id: Option<u64>,
         address: Address,
-        parent_pair: Pair,
-        goes_through_new: Pair,
+        pair: PairWithFirstPoolHop,
     ) {
-        self.protocol_address_to_parent_pairs
-            .entry(address)
-            .or_default()
-            .push((parent_block, parent_pair, goes_through_new));
-
-        match self.parent_pair_state_loading.entry(parent_pair) {
-            Entry::Vacant(v) => {
-                let mut set = FastHashSet::default();
-                set.insert(address);
-                v.insert(vec![(
-                    goes_through_new,
-                    PairStateLoadingProgress {
-                        block: parent_block,
-                        id,
-                        pending_pools: set,
-                        goes_through: vec![goes_through_new],
-                    },
-                )]);
-            }
-            Entry::Occupied(mut o) => {
-                if let Some((_, PairStateLoadingProgress { pending_pools, goes_through, .. })) = o
-                    .get_mut()
-                    .iter_mut()
-                    .find(|(pair, _)| *pair == goes_through_new)
-                {
-                    goes_through.push(goes_through_new);
-                    pending_pools.insert(address);
-                } else {
-                    let mut set = FastHashSet::default();
-                    set.insert(address);
-                    let res = (
-                        goes_through_new,
-                        PairStateLoadingProgress {
-                            block: parent_block,
-                            id,
-                            pending_pools: set,
-                            goes_through: vec![goes_through_new],
-                        },
-                    );
-                    o.get_mut().push(res)
-                }
-            }
-        }
-    }
-
-    pub fn on_state_fail(&mut self, block: u64, pair: &Pair, goes_through: &Pair) {
-        self.parent_pair_state_loading.retain(|k, v| {
-            if pair != k {
-                return true
-            };
-
-            v.retain(|(gt, _)| gt != goes_through);
-            !v.is_empty()
-        });
-
-        self.protocol_address_to_parent_pairs.retain(|_, v| {
-            v.retain(|(b, p, gt)| !(*b == block && p == pair && gt == goes_through));
-            !v.is_empty()
-        });
+        self.state_tracking
+            .add_protocol_dependent(address, block, pair);
+        self.state_tracking
+            .add_pending_pool(pair, address, block, id);
     }
 
     // removes state trackers return a list of pairs that is dependent on the state
-    pub fn remove_state_trackers(&mut self, block: u64, address: &Address) -> Vec<(Pair, Pair)> {
-        if let Entry::Occupied(mut o) = self.pool_buf.entry(*address) {
-            let vec = o.get_mut();
-            vec.retain(|b| *b != block);
-
-            if vec.is_empty() {
-                o.remove_entry();
-            }
+    pub fn remove_state_trackers(
+        &mut self,
+        block: u64,
+        address: &Address,
+    ) -> Vec<PairWithFirstPoolHop> {
+        if let Some(i) = self.pool_buf.get_mut(address) {
+            i.remove(&block);
         }
 
-        if let Entry::Occupied(mut o) = self.req_per_block.entry(block) {
-            *(o.get_mut()) -= 1;
+        if let Some(block) = self.req_per_block.get_mut(&block) {
+            *block -= 1;
         }
 
-        // only remove for state loading for the given block
-        let removed =
-            if let Entry::Occupied(mut o) = self.protocol_address_to_parent_pairs.entry(*address) {
-                let entry = o.get_mut();
-                let mut finished_pairs = Vec::new();
-                entry.retain(|(target_block, pair, goes_through)| {
-                    if *target_block == block {
-                        finished_pairs.push((*pair, *goes_through));
-                        return false
-                    }
-                    true
-                });
-                if entry.is_empty() {
-                    o.remove_entry();
-                }
-
-                finished_pairs
-            } else {
-                vec![]
-            };
-
-        removed.iter().for_each(|(pair, goes_through)| {
-            if let Entry::Occupied(mut o) = self.parent_pair_state_loading.entry(*pair) {
-                o.get_mut().iter_mut().for_each(
-                    |(goes, PairStateLoadingProgress { pending_pools, .. })| {
-                        if goes == goes_through {
-                            pending_pools.remove(address);
-                        }
-                    },
-                );
-            }
-        });
-
-        removed
+        self.state_tracking.remove_pool(*address, block)
     }
 
     pub fn lazy_load_exchange(
         &mut self,
-        parent_pair: Pair,
+        pair: PairWithFirstPoolHop,
         pool_pair: Pair,
-        goes_through: Pair,
-        full_pair: Pair,
         id: Option<u64>,
         address: Address,
         block_number: u64,
         ex_type: Protocol,
     ) {
         let provider = self.provider.clone();
-        self.add_state_trackers(block_number, id, address, parent_pair, goes_through);
+        self.add_state_trackers(block_number, id, address, pair);
 
-        let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, full_pair);
+        let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, pair);
         self.pool_load_futures
             .add_future(block_number, Box::pin(fut));
     }
@@ -282,23 +176,26 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
         if let Poll::Ready(Some(result)) = self.pool_load_futures.poll_next_unpin(cx) {
             match result {
                 Ok((block, addr, state, load)) => {
-                    self.remove_state_trackers(block, &addr);
+                    let deps = self.remove_state_trackers(block, &addr);
 
-                    let res = LazyResult { block, state: Some(state), load_result: load };
+                    let res = LazyResult {
+                        block,
+                        state: Some(state),
+                        load_result: load,
+                        dependent_count: deps.len() as u64,
+                    };
                     Poll::Ready(Some(res))
                 }
                 Err((pool_address, dex, block, pool_pair, full_pair, _)) => {
                     let dependent_pairs = self.remove_state_trackers(block, &pool_address);
-                    dependent_pairs.iter().for_each(|(pair, gt)| {
-                        self.on_state_fail(block, pair, gt);
-                    });
 
                     let res = LazyResult {
                         state: None,
                         block,
+                        dependent_count: dependent_pairs.len() as u64,
                         load_result: LoadResult::Err {
                             pool_pair,
-                            full_pair,
+                            pair: full_pair,
                             pool_address,
                             block,
                             protocol: dex,
@@ -386,5 +283,94 @@ impl Stream for MultiBlockPoolFutures {
         }
 
         Poll::Pending
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct LoadingStateTracker {
+    pair_loading: FastHashMap<PairWithFirstPoolHop, PairStateLoadingProgress>,
+    protocol_address_to_dependent_pairs:
+        FastHashMap<Address, Vec<(BlockNumber, PairWithFirstPoolHop)>>,
+}
+
+impl LoadingStateTracker {
+    pub fn add_protocol_dependent(
+        &mut self,
+        protocol: Address,
+        block_number: u64,
+        pair: PairWithFirstPoolHop,
+    ) {
+        self.protocol_address_to_dependent_pairs
+            .entry(protocol)
+            .or_default()
+            .push((block_number, pair));
+    }
+
+    pub fn remove_pool(&mut self, pool: Address, block: u64) -> Vec<PairWithFirstPoolHop> {
+        let mut removed = vec![];
+        self.protocol_address_to_dependent_pairs.retain(|p, b| {
+            if p != &pool {
+                return true
+            }
+            b.retain(|(bn, key)| {
+                if &block != bn {
+                    return true
+                }
+                removed.push(*key);
+                false
+            });
+
+            !b.is_empty()
+        });
+
+        removed.iter().for_each(|pair| {
+            let pair_loading = self.pair_loading.get_mut(pair).unwrap();
+            pair_loading.pending_pools.remove(&pool);
+        });
+
+        removed
+    }
+
+    pub fn add_pending_pool(
+        &mut self,
+        pair: PairWithFirstPoolHop,
+        pool: Address,
+        block: u64,
+        id: Option<u64>,
+    ) {
+        match self.pair_loading.entry(pair) {
+            Entry::Vacant(v) => {
+                let mut set = FastHashSet::default();
+                set.insert(pool);
+                v.insert(PairStateLoadingProgress { block, id, pending_pools: set });
+            }
+            Entry::Occupied(mut o) => {
+                o.get_mut().pending_pools.insert(pool);
+            }
+        }
+    }
+
+    pub fn return_pairs_ready_for_loading(
+        &mut self,
+    ) -> Vec<(u64, Option<u64>, PairWithFirstPoolHop)> {
+        let mut res = Vec::new();
+        self.pair_loading.retain(|pair, entries| {
+            let PairStateLoadingProgress { block, id, pending_pools } = entries;
+            if pending_pools.is_empty() {
+                res.push((*block, id.take(), *pair));
+                return false
+            }
+            true
+        });
+
+        res
+    }
+
+    pub fn pool_dep_failure(&mut self, pair: PairWithFirstPoolHop) {
+        self.pair_loading.remove(&pair);
+        self.protocol_address_to_dependent_pairs.retain(|_, v| {
+            v.retain(|(_, npair)| npair != &pair);
+            !v.is_empty()
+        });
     }
 }

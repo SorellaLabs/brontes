@@ -15,6 +15,7 @@ use tracing::{debug, warn};
 use crate::{
     lazy::{PoolFetchError, PoolFetchSuccess},
     protocols::errors::{AmmError, ArithmeticError},
+    types::PairWithFirstPoolHop,
     uniswap_v2::UniswapV2Pool,
     uniswap_v3::UniswapV3Pool,
     LoadResult, PoolState,
@@ -37,7 +38,7 @@ pub trait LoadState {
         provider: Arc<T>,
         block_number: u64,
         pool_pair: Pair,
-        full_pair: Pair,
+        full_pair: PairWithFirstPoolHop,
     ) -> impl Future<Output = Result<PoolFetchSuccess, PoolFetchError>> + Send;
 }
 
@@ -60,7 +61,7 @@ impl LoadState for Protocol {
         provider: Arc<T>,
         block_number: u64,
         pool_pair: Pair,
-        fp: Pair,
+        fp: PairWithFirstPoolHop,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
             Self::UniswapV2 | Self::SushiSwapV2 | Self::PancakeSwapV2 => {
