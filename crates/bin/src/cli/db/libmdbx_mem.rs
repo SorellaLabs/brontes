@@ -40,6 +40,10 @@ impl LMem {
                                 // Some(d)).await;
                             }
                             cnt += libmdbx.get_metadata(block).is_ok() as usize;
+
+                            if block % 250 == 0 {
+                                print!("on block: {block}");
+                            }
                         }
                         println!("{cnt}");
                     }),
