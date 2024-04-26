@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use brontes_core::{decoding::Parser as DParser, LibmdbxReader};
+use brontes_core::{decoding::Parser as DParser, DBWriter, LibmdbxReader};
 use brontes_database::{
     clickhouse::cex_config::CexDownloadConfig,
     libmdbx::{cursor::CompressedCursor, Libmdbx},
@@ -47,7 +47,11 @@ impl LMem {
                     .spawn_critical_blocking("test_mem", async move {
                         let mut cnt = 0usize;
                         for block in block_range {
-                            cnt += libmdbx.load_trace(block).is_ok() as usize;
+                            if let Ok(t) = libmdbx.load_trace(block) {
+                                cnt += 1;
+                                let _ = libmdbx.save_traces(block, t).await;
+                            }
+
                             cnt += libmdbx.get_dex_quotes(block).is_ok() as usize;
                             cnt += libmdbx.get_metadata(block).is_ok() as usize;
                         }
