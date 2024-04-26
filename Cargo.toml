@@ -88,7 +88,9 @@ alloy-json-abi = "0.6.0"
 alloy-dyn-abi = "0.6.0 "
 
 # Alloy core
-alloy-provider = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
+alloy-provider = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695", features = [
+  "reqwest",
+] }
 alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
 alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
 alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
