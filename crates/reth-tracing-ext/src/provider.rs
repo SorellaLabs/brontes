@@ -1,3 +1,4 @@
+use alloy_rpc_types::AnyReceiptEnvelope;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
 use reth_primitives::{
@@ -7,7 +8,7 @@ use reth_primitives::{
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, TransactionReceipt, TransactionRequest,
+    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
 
 use crate::TracingClient;
@@ -62,7 +63,7 @@ impl TracingProvider for TracingClient {
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<TransactionReceipt>>> {
+    ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>> {
         Ok(self
             .api
             .block_receipts(BlockId::Number(number))
