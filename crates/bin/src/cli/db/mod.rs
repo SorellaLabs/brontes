@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+mod libmdbx_mem;
 use crate::runner::CliContext;
 mod db_clear;
 mod db_insert;
@@ -33,6 +34,8 @@ pub enum DatabaseCommands {
     /// --feature local-clickhouse)
     #[command(name = "generate-traces")]
     TraceRange(trace_range::TraceArgs),
+    #[command(name = "libmdbx-mem-test")]
+    LibmdbxMem(libmdbx_mem::LMem),
     /// For a given range, will fetch all data from the api and insert it into
     /// libmdbx.
     #[command(name = "init")]
@@ -57,6 +60,7 @@ impl Database {
             DatabaseCommands::TraceRange(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Init(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
+            DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
