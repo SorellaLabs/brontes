@@ -1,4 +1,4 @@
-use brontes_core::{DBWriter, LibmdbxReader};
+use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 use clap::Parser;
 use itertools::Itertools;
 

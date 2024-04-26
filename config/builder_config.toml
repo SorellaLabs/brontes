@@ -102,8 +102,6 @@ searchers_contracts = ["0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
 name = "Builder+"
 pub_keys = ["0x8042acb1f21ff5ee9d0035c2ea5d9a09c3810b048ba28f89e9a94e8e76c5fdd5bebce9b88af4e489ccd1daf735b829bb"]
 
-
-
 [builders."0xFeebabE6b0418eC13b30aAdF129F5DcDd4f70CeA"]
 name = "eth-builder"
 searchers_contracts = ["0x5e51328C0583094b76f28Cfd532AbC3d454fCfEA"]

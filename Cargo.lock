@@ -1456,7 +1456,6 @@ dependencies = [
  "alloy-transport",
  "alloy-transport-http",
  "async-scoped",
- "brontes-analytics",
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
@@ -1501,23 +1500,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "brontes-analytics"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "arrow",
- "brontes-database",
- "brontes-types",
- "chrono",
- "eyre",
- "parquet",
- "polars",
- "rayon",
- "reth-tracing-ext",
- "tracing",
 ]
 
 [[package]]
@@ -6027,10 +6009,6 @@ name = "parquet-format-safe"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1131c54b167dd4e4799ce762e1ab01549ebb94d5bdd13e6ec1b467491c378e1f"
-dependencies = [
- "async-trait",
- "futures",
-]
 
 [[package]]
 name = "parse-zoneinfo"
@@ -6291,7 +6269,6 @@ dependencies = [
  "ethnum",
  "fast-float",
  "foreign_vec",
- "futures",
  "getrandom 0.2.14",
  "hashbrown 0.14.3",
  "itoa",
@@ -6387,12 +6364,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b40bef2edcdc58394792c4d779465144283a09ff1836324e7b72df7978a6e992"
 dependencies = [
  "ahash",
- "async-trait",
  "atoi_simd",
  "bytes",
  "chrono",
  "fast-float",
- "futures",
  "home",
  "itoa",
  "memchr",
@@ -6403,7 +6378,6 @@ dependencies = [
  "polars-arrow",
  "polars-core",
  "polars-error",
- "polars-parquet",
  "polars-time",
  "polars-utils",
  "rayon",
@@ -6411,8 +6385,6 @@ dependencies = [
  "ryu",
  "simdutf8",
  "smartstring",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
@@ -6475,13 +6447,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8824ee00fbbe83d69553f2711014c50361238d210ed81a7a297695b7db97d42"
 dependencies = [
  "ahash",
- "async-stream",
  "base64 0.21.7",
- "brotli 3.5.0",
  "ethnum",
- "flate2",
- "futures",
- "lz4",
  "num-traits",
  "parquet-format-safe",
  "polars-arrow",
@@ -6489,9 +6456,7 @@ dependencies = [
  "polars-utils",
  "seq-macro",
  "simdutf8",
- "snap",
  "streaming-decompression",
- "zstd",
 ]
 
 [[package]]
@@ -6534,7 +6499,6 @@ dependencies = [
  "polars-core",
  "polars-io",
  "polars-ops",
- "polars-parquet",
  "polars-time",
  "polars-utils",
  "rayon",
