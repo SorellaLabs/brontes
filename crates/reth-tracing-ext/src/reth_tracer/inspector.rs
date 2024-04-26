@@ -28,7 +28,7 @@ use super::{arena, config, types, utils};
 /// This [Inspector] can be hooked into revm's EVM which then calls the
 /// inspector functions, such as [Inspector::call] or [Inspector::call_end].
 ///
-/// The [TracingInspector] keeps track of everything by:
+/// The [BrontesTracingInspector] keeps track of everything by:
 ///   1. start tracking steps/calls on [Inspector::step] and [Inspector::call]
 ///   2. complete steps/calls on [Inspector::step_end] and [Inspector::call_end]
 #[derive(Clone, Debug)]
@@ -96,8 +96,6 @@ impl BrontesTracingInspector {
         }
     }
 
-    /// Convenience function for [ParityTraceBuilder::set_transaction_gas_used]
-    /// that consumes the type.
     #[inline]
     pub fn with_transaction_gas_used(mut self, gas_used: u64) -> Self {
         self.set_transaction_gas_used(gas_used);
@@ -404,8 +402,6 @@ impl BrontesTracingInspector {
     ///
     /// Warning: if [TraceType::StateDiff] is provided this does __not__ fill
     /// the state diff, since this requires access to the account diffs.
-    ///
-    /// See [Self::into_trace_results_with_state] and [populate_state_diff].
     pub fn build_trace(
         &self,
         tx_hash: B256,

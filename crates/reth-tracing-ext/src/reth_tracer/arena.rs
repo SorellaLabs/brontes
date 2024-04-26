@@ -2,9 +2,6 @@ use types::{CallTrace, CallTraceNode, LogCallOrder};
 
 use super::types;
 /// An arena of recorded traces.
-///
-/// This type will be populated via the
-/// [TracingInspector](crate::tracing::TracingInspector).
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CallTraceArena {

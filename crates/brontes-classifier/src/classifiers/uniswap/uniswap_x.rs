@@ -131,9 +131,7 @@ action_impl!(
 
 impl Fill {
     /// Here we're converting a Fill into a NormalizedSwap, however we don't yet
-    /// have the full trade information. We'll fill this in at the final
-    /// classification stage. See: [`Finish
-    /// Classification`](brontes_types::normalized_actions::NormalizedBatch::finish_classification)
+    /// have the full trade information.
     pub fn into_swap(fill_log: &Fill, settlement_contract: Address) -> NormalizedSwap {
         let swapper = fill_log.swapper;
 
