@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 pub use alloy_primitives::Log;
 use alloy_primitives::{Address, Bytes, LogData, U256, U64};
-use alloy_rpc_trace_types::{
+use alloy_rpc_types_trace::{
     geth::{CallFrame, CallLogFrame, GethDefaultTracingOptions, StructLog},
     parity::{
         Action, ActionType, CallAction, CallOutput, CallType, CreateAction, CreateOutput,
