@@ -242,9 +242,9 @@ impl BrontesTracingInspector {
         if trace_idx == 0 {
             // this is the root call which should get the gas used of the transaction
             // refunds are applied after execution, which is when the root call ends
-            trace.gas_used = gas_used(context.spec_id(), gas.spend(), gas.refunded() as u64);
+            trace.gas_used = gas_used(context.spec_id(), gas.spent(), gas.refunded() as u64);
         } else {
-            trace.gas_used = gas.spend();
+            trace.gas_used = gas.spent();
         }
 
         trace.status = result;

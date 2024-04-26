@@ -11,7 +11,7 @@ pub struct Insert {
     #[arg(long, short)]
     pub key:   String,
     // value
-    #[arg(long, short)]
+    #[arg(long)]
     pub value: String,
 }
 
