@@ -202,5 +202,7 @@ action_dispatch!(
     ZeroXFillOrKillRfqOrderCall,
     DodoCreateDODOVendingMachineCall,
     DodoCreateDODOStablePoolCall,
-    DodoInitDODOPrivatePoolCall
+    DodoInitDODOPrivatePoolCall,
+    DodoBuySharesCall,
+    DodoSellSharesCall
 );

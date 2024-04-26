@@ -109,12 +109,10 @@ action_impl!(
     Protocol::Dodo,
     crate::DodoDSPPool::buySharesCall,
     Mint,
-    [BuyShares],
-    logs: true,
+    [],
     return_data: true,
-    |info: CallInfo, return_data: buySharesReturn, logs: DodoBuySharesCallLogs, db: &DB| {
-        let logs = logs.buy_shares_field?;
-
+    call_data: true,
+    |info: CallInfo, call_data: buySharesCall, return_data: buySharesReturn, db: &DB| {
         let details = db.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
@@ -138,8 +136,8 @@ action_impl!(
         Ok(NormalizedMint {
             protocol: Protocol::Dodo,
             trace_index: info.trace_idx,
-            from: info.msg_sender,
-            recipient: logs.to,
+            from: info.from_address,
+            recipient: call_data.to,
             pool: info.target_address,
             token,
             amount
@@ -151,12 +149,10 @@ action_impl!(
     Protocol::Dodo,
     crate::DodoDSPPool::sellSharesCall,
     Burn,
-    [SellShares],
-    logs: true,
+    [],
+    call_data: true,
     return_data: true,
-    |info: CallInfo, return_data: sellSharesReturn, logs: DodoSellSharesCallLogs, db: &DB| {
-        let logs = logs.sell_shares_field?;
-
+    |info: CallInfo, call_data: sellSharesCall, return_data: sellSharesReturn, db: &DB| {
         let details = db.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
@@ -180,11 +176,137 @@ action_impl!(
         Ok(NormalizedBurn {
             protocol: Protocol::Dodo,
             trace_index: info.trace_idx,
-            from: info.msg_sender,
-            recipient: logs.to,
+            from: info.from_address,
+            recipient: call_data.to,
             pool: info.target_address,
             token,
             amount
         })
     }
 );
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, Address, B256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        constants::WETH_ADDRESS,
+        db::token_info::{TokenInfo, TokenInfoWithAddress},
+        normalized_actions::Actions,
+        TreeSearchBuilder,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_dodo_buy_shares() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let mint =
+            B256::from(hex!("88f60c94b868a5558bc53268ec035ffbf482381bbbeafdbdc03adaff11911e69"));
+
+        let token = vec![
+            TokenInfoWithAddress {
+                address: Address::new(hex!("888f538aa0634472d3f038f225c59b5847cde015")),
+                inner:   TokenInfo { decimals: 18, symbol: "NGN".to_string() },
+            },
+            TokenInfoWithAddress::weth(),
+        ];
+
+        classifier_utils.ensure_token(token[0].clone());
+
+        classifier_utils.ensure_protocol(
+            Protocol::Dodo,
+            hex!("57dAe55C697929FFB920942ad25b10908edDc56E").into(),
+            WETH_ADDRESS,
+            Some(hex!("888f538aa0634472d3f038f225c59b5847cde015").into()),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let eq_action = Actions::Mint(NormalizedMint {
+            protocol: Protocol::Dodo,
+            trace_index: 13,
+            from: Address::new(hex!("a356867fdcea8e71aeaf87805808803806231fdc")),
+            recipient: Address::new(hex!("79b7b57df6422dd1b690cfaeac6fc61095f179a3")),
+            pool: Address::new(hex!("57dae55c697929ffb920942ad25b10908eddc56e")),
+            token,
+            amount: vec![
+                U256::from_str("704897023978838744")
+                    .unwrap()
+                    .to_scaled_rational(18),
+                U256::from_str("1495827155313454289417")
+                    .unwrap()
+                    .to_scaled_rational(18),
+            ],
+        });
+
+        classifier_utils
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_mint),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_dodo_sell_shares() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let mint =
+            B256::from(hex!("346eb129f70aecb9ca1a2b3cbcb3cabd2d1cd5fec46c91fff41d4257114148e9"));
+
+        let token = vec![
+            TokenInfoWithAddress {
+                address: Address::new(hex!("9bf1d7d63dd7a4ce167cf4866388226eeefa702e")),
+                inner:   TokenInfo { decimals: 18, symbol: "BEN".to_string() },
+            },
+            TokenInfoWithAddress::weth(),
+        ];
+
+        classifier_utils.ensure_token(token[0].clone());
+
+        classifier_utils.ensure_protocol(
+            Protocol::Dodo,
+            hex!("6AE6D8264A533DE49Dad16bee09761EA97b559Cd").into(),
+            WETH_ADDRESS,
+            Some(hex!("9bf1d7d63dd7a4ce167cf4866388226eeefa702e").into()),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        let eq_action = Actions::Burn(NormalizedBurn {
+            protocol: Protocol::Dodo,
+            trace_index: 0,
+            from: Address::new(hex!("e2752B80FF0322f8E370625B645929D2BB21F26f")),
+            recipient: Address::new(hex!("e2752B80FF0322f8E370625B645929D2BB21F26f")),
+            pool: Address::new(hex!("6AE6D8264A533DE49Dad16bee09761EA97b559Cd")),
+            token,
+            amount: vec![
+                U256::from_str("374423721407789417")
+                    .unwrap()
+                    .to_scaled_rational(18),
+                U256::from_str("93742650560116459442507612342")
+                    .unwrap()
+                    .to_scaled_rational(18),
+            ],
+        });
+
+        classifier_utils
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Actions::is_burn),
+            )
+            .await
+            .unwrap();
+    }
+}

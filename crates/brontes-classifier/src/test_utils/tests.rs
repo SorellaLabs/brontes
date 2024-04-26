@@ -513,6 +513,8 @@ impl ClassifierTestUtils {
 
         assert!(!tree.tx_roots.is_empty(), "empty tree. most likely a invalid hash");
 
+        println!("{:#?}", tree.tx_roots);
+
         let root = tree.tx_roots.remove(0);
         let mut actions = root.collect(&tree_collect_builder);
         assert!(
@@ -611,8 +613,6 @@ impl ClassifierTestUtils {
         let created_addr = found_trace.get_create_output();
         let calldata = call.input.clone();
         let trace_index = found_trace.trace_idx;
-
-        println!("{:#?}", found_trace);
 
         let res = DiscoveryProtocols::default()
             .dispatch(self.get_provider(), from_address, created_addr, trace_index, calldata)

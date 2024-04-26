@@ -63,10 +63,7 @@ action_impl!(
 mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{
-        normalized_actions::Actions,
-        TreeSearchBuilder,
-    };
+    use brontes_types::{normalized_actions::Actions, TreeSearchBuilder};
 
     use super::*;
 
