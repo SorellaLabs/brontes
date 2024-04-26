@@ -172,19 +172,19 @@ redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 
 arrow = "51.0.0"
-polars = { version = "0.38.3", features = ["lazy"]}
-parquet = {version = "51.0.0", features = ["async"] }
+polars = { version = "0.38.3", features = ["lazy"] }
+parquet = { version = "51.0.0", features = ["async"] }
 indicatif = "0.17.8"
 
 
-[profile.dev]
-opt-level = 0
+[profile.release]
+lto = "thin"
+strip = "debuginfo"
+
+[profile.debug-fast]
+inherits = "release"
+strip = "none"
 debug = true
-rpath = false
-lto = false
-debug-assertions = true
-codegen-units = 16
-incremental = true
 
 
 [profile.maxperf]
@@ -192,4 +192,3 @@ inherits = "release"
 lto = "fat"
 codegen-units = 1
 incremental = false
-

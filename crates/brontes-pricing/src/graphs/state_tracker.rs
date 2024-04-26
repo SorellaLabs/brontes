@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use alloy_primitives::Address;
 use brontes_types::FastHashMap;
 use itertools::Itertools;
@@ -29,7 +31,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
-    finalized_edge_state:    FastHashMap<Address, PoolState>,
+    finalized_edge_state:    FastHashMap<Address, StateWithDependencies>,
     /// state that verification is using
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
 }
@@ -48,31 +50,65 @@ impl StateTracker {
         }
     }
 
-    pub fn finalized_state(&self) -> &FastHashMap<Address, PoolState> {
-        &self.finalized_edge_state
+    pub fn remove_finalized_state_dep(&mut self, pool: Address, amount: u64) {
+        self.finalized_edge_state.retain(|i_pool, state| {
+            if pool != *i_pool {
+                return true
+            }
+            state.dec(amount);
+            let keep = state.dependents != 0;
+            if !keep {
+                tracing::debug!(?pool, "removing state");
+            }
+            keep
+        });
     }
 
-    pub fn all_state(&self, block: u64) -> FastHashMap<Address, PoolState> {
-        self.state_for_verification(block)
-            .into_iter()
-            .chain(self.finalized_state().clone())
+    pub fn decrement_verification_state(&mut self, pool: Address, block: u64) {
+        if let Some(s) = self
+            .verification_edge_state
+            .get_mut(&pool)
+            .filter(|pool_state| pool_state.contains_block_state(block))
+        {
+            s.dec_state(block);
+        };
+    }
+
+    pub fn finalized_state(&self) -> FastHashMap<Address, &PoolState> {
+        self.finalized_edge_state
+            .iter()
+            .map(|(a, d)| (*a, &d.state))
             .collect()
     }
 
-    pub fn state_for_verification(&self, block: u64) -> FastHashMap<Address, PoolState> {
+    pub fn all_state(&self, block: u64) -> FastHashMap<Address, &PoolState> {
+        self.state_for_verification(block)
+            .into_iter()
+            .chain(self.finalized_state())
+            .collect()
+    }
+
+    pub fn all_state_range(&self, block: RangeInclusive<u64>) -> FastHashMap<Address, &PoolState> {
+        self.state_for_verification_range(block)
+            .into_iter()
+            .chain(self.finalized_state())
+            .collect()
+    }
+
+    pub fn state_for_verification_range(
+        &self,
+        block: RangeInclusive<u64>,
+    ) -> FastHashMap<Address, &PoolState> {
         self.verification_edge_state
             .iter()
-            .filter_map(|(addr, state)| Some((*addr, state.get_state(block)?.clone())))
-            .chain(
-                self.finalized_edge_state
-                    .iter()
-                    .filter_map(|(addr, state)| {
-                        if state.last_update == block {
-                            return Some((*addr, state.clone()));
-                        }
-                        None
-                    }),
-            )
+            .filter_map(|(addr, state)| Some((*addr, state.get_state_range(&block)?)))
+            .collect()
+    }
+
+    pub fn state_for_verification(&self, block: u64) -> FastHashMap<Address, &PoolState> {
+        self.verification_edge_state
+            .iter()
+            .filter_map(|(addr, state)| Some((*addr, state.get_state(block)?)))
             .collect()
     }
 
@@ -85,21 +121,30 @@ impl StateTracker {
         pool_state.mark_state_as_finalized(block);
     }
 
-    pub fn missing_state(&self, block: u64, edges: &[SubGraphEdge]) -> Vec<PoolPairInfoDirection> {
+    /// will return state that is to be fetched but also will increment state
+    /// dep counters
+    #[allow(clippy::blocks_in_conditions)]
+    pub fn missing_state(
+        &mut self,
+        block: u64,
+        edges: &[SubGraphEdge],
+    ) -> Vec<PoolPairInfoDirection> {
         edges
             .iter()
             .filter_map(|edge| {
-                self.verification_edge_state
-                    .get(&edge.pool_addr)
+                if self
+                    .verification_edge_state
+                    .get_mut(&edge.pool_addr)
                     .filter(|pool_state| pool_state.contains_block_state(block))
-                    .map(|_| None)
-                    .or_else(|| {
-                        self.finalized_edge_state
-                            .get(&edge.pool_addr)
-                            .filter(|state| state.last_update == block)
-                            .map(|_| None)
+                    .map(|s| {
+                        s.inc_state(block);
                     })
-                    .or(Some(Some(edge.info)))?
+                    .is_some()
+                {
+                    return None
+                }
+
+                Some(edge.info)
             })
             .collect_vec()
     }
@@ -115,7 +160,18 @@ impl StateTracker {
                 };
 
                 if should_finalize {
-                    self.finalized_edge_state.insert(*pool, state);
+                    match self.finalized_edge_state.entry(*pool) {
+                        std::collections::hash_map::Entry::Vacant(v) => {
+                            v.insert(state);
+                        }
+                        std::collections::hash_map::Entry::Occupied(mut o) => {
+                            let old_state = o.get_mut();
+                            if state.state.last_update > block {
+                                panic!("finalized state was ahead of regular state");
+                            }
+                            old_state.dependents += state.dependents;
+                        }
+                    }
                 }
             });
     }
@@ -125,32 +181,74 @@ impl StateTracker {
             return;
         };
 
-        state.increment_state(update);
+        state.state.increment_state(update);
     }
 
-    pub fn new_state_for_verification(&mut self, address: Address, state: PoolState) {
+    pub fn new_state_for_verification(&mut self, address: Address, state: StateWithDependencies) {
         self.verification_edge_state
             .entry(address)
             .or_default()
             .add_state(state);
     }
+}
 
-    pub fn remove_state(&mut self, address: &Address) {
-        self.verification_edge_state.remove(address);
+#[derive(Debug, Clone, derive_more::Deref)]
+pub struct StateWithDependencies {
+    #[deref]
+    pub state:      PoolState,
+    pub dependents: u64,
+}
+
+impl StateWithDependencies {
+    pub fn inc(&mut self, am: u64) {
+        self.dependents += am;
+    }
+
+    pub fn dec(&mut self, am: u64) {
+        self.dependents -= am;
     }
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct PoolStateWithBlock(Vec<(bool, PoolState)>);
+pub struct PoolStateWithBlock(Vec<(bool, StateWithDependencies)>);
 
 impl PoolStateWithBlock {
     pub fn mark_state_as_finalized(&mut self, block: u64) {
         for (finalized, state) in &mut self.0 {
             if block == state.last_update {
                 *finalized = true;
-                break;
             }
         }
+    }
+
+    pub fn inc_state(&mut self, block: u64) {
+        if let Some(state) = self
+            .0
+            .iter_mut()
+            .map(|(_, state)| state)
+            .find(|state| block == state.last_update)
+        {
+            state.inc(1);
+        }
+    }
+
+    pub fn dec_state(&mut self, block: u64) {
+        if let Some(state) = self
+            .0
+            .iter_mut()
+            .map(|(_, state)| state)
+            .find(|state| block == state.last_update)
+        {
+            state.dec(1);
+        }
+    }
+
+    pub fn get_state_range(&self, block: &RangeInclusive<u64>) -> Option<&PoolState> {
+        self.0
+            .iter()
+            .map(|(_, state)| state)
+            .find(|&state| block.contains(&state.last_update))
+            .map(|state| &state.state)
     }
 
     pub fn get_state(&self, block: u64) -> Option<&PoolState> {
@@ -158,14 +256,15 @@ impl PoolStateWithBlock {
             .iter()
             .map(|(_, state)| state)
             .find(|&state| block == state.last_update)
+            .map(|state| &state.state)
     }
 
-    pub fn remove_state(&mut self, block: u64) -> Option<(bool, PoolState)> {
+    pub fn remove_state(&mut self, block: u64) -> Option<(bool, StateWithDependencies)> {
         let mut res = None;
         self.0.retain(|(keep, state)| {
             if state.last_update == block {
                 res = Some((*keep, state.clone()));
-                return false;
+                return false
             }
             true
         });
@@ -173,14 +272,14 @@ impl PoolStateWithBlock {
         res
     }
 
-    pub fn add_state(&mut self, state: PoolState) {
+    pub fn add_state(&mut self, state: StateWithDependencies) {
         self.0.push((false, state));
     }
 
     pub fn contains_block_state(&self, block: u64) -> bool {
         for (_, state) in &self.0 {
             if block == state.last_update {
-                return true;
+                return true
             }
         }
 
