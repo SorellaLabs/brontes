@@ -10,7 +10,7 @@ use brontes_types::FastHashMap;
 use futures::future::join_all;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
-use reth_rpc_types::{AnyReceiptEnvelope, Log, RawLog, TransactionReceipt};
+use reth_rpc_types::{AnyReceiptEnvelope, Log, TransactionReceipt};
 use tracing::error;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;

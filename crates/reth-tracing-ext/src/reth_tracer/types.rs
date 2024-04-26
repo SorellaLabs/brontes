@@ -5,8 +5,8 @@ use alloy_primitives::{Address, Bytes, LogData, U256, U64};
 use alloy_rpc_types_trace::{
     geth::{CallFrame, CallLogFrame, GethDefaultTracingOptions, StructLog},
     parity::{
-        Action, ActionType, CallAction, CallOutput, CallType, CreateAction, CreateOutput,
-        SelfdestructAction, TraceOutput, TransactionTrace,
+        Action, ActionType, CallAction, CallOutput, CreateAction, CreateOutput, SelfdestructAction,
+        TraceOutput, TransactionTrace,
     },
 };
 use revm::interpreter::{opcode, CallContext, CallScheme, CreateScheme, InstructionResult, OpCode};
