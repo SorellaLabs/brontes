@@ -60,7 +60,7 @@ impl Database {
             DatabaseCommands::TraceRange(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Init(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
-            DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint,ctx).await,
+            DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,

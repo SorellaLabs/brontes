@@ -1,28 +1,10 @@
-use std::path::Path;
-
-use brontes_core::{decoding::Parser as DParser, DBWriter, LibmdbxReader};
-use brontes_database::{
-    clickhouse::cex_config::CexDownloadConfig,
-    libmdbx::{cursor::CompressedCursor, Libmdbx},
-    CompressedTable, IntoTableKey, Tables,
-};
-use brontes_inspect::Inspectors;
-use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
+use brontes_core::{DBWriter, LibmdbxReader};
 use clap::Parser;
 use itertools::Itertools;
-use reth_db::mdbx::RO;
-use reth_interfaces::db::DatabaseErrorInfo;
-use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    banner,
-    cli::{
-        get_tracing_provider, init_inspectors,
-        utils::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object},
-    },
+    cli::utils::{load_database, static_object},
     runner::CliContext,
-    BrontesRunConfig, MevProcessor,
 };
 #[derive(Debug, Parser)]
 pub struct LMem {
