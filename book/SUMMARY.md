@@ -20,4 +20,4 @@
 - [Building On Brontes](./build/intro.md)
   - [Classifiers](./build/classifiers.md)
   - [Inspectors](./build/inspectors.md)
-- [CLI Reference](./CLI%20Reference/cli.md)
+- [CLI Reference](./cli/cli.md)
