@@ -63,10 +63,11 @@ impl TracingProvider for TracingClient {
         &self,
         number: BlockNumberOrTag,
     ) -> eyre::Result<Option<Vec<TransactionReceipt>>> {
-        self.api
+        Ok(self
+            .api
             .block_receipts(BlockId::Number(number))
-            .await
-            .map_err(Into::into)
+            .await?
+            .map(|t| t.into_iter().map(|t| t.inner).collect::<Vec<_>>()))
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {
