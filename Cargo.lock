@@ -7276,7 +7276,7 @@ dependencies = [
  "reth-revm",
  "reth-tasks",
  "reth-transaction-pool",
- "revm 8.0.0",
+ "revm",
  "tokio",
  "tracing",
 ]
@@ -7638,7 +7638,7 @@ dependencies = [
  "reth-provider",
  "reth-revm",
  "reth-transaction-pool",
- "revm 8.0.0",
+ "revm",
  "tracing",
 ]
 
@@ -7659,7 +7659,7 @@ source = "git+https://github.com/paradigmxyz/reth?rev=ac29b4b#ac29b4b73be382caf2
 dependencies = [
  "reth-interfaces",
  "reth-primitives",
- "revm 8.0.0",
+ "revm",
  "revm-primitives",
 ]
 
@@ -8101,7 +8101,7 @@ dependencies = [
  "reth-codecs",
  "reth-ethereum-forks",
  "reth-rpc-types",
- "revm 8.0.0",
+ "revm",
  "revm-primitives",
  "roaring",
  "secp256k1 0.27.0",
@@ -8136,7 +8136,7 @@ dependencies = [
  "reth-nippy-jar",
  "reth-primitives",
  "reth-trie",
- "revm 8.0.0",
+ "revm",
  "strum 0.26.2",
  "tokio",
  "tokio-stream",
@@ -8174,7 +8174,7 @@ dependencies = [
  "reth-interfaces",
  "reth-primitives",
  "reth-provider",
- "revm 8.0.0",
+ "revm",
  "revm-inspectors",
  "tracing",
 ]
@@ -8215,7 +8215,7 @@ dependencies = [
  "reth-rpc-types-compat",
  "reth-tasks",
  "reth-transaction-pool",
- "revm 8.0.0",
+ "revm",
  "revm-inspectors",
  "revm-primitives",
  "schnellru",
@@ -8468,7 +8468,7 @@ dependencies = [
  "reth-tasks",
  "reth-tracing-ext",
  "reth-transaction-pool",
- "revm 7.2.0",
+ "revm",
  "revm-inspectors",
  "revm-primitives",
  "serde",
@@ -8498,7 +8498,7 @@ dependencies = [
  "reth-primitives",
  "reth-provider",
  "reth-tasks",
- "revm 8.0.0",
+ "revm",
  "schnellru",
  "serde",
  "smallvec",
@@ -8521,7 +8521,7 @@ dependencies = [
  "reth-interfaces",
  "reth-metrics",
  "reth-primitives",
- "revm 8.0.0",
+ "revm",
  "thiserror",
  "tracing",
 ]
@@ -8550,21 +8550,6 @@ dependencies = [
 
 [[package]]
 name = "revm"
-version = "7.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24fd3ed4b62dc61c647552d8b781811ae25ec74d23309055077e4dfb392444d2"
-dependencies = [
- "auto_impl",
- "cfg-if",
- "dyn-clone",
- "revm-interpreter 3.4.0",
- "revm-precompile 5.1.0",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "revm"
 version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72a454c1c650b2b2e23f0c461af09e6c31e1d15e1cbebe905a701c46b8a50afc"
@@ -8572,8 +8557,8 @@ dependencies = [
  "auto_impl",
  "cfg-if",
  "dyn-clone",
- "revm-interpreter 4.0.0",
- "revm-precompile 6.0.0",
+ "revm-interpreter",
+ "revm-precompile",
  "serde",
  "serde_json",
 ]
@@ -8591,19 +8576,9 @@ dependencies = [
  "boa_engine",
  "boa_gc",
  "colorchoice",
- "revm 8.0.0",
+ "revm",
  "serde_json",
  "thiserror",
-]
-
-[[package]]
-name = "revm-interpreter"
-version = "3.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f0a1818f8c876b0d71a0714217c34da7df8a42c0462750768779d55680e4554"
-dependencies = [
- "revm-primitives",
- "serde",
 ]
 
 [[package]]
@@ -8614,23 +8589,6 @@ checksum = "d322f2730cd300e99d271a1704a2dfb8973d832428f5aa282aaa40e2473b5eec"
 dependencies = [
  "revm-primitives",
  "serde",
-]
-
-[[package]]
-name = "revm-precompile"
-version = "5.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a9645a70f1df1e5bd7fa8718b9ba486fac9c3f0467aa6b58e7f590d5f6fd0f7"
-dependencies = [
- "aurora-engine-modexp",
- "c-kzg",
- "k256",
- "once_cell",
- "revm-primitives",
- "ripemd",
- "secp256k1 0.28.2",
- "sha2 0.10.8",
- "substrate-bn",
 ]
 
 [[package]]
