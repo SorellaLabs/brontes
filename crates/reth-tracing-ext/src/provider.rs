@@ -74,7 +74,7 @@ impl TracingProvider for TracingClient {
             return Err(eyre!("no transaction found"));
         };
 
-        Ok((tx.block_number.unwrap().to::<u64>(), tx.transaction_index.unwrap().to::<usize>()))
+        Ok((tx.block_number.unwrap(), tx.transaction_index.unwrap()))
     }
 
     async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>> {
