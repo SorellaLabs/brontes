@@ -1,46 +1,82 @@
 # Installation
 
-Brontes, designed to run Reth as a background process, supports Linux and macOS platforms. Currently, Brontes must be installed from source, though plans are underway to offer Docker container deployments in the future.
+Brontes runs on Linux and macOS. Currently it must be installed from source, though plans are underway to offer Docker container deployments in the future.
 
 ## Hardware Requirements
 
-Running Brontes with Reth in the background requires hardware that's more robust than what might typically be recommended for Reth alone. This ensures optimal performance and reliability, especially for those aiming to keep up with the blockchain's tip.
+Running Brontes with Reth in the background requires hardware that's more robust than what might typically be recommended for Reth alone. This ensures optimal performance and reliability, especially for those aiming to keep up with the blockchain tip.
 
-|           | Archive Node (Brontes + Reth)                | Full Node (Brontes + Reth)                   |
-| --------- | -------------------------------------------- | -------------------------------------------- |
-| Disk      | Minimum of 2.7TB (TLC NVMe recommended)      | Minimum of 1.2TB (TLC NVMe recommended)      |
-| Memory    | 16GB+                                        | 16GB+                                        |
-| CPU       | High clock speed prioritized over core count | High clock speed prioritized over core count |
-| Bandwidth | Stable connection of 30Mbps+                 | Stable connection of 30Mbps+                 |
+- See [reth installation guide](https://paradigmxyz.github.io/reth/installation/installation.html) for more details on Reth's hardware requirements.
 
-### Installation Steps
+|           | Archive Node (Brontes + Reth)                |
+| --------- | -------------------------------------------- |
+| Disk      | Minimum of 3TB (TLC NVMe recommended)        |
+| Memory    | 32GB+                                        |
+| CPU       | High clock speed prioritized over core count |
+| Bandwidth | Stable connection of 30Mbps+                 |
 
-Since the current method to install Reth is from source, follow these steps:
+## Installation Steps
 
-1. **Prepare Your Environment**: Ensure your server meets the above hardware specifications, with a focus on TLC NVMe drives for storage, ample memory, and a capable CPU.
+Brontes can be configured in two primary modes based on your data needs and technical setup. Select the appropriate installation option below, then proceed with the general setup steps applicable to both configurations.
 
-2. **Install Dependencies**: Reth may require certain libraries and dependencies specific to your operating system. Refer to the Reth documentation for a detailed list and installation instructions.
+### Data Setup Options
 
-3. **Clone the Reth Repository**: Access the latest version of Reth by cloning the repository from GitHub.
+#### Option 1: Running Brontes Without a Reth Archive Node
 
-   ```sh
-    git clone https://github.com/SorellaLabs/brontes
-   ```
+This setup is designed for users that want to run historical analysis and aren't interested in keeping up with chain tip.
 
-4. **Build from Source**: Navigate to the cloned repository and compile Reth.
+**Steps:**
 
-   ```sh
-   cd brontes
-   RUSTFLAGS="-C target-cpu=native" cargo install --path crates/bin --profile maxperf
-   ```
+1. **Download the Brontes libmdbx Snapshot (with trace data)**
 
-5. **Configure Reth**: Before running Reth, configure it to suit your needs. Adjust the configuration files as necessary, ensuring they're optimized for running alongside Brontes.
+   - Obtain the db snapshot containing the necessary data to run historical analysis.
+   - Snapshots are similar to Merkle.io's Reth snapshots and are updated every Monday and Thursday at midnight.
+   - Visit [Brontes Downloads](https://brontes.xyz/downloads) to download.
 
-6. **Run Reth**: Ensure, ensuring it syncs fully with the desired blockchain network. This process can take some time, especially for an Archive Node.
+#### Option 2: Running Brontes with a Reth Archive Node
 
-7. **Install Brontes**: With Reth running and synced, follow the specific installation instructions provided for Brontes, ensuring it's configured to interact with Reth as intended.
+Opt for this setup if you need real-time data and wish to remain synced with chain tip.
 
-### Additional Recommendations
+**Steps:**
 
-- **Bandwidth and Connectivity**: Ensure your server has a stable and fast internet connection to manage both Brontes and Reth's network traffic effectively.
-- **Future Updates**: Keep an eye out for the release of the Docker container for Brontes, which could simplify deployment and management of your Brontes and Reth setup.
+1. **Set Up and Sync a Reth Archive Node**
+
+   - Install Reth following the [Reth Installation Guide](https://paradigmxyz.github.io/reth/installation/source.html).
+   - Use [Merkle Snapshots](https://snapshots.merkle.io/) to get the latest reth db snapshot & sync faster.
+
+2. **Download the Brontes libmdbx Snapshot (without trace data)**
+
+   - Obtain the db snapshot containing the necessary data to run historical analysis.
+   - Snapshots are similar to Merkle.io's Reth snapshots and are updated every Monday and Thursday at midnight.
+   - Visit [Brontes Downloads](https://brontes.xyz/downloads) to download, choose the snapshot without trace data.
+
+### General Setup Steps
+
+These steps should be followed after completing the either of the initial setup options.
+
+1. **Clone the Brontes Repository**
+
+   - Retrieve the latest version from GitHub:
+     ```sh
+     git clone https://github.com/SorellaLabs/brontes
+     ```
+
+2. **Build from Source**
+
+   - Compile the software in the cloned directory. This is the base command for a standard setup:
+     ```sh
+     cd brontes
+     RUSTFLAGS="-C target-cpu=native" cargo build --profile maxperf
+     ```
+   - **Optional Feature**: If you wish to run the CEX-DEX Inspector with trade-based markouts, append `--features cex-dex-markout` flag to the build command:
+     ```sh
+     RUSTFLAGS="-C target-cpu=native" cargo build --profile maxperf --features cex-dex-markout
+     ```
+
+3. **Set Up Environment**
+
+   - Before running Brontes, configure your environment by referencing the `sample.env` file provided in the repository. This file contains necessary environment variables and their explanations. Rename `sample.env` to `.env` and update the values according to your specific setup.
+
+### Additional Notes
+
+- **Chain Tip Access**: For users that want to follow the chain head, please contact us via the Brontes Telegram group chat to obtain an API key necessary for fetching the latest metadata at chain tip.

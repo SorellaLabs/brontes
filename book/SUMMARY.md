@@ -2,7 +2,6 @@
 
 - [Introduction](./intro.md)
 - [Installation](./installation/installation.md)
-  - [Build from Source](./installation/source.md)
 - [Run Brontes](./run/run_brontes.md)
 - [Brontes Architecture](./architecture/intro.md)
   - [Tree Construction and Normalization](./architecture/tree_builder_and_normalization.md)

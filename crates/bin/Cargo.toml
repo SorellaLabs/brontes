@@ -94,6 +94,7 @@ default = [
   "brontes-inspect/default",
   "pretty-print",
   "jemalloc",
+  "local-reth"
 ]
 
 jemalloc = []
