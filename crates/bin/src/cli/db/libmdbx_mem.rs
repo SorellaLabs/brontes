@@ -43,11 +43,13 @@ impl LMem {
             .map(|f| f.collect_vec())
         {
             set.push(ctx.task_executor.spawn_critical("test_mem", async move {
+                let mut cnt = 0usize;
                 for block in block_range {
-                    let _ = libmdbx.load_trace(block);
-                    let _ = libmdbx.get_dex_quotes(block);
-                    let _ = libmdbx.get_metadata(block);
+                    cnt += libmdbx.load_trace(block).is_ok() as usize;
+                    cnt += libmdbx.get_dex_quotes(block).is_ok() as usize;
+                    cnt += libmdbx.get_metadata(block).is_ok() as usize;
                 }
+                println!("{cnt}");
             }));
         }
 
