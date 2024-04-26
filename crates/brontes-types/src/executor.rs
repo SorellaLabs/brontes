@@ -49,7 +49,7 @@ pub struct BrontesTaskManager {
 }
 
 impl BrontesTaskManager {
-    /// Returns a a `TaskManager` over the currently running Runtime.
+    /// Returns a a `BrontesTaskManager` over the currently running Runtime.
     ///
     /// # Panics
     ///
@@ -401,8 +401,8 @@ impl BrontesTaskExecutor {
 
     /// This spawns a regular task onto the runtime.
     ///
-    /// The [TaskManager] will wait until the given future has completed before
-    /// shutting down.
+    /// The [BrontesTaskManager] will wait until the given future has completed
+    /// before shutting down.
     ///
     /// # Example
     ///
