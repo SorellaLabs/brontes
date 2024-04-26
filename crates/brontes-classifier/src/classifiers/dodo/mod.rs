@@ -1,5 +1,5 @@
 mod discovery;
-mod dodo;
+mod dodo_v2;
 
 pub use discovery::*;
-pub use dodo::*;
+pub use dodo_v2::*;

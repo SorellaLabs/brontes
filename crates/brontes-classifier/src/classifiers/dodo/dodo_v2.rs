@@ -313,16 +313,18 @@ mod tests {
             .unwrap();
     }
 
-    // Tested but couldn't find a transaction that was less than 300 lines of trace.
-    // #[brontes_macros::test]
+    // Tested but couldn't find a transaction that was less than 300 lines of
+    // trace. #[brontes_macros::test]
     // async fn test_dodo_sell_base() {
     //     let classifier_utils = ClassifierTestUtils::new().await;
     //     let swap =
-    //         B256::from(hex!("408a31b29abd74fd5cef887e7770c230cb881f4928b037149f4877a9aa8edf9d"));
+    //         B256::from(hex!("
+    // 408a31b29abd74fd5cef887e7770c230cb881f4928b037149f4877a9aa8edf9d"));
 
     //     let token_in = TokenInfoWithAddress::weth();
     //     let token_out = TokenInfoWithAddress {
-    //         address: Address::new(hex!("9bf1d7d63dd7a4ce167cf4866388226eeefa702e")),
+    //         address:
+    // Address::new(hex!("9bf1d7d63dd7a4ce167cf4866388226eeefa702e")),
     //         inner:   TokenInfo { decimals: 18, symbol: "BEN".to_string() },
     //     };
 
@@ -343,9 +345,12 @@ mod tests {
     //     let eq_action = Actions::Swap(NormalizedSwap {
     //         protocol:    Protocol::Dodo,
     //         trace_index: 1,
-    //         from:        Address::new(hex!("E37e799D5077682FA0a244D46E5649F71457BD09")),
-    //         recipient:   Address::new(hex!("1111111254EEB25477B68fb85Ed929f73A960582")),
-    //         pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
+    //         from:
+    // Address::new(hex!("E37e799D5077682FA0a244D46E5649F71457BD09")),
+    //         recipient:
+    // Address::new(hex!("1111111254EEB25477B68fb85Ed929f73A960582")),
+    //         pool:
+    // Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
     //         token_in,
     //         amount_in:   U256::from_str("1702990445757351")
     //             .unwrap()
