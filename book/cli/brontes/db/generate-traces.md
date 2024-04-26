@@ -1,17 +1,18 @@
-# brontes
+# brontes db generate-traces
 
-The verbosity settings for the cli
+Generates traces and will store them in libmdbx (also clickhouse if --feature local-clickhouse)
 
 ```bash
-$ brontes --help
-Usage: brontes [OPTIONS] <COMMAND>
-
-Commands:
-  run   Run brontes
-  db    Brontes database commands
-  help  Print this message or the help of the given subcommand(s)
+$ brontes db generate-traces --help
+Usage: brontes db generate-traces [OPTIONS] --start-block <START_BLOCK> --end-block <END_BLOCK>
 
 Options:
+  -s, --start-block <START_BLOCK>
+          Start Block
+
+  -e, --end-block <END_BLOCK>
+          block to trace to
+
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 

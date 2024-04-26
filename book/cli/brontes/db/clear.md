@@ -1,17 +1,17 @@
-# brontes
+# brontes db clear
 
-The verbosity settings for the cli
+Clear a libmdbx table
 
 ```bash
-$ brontes --help
-Usage: brontes [OPTIONS] <COMMAND>
-
-Commands:
-  run   Run brontes
-  db    Brontes database commands
-  help  Print this message or the help of the given subcommand(s)
+$ brontes db clear --help
+Usage: brontes db clear [OPTIONS]
 
 Options:
+  -t, --tables <TABLES>
+          Tables to clear
+          
+          [default: CexPrice,DexPrice,CexTrades,BlockInfo,InitializedState,MevBlocks,TokenDecimals,AddressToProtocolInfo,PoolCreationBlocks,Builder,AddressMeta,SearcherEOAs,SearcherContracts,SubGraphs,TxTraces]
+
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 

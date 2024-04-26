@@ -66,11 +66,11 @@ These steps should be followed after completing the either of the initial setup 
    - Compile the software in the cloned directory. This is the base command for a standard setup:
      ```sh
      cd brontes
-     RUSTFLAGS="-C target-cpu=native" cargo build --profile maxperf
+     RUSTFLAGS="-C target-cpu=native" cargo install --path crates/bin --profile maxperf
      ```
    - **Optional Feature**: If you wish to run the CEX-DEX Inspector with trade-based markouts, append `--features cex-dex-markout` flag to the build command:
      ```sh
-     RUSTFLAGS="-C target-cpu=native" cargo build --profile maxperf --features cex-dex-markout
+     RUSTFLAGS="-C target-cpu=native" cargo install --path crates/bin --profile maxperf --features cex-dex-markout
      ```
 
 3. **Set Up Environment**

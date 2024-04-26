@@ -1,19 +1,23 @@
-# brontes
+# brontes db insert
 
-The verbosity settings for the cli
+Allows for inserting items into libmdbx
 
 ```bash
-$ brontes --help
-Usage: brontes [OPTIONS] <COMMAND>
-
-Commands:
-  run   Run brontes
-  db    Brontes database commands
-  help  Print this message or the help of the given subcommand(s)
+$ brontes db insert --help
+Usage: brontes db insert [OPTIONS] --table <TABLE> --key <KEY> --value <VALUE>
 
 Options:
+  -t, --table <TABLE>
+          that table to be queried
+
+  -k, --key <KEY>
+          
+
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
+
+      --value <VALUE>
+          
 
   -h, --help
           Print help (see a summary with '-h')

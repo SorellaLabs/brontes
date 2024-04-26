@@ -1,5 +1,11 @@
 - [`brontes`](./brontes.md)
   - [`brontes run`](./brontes/run.md)
-  - [`reth init`](./brontes/init.md)
   - [`brontes db`](./brontes/db.md)
-  - [`brontes analytics`](./brontes/analaytics.md)
+    - [`brontes db insert`](./brontes/db/insert.md)
+    - [`brontes db query`](./brontes/db/query.md)
+    - [`brontes db clear`](./brontes/db/clear.md)
+    - [`brontes db generate-traces`](./brontes/db/generate-traces.md)
+    - [`brontes db libmdbx-mem-test`](./brontes/db/libmdbx-mem-test.md)
+    - [`brontes db init`](./brontes/db/init.md)
+    - [`brontes db export`](./brontes/db/export.md)
+

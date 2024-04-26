@@ -2,7 +2,7 @@
 set -eo pipefail
 
 BOOK_ROOT="$(dirname "$(dirname "$0")")"
-RETH=${1:-"$(dirname "$BOOK_ROOT")/target/debug/brontes"}
+BRONTES=${1:-"$(dirname "$BOOK_ROOT")/target/debug/brontes"}
 
 cmd=(
   "$(dirname "$0")/help.py"
@@ -10,7 +10,7 @@ cmd=(
   --root-indentation 2
   --root-summary
   --out-dir "$BOOK_ROOT/cli/"
-  "$RETH"
+  "$BRONTES"
 )
 echo "Running: $" "${cmd[*]}"
 "${cmd[@]}"

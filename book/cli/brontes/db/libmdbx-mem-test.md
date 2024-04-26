@@ -1,17 +1,18 @@
-# brontes
+# brontes db libmdbx-mem-test
 
-The verbosity settings for the cli
+Test libmdbx memory usage
 
 ```bash
-$ brontes --help
-Usage: brontes [OPTIONS] <COMMAND>
-
-Commands:
-  run   Run brontes
-  db    Brontes database commands
-  help  Print this message or the help of the given subcommand(s)
+$ brontes db libmdbx-mem-test --help
+Usage: brontes db libmdbx-mem-test [OPTIONS] --start <START> --end <END>
 
 Options:
+  -s, --start <START>
+          
+
+  -e, --end <END>
+          
+
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 

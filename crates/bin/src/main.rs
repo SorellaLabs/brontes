@@ -50,9 +50,6 @@ fn run() -> eyre::Result<()> {
         Commands::Database(command) => {
             runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
         }
-        Commands::Analytics(command) => {
-            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
-        }
     }
 }
 

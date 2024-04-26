@@ -1,17 +1,18 @@
-# brontes
+# brontes db query
 
-The verbosity settings for the cli
+Query data from any libmdbx table and pretty print it in stdout
 
 ```bash
-$ brontes --help
-Usage: brontes [OPTIONS] <COMMAND>
-
-Commands:
-  run   Run brontes
-  db    Brontes database commands
-  help  Print this message or the help of the given subcommand(s)
+$ brontes db query --help
+Usage: brontes db query [OPTIONS] --table <TABLE> --key <KEY>
 
 Options:
+  -t, --table <TABLE>
+          that table to query
+
+  -k, --key <KEY>
+          the key of the table being queried. if a range is wanted use the rust syntax of .. --key 80 or --key 80..100
+
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 
