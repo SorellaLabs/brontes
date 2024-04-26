@@ -440,19 +440,6 @@ impl From<CallKind> for ActionType {
     }
 }
 
-impl From<CallKind> for CallType {
-    fn from(ty: CallKind) -> Self {
-        match ty {
-            CallKind::Call => Self::Call,
-            CallKind::StaticCall => Self::StaticCall,
-            CallKind::CallCode => Self::CallCode,
-            CallKind::DelegateCall => Self::DelegateCall,
-            CallKind::Create => Self::None,
-            CallKind::Create2 => Self::None,
-        }
-    }
-}
-
 #[allow(dead_code)]
 pub(crate) struct CallTraceStepStackItem<'a> {
     /// The trace node that contains this step
