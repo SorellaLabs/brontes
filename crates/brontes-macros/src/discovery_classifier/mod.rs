@@ -4,7 +4,7 @@ use syn::{parse::Parse, ExprClosure, Ident, Index, Path, Token};
 pub mod curve;
 
 pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
-    let MacroParse { discovery_name, function_call_path, factory_address, address_call_function } =
+    let MacroParse { discovery_name, function_call_path, factory_address,, deployer_address, address_call_function } =
         syn::parse2(token_stream)?;
 
     is_proper_address(&factory_address)?;
@@ -82,6 +82,7 @@ struct MacroParse {
     discovery_name:        Ident,
     function_call_path:    Path,
     factory_address:       Literal,
+    deployer_address:      Option<Literal>, 
     /// The closure that we use to get the address of the pool
     address_call_function: ExprClosure,
 }
@@ -98,6 +99,8 @@ impl Parse for MacroParse {
         input.parse::<Token![,]>()?;
         let factory_address: Literal = input.parse()?;
         input.parse::<Token![,]>()?;
+        let deployer_address: Option<Literal> = input.parse().ok(); // Optional parsing for deployer_address
+        input.parse::<Token![,]>()?;
         let address_call_function: ExprClosure = input.parse()?;
 
         if !input.is_empty() {
@@ -107,7 +110,7 @@ impl Parse for MacroParse {
             ));
         }
 
-        Ok(Self { discovery_name, factory_address, function_call_path, address_call_function })
+        Ok(Self { discovery_name, factory_address, deployer_address, function_call_path, address_call_function })
     }
 }
 

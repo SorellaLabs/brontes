@@ -19,6 +19,25 @@ discovery_impl!(
     }
 );
 
+action_impl!(
+    Protocol::Dodo,
+    crate::DodoDVMFactory::createDODOVendingMachineCall,
+    NewPool,
+    [NewDVM],
+    logs: true,
+    |info: CallInfo, log_data: DodoDODOVendingMachinelCallLogs, _| {
+        let logs = log_data.pool_registered_field?;
+
+        Ok(NormalizedNewPool {
+            trace_index: info.trace_idx,
+            protocol: Protocol::BalancerV2,
+            pool_address: logs.poolAddress,
+            tokens: vec![],
+        })
+    }
+);
+
+
 discovery_impl!(
     DodoDSPDiscovery,
     crate::DodoDSPFactory::createDODOStablePoolCall,
