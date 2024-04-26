@@ -2,11 +2,11 @@ use std::collections::VecDeque;
 
 pub use alloy_primitives::Log;
 use alloy_primitives::{Address, Bytes, LogData, U256, U64};
-use alloy_rpc_trace_types::{
+use alloy_rpc_types_trace::{
     geth::{CallFrame, CallLogFrame, GethDefaultTracingOptions, StructLog},
     parity::{
-        Action, ActionType, CallAction, CallOutput, CallType, CreateAction, CreateOutput,
-        SelfdestructAction, TraceOutput, TransactionTrace,
+        Action, ActionType, CallAction, CallOutput, CreateAction, CreateOutput, SelfdestructAction,
+        TraceOutput, TransactionTrace,
     },
 };
 use revm::interpreter::{opcode, CallContext, CallScheme, CreateScheme, InstructionResult, OpCode};
@@ -436,19 +436,6 @@ impl From<CallKind> for ActionType {
             }
             CallKind::Create => Self::Create,
             CallKind::Create2 => Self::Create,
-        }
-    }
-}
-
-impl From<CallKind> for CallType {
-    fn from(ty: CallKind) -> Self {
-        match ty {
-            CallKind::Call => Self::Call,
-            CallKind::StaticCall => Self::StaticCall,
-            CallKind::CallCode => Self::CallCode,
-            CallKind::DelegateCall => Self::DelegateCall,
-            CallKind::Create => Self::None,
-            CallKind::Create2 => Self::None,
         }
     }
 }
