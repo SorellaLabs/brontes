@@ -48,7 +48,7 @@ impl MultiCallFrameClassifier for Dodo {
                             nodes_to_prune.push(index);
                         }
                         _ => {
-                            warn!("Balancer V2 flashloan, unknown call");
+                            warn!("Dodo flashloan, unknown call");
                             continue
                         }
                     }

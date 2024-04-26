@@ -48,7 +48,7 @@ impl MultiCallFrameClassifier for MakerDss {
                             nodes_to_prune.push(index);
                         }
                         _ => {
-                            warn!("Balancer V2 flashloan, unknown call");
+                            warn!("Maker DSS flashloan, unknown call");
                             continue
                         }
                     }
