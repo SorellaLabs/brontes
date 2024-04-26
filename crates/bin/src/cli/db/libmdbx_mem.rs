@@ -34,7 +34,10 @@ impl LMem {
                                 let _ = libmdbx.save_traces(block, t).await;
                             }
 
-                            cnt += libmdbx.get_dex_quotes(block).is_ok() as usize;
+                            if let Ok(d) = libmdbx.get_dex_quotes(block) {
+                                cnt +=1;
+                                let _ = libmdbx.write_dex_quotes(block, Some(d)).await;
+                            }
                             cnt += libmdbx.get_metadata(block).is_ok() as usize;
                         }
                         println!("{cnt}");
