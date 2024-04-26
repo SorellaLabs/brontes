@@ -2,8 +2,6 @@ use std::collections::HashSet;
 
 use alloy_rpc_types_trace::{geth::GethDefaultTracingOptions, parity::TraceType};
 
-/// Gives guidance to the [TracingInspector](crate::tracing::TracingInspector).
-///
 /// Use [TracingInspectorConfig::default_parity] or
 /// [TracingInspectorConfig::default_geth] to get the default configs for
 /// specific styles of traces.
