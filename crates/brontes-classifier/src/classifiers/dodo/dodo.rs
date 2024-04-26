@@ -1,35 +1,12 @@
 use brontes_macros::action_impl;
 use brontes_types::{
-    normalized_actions::{
-        NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedNewPool, NormalizedSwap,
-    },
+    normalized_actions::{NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedSwap},
     structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
 use reth_primitives::U256;
 
 use crate::DodoDSPPool::{buySharesReturn, sellSharesReturn};
-
-action_impl!(
-    Protocol::Dodo,
-    crate::DodoDPPFactory::initDODOPrivatePoolCall,
-    NewPool,
-    [NewDPP],
-    logs: true,
-    |info: CallInfo, log_data: DodoInitDODOPrivatePoolCallLogs, _| {
-        let logs = log_data.new_d_p_p_field?;
-
-        let base_token = logs.baseToken;
-        let quote_token = logs.quoteToken;
-
-        Ok(NormalizedNewPool {
-            trace_index: info.trace_idx,
-            protocol: Protocol::Dodo,
-            pool_address: logs.dpp,
-            tokens: vec![base_token, quote_token],
-        })
-    }
-);
 
 action_impl!(
     Protocol::Dodo,

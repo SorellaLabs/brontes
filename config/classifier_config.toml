@@ -178,8 +178,18 @@ init_block = 16792677
 [ClipperExchange."0x655eDCE464CC797526600a462A8154650EEe4B77"]
 init_block = 16908406
 
+# DVM Factory
+[Dodo."0x72d220ce168c4f361dd4dee5d826a01ad8598f6c"]
+init_block = 11704651
+
+# DSP Factory
+[Dodo."0x6fdDB76c93299D985f4d3FC7ac468F9A168577A4"]
+init_block = 12269078
+
+# DPP Factory
 [Dodo."0x5336edE8F971339F6c0e304c66ba16F1296A2Fbe"]
 init_block = 13397058
+
 
 # [PropellerLabsSolver."0x14f2b6ca0324cd2B013aD02a7D85541d215e2906"]
 # init_block = 19025601

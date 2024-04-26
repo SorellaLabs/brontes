@@ -62,9 +62,7 @@ discovery_dispatch!(
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
     BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery,
-    DodoDVMDiscovery,
-    DodoDSPDiscovery
+    BalancerV1SmartPoolDiscovery
 );
 
 action_dispatch!(
@@ -201,5 +199,8 @@ action_dispatch!(
     ZeroXFillLimitOrderCall,
     ZeroXFillRfqOrderCall,
     ZeroXFillOrKillLimitOrderCall,
-    ZeroXFillOrKillRfqOrderCall
+    ZeroXFillOrKillRfqOrderCall,
+    DodoCreateDODOVendingMachineCall,
+    DodoCreateDODOStablePoolCall,
+    DodoInitDODOPrivatePoolCall
 );
