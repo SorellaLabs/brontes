@@ -10,7 +10,7 @@ use brontes_types::FastHashMap;
 use futures::future::join_all;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
-use reth_rpc_types::TransactionReceipt;
+use reth_rpc_types::{AnyReceiptEnvelope, Log, TransactionReceipt};
 use tracing::error;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
@@ -213,7 +213,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
     pub(crate) async fn get_receipts(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TransactionReceipt>>, BlockStats) {
+    ) -> (Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>, BlockStats) {
         let tx_receipts = self
             .tracer
             .block_receipts(BlockNumberOrTag::Number(block_num))
@@ -236,7 +236,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         &self,
         block_trace: Vec<TxTrace>,
         #[cfg(feature = "dyn-decode")] dyn_json: FastHashMap<Address, JsonAbi>,
-        block_receipts: Vec<TransactionReceipt>,
+        block_receipts: Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
         let mut stats = BlockStats::new(block_num, None);
@@ -252,9 +252,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
                         &dyn_json,
                         block_num,
                         tx_hash,
-                        receipt.transaction_index.try_into().unwrap(),
-                        receipt.gas_used.unwrap().to(),
-                        receipt.effective_gas_price.to(),
+                        receipt.transaction_index.unwrap(),
+                        receipt.gas_used,
+                        receipt.effective_gas_price,
                     )
                 },
             ))
