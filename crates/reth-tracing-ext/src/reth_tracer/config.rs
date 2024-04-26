@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use alloy_rpc_trace_types::{geth::GethDefaultTracingOptions, parity::TraceType};
+use alloy_rpc_types_trace::{geth::GethDefaultTracingOptions, parity::TraceType};
 
 /// Gives guidance to the [TracingInspector](crate::tracing::TracingInspector).
 ///
