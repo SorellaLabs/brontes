@@ -210,7 +210,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         })
     }
 
-    /// Takes Vec<(TransactionIndex, Vec<ActionIndex>)>
+    /// Takes Vec<(TransactionIndex, `Vec<ActionIndex>`)>
     /// for every action index of a transaction index, This function grabs all
     /// child nodes of the action index if and only if they are specified in
     /// the classification function of the action index node.
