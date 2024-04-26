@@ -14,6 +14,7 @@ action_impl!(
     Swap,
     [DODOSwap],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, log_data: DodoSellBaseCallLogs, db: &DB| {
         let logs = log_data.d_o_d_o_swap_field?;
 
@@ -44,6 +45,7 @@ action_impl!(
     Swap,
     [DODOSwap],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, log_data: DodoSellQuoteCallLogs, db: &DB| {
         let logs = log_data.d_o_d_o_swap_field?;
 
@@ -74,6 +76,7 @@ action_impl!(
     FlashLoan,
     [DODOFlashLoan],
     logs: true,
+    include_delegated_logs: true,
     |info: CallInfo, log_data: DodoFlashLoanCallLogs, db: &DB| {
         let logs = log_data.d_o_d_o_flash_loan_field?;
 
@@ -309,4 +312,59 @@ mod tests {
             .await
             .unwrap();
     }
+
+    // Tested but couldn't find a transaction that was less than 300 lines of trace.
+    // #[brontes_macros::test]
+    // async fn test_dodo_sell_base() {
+    //     let classifier_utils = ClassifierTestUtils::new().await;
+    //     let swap =
+    //         B256::from(hex!("408a31b29abd74fd5cef887e7770c230cb881f4928b037149f4877a9aa8edf9d"));
+
+    //     let token_in = TokenInfoWithAddress::weth();
+    //     let token_out = TokenInfoWithAddress {
+    //         address: Address::new(hex!("9bf1d7d63dd7a4ce167cf4866388226eeefa702e")),
+    //         inner:   TokenInfo { decimals: 18, symbol: "BEN".to_string() },
+    //     };
+
+    //     classifier_utils.ensure_token(token_out.clone());
+
+    //     classifier_utils.ensure_protocol(
+    //         Protocol::Dodo,
+    //         hex!("6AE6D8264A533DE49Dad16bee09761EA97b559Cd").into(),
+    //         WETH_ADDRESS,
+    //         Some(hex!("9bf1d7d63dd7a4ce167cf4866388226eeefa702e").into()),
+    //         None,
+    //         None,
+    //         None,
+    //         None,
+    //     );
+
+    //     // sell Base
+    //     let eq_action = Actions::Swap(NormalizedSwap {
+    //         protocol:    Protocol::Dodo,
+    //         trace_index: 1,
+    //         from:        Address::new(hex!("E37e799D5077682FA0a244D46E5649F71457BD09")),
+    //         recipient:   Address::new(hex!("1111111254EEB25477B68fb85Ed929f73A960582")),
+    //         pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
+    //         token_in,
+    //         amount_in:   U256::from_str("1702990445757351")
+    //             .unwrap()
+    //             .to_scaled_rational(18),
+    //         token_out,
+    //         amount_out:  U256::from_str("471051074073405078175435521")
+    //             .unwrap()
+    //             .to_scaled_rational(18),
+    //         msg_value: U256::ZERO,
+    //     });
+
+    //     classifier_utils
+    //         .contains_action(
+    //             swap,
+    //             0,
+    //             eq_action,
+    //             TreeSearchBuilder::default().with_action(Actions::is_swap),
+    //         )
+    //         .await
+    //         .unwrap();
+    // }
 }

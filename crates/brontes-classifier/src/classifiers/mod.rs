@@ -204,5 +204,7 @@ action_dispatch!(
     DodoCreateDODOStablePoolCall,
     DodoInitDODOPrivatePoolCall,
     DodoBuySharesCall,
-    DodoSellSharesCall
+    DodoSellSharesCall,
+    DodoSellBaseCall,
+    DodoSellQuoteCall
 );
