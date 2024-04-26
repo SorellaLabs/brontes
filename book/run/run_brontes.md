@@ -76,7 +76,12 @@ ultrasound_relay_collateral_address = "0xa83114a443da1cecefc50368531cace9f37fccc
 
 #### Searcher Configuration
 
+<<<<<<< HEAD
 You can define the fund and builder associations along with the types of MEV strategies they are known for:
+=======
+Searcher configurations focus on entities that execute searches. You can define the fund and builder associations along with the types of MEV (Maximal Extractable Value) strategies they are known for:
+
+> > > > > > > main
 
 **Example of a searcher configuration:**
 
