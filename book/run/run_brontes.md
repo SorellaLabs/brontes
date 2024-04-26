@@ -43,11 +43,11 @@ These settings adjust the time window used to select trades or quotes before and
 
 > **Note**
 >
-> For a complete list of command-line interface (CLI) options refer to the [CLI reference](../CLI%20Reference/cli.md) section in the documentation.
+> For a complete list of command-line interface (CLI) options refer to the [CLI reference](../cli/cli.md) section in the documentation.
 
 ### Configuring Brontes
 
-Configuring Brontes involves setting up various components using TOML configuration files. These configuration files allow you to specify detailed metadata for builders, searchers, and general address classifications, which are critical for the operational accuracy and functionality of Brontes.
+These configuration files allow you to specify detailed metadata for builders, searchers, and general address classifications, which are critical for the operational accuracy and functionality of Brontes.
 
 #### Builder Configuration
 
@@ -76,7 +76,12 @@ ultrasound_relay_collateral_address = "0xa83114a443da1cecefc50368531cace9f37fccc
 
 #### Searcher Configuration
 
+<<<<<<< HEAD
+You can define the fund and builder associations along with the types of MEV strategies they are known for:
+=======
 Searcher configurations focus on entities that execute searches. You can define the fund and builder associations along with the types of MEV (Maximal Extractable Value) strategies they are known for:
+
+> > > > > > > main
 
 **Example of a searcher configuration:**
 

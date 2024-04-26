@@ -26,9 +26,8 @@ Albeit a few masochists might revel in the painstaking but necessary prep work, 
 
 ## Navigating This Book
 
-- **Getting Started**: Dive into what Brontes is and how to set it up for your projects.
-- **Features and Functionalities**: Explore the extensive features and capabilities of Brontes.
-- **Contributing to Brontes**: Find out how you can contribute to the development and enhancement of Brontes.
+- To install Brontes, refer to the [installation guide](./installation/installation.md).
+- For running Brontes, follow the instructions in the [run guide](./run/run_brontes.md).
 
 ## Licensing and Community Involvement
 

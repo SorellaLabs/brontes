@@ -3,7 +3,7 @@
 - [Introduction](./intro.md)
 - [Installation](./installation/installation.md)
 - [Run Brontes](./run/run_brontes.md)
-- [Brontes Architecture](./architecture/intro.md)
+<!-- - [Brontes Architecture](./architecture/intro.md)
   - [Tree Construction and Normalization](./architecture/tree_builder_and_normalization.md)
   - [Database](./architecture/database.md)
   - [Inspectors](./architecture/inspectors.md)
@@ -19,7 +19,7 @@
   - [Long Tail Inspector](./mev_inspectors/long_tail.md)
 - [Building On Brontes](./build/intro.md)
   - [Classifiers](./build/classifiers.md)
-  - [Inspectors](./build/inspectors.md)
+  - [Inspectors](./build/inspectors.md) -->
 - [CLI Reference](./cli/cli.md) <!-- CLI_REFERENCE START -->
   - [`brontes`](./cli/brontes.md)
     - [`brontes run`](./cli/brontes/run.md)
