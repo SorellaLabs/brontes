@@ -38,7 +38,7 @@ impl LMem {
 
         let mut set = vec![];
         for block_range in (self.start..self.end)
-            .chunks(1000)
+            .chunks(100_000)
             .into_iter()
             .map(|f| f.collect_vec())
         {
