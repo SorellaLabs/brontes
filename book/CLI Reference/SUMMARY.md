@@ -1,5 +1,0 @@
-- [`brontes`](./brontes.md)
-  - [`brontes run`](./brontes/run.md)
-  - [`reth init`](./brontes/init.md)
-  - [`brontes db`](./brontes/db.md)
-  - [`brontes analytics`](./brontes/analaytics.md)

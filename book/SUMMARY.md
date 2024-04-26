@@ -2,7 +2,6 @@
 
 - [Introduction](./intro.md)
 - [Installation](./installation/installation.md)
-  - [Build from Source](./installation/source.md)
 - [Run Brontes](./run/run_brontes.md)
 - [Brontes Architecture](./architecture/intro.md)
   - [Tree Construction and Normalization](./architecture/tree_builder_and_normalization.md)
@@ -21,4 +20,15 @@
 - [Building On Brontes](./build/intro.md)
   - [Classifiers](./build/classifiers.md)
   - [Inspectors](./build/inspectors.md)
-- [CLI Reference](./CLI%20Reference/cli.md)
+- [CLI Reference](./cli/cli.md) <!-- CLI_REFERENCE START -->
+  - [`brontes`](./cli/brontes.md)
+    - [`brontes run`](./cli/brontes/run.md)
+    - [`brontes db`](./cli/brontes/db.md)
+      - [`brontes db insert`](./cli/brontes/db/insert.md)
+      - [`brontes db query`](./cli/brontes/db/query.md)
+      - [`brontes db clear`](./cli/brontes/db/clear.md)
+      - [`brontes db generate-traces`](./cli/brontes/db/generate-traces.md)
+      - [`brontes db libmdbx-mem-test`](./cli/brontes/db/libmdbx-mem-test.md)
+      - [`brontes db init`](./cli/brontes/db/init.md)
+      - [`brontes db export`](./cli/brontes/db/export.md)
+- [Developers](./developers/developers.md) <!-- CLI_REFERENCE END -->

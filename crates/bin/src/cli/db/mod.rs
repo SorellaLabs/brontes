@@ -34,20 +34,23 @@ pub enum DatabaseCommands {
     /// --feature local-clickhouse)
     #[command(name = "generate-traces")]
     TraceRange(trace_range::TraceArgs),
+    /// Test libmdbx memory usage
     #[command(name = "libmdbx-mem-test")]
     LibmdbxMem(libmdbx_mem::LMem),
     /// For a given range, will fetch all data from the api and insert it into
     /// libmdbx.
     #[command(name = "init")]
     Init(init::Init),
+    /// Export libmbdx data to parquet
     #[command(name = "export")]
     Export(export::Export),
+    #[cfg(feature = "local-clickhouse")]
     /// Traces all blocks needed for testing and inserts them into
     /// clickhouse
-    #[cfg(feature = "local-clickhouse")]
     #[command(name = "test-traces-init")]
     TestTracesInit(ensure_test_traces::TestTraceArgs),
     #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+    /// Generates traces up to chain tip and inserts them into libmbx
     #[command(name = "trace-at-tip")]
     TraceAtTip(tip_tracer::TipTraceArgs),
 }
