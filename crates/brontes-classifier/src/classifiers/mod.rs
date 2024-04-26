@@ -206,5 +206,6 @@ action_dispatch!(
     DodoBuySharesCall,
     DodoSellSharesCall,
     DodoSellBaseCall,
-    DodoSellQuoteCall
+    DodoSellQuoteCall,
+    DodoFlashLoanCall
 );
