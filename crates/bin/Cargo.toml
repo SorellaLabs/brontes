@@ -15,7 +15,6 @@ brontes-database.workspace = true
 brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
-brontes-analytics.workspace = true
 malachite.workspace = true
 toml = "0.8.2"
 indicatif.workspace = true
@@ -94,6 +93,7 @@ default = [
   "brontes-inspect/default",
   "pretty-print",
   "jemalloc",
+  "local-reth"
 ]
 
 jemalloc = []
@@ -133,7 +133,6 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
   "brontes-inspect/local-clickhouse",
   "brontes-classifier/local-clickhouse",
-  "brontes-analytics/local-clickhouse",
   "brontes-types/local-clickhouse",
 ]
 

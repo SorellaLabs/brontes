@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
 
-mod analytics;
 mod db;
 mod misc;
 mod run;
@@ -33,7 +32,4 @@ pub enum Commands {
     /// Brontes database commands
     #[command(name = "db")]
     Database(db::Database),
-    /// Brontes Analytics commands
-    #[command(name = "analytics")]
-    Analytics(analytics::Analytics),
 }

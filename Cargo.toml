@@ -11,7 +11,6 @@ members = [
   "crates/brontes-database",
   "crates/brontes-macros",
   "crates/brontes-pricing",
-  "crates/brontes-analytics",
 ]
 
 resolver = "2"
