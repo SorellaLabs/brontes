@@ -14,6 +14,7 @@ Commands:
   libmdbx-mem-test  Test libmdbx memory usage
   init              For a given range, will fetch all data from the api and insert it into libmdbx
   export            Export libmbdx data to parquet
+  test-traces-init  Traces all blocks needed for testing and inserts them into clickhouse
   help              Print this message or the help of the given subcommand(s)
 
 Options:
