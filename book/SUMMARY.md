@@ -3,16 +3,17 @@
 - [Introduction](./intro.md)
 - [Installation](./installation/installation.md)
 - [Run Brontes](./run/run_brontes.md)
-<!-- - [Brontes Architecture](./architecture/intro.md)
-  - [Normalization & Classification](./architecture/tree_builder_and_normalization.md)
+- [Architecture Overview](./architecture/intro.md)
+  - [BlockTree & Classification](./architecture/tree.md)
   - [Database](./architecture/database.md)
   - [Inspectors](./architecture/inspectors.md)
 - [Mev Inspectors Deep Dive](./mev_inspectors/intro.md)
-  - [Cex-Dex Inspector](./mev_inspectors/cex_dex.md)
-  - [Sandwich Inspector](./mev_inspectors/sandwich.md)
-  - [Jit Inspector](./mev_inspectors/jit.md)
-  - [Long Tail Inspector](./mev_inspectors/long_tail.md)
-    -->
+
+  - [Cex-Dex](./mev_inspectors/cex_dex.md)
+  - [Sandwich](./mev_inspectors/sandwich.md)
+  - [Just in time Liquidity](./mev_inspectors/jit.md)
+  - [Atomic Arbitrage](./mev_inspectors/atomic-arb.md)
+
 - [CLI Reference](./cli/cli.md) <!-- CLI_REFERENCE START -->
   - [`brontes`](./cli/brontes.md)
     - [`brontes run`](./cli/brontes/run.md)
