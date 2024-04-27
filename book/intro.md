@@ -20,7 +20,7 @@ _Documentation for Brontes users and developers._
 
 Analyzing blockchain data, particularly at the transaction trace level, is an overwhelming and time-consuming process. The sheer volume of data and the effort required for data classification, normalization, and preprocessing often hinder the ability of data scientists to focus on pioneering analysis and developing new methodologies.
 
-The grunt work of data classification, normalization, and more generally of data preprocessing is painful, especially when it comes to blockchain data. This arduous process becomes even more challenging as you delve into finer data granularity; at the transaction trace level, one can easily become overwhelmed by the sheer volume of intractable data.
+The grunt work of data classification, normalization, and more generally of data preprocessing is painful, especially when it comes to blockchain data. This arduous process becomes even more challenging as you dive into finer data granularity; at the transaction trace level, one can easily become overwhelmed by the sheer volume of intractable data.
 
 Albeit a few masochists might revel in the painstaking but necessary prep work, the rest of us don't exactly find joy in it; the true thrill in data analysis emerges in the exploration and refinement of new methodologies. This insight is what shapes our Inspector Framework and Brontes at its core. Our aim is to strip away the burden of these initial steps, giving data scientists, developers, and researchers the freedom to leap straight into what they genuinely enjoy—pioneering analysis.
 

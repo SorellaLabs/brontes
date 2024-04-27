@@ -1,37 +1,33 @@
 # Brontes Architecture
 
-## How Brontes Works?
+## High-Level Overview
 
-Brontes transforms raw Ethereum transaction traces into a structured, analyzable format through a multi-step process:
+Brontes is designed to process Ethereum transaction traces, leveraging two core execution modes to handle data: the Range Executor and the Tip Inspector.
 
-1. **Block Tracing**: Brontes performs block tracing by reading from Reth's database or operating remotely via HTTP.
+<div style="text-align: center;">
+ <img src="diagrams/run-modes.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
 
-2. **Tree Construction**: Brontes constructs a tree of all transactions within a block, encapsulating each transaction in its own `TransactionTree`, which preserves the execution order and context.
+### Range Executor
 
-3. **Metadata Integration**: In parallel to the tree construction, Brontes fetches and integrates relevant metadata, such as DEX pricing, exchange pricing, and private transaction sets. For more information, see the [database](./database.md) section.
+The Range Executor is Brontes' engine for historical block processing. It takes a specified block range of blocks and divides it into chunks. These chunks are processed in parallel.
 
-4. **Normalization**: Brontes employs [Classifiers](./classifiers.md) to normalize the raw traces into standardized `NormalizedActions`, establishing a consistent analytical framework across different DeFi protocols.
+### Tip Inspector
 
-5. **Inspection**: The classified blocks, enriched with metadata, are passed to the [Inspector Framework](./inspectors.md). Inspectors process the classified blocks and metadata to identify various forms of MEV. The modular nature of the Inspector Framework allows developers to easily integrate additional inspectors.
+The Tip Inspector comes into play when following chain tip. Upon initiation, it immediately targets the most recent block and processes blocks as they come in. This mode is automatically engaged when no end block range is specified upon startup.
 
-6. **Composition**: The individual inspector results are collected by the composer, a higher-level inspector that identifies complex MEV strategies composed of multiple MEV actions.
+## Block Pipeline
 
-For a more detailed explanation of each component and instructions on implementing custom classifiers and inspectors, please refer to the following sections:
+Both the Range Executor and Tip Inspector follow the same block processing pipeline.
 
-- [Classifiers](./classifiers.md)
-- [Metadata](./metadata.md)
-- [Inspector Framework](./inspectors.md)
+<div style="text-align: center;">
+ <img src="diagrams/block-pipeline.png" alt="block-pipeline" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
 
-This version provides a concise, high-level overview of the Brontes pipeline, briefly mentioning the key components and their functions. The references to dedicated sections allow readers to dive deeper into specific topics of interest without overwhelming them with details in the main "How Brontes Works?" section.
+1. **Block Tracing**: Generates the block trace using a custom `revm-inspector`
 
-At the heart of Brontes is the process of converting raw Ethereum transaction traces into a more digestible structure while preserving crucial contextual information. This journey begins with the raw traces, which are then transformed into classified blocks through a series of steps.
+2. **Tree Construction**: Constructs a `BlockTree` encapsulating each transaction in its own `TransactionTree`. Traces are classified into `NormalizedActions`. See [BlockTree](tree.md) for more details.
 
-First, Brontes performs generates block traces. Once a block is traced, Brontes constructs a tree of all transactions within that block, encapsulating each transaction in its own `TransactionTree`. A `TransactionTree` represents a transaction in a tree-like structure, with traces represented as nodes, preserving the execution order and context in a structured manner.
+3. **Metadata Integration**: In parallel to the tree construction, Brontes fetches the block metadata from the brontes [database](./database.md), composed of DEX pricing, CEX pricing, private transaction sets and more.
 
-In parallel to the tree construction, Brontes fetches and integrates relevant metadata, such as transaction-level DEX pricing, centralized exchange pricing, and private transaction sets.
-
-With the `TransactionTrees` constructed, Brontes moves on to the normalization phase. In this crucial step, raw traces are classified into `NormalizedActions`, which standardize the diverse actions found across DeFi protocols into a unified format. By generalizing core primitives–such as swaps, flash loans, mints, among others—into unified types, Brontes establishes a consistent analytical framework that applies across all protocols for each core action. This normalization process not only organizes data but also harmonizes the idiosyncrasies between different DeFi protocol implementations.
-
-The classified blocks, enriched with metadata and normalized actions, are then passed to the Inspector Framework. This is where the magic of complex analysis happens. Inspectors process the classified blocks and metadata, identifying various forms of MEV, such as CEX-DEX arbitrage, sandwich attacks, liquidations, atomic arbitrage, and just-in-time (JIT) liquidity. The modular nature of the Inspector Framework allows developers to easily integrate additional inspectors by implementing the `Inspector` trait, blissfully unaware of the preprocessing efforts involved.
-
-Finally, the individual inspector results are collected by the composer, a higher-level inspector that attempts to identify more complex MEV strategies composed of multiple individual MEV actions, such as JIT combined with sandwich attacks.
+4. **Inspection**: Specialized [Inspectors](./inspectors.md) process the classified blocks and metadata to identify various forms of MEV. The results are collected & analyzed by the `Composer` (a sort of parent inspector) which composes & deduplicates the results and stores them in the local libmbx database.
