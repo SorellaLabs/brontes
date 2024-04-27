@@ -16,15 +16,15 @@ Options:
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 
-      --price-tw-before <CEX_TIME_WINDOW_BEFORE>
-          The sliding time window (BEFORE) for cex prices relative to the block timestamp
+      --trades-tw-before <CEX_TIME_WINDOW_BEFORE>
+          The sliding time window (BEFORE) for cex trades relative to the block timestamp
           
           [default: 0.5]
 
-      --price-tw-after <CEX_TIME_WINDOW_AFTER>
-          The sliding time window (AFTER) for cex prices relative to the block timestamp
+      --trades-tw-after <CEX_TIME_WINDOW_AFTER>
+          The sliding time window (AFTER) for cex trades relative to the block timestamp
           
-          [default: 1.0]
+          [default: 2.0]
 
   -c, --cex-exchanges <CEX_EXCHANGES>
           Centralized exchanges to consider for cex-dex inspector
