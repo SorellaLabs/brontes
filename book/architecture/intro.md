@@ -1,33 +1,33 @@
 # Brontes Architecture
 
-## How Brontes Works?
+## High-Level Overview
 
-Brontes progress is driven by two distinct modules, the range & tip module.
-
-For historical blocks, brontes will run with the Range executor, which will break up the block range into smaller chunks and run each chunk in parallel.
-
-If no end range is specified, brontes will create range executors for the historical range & will spawn a tip inspector at the most recent block, which is immediately spawned upon start and follows the chain tip.
+Brontes is designed to process Ethereum transaction traces, leveraging two core execution modes to handle data: the Range Executor and the Tip Inspector.
 
 <div style="text-align: center;">
  <img src="run-modes.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
 </div>
 
-Brontes transforms raw Ethereum transaction traces into a structured, analyzable format. Below is a high level overview of the pipeline:
+### Range Executor
+
+The Range Executor is Brontes' engine for historical block processing. It takes a specified block range of blocks and divides it into chunks. These chunks are processed in parallel.
+
+### Tip Inspector
+
+The Tip Inspector comes into play when following chain tip. Upon initiation, it immediately targets the most recent block and processes blocks as they come in. This mode is automatically engaged when no end block range is specified upon startup, allowing Brontes to seamlessly transition from historical analysis to real-time inspection.
+
+## Block Pipeline
+
+Both the Range Executor and Tip Inspector follow the same block processing pipeline.
 
 <div style="text-align: center;">
- <img src="image.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+ <img src="image-1.png" alt="block-pipeline" style="border-radius: 20px; width: 600px; height: auto;">
 </div>
 
-1. **Block Tracing**: First, using a custom `revm-inspector` it generates all transaction traces for a block.
+1. **Block Tracing**: Generates the block trace using a custom `revm-inspector`
 
-2.
+2. **Tree Construction**: Constructs a `BlockTree` encapsulating each transaction in its own `TransactionTree`. Traces are classified into `NormalizedActions`.
 
-a. **Tree Construction**: Constructs a tree of all transactions within a block, encapsulating each transaction in its own `TransactionTree`, which preserves the execution order and context. During this process, it classifies each Trace call into a `NormalizedAction` if a classifier is implemented for the given function call.
+3. **Metadata Integration**: In parallel to the tree construction, Brontes fetches the block metadata, composed of DEX pricing, CEX pricing, private transaction sets and more. See the [database](./database.md) section for more details.
 
-b. **Metadata Integration**: In parallel to the tree construction, Brontes fetches and integrates relevant metadata, such as DEX pricing, exchange pricing, and private transaction sets. For more information, see the [database](./database.md) section.
-
-4. **Normalization**: Brontes employs [Classifiers](./classifiers.md) to normalize the raw traces into standardized `NormalizedActions`, establishing a consistent analytical framework across different DeFi protocols.
-
-5. **Inspection**: The classified blocks, enriched with metadata, are passed to the [Inspector Framework](./inspectors.md). Inspectors process the classified blocks and metadata to identify various forms of MEV. The modular nature of the Inspector Framework allows developers to easily integrate additional inspectors.
-
-6. **Composition**: The individual inspector results are collected by the composer, a higher-level inspector that identifies complex MEV strategies composed of multiple MEV actions.
+4. **Inspection**: Inspectors process the classified blocks and metadata to identify various forms of MEV. See [Inspectors](./inspectors.md) for more details.
