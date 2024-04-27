@@ -20,68 +20,58 @@ use crate::{
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:            Option<u64>,
+    pub start_block:          Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:              Option<u64>,
+    pub end_block:            Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks:              Option<u64>,
+    pub max_tasks:            Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size:         u64,
+    pub min_batch_size:       u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset:            String,
+    pub quote_asset:          String,
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors:             Option<Vec<Inspectors>>,
-    #[cfg(not(feature = "cex-dex-markout"))]
-    /// The sliding time window (BEFORE) for cex prices relative to the block
-    /// timestamp
-    #[arg(long = "price-tw-before", default_value = "0.5")]
-    pub cex_time_window_before: f64,
-    #[cfg(not(feature = "cex-dex-markout"))]
-    /// The sliding time window (AFTER) for cex prices relative to the block
-    /// timestamp
-    #[arg(long = "price-tw-after", default_value = "2.0")]
-    pub cex_time_window_after:  f64,
-    #[cfg(feature = "cex-dex-markout")]
-    /// The sliding time window (BEFORE) for cex trades relative to the block
-    /// timestamp
-    #[arg(long = "trades-tw-before", default_value = "3.0")]
-    pub cex_time_window_before: f64,
-    #[cfg(feature = "cex-dex-markout")]
-    /// The sliding time window (AFTER) for cex trades relative to the block
-    /// timestamp
-    #[arg(long = "trades-tw-after", default_value = "5.0")]
-    pub cex_time_window_after:  f64,
-    /// Centralized exchanges to consider for cex-dex inspector
+    pub inspectors:           Option<Vec<Inspectors>>,
+    /// The sliding time window (BEFORE) for cex prices or trades relative to
+    /// the block timestamp
+    #[arg(long = "tw-before", short = 'b', default_value = if cfg!(feature = "cex-dex-markout") { "3.0" } else { "0.5" })]
+    pub time_window_before:   f64,
+    /// The sliding time window (AFTER) for cex prices or trades relative to the
+    /// block timestamp
+    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-markout") { "5.0" } else { "2.0" })]
+    pub time_window_after:    f64,
+    /// CEX exchanges to consider for cex-dex analysis
     #[arg(
         long,
         short,
         default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
         value_delimiter = ','
     )]
-    pub cex_exchanges:          Vec<CexExchange>,
+    pub cex_exchanges:        Vec<CexExchange>,
     /// Ensures that dex prices are calculated at every block, even if the
     /// db already contains the price
     #[arg(long, short, default_value = "false")]
-    pub force_dex_pricing:      bool,
+    pub force_dex_pricing:    bool,
     /// Turns off dex pricing entirely, inspectors requiring dex pricing won't
     /// calculate USD pnl if we don't have dex pricing in the db & will only
     /// calculate token pnl
     #[arg(long, default_value = "false")]
-    pub force_no_dex_pricing:   bool,
+    pub force_no_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
-    #[arg(long, default_value = "3")]
-    pub behind_tip:             u64,
+    #[arg(long, default_value = "5")]
+    pub behind_tip:           u64,
+    /// Run in CLI only mode (no TUI) - will output progress bars to stdout
+    #[arg(long, default_value = "true")]
+    pub cli_only:             bool,
+    /// Initialize full range database tables
     #[arg(long, default_value = "false")]
-    pub cli_only:               bool,
-    #[arg(long, default_value = "false")]
-    pub init_crit_tables:       bool,
+    pub init_crit_tables:     bool,
 }
 
 impl RunArgs {
@@ -110,7 +100,7 @@ impl RunArgs {
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
         let cex_download_config = CexDownloadConfig::new(
-            (self.cex_time_window_before, self.cex_time_window_after),
+            (self.time_window_before, self.time_window_after),
             self.cex_exchanges.clone(),
         );
         let clickhouse = static_object(load_clickhouse(cex_download_config).await?);

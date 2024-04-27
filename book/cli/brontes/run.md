@@ -32,18 +32,18 @@ Options:
   -i, --inspectors <INSPECTORS>
           Inspectors to run. If omitted it defaults to running all inspectors
 
-      --price-tw-before <CEX_TIME_WINDOW_BEFORE>
-          The sliding time window (BEFORE) for cex prices relative to the block timestamp
+  -b, --tw-before <TIME_WINDOW_BEFORE>
+          The sliding time window (BEFORE) for cex prices or trades relative to the block timestamp
           
-          [default: 0.5]
+          [default: 3.0]
 
-      --price-tw-after <CEX_TIME_WINDOW_AFTER>
-          The sliding time window (AFTER) for cex prices relative to the block timestamp
+  -a, --tw-after <TIME_WINDOW_AFTER>
+          The sliding time window (AFTER) for cex prices or trades relative to the block timestamp
           
-          [default: 2.0]
+          [default: 5.0]
 
   -c, --cex-exchanges <CEX_EXCHANGES>
-          Centralized exchanges to consider for cex-dex inspector
+          CEX exchanges to consider for cex-dex analysis
           
           [default: Binance,Coinbase,Okex,BybitSpot,Kucoin]
 
@@ -56,13 +56,13 @@ Options:
       --behind-tip <BEHIND_TIP>
           How many blocks behind chain tip to run
           
-          [default: 3]
+          [default: 5]
 
       --cli-only
-          
+          Run in CLI only mode (no TUI) - will output progress bars to stdout
 
       --init-crit-tables
-          
+          Initialize full range database tables
 
   -h, --help
           Print help (see a summary with '-h')
