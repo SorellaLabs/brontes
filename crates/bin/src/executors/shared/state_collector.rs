@@ -10,6 +10,7 @@ use std::{
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
+use brontes_metrics::trace;
 use brontes_types::{
     db::{
         metadata::Metadata,
@@ -24,7 +25,7 @@ use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
-use tracing::{debug, span, Instrument, Level};
+use tracing::{span, trace, Instrument, Level};
 
 use super::metadata::MetadataFetcher;
 
@@ -76,7 +77,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     ) -> eyre::Result<BlockTree<Actions>> {
         let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
 
-        debug!("Got {} traces + header", traces.len());
+        trace!("Got {} traces + header", traces.len());
         let res = classifier
             .build_block_tree(traces, header, generate_pricing)
             .await;
