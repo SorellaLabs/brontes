@@ -21,7 +21,7 @@ pub mod test_utils;
 
 mod classifiers;
 use alloy_sol_types::sol;
-use brontes_types::normalized_actions::Actions;
+use brontes_types::normalized_actions::Action;
 pub use classifiers::*;
 
 // Actions

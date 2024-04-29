@@ -40,7 +40,7 @@ action_impl!(
 mod tests {
     use alloy_primitives::{hex, B256};
     use brontes_types::{
-        normalized_actions::{pool::NormalizedNewPool, Actions},
+        normalized_actions::{pool::NormalizedNewPool, Action},
         Protocol, TreeSearchBuilder,
     };
 
@@ -52,13 +52,13 @@ mod tests {
         let compound_v2_discovery =
             B256::from(hex!("090ce7d33359e5d288ce169f41bb3d2cb55ac17b026a10cf80b3fc4f0c85c827"));
 
-        let eq_action = Actions::NewPool(NormalizedNewPool {
+        let eq_action = Action::NewPool(NormalizedNewPool {
             trace_index:  1,
             protocol:     Protocol::CompoundV2,
             pool_address: hex!("5d3a536e4d6dbd6114cc1ead35777bab948e3643").into(),
             tokens:       vec![hex!("5d3a536e4d6dbd6114cc1ead35777bab948e3643").into()],
         });
-        let search = TreeSearchBuilder::default().with_action(Actions::is_new_pool);
+        let search = TreeSearchBuilder::default().with_action(Action::is_new_pool);
 
         classifier_utils
             .contains_action(compound_v2_discovery, 0, eq_action, search)

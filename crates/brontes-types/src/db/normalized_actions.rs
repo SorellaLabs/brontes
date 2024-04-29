@@ -3,7 +3,7 @@ use itertools::MultiUnzip;
 use reth_primitives::B256;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
-use crate::{normalized_actions::Actions, GasDetails, Node, Root};
+use crate::{normalized_actions::Action, GasDetails, Node, Root};
 
 #[derive(Debug, Clone)]
 pub struct TransactionRoot {
@@ -14,8 +14,8 @@ pub struct TransactionRoot {
     pub trace_nodes:  Vec<TraceNode>,
 }
 
-impl From<(&Root<Actions>, u64)> for TransactionRoot {
-    fn from(value: (&Root<Actions>, u64)) -> Self {
+impl From<(&Root<Action>, u64)> for TransactionRoot {
+    fn from(value: (&Root<Action>, u64)) -> Self {
         let (root, block_number) = value;
         let tx_data = &root.data_store.0;
         let mut trace_nodes = Vec::new();
@@ -90,7 +90,7 @@ impl DbRow for TransactionRoot {
 
 fn make_trace_nodes(
     node: &Node,
-    actions: &[Option<Vec<Actions>>],
+    actions: &[Option<Vec<Action>>],
     trace_nodes: &mut Vec<TraceNode>,
 ) {
     trace_nodes.push((node, actions).into());
@@ -105,11 +105,11 @@ pub struct TraceNode {
     pub trace_idx:     u64,
     pub trace_address: Vec<u64>,
     pub action_kind:   Option<ActionKind>,
-    pub action:        Option<Actions>,
+    pub action:        Option<Action>,
 }
 
-impl From<(&Node, &[Option<Vec<Actions>>])> for TraceNode {
-    fn from(value: (&Node, &[Option<Vec<Actions>>])) -> Self {
+impl From<(&Node, &[Option<Vec<Action>>])> for TraceNode {
+    fn from(value: (&Node, &[Option<Vec<Action>>])) -> Self {
         let (node, actions) = value;
         let action = actions
             .iter()
@@ -150,25 +150,25 @@ pub enum ActionKind {
     Revert,
 }
 
-impl From<&Actions> for ActionKind {
-    fn from(value: &Actions) -> Self {
+impl From<&Action> for ActionKind {
+    fn from(value: &Action) -> Self {
         match value {
-            Actions::Swap(_) => ActionKind::Swap,
-            Actions::SwapWithFee(_) => ActionKind::SwapWithFee,
-            Actions::FlashLoan(_) => ActionKind::FlashLoan,
-            Actions::Batch(_) => ActionKind::Batch,
-            Actions::Mint(_) => ActionKind::Mint,
-            Actions::Burn(_) => ActionKind::Burn,
-            Actions::Transfer(_) => ActionKind::Transfer,
-            Actions::Liquidation(_) => ActionKind::Liquidation,
-            Actions::Collect(_) => ActionKind::Collect,
-            Actions::SelfDestruct(_) => ActionKind::SelfDestruct,
-            Actions::EthTransfer(_) => ActionKind::EthTransfer,
-            Actions::Unclassified(_) => ActionKind::Unclassified,
-            Actions::NewPool(_) => ActionKind::NewPool,
-            Actions::PoolConfigUpdate(_) => ActionKind::PoolConfigUpdate,
-            Actions::Aggregator(_) => ActionKind::Aggregator,
-            Actions::Revert => ActionKind::Revert,
+            Action::Swap(_) => ActionKind::Swap,
+            Action::SwapWithFee(_) => ActionKind::SwapWithFee,
+            Action::FlashLoan(_) => ActionKind::FlashLoan,
+            Action::Batch(_) => ActionKind::Batch,
+            Action::Mint(_) => ActionKind::Mint,
+            Action::Burn(_) => ActionKind::Burn,
+            Action::Transfer(_) => ActionKind::Transfer,
+            Action::Liquidation(_) => ActionKind::Liquidation,
+            Action::Collect(_) => ActionKind::Collect,
+            Action::SelfDestruct(_) => ActionKind::SelfDestruct,
+            Action::EthTransfer(_) => ActionKind::EthTransfer,
+            Action::Unclassified(_) => ActionKind::Unclassified,
+            Action::NewPool(_) => ActionKind::NewPool,
+            Action::PoolConfigUpdate(_) => ActionKind::PoolConfigUpdate,
+            Action::Aggregator(_) => ActionKind::Aggregator,
+            Action::Revert => ActionKind::Revert,
         }
     }
 }
@@ -190,11 +190,11 @@ pub mod test {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::normalized_actions::{ActionKind, TransactionRoot},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         BlockTree,
     };
 
-    async fn load_tree() -> Arc<BlockTree<Actions>> {
+    async fn load_tree() -> Arc<BlockTree<Action>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
         classifier_utils.build_tree_tx(tx).await.unwrap().into()

@@ -23,7 +23,7 @@
 //!
 //!     async fn process_tree(
 //!         &self,
-//!         tree: Arc<BlockTree<Actions>>,
+//!         tree: Arc<BlockTree<Action>>,
 //!         metadata: Arc<Metadata>,
 //!     ) -> Self::Result;
 //! }
@@ -97,7 +97,7 @@ use atomic_arb::AtomicArbInspector;
 use brontes_types::{
     db::{cex::CexExchange, metadata::Metadata, traits::LibmdbxReader},
     mev::{Bundle, BundleData},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     tree::BlockTree,
 };
 #[cfg(not(feature = "cex-dex-markout"))]
@@ -113,7 +113,7 @@ pub trait Inspector: Send + Sync {
 
     /// Used for log span so we know which errors come from which inspector
     fn get_id(&self) -> &str;
-    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result;
+    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
 }
 
 #[derive(

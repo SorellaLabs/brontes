@@ -98,7 +98,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         TreeSearchBuilder,
     };
 
@@ -110,7 +110,7 @@ mod tests {
         let swap =
             B256::from(hex!("23e459142f904e8aef751f1ca2b95bf75a45b1d7823692eb8b7eca3a9bf5c0fe"));
 
-        let eq_action = Actions::Batch(NormalizedBatch {
+        let eq_action = Action::Batch(NormalizedBatch {
             protocol:            Protocol::Cowswap,
             trace_index:         0,
             solver:              Address::from_str("0x8646ee3c5e82b495be8f9fe2f2f213701eed0edc")
@@ -153,7 +153,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_batch),
+                TreeSearchBuilder::default().with_action(Action::is_batch),
             )
             .await
             .unwrap();

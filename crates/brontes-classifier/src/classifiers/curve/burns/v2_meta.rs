@@ -262,7 +262,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         TreeSearchBuilder,
     };
 
@@ -298,7 +298,7 @@ mod tests {
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol:    Protocol::CurveV2MetaPool,
             trace_index: 1,
             from:        Address::new(hex!("81BD585940501b583fD092BC8397F2119A96E5ba")),
@@ -316,7 +316,7 @@ mod tests {
                 burn,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();
@@ -346,7 +346,7 @@ mod tests {
 
         classifier_utils.ensure_token(token.clone());
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol:    Protocol::CurveV2MetaPool,
             trace_index: 1,
             from:        Address::new(hex!("3F7734E28ed8856B89e13137bd2E9112C40ebD51")),
@@ -361,7 +361,7 @@ mod tests {
                 burn,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();

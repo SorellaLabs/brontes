@@ -4,7 +4,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::BlockPrice,
     mev::{Bundle, BundleData, MevType, SearcherTx},
-    normalized_actions::{accounting::ActionAccounting, Actions},
+    normalized_actions::{accounting::ActionAccounting, Action},
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
 };
@@ -32,9 +32,9 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
         "SearcherActivity"
     }
 
-    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         let search_args = TreeSearchBuilder::default()
-            .with_actions([Actions::is_transfer, Actions::is_eth_transfer]);
+            .with_actions([Action::is_transfer, Action::is_eth_transfer]);
 
         let searcher_txs = tree.clone().collect_all(search_args).collect_vec();
 
@@ -96,7 +96,7 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
                                 gas_details: info.gas_details,
                                 transfers: transfers
                                     .into_iter()
-                                    .collect_action_vec(Actions::try_transfer),
+                                    .collect_action_vec(Action::try_transfer),
                             }),
                         })
                     },

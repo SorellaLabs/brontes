@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use super::{Actions, NormalizedCollect, NormalizedMint, NormalizedSwap, NormalizedTransfer};
+use super::{Action, NormalizedCollect, NormalizedMint, NormalizedSwap, NormalizedTransfer};
 
 impl<T: Sized + SubordinateAction<O>, O: ActionCmp<T>> ActionComparison<O> for T {}
 
@@ -14,15 +14,15 @@ pub trait ActionComparison<O> {
     }
 }
 
-impl ActionCmp<Actions> for Actions {
-    fn is_superior_action(&self, other: &Actions) -> bool {
+impl ActionCmp<Action> for Action {
+    fn is_superior_action(&self, other: &Action) -> bool {
         match self {
-            Actions::Swap(s) => s.is_superior_action(other),
-            Actions::Mint(m) => m.is_superior_action(other),
-            Actions::Collect(c) => c.is_superior_action(other),
-            Actions::SwapWithFee(s) => s.swap.is_superior_action(other),
-            Actions::FlashLoan(f) => f.child_actions.iter().any(|a| a.is_superior_action(other)),
-            Actions::Batch(b) => {
+            Action::Swap(s) => s.is_superior_action(other),
+            Action::Mint(m) => m.is_superior_action(other),
+            Action::Collect(c) => c.is_superior_action(other),
+            Action::SwapWithFee(s) => s.swap.is_superior_action(other),
+            Action::FlashLoan(f) => f.child_actions.iter().any(|a| a.is_superior_action(other)),
+            Action::Batch(b) => {
                 let user = b.user_swaps.iter().any(|b| b.is_superior_action(other));
                 if let Some(swaps) = &b.solver_swaps {
                     return user || swaps.iter().any(|b| b.is_superior_action(other));
@@ -69,10 +69,10 @@ impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
     }
 }
 
-impl ActionCmp<Actions> for NormalizedSwap {
-    fn is_superior_action(&self, other: &Actions) -> bool {
+impl ActionCmp<Action> for NormalizedSwap {
+    fn is_superior_action(&self, other: &Action) -> bool {
         match other {
-            Actions::Transfer(t) => self.is_superior_action(t),
+            Action::Transfer(t) => self.is_superior_action(t),
             _ => false,
         }
     }
@@ -90,10 +90,10 @@ impl ActionCmp<NormalizedTransfer> for NormalizedMint {
     }
 }
 
-impl ActionCmp<Actions> for NormalizedMint {
-    fn is_superior_action(&self, other: &Actions) -> bool {
+impl ActionCmp<Action> for NormalizedMint {
+    fn is_superior_action(&self, other: &Action) -> bool {
         match other {
-            Actions::Transfer(t) => self.is_superior_action(t),
+            Action::Transfer(t) => self.is_superior_action(t),
             _ => false,
         }
     }
@@ -111,10 +111,10 @@ impl ActionCmp<NormalizedTransfer> for NormalizedCollect {
     }
 }
 
-impl ActionCmp<Actions> for NormalizedCollect {
-    fn is_superior_action(&self, other: &Actions) -> bool {
+impl ActionCmp<Action> for NormalizedCollect {
+    fn is_superior_action(&self, other: &Action) -> bool {
         match other {
-            Actions::Transfer(t) => self.is_superior_action(t),
+            Action::Transfer(t) => self.is_superior_action(t),
             _ => false,
         }
     }

@@ -1,7 +1,7 @@
 use brontes_types::{
     db::token_info::TokenInfoWithAddress,
     normalized_actions::{
-        Actions, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest,
+        Action, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest,
     },
     Protocol, ToScaledRational, TreeSearchBuilder,
 };
@@ -16,13 +16,13 @@ impl MultiCallFrameClassifier for UniswapX {
 
     fn create_classifier(
         request: MultiFrameRequest,
-    ) -> Option<MultiCallFrameClassification<Actions>> {
+    ) -> Option<MultiCallFrameClassification<Action>> {
         Some(MultiCallFrameClassification {
             trace_index:         request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
-                Actions::is_swap,
-                Actions::is_transfer,
-                Actions::is_eth_transfer,
+                Action::is_swap,
+                Action::is_transfer,
+                Action::is_eth_transfer,
             ]),
             parse_fn:            Box::new(|this_action, child_nodes| {
                 let this = this_action.try_batch_mut().unwrap();
@@ -30,7 +30,7 @@ impl MultiCallFrameClassifier for UniswapX {
 
                 for (trace_index, action) in child_nodes {
                     match &action {
-                        Actions::Transfer(t) => {
+                        Action::Transfer(t) => {
                             for user_swap in &mut this.user_swaps {
                                 if t.from == user_swap.from && t.to == this.solver {
                                     user_swap.trace_index = trace_index.trace_index;
@@ -44,7 +44,7 @@ impl MultiCallFrameClassifier for UniswapX {
                                 }
                             }
                         }
-                        Actions::EthTransfer(et) => {
+                        Action::EthTransfer(et) => {
                             for user_swap in &mut this.user_swaps {
                                 if et.from == user_swap.from && et.to == this.settlement_contract {
                                     user_swap.trace_index = trace_index.trace_index;
@@ -60,7 +60,7 @@ impl MultiCallFrameClassifier for UniswapX {
                                 }
                             }
                         }
-                        Actions::Swap(s) => {
+                        Action::Swap(s) => {
                             if let Some(swaps) = &mut this.solver_swaps {
                                 swaps.push(s.clone());
                                 nodes_to_prune.push(trace_index);
@@ -71,7 +71,7 @@ impl MultiCallFrameClassifier for UniswapX {
                                 break
                             }
                         }
-                        Actions::SwapWithFee(s) => {
+                        Action::SwapWithFee(s) => {
                             if let Some(swaps) = &mut this.solver_swaps {
                                 swaps.push(s.swap.clone());
                                 nodes_to_prune.push(trace_index);

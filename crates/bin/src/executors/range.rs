@@ -10,7 +10,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Actions, tree::BlockTree};
+use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::debug;
@@ -72,7 +72,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         drop(graceful_guard);
     }
 
-    fn on_price_finish(&mut self, tree: BlockTree<Actions>, meta: Metadata) {
+    fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
         debug!(target:"brontes","Completed DEX pricing");
         self.insert_futures.push(Box::pin(P::process_results(
             self.libmdbx,

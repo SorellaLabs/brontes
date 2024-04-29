@@ -1,4 +1,4 @@
-use super::{Actions, NormalizedAction};
+use super::{Action, NormalizedAction};
 use crate::{Protocol, TreeSearchBuilder};
 
 type ParseFn<V> = Box<dyn Fn(&mut V, Vec<(NodeDataIndex, V)>) -> Vec<NodeDataIndex>>;
@@ -46,22 +46,22 @@ pub struct MultiFrameRequest {
 }
 
 impl MultiFrameRequest {
-    pub fn new(action: &Actions, trace_idx: u64) -> Option<Self> {
+    pub fn new(action: &Action, trace_idx: u64) -> Option<Self> {
         match action {
-            Actions::FlashLoan(f) => Some(Self {
+            Action::FlashLoan(f) => Some(Self {
                 protocol: f.protocol,
                 call_type: MultiFrameAction::FlashLoan,
                 trace_idx,
             }),
-            Actions::Batch(b) => {
+            Action::Batch(b) => {
                 Some(Self { protocol: b.protocol, call_type: MultiFrameAction::Batch, trace_idx })
             }
-            Actions::Liquidation(l) => Some(Self {
+            Action::Liquidation(l) => Some(Self {
                 protocol: l.protocol,
                 call_type: MultiFrameAction::Liquidation,
                 trace_idx,
             }),
-            Actions::Aggregator(a) => Some(Self {
+            Action::Aggregator(a) => Some(Self {
                 protocol: a.protocol,
                 call_type: MultiFrameAction::Aggregator,
                 trace_idx,

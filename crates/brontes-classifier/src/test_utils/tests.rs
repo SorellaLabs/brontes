@@ -30,13 +30,13 @@ use brontes_types::{
 };
 use futures::{future::join_all, StreamExt};
 use reth_db::DatabaseError;
-use reth_rpc_types::trace::parity::Action;
+use reth_rpc_types::trace::parity::Action as TraceAction;
 use serde_json::Value;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::{
-    ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
+    Action, ActionCollection, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
     ProtocolClassifier,
 };
 
@@ -118,7 +118,7 @@ impl ClassifierTestUtils {
     pub async fn build_raw_tree_tx(
         &self,
         tx_hash: TxHash,
-    ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
+    ) -> Result<BlockTree<Action>, ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
 
@@ -136,7 +136,7 @@ impl ClassifierTestUtils {
     pub async fn build_raw_tree_txes(
         &self,
         tx_hashes: Vec<TxHash>,
-    ) -> Result<Vec<BlockTree<Actions>>, ClassifierTestUtilsError> {
+    ) -> Result<Vec<BlockTree<Action>>, ClassifierTestUtilsError> {
         Ok(join_all(
             self.trace_loader
                 .get_tx_traces_with_header(tx_hashes)
@@ -163,7 +163,7 @@ impl ClassifierTestUtils {
     pub async fn build_tree_tx(
         &self,
         tx_hash: TxHash,
-    ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
+    ) -> Result<BlockTree<Action>, ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
         Ok(self
@@ -280,7 +280,7 @@ impl ClassifierTestUtils {
         tx_hash: TxHash,
         quote_asset: Address,
         needs_tokens: Vec<Address>,
-    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), ClassifierTestUtilsError> {
+    ) -> Result<(BlockTree<Action>, Option<DexQuotes>), ClassifierTestUtilsError> {
         let TxTracesWithHeaderAnd { trace, header, block, .. } =
             self.trace_loader.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();
@@ -315,7 +315,7 @@ impl ClassifierTestUtils {
     pub async fn build_tree_txes(
         &self,
         tx_hashes: Vec<TxHash>,
-    ) -> Result<Vec<BlockTree<Actions>>, ClassifierTestUtilsError> {
+    ) -> Result<Vec<BlockTree<Action>>, ClassifierTestUtilsError> {
         Ok(join_all(
             self.trace_loader
                 .get_tx_traces_with_header(tx_hashes)
@@ -335,7 +335,7 @@ impl ClassifierTestUtils {
         tx_hashes: Vec<TxHash>,
         quote_asset: Address,
         needs_tokens: Vec<Address>,
-    ) -> Result<Vec<(BlockTree<Actions>, DexQuotes)>, ClassifierTestUtilsError> {
+    ) -> Result<Vec<(BlockTree<Action>, DexQuotes)>, ClassifierTestUtilsError> {
         let (tx, rx) = unbounded_channel();
         let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
 
@@ -391,7 +391,7 @@ impl ClassifierTestUtils {
     pub async fn build_block_tree(
         &self,
         block: u64,
-    ) -> Result<BlockTree<Actions>, ClassifierTestUtilsError> {
+    ) -> Result<BlockTree<Action>, ClassifierTestUtilsError> {
         let BlockTracesWithHeaderAnd { traces, header, .. } = self
             .trace_loader
             .get_block_traces_with_header(block)
@@ -406,7 +406,7 @@ impl ClassifierTestUtils {
         block: u64,
         quote_asset: Address,
         needs_tokens: Vec<Address>,
-    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), ClassifierTestUtilsError> {
+    ) -> Result<(BlockTree<Action>, Option<DexQuotes>), ClassifierTestUtilsError> {
         let BlockTracesWithHeaderAnd { traces, header, .. } = self
             .trace_loader
             .get_block_traces_with_header(block)
@@ -443,8 +443,8 @@ impl ClassifierTestUtils {
         &self,
         tx_hash: TxHash,
         action_number_in_tx: usize,
-        eq_action: Actions,
-        tree_collect_builder: TreeSearchBuilder<Actions>,
+        eq_action: Action,
+        tree_collect_builder: TreeSearchBuilder<Action>,
         ignore_fields: &[&str],
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
@@ -476,7 +476,7 @@ impl ClassifierTestUtils {
         tx_hash: TxHash,
         index: usize,
         protocol: Protocol,
-        tree_collect_builder: TreeSearchBuilder<Actions>,
+        tree_collect_builder: TreeSearchBuilder<Action>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
 
@@ -506,8 +506,8 @@ impl ClassifierTestUtils {
         &self,
         tx_hash: TxHash,
         action_number_in_tx: usize,
-        eq_action: Actions,
-        tree_collect_builder: TreeSearchBuilder<Actions>,
+        eq_action: Action,
+        tree_collect_builder: TreeSearchBuilder<Action>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
 
@@ -532,7 +532,7 @@ impl ClassifierTestUtils {
     pub async fn has_no_actions(
         &self,
         tx_hash: TxHash,
-        tree_collect_builder: TreeSearchBuilder<Actions>,
+        tree_collect_builder: TreeSearchBuilder<Action>,
     ) -> Result<(), ClassifierTestUtilsError> {
         let mut tree = self.build_tree_tx(tx_hash).await?;
         let root = tree.tx_roots.remove(0);
@@ -547,7 +547,7 @@ impl ClassifierTestUtils {
         tx_hash: TxHash,
         protocol: ProtocolInfo,
         address: Address,
-        cmp_fn: impl Fn(Option<Actions>),
+        cmp_fn: impl Fn(Option<Action>),
     ) -> Result<(), ClassifierTestUtilsError> {
         // write protocol to libmdbx
         self.libmdbx
@@ -605,7 +605,7 @@ impl ClassifierTestUtils {
             .find(|f| f.get_trace_address() == trace_addr)
             .ok_or_else(|| ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))?;
 
-        let Action::Call(call) = &p_trace.trace.action else { panic!() };
+        let TraceAction::Call(call) = &p_trace.trace.action else { panic!() };
 
         let from_address = found_trace.get_from_addr();
         let created_addr = found_trace.get_create_output();
@@ -724,11 +724,11 @@ pub enum ClassifierTestUtilsError {
 
 /// Makes a swap for initializing a virtual pool with the quote token.
 /// this swap is empty such that we don't effect the state
-fn make_fake_transfer(addr: Address) -> Actions {
+fn make_fake_transfer(addr: Address) -> Action {
     let t_in = TokenInfoWithAddress {
         inner:   brontes_types::db::token_info::TokenInfo { decimals: 0, symbol: String::new() },
         address: addr,
     };
 
-    Actions::Transfer(NormalizedTransfer { token: t_in, ..Default::default() })
+    Action::Transfer(NormalizedTransfer { token: t_in, ..Default::default() })
 }

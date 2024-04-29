@@ -6,7 +6,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Actions, NormalizedEthTransfer, NormalizedSwap,
+        accounting::ActionAccounting, Action, NormalizedEthTransfer, NormalizedSwap,
         NormalizedTransfer,
     },
     pair::Pair,
@@ -43,17 +43,13 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         "AtomicArb"
     }
 
-    fn process_tree(
-        &self,
-        tree: Arc<BlockTree<Actions>>,
-        meta_data: Arc<Metadata>,
-    ) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Action>>, meta_data: Arc<Metadata>) -> Self::Result {
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
-                Actions::is_swap,
-                Actions::is_transfer,
-                Actions::is_eth_transfer,
-                Actions::is_nested_action,
+                Action::is_swap,
+                Action::is_transfer,
+                Action::is_eth_transfer,
+                Action::is_nested_action,
             ]))
             .t_map(|(k, v)| {
                 (
@@ -71,9 +67,9 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                     actions
                         .into_iter()
                         .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
-                            Actions::try_swaps_merged,
-                            Actions::try_transfer,
-                            Actions::try_eth_transfer,
+                            Action::try_swaps_merged,
+                            Action::try_transfer,
+                            Action::try_eth_transfer,
                         )),
                 )
             })
@@ -94,8 +90,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
         let account_deltas = transfers
             .into_iter()
-            .map(Actions::from)
-            .chain(eth_transfers.into_iter().map(Actions::from))
+            .map(Action::from)
+            .chain(eth_transfers.into_iter().map(Action::from))
             .account_for_actions();
 
         let mut has_dex_price = self.valid_pricing(

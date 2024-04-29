@@ -21,7 +21,7 @@ pub mod test_utils;
 
 mod classifiers;
 use alloy_sol_types::sol;
-use brontes_types::normalized_actions::Actions;
+use brontes_types::normalized_actions::Action;
 pub use classifiers::*;
 
 // Actions
@@ -127,7 +127,7 @@ pub trait ActionCollection: Sync + Send {
         db_tx: &DB,
         block: u64,
         tx_idx: u64,
-    ) -> Option<(DexPriceMsg, Actions)>;
+    ) -> Option<(DexPriceMsg, Action)>;
 }
 
 pub trait IntoAction: Debug + Send + Sync {
