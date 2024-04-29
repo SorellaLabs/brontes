@@ -68,7 +68,6 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
