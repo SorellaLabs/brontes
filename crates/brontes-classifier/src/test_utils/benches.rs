@@ -20,8 +20,7 @@ use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 use crate::{
-    ActionCollection, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
-    ProtocolClassifications,
+    ActionCollection, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch, ProtocolClassifier,
 };
 
 pub struct ClassifierBenchUtils {
@@ -245,9 +244,9 @@ impl ClassifierBenchUtils {
             .trace
             .into_iter()
             .find(|t| t.get_to_address() == protocol_address)
-            .ok_or_else(|| ClassifierBenchError::ProtocolClassificationError(protocol_address))?;
+            .ok_or_else(|| ClassifierBenchError::ProtocolClassifierError(protocol_address))?;
 
-        let dispatcher = ProtocolClassifications::default();
+        let dispatcher = ProtocolClassifier::default();
 
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
@@ -279,5 +278,5 @@ pub enum ClassifierBenchError {
     #[error("couldn't find parent node for created pool {0:?}")]
     ProtocolDiscoveryError(Address),
     #[error("couldn't find trace that matched {0:?}")]
-    ProtocolClassificationError(Address),
+    ProtocolClassifierError(Address),
 }

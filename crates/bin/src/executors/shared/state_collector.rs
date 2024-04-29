@@ -10,7 +10,6 @@ use std::{
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
-use brontes_metrics::trace;
 use brontes_types::{
     db::{
         metadata::Metadata,

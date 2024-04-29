@@ -363,7 +363,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         }
 
         if let Some(results) =
-            ProtocolClassifications::default().dispatch(call_info, self.libmdbx, block, tx_idx)
+            ProtocolClassifier::default().dispatch(call_info, self.libmdbx, block, tx_idx)
         {
             if results.1.is_new_pool() {
                 let Actions::NewPool(p) = &results.1 else { unreachable!() };

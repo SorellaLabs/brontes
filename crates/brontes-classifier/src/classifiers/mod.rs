@@ -63,7 +63,7 @@ discovery_dispatch!(
 );
 
 action_dispatch!(
-    ProtocolClassifications,
+    ProtocolClassifier,
     UniswapV2SwapCall,
     UniswapV2MintCall,
     UniswapV2BurnCall,

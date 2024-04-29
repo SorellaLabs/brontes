@@ -37,7 +37,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::{
     ActionCollection, Actions, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
-    ProtocolClassifications,
+    ProtocolClassifier,
 };
 
 pub struct ClassifierTestUtils {
@@ -563,9 +563,9 @@ impl ClassifierTestUtils {
             .trace
             .into_iter()
             .find(|t| t.get_to_address() == address)
-            .ok_or_else(|| ClassifierTestUtilsError::ProtocolClassificationError(address))?;
+            .ok_or_else(|| ClassifierTestUtilsError::ProtocolClassifierError(address))?;
 
-        let dispatcher = ProtocolClassifications::default();
+        let dispatcher = ProtocolClassifier::default();
 
         let call_info = trace.get_callframe_info();
 
@@ -719,7 +719,7 @@ pub enum ClassifierTestUtilsError {
     #[error("couldn't find parent node for created pool {0:?}")]
     ProtocolDiscoveryError(Address),
     #[error("couldn't find trace that matched {0:?}")]
-    ProtocolClassificationError(Address),
+    ProtocolClassifierError(Address),
 }
 
 /// Makes a swap for initializing a virtual pool with the quote token.
