@@ -268,6 +268,7 @@ impl SubgraphVerifier {
                         .collect::<FastHashMap<_, _>>();
 
                     if result.should_abandon {
+                        self.subgraph_verification_state.remove(&pair);
                         tracing::trace!(?pair, "aborting");
                         return VerificationResults::Abort(pair, block)
                     }
