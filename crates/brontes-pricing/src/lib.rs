@@ -22,6 +22,7 @@
 
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
+    UnboundedYapperReceiver,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -105,7 +106,7 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     finished:        Arc<AtomicBool>,
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx:       UnboundedReceiver<DexPriceMsg>,
+    update_rx:       UnboundedYapperReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
@@ -138,7 +139,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         finished: Arc<AtomicBool>,
         quote_asset: Address,
         graph_manager: GraphManager<DB>,
-        update_rx: UnboundedReceiver<DexPriceMsg>,
+        update_rx: UnboundedYapperReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
         new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,

@@ -22,7 +22,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap};
+use brontes_types::{BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver};
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
@@ -225,7 +225,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             shutdown.clone(),
             self.quote_asset,
             pair_graph,
-            rx,
+            UnboundedYapperReceiver::new(rx, 100_000, "batch pricer".into()),
             self.parser.get_tracer(),
             start_block,
             rest_pairs,
