@@ -319,12 +319,15 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>> {
         let tx = self.0.ro_tx()?;
-        tx.get::<TxTraces>(block_num)?
+        let res = tx
+            .get::<TxTraces>(block_num)?
             .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
             .map(|i| {
                 i.traces
                     .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
-            })?
+            })?;
+        tx.commit()?;
+        res
     }
 
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
@@ -404,9 +407,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
-        tx.get::<TokenDecimals>(address)?
+        let res = tx
+            .get::<TokenDecimals>(address)?
             .map(|inner| TokenInfoWithAddress { inner, address })
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
+            .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address));
+
+        tx.commit()?;
+        res
     }
 
     fn try_fetch_searcher_eoa_info(
@@ -444,6 +451,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             let searcher_info = row.1;
             result.push((address, searcher_info));
         }
+        tx.commit()?;
 
         Ok(result)
     }
@@ -464,6 +472,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             let searcher_info = row.1;
             result.push((address, searcher_info));
         }
+        tx.commit()?;
 
         Ok(result)
     }
@@ -493,6 +502,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
 
+        tx.commit()?;
         Ok(map)
     }
 
@@ -521,6 +531,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             }
         }
         info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
+        tx.commit()?;
 
         Ok(map)
     }
@@ -562,6 +573,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             result.push((address, searcher_info));
         }
 
+        tx.commit()?;
         Ok(result)
     }
 
@@ -584,6 +596,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
             res.push(entry.1);
         }
 
+        tx.commit()?;
+
         Ok(res)
     }
 
@@ -604,6 +618,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
             res.push(row?.1);
         }
 
+        tx.commit()?;
+
         Ok(res)
     }
 
@@ -623,6 +639,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             let metadata = row.1;
             result.push((address, metadata));
         }
+        tx.commit()?;
 
         Ok(result)
     }
@@ -810,6 +827,8 @@ impl DBWriter for LibmdbxReadWriter {
             ])
             .expect("libmdbx write failure");
 
+        tx.commit()?;
+
         Ok(())
     }
 
@@ -847,6 +866,7 @@ impl LibmdbxReadWriter {
             .write_table::<InitializedState, InitializedStateData>(&[InitializedStateData::new(
                 block, state,
             )])?;
+        tx.commit()?;
 
         Ok(())
     }
@@ -892,6 +912,7 @@ impl LibmdbxReadWriter {
         if res.is_err() {
             self.init_state_updating(block_num, SKIP_FLAG)?;
         }
+        tx.commit()?;
 
         res
     }
@@ -906,6 +927,7 @@ impl LibmdbxReadWriter {
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         let tx = self.0.ro_tx()?;
         let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
+        tx.commit()?;
 
         Ok(CexPriceMap(res))
     }
@@ -939,6 +961,7 @@ impl LibmdbxReadWriter {
                 }
             });
 
+        tx.commit()?;
         Ok(DexQuotes(dex_quotes))
     }
 }
