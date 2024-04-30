@@ -1,6 +1,6 @@
 use std::task::{Context, Poll};
 
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 pub struct UnboundedYapperReceiver<T> {
     chan:      UnboundedReceiver<T>,
