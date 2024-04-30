@@ -48,6 +48,7 @@ impl Drop for SubGraphRegistry {
         let subgraphs_cnt = self.sub_graphs.values().map(|f| f.len()).sum::<usize>();
 
         tracing::info!(
+            target: "brontes::mem",
             pending_finalized_subs = self.pending_finalized_graphs.len(),
             subgraphs_len = subgraphs_cnt,
             "subgraph registry final"

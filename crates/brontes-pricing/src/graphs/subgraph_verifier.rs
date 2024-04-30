@@ -47,6 +47,7 @@ pub struct SubgraphVerifier {
 impl Drop for SubgraphVerifier {
     fn drop(&mut self) {
         tracing::info!(
+            target: "brontes::mem",
             verification_state_rem = self.subgraph_verification_state.len(),
             "amount of remaining state in verifier"
         );
