@@ -107,7 +107,7 @@ impl ClickhouseBuffered {
         }
 
         for (enum_kind, entry) in &mut self.value_map {
-            Self::insert(self.client.clone(), std::mem::take(entry), enum_kind).await;
+            Self::insert(self.client.clone(), std::mem::take(entry), enum_kind.clone()).await;
         }
     }
 }
