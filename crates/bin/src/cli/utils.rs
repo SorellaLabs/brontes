@@ -176,7 +176,7 @@ fn spawn_db_writer_thread(
             }
 
             clickhouse_writer.shutdown().await;
-            drop(guard);
+            drop(graceful_guard);
         },
     );
 }
