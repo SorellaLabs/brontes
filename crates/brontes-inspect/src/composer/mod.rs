@@ -87,10 +87,9 @@ fn run_inspectors(
     let results = orchestra
         .par_iter()
         .flat_map(|inspector| {
-            let span = span!(Level::ERROR, "Inspector", inspector = %inspector.get_id(),block=&metadata.block_num);
-            span.in_scope(|| {
-                inspector.process_tree(tree.clone(), metadata.clone())
-            })
+            let span =
+                span!(Level::ERROR, "Inspector", inspector = %inspector.get_id(),block=&metadata.block_num);
+            span.in_scope(|| inspector.process_tree(tree.clone(), metadata.clone()))
         })
         .collect::<Vec<_>>();
 
