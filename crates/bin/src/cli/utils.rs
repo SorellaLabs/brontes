@@ -165,7 +165,7 @@ fn spawn_db_writer_thread(
 
             let mut graceful_guard = None;
             tokio::select! {
-                Some(val) = &mut clickhouse_writer => {
+                Some(val) = &mut clickhouse_writer.next() => {
                     if let Err(e) = val {
                         tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
                     }

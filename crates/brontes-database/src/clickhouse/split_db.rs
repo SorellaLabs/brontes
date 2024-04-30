@@ -110,6 +110,7 @@ impl ClickhouseBuffered {
             let _ =
                 Self::insert(self.client.clone(), std::mem::take(entry), enum_kind.clone()).await;
         }
+        while let Some(_) = self.futs.next().await {}
     }
 }
 
