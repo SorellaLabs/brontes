@@ -11,7 +11,7 @@ use brontes_types::{
         metadata::Metadata,
     },
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
-    normalized_actions::{Actions, NormalizedAggregator, NormalizedBatch, NormalizedFlashLoan},
+    normalized_actions::{Action, NormalizedAggregator, NormalizedBatch, NormalizedFlashLoan},
     pair::Pair,
     utils::ToFloatNearest,
     ActionIter, FastHashMap, FastHashSet, GasDetails, TxInfo,
@@ -89,8 +89,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     // eth_transfer
     pub fn flatten_nested_actions_default<'a>(
         &self,
-        iter: impl Iterator<Item = Actions> + 'a,
-    ) -> impl Iterator<Item = Actions> + 'a {
+        iter: impl Iterator<Item = Action> + 'a,
+    ) -> impl Iterator<Item = Action> + 'a {
         self.flatten_nested_actions(iter, &|action| {
             action.is_swap() || action.is_transfer() || action.is_eth_transfer()
         })
@@ -98,26 +98,26 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     pub fn flatten_nested_actions<'a, F>(
         &self,
-        iter: impl Iterator<Item = Actions> + 'a,
+        iter: impl Iterator<Item = Action> + 'a,
         filter_actions: &'a F,
-    ) -> impl Iterator<Item = Actions> + 'a
+    ) -> impl Iterator<Item = Action> + 'a
     where
-        F: for<'b> Fn(&'b Actions) -> bool + 'a,
+        F: for<'b> Fn(&'b Action) -> bool + 'a,
     {
-        iter.flatten_specified(Actions::try_aggregator_ref, move |actions: NormalizedAggregator| {
+        iter.flatten_specified(Action::try_aggregator_ref, move |actions: NormalizedAggregator| {
             actions
                 .child_actions
                 .into_iter()
                 .filter(&filter_actions)
                 .collect::<Vec<_>>()
         })
-        .flatten_specified(Actions::try_flash_loan_ref, move |action: NormalizedFlashLoan| {
+        .flatten_specified(Action::try_flash_loan_ref, move |action: NormalizedFlashLoan| {
             action
                 .fetch_underlying_actions()
                 .filter(&filter_actions)
                 .collect::<Vec<_>>()
         })
-        .flatten_specified(Actions::try_batch_ref, move |action: NormalizedBatch| {
+        .flatten_specified(Action::try_batch_ref, move |action: NormalizedBatch| {
             action
                 .fetch_underlying_actions()
                 .filter(&filter_actions)

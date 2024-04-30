@@ -10,7 +10,7 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
-pub use super::{Actions, NormalizedSwap};
+pub use super::{Action, NormalizedSwap};
 use crate::{
     db::{
         redefined_types::{malachite::RationalRedefined, primitives::*},

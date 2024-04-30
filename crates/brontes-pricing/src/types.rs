@@ -2,7 +2,7 @@ use std::fmt::{Debug, Display};
 
 use alloy_primitives::{wrap_fixed_bytes, Address, FixedBytes, Log};
 use brontes_types::{
-    normalized_actions::{pool::NormalizedPoolConfigUpdate, Actions},
+    normalized_actions::{pool::NormalizedPoolConfigUpdate, Action},
     pair::Pair,
 };
 use malachite::Rational;
@@ -160,10 +160,10 @@ pub enum DexPriceMsg {
 }
 
 impl DexPriceMsg {
-    pub fn get_action(&self) -> Actions {
+    pub fn get_action(&self) -> Action {
         match self {
             Self::Update(u) => u.action.clone(),
-            Self::DiscoveredPool(p) => Actions::PoolConfigUpdate(p.clone()),
+            Self::DiscoveredPool(p) => Action::PoolConfigUpdate(p.clone()),
             _ => unreachable!("called get action on closed msg"),
         }
     }
@@ -187,7 +187,7 @@ pub struct PoolUpdate {
     pub block:  u64,
     pub tx_idx: u64,
     pub logs:   Vec<Log>,
-    pub action: Actions,
+    pub action: Action,
 }
 
 impl PoolUpdate {
@@ -212,9 +212,9 @@ impl PoolUpdate {
     }
 
     pub fn is_supported_protocol(&self) -> bool {
-        if let Actions::Swap(s) = &self.action {
+        if let Action::Swap(s) = &self.action {
             return s.protocol.has_state_updater()
-        } else if let Actions::SwapWithFee(s) = &self.action {
+        } else if let Action::SwapWithFee(s) = &self.action {
             return s.protocol.has_state_updater()
         }
 
@@ -225,22 +225,22 @@ impl PoolUpdate {
     // fetch all pairs of it. this
     pub fn get_pair(&self, quote: Address) -> Option<Pair> {
         match &self.action {
-            Actions::Swap(s) => Some(Pair(s.token_in.address, s.token_out.address)),
-            Actions::Mint(m) => Some(Pair(
+            Action::Swap(s) => Some(Pair(s.token_in.address, s.token_out.address)),
+            Action::Mint(m) => Some(Pair(
                 m.token.first()?.address,
                 m.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
-            Actions::Burn(b) => Some(Pair(
+            Action::Burn(b) => Some(Pair(
                 b.token.first()?.address,
                 b.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
-            Actions::Collect(b) => Some(Pair(
+            Action::Collect(b) => Some(Pair(
                 b.token.first()?.address,
                 b.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
-            Actions::Transfer(t) => Some(Pair(t.token.address, quote)),
-            Actions::Liquidation(l) => Some(Pair(l.collateral_asset.address, l.debt_asset.address)),
-            Actions::SwapWithFee(s) => Some(Pair(s.token_in.address, s.token_out.address)),
+            Action::Transfer(t) => Some(Pair(t.token.address, quote)),
+            Action::Liquidation(l) => Some(Pair(l.collateral_asset.address, l.debt_asset.address)),
+            Action::SwapWithFee(s) => Some(Pair(s.token_in.address, s.token_out.address)),
             rest => {
                 tracing::debug!(?rest, "tried to get pair for action with no def");
                 None

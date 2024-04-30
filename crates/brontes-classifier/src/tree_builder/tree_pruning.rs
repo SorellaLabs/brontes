@@ -1,5 +1,5 @@
 use brontes_types::{
-    normalized_actions::{Actions, NormalizedSwapWithFee},
+    normalized_actions::{Action, NormalizedSwapWithFee},
     tree::BlockTree,
     unzip_either::IterExt,
     TreeCollector, TreeSearchBuilder,
@@ -10,14 +10,14 @@ use malachite::{num::basic::traits::Zero, Rational};
 /// stable token like eth before taking the fee. However this creates an
 /// accounting inaccuracy as we will register this fee swap as
 /// part of the mev messing up our profit accounting.
-pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
+pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Action>) {
     // adjusts the amount in of the swap and notes the fee on the normalized type.
     // This is needed when swapping into the tax token as the amount out of the swap
     // will be wrong
     tree.modify_spans(
         TreeSearchBuilder::default()
-            .with_action(Actions::is_swap)
-            .child_nodes_have([Actions::is_transfer]),
+            .with_action(Action::is_swap)
+            .child_nodes_have([Action::is_transfer]),
         |span, data| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
                 .into_iter()
@@ -25,9 +25,9 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                 .filter_map(|(idx, data)| {
                     let (mut swaps, mut transfers, mut eth_transfers): (Vec<_>, Vec<_>, Vec<_>) =
                         data.clone().into_iter().split_actions((
-                            Actions::try_swap,
-                            Actions::try_transfer,
-                            Actions::try_eth_transfer,
+                            Action::try_swap,
+                            Action::try_transfer,
+                            Action::try_eth_transfer,
                         ));
 
                     if !swaps.is_empty() {
@@ -62,14 +62,14 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         // will be with fee.
                         swap.amount_out -= &transfer.fee;
 
-                        let mut swap = vec![Actions::SwapWithFee(NormalizedSwapWithFee {
+                        let mut swap = vec![Action::SwapWithFee(NormalizedSwapWithFee {
                             swap: swap.clone(),
                             fee_amount,
                             fee_token: transfer.token.clone(),
                         })];
 
                         if let Some(eth_t) = eth_transfer.clone() {
-                            swap.push(Actions::EthTransfer(eth_t));
+                            swap.push(Action::EthTransfer(eth_t));
                         }
 
                         data.replace(swap_idx, swap);
@@ -82,13 +82,13 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
                         let fee_amount = transfer.fee.clone();
                         // swap amount in will be the amount without fee.
                         swap.amount_in += &transfer.fee;
-                        let mut swap = vec![Actions::SwapWithFee(NormalizedSwapWithFee {
+                        let mut swap = vec![Action::SwapWithFee(NormalizedSwapWithFee {
                             swap: swap.clone(),
                             fee_amount,
                             fee_token: transfer.token.clone(),
                         })];
                         if let Some(eth_t) = eth_transfer.clone() {
-                            swap.push(Actions::EthTransfer(eth_t));
+                            swap.push(Action::EthTransfer(eth_t));
                         }
                         data.replace(swap_idx, swap);
                         return
@@ -102,13 +102,13 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // a more stable currency
     // tree.modify_node_if_contains_childs(
     //     TreeSearchBuilder::default()
-    //         .with_action(Actions::is_transfer)
-    //         .child_nodes_contain([Actions::is_swap, Actions::is_transfer]),
+    //         .with_action(Action::is_transfer)
+    //         .child_nodes_contain([Action::is_swap, Action::is_transfer]),
     //     |node, data| {
     //         let mut swap_idx = Vec::new();
     //         node.collect(
     //             &mut swap_idx,
-    //             &TreeSearchBuilder::default().with_action(Actions::is_swap),
+    //             &TreeSearchBuilder::default().with_action(Action::is_swap),
     //             &|node| node.node.index,
     //             data,
     //         );
@@ -120,15 +120,15 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Actions>) {
     // );
 }
 
-pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Actions>) {
+pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Action>) {
     tracing::debug!("remove double transfer counts");
     tree.modify_node_if_contains_childs(
-        TreeSearchBuilder::default().with_action(Actions::is_transfer),
+        TreeSearchBuilder::default().with_action(Action::is_transfer),
         |node, data| {
             let mut inner_transfers = Vec::new();
             node.collect(
                 &mut inner_transfers,
-                &TreeSearchBuilder::default().with_action(Actions::is_transfer),
+                &TreeSearchBuilder::default().with_action(Action::is_transfer),
                 &|node| node.node.clone(),
                 data,
             );
@@ -144,7 +144,7 @@ pub(crate) fn remove_possible_transfer_double_counts(tree: &mut BlockTree<Action
             inner_transfers.into_iter().for_each(|i_transfer| {
                 if let Some(i_data) = data.get_mut(i_transfer.data) {
                     for f in i_data {
-                        if let Actions::Transfer(t) = f {
+                        if let Action::Transfer(t) = f {
                             if this.to == t.to
                                 && this.from == t.from
                                 && this.amount == t.amount

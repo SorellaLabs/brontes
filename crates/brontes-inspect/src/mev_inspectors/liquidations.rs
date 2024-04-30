@@ -4,7 +4,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
-    normalized_actions::{accounting::ActionAccounting, Actions},
+    normalized_actions::{accounting::ActionAccounting, Action},
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
@@ -32,12 +32,12 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         "Liquidation"
     }
 
-    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         let liq_txs = tree
             .clone()
             .collect_all(
                 TreeSearchBuilder::default()
-                    .with_actions([Actions::is_swap, Actions::is_liquidation]),
+                    .with_actions([Action::is_swap, Action::is_liquidation]),
             )
             .collect_vec();
 
@@ -57,12 +57,12 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         &self,
         info: TxInfo,
         metadata: Arc<Metadata>,
-        actions: Vec<Actions>,
+        actions: Vec<Action>,
     ) -> Option<Bundle> {
         let (swaps, liqs): (Vec<_>, Vec<_>) = actions
             .clone()
             .into_iter()
-            .action_split((Actions::try_swaps_merged, Actions::try_liquidation));
+            .action_split((Action::try_swaps_merged, Action::try_liquidation));
 
         if liqs.is_empty() {
             tracing::debug!("no liquidation events");

@@ -1,9 +1,9 @@
-use crate::{normalized_actions::Actions, tree::BlockTree, TreeSearchBuilder};
+use crate::{normalized_actions::Action, tree::BlockTree, TreeSearchBuilder};
 
-pub fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
+pub fn remove_swap_transfers(tree: &mut BlockTree<Action>) {
     tree.remove_duplicate_data(
-        TreeSearchBuilder::default().with_action(Actions::is_swap),
-        TreeSearchBuilder::default().with_action(Actions::is_transfer),
+        TreeSearchBuilder::default().with_action(Action::is_swap),
+        TreeSearchBuilder::default().with_action(Action::is_transfer),
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, data| {
             // calcuate the
@@ -15,7 +15,7 @@ pub fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
             other_nodes
                 .iter()
                 .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data else {
+                    let Action::Transfer(transfer) = data else {
                         return None;
                     };
                     if (transfer.amount == swap_data.amount_in
@@ -30,13 +30,13 @@ pub fn remove_swap_transfers(tree: &mut BlockTree<Actions>) {
         },
     );
 }
-pub fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
+pub fn remove_mint_transfers(tree: &mut BlockTree<Action>) {
     tree.remove_duplicate_data(
-        TreeSearchBuilder::default().with_action(Actions::is_mint),
-        TreeSearchBuilder::default().with_action(Actions::is_transfer),
+        TreeSearchBuilder::default().with_action(Action::is_mint),
+        TreeSearchBuilder::default().with_action(Action::is_transfer),
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, node_data| {
-            let Some(Actions::Mint(mint_data)) =
+            let Some(Action::Mint(mint_data)) =
                 node_data.get_ref(node.data).and_then(|node| node.first())
             else {
                 unreachable!("value not mint")
@@ -44,7 +44,7 @@ pub fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
             other_nodes
                 .iter()
                 .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data else {
+                    let Action::Transfer(transfer) = data else {
                         return None;
                     };
                     for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
@@ -59,13 +59,13 @@ pub fn remove_mint_transfers(tree: &mut BlockTree<Actions>) {
     );
 }
 
-pub fn remove_burn_transfers(tree: &mut BlockTree<Actions>) {
+pub fn remove_burn_transfers(tree: &mut BlockTree<Action>) {
     tree.remove_duplicate_data(
-        TreeSearchBuilder::default().with_action(Actions::is_burn),
-        TreeSearchBuilder::default().with_action(Actions::is_transfer),
+        TreeSearchBuilder::default().with_action(Action::is_burn),
+        TreeSearchBuilder::default().with_action(Action::is_transfer),
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, node_data| {
-            let Some(Actions::Burn(burn_data)) =
+            let Some(Action::Burn(burn_data)) =
                 node_data.get_ref(node.data).and_then(|node| node.first())
             else {
                 unreachable!("value not burn")
@@ -73,7 +73,7 @@ pub fn remove_burn_transfers(tree: &mut BlockTree<Actions>) {
             other_nodes
                 .iter()
                 .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data else {
+                    let Action::Transfer(transfer) = data else {
                         return None;
                     };
                     for (amount, token) in burn_data.amount.iter().zip(&burn_data.token) {
@@ -88,13 +88,13 @@ pub fn remove_burn_transfers(tree: &mut BlockTree<Actions>) {
     );
 }
 
-pub fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
+pub fn remove_collect_transfers(tree: &mut BlockTree<Action>) {
     tree.remove_duplicate_data(
-        TreeSearchBuilder::default().with_action(Actions::is_collect),
-        TreeSearchBuilder::default().with_action(Actions::is_transfer),
+        TreeSearchBuilder::default().with_action(Action::is_collect),
+        TreeSearchBuilder::default().with_action(Action::is_transfer),
         |data| (data.node.index, data.data.clone()),
         |other_nodes, node, node_info| {
-            let Some(Actions::Collect(collect_data)) =
+            let Some(Action::Collect(collect_data)) =
                 node_info.get_ref(node.data).and_then(|node| node.first())
             else {
                 unreachable!("value not collect")
@@ -102,7 +102,7 @@ pub fn remove_collect_transfers(tree: &mut BlockTree<Actions>) {
             other_nodes
                 .iter()
                 .filter_map(|(index, data)| {
-                    let Actions::Transfer(transfer) = data else {
+                    let Action::Transfer(transfer) = data else {
                         return None;
                     };
                     for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {

@@ -1,6 +1,6 @@
 use brontes_types::{
     normalized_actions::{
-        Actions, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest,
+        Action, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest,
     },
     Protocol, TreeSearchBuilder,
 };
@@ -15,13 +15,13 @@ impl MultiCallFrameClassifier for ZeroXBatch {
 
     fn create_classifier(
         request: MultiFrameRequest,
-    ) -> Option<MultiCallFrameClassification<Actions>> {
+    ) -> Option<MultiCallFrameClassification<Action>> {
         Some(MultiCallFrameClassification {
             trace_index:         request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
-                Actions::is_swap,
-                Actions::is_transfer,
-                Actions::is_eth_transfer,
+                Action::is_swap,
+                Action::is_transfer,
+                Action::is_eth_transfer,
             ]),
             parse_fn:            Box::new(|this_action, child_nodes| {
                 let this = this_action.try_batch_mut().unwrap();
@@ -31,11 +31,11 @@ impl MultiCallFrameClassifier for ZeroXBatch {
                 let mut solver_swaps = vec![];
                 for (trace_index, action) in child_nodes {
                     match &action {
-                        Actions::Swap(s) => {
+                        Action::Swap(s) => {
                             solver_swaps.push(s.clone());
                             nodes_to_prune.push(trace_index);
                         }
-                        Actions::SwapWithFee(s) => {
+                        Action::SwapWithFee(s) => {
                             solver_swaps.push(s.swap.clone());
                             nodes_to_prune.push(trace_index);
                         }

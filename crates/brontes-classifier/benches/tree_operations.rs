@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use alloy_primitives::B256;
 use brontes_classifier::test_utils::ClassifierBenchUtils;
-use brontes_types::{normalized_actions::Actions, TreeSearchBuilder};
+use brontes_types::{normalized_actions::Action, TreeSearchBuilder};
 use criterion::{criterion_group, Criterion};
 
 fn bench_collect_tx(c: &mut Criterion) {
@@ -14,7 +14,7 @@ fn bench_collect_tx(c: &mut Criterion) {
                 .unwrap(),
             c,
             |tree| {
-                tree.collect_all(TreeSearchBuilder::default().with_action(Actions::is_transfer));
+                tree.collect_all(TreeSearchBuilder::default().with_action(Action::is_transfer));
             },
         )
         .unwrap();
@@ -24,7 +24,7 @@ fn bench_collect_block(c: &mut Criterion) {
     let utils = ClassifierBenchUtils::new();
     utils
         .bench_tree_operations("collect block", 18672183, c, |tree| {
-            tree.collect_all(TreeSearchBuilder::default().with_action(Actions::is_transfer));
+            tree.collect_all(TreeSearchBuilder::default().with_action(Action::is_transfer));
         })
         .unwrap();
 }

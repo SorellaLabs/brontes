@@ -5,7 +5,7 @@ use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
-pub use super::{Actions, NormalizedSwap};
+pub use super::{Action, NormalizedSwap};
 use crate::{constants::ETH_ADDRESS, ToScaledRational};
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]

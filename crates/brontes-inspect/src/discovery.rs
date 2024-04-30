@@ -10,7 +10,7 @@ use std::{collections::HashMap, sync::Arc};
 use alloy_primitives::B256;
 use brontes_types::{
     mev::{PossibleMev, PossibleMevTriggers},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     tree::BlockTree,
 };
 
@@ -30,7 +30,7 @@ impl DiscoveryInspector {
     /// Find possible mev transactions in a block tree. This is done by looking
     /// for transactions that are x standard deviations above the average
     /// priority fee, or have a coinbase transfer, or are private transactions.
-    pub fn find_possible_mev(&self, tree: Arc<BlockTree<Actions>>) -> HashMap<B256, PossibleMev> {
+    pub fn find_possible_mev(&self, tree: Arc<BlockTree<Action>>) -> HashMap<B256, PossibleMev> {
         let avr_priority = tree.avg_priority_fee;
         let base_fee = tree.header.base_fee_per_gas.unwrap();
 

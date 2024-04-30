@@ -7,7 +7,7 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::{SolCall, SolEvent};
 use async_trait::async_trait;
 use brontes_types::{
-    normalized_actions::Actions, traits::TracingProvider, FastHashMap, ToScaledRational,
+    normalized_actions::Action, traits::TracingProvider, FastHashMap, ToScaledRational,
 };
 use malachite::Rational;
 use serde::{Deserialize, Serialize};
@@ -162,7 +162,7 @@ impl UpdatableProtocol for UniswapV3Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, _action: Actions) -> Result<(), AmmError> {
+    fn sync_from_action(&mut self, _action: Action) -> Result<(), AmmError> {
         todo!("syncing from actions is currently not supported for v3")
     }
 

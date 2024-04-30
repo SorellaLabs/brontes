@@ -1,6 +1,6 @@
 use brontes_types::{
     normalized_actions::{
-        Actions, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest, NodeDataIndex,
+        Action, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest, NodeDataIndex,
     },
     Protocol, TreeSearchBuilder,
 };
@@ -15,10 +15,10 @@ impl MultiCallFrameClassifier for AaveV2 {
 
     fn create_classifier(
         request: MultiFrameRequest,
-    ) -> Option<MultiCallFrameClassification<Actions>> {
+    ) -> Option<MultiCallFrameClassification<Action>> {
         Some(MultiCallFrameClassification {
             trace_index:         request.trace_idx,
-            tree_search_builder: TreeSearchBuilder::new().with_action(Actions::is_transfer),
+            tree_search_builder: TreeSearchBuilder::new().with_action(Action::is_transfer),
             parse_fn:            Box::new(parse_v2_v3),
         })
     }
@@ -29,24 +29,21 @@ impl MultiCallFrameClassifier for AaveV3 {
 
     fn create_classifier(
         request: MultiFrameRequest,
-    ) -> Option<MultiCallFrameClassification<Actions>> {
+    ) -> Option<MultiCallFrameClassification<Action>> {
         Some(MultiCallFrameClassification {
             trace_index:         request.trace_idx,
-            tree_search_builder: TreeSearchBuilder::new().with_action(Actions::is_transfer),
+            tree_search_builder: TreeSearchBuilder::new().with_action(Action::is_transfer),
             parse_fn:            Box::new(parse_v2_v3),
         })
     }
 }
 
-fn parse_v2_v3(
-    this: &mut Actions,
-    child_nodes: Vec<(NodeDataIndex, Actions)>,
-) -> Vec<NodeDataIndex> {
+fn parse_v2_v3(this: &mut Action, child_nodes: Vec<(NodeDataIndex, Action)>) -> Vec<NodeDataIndex> {
     let this = this.try_liquidation_mut().unwrap();
     child_nodes
         .into_iter()
         .find_map(|(index, action)| {
-            if let Actions::Transfer(transfer) = action {
+            if let Action::Transfer(transfer) = action {
                 // because aave has the option to return the Atoken or regular,
                 // we can't filter by collateral filter. This might be an issue...
                 // tbd tho

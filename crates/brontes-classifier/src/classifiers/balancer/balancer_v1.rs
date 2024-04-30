@@ -106,7 +106,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         Protocol::BalancerV1,
         TreeSearchBuilder,
     };
@@ -119,7 +119,7 @@ mod tests {
         let swap =
             B256::from(hex!("c832c2dcdbb2e3ca021ccb594ded9bf3308f2b4b5a90f615aa8e053c0e180a35"));
 
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol:    BalancerV1,
             trace_index: 11,
             from:        Address::new(hex!("0eae044f00B0aF300500F090eA00027097d03000")),
@@ -143,7 +143,7 @@ mod tests {
                 swap,
                 1,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();
@@ -168,7 +168,7 @@ mod tests {
         let bind_tx_hash =
             B256::from(hex!("400146b33d7e9c5ba7626c927a93ddc4dbd5e13161609011681450c19eaebfed"));
 
-        let expected_action = Actions::NewPool(NormalizedNewPool {
+        let expected_action = Action::NewPool(NormalizedNewPool {
             protocol:     Protocol::BalancerV1,
             trace_index:  0,
             pool_address: Address::new(hex!("9A2181cf0bC57FC0177517dB21d457BDd1b2b32e")),
@@ -180,7 +180,7 @@ mod tests {
                 bind_tx_hash,
                 0,
                 expected_action,
-                TreeSearchBuilder::default().with_action(Actions::is_new_pool),
+                TreeSearchBuilder::default().with_action(Action::is_new_pool),
             )
             .await
             .unwrap();

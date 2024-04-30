@@ -6,7 +6,7 @@ use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{AddressDeltas, TokenAccounting};
-pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
+pub use super::{Action, NormalizedSwap, NormalizedTransfer};
 use crate::{db::token_info::TokenInfoWithAddress, Protocol};
 
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
@@ -29,7 +29,7 @@ pub struct NormalizedFlashLoan {
     //  - Mints
     //  - Burns
     //  - Transfers
-    pub child_actions: Vec<Actions>,
+    pub child_actions: Vec<Action>,
     pub repayments:    Vec<NormalizedTransfer>,
     pub fees_paid:     Vec<Rational>,
     pub msg_value:     U256,
@@ -44,9 +44,9 @@ impl TokenAccounting for NormalizedFlashLoan {
 }
 
 impl NormalizedFlashLoan {
-    pub fn fetch_underlying_actions(self) -> impl Iterator<Item = Actions> {
+    pub fn fetch_underlying_actions(self) -> impl Iterator<Item = Action> {
         self.child_actions
             .into_iter()
-            .chain(self.repayments.into_iter().map(Actions::from))
+            .chain(self.repayments.into_iter().map(Action::from))
     }
 }
