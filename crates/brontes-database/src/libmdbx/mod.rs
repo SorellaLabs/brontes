@@ -132,8 +132,20 @@ impl Libmdbx {
         Ok(res)
     }
 
+    pub fn view_db<F, R>(&self, f: F) -> eyre::Result<R>
+    where
+        F: FnOnce(&CompressedLibmdbxTx<RO>) -> eyre::Result<R>,
+    {
+        let tx = self.ro_tx()?;
+
+        let res = f(&tx);
+        tx.commit()?;
+
+        res
+    }
+
     /// returns a RO transaction
-    pub fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
+    fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
         let tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
 
         Ok(tx)
