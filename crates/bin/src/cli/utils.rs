@@ -164,14 +164,16 @@ fn spawn_db_writer_thread(
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
-            tokio::select! {
-                Some(val) = &mut clickhouse_writer.next() => {
-                    if let Err(e) = val {
-                        tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+            while graceful_guard.is_none() {
+                tokio::select! {
+                    Some(val) = &mut clickhouse_writer.next() => {
+                        if let Err(e) = val {
+                            tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+                        }
+                    },
+                    guard = shutdown => {
+                        graceful_guard = Some(guard);
                     }
-                },
-                guard = shutdown => {
-                    graceful_guard = Some(guard);
                 }
             }
 
