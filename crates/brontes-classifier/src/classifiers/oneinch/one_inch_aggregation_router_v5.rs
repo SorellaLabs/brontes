@@ -204,7 +204,7 @@ mod tests {
     use brontes_pricing::Protocol::UniswapV3;
     use brontes_types::{
         db::token_info::TokenInfoWithAddress,
-        normalized_actions::{Actions, NormalizedSwap, NormalizedTransfer},
+        normalized_actions::{Action, NormalizedSwap, NormalizedTransfer},
         Protocol::OneInchV5,
         ToScaledRational, TreeSearchBuilder,
     };
@@ -217,13 +217,13 @@ mod tests {
         let aggregator =
             B256::from(hex!("68603b7dce39738bc7aa9ce1cce39992965820ae39388a6d62db8d2db70132bb"));
 
-        let eq_action = Actions::Aggregator(NormalizedAggregator {
+        let eq_action = Action::Aggregator(NormalizedAggregator {
             protocol:      OneInchV5,
             trace_index:   0,
             from:          Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
             recipient:     Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
             child_actions: vec![
-                Actions::Transfer(NormalizedTransfer {
+                Action::Transfer(NormalizedTransfer {
                     trace_index: 1,
                     from:        Address::new(hex!("f4f8845cede63e79de1b2c3bba395e8547fe4283")),
                     to:          Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
@@ -233,7 +233,7 @@ mod tests {
                         .to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
                 }),
-                Actions::Transfer(NormalizedTransfer {
+                Action::Transfer(NormalizedTransfer {
                     trace_index: 5,
                     from:        Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     to:          Address::new(hex!("beec796a4a2a27b687e1d48efad3805d78800522")),
@@ -241,7 +241,7 @@ mod tests {
                     amount:      U256::from_str("441000000").unwrap().to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
                 }),
-                Actions::Swap(NormalizedSwap {
+                Action::Swap(NormalizedSwap {
                     protocol:    UniswapV3,
                     trace_index: 11,
                     from:        Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
@@ -257,7 +257,7 @@ mod tests {
                         .to_scaled_rational(6),
                     msg_value:   U256::ZERO,
                 }),
-                Actions::Transfer(NormalizedTransfer {
+                Action::Transfer(NormalizedTransfer {
                     trace_index: 12,
                     from:        Address::new(hex!("3416cf6c708da44db2624d63ea0aaef7113527c6")),
                     to:          Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
@@ -267,7 +267,7 @@ mod tests {
                         .to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
                 }),
-                Actions::Transfer(NormalizedTransfer {
+                Action::Transfer(NormalizedTransfer {
                     trace_index: 16,
                     from:        Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     to:          Address::new(hex!("3416cf6c708da44db2624d63ea0aaef7113527c6")),
@@ -277,7 +277,7 @@ mod tests {
                         .to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
                 }),
-                Actions::Transfer(NormalizedTransfer {
+                Action::Transfer(NormalizedTransfer {
                     trace_index: 21,
                     from:        Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     to:          Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
@@ -287,7 +287,7 @@ mod tests {
                         .to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
                 }),
-                Actions::Transfer(NormalizedTransfer {
+                Action::Transfer(NormalizedTransfer {
                     trace_index: 23,
                     from:        Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
                     to:          Address::new(hex!("f4f8845cede63e79de1b2c3bba395e8547fe4283")),
@@ -307,7 +307,7 @@ mod tests {
                 aggregator,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();

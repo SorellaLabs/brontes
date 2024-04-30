@@ -41,7 +41,7 @@ pub mod dodo;
 pub use dodo::*;
 
 discovery_dispatch!(
-    DiscoveryProtocols,
+    DiscoveryClassifier,
     SushiSwapV2Discovery,
     SushiSwapV3Discovery,
     UniswapV2Discovery,
@@ -66,7 +66,7 @@ discovery_dispatch!(
 );
 
 action_dispatch!(
-    ProtocolClassifications,
+    ProtocolClassifier,
     UniswapV2SwapCall,
     UniswapV2MintCall,
     UniswapV2BurnCall,

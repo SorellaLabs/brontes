@@ -59,8 +59,6 @@ sol!(ZeroXPancakeSwapFeature, "./classifier-abis/zero-x/ZeroXPancakeSwapFeature.
 sol!(ZeroXOtcOrdersFeature, "./classifier-abis/zero-x/ZeroXOtcOrdersFeature.json");
 sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProviderFeature.json");
 sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
-sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
-sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
@@ -75,9 +73,6 @@ sol!(CompoundV2Comptroller, "./classifier-abis/CompoundV2Comptroller.json");
 sol!(CErc20Delegate, "./classifier-abis/CErc20Delegate.json");
 sol!(BalancerV1CorePoolFactory, "./classifier-abis/balancer/BalancerV1Factory.json");
 sol!(BalancerV1SmartPoolFactory, "./classifier-abis/balancer/BalancerV1CrpFactory.json");
-sol!(DodoDVMFactory, "./classifier-abis/dodo/DVMFactory.json");
-sol!(DodoDPPFactory, "./classifier-abis/dodo/DPPFactory.json");
-sol!(DodoDSPFactory, "./classifier-abis/dodo/DSPFactory.json");
 
 // Balancer Pool Interfaces
 sol! {
@@ -132,7 +127,7 @@ pub trait ActionCollection: Sync + Send {
         db_tx: &DB,
         block: u64,
         tx_idx: u64,
-    ) -> Option<(DexPriceMsg, Action)>;
+    ) -> Option<(DexPriceMsg, Actions)>;
 }
 
 pub trait IntoAction: Debug + Send + Sync {

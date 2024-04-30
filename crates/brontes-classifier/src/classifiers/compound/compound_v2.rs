@@ -42,7 +42,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
         db::token_info::TokenInfoWithAddress,
-        normalized_actions::{Actions, NormalizedLiquidation},
+        normalized_actions::{Action, NormalizedLiquidation},
         Protocol, TreeSearchBuilder,
     };
     use malachite::Rational;
@@ -85,7 +85,7 @@ mod tests {
         let compound_v2_liquidation =
             B256::from(hex!("3a3ba6b0a6b69a8e316e1c20f97b9ce2de790b2f3bf90aaef5b29b06aafa5fda"));
 
-        let eq_action = Actions::Liquidation(NormalizedLiquidation {
+        let eq_action = Action::Liquidation(NormalizedLiquidation {
             protocol:              Protocol::CompoundV2,
             liquidated_collateral: Rational::from_signeds(6140057900131i64, 100000000),
             covered_debt:          Rational::from_signeds(48779241727i64, 100000000),
@@ -105,7 +105,7 @@ mod tests {
                 compound_v2_liquidation,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_liquidation),
+                TreeSearchBuilder::default().with_action(Action::is_liquidation),
             )
             .await
             .unwrap();

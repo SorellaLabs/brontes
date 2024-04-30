@@ -12,7 +12,7 @@ use brontes_types::{
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
-    normalized_actions::Actions,
+    normalized_actions::Action,
     tree::BlockTree,
     BrontesTaskExecutor, FastHashMap,
 };
@@ -27,7 +27,7 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     receiver: PricingReceiver<T, DB>,
     tx:       PricingSender<T, DB>,
 
-    pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Actions>, Metadata)>,
+    pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Action>, Metadata)>,
     task_executor:            BrontesTaskExecutor,
 }
 
@@ -69,7 +69,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         self.task_executor.spawn_critical("dex pricer", fut);
     }
 
-    pub fn add_pending_inspection(&mut self, block: u64, tree: BlockTree<Actions>, meta: Metadata) {
+    pub fn add_pending_inspection(&mut self, block: u64, tree: BlockTree<Action>, meta: Metadata) {
         assert!(
             self.pending_trees.insert(block, (tree, meta)).is_none(),
             "traced a duplicate block"
@@ -80,7 +80,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
     for WaitingForPricerFuture<T, DB>
 {
-    type Item = (BlockTree<Actions>, Metadata);
+    type Item = (BlockTree<Action>, Metadata);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
