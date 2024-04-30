@@ -71,7 +71,7 @@ impl Libmdbx {
     }
 
     pub fn sync(&self) {
-        let _ self.0.sync(false);
+        let _ = self.0.sync(false);
     }
 
     /// Creates all the defined tables, opens if already created
