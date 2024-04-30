@@ -149,7 +149,7 @@ impl RunArgs {
                     self.cli_only,
                     self.init_crit_tables,
                 )
-                .build(task_executor, shutdown)
+                .build(task_executor, shutdown.clone())
                 .await
                 .map_err(|e| {
                     tracing::error!(%e);
