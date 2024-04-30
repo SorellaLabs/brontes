@@ -175,12 +175,14 @@ impl StateTracker {
             state
                 .remove_state(block)
                 .into_iter()
-                .for_each(|(should_finalize, state)| {
-                    if !should_finalize {
+                .for_each(|(should_finalize, mut state)| {
+                    if should_finalize == 0 {
                         return
                     }
                     match self.finalized_edge_state.entry(*pool) {
                         std::collections::hash_map::Entry::Vacant(v) => {
+                            // we use should finalize here
+                            state.dependents = should_finalize;
                             v.insert(state);
                         }
                         std::collections::hash_map::Entry::Occupied(mut o) => {
@@ -188,7 +190,7 @@ impl StateTracker {
                             if state.state.last_update > block {
                                 panic!("finalized state was ahead of regular state");
                             }
-                            old_state.dependents += state.dependents;
+                            old_state.dependents += should_finalize;
                         }
                     }
                 });
@@ -231,7 +233,7 @@ impl StateWithDependencies {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct PoolStateWithBlock(Vec<(bool, StateWithDependencies)>);
+pub struct PoolStateWithBlock(Vec<(u64, StateWithDependencies)>);
 
 impl PoolStateWithBlock {
     fn has_items(&self) -> bool {
@@ -245,7 +247,7 @@ impl PoolStateWithBlock {
     pub fn mark_state_as_finalized(&mut self, block: u64) {
         for (finalized, state) in &mut self.0 {
             if block == state.last_update {
-                *finalized = true;
+                *finalized += 1;
             }
         }
     }
@@ -288,7 +290,7 @@ impl PoolStateWithBlock {
             .map(|state| &state.state)
     }
 
-    pub fn remove_state(&mut self, block: u64) -> Vec<(bool, StateWithDependencies)> {
+    pub fn remove_state(&mut self, block: u64) -> Vec<(u64, StateWithDependencies)> {
         let mut res = vec![];
         self.0.retain(|(keep, state)| {
             if state.last_update <= block {
@@ -302,7 +304,7 @@ impl PoolStateWithBlock {
     }
 
     pub fn add_state(&mut self, state: StateWithDependencies) {
-        self.0.push((false, state));
+        self.0.push((0, state));
     }
 
     pub fn contains_block_state(&self, block: u64) -> bool {
