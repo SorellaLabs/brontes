@@ -2,7 +2,7 @@
 
 The `BlockTree` decodes, classifies and normalizes a block's transaction traces into a collection of `TransactionTrees`, each representing a transaction's call hierarchy.
 
-A `TransactionTree` organizes all EVM traces as `Actions`, which form the nodes of the tree. Each `Action` normalizes core DeFi operations—such as swaps, flash loans, and mints—into a standardized format. This approach harmonizes idiosyncrasies between different DeFi protocol implementations, generalizing the representation of core primitives to establish a consistent analytical framework applicable across all protocols.
+A `TransactionTree` organizes all EVM traces as a collection of `Action`, which form the nodes of the tree. Each `Action` normalizes core DeFi operations—such as swaps, flash loans, and mints—into a standardized format. This approach harmonizes idiosyncrasies between different DeFi protocol implementations, generalizing the representation of core primitives to establish a consistent analytical framework applicable across all protocols.
 
 ## Block Tree Building
 
@@ -18,24 +18,30 @@ At a high level, generating the Block Tree involves three primary steps:
 
 3. **Processing**: The newly built BlockTree undergoes sanitization to account for tax tokens and duplicate transfers. It also classifies multi-call frame actions, which span multiple traces. More on this in the [Complex Classification](#complex-classification) section.
 
+Trace -> match on trace type -> classify create | classify call -> action classification
+
 ## Action Classification
 
-Each transaction trace is decoded and labelled into a `NormalizedAction` by
+Each transaction trace is classified into an `Action` and an optional `DexPriceMsg` if it should be priced. The diagram below illustrates the classification process:
 
-- **Action Classification**: Calls are analyzed to determine if they represent a recognizable action, such as a token swap or liquidity event. This classification uses dynamic dispatch mechanisms facilitated by proc macros, which route the trace data to the appropriate action classifier based on predefined criteria.
+<div style="text-align: center;">
+ <img src="diagrams/trace-classifier.png" alt="brontes-flow" style="border-radius: 10px; width: auto ; height: 600px;">
+</div>
 
-The primary step within the Block Tree’s processing is Action Classification, where raw trace data is converted into `NormalizedActions`. This involves identifying and decoding transaction calls that match specific action signatures, a process facilitated by macro-generated code that ensures accuracy and efficiency.
+### Protocol Classifiers
 
-- **Macro-Generated Dispatch**: Action classifiers are dynamically selected based on the transaction's call data signatures, matched against a comprehensive list of known DeFi actions.
-  `for each tx trace, starting at the root, we descend into the call trace, classifying each call frame: - if the trace is a Call we attempt to classify it into a`Action`. This is done by dispatching
+**Matching to the right classifier**
 
-In essence we are retrieving the protocol by querying the database using the `get_protocol` function, then we check if the call data is long enough to contain the selector, if not we return None. We then extract the selector from the call data and create a signature with the protocol byte appended to the end. We then create a const for each classifier that contains the signature of the classifier. We then match the signature of the call data with the signature of the classifiers and if we find a match we call the classifier with the call info, db_tx, block and tx_idx.
+- Retrieve the protocol by querying the database using the `get_protocol` function,
+- Extract the selector from the trace call data and create a match key by appending the protocol byte to the function signature. - match the signature of the call data with the signature of the classifiers and if we find a match we call the classifier with the call info, db_tx, block and tx_idx.
 
-We then call decode trace data which return an `Action` & a `DexPriceMsg` if relevant.
+**Classifying the action**
 
-### Discovery
+### Discovery Classifiers
 
 After actions are classified, the Discovery phase involves deeper analysis to uncover relationships and interactions between different contracts and transactions within the same block. This may involve detecting complex strategies employed across multiple transactions or calls.
+
+### Implementing a New Classifier
 
 ### Complex Classification
 

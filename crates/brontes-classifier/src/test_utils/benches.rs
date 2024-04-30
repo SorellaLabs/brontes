@@ -20,7 +20,7 @@ use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 use crate::{
-    ActionCollection, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch, ProtocolClassifier,
+    ActionCollection, Classifier, DiscoveryClassifier, FactoryDiscoveryDispatch, ProtocolClassifier,
 };
 
 pub struct ClassifierBenchUtils {
@@ -199,7 +199,7 @@ impl ClassifierBenchUtils {
             b.to_async(&self.rt).iter(|| async move {
                 let from_address = found_trace.get_from_addr();
                 let created_addr = found_trace.get_create_output();
-                let dispatcher = DiscoveryProtocols::default();
+                let dispatcher = DiscoveryClassifier::default();
                 let call_data = call.input.clone();
                 let tracer = self.trace_loader.get_provider();
 

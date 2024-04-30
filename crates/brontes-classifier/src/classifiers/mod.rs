@@ -38,7 +38,7 @@ pub mod clipper;
 pub use clipper::*;
 
 discovery_dispatch!(
-    DiscoveryProtocols,
+    DiscoveryClassifier,
     SushiSwapV2Discovery,
     SushiSwapV3Discovery,
     UniswapV2Discovery,

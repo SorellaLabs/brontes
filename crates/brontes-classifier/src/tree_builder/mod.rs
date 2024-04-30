@@ -537,7 +537,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         (
             join_all(
-                DiscoveryProtocols::default()
+                DiscoveryClassifier::default()
                     .dispatch(
                         self.provider.clone(),
                         from_address,

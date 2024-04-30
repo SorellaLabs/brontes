@@ -36,7 +36,7 @@ use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::{
-    Action, ActionCollection, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
+    Action, ActionCollection, Classifier, DiscoveryClassifier, FactoryDiscoveryDispatch,
     ProtocolClassifier,
 };
 
@@ -612,7 +612,7 @@ impl ClassifierTestUtils {
         let calldata = call.input.clone();
         let trace_index = found_trace.trace_idx;
 
-        let res = DiscoveryProtocols::default()
+        let res = DiscoveryClassifier::default()
             .dispatch(self.get_provider(), from_address, created_addr, trace_index, calldata)
             .await;
 
