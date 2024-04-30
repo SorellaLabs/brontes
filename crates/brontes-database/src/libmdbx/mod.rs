@@ -144,9 +144,9 @@ impl Libmdbx {
 
         let res = f(&tx);
         tx.commit()?;
-        let rng = rand::random::<usize>() % 100usize;
+        let rng = rand::random::<usize>() % 50_000usize;
         if rng == 69 {
-            tracing::info!("syncing");
+            tracing::info!("sync");
             self.sync();
         }
 
