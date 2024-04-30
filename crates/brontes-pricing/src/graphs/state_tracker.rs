@@ -83,16 +83,6 @@ impl StateTracker {
         });
     }
 
-    pub fn decrement_verification_state(&mut self, pool: Address, block: u64) {
-        if let Some(s) = self
-            .verification_edge_state
-            .get_mut(&pool)
-            .filter(|pool_state| pool_state.contains_block_state(block))
-        {
-            s.dec_state(block);
-        };
-    }
-
     pub fn finalized_state(&self) -> FastHashMap<Address, &PoolState> {
         self.finalized_edge_state
             .iter()
@@ -155,9 +145,6 @@ impl StateTracker {
                     .verification_edge_state
                     .get_mut(&edge.pool_addr)
                     .filter(|pool_state| pool_state.contains_block_state(block))
-                    .map(|s| {
-                        s.inc_state(block);
-                    })
                     .is_some()
                 {
                     return None

@@ -250,7 +250,7 @@ impl SubgraphVerifier {
     ) -> Vec<VerificationResults> {
         let span = error_span!("Subgraph Verifier");
         span.in_scope(|| {
-            let pairs = self.get_subgraphs(state_tracker, pair);
+            let pairs = self.get_subgraphs(pair);
             let res = self.verify_par(pairs, state_tracker);
 
             res.into_iter()
@@ -259,13 +259,6 @@ impl SubgraphVerifier {
 
                     // state that we want to be ignored on the next graph search.
                     let state = self.subgraph_verification_state.entry(pair).or_default();
-
-                    // for all of the removals we did from graph. decrement the state tracker.
-                    result.removals.values().for_each(|v| {
-                        v.iter().for_each(|edge| {
-                            state_tracker.decrement_verification_state(edge.pool_address, block);
-                        });
-                    });
 
                     let ignores = state.get_nodes_to_ignore();
 
@@ -307,7 +300,6 @@ impl SubgraphVerifier {
 
     fn get_subgraphs(
         &mut self,
-        state_tracker: &mut StateTracker,
         pair: Vec<(u64, Option<u64>, PairWithFirstPoolHop, Rational, Address)>,
     ) -> Vec<(PairWithFirstPoolHop, u64, bool, Subgraph, Rational, Address)> {
         pair.into_iter()
@@ -324,23 +316,8 @@ impl SubgraphVerifier {
                     quote,
                 )
             })
-            .filter_map(|(pair, block, frayed, subgraph, price, quote)| {
+            .filter_map(|(pair, block, _, subgraph, price, quote)| {
                 let mut subgraph = subgraph?;
-
-                if let Some(frayed) = frayed {
-                    let extensions = subgraph
-                        .frayed_end_extensions
-                        .remove(&frayed)
-                        .unwrap_or_default();
-
-                    subgraph
-                        .subgraph
-                        .extend_subgraph(extensions)
-                        .into_iter()
-                        .for_each(|pool| {
-                            state_tracker.decrement_verification_state(pool, block);
-                        });
-                }
                 subgraph.iters += 1;
 
                 Some((pair, block, subgraph.in_rundown, subgraph, price, quote))
