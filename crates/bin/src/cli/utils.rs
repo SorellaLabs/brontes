@@ -155,15 +155,28 @@ fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
-    executor.spawn_critical(
-        "Clickhouse Insert Process",
-        Box::pin(async move {
+    use futures::pin_mut;
+
+    executor.spawn_critical_with_graceful_shutdown_signal(
+        "clickhouse insert process",
+        |shutdown| async move {
             let mut clickhouse_writer = ClickhouseBuffered::new(buffered_rx, 10);
-            while let Some(val) = clickhouse_writer.next().await {
-                if let Err(e) = val {
-                    tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+            pin_mut!(clickhouse_writer, shutdown);
+
+            let mut graceful_guard = None;
+            tokio::select! {
+                Some(val) = &mut clickhouse_writer => {
+                    if let Err(e) = val {
+                        tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+                    }
+                },
+                guard = shutdown => {
+                    graceful_guard = Some(guard);
                 }
             }
-        }),
+
+            clickhouse_writer.shutdown().await;
+            drop(guard);
+        },
     );
 }
