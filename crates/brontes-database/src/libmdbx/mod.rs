@@ -70,6 +70,10 @@ impl Libmdbx {
         Ok(this)
     }
 
+    pub fn sync(&self) {
+        let _ self.0.sync(false);
+    }
+
     /// Creates all the defined tables, opens if already created
     fn create_tables(&self) -> Result<(), DatabaseError> {
         let tx = CompressedLibmdbxTx::new_rw_tx(&self.0)?;
@@ -140,6 +144,11 @@ impl Libmdbx {
 
         let res = f(&tx);
         tx.commit()?;
+        let rng = rand::random::<usize>() % 100usize;
+        if rng == 69 {
+            tracing::info!("syncing");
+            self.sync();
+        }
 
         res
     }
