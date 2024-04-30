@@ -5,7 +5,7 @@ use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    normalized_actions::Actions, traits::TracingProvider, tree::BlockTree, FastHashMap,
+    normalized_actions::Action, traits::TracingProvider, tree::BlockTree, FastHashMap,
     UnboundedYapperReceiver,
 };
 use thiserror::Error;
