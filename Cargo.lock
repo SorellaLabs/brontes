@@ -1653,6 +1653,7 @@ dependencies = [
  "reth-db",
  "reth-interfaces",
  "reth-libmdbx",
+ "reth-mdbx-sys",
  "reth-primitives",
  "reth-rpc",
  "reth-rpc-types",

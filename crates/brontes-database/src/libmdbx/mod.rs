@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
 
-use std::path::Path;
+use std::{ffi::c_int, path::Path};
 
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
@@ -40,6 +40,15 @@ pub mod test_utils;
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
 
+#[inline]
+pub(crate) fn mdbx_result(err_code: c_int) -> eyre::Result<bool> {
+    match err_code {
+        reth_mdbx_sys::MDBX_SUCCESS => Ok(false),
+        reth_mdbx_sys::MDBX_RESULT_TRUE => Ok(true),
+        _ => Err(eyre::eyre!("shit no good")),
+    }
+}
+
 impl Libmdbx {
     /// Opens up an existing database or creates a new one at the specified
     /// path. Creates tables if necessary. Opens in read/write mode.
@@ -64,14 +73,19 @@ impl Libmdbx {
             DatabaseArguments::new(ClientVersion::default()).with_log_level(log_level),
         )?;
 
+        db.with_raw_env_ptr(|ptr| unsafe {
+            mdbx_result(reth_mdbx_sys::mdbx_env_set_option(
+                ptr,
+                reth_mdbx_sys::MDBX_opt_sync_bytes,
+                // 1 gb
+                1_000_000_000u64,
+            ))
+        })?;
+
         let this = Self(db);
         this.create_tables()?;
 
         Ok(this)
-    }
-
-    pub fn sync(&self) {
-        let _ = self.0.sync(false);
     }
 
     /// Creates all the defined tables, opens if already created
@@ -144,11 +158,6 @@ impl Libmdbx {
 
         let res = f(&tx);
         tx.commit()?;
-        let rng = rand::random::<usize>() % 50_000usize;
-        if rng == 69 {
-            tracing::info!("sync");
-            self.sync();
-        }
 
         res
     }
