@@ -171,7 +171,7 @@ fn spawn_db_writer_thread(
                             tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
                         }
                     },
-                    guard = shutdown => {
+                    guard = &mut shutdown => {
                         graceful_guard = Some(guard);
                     }
                 }

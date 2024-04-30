@@ -101,11 +101,10 @@ impl ClickhouseBuffered {
     pub async fn shutdown(&mut self) {
         while let Some(value) = self.rx.recv().await {
             if value.is_empty() {
-                continue;
+                continue
             }
 
             let enum_kind = value.first().as_ref().unwrap().get_db_enum();
-
             let entry = self.value_map.entry(enum_kind.clone()).or_default();
             entry.extend(value);
         }
@@ -114,6 +113,7 @@ impl ClickhouseBuffered {
             let _ =
                 Self::insert(self.client.clone(), std::mem::take(entry), enum_kind.clone()).await;
         }
+
         while let Some(_) = self.futs.next().await {}
     }
 }
