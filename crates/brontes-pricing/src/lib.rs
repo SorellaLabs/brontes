@@ -1158,98 +1158,93 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        let mut work = 8;
+        if let Some(new_prices) = self.poll_state_processing(cx) {
+            return new_prices
+        }
+
+        if !self.process_future_blocks() {
+            cx.waker().wake_by_ref();
+            return Poll::Pending
+        }
+
+        let mut block_updates = Vec::new();
         loop {
-            work -= 1;
-            if work == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
-            }
-
-            if let Some(new_prices) = self.poll_state_processing(cx) {
-                return new_prices
-            }
-
-            if !self.process_future_blocks() {
-                continue
-            }
-
-            let mut block_updates = Vec::new();
-            loop {
-                match self.update_rx.poll_recv(cx).map(|inner| {
-                    inner.and_then(|action| match action {
-                        DexPriceMsg::DisablePricingFor(block) => {
-                            self.skip_pricing.push_back(block);
-                            tracing::debug!(?block, "skipping pricing");
-                            Some(PollResult::Skip)
-                        }
-                        DexPriceMsg::Update(update) => Some(PollResult::State(update)),
-                        DexPriceMsg::DiscoveredPool(NormalizedPoolConfigUpdate {
-                            protocol,
-                            tokens,
-                            pool_address,
-                            ..
-                        }) => {
-                            if protocol.has_state_updater() {
-                                self.new_graph_pairs
-                                    .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
-                            };
-                            Some(PollResult::DiscoveredPool)
-                        }
-                        DexPriceMsg::Closed => None,
-                    })
-                }) {
-                    Poll::Ready(Some(u)) => {
-                        if let PollResult::State(update) = u {
-                            if let Some(overlap) = self.overlap_update.take() {
-                                block_updates.push(overlap);
-                            }
-                            if update.block == self.current_block {
-                                block_updates.push(update);
-                            } else {
-                                self.overlap_update = Some(update);
-                                break
-                            }
-                        }
+            match self.update_rx.poll_recv(cx).map(|inner| {
+                inner.and_then(|action| match action {
+                    DexPriceMsg::DisablePricingFor(block) => {
+                        self.skip_pricing.push_back(block);
+                        tracing::debug!(?block, "skipping pricing");
+                        Some(PollResult::Skip)
                     }
-                    Poll::Ready(None) | Poll::Pending => {
-                        if self.lazy_loader.is_empty()
-                            && self.lazy_loader.can_progress(&self.completed_block)
-                            && self
-                                .graph_manager
-                                .verification_done_for_block(self.completed_block)
-                            && block_updates.is_empty()
-                            && self.finished.load(SeqCst)
-                        {
-                            return Poll::Ready(self.on_close())
-                        }
-                        break
+                    DexPriceMsg::Update(update) => Some(PollResult::State(update)),
+                    DexPriceMsg::DiscoveredPool(NormalizedPoolConfigUpdate {
+                        protocol,
+                        tokens,
+                        pool_address,
+                        ..
+                    }) => {
+                        if protocol.has_state_updater() {
+                            self.new_graph_pairs
+                                .insert(pool_address, (protocol, Pair(tokens[0], tokens[1])));
+                        };
+                        Some(PollResult::DiscoveredPool)
                     }
-                }
-
-                // we poll here to continuously progress state fetches as they are slow
-                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                    self.on_pool_resolve(state);
-                }
-            }
-
-            #[allow(clippy::blocks_in_conditions)]
-            if block_updates
-                .first()
-                .map(|u| u.block)
-                .and_then(|block_update_num| {
-                    // remove all blocks before the current block
-                    self.skip_pricing.retain(|block| block >= &block_update_num);
-                    let front = self.skip_pricing.front()?;
-                    Some(&block_update_num == front)
+                    DexPriceMsg::Closed => None,
                 })
-                .unwrap_or(false)
-            {
-                self.on_pool_update_no_pricing(block_updates);
-            } else {
-                execute_on!(target = pricing, self.on_pool_updates(block_updates));
+            }) {
+                Poll::Ready(Some(u)) => {
+                    if let PollResult::State(update) = u {
+                        if let Some(overlap) = self.overlap_update.take() {
+                            block_updates.push(overlap);
+                        }
+                        if update.block == self.current_block {
+                            block_updates.push(update);
+                        } else {
+                            self.overlap_update = Some(update);
+                            break
+                        }
+                    }
+                }
+                Poll::Ready(None) | Poll::Pending => {
+                    if self.lazy_loader.is_empty()
+                        && self.lazy_loader.can_progress(&self.completed_block)
+                        && self
+                            .graph_manager
+                            .verification_done_for_block(self.completed_block)
+                        && block_updates.is_empty()
+                        && self.finished.load(SeqCst)
+                    {
+                        return Poll::Ready(self.on_close())
+                    }
+                    break
+                }
+            }
+
+            // we poll here to continuously progress state fetches as they are slow
+            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                self.on_pool_resolve(state);
             }
         }
+
+        #[allow(clippy::blocks_in_conditions)]
+        if block_updates
+            .first()
+            .map(|u| u.block)
+            .and_then(|block_update_num| {
+                // remove all blocks before the current block
+                self.skip_pricing.retain(|block| block >= &block_update_num);
+                let front = self.skip_pricing.front()?;
+                Some(&block_update_num == front)
+            })
+            .unwrap_or(false)
+        {
+            self.on_pool_update_no_pricing(block_updates);
+        } else {
+            execute_on!(target = pricing, self.on_pool_updates(block_updates));
+        }
+
+        cx.waker().wake_by_ref();
+        return Poll::Pending
     }
 }
 
