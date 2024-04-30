@@ -35,8 +35,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
     for WaitingForPricerFuture<T, DB>
 {
     fn drop(&mut self) {
-        tracing::info!("droping pricing future");
-        println!("droppong price");
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let res = self.receiver.recv().await;
+                drop(res);
+                tracing::info!("droping pricing future");
+            });
+        });
     }
 }
 
@@ -72,7 +77,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
                 .next()
                 .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
                 .await;
-            let _ = tx.try_send((pricer, res));
+
+            if let Err(e) = tx.send((pricer, res)).await {
+                drop(e.0);
+            }
         });
 
         self.task_executor.spawn_critical("dex pricer", fut);
