@@ -194,12 +194,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let count = end - start;
 
             async move {
-
                 if cex_table_flag {
                     #[cfg(not(feature = "cex-dex-markout"))]
                     {
                         let data = clickhouse
-                            .get_cex_prices(CexRangeOrArbitrary::Range(start, end+1))
+                            .get_cex_prices(CexRangeOrArbitrary::Range(start, end + 1))
                             .await;
                         match data {
                             Ok(d) => {
@@ -211,12 +210,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             }
                         }
                     }
-
 
                     #[cfg(feature = "cex-dex-markout")]
                     {
                         let data = clickhouse
-                            .get_cex_trades(CexRangeOrArbitrary::Range(start, end+1))
+                            .get_cex_trades(CexRangeOrArbitrary::Range(start, end + 1))
                             .await;
                         match data {
                             Ok(d) => {
@@ -228,11 +226,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             }
                         }
                     }
-
                 } else {
-                    let data = clickhouse
-                    .query_many_range::<T, D>(start, end + 1)
-                    .await;
+                    let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
                     match data {
                         Ok(d) => {
                             pb.inc(count);
@@ -288,7 +283,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let count = inner_range.len() as u64;
 
             async move {
-
                 if cex_table_flag {
                     #[cfg(not(feature = "cex-dex-markout"))]
                     {
@@ -306,12 +300,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     }
 
-
                     #[cfg(feature = "cex-dex-markout")]
                     {
                         let data = clickhouse
-                        .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))
-                        .await;
+                            .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))
+                            .await;
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
@@ -322,10 +315,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                             }
                         }
                     }
-
                 } else {
-                    let data = clickhouse
-                        .query_many_arbitrary::<T, D>(inner_range).await;
+                    let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
                     match data {
                         Ok(d) => {
                             pb.inc(count);
