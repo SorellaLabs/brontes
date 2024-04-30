@@ -4,7 +4,7 @@ use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
     db::metadata::Metadata,
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     tree::BlockTree,
     FastHashMap, GasDetails, ToScaledRational, TreeSearchBuilder,
 };
@@ -13,7 +13,7 @@ use tracing::log::debug;
 
 pub(crate) fn build_mev_header(
     metadata: &Arc<Metadata>,
-    tree: Arc<BlockTree<Actions>>,
+    tree: Arc<BlockTree<Action>>,
     possible_mev: PossibleMevCollection,
     mev_count: MevCount,
     orchestra_data: &[Bundle],
@@ -156,7 +156,7 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 /// Accounts for ultrasound relay bid adjustments & vertically integrated
 /// builder profit
 pub fn calculate_builder_profit(
-    tree: Arc<BlockTree<Actions>>,
+    tree: Arc<BlockTree<Action>>,
     metadata: &Arc<Metadata>,
     bundles: &[Bundle],
     pre_processing: &BlockPreprocessing,
@@ -172,14 +172,14 @@ pub fn calculate_builder_profit(
 
     let builder_sponsorships = tree.clone().collect_all(
         TreeSearchBuilder::default()
-            .with_action(Actions::is_eth_transfer)
+            .with_action(Action::is_eth_transfer)
             .with_from_address(builder_address),
     );
 
     let builder_sponsorship_amount: i128 = builder_sponsorships
         .flat_map(|(_, v)| v)
         .map(|action| match action {
-            Actions::EthTransfer(transfer) => {
+            Action::EthTransfer(transfer) => {
                 if Some(transfer.to) == metadata.proposer_fee_recipient {
                     0
                 } else if let Some(gas_details) =
@@ -252,7 +252,7 @@ pub fn calculate_builder_profit(
             && root.get_to_address() == metadata.block_metadata.proposer_fee_recipient.unwrap()
         {
             match root.get_root_action() {
-                Actions::EthTransfer(transfer) => transfer.value.to(), /* Assuming transfer. */
+                Action::EthTransfer(transfer) => transfer.value.to(), /* Assuming transfer. */
                 // value is u128
                 _ => 0,
             }
@@ -278,7 +278,7 @@ pub struct BlockPreprocessing {
 }
 
 /// Pre-processes the block data for the Builder PNL calculation
-pub(crate) fn pre_process(tree: Arc<BlockTree<Actions>>) -> BlockPreprocessing {
+pub(crate) fn pre_process(tree: Arc<BlockTree<Action>>) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
 
     let (gas_details_by_address, cumulative_gas_used, cumulative_priority_fee, total_bribe) =

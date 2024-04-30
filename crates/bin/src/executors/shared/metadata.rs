@@ -8,7 +8,7 @@ use brontes_types::{
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
-    normalized_actions::Actions,
+    normalized_actions::Action,
     traits::TracingProvider,
     BlockTree,
 };
@@ -21,14 +21,14 @@ use super::dex_pricing::WaitingForPricerFuture;
 const MAX_PENDING_TREES: usize = 45;
 
 pub type ClickhouseMetadataFuture =
-    FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Actions>, Metadata)> + Send>>>;
+    FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> {
     clickhouse:            Option<&'static CH>,
     dex_pricer_stream:     WaitingForPricerFuture<T, DB>,
     clickhouse_futures:    ClickhouseMetadataFuture,
-    result_buf:            VecDeque<(BlockTree<Actions>, Metadata)>,
+    result_buf:            VecDeque<(BlockTree<Action>, Metadata)>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
 }
@@ -71,7 +71,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             && !self.force_no_dex_pricing
     }
 
-    pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Actions>, libmdbx: &'static DB) {
+    pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Action>, libmdbx: &'static DB) {
         let block = tree.header.number;
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
@@ -142,7 +142,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
     for MetadataFetcher<T, DB, CH>
 {
-    type Item = (BlockTree<Actions>, Metadata);
+    type Item = (BlockTree<Action>, Metadata);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,

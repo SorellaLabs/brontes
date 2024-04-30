@@ -14,7 +14,7 @@ use brontes_types::{
         traits::{DBWriter, LibmdbxReader, ProtocolCreatedRange},
     },
     mev::{Bundle, MevBlock},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
@@ -147,7 +147,7 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
             .await
     }
 
-    async fn insert_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+    async fn insert_tree(&self, tree: Arc<BlockTree<Action>>) -> eyre::Result<()> {
         self.client.insert_tree(tree.clone()).await?;
 
         self.inner().insert_tree(tree).await?;
@@ -413,7 +413,7 @@ impl<I: DBWriter + Send + Sync> DBWriter for ReadOnlyMiddleware<I> {
             .await
     }
 
-    async fn insert_tree(&self, tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+    async fn insert_tree(&self, tree: Arc<BlockTree<Action>>) -> eyre::Result<()> {
         self.client.insert_tree(tree.clone()).await?;
 
         Ok(())

@@ -5,7 +5,7 @@ use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    normalized_actions::Actions, traits::TracingProvider, tree::BlockTree, FastHashMap,
+    normalized_actions::Action, traits::TracingProvider, tree::BlockTree, FastHashMap,
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
@@ -73,7 +73,7 @@ impl PricingTestUtils {
         block: u64,
     ) -> PricingResult<(
         BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
-        BlockTree<Actions>,
+        BlockTree<Action>,
     )> {
         let BlockTracesWithHeaderAnd { traces, header, .. } =
             self.tracer.get_block_traces_with_header(block).await?;

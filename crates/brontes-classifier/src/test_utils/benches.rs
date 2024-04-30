@@ -10,18 +10,17 @@ use brontes_database::{
 };
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    db::address_to_protocol_info::ProtocolInfo, normalized_actions::Actions,
+    db::address_to_protocol_info::ProtocolInfo, normalized_actions::Action,
     structured_trace::TraceActions, tree::BlockTree,
 };
 use criterion::{black_box, Criterion};
 use reth_db::DatabaseError;
-use reth_rpc_types::trace::parity::Action;
+use reth_rpc_types::trace::parity::Action as TraceAction;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 use crate::{
-    ActionCollection, Classifier, DiscoveryProtocols, FactoryDiscoveryDispatch,
-    ProtocolClassifications,
+    ActionCollection, Classifier, DiscoveryClassifier, FactoryDiscoveryDispatch, ProtocolClassifier,
 };
 
 pub struct ClassifierBenchUtils {
@@ -124,7 +123,7 @@ impl ClassifierBenchUtils {
         bench_name: &str,
         tx: TxHash,
         c: &mut Criterion,
-        bench_fn: impl Fn(Arc<BlockTree<Actions>>),
+        bench_fn: impl Fn(Arc<BlockTree<Action>>),
     ) -> Result<(), ClassifierBenchError> {
         let TxTracesWithHeaderAnd { trace, header, .. } = self
             .rt
@@ -146,7 +145,7 @@ impl ClassifierBenchUtils {
         bench_name: &str,
         block: u64,
         c: &mut Criterion,
-        bench_fn: impl Fn(Arc<BlockTree<Actions>>),
+        bench_fn: impl Fn(Arc<BlockTree<Action>>),
     ) -> Result<(), ClassifierBenchError> {
         let BlockTracesWithHeaderAnd { traces, header, .. } = self
             .rt
@@ -194,13 +193,13 @@ impl ClassifierBenchUtils {
             .find(|f| f.get_trace_address() == trace_addr)
             .ok_or_else(|| ClassifierBenchError::ProtocolDiscoveryError(created_pool))?;
 
-        let Action::Call(call) = &p_trace.trace.action else { panic!() };
+        let TraceAction::Call(call) = &p_trace.trace.action else { panic!() };
 
         c.bench_function(bench_name, move |b| {
             b.to_async(&self.rt).iter(|| async move {
                 let from_address = found_trace.get_from_addr();
                 let created_addr = found_trace.get_create_output();
-                let dispatcher = DiscoveryProtocols::default();
+                let dispatcher = DiscoveryClassifier::default();
                 let call_data = call.input.clone();
                 let tracer = self.trace_loader.get_provider();
 
@@ -245,9 +244,9 @@ impl ClassifierBenchUtils {
             .trace
             .into_iter()
             .find(|t| t.get_to_address() == protocol_address)
-            .ok_or_else(|| ClassifierBenchError::ProtocolClassificationError(protocol_address))?;
+            .ok_or_else(|| ClassifierBenchError::ProtocolClassifierError(protocol_address))?;
 
-        let dispatcher = ProtocolClassifications::default();
+        let dispatcher = ProtocolClassifier::default();
 
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
@@ -279,5 +278,5 @@ pub enum ClassifierBenchError {
     #[error("couldn't find parent node for created pool {0:?}")]
     ProtocolDiscoveryError(Address),
     #[error("couldn't find trace that matched {0:?}")]
-    ProtocolClassificationError(Address),
+    ProtocolClassifierError(Address),
 }

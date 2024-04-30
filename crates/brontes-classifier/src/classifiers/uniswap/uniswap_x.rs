@@ -157,7 +157,7 @@ mod tests {
     use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_pricing::Protocol::UniswapX;
-    use brontes_types::{normalized_actions::Actions, ToScaledRational, TreeSearchBuilder};
+    use brontes_types::{normalized_actions::Action, ToScaledRational, TreeSearchBuilder};
 
     use super::*;
 
@@ -167,7 +167,7 @@ mod tests {
         let execute_batch_with_callback =
             B256::from(hex!("3d8fbccb1b0b7f8140f255f0980d897d87394903ad7bf4d08534402d2bf35872"));
 
-        let eq_action = Actions::Batch(NormalizedBatch {
+        let eq_action = Action::Batch(NormalizedBatch {
             protocol:            Protocol::UniswapX,
             trace_index:         1,
             solver:              Address::new(hex!(
@@ -230,7 +230,7 @@ mod tests {
                 execute_batch_with_callback,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_batch),
+                TreeSearchBuilder::default().with_action(Action::is_batch),
             )
             .await
             .unwrap();
@@ -242,7 +242,7 @@ mod tests {
         let execute_batch_with_callback =
             B256::from(hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d"));
 
-        let eq_action = Actions::Batch(NormalizedBatch {
+        let eq_action = Action::Batch(NormalizedBatch {
             protocol:            Protocol::UniswapX,
             trace_index:         0,
             solver:              Address::new(hex!("ff8Ba4D1fC3762f6154cc942CCF30049A2A0cEC6")),
@@ -280,7 +280,7 @@ mod tests {
                 execute_batch_with_callback,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_batch),
+                TreeSearchBuilder::default().with_action(Action::is_batch),
             )
             .await
             .unwrap();

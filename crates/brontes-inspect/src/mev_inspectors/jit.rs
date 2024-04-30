@@ -15,7 +15,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 
 use crate::{
-    shared_utils::SharedInspectorUtils, Actions, BlockTree, BundleData, Inspector, Metadata,
+    shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -44,7 +44,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         "Jit"
     }
 
-    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
@@ -63,10 +63,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                     tree.clone().collect(
                                         tx,
                                         TreeSearchBuilder::default().with_actions([
-                                            Actions::is_mint,
-                                            Actions::is_burn,
-                                            Actions::is_collect,
-                                            Actions::is_nested_action,
+                                            Action::is_mint,
+                                            Action::is_burn,
+                                            Action::is_collect,
+                                            Action::is_nested_action,
                                         ]),
                                     ),
                                     &|actions| {
@@ -77,7 +77,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                 )
                                 .collect::<Vec<_>>()
                         })
-                        .collect::<Vec<Vec<Actions>>>();
+                        .collect::<Vec<Vec<Action>>>();
 
                     tracing::trace!(?frontrun_tx, ?backrun_tx, "checking if jit");
 
@@ -109,8 +109,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                     tree.clone().collect(
                                         victim,
                                         TreeSearchBuilder::default().with_actions([
-                                            Actions::is_swap,
-                                            Actions::is_nested_action,
+                                            Action::is_swap,
+                                            Action::is_nested_action,
                                         ]),
                                     ),
                                     &|actions| actions.is_swap(),
@@ -148,9 +148,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         &self,
         info: [TxInfo; 2],
         metadata: Arc<Metadata>,
-        searcher_actions: Vec<Vec<Actions>>,
+        searcher_actions: Vec<Vec<Action>>,
         // victim
-        victim_actions: Vec<Vec<Actions>>,
+        victim_actions: Vec<Vec<Action>>,
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
@@ -158,7 +158,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .clone()
             .into_iter()
             .flatten()
-            .action_split((Actions::try_mint, Actions::try_burn, Actions::try_collect));
+            .action_split((Action::try_mint, Action::try_burn, Action::try_collect));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::trace!("missing mints & burns");
@@ -256,7 +256,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
 
-    fn possible_jit_set(&self, tree: Arc<BlockTree<Actions>>) -> Vec<PossibleJit> {
+    fn possible_jit_set(&self, tree: Arc<BlockTree<Action>>) -> Vec<PossibleJit> {
         let iter = tree.tx_roots.iter();
 
         if iter.len() < 3 {

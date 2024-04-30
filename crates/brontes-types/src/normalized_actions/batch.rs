@@ -5,7 +5,7 @@ use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{apply_delta, AddressDeltas, TokenAccounting};
-pub use super::{Actions, NormalizedSwap};
+pub use super::{Action, NormalizedSwap};
 use crate::Protocol;
 
 #[derive(Debug, Default, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
@@ -20,11 +20,11 @@ pub struct NormalizedBatch {
 }
 
 impl NormalizedBatch {
-    pub fn fetch_underlying_actions(self) -> impl Iterator<Item = Actions> {
+    pub fn fetch_underlying_actions(self) -> impl Iterator<Item = Action> {
         self.user_swaps
             .into_iter()
             .chain(self.solver_swaps.unwrap_or_default())
-            .map(Actions::from)
+            .map(Action::from)
     }
 }
 
