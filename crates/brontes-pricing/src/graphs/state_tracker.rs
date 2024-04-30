@@ -39,7 +39,7 @@ pub struct StateTracker {
 impl Drop for StateTracker {
     fn drop(&mut self) {
         let mut ver_byte_cnt = 0usize;
-        for (_, p) in &self.verification_edge_state {
+        for p in self.verification_edge_state.values() {
             ver_byte_cnt += 8;
             ver_byte_cnt += p.estimate_mem()
         }
@@ -236,28 +236,6 @@ impl PoolStateWithBlock {
             if block == state.last_update {
                 *finalized += 1;
             }
-        }
-    }
-
-    pub fn inc_state(&mut self, block: u64) {
-        if let Some(state) = self
-            .0
-            .iter_mut()
-            .map(|(_, state)| state)
-            .find(|state| block == state.last_update)
-        {
-            state.inc(1);
-        }
-    }
-
-    pub fn dec_state(&mut self, block: u64) {
-        if let Some(state) = self
-            .0
-            .iter_mut()
-            .map(|(_, state)| state)
-            .find(|state| block == state.last_update)
-        {
-            state.dec(1);
         }
     }
 

@@ -228,9 +228,9 @@ where
                 continue
             }
 
-            let new_cost = cost + move_cost.clone();
-            let value = path_value(&base_node, &successor);
-            let q_break = stop(&successor);
+            let new_cost = cost + *move_cost;
+            let value = path_value(&base_node, successor);
+            let q_break = stop(successor);
 
             let n;
             match parents.entry(successor.clone()) {
