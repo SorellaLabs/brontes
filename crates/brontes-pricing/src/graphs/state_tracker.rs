@@ -171,30 +171,30 @@ impl StateTracker {
     /// removes all cached state for the given block now that we
     /// have finalized all subgraph creation for this block
     pub fn finalize_block(&mut self, block: u64) {
-        self.verification_edge_state
-            .iter_mut()
-            .for_each(|(pool, state)| {
-                state
-                    .remove_state(block)
-                    .into_iter()
-                    .for_each(|(should_finalize, state)| {
-                        if !should_finalize {
-                            return
+        self.verification_edge_state.retain(|pool, state| {
+            state
+                .remove_state(block)
+                .into_iter()
+                .for_each(|(should_finalize, state)| {
+                    if !should_finalize {
+                        return
+                    }
+                    match self.finalized_edge_state.entry(*pool) {
+                        std::collections::hash_map::Entry::Vacant(v) => {
+                            v.insert(state);
                         }
-                        match self.finalized_edge_state.entry(*pool) {
-                            std::collections::hash_map::Entry::Vacant(v) => {
-                                v.insert(state);
+                        std::collections::hash_map::Entry::Occupied(mut o) => {
+                            let old_state = o.get_mut();
+                            if state.state.last_update > block {
+                                panic!("finalized state was ahead of regular state");
                             }
-                            std::collections::hash_map::Entry::Occupied(mut o) => {
-                                let old_state = o.get_mut();
-                                if state.state.last_update > block {
-                                    panic!("finalized state was ahead of regular state");
-                                }
-                                old_state.dependents += state.dependents;
-                            }
+                            old_state.dependents += state.dependents;
                         }
-                    });
-            });
+                    }
+                });
+
+            state.has_items()
+        });
     }
 
     pub fn update_pool_state(&mut self, address: Address, update: PoolUpdate) {
@@ -234,6 +234,10 @@ impl StateWithDependencies {
 pub struct PoolStateWithBlock(Vec<(bool, StateWithDependencies)>);
 
 impl PoolStateWithBlock {
+    fn has_items(&self) -> bool {
+        !self.0.is_empty()
+    }
+
     fn estimate_mem(&self) -> usize {
         self.0.len() * 152
     }
