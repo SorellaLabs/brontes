@@ -31,6 +31,14 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     task_executor:            BrontesTaskExecutor,
 }
 
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop for  WaitingForPricerFuture<T, DB> {
+    fn drop(&mut self) {
+        tracing::info!("droping pricing future");
+    }
+
+
+}
+
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
     pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
         let (tx, rx) = channel(100);
