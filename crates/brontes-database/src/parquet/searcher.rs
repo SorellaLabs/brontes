@@ -29,13 +29,7 @@ pub fn searcher_info_to_record_batch(
             .iter()
             .chain(&contract_info)
             .map(
-                |info| {
-                    if info.1.fund == Fund::None {
-                        None
-                    } else {
-                        Some(info.1.fund.to_string())
-                    }
-                },
+                |info| if info.1.fund == Fund::None { None } else { Some(info.1.fund.to_string()) },
             )
             .collect_vec(),
     );

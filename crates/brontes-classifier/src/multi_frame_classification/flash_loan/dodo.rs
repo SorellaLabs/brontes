@@ -8,10 +8,10 @@ use tracing::warn;
 
 use crate::multi_frame_classification::MultiCallFrameClassifier;
 
-pub struct MakerDss;
+pub struct Dodo;
 
-impl MultiCallFrameClassifier for MakerDss {
-    const KEY: [u8; 2] = [Protocol::MakerDssFlash as u8, MultiFrameAction::FlashLoan as u8];
+impl MultiCallFrameClassifier for Dodo {
+    const KEY: [u8; 2] = [Protocol::Dodo as u8, MultiFrameAction::FlashLoan as u8];
 
     fn create_classifier(
         request: MultiFrameRequest,
@@ -48,7 +48,7 @@ impl MultiCallFrameClassifier for MakerDss {
                             nodes_to_prune.push(index);
                         }
                         _ => {
-                            warn!("Maker DSS flashloan, unknown call");
+                            warn!("Dodo flashloan, unknown call");
                             continue
                         }
                     }
