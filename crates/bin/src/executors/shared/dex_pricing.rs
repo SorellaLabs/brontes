@@ -36,6 +36,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
 {
     fn drop(&mut self) {
         tracing::info!("droping pricing future");
+        println!("droppong price");
     }
 }
 
