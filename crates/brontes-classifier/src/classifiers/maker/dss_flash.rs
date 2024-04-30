@@ -46,7 +46,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::{Actions, NormalizedTransfer},
+        normalized_actions::{Action, NormalizedTransfer},
         TreeSearchBuilder,
     };
     use reth_primitives::U256;
@@ -64,7 +64,7 @@ mod tests {
             inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
         };
 
-        let eq_action = Actions::FlashLoan(NormalizedFlashLoan {
+        let eq_action = Action::FlashLoan(NormalizedFlashLoan {
             protocol:          Protocol::MakerDssFlash,
             trace_index:       2,
             from:              Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
@@ -92,7 +92,7 @@ mod tests {
                 flashloan_tx,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_flash_loan),
+                TreeSearchBuilder::default().with_action(Action::is_flash_loan),
                 &["child_actions"],
             )
             .await

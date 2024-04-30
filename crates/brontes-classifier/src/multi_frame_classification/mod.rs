@@ -11,7 +11,7 @@ pub mod liquidations;
 
 use aggregator::{OneInchAggregator, OneInchFusion, ZeroXAgg};
 use batch::{Cowswap, UniswapX, ZeroXBatch};
-use brontes_types::normalized_actions::{Actions, MultiCallFrameClassification, MultiFrameRequest};
+use brontes_types::normalized_actions::{Action, MultiCallFrameClassification, MultiFrameRequest};
 use flash_loan::{BalancerV2, MakerDss};
 use itertools::Itertools;
 use liquidations::{AaveV2, AaveV3};
@@ -26,14 +26,14 @@ pub trait MultiCallFrameClassifier {
 
     fn create_classifier(
         request: MultiFrameRequest,
-    ) -> Option<MultiCallFrameClassification<Actions>>;
+    ) -> Option<MultiCallFrameClassification<Action>>;
 }
 
 /// for all of the frame requests, we fetch the underlying function for the
 /// given setup
 pub fn parse_multi_frame_requests(
     requests: Vec<MultiFrameRequest>,
-) -> Vec<MultiCallFrameClassification<Actions>> {
+) -> Vec<MultiCallFrameClassification<Action>> {
     requests
         .into_iter()
         .filter_map(|request| match request.make_key() {

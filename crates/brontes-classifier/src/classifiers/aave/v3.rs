@@ -117,7 +117,7 @@ action_impl!(
 mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_types::{
-        normalized_actions::{Actions, NormalizedLiquidation},
+        normalized_actions::{Action, NormalizedLiquidation},
         Protocol, TreeSearchBuilder,
     };
     use malachite::Rational;
@@ -130,7 +130,7 @@ mod tests {
         let aave_v3_liquidation =
             B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
 
-        let eq_action = Actions::Liquidation(NormalizedLiquidation {
+        let eq_action = Action::Liquidation(NormalizedLiquidation {
             protocol:              Protocol::AaveV3,
             liquidated_collateral: Rational::from_signeds(165516722, 100000000),
             covered_debt:          Rational::from_signeds(63857746423_i64, 1000000),
@@ -150,7 +150,7 @@ mod tests {
                 aave_v3_liquidation,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_liquidation),
+                TreeSearchBuilder::default().with_action(Action::is_liquidation),
             )
             .await
             .unwrap();

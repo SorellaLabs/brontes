@@ -167,7 +167,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions, Protocol::UniswapV3,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Action, Protocol::UniswapV3,
         TreeSearchBuilder,
     };
 
@@ -179,7 +179,7 @@ mod tests {
         let swap =
             B256::from(hex!("057f1d5b3ddabec1b8d78ac7181f562f755669494514f94a767247af800339b1"));
 
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol:    UniswapV3,
             trace_index: 2,
             from:        Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
@@ -200,7 +200,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();
@@ -212,7 +212,7 @@ mod tests {
         let mint =
             B256::from(hex!("0089210683170b3f17201c8abeafdc4c022a26c7af1e44d351556eaa48d0fee8"));
 
-        let eq_action = Actions::Mint(NormalizedMint {
+        let eq_action = Action::Mint(NormalizedMint {
             protocol:    UniswapV3,
             trace_index: 21,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
@@ -234,7 +234,7 @@ mod tests {
                 mint,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_mint),
+                TreeSearchBuilder::default().with_action(Action::is_mint),
             )
             .await
             .unwrap();
@@ -246,7 +246,7 @@ mod tests {
         let burn =
             B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol:    UniswapV3,
             trace_index: 12,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
@@ -266,7 +266,7 @@ mod tests {
                 burn,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();
@@ -278,7 +278,7 @@ mod tests {
         let collect =
             B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
 
-        let eq_action = Actions::Collect(NormalizedCollect {
+        let eq_action = Action::Collect(NormalizedCollect {
             protocol:    UniswapV3,
             trace_index: 13,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
@@ -298,7 +298,7 @@ mod tests {
                 collect,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_collect),
+                TreeSearchBuilder::default().with_action(Action::is_collect),
             )
             .await
             .unwrap();

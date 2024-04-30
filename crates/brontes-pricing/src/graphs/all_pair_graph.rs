@@ -8,7 +8,7 @@ use alloy_primitives::Address;
 use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
 use itertools::Itertools;
 use petgraph::prelude::*;
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 
 use super::yens::yen;
 use crate::{LoadState, PoolPairInfoDirection, PoolPairInformation, Protocol, SubGraphEdge};
@@ -109,7 +109,7 @@ impl AllPairGraph {
 
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
-        info!("linked all graph edges in {}us", delta);
+        debug!("linked all graph edges in {}us", delta);
         let t0 = SystemTime::now();
 
         graph.extend_with_edges(
@@ -123,7 +123,7 @@ impl AllPairGraph {
         let t1 = SystemTime::now();
         let delta = t1.duration_since(t0).unwrap().as_micros();
 
-        info!(
+        debug!(
             nodes=%graph.node_count(),
             edges=%graph.edge_count(),
             tokens=%token_to_index.len(),

@@ -595,7 +595,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         TreeSearchBuilder,
     };
 
@@ -612,7 +612,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -629,7 +629,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -646,7 +646,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -663,7 +663,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -680,7 +680,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -707,7 +707,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0x69Db96B584B6e25420a4Aa2ca4B20E3860d19d8C").unwrap(),
@@ -725,7 +725,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();
@@ -752,7 +752,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0x84e8567695361adf883b6d2e12d22e9f0352bd06").unwrap(),
@@ -770,7 +770,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();
@@ -797,7 +797,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0xaaf46B4718e2251F682171a88bad79dAb3AcF35C").unwrap(),
@@ -815,7 +815,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();
@@ -845,7 +845,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0xCdaf004c23184aBa394A2d0476e7cEb33BA16C2c").unwrap(),
@@ -863,7 +863,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap()
@@ -890,7 +890,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0xf61b54F602AB3c179e58423B48B92e16c55aceEb").unwrap(),
@@ -908,7 +908,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap()
@@ -925,7 +925,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -942,7 +942,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -959,7 +959,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -976,7 +976,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -993,7 +993,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -1010,7 +1010,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -1027,7 +1027,7 @@ mod tests {
                 aggregator_tx,
                 0,
                 Protocol::ZeroX,
-                TreeSearchBuilder::default().with_action(Actions::is_aggregator),
+                TreeSearchBuilder::default().with_action(Action::is_aggregator),
             )
             .await
             .unwrap();
@@ -1059,7 +1059,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0x461783A831E6dB52D68Ba2f3194F6fd1E0087E04").unwrap(),
@@ -1077,7 +1077,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap()
@@ -1099,7 +1099,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0x0000Ea7fbDeAdE231816CC098A4d270d8394066B").unwrap(),
@@ -1117,7 +1117,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap()
@@ -1139,7 +1139,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0x0c5bDb2cE672c11a477Ff2B83b740Cb45865E127").unwrap(),
@@ -1157,7 +1157,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap()
@@ -1179,7 +1179,7 @@ mod tests {
             .unwrap()
             .to_scaled_rational(token_out.decimals);
 
-        let action = Actions::Swap(NormalizedSwap {
+        let action = Action::Swap(NormalizedSwap {
             protocol: Protocol::ZeroX,
             trace_index: 0,
             from: Address::from_str("0x781d8A73F053B6C6D9472648912737B02BAD9438").unwrap(),
@@ -1197,7 +1197,7 @@ mod tests {
                 swap_tx,
                 0,
                 action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap()

@@ -28,7 +28,7 @@ pub use brontes_types::constants::*;
 use brontes_types::{
     db::{cex::CexExchange, dex::DexQuotes, metadata::Metadata},
     mev::{Bundle, MevType},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     tree::BlockTree,
 };
 use thiserror::Error;
@@ -53,7 +53,7 @@ impl InspectorTestUtils {
     async fn get_tree_txes(
         &self,
         tx_hashes: Vec<TxHash>,
-    ) -> Result<BlockTree<Actions>, InspectorTestUtilsError> {
+    ) -> Result<BlockTree<Action>, InspectorTestUtilsError> {
         let mut trees = self.classifier_inspector.build_tree_txes(tx_hashes).await?;
 
         if trees.len() != 1 {
@@ -68,7 +68,7 @@ impl InspectorTestUtils {
         &self,
         tx_hashes: Vec<TxHash>,
         needs_tokens: Vec<Address>,
-    ) -> Result<(BlockTree<Actions>, DexQuotes), InspectorTestUtilsError> {
+    ) -> Result<(BlockTree<Action>, DexQuotes), InspectorTestUtilsError> {
         let mut trees = self
             .classifier_inspector
             .build_tree_txes_with_pricing(tx_hashes, self.quote_address, needs_tokens)
@@ -85,7 +85,7 @@ impl InspectorTestUtils {
     async fn get_block_tree(
         &self,
         block: u64,
-    ) -> Result<BlockTree<Actions>, InspectorTestUtilsError> {
+    ) -> Result<BlockTree<Action>, InspectorTestUtilsError> {
         self.classifier_inspector
             .build_block_tree(block)
             .await
@@ -96,7 +96,7 @@ impl InspectorTestUtils {
         &self,
         block: u64,
         needs_tokens: Vec<Address>,
-    ) -> Result<(BlockTree<Actions>, Option<DexQuotes>), InspectorTestUtilsError> {
+    ) -> Result<(BlockTree<Action>, Option<DexQuotes>), InspectorTestUtilsError> {
         self.classifier_inspector
             .build_block_tree_with_pricing(block, self.quote_address, needs_tokens)
             .await

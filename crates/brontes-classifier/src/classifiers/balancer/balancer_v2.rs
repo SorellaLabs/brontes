@@ -234,7 +234,7 @@ mod tests {
     use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        constants::WETH_ADDRESS, db::token_info::TokenInfo, normalized_actions::Actions,
+        constants::WETH_ADDRESS, db::token_info::TokenInfo, normalized_actions::Action,
         Protocol::BalancerV2, TreeSearchBuilder,
     };
 
@@ -263,7 +263,7 @@ mod tests {
         );
 
         // Minimal swap
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol:    BalancerV2,
             trace_index: 1,
             from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
@@ -289,7 +289,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();
@@ -306,7 +306,7 @@ mod tests {
             inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
         });
 
-        let eq_action = Actions::FlashLoan(NormalizedFlashLoan {
+        let eq_action = Action::FlashLoan(NormalizedFlashLoan {
             protocol:          Protocol::BalancerV2,
             trace_index:       3,
             from:              Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
@@ -331,7 +331,7 @@ mod tests {
                 flash_loan,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_flash_loan),
+                TreeSearchBuilder::default().with_action(Action::is_flash_loan),
                 &["child_actions", "repayments"],
             )
             .await
@@ -349,7 +349,7 @@ mod tests {
             inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
         });
 
-        let eq_action = Actions::Mint(NormalizedMint {
+        let eq_action = Action::Mint(NormalizedMint {
             protocol:    Protocol::BalancerV2,
             trace_index: 0,
             from:        Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")),
@@ -369,7 +369,7 @@ mod tests {
                 mint,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_mint),
+                TreeSearchBuilder::default().with_action(Action::is_mint),
             )
             .await
             .unwrap();
@@ -396,7 +396,7 @@ mod tests {
             inner:   TokenInfo { decimals: 18, symbol: "rswETH".to_string() },
         });
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol:    Protocol::BalancerV2,
             trace_index: 0,
             from:        Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")),
@@ -434,7 +434,7 @@ mod tests {
                 burn,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();

@@ -3,7 +3,7 @@ use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{AddressDeltas, TokenAccounting};
-pub use super::{Actions, NormalizedSwap, NormalizedTransfer};
+pub use super::{Action, NormalizedSwap, NormalizedTransfer};
 use crate::Protocol;
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
 pub struct NormalizedAggregator {
@@ -20,7 +20,7 @@ pub struct NormalizedAggregator {
     //  - Mints
     //  - Burns
     //  - Transfers
-    pub child_actions: Vec<Actions>,
+    pub child_actions: Vec<Action>,
     pub msg_value:     U256,
 }
 

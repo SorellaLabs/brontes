@@ -70,7 +70,7 @@ impl ActionMacro {
                         block,
                         tx_idx,
                         logs: call_info.logs.clone().to_vec(),
-                        action: ::brontes_types::normalized_actions::Actions::#action_type(result)
+                        action: ::brontes_types::normalized_actions::Action::#action_type(result)
                     },
                 ))
             )

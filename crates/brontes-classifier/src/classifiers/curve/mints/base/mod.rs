@@ -14,7 +14,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::{Actions, NormalizedMint},
+        normalized_actions::{Action, NormalizedMint},
         Protocol, ToScaledRational, TreeSearchBuilder,
     };
 
@@ -53,7 +53,7 @@ mod tests {
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
-        let eq_action = Actions::Mint(NormalizedMint {
+        let eq_action = Action::Mint(NormalizedMint {
             protocol:    Protocol::CurveBasePool3,
             trace_index: 0,
             from:        Address::new(hex!("DaD7ef2EfA3732892d33aAaF9B3B1844395D9cbE")),
@@ -72,7 +72,7 @@ mod tests {
                 mint,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_mint),
+                TreeSearchBuilder::default().with_action(Action::is_mint),
             )
             .await
             .unwrap();

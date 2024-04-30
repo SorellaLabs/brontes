@@ -15,7 +15,7 @@ use brontes_types::{
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
-    normalized_actions::Actions,
+    normalized_actions::Action,
     structured_trace::TxTrace,
     traits::TracingProvider,
     BlockTree,
@@ -24,12 +24,11 @@ use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
-use tracing::{debug, span, Instrument, Level};
+use tracing::{span, trace, Instrument, Level};
 
 use super::metadata::MetadataFetcher;
 
-type CollectionFut<'a> =
-    Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Actions>>> + Send + 'a>>;
+type CollectionFut<'a> = Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Action>>> + Send + 'a>>;
 
 type ExecutionFut<'a> =
     Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
@@ -73,10 +72,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         generate_pricing: bool,
         fut: ExecutionFut<'static>,
         classifier: &'static Classifier<'static, T, DB>,
-    ) -> eyre::Result<BlockTree<Actions>> {
+    ) -> eyre::Result<BlockTree<Action>> {
         let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
 
-        debug!("Got {} traces + header", traces.len());
+        trace!("Got {} traces + header", traces.len());
         let res = classifier
             .build_block_tree(traces, header, generate_pricing)
             .await;
@@ -101,7 +100,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
     for StateCollector<T, DB, CH>
 {
-    type Item = (BlockTree<Actions>, Metadata);
+    type Item = (BlockTree<Action>, Metadata);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
