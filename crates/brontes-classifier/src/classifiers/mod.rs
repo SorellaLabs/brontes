@@ -37,6 +37,9 @@ pub use oneinch::*;
 pub mod clipper;
 pub use clipper::*;
 
+pub mod dodo;
+pub use dodo::*;
+
 discovery_dispatch!(
     DiscoveryProtocols,
     SushiSwapV2Discovery,
@@ -196,5 +199,13 @@ action_dispatch!(
     ZeroXFillLimitOrderCall,
     ZeroXFillRfqOrderCall,
     ZeroXFillOrKillLimitOrderCall,
-    ZeroXFillOrKillRfqOrderCall
+    ZeroXFillOrKillRfqOrderCall,
+    DodoCreateDODOVendingMachineCall,
+    DodoCreateDODOStablePoolCall,
+    DodoInitDODOPrivatePoolCall,
+    DodoBuySharesCall,
+    DodoSellSharesCall,
+    DodoSellBaseCall,
+    DodoSellQuoteCall,
+    DodoFlashLoanCall
 );
