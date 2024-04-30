@@ -104,6 +104,7 @@ impl DatabaseQuery {
 
             Ok(())
         })?;
+        Ok(())
     }
 }
 
