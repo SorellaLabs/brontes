@@ -100,6 +100,7 @@ utils!(
         OneInchFusion,
         ClipperExchange,
         PropellerLabsSolver,
+        Dodo,
         #[default]
         Unknown,
     }
@@ -144,6 +145,7 @@ impl Protocol {
             Protocol::OneInchFusion => ("OneInch", "Fusion"),
             Protocol::ClipperExchange => ("ClipperExchange", ""),
             Protocol::PropellerLabsSolver => ("PropellerLabsSolver", ""),
+            Protocol::Dodo => ("Dodo", "V1/V2"),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
