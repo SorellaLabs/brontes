@@ -49,6 +49,7 @@ impl Drop for SubgraphVerifier {
         tracing::info!(
             target: "brontes::mem",
             verification_state_rem = self.subgraph_verification_state.len(),
+            pending_subgraph_count = self.pending_subgraphs.len(),
             "amount of remaining state in verifier"
         );
     }
