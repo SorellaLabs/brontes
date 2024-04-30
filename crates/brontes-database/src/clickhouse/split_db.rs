@@ -98,7 +98,7 @@ impl ClickhouseBuffered {
         Ok(())
     }
 
-    async fn shutdown(&mut self) {
+    pub async fn shutdown(&mut self) {
         while let Some(value) = self.rx.recv().await {
             let enum_kind = value.first().as_ref().unwrap().get_db_enum();
 
