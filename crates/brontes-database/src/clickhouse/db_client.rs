@@ -21,7 +21,7 @@ use brontes_types::{
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, BundleData, MevBlock},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     structured_trace::TxTrace,
     BlockTree, Protocol,
 };
@@ -172,7 +172,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn insert_tree(&self, tree: std::sync::Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+    pub async fn insert_tree(&self, tree: std::sync::Arc<BlockTree<Action>>) -> eyre::Result<()> {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
@@ -562,7 +562,7 @@ mod tests {
 
     use super::*;
 
-    async fn load_tree() -> Arc<BlockTree<Actions>> {
+    async fn load_tree() -> Arc<BlockTree<Action>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
         classifier_utils.build_tree_tx(tx).await.unwrap().into()

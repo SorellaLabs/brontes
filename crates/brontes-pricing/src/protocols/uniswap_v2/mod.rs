@@ -8,7 +8,7 @@ use alloy_rlp::{RlpDecodable, RlpEncodable};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, traits::TracingProvider, ToScaledRational};
+use brontes_types::{normalized_actions::Action, traits::TracingProvider, ToScaledRational};
 use malachite::{num::arithmetic::traits::Pow, Natural, Rational};
 use serde::{Deserialize, Serialize};
 
@@ -65,7 +65,7 @@ impl UpdatableProtocol for UniswapV2Pool {
         self.address
     }
 
-    fn sync_from_action(&mut self, _action: Actions) -> Result<(), AmmError> {
+    fn sync_from_action(&mut self, _action: Action) -> Result<(), AmmError> {
         todo!("syncing from actions is currently not supported for v2")
     }
 

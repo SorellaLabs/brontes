@@ -13,7 +13,7 @@ use brontes_types::{
     db::metadata::Metadata,
     execute_on,
     mev::{Bundle, MevBlock, MevType},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     tree::BlockTree,
 };
 use tracing::debug;
@@ -29,7 +29,7 @@ impl Processor for MevProcessor {
     async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &DB,
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
-        tree: Arc<BlockTree<Actions>>,
+        tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) {
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
@@ -54,7 +54,7 @@ impl Processor for MevProcessor {
 #[cfg(feature = "local-clickhouse")]
 async fn insert_tree<DB: DBWriter + LibmdbxReader>(
     db: &DB,
-    tree: Arc<BlockTree<Actions>>,
+    tree: Arc<BlockTree<Action>>,
     block_num: u64,
 ) {
     let mut tree_owned = (*tree).clone();

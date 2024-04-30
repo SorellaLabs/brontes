@@ -166,7 +166,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         Protocol::PancakeSwapV3,
         TreeSearchBuilder,
     };
@@ -197,7 +197,7 @@ mod tests {
         let swap =
             B256::from(hex!("649b792d819826302eb2859a9a1b8f3bb1a78bb5c480d433cdc6cc4ab129337f"));
 
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol:    PancakeSwapV3,
             trace_index: 1,
             from:        Address::new(hex!("1b81D678ffb9C0263b24A97847620C99d213eB14")),
@@ -217,7 +217,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();

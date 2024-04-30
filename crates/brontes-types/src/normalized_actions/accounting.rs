@@ -3,7 +3,7 @@ use std::{collections::hash_map::Entry, hash::Hash};
 use alloy_primitives::Address;
 use malachite::Rational;
 
-use super::{comparison::ActionComparison, Actions};
+use super::{comparison::ActionComparison, Action};
 use crate::FastHashMap;
 
 pub type TokenDeltas = FastHashMap<Address, Rational>;
@@ -22,7 +22,7 @@ pub trait ActionAccounting {
     fn account_for_actions(self) -> AddressDeltas;
 }
 
-fn accounting_calc(accounting: &mut Accounting, next: Actions) {
+fn accounting_calc(accounting: &mut Accounting, next: Action) {
     if accounting
         .accounted_for_actions
         .iter()
@@ -39,7 +39,7 @@ fn accounting_calc(accounting: &mut Accounting, next: Actions) {
     }
 }
 
-impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
+impl<IT: Iterator<Item = Action>> ActionAccounting for IT {
     /// if the action has already been accounted for then we don't call apply.
     fn account_for_actions(self) -> AddressDeltas {
         let mut accounting = Accounting::new();
@@ -65,7 +65,7 @@ impl<IT: Iterator<Item = Actions>> ActionAccounting for IT {
 /// Holds all accounting info.
 pub struct Accounting {
     pub delta_map:             AddressDeltas,
-    pub accounted_for_actions: Vec<Actions>,
+    pub accounted_for_actions: Vec<Action>,
 }
 impl Default for Accounting {
     fn default() -> Self {

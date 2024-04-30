@@ -4,7 +4,7 @@
 - [Installation](./installation/installation.md)
 - [Run Brontes](./run/run_brontes.md)
 - [Architecture Overview](./architecture/intro.md)
-  - [BlockTree & Classification](./architecture/tree.md)
+  - [Block Tree](./architecture/tree.md)
   - [Database](./architecture/database.md)
   - [Inspectors](./architecture/inspectors.md)
 - [Mev Inspectors Deep Dive](./mev_inspectors/intro.md)

@@ -15,7 +15,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::{Actions, NormalizedSwap},
+        normalized_actions::{Action, NormalizedSwap},
         Protocol, ToScaledRational, TreeSearchBuilder,
     };
 
@@ -49,7 +49,7 @@ mod tests {
         classifier_utils.ensure_token(token_in.clone());
         classifier_utils.ensure_token(token_out.clone());
 
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol: Protocol::CurveBasePool3,
             trace_index: 0,
             from: Address::new(hex!("0F5cd3C453A7FCD7735eB2f0493F36D41398A4a0")),
@@ -67,7 +67,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();

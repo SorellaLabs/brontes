@@ -324,9 +324,9 @@ pub mod test {
 
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{normalized_actions::Actions, BlockTree, TreeSearchBuilder};
+    use brontes_types::{normalized_actions::Action, BlockTree, TreeSearchBuilder};
 
-    async fn load_tree() -> Arc<BlockTree<Actions>> {
+    async fn load_tree() -> Arc<BlockTree<Action>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
         classifier_utils.build_tree_tx(tx).await.unwrap().into()
@@ -339,11 +339,11 @@ pub mod test {
 
         let burns = tree
             .clone()
-            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_burn))
+            .collect(tx, TreeSearchBuilder::default().with_action(Action::is_burn))
             .collect::<Vec<_>>();
         assert_eq!(burns.len(), 1);
         let swaps = tree
-            .collect(tx, TreeSearchBuilder::default().with_action(Actions::is_swap))
+            .collect(tx, TreeSearchBuilder::default().with_action(Action::is_swap))
             .collect::<Vec<_>>();
         assert_eq!(swaps.len(), 3);
     }
@@ -357,7 +357,7 @@ pub mod test {
                 tx,
                 TreeSearchBuilder::default()
                     .with_actions([])
-                    .child_nodes_contain([Actions::is_transfer, Actions::is_swap]),
+                    .child_nodes_contain([Action::is_transfer, Action::is_swap]),
             )
             .collect::<Vec<_>>();
 
@@ -371,12 +371,12 @@ pub mod test {
         let tx = hex!("f9e7365f9c9c2859effebe61d5d19f44dcbf4d2412e7bcc5c511b3b8fbfb8b8d").into();
         let tree = Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
         let mut actions = tree
-            .collect(&tx, TreeSearchBuilder::default().with_action(Actions::is_batch))
+            .collect(&tx, TreeSearchBuilder::default().with_action(Action::is_batch))
             .collect::<Vec<_>>();
         assert!(!actions.is_empty());
         let action = actions.remove(0);
 
-        let Actions::Batch(b) = action else {
+        let Action::Batch(b) = action else {
             panic!("not batch");
         };
 

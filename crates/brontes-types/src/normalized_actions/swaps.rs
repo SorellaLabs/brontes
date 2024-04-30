@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     accounting::{apply_delta, AddressDeltas, TokenAccounting},
-    Actions,
+    Action,
 };
 use crate::{
     db::{
@@ -75,8 +75,8 @@ impl NormalizedSwap {
         &self.amount_in / &self.amount_out
     }
 
-    pub fn to_action(&self) -> Actions {
-        Actions::Swap(self.clone())
+    pub fn to_action(&self) -> Action {
+        Action::Swap(self.clone())
     }
 
     pub fn token_in_symbol(&self) -> &str {

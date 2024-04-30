@@ -9,7 +9,7 @@ use crate::{
         searcher::SearcherInfo,
     },
     mev::{Bundle, MevBlock},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     structured_trace::TxTrace,
     BlockTree, Protocol,
 };
@@ -107,7 +107,7 @@ pub trait DBWriter: Send + Unpin + 'static {
 
     fn insert_tree(
         &self,
-        tree: Arc<BlockTree<Actions>>,
+        tree: Arc<BlockTree<Action>>,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().insert_tree(tree)
     }

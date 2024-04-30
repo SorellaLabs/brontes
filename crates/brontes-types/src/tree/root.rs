@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use super::Node;
 use crate::{
     db::{metadata::Metadata, traits::LibmdbxReader},
-    normalized_actions::{Actions, MultiCallFrameClassification, NormalizedAction},
+    normalized_actions::{Action, MultiCallFrameClassification, NormalizedAction},
     tree::types::NodeWithDataRef,
     FastHashSet, TreeSearchBuilder, TxInfo,
 };
@@ -111,7 +111,7 @@ impl<V: NormalizedAction> Root<V> {
             .iter()
             .any(|a| {
                 matches!(a.get_action(),
-                Actions::Unclassified(data) if data.is_cex_dex_call()
+                Action::Unclassified(data) if data.is_cex_dex_call()
                 )
             });
 
@@ -444,7 +444,7 @@ pub mod test {
 
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::{get_db_handle, ClassifierTestUtils};
-    use brontes_types::{normalized_actions::Actions, tree::BlockTree};
+    use brontes_types::{normalized_actions::Action, tree::BlockTree};
 
     use super::*;
 
@@ -454,7 +454,7 @@ pub mod test {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("d6aa973068528615f4bba657b9b3366166c1ea0f56ac1313afe7abd97668ae4f").into();
 
-        let tree: Arc<BlockTree<Actions>> =
+        let tree: Arc<BlockTree<Action>> =
             Arc::new(classifier_utils.build_tree_tx(tx).await.unwrap());
 
         let info = tree

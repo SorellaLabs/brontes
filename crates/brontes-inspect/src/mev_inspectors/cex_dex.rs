@@ -53,7 +53,7 @@ use brontes_types::{
         dex::PriceAt,
     },
     mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
-    normalized_actions::{accounting::ActionAccounting, Actions, NormalizedSwap},
+    normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
     ActionIter, ToFloatNearest, TreeSearchBuilder, TxInfo,
@@ -118,13 +118,13 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     ///
     /// # Returns
     /// A vector of `Bundle` instances representing classified CEX-DEX arbitrage
-    fn process_tree(&self, tree: Arc<BlockTree<Actions>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
-                Actions::is_swap,
-                Actions::is_transfer,
-                Actions::is_eth_transfer,
-                Actions::is_aggregator,
+                Action::is_swap,
+                Action::is_transfer,
+                Action::is_eth_transfer,
+                Action::is_aggregator,
             ]))
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
@@ -140,7 +140,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
                 let dex_swaps = self
                     .utils
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
-                    .collect_action_vec(Actions::try_swaps_merged);
+                    .collect_action_vec(Action::try_swaps_merged);
 
                 // Early return to filter out triangular arbitrage
                 if self.is_triangular_arb(&dex_swaps) {

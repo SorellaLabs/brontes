@@ -39,7 +39,7 @@ mod utils;
 use brontes_types::{
     db::metadata::Metadata,
     mev::{Bundle, MevBlock, MevType, PossibleMevCollection},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
@@ -62,7 +62,7 @@ pub struct ComposerResults {
 
 pub fn compose_mev_results(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
-    tree: Arc<BlockTree<Actions>>,
+    tree: Arc<BlockTree<Action>>,
     metadata: Arc<Metadata>,
 ) -> ComposerResults {
     let (possible_mev_txes, classified_mev) =
@@ -77,7 +77,7 @@ pub fn compose_mev_results(
 
 fn run_inspectors(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
-    tree: Arc<BlockTree<Actions>>,
+    tree: Arc<BlockTree<Action>>,
     metadata: Arc<Metadata>,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut possible_mev_txes =
@@ -113,7 +113,7 @@ fn run_inspectors(
 }
 
 fn on_orchestra_resolution(
-    tree: Arc<BlockTree<Actions>>,
+    tree: Arc<BlockTree<Action>>,
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,

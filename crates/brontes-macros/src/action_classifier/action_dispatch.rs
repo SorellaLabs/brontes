@@ -52,7 +52,7 @@ impl ActionDispatch {
                             tx_idx: u64,
                         ) -> Option<(
                                 ::brontes_pricing::types::DexPriceMsg,
-                                ::brontes_types::normalized_actions::Actions
+                                ::brontes_types::normalized_actions::Action
                             )> {
 
 

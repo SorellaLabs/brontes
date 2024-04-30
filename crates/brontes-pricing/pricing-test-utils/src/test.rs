@@ -74,7 +74,7 @@ impl PricingTestUtils {
         block: u64,
     ) -> PricingResult<(
         BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
-        BlockTree<Actions>,
+        BlockTree<Action>,
     )> {
         let BlockTracesWithHeaderAnd { traces, header, .. } =
             self.tracer.get_block_traces_with_header(block).await?;

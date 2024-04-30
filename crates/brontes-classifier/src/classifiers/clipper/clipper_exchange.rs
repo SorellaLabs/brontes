@@ -166,7 +166,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Actions,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Action,
         Protocol::ClipperExchange, TreeSearchBuilder,
     };
 
@@ -178,7 +178,7 @@ mod tests {
         let swap =
             B256::from(hex!("3d9186d1cce43df1b3365d2faa19a35093412c583a9130e12e81cb8d389c3e45"));
 
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol:    ClipperExchange,
             trace_index: 0,
             from:        Address::new(hex!("aeaC71B09AeaeDC6A52CEe06373a648CAd620c20")),
@@ -198,7 +198,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();

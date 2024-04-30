@@ -31,7 +31,7 @@ use brontes_types::{
         traits::{DBWriter, LibmdbxReader},
     },
     mev::{Bundle, MevBlock},
-    normalized_actions::Actions,
+    normalized_actions::Action,
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
@@ -842,7 +842,7 @@ impl DBWriter for LibmdbxReadWriter {
     }
 
     /// only for internal functionality (i.e. clickhouse)
-    async fn insert_tree(&self, _tree: Arc<BlockTree<Actions>>) -> eyre::Result<()> {
+    async fn insert_tree(&self, _tree: Arc<BlockTree<Action>>) -> eyre::Result<()> {
         Ok(())
     }
 }

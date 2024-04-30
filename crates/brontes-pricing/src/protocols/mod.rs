@@ -7,7 +7,7 @@ use std::{future::Future, sync::Arc};
 
 use alloy_primitives::{Address, Log};
 use async_trait::async_trait;
-use brontes_types::{normalized_actions::Actions, pair::Pair, traits::TracingProvider};
+use brontes_types::{normalized_actions::Action, pair::Pair, traits::TracingProvider};
 pub use brontes_types::{queries::make_call_request, Protocol};
 use malachite::Rational;
 use tracing::{debug, warn};
@@ -26,7 +26,7 @@ pub trait UpdatableProtocol {
     fn address(&self) -> Address;
     fn tokens(&self) -> Vec<Address>;
     fn calculate_price(&self, base_token: Address) -> Result<Rational, ArithmeticError>;
-    fn sync_from_action(&mut self, action: Actions) -> Result<(), AmmError>;
+    fn sync_from_action(&mut self, action: Action) -> Result<(), AmmError>;
     fn sync_from_log(&mut self, log: Log) -> Result<(), AmmError>;
 }
 

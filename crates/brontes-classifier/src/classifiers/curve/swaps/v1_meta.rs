@@ -218,7 +218,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         TreeSearchBuilder,
     };
 
@@ -254,7 +254,7 @@ mod tests {
         classifier_utils.ensure_token(token_in.clone());
         classifier_utils.ensure_token(token_out.clone());
 
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol: Protocol::CurveV1MetaPool,
             trace_index: 1,
             from: Address::new(hex!("41ce1Af5B4eF2E124028dea59580817898def508")),
@@ -276,7 +276,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap()
@@ -312,7 +312,7 @@ mod tests {
         classifier_utils.ensure_token(token_in.clone());
         classifier_utils.ensure_token(token_out.clone());
 
-        let eq_action = Actions::Swap(NormalizedSwap {
+        let eq_action = Action::Swap(NormalizedSwap {
             protocol: Protocol::CurveV1MetaPool,
             trace_index: 1,
             from: Address::new(hex!("A24AD612C61076C902588C28e617461c6cA1eD54")),
@@ -334,7 +334,7 @@ mod tests {
                 swap,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_swap),
+                TreeSearchBuilder::default().with_action(Action::is_swap),
             )
             .await
             .unwrap();

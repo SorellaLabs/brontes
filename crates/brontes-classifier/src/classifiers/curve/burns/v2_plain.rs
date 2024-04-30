@@ -261,7 +261,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         TreeSearchBuilder,
     };
 
@@ -297,7 +297,7 @@ mod tests {
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
             from:        Address::new(hex!("598C5E19a132a5c433a80C908f05D87bFDaAC4ae")),
@@ -315,7 +315,7 @@ mod tests {
                 burn,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();
@@ -351,7 +351,7 @@ mod tests {
         classifier_utils.ensure_token(token0.clone());
         classifier_utils.ensure_token(token1.clone());
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
             from:        Address::new(hex!("a0f75491720835b36edC92D06DDc468D201e9b73")),
@@ -369,7 +369,7 @@ mod tests {
                 burn,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();
@@ -399,7 +399,7 @@ mod tests {
 
         classifier_utils.ensure_token(token.clone());
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol:    Protocol::CurveV2PlainPool,
             trace_index: 1,
             from:        Address::new(hex!("F94F7b6b956225BcE60A5f0C7B82D347071E48dC")),
@@ -414,7 +414,7 @@ mod tests {
                 burn,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();
