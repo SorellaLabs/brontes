@@ -36,6 +36,24 @@ pub struct StateTracker {
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
 }
 
+impl Drop for StateTracker {
+    fn drop(&mut self) {
+        let mut ver_byte_cnt = 0usize;
+        for (_, p) in &self.verification_edge_state {
+            ver_byte_cnt += 8;
+            ver_byte_cnt += p.estimate_mem()
+        }
+
+        let finalized_byte_cnt = self.finalized_edge_state.len() * 138;
+
+        tracing::info!(
+            verification_mem_bytes = ver_byte_cnt,
+            finalized_mem_bytes = finalized_byte_cnt,
+            "finalized state tracker info"
+        );
+    }
+}
+
 impl Default for StateTracker {
     fn default() -> Self {
         Self::new()
@@ -213,6 +231,10 @@ impl StateWithDependencies {
 pub struct PoolStateWithBlock(Vec<(bool, StateWithDependencies)>);
 
 impl PoolStateWithBlock {
+    fn estimate_mem(&self) -> usize {
+        self.0.len() * 152
+    }
+
     pub fn mark_state_as_finalized(&mut self, block: u64) {
         for (finalized, state) in &mut self.0 {
             if block == state.last_update {

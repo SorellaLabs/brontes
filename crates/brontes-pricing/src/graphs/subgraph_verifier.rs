@@ -44,6 +44,15 @@ pub struct SubgraphVerifier {
     subgraph_verification_state: FastHashMap<PairWithFirstPoolHop, SubgraphVerificationState>,
 }
 
+impl Drop for SubgraphVerifier {
+    fn drop(&mut self) {
+        tracing::info!(
+            verification_state_rem = self.subgraph_verification_state.len(),
+            "amount of remaining state in verifier"
+        );
+    }
+}
+
 impl Default for SubgraphVerifier {
     fn default() -> Self {
         Self::new()

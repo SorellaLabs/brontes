@@ -43,6 +43,18 @@ pub struct PendingRegistry {
     sub_graphs: FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
 }
 
+impl Drop for SubGraphRegistry {
+    fn drop(&mut self) {
+        let subgraphs_cnt = self.sub_graphs.values().map(|f| f.len()).sum::<usize>();
+
+        tracing::info!(
+            pending_finalized_subs = self.pending_finalized_graphs.len(),
+            subgraphs_len = subgraphs_cnt,
+            "subgraph registry final"
+        );
+    }
+}
+
 impl SubGraphRegistry {
     pub fn new(
         _subgraphs: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
