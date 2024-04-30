@@ -174,24 +174,26 @@ impl StateTracker {
         self.verification_edge_state
             .iter_mut()
             .for_each(|(pool, state)| {
-                let Some((should_finalize, state)) = state.remove_state(block) else {
-                    return;
-                };
-
-                if should_finalize {
-                    match self.finalized_edge_state.entry(*pool) {
-                        std::collections::hash_map::Entry::Vacant(v) => {
-                            v.insert(state);
+                state
+                    .remove_state(block)
+                    .into_iter()
+                    .for_each(|(should_finalize, state)| {
+                        if !should_finalize {
+                            return
                         }
-                        std::collections::hash_map::Entry::Occupied(mut o) => {
-                            let old_state = o.get_mut();
-                            if state.state.last_update > block {
-                                panic!("finalized state was ahead of regular state");
+                        match self.finalized_edge_state.entry(*pool) {
+                            std::collections::hash_map::Entry::Vacant(v) => {
+                                v.insert(state);
                             }
-                            old_state.dependents += state.dependents;
+                            std::collections::hash_map::Entry::Occupied(mut o) => {
+                                let old_state = o.get_mut();
+                                if state.state.last_update > block {
+                                    panic!("finalized state was ahead of regular state");
+                                }
+                                old_state.dependents += state.dependents;
+                            }
                         }
-                    }
-                }
+                    });
             });
     }
 
@@ -282,11 +284,11 @@ impl PoolStateWithBlock {
             .map(|state| &state.state)
     }
 
-    pub fn remove_state(&mut self, block: u64) -> Option<(bool, StateWithDependencies)> {
-        let mut res = None;
+    pub fn remove_state(&mut self, block: u64) -> Vec<(bool, StateWithDependencies)> {
+        let mut res = vec![];
         self.0.retain(|(keep, state)| {
-            if state.last_update == block {
-                res = Some((*keep, state.clone()));
+            if state.last_update <= block {
+                res.push((*keep, state.clone()));
                 return false
             }
             true

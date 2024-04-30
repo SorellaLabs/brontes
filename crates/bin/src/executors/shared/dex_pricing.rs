@@ -35,6 +35,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
     for WaitingForPricerFuture<T, DB>
 {
     fn drop(&mut self) {
+        // ensures that we properly drop everything
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let res = self.receiver.recv().await;
