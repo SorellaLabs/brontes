@@ -80,8 +80,8 @@ impl Libmdbx {
             mdbx_result(reth_mdbx_sys::mdbx_env_set_option(
                 ptr,
                 reth_mdbx_sys::MDBX_opt_sync_bytes,
-                // 1 gb
-                1_000_000_000u64,
+                // 10 gb
+                1_000_000_000u64 * 10,
             ))
         })?;
 
