@@ -55,6 +55,35 @@ impl LibmdbxTx<RW> {
             db_handles: Default::default(),
         })
     }
+
+    pub fn append_bytes<T: Table>(&self, key: &[u8], value: Vec<u8>) -> Result<(), DatabaseError> {
+        self.inner
+            .put(self.get_dbi::<T>()?, key, value, WriteFlags::APPEND)
+            .map_err(|e| {
+                DatabaseWriteError {
+                    info:       e.into(),
+                    operation:  DatabaseWriteOperation::CursorAppend,
+                    table_name: T::NAME,
+                    key:        key.into(),
+                }
+                .into()
+            })
+    }
+
+    // puts some n amount of bytes
+    pub fn put_bytes<T: Table>(&self, key: &[u8], value: Vec<u8>) -> Result<(), DatabaseError> {
+        self.inner
+            .put(self.get_dbi::<T>()?, key, value, WriteFlags::UPSERT)
+            .map_err(|e| {
+                DatabaseWriteError {
+                    info:       e.into(),
+                    operation:  DatabaseWriteOperation::Put,
+                    table_name: T::NAME,
+                    key:        key.into(),
+                }
+                .into()
+            })
+    }
 }
 
 impl<K: TransactionKind> LibmdbxTx<K> {
