@@ -722,6 +722,7 @@ impl DBWriter for LibmdbxReadWriter {
         if let Some(quotes) = quotes {
             self.init_state_updating(block_num, DEX_PRICE_FLAG)
                 .expect("libmdbx write failure");
+
             let data = quotes
                 .0
                 .into_iter()
