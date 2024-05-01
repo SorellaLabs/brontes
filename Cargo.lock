@@ -1727,6 +1727,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "brontes-libmdbx"
+version = "0.0.0"
+dependencies = [
+ "bitflags 2.5.0",
+ "byteorder",
+ "dashmap",
+ "derive_more",
+ "indexmap 2.2.6",
+ "libc",
+ "libffi",
+ "parking_lot 0.12.2",
+ "reth-mdbx-sys",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "brontes-macros"
 version = "0.1.0"
 dependencies = [

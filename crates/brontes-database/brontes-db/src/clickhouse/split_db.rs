@@ -114,7 +114,7 @@ impl ClickhouseBuffered {
                 Self::insert(self.client.clone(), std::mem::take(entry), enum_kind.clone()).await;
         }
 
-        while let Some(_) = self.futs.next().await {}
+        while (self.futs.next().await).is_some() {}
     }
 }
 
