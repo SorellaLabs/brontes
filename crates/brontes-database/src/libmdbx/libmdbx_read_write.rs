@@ -994,7 +994,6 @@ impl LibmdbxReadWriter {
                 if last.block + 1 != block {
                     let tx = self.db.rw_tx()?;
                     let entries = std::mem::take(&mut current);
-                    tracing::info!(?entries);
                     for buffered_entry in entries {
                         let (key, value) = buffered_entry.data;
                         tx.put_bytes::<T>(&key, value)?;
