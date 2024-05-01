@@ -24,7 +24,8 @@ use super::tables::Tables;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{
-        cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter,
+        cex_utils::CexRangeOrArbitrary, libmdbx_read_write::MinHeapData, types::CompressedTable,
+        LibmdbxData, LibmdbxReadWriter,
     },
 };
 const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";
@@ -123,7 +124,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + 'static,
     {
         if clear_table {
-            self.libmdbx.0.clear_table::<T>()?;
+            self.libmdbx.db.clear_table::<T>()?;
         }
 
         let data = self.clickhouse.query_many::<T, D>().await;
@@ -131,7 +132,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         match data {
             Ok(d) => {
                 progress_bar.inc(1);
-                self.libmdbx.0.write_table(&d)?
+                self.libmdbx.db.write_table(&d)?
             }
             Err(e) => {
                 error!(target: "brontes::init", error=%e, "error initing {}", T::NAME)
@@ -163,7 +164,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + 'static,
     {
         if clear_table {
-            self.libmdbx.0.clear_table::<T>()?;
+            self.libmdbx.db.clear_table::<T>()?;
         }
 
         let block_range_chunks = if let Some((s, e)) = block_range {
@@ -203,7 +204,15 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.0.write_table(&d)?;
+
+                                let mut entry = libmdbx.insert_queue.entry(Tables::CexPrice).or_default();
+                                for data in d {
+                                    let block = data.key;
+                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(data.into_key_val());
+                                    entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+                                }
+
+
                             }
                             Err(e) => {
                                 error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -219,7 +228,13 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.0.write_table(&d)?;
+
+                                let mut entry = libmdbx.insert_queue.entry(Tables::CexTrades).or_default();
+                                for data in d {
+                                    let block = data.key;
+                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(data.into_key_val());
+                                    entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+                                }
                             }
                             Err(e) => {
                                 error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -231,7 +246,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     match data {
                         Ok(d) => {
                             pb.inc(count);
-                            libmdbx.0.write_table(&d)?;
+                            libmdbx.db.write_table(&d)?;
                         }
                         Err(e) => {
                             info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -292,7 +307,13 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.0.write_table(&d)?;
+
+                                let mut entry = libmdbx.insert_queue.entry(Tables::CexPrice).or_default();
+                                for data in d {
+                                    let block = data.key;
+                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(data.into_key_val());
+                                    entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+                                }
                             }
                             Err(e) => {
                                 info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -308,7 +329,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.0.write_table(&d)?;
+                                let mut entry = libmdbx.insert_queue.entry(Tables::CexTrades).or_default();
+                                for data in d {
+                                    let block = data.key;
+                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(data.into_key_val());
+                                    entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+                                }
                             }
                             Err(e) => {
                                 info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -320,7 +346,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     match data {
                         Ok(d) => {
                             pb.inc(count);
-                            libmdbx.0.write_table(&d)?;
+                            libmdbx.db.write_table(&d)?;
                         }
                         Err(e) => {
                             info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)

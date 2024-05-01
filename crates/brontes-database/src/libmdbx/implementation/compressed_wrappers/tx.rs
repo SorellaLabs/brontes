@@ -1,5 +1,5 @@
 use reth_db::{
-    table::DupSort,
+    table::{Compress, DupSort, Encode},
     transaction::{DbTx, DbTxMut},
     DatabaseError,
 };
@@ -78,6 +78,28 @@ impl CompressedLibmdbxTx<RO> {
 impl CompressedLibmdbxTx<RW> {
     pub fn new_rw_tx(env: &DatabaseEnv) -> Result<Self, DatabaseError> {
         Ok(Self(LibmdbxTx::new_rw_tx(env)?))
+    }
+
+    pub fn append_bytes<T: CompressedTable>(
+        &self,
+        key: &[u8],
+        value: Vec<u8>,
+    ) -> Result<(), DatabaseError>
+    where
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+    {
+        self.0.append_bytes::<T>(key, value)
+    }
+
+    pub fn put_bytes<T: CompressedTable>(
+        &self,
+        key: &[u8],
+        value: Vec<u8>,
+    ) -> Result<(), DatabaseError>
+    where
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+    {
+        self.0.put_bytes::<T>(key, value)
     }
 
     pub fn put<T>(&self, key: T::Key, value: T::DecompressedValue) -> Result<(), DatabaseError>
