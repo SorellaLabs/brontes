@@ -146,8 +146,7 @@ impl DatabaseEnv {
         let mode = match kind {
             DatabaseEnvKind::RO => Mode::ReadOnly,
             DatabaseEnvKind::RW => {
-                // TODO: enable writemap mode in RW mode
-                //inner_env.write_map();
+                inner_env.write_map();
                 Mode::ReadWrite { sync_mode: SyncMode::SafeNoSync }
             }
         };
@@ -160,7 +159,7 @@ impl DatabaseEnv {
             // Maximum database size of 750 gigabytes
             size:        Some(0..(750 * GIGABYTE)),
             // We grow the database in increments of 100 gigabytes
-            growth_step: Some(10 * MEGABYTE as isize),
+            growth_step: Some(200 * MEGABYTE as isize),
 
             shrink_threshold: Some(GIGABYTE as isize),
             page_size:        Some(PageSize::Set(default_page_size())),

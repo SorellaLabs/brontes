@@ -1,6 +1,8 @@
-use crate::{Error, TransactionKind};
-use derive_more::*;
 use std::{borrow::Cow, slice};
+
+use derive_more::*;
+
+use crate::{Error, TransactionKind};
 
 /// Implement this to be able to decode data values
 pub trait TableObject: Sized {
@@ -41,8 +43,8 @@ impl<'tx> TableObject for Cow<'tx, [u8]> {
 
         #[cfg(not(feature = "return-borrowed"))]
         {
-            let is_dirty = (!K::IS_READ_ONLY) &&
-                crate::error::mdbx_result(ffi::mdbx_is_dirty(_txn, data_val.iov_base))?;
+            let is_dirty = (!K::IS_READ_ONLY)
+                && crate::error::mdbx_result(ffi::mdbx_is_dirty(_txn, data_val.iov_base))?;
 
             Ok(if is_dirty { Cow::Owned(s.to_vec()) } else { Cow::Borrowed(s) })
         }
