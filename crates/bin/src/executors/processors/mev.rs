@@ -61,16 +61,15 @@ impl Processor for MevProcessor {
 #[cfg(feature = "local-clickhouse")]
 async fn insert_tree<DB: DBWriter + LibmdbxReader>(
     db: &DB,
-    tree: Arc<BlockTree<Action>>,
+    mut tree_owned: BlockTree<Action>,
     block_num: u64,
 ) {
-    let mut tree_owned = (*tree).clone();
     remove_swap_transfers(&mut tree_owned);
     remove_mint_transfers(&mut tree_owned);
     remove_burn_transfers(&mut tree_owned);
     remove_collect_transfers(&mut tree_owned);
 
-    if let Err(e) = db.insert_tree(Arc::new(tree_owned)).await {
+    if let Err(e) = db.insert_tree(tree_owned).await {
         tracing::error!(err=%e, %block_num, "failed to insert tree into db");
     }
 }

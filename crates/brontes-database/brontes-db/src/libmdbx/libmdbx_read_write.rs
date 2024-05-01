@@ -926,7 +926,7 @@ impl DBWriter for LibmdbxReadWriter {
     }
 
     /// only for internal functionality (i.e. clickhouse)
-    async fn insert_tree(&self, _tree: Arc<BlockTree<Action>>) -> eyre::Result<()> {
+    async fn insert_tree(&self, _tree: BlockTree<Action>) -> eyre::Result<()> {
         Ok(())
     }
 }

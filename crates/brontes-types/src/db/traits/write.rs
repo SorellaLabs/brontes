@@ -107,7 +107,7 @@ pub trait DBWriter: Send + Unpin + 'static {
 
     fn insert_tree(
         &self,
-        tree: Arc<BlockTree<Action>>,
+        tree: BlockTree<Action>,
     ) -> impl Future<Output = eyre::Result<()>> + Send {
         self.inner().insert_tree(tree)
     }
