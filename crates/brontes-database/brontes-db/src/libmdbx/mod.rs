@@ -24,7 +24,6 @@ use reth_db::{
     DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-//use reth_mdbx_sys::MDBX_SAFE_NOSYNC;
 use tables::*;
 use tracing::info;
 

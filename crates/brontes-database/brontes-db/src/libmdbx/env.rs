@@ -211,7 +211,6 @@ impl DatabaseEnv {
         }
         inner_env.set_flags(EnvironmentFlags {
             mode,
-
             coalesce: true,
             exclusive: args.exclusive.unwrap_or_default(),
             ..Default::default()

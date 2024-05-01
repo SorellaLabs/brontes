@@ -1,5 +1,6 @@
 use std::{
     cmp::max,
+    collections::BinaryHeap,
     ops::{Bound, RangeInclusive},
     path::Path,
     sync::Arc,
@@ -37,17 +38,20 @@ use brontes_types::{
     traits::TracingProvider,
     BlockTree, FastHashMap,
 };
+use dashmap::DashMap;
 use eyre::{eyre, ErrReport};
 use futures::Future;
 use indicatif::ProgressBar;
 use itertools::Itertools;
-use reth_db::DatabaseError;
+use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
 use tracing::info;
 
+use super::types::ReturnKV;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
+    CompressedTable,
 };
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
@@ -86,11 +90,85 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     ) -> eyre::Result<StateToInitialize>;
 }
 
-pub struct LibmdbxReadWriter(pub Libmdbx);
+// how often we will append data
+const CLEAR_AM: usize = 100;
+
+#[derive(Debug)]
+pub struct MinHeapData<T> {
+    pub block: u64,
+    pub data:  T,
+}
+
+impl<T> PartialEq for MinHeapData<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.block.eq(&other.block)
+    }
+}
+impl<T> Eq for MinHeapData<T> {}
+
+impl<T> PartialOrd for MinHeapData<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for MinHeapData<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.block.cmp(&self.block)
+    }
+}
+
+type InsetQueue = DashMap<Tables, BinaryHeap<MinHeapData<(Vec<u8>, Vec<u8>)>>, ahash::RandomState>;
+
+pub struct LibmdbxReadWriter {
+    pub db:           Libmdbx,
+    /// this only applies to non instant update tables. e.g DexPriceMapping,
+    /// or results. If it is a new protocol it will instantly be inserted as we
+    /// always want it to be available
+    pub insert_queue: InsetQueue,
+}
+
+impl Drop for LibmdbxReadWriter {
+    fn drop(&mut self) {
+        std::mem::take(&mut self.insert_queue)
+            .into_iter()
+            .for_each(|(table, values)| {
+                if values.is_empty() {
+                    return
+                }
+                match table {
+                    Tables::DexPrice => {
+                        self.insert_batched_data::<DexPrice>(values).unwrap();
+                    }
+                    Tables::CexPrice => {
+                        self.insert_batched_data::<CexPrice>(values).unwrap();
+                    }
+                    Tables::CexTrades => {
+                        self.insert_batched_data::<CexTrades>(values).unwrap();
+                    }
+                    Tables::MevBlocks => {
+                        self.insert_batched_data::<MevBlocks>(values).unwrap();
+                    }
+                    Tables::TxTraces => {
+                        self.insert_batched_data::<TxTraces>(values).unwrap();
+                    }
+                    Tables::InitializedState => {
+                        self.insert_batched_data::<InitializedState>(values)
+                            .unwrap();
+                    }
+
+                    table => unreachable!("{table} doesn't have batch inserts"),
+                }
+            });
+    }
+}
 
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
-        Ok(Self(Libmdbx::init_db(path, log_level)?))
+        Ok(Self {
+            db:           Libmdbx::init_db(path, log_level)?,
+            insert_queue: DashMap::default(),
+        })
     }
 }
 
@@ -158,7 +236,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
         let mut tables: Vec<Vec<u128>> = Tables::ALL.into_iter().map(|_| range.clone()).collect();
 
-        let tx = self.0.ro_tx()?;
+        let tx = self.db.ro_tx()?;
         let mut cur = tx.new_cursor::<InitializedState>()?;
         let mut peek_cur = cur.walk_range(start_block..=end_block)?.peekable();
 
@@ -403,7 +481,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
             tx.get::<TokenDecimals>(address)?
@@ -416,7 +494,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             tx.get::<SearcherEOAs>(searcher_eoa)
                 .map_err(ErrReport::from)
         })
@@ -426,14 +504,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             tx.get::<SearcherContracts>(searcher_contract)
                 .map_err(ErrReport::from)
         })
     }
 
     fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut cursor = tx.cursor_read::<SearcherEOAs>()?;
 
             let mut result = Vec::new();
@@ -454,7 +532,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut cursor = tx.cursor_read::<SearcherContracts>()?;
 
             let mut result = Vec::new();
@@ -478,7 +556,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         block_num: u64,
     ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
         let mut map = FastHashMap::default();
 
@@ -507,7 +585,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         start_block: u64,
         end_block: u64,
     ) -> eyre::Result<FastHashMap<u64, Vec<(Address, Protocol, Pair)>>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
         let mut map = FastHashMap::default();
 
@@ -535,7 +613,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
-        self.0
+        self.db
             .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
     }
 
@@ -543,14 +621,14 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         builder_coinbase_addr: Address,
     ) -> eyre::Result<Option<BuilderInfo>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             tx.get::<Builder>(builder_coinbase_addr)
                 .map_err(ErrReport::from)
         })
     }
 
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut cursor = tx.cursor_read::<Builder>()?;
 
             let mut result = Vec::new();
@@ -575,7 +653,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         start_block: Option<u64>,
         end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut cursor = tx.cursor_read::<MevBlocks>()?;
             let mut res = Vec::new();
 
@@ -597,7 +675,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         start_block: Option<u64>,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut cursor = tx.cursor_read::<MevBlocks>()?;
 
             let mut res = Vec::new();
@@ -615,7 +693,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut cursor = tx.cursor_read::<AddressMeta>()?;
 
             let mut result = Vec::new();
@@ -668,7 +746,7 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
-        self.0
+        self.db
             .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
@@ -680,7 +758,7 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherContractsData::new(searcher_contract, searcher_info);
-        self.0
+        self.db
             .write_table::<SearcherContracts, SearcherContractsData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
@@ -693,7 +771,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = AddressMetaData::new(address, metadata);
 
-        self.0
+        self.db
             .write_table::<AddressMeta, AddressMetaData>(&[data])
             .expect("libmdx metadata write failure");
 
@@ -706,11 +784,17 @@ impl DBWriter for LibmdbxReadWriter {
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        let data = MevBlocksData::new(block_number, MevBlockWithClassified { block, mev });
+        let data =
+            MevBlocksData::new(block_number, MevBlockWithClassified { block, mev }).into_key_val();
+        let (key, value) = Self::convert_into_save_bytes(data);
 
-        self.0
-            .write_table::<MevBlocks, MevBlocksData>(&[data])
-            .expect("libmdbx write failure");
+        let mut entry = self.insert_queue.entry(Tables::MevBlocks).or_default();
+        entry.push(MinHeapData { block: block_number, data: (key.to_vec(), value) });
+
+        if entry.len() > CLEAR_AM {
+            self.insert_batched_data::<MevBlocks>(std::mem::take(&mut entry))?;
+        }
+
         Ok(())
     }
 
@@ -723,7 +807,9 @@ impl DBWriter for LibmdbxReadWriter {
             self.init_state_updating(block_num, DEX_PRICE_FLAG)
                 .expect("libmdbx write failure");
 
-            let data = quotes
+            let mut entry = self.insert_queue.entry(Tables::DexPrice).or_default();
+
+            quotes
                 .0
                 .into_iter()
                 .enumerate()
@@ -735,26 +821,16 @@ impl DBWriter for LibmdbxReadWriter {
                     };
                     DexPriceData::new(make_key(block_num, idx as u16), index)
                 })
-                .collect::<Vec<_>>();
+                .for_each(|data| {
+                    let data = data.into_key_val();
+                    let (key, value) = Self::convert_into_save_bytes(data);
+                    entry.push(MinHeapData { block: block_num, data: (key.to_vec(), value) });
+                });
 
-            self.0
-                .update_db(|tx| {
-                    let mut cursor = tx
-                        .cursor_write::<DexPrice>()
-                        .expect("libmdbx write failure");
-
-                    data.into_iter()
-                        .map(|entry| {
-                            let entry = entry.into_key_val();
-                            cursor
-                                .upsert(entry.key, entry.value)
-                                .expect("libmdbx write failure");
-                            Ok(())
-                        })
-                        .collect::<Result<Vec<_>, DatabaseError>>()
-                })
-                .expect("libmdbx write failure")
-                .expect("libmdbx write failure");
+            // assume 150 entries per block
+            if entry.len() > CLEAR_AM * 150 {
+                self.insert_batched_data::<DexPrice>(std::mem::take(&mut entry))?;
+            }
         }
 
         Ok(())
@@ -766,7 +842,7 @@ impl DBWriter for LibmdbxReadWriter {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        self.0
+        self.db
             .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
                 address,
                 TokenInfo::new(decimals, symbol),
@@ -786,7 +862,7 @@ impl DBWriter for LibmdbxReadWriter {
         // add to default table
         let mut tokens = tokens.iter();
         let default = Address::ZERO;
-        self.0
+        self.db
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData::new(
                     address,
@@ -805,7 +881,7 @@ impl DBWriter for LibmdbxReadWriter {
             .expect("libmdbx write failure");
 
         // add to pool creation block
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut addrs = tx
                 .get::<PoolCreationBlocks>(block)
                 .expect("libmdbx write failure")
@@ -813,7 +889,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .unwrap_or_default();
 
             addrs.push(address);
-            self.0
+            self.db
                 .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
                     PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
                 ])
@@ -824,8 +900,15 @@ impl DBWriter for LibmdbxReadWriter {
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        let table = TxTracesData::new(block, TxTracesInner { traces: Some(traces) });
-        self.0.write_table(&[table]).expect("libmdbx write failure");
+        let data = TxTracesData::new(block, TxTracesInner { traces: Some(traces) }).into_key_val();
+        let (key, value) = Self::convert_into_save_bytes(data);
+
+        let mut entry = self.insert_queue.entry(Tables::TxTraces).or_default();
+        entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+
+        if entry.len() > CLEAR_AM {
+            self.insert_batched_data::<TxTraces>(std::mem::take(&mut entry))?;
+        }
 
         self.init_state_updating(block, TRACE_FLAG)
     }
@@ -836,7 +919,7 @@ impl DBWriter for LibmdbxReadWriter {
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
         let data = BuilderData::new(builder_address, builder_info);
-        self.0
+        self.db
             .write_table::<Builder, BuilderData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
@@ -849,36 +932,156 @@ impl DBWriter for LibmdbxReadWriter {
 }
 
 impl LibmdbxReadWriter {
+    pub fn flush_init_data(&self) -> eyre::Result<()> {
+        self.insert_queue.alter_all(|table, mut res| {
+            match table {
+                Tables::DexPrice => {
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<DexPrice>(values) {
+                        tracing::error!(error=%e);
+                    }
+                }
+                Tables::CexPrice => {
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<CexPrice>(values) {
+                        tracing::error!(error=%e);
+                    }
+                }
+                Tables::CexTrades => {
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<CexTrades>(values) {
+                        tracing::error!(error=%e);
+                    }
+                }
+                Tables::MevBlocks => {
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<MevBlocks>(values) {
+                        tracing::error!(error=%e);
+                    }
+                }
+                Tables::TxTraces => {
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<TxTraces>(values) {
+                        tracing::error!(error=%e);
+                    }
+                }
+                Tables::InitializedState => {
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<InitializedState>(values) {
+                        tracing::error!(error=%e);
+                    }
+                }
+                table => tracing::error!("{table} doesn't have batch inserts"),
+            }
+
+            res
+        });
+        Ok(())
+    }
+
+    fn insert_batched_data<T: CompressedTable>(
+        &self,
+        mut data: BinaryHeap<MinHeapData<(Vec<u8>, Vec<u8>)>>,
+    ) -> eyre::Result<()>
+    where
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+    {
+        // get collections of continuous batches. append if we have a set of operations,
+        // otherwise just put.
+        let mut current: Vec<MinHeapData<(Vec<u8>, Vec<u8>)>> = Vec::new();
+
+        let tx = self.db.rw_tx()?;
+
+        while let Some(next) = data.pop() {
+            let block = next.block;
+            if let Some(last) = current.last() {
+                if last.block + 1 != block {
+                    let entries = std::mem::take(&mut current);
+                    for buffered_entry in entries {
+                        let (key, value) = buffered_entry.data;
+                        tx.put_bytes::<T>(&key, value)?;
+                    }
+                }
+                // next in seq, push to buf
+                current.push(next);
+            } else {
+                current.push(next);
+            }
+        }
+
+        let rem = std::mem::take(&mut current);
+        if !rem.is_empty() {
+            for buffered_entry in rem {
+                let (key, value) = buffered_entry.data;
+                tx.put_bytes::<T>(&key, value)?;
+            }
+        }
+
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn convert_into_save_bytes<T: CompressedTable>(
+        data: ReturnKV<T>,
+    ) -> (<T::Key as Encode>::Encoded, <T::Value as Compress>::Compressed)
+    where
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+    {
+        let key = data.key.encode();
+        let value: T::Value = data.value.into();
+        (key, value.compress())
+    }
+
     fn init_state_updating(&self, block: u64, flag: u8) -> eyre::Result<()> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
             state.set(flag);
-            self.0
-                .write_table::<InitializedState, InitializedStateData>(&[
-                    InitializedStateData::new(block, state),
-                ])?;
+            let data = InitializedStateData::new(block, state).into_key_val();
+
+            let (key, value) = Self::convert_into_save_bytes(data);
+
+            let mut entry = self
+                .insert_queue
+                .entry(Tables::InitializedState)
+                .or_default();
+            entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+
+            if entry.len() > CLEAR_AM * 300 {
+                self.insert_batched_data::<InitializedState>(std::mem::take(&mut entry))?;
+            }
 
             Ok(())
         })
     }
 
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
-        let tx = self.0.rw_tx()?;
-        let mut range_cursor = tx.cursor_write::<InitializedState>()?;
+        let tx = self.db.ro_tx()?;
+        let mut range_cursor = tx.cursor_read::<InitializedState>()?;
+        let mut entry = self
+            .insert_queue
+            .entry(Tables::InitializedState)
+            .or_default();
 
         for block in range {
             if let Some(mut state) = range_cursor.seek_exact(block)? {
                 state.1.set(flag);
-                range_cursor.upsert(state.0, state.1)?;
+                let data = InitializedStateData::new(block, state.1).into_key_val();
+                let (key, value) = Self::convert_into_save_bytes(data);
+                entry.push(MinHeapData { block, data: (key.to_vec(), value) });
             } else {
                 let mut init_state = InitializedStateMeta::default();
                 init_state.set(flag);
-                let value = InitializedStateData::from((block, init_state));
-                range_cursor.upsert(value.key, value.value)?;
+                let data = InitializedStateData::from((block, init_state)).into_key_val();
+
+                let (key, value) = Self::convert_into_save_bytes(data);
+                entry.push(MinHeapData { block, data: (key.to_vec(), value) });
             }
         }
-
         tx.commit()?;
+
+        if entry.len() > CLEAR_AM * 300 {
+            self.insert_batched_data::<InitializedState>(std::mem::take(&mut entry))?;
+        }
 
         Ok(())
     }

@@ -53,6 +53,10 @@ where
         self.0.seek(key).map(|opt| opt.map(Into::into))
     }
 
+    pub fn seek_raw(&mut self, key: &[u8]) -> CompressedPairResult<T> {
+        self.0.seek_raw(key).map(|opt| opt.map(Into::into))
+    }
+
     #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> CompressedPairResult<T> {
         self.0.next().map(|opt| opt.map(Into::into))

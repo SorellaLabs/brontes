@@ -83,7 +83,7 @@ macro_rules! tables {
                 match self {
                     $(
                         Tables::$table => {
-                            let tx = db.0.rw_tx()?;
+                            let tx = db.db.rw_tx()?;
                             tx.get_dbi::<$table>()?;
                             tx.commit()?;
                         }
