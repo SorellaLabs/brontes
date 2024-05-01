@@ -551,7 +551,7 @@ impl ClassifierTestUtils {
     ) -> Result<(), ClassifierTestUtilsError> {
         // write protocol to libmdbx
         self.libmdbx
-            .0
+            .db
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
@@ -634,7 +634,7 @@ impl ClassifierTestUtils {
     ) {
         if let Err(e) = self
             .libmdbx
-            .0
+            .db
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData {
                     key:   address,
@@ -658,7 +658,7 @@ impl ClassifierTestUtils {
     pub fn ensure_token(&self, token: TokenInfoWithAddress) {
         if let Err(e) = self
             .libmdbx
-            .0
+            .db
             .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData {
                 key:   token.address,
                 value: brontes_types::db::token_info::TokenInfo {
