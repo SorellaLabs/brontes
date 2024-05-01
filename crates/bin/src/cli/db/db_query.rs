@@ -2,10 +2,10 @@ use brontes_database::{
     libmdbx::{cursor::CompressedCursor, Libmdbx},
     CompressedTable, IntoTableKey, Tables,
 };
+use brontes_libmdbx::RO;
 use brontes_types::init_threadpools;
 use clap::Parser;
 use itertools::Itertools;
-use reth_db::mdbx::RO;
 use reth_interfaces::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]

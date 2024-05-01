@@ -9,6 +9,7 @@ pub mod cex_utils;
 
 pub mod initialize;
 mod libmdbx_read_write;
+use brontes_libmdbx::{RO, RW};
 use env::{DatabaseArguments, DatabaseEnv, DatabaseEnvKind};
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
@@ -23,7 +24,6 @@ use reth_db::{
     DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-use reth_libmdbx::{RO, RW};
 use reth_mdbx_sys::MDBX_SAFE_NOSYNC;
 use tables::*;
 use tracing::info;

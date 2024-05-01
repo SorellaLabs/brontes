@@ -3,6 +3,7 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
+use brontes_libmdbx::{TransactionKind, RW};
 use reth_db::{
     cursor::{
         DbCursorRO, DbCursorRW, DbDupCursorRO, DbDupCursorRW, DupWalker, RangeWalker,
@@ -11,7 +12,6 @@ use reth_db::{
     table::{DupSort, Table},
     DatabaseError,
 };
-use reth_libmdbx::{TransactionKind, RW};
 
 use super::utils::{
     CompressedPairResult, CompressedTableRow, DecompressedValueOnlyResult, IterCompressedPairResult,

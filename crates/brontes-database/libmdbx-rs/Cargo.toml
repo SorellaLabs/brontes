@@ -20,6 +20,10 @@ tracing.workspace = true
 
 ffi = { package = "reth-mdbx-sys", git = "https://github.com/paradigmxyz/reth", rev = "ac29b4b" }
 
+[dev-dependencies]
+tempfile = "3.8"
+criterion = "0.5"
+pprof = "0.13"
 
 [target.'cfg(not(windows))'.dependencies]
 libffi = "3.2.0"

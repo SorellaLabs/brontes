@@ -1,9 +1,9 @@
+use brontes_libmdbx::{ffi::DBI, TransactionKind, RO, RW};
 use reth_db::{
     table::DupSort,
     transaction::{DbTx, DbTxMut},
     DatabaseError,
 };
-use reth_libmdbx::{ffi::DBI, TransactionKind, RO, RW};
 
 use super::cursor::CompressedCursor;
 use crate::libmdbx::{implementation::native::tx::LibmdbxTx, types::CompressedTable, DatabaseEnv};

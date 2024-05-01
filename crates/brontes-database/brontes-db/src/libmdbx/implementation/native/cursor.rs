@@ -4,6 +4,7 @@ use std::{
     ops::{Bound, RangeBounds},
 };
 
+use brontes_libmdbx::{Error, TransactionKind, WriteFlags, RW};
 use reth_db::{
     common::{PairResult, ValueOnlyResult},
     cursor::{
@@ -14,7 +15,6 @@ use reth_db::{
     DatabaseError, DatabaseWriteOperation,
 };
 use reth_interfaces::db::DatabaseWriteError;
-use reth_libmdbx::{Error, TransactionKind, WriteFlags, RW};
 
 use super::utils::{decode_one, decode_value, decoder, uncompressable_ref_util};
 
@@ -22,13 +22,13 @@ use super::utils::{decode_one, decode_value, decoder, uncompressable_ref_util};
 #[derive(Debug)]
 pub struct LibmdbxCursor<T: Table, K: TransactionKind> {
     /// Inner `libmdbx` cursor.
-    pub(crate) inner: reth_libmdbx::Cursor<K>,
+    pub(crate) inner: brontes_libmdbx::Cursor<K>,
     /// Phantom data to enforce encoding/decoding.
     _dbi:             PhantomData<T>,
 }
 
 impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {
-    pub(crate) fn new(inner: reth_libmdbx::Cursor<K>) -> Self {
+    pub(crate) fn new(inner: brontes_libmdbx::Cursor<K>) -> Self {
         Self { inner, _dbi: PhantomData }
     }
 }

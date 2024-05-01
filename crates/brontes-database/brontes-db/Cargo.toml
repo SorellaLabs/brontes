@@ -9,7 +9,7 @@ edition = "2021"
 brontes-types.workspace = true
 brontes-pricing.workspace = true
 reth-tracing-ext.workspace = true
-
+brontes-libmdbx  = { workspace = true, features = ["read-tx-timeouts"] }
 # alloy
 alloy-primitives = { workspace = true, features = [
   "rand",

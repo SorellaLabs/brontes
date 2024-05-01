@@ -2,6 +2,10 @@
 
 use std::{ops::Deref, path::Path};
 
+use brontes_libmdbx::{
+    DatabaseFlags, Environment, EnvironmentFlags, Geometry, MaxReadTransactionDuration, Mode,
+    PageSize, SyncMode,
+};
 use reth_db::{
     database_metrics::{DatabaseMetadata, DatabaseMetadataValue},
     models::client_version::ClientVersion,
@@ -9,10 +13,6 @@ use reth_db::{
     DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-use reth_libmdbx::{
-    DatabaseFlags, Environment, EnvironmentFlags, Geometry, MaxReadTransactionDuration, Mode,
-    PageSize, SyncMode,
-};
 const MEGABYTE: usize = 1024 * 1024;
 const GIGABYTE: usize = 1024 * 1024 * 1024;
 
@@ -21,7 +21,7 @@ const GIGABYTE: usize = 1024 * 1024 * 1024;
 const DEFAULT_MAX_READERS: u64 = 32_000;
 
 /// Space that a read-only transaction can occupy until the warning is emitted.
-/// See [reth_libmdbx::EnvironmentBuilder::set_handle_slow_readers] for more
+/// See [brontes_libmdbx::EnvironmentBuilder::set_handle_slow_readers] for more
 /// information.
 #[cfg(not(windows))]
 const MAX_SAFE_READER_SPACE: usize = 10 * GIGABYTE;
@@ -206,7 +206,7 @@ impl DatabaseEnv {
                         )
                     }
 
-                    reth_libmdbx::HandleSlowReadersReturnCode::ProceedWithoutKillingReader
+                    brontes_libmdbx::HandleSlowReadersReturnCode::ProceedWithoutKillingReader
                 },
             );
         }
