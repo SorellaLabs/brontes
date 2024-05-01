@@ -1015,7 +1015,7 @@ impl LibmdbxReadWriter {
         if !rem.is_empty() {
             let tx = self.db.rw_tx()?;
             let mut cur = tx.cursor_write::<T>()?;
-            let first = &current.first().unwrap().data.0;
+            let first = &rem.first().unwrap().data.0;
             cur.seek_raw(first)?;
             for buffered_entry in rem {
                 let (key, value) = buffered_entry.data;
