@@ -1636,6 +1636,7 @@ dependencies = [
  "malachite",
  "modular-bitfield",
  "owned_chunks",
+ "page_size",
  "parity-scale-codec",
  "parking_lot 0.12.2",
  "parquet",

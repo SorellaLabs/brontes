@@ -2,12 +2,14 @@
 #![allow(private_bounds)]
 
 use std::{ffi::c_int, path::Path};
-
+mod env;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
 pub mod cex_utils;
+
 pub mod initialize;
 mod libmdbx_read_write;
+use env::{DatabaseArguments, DatabaseEnv, DatabaseEnvKind};
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
@@ -16,10 +18,9 @@ pub use libmdbx_read_write::{
 };
 use reth_db::{
     is_database_empty,
-    mdbx::DatabaseArguments,
     models::client_version::ClientVersion,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
-    DatabaseEnv, DatabaseEnvKind, DatabaseError,
+    DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::{RO, RW};
