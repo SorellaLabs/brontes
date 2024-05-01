@@ -24,7 +24,7 @@ use reth_db::{
     DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-use reth_mdbx_sys::MDBX_SAFE_NOSYNC;
+//use reth_mdbx_sys::MDBX_SAFE_NOSYNC;
 use tables::*;
 use tracing::info;
 
@@ -76,7 +76,6 @@ impl Libmdbx {
         )?;
 
         db.with_raw_env_ptr(|ptr| unsafe {
-            mdbx_result(reth_mdbx_sys::mdbx_env_set_flags(ptr, MDBX_SAFE_NOSYNC, true))?;
             mdbx_result(reth_mdbx_sys::mdbx_env_set_option(
                 ptr,
                 reth_mdbx_sys::MDBX_opt_sync_bytes,
