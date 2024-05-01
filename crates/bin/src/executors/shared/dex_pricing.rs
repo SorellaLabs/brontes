@@ -35,6 +35,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
     for WaitingForPricerFuture<T, DB>
 {
     fn drop(&mut self) {
+        tracing::info!(rem_trees=?self.pending_trees.len(), "range has this many pending trees");
         // ensures that we properly drop everything
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
