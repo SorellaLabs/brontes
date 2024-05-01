@@ -36,7 +36,7 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseTxTraces,
     TxTrace,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -44,7 +44,7 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseDexPriceMapping,
     DexQuotesWithBlockNumber,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -52,7 +52,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseMevBlocks,
     MevBlock,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -60,7 +60,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseBundleHeader,
     BundleHeader,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -68,7 +68,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseSearcherTx,
     SearcherTx,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -76,7 +76,7 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseSearcherInfo,
     JoinedSearcherInfo,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -84,7 +84,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseCexDex,
     CexDex,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -92,7 +92,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseLiquidations,
     Liquidation,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -100,7 +100,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseJitSandwich,
     JitLiquiditySandwich,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -108,7 +108,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseJit,
     JitLiquidity,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -116,7 +116,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseSandwiches,
     Sandwich,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -124,7 +124,7 @@ remote_clickhouse_table!(
     "mev",
     ClickhouseAtomicArbs,
     AtomicArb,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -132,7 +132,7 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseTokenInfo,
     TokenInfoWithAddress,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -140,7 +140,7 @@ remote_clickhouse_table!(
     "ethereum",
     ClickhousePools,
     ProtocolInfoClickhouse,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -148,7 +148,7 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseBuilderInfo,
     BuilderInfoWithAddress,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
@@ -156,7 +156,7 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseTree,
     TransactionRoot,
-    "crates/brontes-database/src/clickhouse/tables/"
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 macro_rules! db_types {
