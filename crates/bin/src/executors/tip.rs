@@ -70,6 +70,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             },
         }
 
+        while tip.processing_futures.next().await.is_some() {}
+
         drop(graceful_guard);
     }
 
