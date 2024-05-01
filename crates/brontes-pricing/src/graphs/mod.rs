@@ -339,7 +339,10 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
 
     pub fn finalize_block(&mut self, block: u64) {
         self.graph_state.finalize_block(block);
-        self.sub_graph_registry.finalize_block(block);
+        let rem = self.sub_graph_registry.finalize_block(block);
+        for (pool, amount) in rem {
+            self.graph_state.remove_finalized_state_dep(pool, amount);
+        }
     }
 
     pub fn verification_done_for_block(&self, block: u64) -> bool {

@@ -4,13 +4,16 @@ use parking_lot::RwLock;
 use reth_db::{
     table::{Compress, DupSort, Encode, Table},
     transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError, DatabaseWriteOperation, TableType,
+    DatabaseError, DatabaseWriteOperation, TableType,
 };
 use reth_interfaces::db::DatabaseWriteError;
 use reth_libmdbx::{ffi::DBI, DatabaseFlags, Transaction, TransactionKind, WriteFlags, RO, RW};
 
 use super::{cursor::LibmdbxCursor, utils::decode_one};
-use crate::libmdbx::tables::{Tables, NUM_TABLES};
+use crate::libmdbx::{
+    env::DatabaseEnv,
+    tables::{Tables, NUM_TABLES},
+};
 
 pub(crate) struct LibmdbxTx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
