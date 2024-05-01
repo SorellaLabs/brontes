@@ -933,6 +933,7 @@ impl LibmdbxReadWriter {
     pub fn flush_init_data(&self) -> eyre::Result<()> {
         self.insert_queue.alter_all(|table, mut res| {
             let values = std::mem::take(&mut res);
+            tracing::info!("alter table");
             match table {
                 Tables::DexPrice => {
                     self.insert_batched_data::<DexPrice>(values).unwrap();
@@ -992,13 +993,15 @@ impl LibmdbxReadWriter {
             }
         }
 
-        let tx = self.db.rw_tx()?;
-        for buffered_entry in std::mem::take(&mut current) {
-            let (key, value) = buffered_entry.data;
-            tx.append_bytes::<T>(&key, value)?;
+        let rem = std::mem::take(&mut current);
+        if !rem.is_empty() {
+            let tx = self.db.rw_tx()?;
+            for buffered_entry in rem {
+                let (key, value) = buffered_entry.data;
+                tx.append_bytes::<T>(&key, value)?;
+            }
+            tx.commit()?;
         }
-
-        tx.commit()?;
         Ok(())
     }
 
