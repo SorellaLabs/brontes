@@ -4,6 +4,10 @@ use std::{env, error::Error};
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+#[cfg(all(feature = "dhat-heap", not(feature = "jemalloc")))]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
 use brontes::{
     cli::{Args, Commands},
     runner,
@@ -16,7 +20,8 @@ use tracing_subscriber::filter::Directive;
 fn main() -> eyre::Result<()> {
     dotenv::dotenv().expect("Failed to load .env file");
     fdlimit::raise_fd_limit().unwrap();
-
+    #[cfg(all(feature = "dhat-heap", not(feature = "jemalloc")))]
+    let _profiler = dhat::Profiler::new_heap();
     match run() {
         Ok(()) => {
             info!(target: "brontes", "successful shutdown");

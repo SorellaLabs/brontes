@@ -1,13 +1,12 @@
 use reth_db::{
     table::DupSort,
     transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError,
+    DatabaseError,
 };
 use reth_libmdbx::{ffi::DBI, TransactionKind, RO, RW};
 
 use super::cursor::CompressedCursor;
-use crate::libmdbx::{implementation::native::tx::LibmdbxTx, types::CompressedTable};
-
+use crate::libmdbx::{implementation::native::tx::LibmdbxTx, types::CompressedTable, DatabaseEnv};
 pub struct CompressedLibmdbxTx<K: TransactionKind>(pub(crate) LibmdbxTx<K>);
 
 impl<K: TransactionKind> CompressedLibmdbxTx<K> {

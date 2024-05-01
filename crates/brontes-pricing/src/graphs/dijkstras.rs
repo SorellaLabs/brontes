@@ -118,7 +118,7 @@ const MAX_OTHER_PATHS: usize = 3;
 //     dijkstra_internal(start, &mut successors, path_value, &mut success)
 // }
 
-pub(crate) fn dijkstra_internal<N, C, E, FN, IN, FS, PV>(
+pub(crate) fn dijkstra_internal<N, C, E, FN, FS, PV>(
     start: &N,
     second: Option<&N>,
     successors: &FN,
@@ -130,9 +130,8 @@ where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
     E: Clone + Default,
-    FN: Fn(&N) -> IN,
+    FN: Fn(&N) -> Vec<(N, C)>,
     PV: Fn(&N, &N) -> E,
-    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool,
 {
     let (parents, reached) = run_dijkstra(start, second, successors, path_value, success, max_iter);
@@ -147,7 +146,7 @@ where
 
 type DijkstrasRes<N, C, E> = (FxIndexMap<N, (usize, C, E)>, Option<usize>);
 
-fn run_dijkstra<N, C, E, FN, IN, FS, PV>(
+fn run_dijkstra<N, C, E, FN, FS, PV>(
     start: &N,
     second: Option<&N>,
     successors: &FN,
@@ -159,9 +158,8 @@ where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
     E: Clone + Default,
-    FN: Fn(&N) -> IN,
+    FN: Fn(&N) -> Vec<(N, C)>,
     PV: Fn(&N, &N) -> E,
-    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool,
 {
     let mut i = 0usize;
@@ -211,9 +209,9 @@ where
         let successors = successors(node);
         let base_node = node.clone();
 
-        for (successor, move_cost) in successors.clone() {
+        for (successor, move_cost) in &successors {
             let break_after = if !checked_second {
-                let second = second.cloned().unwrap();
+                let second = second.unwrap();
                 checked_second = successor == second;
 
                 if !checked_second {
@@ -226,16 +224,16 @@ where
 
             i += 1;
 
-            if visited.contains(&successor) {
+            if visited.contains(successor) {
                 continue
             }
 
-            let new_cost = cost + move_cost;
-            let value = path_value(&base_node, &successor);
-            let q_break = stop(&successor);
+            let new_cost = cost + *move_cost;
+            let value = path_value(&base_node, successor);
+            let q_break = stop(successor);
 
             let n;
-            match parents.entry(successor) {
+            match parents.entry(successor.clone()) {
                 Vacant(e) => {
                     n = e.index();
                     e.insert((index, new_cost, value));

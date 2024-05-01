@@ -197,7 +197,7 @@ mod tests {
     use brontes_types::{
         constants::WETH_ADDRESS,
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Actions,
+        normalized_actions::Action,
         TreeSearchBuilder,
     };
 
@@ -230,7 +230,7 @@ mod tests {
             None,
         );
 
-        let eq_action = Actions::Mint(NormalizedMint {
+        let eq_action = Action::Mint(NormalizedMint {
             protocol: Protocol::Dodo,
             trace_index: 13,
             from: Address::new(hex!("a356867fdcea8e71aeaf87805808803806231fdc")),
@@ -252,7 +252,7 @@ mod tests {
                 mint,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_mint),
+                TreeSearchBuilder::default().with_action(Action::is_mint),
             )
             .await
             .unwrap();
@@ -285,7 +285,7 @@ mod tests {
             None,
         );
 
-        let eq_action = Actions::Burn(NormalizedBurn {
+        let eq_action = Action::Burn(NormalizedBurn {
             protocol: Protocol::Dodo,
             trace_index: 0,
             from: Address::new(hex!("e2752B80FF0322f8E370625B645929D2BB21F26f")),
@@ -307,7 +307,7 @@ mod tests {
                 mint,
                 0,
                 eq_action,
-                TreeSearchBuilder::default().with_action(Actions::is_burn),
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();

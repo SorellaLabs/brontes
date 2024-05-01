@@ -89,7 +89,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut work = 256;
+        let mut work = 8;
         loop {
             if !self.collector.is_collecting_state()
                 && self.collector.should_process_next_block()
@@ -127,7 +127,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             work -= 1;
             if work == 0 {
                 cx.waker().wake_by_ref();
-                return Poll::Pending;
+                return Poll::Pending
             }
         }
     }

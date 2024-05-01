@@ -1,7 +1,8 @@
+#![allow(unused)]
 use std::{
     collections::HashMap,
     pin::Pin,
-    task::{ready, Context, Poll},
+    task::{Context, Poll},
 };
 
 use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
@@ -61,12 +62,11 @@ impl Future for PoirotMetricsListener {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
 
-        loop {
-            let Some(event) = ready!(this.events_rx.poll_recv(cx)) else {
-                return Poll::Ready(());
-            };
-
-            this.handle_event(event);
+        while let Poll::Ready(Some(event)) = this.events_rx.poll_recv(cx) {
+            drop(event);
+            // this.handle_event(event);
         }
+
+        Poll::Pending
     }
 }
