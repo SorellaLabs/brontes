@@ -736,24 +736,24 @@ impl DBWriter for LibmdbxReadWriter {
                 })
                 .collect::<Vec<_>>();
 
-            // self.0
-            //     .update_db(|tx| {
-            //         let mut cursor = tx
-            //             .cursor_write::<DexPrice>()
-            //             .expect("libmdbx write failure");
-            //
-            //         data.into_iter()
-            //             .map(|entry| {
-            //                 let entry = entry.into_key_val();
-            //                 cursor
-            //                     .upsert(entry.key, entry.value)
-            //                     .expect("libmdbx write failure");
-            //                 Ok(())
-            //             })
-            //             .collect::<Result<Vec<_>, DatabaseError>>()
-            //     })
-            //     .expect("libmdbx write failure")
-            //     .expect("libmdbx write failure");
+            self.0
+                .update_db(|tx| {
+                    let mut cursor = tx
+                        .cursor_write::<DexPrice>()
+                        .expect("libmdbx write failure");
+
+                    data.into_iter()
+                        .map(|entry| {
+                            let entry = entry.into_key_val();
+                            cursor
+                                .upsert(entry.key, entry.value)
+                                .expect("libmdbx write failure");
+                            Ok(())
+                        })
+                        .collect::<Result<Vec<_>, DatabaseError>>()
+                })
+                .expect("libmdbx write failure")
+                .expect("libmdbx write failure");
         }
 
         Ok(())
