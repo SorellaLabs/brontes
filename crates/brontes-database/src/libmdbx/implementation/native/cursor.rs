@@ -42,7 +42,7 @@ impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {
     }
 
     pub fn seek_raw(&mut self, key: &[u8]) -> PairResult<T> {
-        decode!(self.inner.set_range(key))
+        decode!(self.inner.set_key(key))
     }
 }
 

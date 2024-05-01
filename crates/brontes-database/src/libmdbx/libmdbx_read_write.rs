@@ -995,7 +995,7 @@ impl LibmdbxReadWriter {
                     let tx = self.db.rw_tx()?;
                     let mut cur = tx.cursor_write::<T>()?;
                     let first = &current.first().unwrap().data.0;
-                    cur.seek_raw(first)?;
+                    let _ = cur.seek_raw(first);
                     let entries = std::mem::take(&mut current);
                     for buffered_entry in entries {
                         let (key, value) = buffered_entry.data;
@@ -1016,7 +1016,7 @@ impl LibmdbxReadWriter {
             let tx = self.db.rw_tx()?;
             let mut cur = tx.cursor_write::<T>()?;
             let first = &rem.first().unwrap().data.0;
-            cur.seek_raw(first)?;
+            let _ = cur.seek_raw(first);
             for buffered_entry in rem {
                 let (key, value) = buffered_entry.data;
                 tx.put_bytes::<T>(&key, value)?;
