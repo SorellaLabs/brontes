@@ -932,27 +932,43 @@ impl DBWriter for LibmdbxReadWriter {
 impl LibmdbxReadWriter {
     pub fn flush_init_data(&self) -> eyre::Result<()> {
         self.insert_queue.alter_all(|table, mut res| {
-            let values = std::mem::take(&mut res);
             tracing::info!("alter table");
             match table {
                 Tables::DexPrice => {
-                    self.insert_batched_data::<DexPrice>(values).unwrap();
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<DexPrice>(values) {
+                        tracing::error!(error=%e);
+                    }
                 }
                 Tables::CexPrice => {
-                    self.insert_batched_data::<CexPrice>(values).unwrap();
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<CexPrice>(values) {
+                        tracing::error!(error=%e);
+                    }
                 }
                 Tables::CexTrades => {
-                    self.insert_batched_data::<CexTrades>(values).unwrap();
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<CexTrades>(values) {
+                        tracing::error!(error=%e);
+                    }
                 }
                 Tables::MevBlocks => {
-                    self.insert_batched_data::<MevBlocks>(values).unwrap();
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<MevBlocks>(values) {
+                        tracing::error!(error=%e);
+                    }
                 }
                 Tables::TxTraces => {
-                    self.insert_batched_data::<TxTraces>(values).unwrap();
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<TxTraces>(values) {
+                        tracing::error!(error=%e);
+                    }
                 }
                 Tables::InitializedState => {
-                    self.insert_batched_data::<InitializedState>(values)
-                        .unwrap();
+                    let values = std::mem::take(&mut res);
+                    if let Err(e) = self.insert_batched_data::<InitializedState>(values) {
+                        tracing::error!(error=%e);
+                    }
                 }
                 table => tracing::error!("{table} doesn't have batch inserts"),
             }
