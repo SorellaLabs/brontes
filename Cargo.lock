@@ -1625,6 +1625,7 @@ dependencies = [
  "chrono",
  "clickhouse",
  "criterion",
+ "dashmap",
  "db-interfaces",
  "derive_more",
  "dotenv",

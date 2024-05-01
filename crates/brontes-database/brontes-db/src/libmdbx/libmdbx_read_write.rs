@@ -397,7 +397,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             tx.get::<TxTraces>(block_num)?
                 .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
                 .map(|i| {
@@ -408,7 +408,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             tx.get::<AddressToProtocolInfo>(address)?
                 .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
         })
@@ -1098,7 +1098,7 @@ impl LibmdbxReadWriter {
     }
 
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let res = tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
                 eyre!("Failed to fetch Metadata's block info for block {}", block_num)
             });
@@ -1113,14 +1113,14 @@ impl LibmdbxReadWriter {
 
     #[cfg(feature = "cex-dex-markout")]
     fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             tx.get::<CexTrades>(block_num)?
                 .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
         })
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
             Ok(CexPriceMap(res))
         })
@@ -1129,7 +1129,7 @@ impl LibmdbxReadWriter {
     pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
         let mut dex_quotes: Vec<Option<FastHashMap<Pair, DexPrices>>> = Vec::new();
         let (start_range, end_range) = make_filter_key_range(block_num);
-        self.0.view_db(|tx| {
+        self.db.view_db(|tx| {
             tx.cursor_read::<DexPrice>()?
                 .walk_range(start_range..=end_range)?
                 .for_each(|inner| {
