@@ -953,7 +953,7 @@ impl LibmdbxReadWriter {
                     self.insert_batched_data::<InitializedState>(values)
                         .unwrap();
                 }
-                table => unreachable!("{table} doesn't have batch inserts"),
+                table => tracing::error!("{table} doesn't have batch inserts"),
             }
 
             res
