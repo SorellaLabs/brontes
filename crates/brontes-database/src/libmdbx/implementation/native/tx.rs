@@ -62,7 +62,7 @@ impl LibmdbxTx<RW> {
             .map_err(|e| {
                 DatabaseWriteError {
                     info:       e.into(),
-                    operation:  DatabaseWriteOperation::Put,
+                    operation:  DatabaseWriteOperation::CursorAppend,
                     table_name: T::NAME,
                     key:        key.into(),
                 }
