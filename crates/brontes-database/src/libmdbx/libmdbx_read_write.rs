@@ -93,6 +93,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 // how often we will append data
 const CLEAR_AM: usize = 100;
 
+#[derive(Debug)]
 pub struct MinHeapData<T> {
     pub block: u64,
     pub data:  T,
@@ -932,7 +933,6 @@ impl DBWriter for LibmdbxReadWriter {
 impl LibmdbxReadWriter {
     pub fn flush_init_data(&self) -> eyre::Result<()> {
         self.insert_queue.alter_all(|table, mut res| {
-            tracing::info!("alter table");
             match table {
                 Tables::DexPrice => {
                     let values = std::mem::take(&mut res);
@@ -993,14 +993,13 @@ impl LibmdbxReadWriter {
             if let Some(last) = current.last() {
                 if last.block + 1 != block {
                     let tx = self.db.rw_tx()?;
-                    for buffered_entry in std::mem::take(&mut current) {
+                    let entries = std::mem::take(&mut current);
+                    tracing::info!(?entries);
+                    for buffered_entry in entries {
                         let (key, value) = buffered_entry.data;
                         tx.put_bytes::<T>(&key, value)?;
                     }
                     tx.commit()?;
-                    current.push(next);
-
-                    continue
                 }
                 // next in seq, push to buf
                 current.push(next);
