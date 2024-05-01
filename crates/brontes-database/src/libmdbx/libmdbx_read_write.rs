@@ -185,6 +185,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 tables[table as u8 as usize][pos / 128] |= (bool as u8 as u128) << (127 - pos % 128)
             }
         }
+        tx.commit()?;
 
         let wanted_tables = default_tables_to_init();
 
@@ -318,19 +319,21 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>> {
-        let tx = self.0.ro_tx()?;
-        tx.get::<TxTraces>(block_num)?
-            .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
-            .map(|i| {
-                i.traces
-                    .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
-            })?
+        self.0.view_db(|tx| {
+            tx.get::<TxTraces>(block_num)?
+                .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
+                .map(|i| {
+                    i.traces
+                        .ok_or_else(|| eyre::eyre!("missing trace for block: {}", block_num))
+                })?
+        })
     }
 
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
-        let tx = self.0.ro_tx()?;
-        tx.get::<AddressToProtocolInfo>(address)?
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
+        self.0.view_db(|tx| {
+            tx.get::<AddressToProtocolInfo>(address)?
+                .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
+        })
     }
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
@@ -400,80 +403,82 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
-        let tx = self.0.ro_tx()?;
+        self.0.view_db(|tx| {
+            let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
-        let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
-
-        tx.get::<TokenDecimals>(address)?
-            .map(|inner| TokenInfoWithAddress { inner, address })
-            .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
+            tx.get::<TokenDecimals>(address)?
+                .map(|inner| TokenInfoWithAddress { inner, address })
+                .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
+        })
     }
 
     fn try_fetch_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        self.0
-            .ro_tx()?
-            .get::<SearcherEOAs>(searcher_eoa)
-            .map_err(ErrReport::from)
+        self.0.view_db(|tx| {
+            tx.get::<SearcherEOAs>(searcher_eoa)
+                .map_err(ErrReport::from)
+        })
     }
 
     fn try_fetch_searcher_contract_info(
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        let tx = self.0.ro_tx()?;
-        tx.get::<SearcherContracts>(searcher_contract)
-            .map_err(ErrReport::from)
+        self.0.view_db(|tx| {
+            tx.get::<SearcherContracts>(searcher_contract)
+                .map_err(ErrReport::from)
+        })
     }
 
     fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
-        let tx = self.0.ro_tx()?;
-        let mut cursor = tx.cursor_read::<SearcherEOAs>()?;
+        self.0.view_db(|tx| {
+            let mut cursor = tx.cursor_read::<SearcherEOAs>()?;
 
-        let mut result = Vec::new();
+            let mut result = Vec::new();
 
-        // Start the walk from the first key-value pair
-        let walker = cursor.walk(None)?;
+            // Start the walk from the first key-value pair
+            let walker = cursor.walk(None)?;
 
-        // Iterate over all the key-value pairs using the walker
-        for row in walker {
-            let row = row?;
-            let address = row.0;
-            let searcher_info = row.1;
-            result.push((address, searcher_info));
-        }
+            // Iterate over all the key-value pairs using the walker
+            for row in walker {
+                let row = row?;
+                let address = row.0;
+                let searcher_info = row.1;
+                result.push((address, searcher_info));
+            }
 
-        Ok(result)
+            Ok(result)
+        })
     }
 
     fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
-        let tx = self.0.ro_tx()?;
-        let mut cursor = tx.cursor_read::<SearcherContracts>()?;
+        self.0.view_db(|tx| {
+            let mut cursor = tx.cursor_read::<SearcherContracts>()?;
 
-        let mut result = Vec::new();
+            let mut result = Vec::new();
 
-        // Start the walk from the first key-value pair
-        let walker = cursor.walk(None)?;
+            // Start the walk from the first key-value pair
+            let walker = cursor.walk(None)?;
 
-        // Iterate over all the key-value pairs using the walker
-        for row in walker {
-            let row = row?;
-            let address = row.0;
-            let searcher_info = row.1;
-            result.push((address, searcher_info));
-        }
+            // Iterate over all the key-value pairs using the walker
+            for row in walker {
+                let row = row?;
+                let address = row.0;
+                let searcher_info = row.1;
+                result.push((address, searcher_info));
+            }
 
-        Ok(result)
+            Ok(result)
+        })
     }
 
     fn protocols_created_before(
         &self,
         block_num: u64,
     ) -> eyre::Result<FastHashMap<(Address, Protocol), Pair>> {
-        let tx = self.0.ro_tx()?;
-
+        self.0.view_db(|tx| {
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
         let mut map = FastHashMap::default();
 
@@ -494,6 +499,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         info!(target:"brontes-libmdbx", "loaded {} pairs before block: {}", map.len(), block_num);
 
         Ok(map)
+        })
     }
 
     fn protocols_created_range(
@@ -501,8 +507,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         start_block: u64,
         end_block: u64,
     ) -> eyre::Result<FastHashMap<u64, Vec<(Address, Protocol, Pair)>>> {
-        let tx = self.0.ro_tx()?;
-
+        self.0.view_db(|tx| {
         let mut cursor = tx.cursor_read::<PoolCreationBlocks>()?;
         let mut map = FastHashMap::default();
 
@@ -523,6 +528,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         info!(target:"brontes-libmdbx", "loaded {} pairs range: {}..{}", map.len(), start_block, end_block);
 
         Ok(map)
+        })
     }
 
     fn try_fetch_address_metadata(
@@ -530,39 +536,38 @@ impl LibmdbxReader for LibmdbxReadWriter {
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
         self.0
-            .ro_tx()?
-            .get::<AddressMeta>(address)
-            .map_err(ErrReport::from)
+            .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
     }
 
     fn try_fetch_builder_info(
         &self,
         builder_coinbase_addr: Address,
     ) -> eyre::Result<Option<BuilderInfo>> {
-        self.0
-            .ro_tx()?
-            .get::<Builder>(builder_coinbase_addr)
-            .map_err(ErrReport::from)
+        self.0.view_db(|tx| {
+            tx.get::<Builder>(builder_coinbase_addr)
+                .map_err(ErrReport::from)
+        })
     }
 
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
-        let tx = self.0.ro_tx()?;
-        let mut cursor = tx.cursor_read::<Builder>()?;
+        self.0.view_db(|tx| {
+            let mut cursor = tx.cursor_read::<Builder>()?;
 
-        let mut result = Vec::new();
+            let mut result = Vec::new();
 
-        // Start the walk from the first key-value pair
-        let walker = cursor.walk(None)?;
+            // Start the walk from the first key-value pair
+            let walker = cursor.walk(None)?;
 
-        // Iterate over all the key-value pairs using the walker
-        for row in walker {
-            let row = row?;
-            let address = row.0;
-            let searcher_info = row.1;
-            result.push((address, searcher_info));
-        }
+            // Iterate over all the key-value pairs using the walker
+            for row in walker {
+                let row = row?;
+                let address = row.0;
+                let searcher_info = row.1;
+                result.push((address, searcher_info));
+            }
 
-        Ok(result)
+            Ok(result)
+        })
     }
 
     fn try_fetch_mev_blocks(
@@ -570,61 +575,64 @@ impl LibmdbxReader for LibmdbxReadWriter {
         start_block: Option<u64>,
         end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        let tx = self.0.ro_tx()?;
-        let mut cursor = tx.cursor_read::<MevBlocks>()?;
-        let mut res = Vec::new();
+        self.0.view_db(|tx| {
+            let mut cursor = tx.cursor_read::<MevBlocks>()?;
+            let mut res = Vec::new();
 
-        let range = if let Some(start) = start_block {
-            (Bound::Included(start), Bound::Excluded(end_block))
-        } else {
-            (Bound::Unbounded, Bound::Excluded(end_block))
-        };
+            let range = if let Some(start) = start_block {
+                (Bound::Included(start), Bound::Excluded(end_block))
+            } else {
+                (Bound::Unbounded, Bound::Excluded(end_block))
+            };
 
-        for entry in cursor.walk_range(range)?.flatten() {
-            res.push(entry.1);
-        }
+            for entry in cursor.walk_range(range)?.flatten() {
+                res.push(entry.1);
+            }
 
-        Ok(res)
+            Ok(res)
+        })
     }
 
     fn fetch_all_mev_blocks(
         &self,
         start_block: Option<u64>,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        let tx = self.0.ro_tx()?;
-        let mut cursor = tx.cursor_read::<MevBlocks>()?;
+        self.0.view_db(|tx| {
+            let mut cursor = tx.cursor_read::<MevBlocks>()?;
 
-        let mut res = Vec::new();
+            let mut res = Vec::new();
 
-        // Start the walk from the first key-value pair
-        let walker = cursor.walk(start_block)?;
+            // Start the walk from the first key-value pair
+            let walker = cursor.walk(start_block)?;
 
-        // Iterate over all the key-value pairs using the walker
-        for row in walker {
-            res.push(row?.1);
-        }
+            // Iterate over all the key-value pairs using the walker
+            for row in walker {
+                res.push(row?.1);
+            }
 
-        Ok(res)
+            Ok(res)
+        })
     }
 
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
-        let tx = self.0.ro_tx()?;
-        let mut cursor = tx.cursor_read::<AddressMeta>()?;
+        self.0.view_db(|tx| {
+            let mut cursor = tx.cursor_read::<AddressMeta>()?;
 
-        let mut result = Vec::new();
+            let mut result = Vec::new();
 
-        // Start the walk from the first key-value pair
-        let walker = cursor.walk(None)?;
+            // Start the walk from the first key-value pair
+            let walker = cursor.walk(None)?;
 
-        // Iterate over all the key-value pairs using the walker
-        for row in walker {
-            let row = row?;
-            let address = row.0;
-            let metadata = row.1;
-            result.push((address, metadata));
-        }
+            // Iterate over all the key-value pairs using the walker
+            for row in walker {
+                let row = row?;
+                let address = row.0;
+                let metadata = row.1;
+                result.push((address, metadata));
+            }
 
-        Ok(result)
+            Ok(result)
+        })
     }
 }
 
@@ -714,6 +722,7 @@ impl DBWriter for LibmdbxReadWriter {
         if let Some(quotes) = quotes {
             self.init_state_updating(block_num, DEX_PRICE_FLAG)
                 .expect("libmdbx write failure");
+
             let data = quotes
                 .0
                 .into_iter()
@@ -796,21 +805,22 @@ impl DBWriter for LibmdbxReadWriter {
             .expect("libmdbx write failure");
 
         // add to pool creation block
-        let tx = self.0.ro_tx().expect("libmdbx write failure");
-        let mut addrs = tx
-            .get::<PoolCreationBlocks>(block)
-            .expect("libmdbx write failure")
-            .map(|i| i.0)
-            .unwrap_or_default();
+        self.0.view_db(|tx| {
+            let mut addrs = tx
+                .get::<PoolCreationBlocks>(block)
+                .expect("libmdbx write failure")
+                .map(|i| i.0)
+                .unwrap_or_default();
 
-        addrs.push(address);
-        self.0
-            .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
-                PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
-            ])
-            .expect("libmdbx write failure");
+            addrs.push(address);
+            self.0
+                .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
+                    PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
+                ])
+                .expect("libmdbx write failure");
 
-        Ok(())
+            Ok(())
+        })
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
@@ -840,15 +850,16 @@ impl DBWriter for LibmdbxReadWriter {
 
 impl LibmdbxReadWriter {
     fn init_state_updating(&self, block: u64, flag: u8) -> eyre::Result<()> {
-        let tx = self.0.ro_tx()?;
-        let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
-        state.set(flag);
-        self.0
-            .write_table::<InitializedState, InitializedStateData>(&[InitializedStateData::new(
-                block, state,
-            )])?;
+        self.0.view_db(|tx| {
+            let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
+            state.set(flag);
+            self.0
+                .write_table::<InitializedState, InitializedStateData>(&[
+                    InitializedStateData::new(block, state),
+                ])?;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
@@ -884,62 +895,64 @@ impl LibmdbxReadWriter {
     }
 
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
-        let tx = self.0.ro_tx()?;
-        let res = tx
-            .get::<BlockInfo>(block_num)?
-            .ok_or_else(|| eyre!("Failed to fetch Metadata's block info for block {}", block_num));
+        self.0.view_db(|tx| {
+            let res = tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
+                eyre!("Failed to fetch Metadata's block info for block {}", block_num)
+            });
 
-        if res.is_err() {
-            self.init_state_updating(block_num, SKIP_FLAG)?;
-        }
+            if res.is_err() {
+                self.init_state_updating(block_num, SKIP_FLAG)?;
+            }
 
-        res
+            res
+        })
     }
 
     #[cfg(feature = "cex-dex-markout")]
     fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
-        let tx = self.0.ro_tx()?;
-        tx.get::<CexTrades>(block_num)?
-            .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
+        self.0.view_db(|tx| {
+            tx.get::<CexTrades>(block_num)?
+                .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
+        })
     }
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
-        let tx = self.0.ro_tx()?;
-        let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
-
-        Ok(CexPriceMap(res))
+        self.0.view_db(|tx| {
+            let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
+            Ok(CexPriceMap(res))
+        })
     }
 
     pub fn fetch_dex_quotes(&self, block_num: u64) -> eyre::Result<DexQuotes> {
         let mut dex_quotes: Vec<Option<FastHashMap<Pair, DexPrices>>> = Vec::new();
         let (start_range, end_range) = make_filter_key_range(block_num);
-        let tx = self.0.ro_tx()?;
-
-        tx.cursor_read::<DexPrice>()?
-            .walk_range(start_range..=end_range)?
-            .for_each(|inner| {
-                if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
-                    for _ in dex_quotes.len()..=val.tx_idx as usize {
-                        dex_quotes.push(None);
-                    }
-
-                    let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
-
-                    if let Some(tx) = tx.as_mut() {
-                        for (pair, price) in val.quote {
-                            tx.insert(pair, price);
+        self.0.view_db(|tx| {
+            tx.cursor_read::<DexPrice>()?
+                .walk_range(start_range..=end_range)?
+                .for_each(|inner| {
+                    if let Ok((_, val)) = inner.map(|row| (row.0, row.1)) {
+                        for _ in dex_quotes.len()..=val.tx_idx as usize {
+                            dex_quotes.push(None);
                         }
-                    } else {
-                        let mut tx_pairs = FastHashMap::default();
-                        for (pair, price) in val.quote {
-                            tx_pairs.insert(pair, price);
-                        }
-                        *tx = Some(tx_pairs);
-                    }
-                }
-            });
 
-        Ok(DexQuotes(dex_quotes))
+                        let tx = dex_quotes.get_mut(val.tx_idx as usize).unwrap();
+
+                        if let Some(tx) = tx.as_mut() {
+                            for (pair, price) in val.quote {
+                                tx.insert(pair, price);
+                            }
+                        } else {
+                            let mut tx_pairs = FastHashMap::default();
+                            for (pair, price) in val.quote {
+                                tx_pairs.insert(pair, price);
+                            }
+                            *tx = Some(tx_pairs);
+                        }
+                    }
+                });
+
+            Ok(DexQuotes(dex_quotes))
+        })
     }
 }
 

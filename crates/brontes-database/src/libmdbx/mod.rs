@@ -1,13 +1,15 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
 
-use std::path::Path;
-
+use std::{ffi::c_int, path::Path};
+mod env;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 
 pub mod cex_utils;
+
 pub mod initialize;
 mod libmdbx_read_write;
+use env::{DatabaseArguments, DatabaseEnv, DatabaseEnvKind};
 use eyre::Context;
 use implementation::compressed_wrappers::tx::CompressedLibmdbxTx;
 use initialize::LibmdbxInitializer;
@@ -16,13 +18,13 @@ pub use libmdbx_read_write::{
 };
 use reth_db::{
     is_database_empty,
-    mdbx::DatabaseArguments,
     models::client_version::ClientVersion,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
-    DatabaseEnv, DatabaseEnvKind, DatabaseError,
+    DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
 use reth_libmdbx::{RO, RW};
+use reth_mdbx_sys::MDBX_SAFE_NOSYNC;
 use tables::*;
 use tracing::info;
 
@@ -39,6 +41,15 @@ pub mod test_utils;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
+
+#[inline]
+pub(crate) fn mdbx_result(err_code: c_int) -> eyre::Result<bool> {
+    match err_code {
+        reth_mdbx_sys::MDBX_SUCCESS => Ok(false),
+        reth_mdbx_sys::MDBX_RESULT_TRUE => Ok(true),
+        _ => Err(eyre::eyre!("shit no good")),
+    }
+}
 
 impl Libmdbx {
     /// Opens up an existing database or creates a new one at the specified
@@ -63,6 +74,16 @@ impl Libmdbx {
             DatabaseEnvKind::RW,
             DatabaseArguments::new(ClientVersion::default()).with_log_level(log_level),
         )?;
+
+        db.with_raw_env_ptr(|ptr| unsafe {
+            mdbx_result(reth_mdbx_sys::mdbx_env_set_flags(ptr, MDBX_SAFE_NOSYNC, true))?;
+            mdbx_result(reth_mdbx_sys::mdbx_env_set_option(
+                ptr,
+                reth_mdbx_sys::MDBX_opt_sync_bytes,
+                // 1 gb
+                1_000_000_000u64,
+            ))
+        })?;
 
         let this = Self(db);
         this.create_tables()?;
@@ -132,8 +153,20 @@ impl Libmdbx {
         Ok(res)
     }
 
+    pub fn view_db<F, R>(&self, f: F) -> eyre::Result<R>
+    where
+        F: FnOnce(&CompressedLibmdbxTx<RO>) -> eyre::Result<R>,
+    {
+        let tx = self.ro_tx()?;
+
+        let res = f(&tx);
+        tx.commit()?;
+
+        res
+    }
+
     /// returns a RO transaction
-    pub fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
+    fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
         let tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
 
         Ok(tx)
