@@ -63,7 +63,7 @@ action_impl!(
 mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{normalized_actions::Actions, TreeSearchBuilder};
+    use brontes_types::{normalized_actions::Action, TreeSearchBuilder};
 
     use super::*;
 
@@ -73,7 +73,7 @@ mod tests {
         let tx =
             B256::from(hex!("620f07fc5d7781598214e2524b8c226ae8e475ec422fdad1272ab2775a80bf0a"));
 
-        let new_pool = Actions::NewPool(NormalizedNewPool {
+        let new_pool = Action::NewPool(NormalizedNewPool {
             trace_index:  1,
             protocol:     Protocol::Dodo,
             pool_address: Address::new(hex!("0f5814de3581cb1d8ad2b608d6ef2e6409738c36")),
@@ -88,7 +88,7 @@ mod tests {
                 tx,
                 0,
                 new_pool,
-                TreeSearchBuilder::default().with_action(Actions::is_new_pool),
+                TreeSearchBuilder::default().with_action(Action::is_new_pool),
             )
             .await
             .unwrap();
@@ -100,7 +100,7 @@ mod tests {
         let tx =
             B256::from(hex!("feb3000cd801ad15204235813eab94004d697ccba75cc9e082dc96c5e63c1529"));
 
-        let new_pool = Actions::NewPool(NormalizedNewPool {
+        let new_pool = Action::NewPool(NormalizedNewPool {
             trace_index:  1,
             protocol:     Protocol::Dodo,
             pool_address: Address::new(hex!("ea2c9470aec6251ef10a28d783ab877d17706bc4")),
@@ -115,7 +115,7 @@ mod tests {
                 tx,
                 0,
                 new_pool,
-                TreeSearchBuilder::default().with_action(Actions::is_new_pool),
+                TreeSearchBuilder::default().with_action(Action::is_new_pool),
             )
             .await
             .unwrap();
@@ -127,7 +127,7 @@ mod tests {
         let tx =
             B256::from(hex!("6268fa8c5bf169e319d9e16734adc34199c8b0d7256bd9cec6aa18b7c18f1bcc"));
 
-        let new_pool = Actions::NewPool(NormalizedNewPool {
+        let new_pool = Action::NewPool(NormalizedNewPool {
             trace_index:  10,
             protocol:     Protocol::Dodo,
             pool_address: Address::new(hex!("0b16EeAb0f35f07011886F3e72A8cd468a0009ed")),
@@ -142,7 +142,7 @@ mod tests {
                 tx,
                 0,
                 new_pool,
-                TreeSearchBuilder::default().with_action(Actions::is_new_pool),
+                TreeSearchBuilder::default().with_action(Action::is_new_pool),
             )
             .await
             .unwrap();

@@ -43,6 +43,19 @@ pub struct PendingRegistry {
     sub_graphs: FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
 }
 
+impl Drop for SubGraphRegistry {
+    fn drop(&mut self) {
+        let subgraphs_cnt = self.sub_graphs.values().map(|f| f.len()).sum::<usize>();
+
+        tracing::info!(
+            target: "brontes::mem",
+            pending_finalized_subs = self.pending_finalized_graphs.len(),
+            subgraphs_len = subgraphs_cnt,
+            "subgraph registry final"
+        );
+    }
+}
+
 impl SubGraphRegistry {
     pub fn new(
         _subgraphs: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
@@ -75,17 +88,25 @@ impl SubGraphRegistry {
 
     /// finalize the block and move over the subgraphs for the given block into
     /// the active set.
-    pub fn finalize_block(&mut self, block: u64) {
+    pub fn finalize_block(&mut self, block: u64) -> FastHashMap<Address, u64> {
+        let mut removals = FastHashMap::default();
         if let Some(subgraphs) = self.pending_finalized_graphs.remove(&block) {
             subgraphs.sub_graphs.into_iter().for_each(|(pair, gts)| {
                 for (gt, graph) in gts {
-                    self.sub_graphs
+                    if let Some(old) = self
+                        .sub_graphs
                         .entry(pair.ordered())
                         .or_default()
-                        .insert(gt.ordered(), graph);
+                        .insert(gt.ordered(), graph)
+                    {
+                        old.get_all_pools().flatten().for_each(|edge| {
+                            *removals.entry(edge.pool_addr).or_default() += 1;
+                        });
+                    }
                 }
             });
         }
+        removals
     }
 
     pub fn mark_future_use(&self, pair: Pair, gt: Pair, block: u64) {
@@ -176,13 +197,18 @@ impl SubGraphRegistry {
     ) {
         subgraph.save_last_verification_liquidity(&graph_state);
 
-        self.pending_finalized_graphs
+        if self
+            .pending_finalized_graphs
             .entry(block)
             .or_default()
             .sub_graphs
             .entry(subgraph.complete_pair().ordered())
             .or_default()
-            .insert(subgraph.must_go_through().ordered(), subgraph);
+            .insert(subgraph.must_go_through().ordered(), subgraph)
+            .is_some()
+        {
+            tracing::warn!("double verified subgraph");
+        }
     }
 
     pub fn verify_current_subgraphs<T: ProtocolState>(

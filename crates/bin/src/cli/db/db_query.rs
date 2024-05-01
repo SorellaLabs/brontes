@@ -26,9 +26,8 @@ impl DatabaseQuery {
         init_threadpools(10);
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
-        let tx = db.ro_tx()?;
-
-        macro_rules! match_table {
+        db.view_db(|tx| {
+            macro_rules! match_table {
         ($table:expr, $fn:expr, $query:ident, $($tables:ident),+ = $args:expr) => {
             match $table {
                 $(
@@ -61,48 +60,50 @@ impl DatabaseQuery {
         };
     }
 
-        if self.key.contains("..") {
-            match_table!(
-                self.table,
-                process_range_query,
-                new_cursor,
-                CexPrice,
-                CexTrades,
-                InitializedState,
-                BlockInfo,
-                DexPrice,
-                MevBlocks,
-                TokenDecimals,
-                AddressToProtocolInfo,
-                PoolCreationBlocks,
-                Builder,
-                AddressMeta,
-                SearcherEOAs,
-                SearcherContracts,
-                TxTraces
-            );
-        } else {
-            match_table!(
-                self.table,
-                process_single_query,
-                get,
-                CexPrice,
-                CexTrades,
-                BlockInfo,
-                DexPrice,
-                MevBlocks,
-                TokenDecimals,
-                AddressToProtocolInfo,
-                Builder,
-                InitializedState,
-                AddressMeta,
-                SearcherEOAs,
-                SearcherContracts,
-                TxTraces,
-                PoolCreationBlocks = &self.key
-            );
-        }
+            if self.key.contains("..") {
+                match_table!(
+                    self.table,
+                    process_range_query,
+                    new_cursor,
+                    CexPrice,
+                    CexTrades,
+                    InitializedState,
+                    BlockInfo,
+                    DexPrice,
+                    MevBlocks,
+                    TokenDecimals,
+                    AddressToProtocolInfo,
+                    PoolCreationBlocks,
+                    Builder,
+                    AddressMeta,
+                    SearcherEOAs,
+                    SearcherContracts,
+                    TxTraces
+                );
+            } else {
+                match_table!(
+                    self.table,
+                    process_single_query,
+                    get,
+                    CexPrice,
+                    CexTrades,
+                    BlockInfo,
+                    DexPrice,
+                    MevBlocks,
+                    TokenDecimals,
+                    AddressToProtocolInfo,
+                    Builder,
+                    InitializedState,
+                    AddressMeta,
+                    SearcherEOAs,
+                    SearcherContracts,
+                    TxTraces,
+                    PoolCreationBlocks = &self.key
+                );
+            }
 
+            Ok(())
+        })?;
         Ok(())
     }
 }

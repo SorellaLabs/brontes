@@ -26,7 +26,7 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
-    FastHashMap, TreeSearchBuilder,
+    FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
 use reth_db::DatabaseError;
@@ -103,7 +103,7 @@ impl ClassifierTestUtils {
                 ctr,
                 quote_asset,
                 pair_graph,
-                rx,
+                UnboundedYapperReceiver::new(rx, 1000, "test".into()),
                 self.get_provider(),
                 block,
                 created_pools,

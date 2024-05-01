@@ -106,7 +106,7 @@ where
 /// assert!(empty.is_empty());
 /// ```
 
-pub fn yen<N, C, E, FN, IN, FS, FSE, PV>(
+pub fn yen<N, C, E, FN, FS, FSE, PV>(
     start: &N,
     second: Option<&N>,
     successors: FN,
@@ -123,9 +123,8 @@ where
     N: Eq + Hash + Clone + Send + Sync,
     E: Clone + Default + Eq + Hash + Send + Sync,
     C: Zero + Ord + Copy + Send + Sync,
-    FN: Fn(&N) -> IN + Send + Sync,
+    FN: Fn(&N) -> Vec<(N, C)>,
     PV: Fn(&N, &N) -> E + Send + Sync,
-    IN: IntoIterator<Item = (N, C)> + Clone,
     FS: Fn(&N) -> bool + Send + Sync,
     FSE: Fn(&N) -> bool + Send + Sync,
 {
