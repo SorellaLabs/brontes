@@ -1,5 +1,5 @@
 use reth_db::{
-    table::{Compress, DupSort, Encode},
+    table::DupSort,
     transaction::{DbTx, DbTxMut},
     DatabaseError,
 };

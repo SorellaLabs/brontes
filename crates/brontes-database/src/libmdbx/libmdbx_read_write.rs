@@ -108,23 +108,24 @@ impl<T> Eq for MinHeapData<T> {}
 
 impl<T> PartialOrd for MinHeapData<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        other.block.partial_cmp(&self.block)
+        Some(self.cmp(other))
     }
 }
 
 impl<T> Ord for MinHeapData<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        other.block.cmp(&self.block)
     }
 }
+
+type InsetQueue = DashMap<Tables, BinaryHeap<MinHeapData<(Vec<u8>, Vec<u8>)>>, ahash::RandomState>;
 
 pub struct LibmdbxReadWriter {
     pub db:           Libmdbx,
     /// this only applies to non instant update tables. e.g DexPriceMapping,
     /// or results. If it is a new protocol it will instantly be inserted as we
     /// always want it to be available
-    pub insert_queue:
-        DashMap<Tables, BinaryHeap<MinHeapData<(Vec<u8>, Vec<u8>)>>, ahash::RandomState>,
+    pub insert_queue: InsetQueue,
 }
 
 impl Drop for LibmdbxReadWriter {
