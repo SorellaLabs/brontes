@@ -18,6 +18,15 @@ use reth_libmdbx::{Error, TransactionKind, WriteFlags, RW};
 
 use super::utils::{decode_one, decode_value, decoder, uncompressable_ref_util};
 
+#[macro_export]
+macro_rules! decode {
+    ($v:expr) => {
+        $v.map_err(|e| reth_db::DatabaseError::Read(e.into()))?
+            .map(decoder::<T>)
+            .transpose()
+    };
+}
+
 /// Cursor wrapper to access KV items.
 #[derive(Debug)]
 pub struct LibmdbxCursor<T: Table, K: TransactionKind> {
@@ -31,17 +40,13 @@ impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {
     pub(crate) fn new(inner: reth_libmdbx::Cursor<K>) -> Self {
         Self { inner, _dbi: PhantomData }
     }
+
+    pub fn seek_raw(&mut self, key: &[u8]) -> PairResult<T> {
+        decode!(self.inner.set_key(key))
+    }
 }
 
 /// Takes `(key, value)` from the database and decodes it appropriately.
-#[macro_export]
-macro_rules! decode {
-    ($v:expr) => {
-        $v.map_err(|e| reth_db::DatabaseError::Read(e.into()))?
-            .map(decoder::<T>)
-            .transpose()
-    };
-}
 
 impl<T: Table, K: TransactionKind> DbCursorRO<T> for LibmdbxCursor<T, K> {
     fn first(&mut self) -> PairResult<T> {

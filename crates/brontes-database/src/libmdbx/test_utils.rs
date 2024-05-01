@@ -92,7 +92,7 @@ where
 {
     let _clickhouse_data = clickhouse_data::<T, D, CH>(_clickhouse, _block_range).await?;
 
-    let tx = libmdbx.0.ro_tx()?;
+    let tx = libmdbx.db.ro_tx()?;
     let _libmdbx_data = tx
         .cursor_read::<T>()?
         .walk_range(..)?
@@ -113,7 +113,7 @@ where
 {
     let _clickhouse_data = clickhouse_arbitrary_data::<T, D, CH>(_clickhouse, _block_range).await?;
 
-    let tx = libmdbx.0.ro_tx()?;
+    let tx = libmdbx.db.ro_tx()?;
     let _libmdbx_data = tx
         .cursor_read::<T>()?
         .walk_range(..)?
