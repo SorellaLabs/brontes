@@ -148,7 +148,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         clear_table: bool,
         mark_init: Option<u8>,
         cex_table_flag: bool,
-
         pb: ProgressBar,
     ) -> eyre::Result<()>
     where
@@ -258,6 +257,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     libmdbx.inited_range(start..=end, flag)?;
                 }
 
+
                 Ok::<(), eyre::Report>(())
             }
         }))
@@ -266,6 +266,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
+
+        self.libmdbx.flush_init_data()?;
 
         Ok(())
     }
@@ -366,6 +368,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
+
+        self.libmdbx.flush_init_data()?;
 
         Ok(())
     }

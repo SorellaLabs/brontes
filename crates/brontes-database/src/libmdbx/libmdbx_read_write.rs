@@ -47,7 +47,7 @@ use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
 use tracing::info;
 
-use super::{tx::CompressedLibmdbxTx, types::ReturnKV};
+use super::types::ReturnKV;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
