@@ -450,12 +450,12 @@ impl LibmdbxReader for LibmdbxReadWriter {
         // self.init_state_updating(block_num, META_FLAG)?;
         // let cex_quotes = self.fetch_cex_quotes(block_num)?;
         // self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
-        // let eth_prices = determine_eth_prices(&cex_quotes);
         // let dex_quotes = self.fetch_dex_quotes(block_num)?;
         let dex_quotes = DexQuotes(vec![None]);
         let cex_quotes = CexPriceMap(FastHashMap::default());
+        let eth_prices = determine_eth_prices(&cex_quotes);
 
-        #[cfg(feature = "cex-dex-markout")]
+        // #[cfg(feature = "cex-dex-markout")]
         // let trades = self.fetch_trades(block_num).ok();
 
         Ok({
