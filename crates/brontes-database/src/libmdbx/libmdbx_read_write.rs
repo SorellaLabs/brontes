@@ -995,7 +995,7 @@ impl LibmdbxReadWriter {
                     let tx = self.db.rw_tx()?;
                     for buffered_entry in std::mem::take(&mut current) {
                         let (key, value) = buffered_entry.data;
-                        tx.append_bytes::<T>(&key, value)?;
+                        tx.put_bytes::<T>(&key, value)?;
                     }
                     tx.commit()?;
                     current.push(next);
@@ -1014,7 +1014,7 @@ impl LibmdbxReadWriter {
             let tx = self.db.rw_tx()?;
             for buffered_entry in rem {
                 let (key, value) = buffered_entry.data;
-                tx.append_bytes::<T>(&key, value)?;
+                tx.put_bytes::<T>(&key, value)?;
             }
             tx.commit()?;
         }
