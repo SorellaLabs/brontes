@@ -104,6 +104,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 };
             }
 
+            if self.insert_futures.len() > 20 {
+                tracing::warn!("range has more than 20 pending inserts");
+            }
+
             if let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
                 match result {
                     Some((tree, meta)) => {
