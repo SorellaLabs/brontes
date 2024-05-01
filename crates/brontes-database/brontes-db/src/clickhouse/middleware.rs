@@ -413,8 +413,8 @@ impl<I: DBWriter + Send + Sync> DBWriter for ReadOnlyMiddleware<I> {
             .await
     }
 
-    async fn insert_tree(&self, tree: Arc<BlockTree<Action>>) -> eyre::Result<()> {
-        self.client.insert_tree(tree.clone()).await?;
+    async fn insert_tree(&self, tree: BlockTree<Action>) -> eyre::Result<()> {
+        self.client.insert_tree(tree).await?;
 
         Ok(())
     }
