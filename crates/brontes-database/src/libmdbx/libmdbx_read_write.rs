@@ -988,12 +988,14 @@ impl LibmdbxReadWriter {
         // get collections of continuous batches. append if we have a set of operations,
         // otherwise just put.
         let mut current: Vec<MinHeapData<(Vec<u8>, Vec<u8>)>> = Vec::new();
+
+        let tx = self.db.rw_tx()?;
+        let mut cur = tx.cursor_write::<T>()?;
+
         while let Some(next) = data.pop() {
             let block = next.block;
             if let Some(last) = current.last() {
                 if last.block + 1 != block {
-                    let tx = self.db.rw_tx()?;
-                    let mut cur = tx.cursor_write::<T>()?;
                     let first = &current.first().unwrap().data.0;
                     let _ = cur.seek_raw(first);
                     let entries = std::mem::take(&mut current);
@@ -1001,8 +1003,6 @@ impl LibmdbxReadWriter {
                         let (key, value) = buffered_entry.data;
                         tx.append_bytes::<T>(&key, value)?;
                     }
-
-                    tx.commit()?;
                 }
                 // next in seq, push to buf
                 current.push(next);
@@ -1013,16 +1013,15 @@ impl LibmdbxReadWriter {
 
         let rem = std::mem::take(&mut current);
         if !rem.is_empty() {
-            let tx = self.db.rw_tx()?;
-            let mut cur = tx.cursor_write::<T>()?;
             let first = &rem.first().unwrap().data.0;
             let _ = cur.seek_raw(first);
             for buffered_entry in rem {
                 let (key, value) = buffered_entry.data;
                 tx.put_bytes::<T>(&key, value)?;
             }
-            tx.commit()?;
         }
+
+        tx.commit()?;
         Ok(())
     }
 
