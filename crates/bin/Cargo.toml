@@ -6,7 +6,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-# poirot
+
 brontes-core.workspace = true
 brontes-inspect.workspace = true
 brontes-types.workspace = true
@@ -15,6 +15,9 @@ brontes-database.workspace = true
 brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
+brontes-libmdbx  = { workspace = true, features = ["read-tx-timeouts"] }
+
+
 malachite.workspace = true
 toml = "0.8.2"
 indicatif.workspace = true

@@ -2,6 +2,10 @@
 
 use std::{ops::Deref, path::Path};
 
+use brontes_libmdbx::{
+    DatabaseFlags, Environment, EnvironmentFlags, Geometry, MaxReadTransactionDuration, Mode,
+    PageSize, SyncMode,
+};
 use reth_db::{
     database_metrics::{DatabaseMetadata, DatabaseMetadataValue},
     models::client_version::ClientVersion,
@@ -9,10 +13,6 @@ use reth_db::{
     DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-use reth_libmdbx::{
-    DatabaseFlags, Environment, EnvironmentFlags, Geometry, MaxReadTransactionDuration, Mode,
-    PageSize, SyncMode,
-};
 const MEGABYTE: usize = 1024 * 1024;
 const GIGABYTE: usize = 1024 * 1024 * 1024;
 
@@ -21,7 +21,7 @@ const GIGABYTE: usize = 1024 * 1024 * 1024;
 const DEFAULT_MAX_READERS: u64 = 32_000;
 
 /// Space that a read-only transaction can occupy until the warning is emitted.
-/// See [reth_libmdbx::EnvironmentBuilder::set_handle_slow_readers] for more
+/// See [brontes_libmdbx::EnvironmentBuilder::set_handle_slow_readers] for more
 /// information.
 #[cfg(not(windows))]
 const MAX_SAFE_READER_SPACE: usize = 10 * GIGABYTE;
@@ -146,9 +146,8 @@ impl DatabaseEnv {
         let mode = match kind {
             DatabaseEnvKind::RO => Mode::ReadOnly,
             DatabaseEnvKind::RW => {
-                // enable writemap mode in RW mode
                 inner_env.write_map();
-                Mode::ReadWrite { sync_mode: SyncMode::Durable }
+                Mode::ReadWrite { sync_mode: SyncMode::SafeNoSync }
             }
         };
 
@@ -158,10 +157,10 @@ impl DatabaseEnv {
         inner_env.set_max_dbs(256);
         inner_env.set_geometry(Geometry {
             // Maximum database size of 750 gigabytes
-            size:             Some(0..(750 * GIGABYTE)),
+            size:        Some(0..(750 * GIGABYTE)),
             // We grow the database in increments of 100 gigabytes
-            growth_step:      Some(100 * MEGABYTE as isize),
-            // The database never shrinks
+            growth_step: Some(200 * MEGABYTE as isize),
+
             shrink_threshold: Some(GIGABYTE as isize),
             page_size:        Some(PageSize::Set(default_page_size())),
         });
@@ -206,49 +205,20 @@ impl DatabaseEnv {
                         )
                     }
 
-                    reth_libmdbx::HandleSlowReadersReturnCode::ProceedWithoutKillingReader
+                    brontes_libmdbx::HandleSlowReadersReturnCode::ProceedWithoutKillingReader
                 },
             );
         }
         inner_env.set_flags(EnvironmentFlags {
             mode,
-            // We disable readahead because it improves performance for linear scans, but
-            // worsens it for random access (which is our access pattern outside of sync)
-            no_rdahead: true,
             coalesce: true,
             exclusive: args.exclusive.unwrap_or_default(),
             ..Default::default()
         });
         // Configure more readers
         inner_env.set_max_readers(DEFAULT_MAX_READERS);
-        // This parameter sets the maximum size of the "reclaimed list", and the unit of
-        // measurement is "pages". Reclaimed list is the list of freed pages
-        // that's populated during the lifetime of DB transaction, and through
-        // which MDBX searches when it needs to insert new record with overflow
-        // pages. The flow is roughly the following:
-        // 0. We need to insert a record that requires N number of overflow pages (in
-        //    consecutive sequence inside the DB file).
-        // 1. Get some pages from the freelist, put them into the reclaimed list.
-        // 2. Search through the reclaimed list for the sequence of size N.
-        // 3. a. If found, return the sequence.
-        // 3. b. If not found, repeat steps 1-3. If the reclaimed list size is larger than
-        //    the `rp augment limit`, stop the search and allocate new pages at the end of the file:
-        //    https://github.com/paradigmxyz/reth/blob/2a4c78759178f66e30c8976ec5d243b53102fc9a/crates/storage/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c#L11479-L11480.
-        //
-        // Basically, this parameter controls for how long do we search through the
-        // freelist before trying to allocate new pages. Smaller value will make
-        // MDBX to fallback to allocation faster, higher value will force MDBX
-        // to search through the freelist longer until the sequence of pages is
-        // found.
-        //
-        // The default value of this parameter is set depending on the DB size. The
-        // bigger the database, the larger is `rp augment limit`.
-        // https://github.com/paradigmxyz/reth/blob/2a4c78759178f66e30c8976ec5d243b53102fc9a/crates/storage/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c#L10018-L10024.
-        //
-        // Previously, MDBX set this value as `256 * 1024` constant. Let's fallback to
-        // this, because we want to prioritize freelist lookup speed over
-        // database growth. https://github.com/paradigmxyz/reth/blob/fa2b9b685ed9787636d962f4366caf34a9186e66/crates/storage/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c#L16017.
-        inner_env.set_rp_augment_limit(256 * 512);
+
+        inner_env.set_rp_augment_limit(256 * 1024);
 
         if let Some(log_level) = args.log_level {
             // Levels higher than [LogLevel::Notice] require libmdbx built with `MDBX_DEBUG`
