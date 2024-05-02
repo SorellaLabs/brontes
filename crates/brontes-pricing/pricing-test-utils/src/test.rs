@@ -64,6 +64,7 @@ impl PricingTestUtils {
             self.tracer.get_provider(),
             block,
             created_pools,
+            Arc::new(AtomicBool::new(false)),
         ))
     }
 
