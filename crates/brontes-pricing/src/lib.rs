@@ -1155,11 +1155,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             self.on_pool_resolve(state)
         }
         //
-        // let pairs = self.lazy_loader.pairs_to_verify();
-        // if !pairs.is_empty() {
-        //     execute_on!(target = pricing, self.try_verify_subgraph(pairs));
-        // }
-        //
+        let pairs = self.lazy_loader.pairs_to_verify();
+        if !pairs.is_empty() {
+            execute_on!(target = pricing, self.try_verify_subgraph(pairs));
+        }
+
         // self.try_flush_out_pending_verification();
         //
         // // check if we can progress to the next block.
