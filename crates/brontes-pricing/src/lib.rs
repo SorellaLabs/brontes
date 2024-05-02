@@ -1181,11 +1181,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
-        if !self.process_future_blocks() {
-            return Poll::Pending
-        }
-
         'outer: loop {
+            if !self.process_future_blocks() {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
+            }
+
             let mut block_updates = Vec::new();
             loop {
                 match self.update_rx.poll_recv(cx).map(|inner| {
