@@ -51,7 +51,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             end_block,
             libmdbx,
             inspectors,
-            progress_bar,
+            progress_bar: None,
             _p: PhantomData,
         }
     }
