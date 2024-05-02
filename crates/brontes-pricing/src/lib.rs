@@ -1240,8 +1240,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                     self.on_pool_resolve(state);
                 }
             }
+
             if block_updates.is_empty() {
-                tracing::info!("shit is empty");
                 break 'outer
             }
 
