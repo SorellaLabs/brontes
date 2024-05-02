@@ -17,6 +17,7 @@ use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
 use crate::{executors::ProgressBar, Processor};
+
 pub struct RangeExecutorWithPricing<
     T: TracingProvider,
     DB: DBWriter + LibmdbxReader,
@@ -92,6 +93,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if !self.collector.is_collecting_state()
             && self.collector.should_process_next_block()
+            && self.insert_futures.len() < 5
             && self.current_block != self.end_block
         {
             let block = self.current_block;
@@ -102,10 +104,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             };
             // new block so ensure wake
             cx.waker().wake_by_ref();
-        }
-
-        if self.insert_futures.len() > 20 {
-            tracing::warn!("range has more than 20 pending inserts");
         }
 
         while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
