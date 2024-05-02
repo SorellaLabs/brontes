@@ -959,13 +959,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     }
 
     /// The price can pre-process up to 40 blocks in the future
-    fn process_future_blocks(&self) -> bool {
+    fn process_future_blocks(&self) {
         if self.completed_block + 4 > self.current_block {
             self.needs_more_data.store(true, SeqCst);
-            return true
         } else {
             self.needs_more_data.store(false, SeqCst);
-            return false
         }
     }
 
@@ -1182,10 +1180,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         }
 
         'outer: loop {
-            if !self.process_future_blocks() {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
-            }
+            self.process_future_blocks();
 
             let mut block_updates = Vec::new();
             loop {
