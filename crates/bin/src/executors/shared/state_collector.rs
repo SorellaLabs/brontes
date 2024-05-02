@@ -111,6 +111,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 Poll::Ready(Ok(tree)) => {
                     let db = self.db;
                     self.metadata_fetcher.load_metadata_for_tree(tree, db);
+                    cx.waker().wake_by_ref();
                 }
                 Poll::Ready(Err(e)) => {
                     tracing::error!(error = %e, "state collector");
