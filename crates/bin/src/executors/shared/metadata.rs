@@ -166,6 +166,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             if bn == self.block + 1 {
                 self.block += 1;
                 return Poll::Ready(Some(res))
+            } else {
+                tracing::info!(?self.block, ?bn);
             }
             self.result_buf.push_front(res);
         }
@@ -184,6 +186,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
 
         self.dex_pricer_stream.poll_next_unpin(cx).map(|mid| {
             if mid.is_some() {
+                tracing::info!("stream");
                 self.block += 1;
             }
             mid
