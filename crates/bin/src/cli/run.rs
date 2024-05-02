@@ -149,13 +149,13 @@ impl RunArgs {
                     self.cli_only,
                     self.init_crit_tables,
                 )
-                .build(task_executor, shutdown.clone())
+                .build(task_executor, shutdown)
                 .await
                 .map_err(|e| {
                     tracing::error!(%e);
                     e
                 }) {
-                    let _ = select(shutdown, brontes).await;
+                    brontes.await;
                 }
             });
 
