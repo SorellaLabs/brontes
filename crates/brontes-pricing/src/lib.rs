@@ -1180,7 +1180,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
-        let start = SystemTime::now();
         'outer: loop {
             self.process_future_blocks();
 
@@ -1256,11 +1255,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             {
                 self.on_pool_update_no_pricing(block_updates);
             } else {
+                tracing::info!("no reacho");
                 execute_on!(target = pricing, self.on_pool_updates(block_updates));
             }
         }
-        let mills = SystemTime::now().duration_since(start).unwrap().as_millis();
-        tracing::info!(?mills, "pricing took");
 
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
