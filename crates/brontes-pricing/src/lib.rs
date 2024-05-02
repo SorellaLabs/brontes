@@ -283,8 +283,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
-                self.current_block = msg.block;
-                self.completed_block = msg.block + 1;
+                self.current_block = msg.block + 1;
+                self.completed_block = msg.block;
             }
         }
 
@@ -965,7 +965,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
         if !self.can_progress() {
-            tracing::info!(?self.current_block, ?self.completed_block,"no progresso");
+            // tracing::info!(?self.current_block, ?self.completed_block,"no progresso");
             return None
         }
 
