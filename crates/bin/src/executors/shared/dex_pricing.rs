@@ -126,6 +126,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
                 return Poll::Ready(None)
             }
         }
+        cx.waker().wake_by_ref();
 
         Poll::Pending
     }
