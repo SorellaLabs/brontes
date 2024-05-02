@@ -236,6 +236,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             pricing,
             self.force_dex_pricing,
             self.force_no_dex_pricing,
+            start_block,
         );
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
