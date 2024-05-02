@@ -299,8 +299,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 Some((update.get_pool_address(), protocol, pair, update.block))
             })
             .for_each(|(pool_addr, protocol, pair, block)| {
-                self.graph_manager
-                    .add_pool(pair, pool_addr, protocol, block);
+                // self.graph_manager
+                //     .add_pool(pair, pool_addr, protocol, block);
             });
 
         updates.into_iter().for_each(|update| {
