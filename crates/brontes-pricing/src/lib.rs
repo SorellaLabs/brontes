@@ -1166,6 +1166,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return Poll::Pending
         }
 
+        tracing::info!("poll");
         let mut block_updates = Vec::new();
         loop {
             match self.update_rx.poll_recv(cx).map(|inner| {
