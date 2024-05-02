@@ -163,7 +163,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         // ensure we don't skip blocks
         if let Some(res) = self.result_buf.pop_front() {
             let bn = res.0.header.number;
-            if bn == self.block + 1 {
+            if bn == self.block {
                 self.block += 1;
                 return Poll::Ready(Some(res))
             } else {
