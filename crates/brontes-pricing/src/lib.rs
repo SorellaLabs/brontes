@@ -289,6 +289,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
                 self.current_block = msg.block;
+                self.completed_block= msg.block;
             }
         }
 
@@ -1149,6 +1150,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         &mut self,
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
+
         // because results tend to stack up, we always want to progress them first
         // while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
         //     self.on_pool_resolve(state)
@@ -1164,7 +1166,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // // check if we can progress to the next block.
         // self.try_resolve_block()
         //     .map(|prices| Poll::Ready(Some(prices)))
-            None
+        None
     }
 }
 
