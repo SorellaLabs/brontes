@@ -33,6 +33,12 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     force_no_dex_pricing:  bool,
 }
 
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Drop
+    for MetadataFetcher<T, DB, CH>
+{
+    fn drop(&mut self) {}
+}
+
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     MetadataFetcher<T, DB, CH>
 {
