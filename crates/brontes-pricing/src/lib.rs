@@ -944,6 +944,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .subgraph_verifier
             .get_rem_for_block(self.completed_block);
 
+        if rem_block.is_empty() {
+            return
+        }
+
         self.par_rundown(
             rem_block
                 .into_iter()
@@ -1161,6 +1165,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
 
         self.try_flush_out_pending_verification();
+
         // // check if we can progress to the next block.
         // self.try_resolve_block()
         //     .map(|prices| Poll::Ready(Some(prices)))
