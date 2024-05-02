@@ -103,6 +103,8 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     current_block:   u64,
     completed_block: u64,
     finished:        Arc<AtomicBool>,
+    needs_more_data: Arc<AtomicBool>,
+
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
     update_rx:       UnboundedYapperReceiver<DexPriceMsg>,
@@ -142,6 +144,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         provider: Arc<T>,
         current_block: u64,
         new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
+        needs_more_data: Arc<AtomicBool>,
     ) -> Self {
         Self {
             finished,
@@ -157,6 +160,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             completed_block: current_block,
             overlap_update: None,
             skip_pricing: VecDeque::new(),
+            needs_more_data,
             bench: FunctionCallBench::default(),
         }
     }
@@ -956,7 +960,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     /// The price can pre-process up to 40 blocks in the future
     fn process_future_blocks(&self) -> bool {
-        self.completed_block + 4 > self.current_block
+        if self.completed_block + 4 > self.current_block {
+            self.needs_more_data.store(true, SeqCst);
+            return true
+        } else {
+            self.needs_more_data.store(false, SeqCst);
+            return false
+        }
     }
 
     /// Attempts to resolve the block & start processing the next block.

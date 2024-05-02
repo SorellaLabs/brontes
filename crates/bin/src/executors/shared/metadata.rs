@@ -1,5 +1,13 @@
 use core::panic;
-use std::{collections::VecDeque, pin::Pin, task::Poll};
+use std::{
+    collections::VecDeque,
+    pin::Pin,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    task::Poll,
+};
 
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
@@ -29,6 +37,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     dex_pricer_stream:     WaitingForPricerFuture<T, DB>,
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<(BlockTree<Action>, Metadata)>,
+    needs_more_data:       Arc<AtomicBool>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
     block:                 u64,
@@ -50,12 +59,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         dex_pricer_stream: WaitingForPricerFuture<T, DB>,
         always_generate_price: bool,
         force_no_dex_pricing: bool,
+        needs_more_data: Arc<AtomicBool>,
         block: u64,
     ) -> Self {
         Self {
             block,
             clickhouse,
             dex_pricer_stream,
+            needs_more_data,
             clickhouse_futures: FuturesOrdered::new(),
             result_buf: VecDeque::new(),
             always_generate_price,
@@ -64,7 +75,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     }
 
     pub fn should_process_next_block(&self) -> bool {
-        self.dex_pricer_stream.pending_trees.len() < MAX_PENDING_TREES
+        self.needs_more_data.load(Ordering::SeqCst)
+            && self.dex_pricer_stream.pending_trees.len() < MAX_PENDING_TREES
             && self.result_buf.len() < MAX_PENDING_TREES
     }
 

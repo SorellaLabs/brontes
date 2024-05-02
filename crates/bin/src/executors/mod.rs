@@ -221,6 +221,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let pair_graph =
             GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
+        let data_req = Arc::new(AtomicBool::new(true));
+
         let pricer = BrontesBatchPricer::new(
             shutdown.clone(),
             self.quote_asset,
@@ -229,13 +231,16 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             self.parser.get_tracer(),
             start_block,
             rest_pairs,
+            data_req.clone(),
         );
+
         let pricing = WaitingForPricerFuture::new(pricer, executor);
         let fetcher = MetadataFetcher::new(
             tip.then_some(self.clickhouse),
             pricing,
             self.force_dex_pricing,
             self.force_no_dex_pricing,
+            data_req,
             start_block,
         );
 
