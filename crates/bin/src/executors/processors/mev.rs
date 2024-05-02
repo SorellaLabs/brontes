@@ -35,11 +35,11 @@ impl Processor for MevProcessor {
         let tree = Arc::new(tree);
         let metadata = Arc::new(metadata);
 
-        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
-            target = inspect,
-            compose_mev_results(inspectors, tree.clone(), metadata.clone())
-        );
-
+        // let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
+        //     target = inspect,
+        //     compose_mev_results(inspectors, tree.clone(), metadata.clone())
+        // );
+        //
         #[cfg(feature = "local-clickhouse")]
         let tree = Arc::try_unwrap(tree).unwrap();
         let metadata = Arc::try_unwrap(metadata).unwrap();
@@ -54,7 +54,7 @@ impl Processor for MevProcessor {
         #[cfg(feature = "local-clickhouse")]
         insert_tree(db, tree, metadata.block_num).await;
 
-        insert_mev_results(db, block_details, mev_details).await;
+        // insert_mev_results(db, block_details, mev_details).await;
     }
 }
 
