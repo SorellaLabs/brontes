@@ -29,12 +29,12 @@ impl LMem {
                     .spawn_critical_blocking("test_mem", async move {
                         let mut cnt = 0usize;
                         for block in block_range {
-                            if let Ok(_) = libmdbx.load_trace(block) {
-                                cnt += 1;
+                            if let Ok(t) = libmdbx.load_trace(block) {
+                                cnt += t.len();
                             }
 
-                            if let Ok(_) = libmdbx.get_dex_quotes(block) {
-                                cnt += 1;
+                            if let Ok(a) = libmdbx.get_dex_quotes(block) {
+                                cnt += a.0.len();
                             }
                             cnt += libmdbx.get_metadata_no_dex_price(block).is_ok() as usize;
                             cnt += libmdbx.get_metadata(block).is_ok() as usize;

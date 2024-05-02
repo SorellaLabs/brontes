@@ -31,7 +31,7 @@ use tracing::{debug, error, info};
 use tree_pruning::account_for_tax_tokens;
 use utils::{decode_transfer, get_coinbase_transfer};
 
-use self::{erc20::try_decode_transfer, tree_pruning::remove_possible_transfer_double_counts};
+use self::erc20::try_decode_transfer;
 use crate::{
     classifiers::*, multi_frame_classification::parse_multi_frame_requests, ActionCollection,
     FactoryDiscoveryDispatch,
