@@ -92,7 +92,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 tree.insert_root(root_data.root);
                 root_data.pool_updates.into_iter().for_each(|update| {
                     tracing::trace!("sending dex price update: {:?}", update);
-                    // self.pricing_update_sender.send(update).unwrap();
+                    self.pricing_update_sender.send(update).unwrap();
                 });
 
                 root_data
