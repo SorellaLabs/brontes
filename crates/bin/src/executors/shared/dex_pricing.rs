@@ -52,11 +52,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         let (tx, rx) = channel(10);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
+            loop {}
             // let block = pricer.current_block_processing();
             // let res = pricer
             //     .next()
-            //     .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
-            //     .await;
+            //     .instrument(span!(Level::ERROR, "Brontes Dex Pricing",
+            // block_number=%block))     .await;
             //
             // if let Err(e) = tx_clone.try_send((pricer, res)) {
             //     tracing::error!(err=%e, "failed to send dex pricing result");
