@@ -51,7 +51,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             end_block,
             libmdbx,
             inspectors,
-            progress_bar: None,
+            progress_bar,
             _p: PhantomData,
         }
     }
@@ -90,50 +90,43 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let mut work = 8;
-        loop {
-            if !self.collector.is_collecting_state()
-                && self.collector.should_process_next_block()
-                && self.current_block != self.end_block
-            {
-                let block = self.current_block;
-                self.collector.fetch_state_for(block);
-                self.current_block += 1;
-                if let Some(pb) = self.progress_bar.as_ref() {
-                    pb.inc(1)
-                };
-            }
+        if !self.collector.is_collecting_state()
+            && self.collector.should_process_next_block()
+            && self.current_block != self.end_block
+        {
+            let block = self.current_block;
+            self.collector.fetch_state_for(block);
+            self.current_block += 1;
+            if let Some(pb) = self.progress_bar.as_ref() {
+                pb.inc(1)
+            };
+        }
 
-            if self.insert_futures.len() > 20 {
-                tracing::warn!("range has more than 20 pending inserts");
-            }
+        if self.insert_futures.len() > 20 {
+            tracing::warn!("range has more than 20 pending inserts");
+        }
 
-            if let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
-                match result {
-                    Some((tree, meta)) => {
-                        self.on_price_finish(tree, meta);
-                    }
-                    None if self.insert_futures.is_empty() => return Poll::Ready(()),
-                    _ => {}
+        while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
+            match result {
+                Some((tree, meta)) => {
+                    self.on_price_finish(tree, meta);
                 }
-            }
-
-            // poll insertion
-            while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {}
-
-            // mark complete if we are done with the range
-            if self.current_block == self.end_block
-                && self.insert_futures.is_empty()
-                && !self.collector.is_collecting_state()
-            {
-                self.collector.range_finished();
-            }
-
-            work -= 1;
-            if work == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
+                None if self.insert_futures.is_empty() => return Poll::Ready(()),
+                _ => {}
             }
         }
+
+        // poll insertion
+        while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {}
+
+        // mark complete if we are done with the range
+        if self.current_block == self.end_block
+            && self.insert_futures.is_empty()
+            && !self.collector.is_collecting_state()
+        {
+            self.collector.range_finished();
+        }
+
+        return Poll::Pending
     }
 }

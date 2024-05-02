@@ -435,11 +435,11 @@ impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Poll::Ready(None) = self.futures.poll_next_unpin(cx) {
+        while self.futures.poll_next_unpin(cx).is_ready() {}
+        if self.futures.is_empty() {
             return Poll::Ready(())
         }
 
-        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
