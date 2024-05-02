@@ -48,12 +48,12 @@ impl Processor for MevProcessor {
         //     .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
         //     .await
         // {
-        //     tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
-        // }
+        //     tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert
+        // dex pricing and state into db"); }
 
-        #[cfg(feature = "local-clickhouse")]
-        insert_tree(db, tree, metadata.block_num).await;
-
+        // #[cfg(feature = "local-clickhouse")]
+        // insert_tree(db, tree, metadata.block_num).await;
+        //
         // insert_mev_results(db, block_details, mev_details).await;
     }
 }
