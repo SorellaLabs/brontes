@@ -130,6 +130,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             self.collector.range_finished();
         }
 
+        cx.waker().wake_by_ref();
         return Poll::Pending
     }
 }
