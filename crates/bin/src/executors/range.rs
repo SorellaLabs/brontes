@@ -90,7 +90,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        tracing::debug!("poll");
+        // tracing::debug!("poll");
+        cx.waker().wake_by_ref();
         if !self.collector.is_collecting_state()
             && self.collector.should_process_next_block()
             && self.current_block != self.end_block
