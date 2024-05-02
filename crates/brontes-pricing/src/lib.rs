@@ -1172,7 +1172,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // // check if we can progress to the next block.
         self.try_resolve_block()
             .map(|prices| Poll::Ready(Some(prices)))
-        None
     }
 }
 
