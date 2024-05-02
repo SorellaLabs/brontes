@@ -1163,7 +1163,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         }
 
         if !self.process_future_blocks() {
-            cx.waker().wake_by_ref();
             return Poll::Pending
         }
 
@@ -1221,7 +1220,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             }
 
             // we poll here to continuously progress state fetches as they are slow
-            if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+            while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                 self.on_pool_resolve(state);
             }
         }
@@ -1243,7 +1242,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             execute_on!(target = pricing, self.on_pool_updates(block_updates));
         }
 
-        cx.waker().wake_by_ref();
+        if let Some(new_prices) = self.poll_state_processing(cx) {
+            return new_prices
+        }
+
         Poll::Pending
     }
 }
