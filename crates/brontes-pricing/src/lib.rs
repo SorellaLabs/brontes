@@ -1250,6 +1250,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
