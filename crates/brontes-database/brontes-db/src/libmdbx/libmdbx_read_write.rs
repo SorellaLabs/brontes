@@ -473,7 +473,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 Some(dex_quotes),
                 None,
                 #[cfg(feature = "cex-dex-markout")]
-                None,
+                trades,
                 #[cfg(not(feature = "cex-dex-markout"))]
                 None,
             )
