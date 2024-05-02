@@ -1160,8 +1160,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             execute_on!(target = pricing, self.try_verify_subgraph(pairs));
         }
 
-        // self.try_flush_out_pending_verification();
-        //
+        self.try_flush_out_pending_verification();
         // // check if we can progress to the next block.
         // self.try_resolve_block()
         //     .map(|prices| Poll::Ready(Some(prices)))
