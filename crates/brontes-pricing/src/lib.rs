@@ -39,6 +39,7 @@ use std::{
         Arc,
     },
     task::{Context, Poll},
+    time::SystemTime,
 };
 
 use alloy_primitives::Address;
@@ -1175,16 +1176,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        {
-            cx.waker().wake_by_ref();
-            while self.update_rx.poll_recv(cx).is_ready() {}
-            return Poll::Pending
-        }
-
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
 
+        let start = SystemTime::now();
         'outer: loop {
             self.process_future_blocks();
 
@@ -1263,6 +1259,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 execute_on!(target = pricing, self.on_pool_updates(block_updates));
             }
         }
+        let mills = SystemTime::now().duration_since(start).unwrap().as_millis();
+        tracing::info!(?mills, "pricing took");
 
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
