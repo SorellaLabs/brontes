@@ -60,24 +60,25 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         header: Header,
         generate_pricing: bool,
     ) -> BlockTree<Action> {
-        if !generate_pricing {
-            self.pricing_update_sender
-                .send(DexPriceMsg::DisablePricingFor(header.number))
-                .unwrap();
-        }
-
-        let tx_roots = self.build_tx_trees(traces, &header).await;
-        let mut tree = BlockTree::new(header, tx_roots.len());
-
-        // send out all updates
-        let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
-        account_for_tax_tokens(&mut tree);
-        remove_possible_transfer_double_counts(&mut tree);
-
-        self.finish_classification(&mut tree, further_classification_requests);
-        tree.finalize_tree();
-
-        tree
+        return BlockTree::new(header, 10)
+        // if !generate_pricing {
+        //     self.pricing_update_sender
+        //         .send(DexPriceMsg::DisablePricingFor(header.number))
+        //         .unwrap();
+        // }
+        //
+        // let tx_roots = self.build_tx_trees(traces, &header).await;
+        // let mut tree = BlockTree::new(header, tx_roots.len());
+        //
+        // // send out all updates
+        // let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
+        // account_for_tax_tokens(&mut tree);
+        // remove_possible_transfer_double_counts(&mut tree);
+        //
+        // self.finish_classification(&mut tree, further_classification_requests);
+        // tree.finalize_tree();
+        //
+        // tree
     }
 
     fn process_tx_roots(
