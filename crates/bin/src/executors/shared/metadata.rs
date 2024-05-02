@@ -36,7 +36,9 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Drop
     for MetadataFetcher<T, DB, CH>
 {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        tracing::info!(buf = self.result_buf.len(), "result buffer metadata fetcher");
+    }
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
