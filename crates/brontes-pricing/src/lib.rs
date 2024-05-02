@@ -982,7 +982,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
         if !self.can_progress() {
-            // tracing::info!(?self.current_block, ?self.completed_block,"no progresso");
             return None
         }
 
@@ -1171,8 +1170,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.try_flush_out_pending_verification();
 
         // // check if we can progress to the next block.
-        // self.try_resolve_block()
-        //     .map(|prices| Poll::Ready(Some(prices)))
+        self.try_resolve_block()
+            .map(|prices| Poll::Ready(Some(prices)))
         None
     }
 }
