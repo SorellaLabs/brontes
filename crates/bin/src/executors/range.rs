@@ -75,12 +75,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
         debug!(target:"brontes","Completed DEX pricing");
-        // self.insert_futures.push(Box::pin(P::process_results(
-        //     self.libmdbx,
-        //     self.inspectors,
-        //     tree.into(),
-        //     meta.into(),
-        // )));
+        self.insert_futures.push(Box::pin(P::process_results(
+            self.libmdbx,
+            self.inspectors,
+            tree,
+            meta,
+        )));
     }
 }
 
