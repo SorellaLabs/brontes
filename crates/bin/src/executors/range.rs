@@ -100,6 +100,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             if let Some(pb) = self.progress_bar.as_ref() {
                 pb.inc(1)
             };
+            // new block so ensure wake
+            cx.waker().wake_by_ref();
         }
 
         if self.insert_futures.len() > 20 {
