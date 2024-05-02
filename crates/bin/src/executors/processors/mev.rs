@@ -35,26 +35,26 @@ impl Processor for MevProcessor {
         let tree = Arc::new(tree);
         let metadata = Arc::new(metadata);
 
-        // let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
-        // execute_on!(     target = inspect,
-        //     compose_mev_results(inspectors, tree.clone(), metadata.clone())
-        // );
-        //
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
+            target = inspect,
+            compose_mev_results(inspectors, tree.clone(), metadata.clone())
+        );
+
         #[cfg(feature = "local-clickhouse")]
         let tree = Arc::try_unwrap(tree).unwrap();
         let metadata = Arc::try_unwrap(metadata).unwrap();
 
-        // if let Err(e) = db
-        //     .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
-        //     .await
-        // {
-        //     tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert
-        // dex pricing and state into db"); }
+        if let Err(e) = db
+            .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
+            .await
+        {
+            tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
+        }
 
-        // #[cfg(feature = "local-clickhouse")]
-        // insert_tree(db, tree, metadata.block_num).await;
-        //
-        // insert_mev_results(db, block_details, mev_details).await;
+        #[cfg(feature = "local-clickhouse")]
+        insert_tree(db, tree, metadata.block_num).await;
+
+        insert_mev_results(db, block_details, mev_details).await;
     }
 }
 
