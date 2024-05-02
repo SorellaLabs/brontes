@@ -70,7 +70,8 @@ impl TraceLoader {
             Ok(traces)
         } else {
             self.fetch_missing_traces(block).await.unwrap();
-            self.tracing_provider.clone()
+            self.tracing_provider
+                .clone()
                 .execute_block(block)
                 .await
                 .ok_or_else(|| TraceLoaderError::BlockTraceError(block))

@@ -857,6 +857,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             })
             .collect_vec();
 
+        if verify.is_empty() {
+            return
+        }
+
         execute_on!(target = pricing, self.try_verify_subgraph(verify));
     }
 
