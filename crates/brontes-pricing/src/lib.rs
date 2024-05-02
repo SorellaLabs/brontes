@@ -39,7 +39,6 @@ use std::{
         Arc,
     },
     task::{Context, Poll},
-    time::SystemTime,
 };
 
 use alloy_primitives::Address;
@@ -289,7 +288,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
                 self.current_block = msg.block;
-                self.completed_block = msg.block;
             }
         }
 
