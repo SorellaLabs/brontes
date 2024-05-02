@@ -299,8 +299,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 Some((update.get_pool_address(), protocol, pair, update.block))
             })
             .for_each(|(pool_addr, protocol, pair, block)| {
-                // self.graph_manager
-                //     .add_pool(pair, pool_addr, protocol, block);
+                self.graph_manager
+                    .add_pool(pair, pool_addr, protocol, block);
             });
 
         updates.into_iter().for_each(|update| {
@@ -1150,20 +1150,21 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
         // because results tend to stack up, we always want to progress them first
-        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-            self.on_pool_resolve(state)
-        }
-
-        let pairs = self.lazy_loader.pairs_to_verify();
-        if !pairs.is_empty() {
-            execute_on!(target = pricing, self.try_verify_subgraph(pairs));
-        }
-
-        self.try_flush_out_pending_verification();
-
-        // check if we can progress to the next block.
-        self.try_resolve_block()
-            .map(|prices| Poll::Ready(Some(prices)))
+        // while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+        //     self.on_pool_resolve(state)
+        // }
+        //
+        // let pairs = self.lazy_loader.pairs_to_verify();
+        // if !pairs.is_empty() {
+        //     execute_on!(target = pricing, self.try_verify_subgraph(pairs));
+        // }
+        //
+        // self.try_flush_out_pending_verification();
+        //
+        // // check if we can progress to the next block.
+        // self.try_resolve_block()
+        //     .map(|prices| Poll::Ready(Some(prices)))
+            None
     }
 }
 
