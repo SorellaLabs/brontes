@@ -182,6 +182,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 .add_pending_inspection(block, tree, meta)
         }
 
-        self.dex_pricer_stream.poll_next_unpin(cx)
+        if let Poll::Ready(Some(res)) = self.dex_pricer_stream.poll_next_unpin(cx) {
+            self.block += 1;
+            return Poll::Ready(Some(res))
+        }
+        Poll::Pending
     }
 }
