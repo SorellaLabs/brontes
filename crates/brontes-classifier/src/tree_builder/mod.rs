@@ -60,7 +60,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         header: Header,
         generate_pricing: bool,
     ) -> BlockTree<Action> {
-        return BlockTree::new(header, 10)
+        return BlockTree::new(header, 0)
         // if !generate_pricing {
         //     self.pricing_update_sender
         //         .send(DexPriceMsg::DisablePricingFor(header.number))
