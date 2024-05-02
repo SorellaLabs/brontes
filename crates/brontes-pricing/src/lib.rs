@@ -283,8 +283,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
-                self.current_block = msg.block + 1;
-                self.completed_block = msg.block + 1;
+                self.current_block = msg.block;
             }
         }
 
@@ -774,11 +773,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .map(|(pair, block)| {
                     // if the rundown was forced. this means that we don't need to be so aggressive
                     // with the ign
-
                     let ignores = self
                         .graph_manager
                         .verify_subgraph_on_new_path_failure(pair)
                         .unwrap_or_default();
+
                     let extends = self.graph_manager.subgraph_extends(pair);
 
                     if ignores.is_empty() {
@@ -1007,10 +1006,21 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.completed_block += 1;
+        self.should_return().then_some((block, res))
+    }
 
-        // add new nodes to pair graph
-        Some((block, res))
+    // checks skip
+    fn should_return(&mut self) -> bool {
+        // remove ones lower than completed
+        self.skip_pricing.retain(|b| b >= &self.completed_block);
+
+        let res = self
+            .skip_pricing
+            .front()
+            .map(|f| f != &self.completed_block)
+            .unwrap_or(true);
+        self.completed_block += 1;
+        res
     }
 
     /// For the given DexQuotes, checks to see if the start price vs the end
@@ -1123,9 +1133,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.completed_block += 1;
-
-        Some((block, res))
+        self.should_return().then_some((block, res))
     }
 
     fn poll_state_processing(
@@ -1230,12 +1238,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         if block_updates
             .first()
             .map(|u| u.block)
-            .and_then(|block_update_num| {
-                // remove all blocks before the current block
-                self.skip_pricing.retain(|block| block >= &block_update_num);
-                let front = self.skip_pricing.front()?;
-                Some(&block_update_num == front)
-            })
+            .and_then(|block_update_num| Some(self.skip_pricing.contains(&block_update_num)))
             .unwrap_or(false)
         {
             self.on_pool_update_no_pricing(block_updates);

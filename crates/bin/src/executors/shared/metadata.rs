@@ -31,6 +31,7 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     result_buf:            VecDeque<(BlockTree<Action>, Metadata)>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
+    block:                 u64,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Drop
@@ -49,8 +50,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         dex_pricer_stream: WaitingForPricerFuture<T, DB>,
         always_generate_price: bool,
         force_no_dex_pricing: bool,
+        block: u64,
     ) -> Self {
         Self {
+            block,
             clickhouse,
             dex_pricer_stream,
             clickhouse_futures: FuturesOrdered::new(),
@@ -157,8 +160,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        // ensure we don't skip blocks
         if let Some(res) = self.result_buf.pop_front() {
-            return Poll::Ready(Some(res))
+            let bn = res.0.header.number;
+            if bn == self.block + 1 {
+                self.block += 1;
+                return Poll::Ready(Some(res))
+            }
+            self.result_buf.push_front(res);
         }
 
         if self.force_no_dex_pricing {
