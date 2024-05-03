@@ -142,7 +142,7 @@ pub fn action_dispatch(input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 /// the discovery impl macro deals with automatically parsing the data needed
-/// for discoverying new pools. The use is as followed
+/// for discovering new pools.
 /// ```ignore
 /// discovery_impl!(DiscoveryName, Path::To::Factory::DeployCall, factory address, Parse Fn);
 /// ```

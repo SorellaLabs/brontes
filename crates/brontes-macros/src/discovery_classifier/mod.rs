@@ -38,7 +38,7 @@ pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
 
             impl crate::FactoryDiscovery for #discovery_name {
 
-                async fn decode_new_pool<T: ::brontes_types::traits::TracingProvider>(
+                async fn decode_create_trace<T: ::brontes_types::traits::TracingProvider>(
                     &self,
                     tracer: ::std::sync::Arc<T>,
                     deployed_address: ::alloy_primitives::Address,
@@ -161,7 +161,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                         #(
                             #var_name => {
                             return
-                                crate::FactoryDiscovery::decode_new_pool(
+                                crate::FactoryDiscovery::decode_create_trace(
                                     &self.#i,
                                     tracer,
                                     deployed_address,
