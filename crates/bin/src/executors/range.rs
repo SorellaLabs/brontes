@@ -125,6 +125,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             self.collector.range_finished();
         }
 
+        // degen but rip for now
         cx.waker().wake_by_ref();
         Poll::Pending
     }
