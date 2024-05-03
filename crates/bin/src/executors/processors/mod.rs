@@ -1,6 +1,5 @@
 pub mod mev;
 
-
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};

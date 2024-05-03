@@ -1,5 +1,3 @@
-
-
 use alloy_primitives::Address;
 use futures::Future;
 
