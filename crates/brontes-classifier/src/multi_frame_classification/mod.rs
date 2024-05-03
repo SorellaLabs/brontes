@@ -17,6 +17,8 @@ use itertools::Itertools;
 use liquidations::{AaveV2, AaveV3};
 use tracing::debug;
 
+use self::flash_loan::Dodo;
+
 /// for multi call-frame classifier
 pub trait MultiCallFrameClassifier {
     /// [self.protocol as u8, self.call_type as u8]
@@ -45,6 +47,7 @@ pub fn parse_multi_frame_requests(
             ZeroXAgg::KEY => ZeroXAgg::create_classifier(request),
             ZeroXBatch::KEY => ZeroXBatch::create_classifier(request),
             MakerDss::KEY => MakerDss::create_classifier(request),
+            Dodo::KEY => Dodo::create_classifier(request),
             _ => {
                 debug!(?request, "no multi frame classification impl for this request");
                 None

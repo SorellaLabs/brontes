@@ -26,7 +26,7 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
-    FastHashMap, TreeSearchBuilder,
+    FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
 use reth_db::DatabaseError;
@@ -100,13 +100,14 @@ impl ClassifierTestUtils {
         Ok((
             ctr.clone(),
             BrontesBatchPricer::new(
-                ctr,
+                ctr.clone(),
                 quote_asset,
                 pair_graph,
-                rx,
+                UnboundedYapperReceiver::new(rx, 1000, "test".into()),
                 self.get_provider(),
                 block,
                 created_pools,
+                ctr.clone(),
             ),
         ))
     }
@@ -551,7 +552,7 @@ impl ClassifierTestUtils {
     ) -> Result<(), ClassifierTestUtilsError> {
         // write protocol to libmdbx
         self.libmdbx
-            .0
+            .db
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: address, value: protocol },
             ])?;
@@ -634,7 +635,7 @@ impl ClassifierTestUtils {
     ) {
         if let Err(e) = self
             .libmdbx
-            .0
+            .db
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData {
                     key:   address,
@@ -658,7 +659,7 @@ impl ClassifierTestUtils {
     pub fn ensure_token(&self, token: TokenInfoWithAddress) {
         if let Err(e) = self
             .libmdbx
-            .0
+            .db
             .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData {
                 key:   token.address,
                 value: brontes_types::db::token_info::TokenInfo {

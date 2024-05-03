@@ -22,7 +22,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap};
+use brontes_types::{BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver};
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
@@ -51,7 +51,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub force_no_dex_pricing: bool,
     pub inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     pub clickhouse: &'static CH,
-    pub parser: &'static Parser<'static, T, DB>,
+    pub parser: &'static Parser<T, DB>,
     pub libmdbx: &'static DB,
     pub cli_only: bool,
     pub init_crit_tables: bool,
@@ -73,7 +73,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         force_no_dex_pricing: bool,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         clickhouse: &'static CH,
-        parser: &'static Parser<'static, T, DB>,
+        parser: &'static Parser<T, DB>,
         libmdbx: &'static DB,
         cli_only: bool,
         init_crit_tables: bool,
@@ -221,21 +221,27 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let pair_graph =
             GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
 
+        let data_req = Arc::new(AtomicBool::new(true));
+
         let pricer = BrontesBatchPricer::new(
             shutdown.clone(),
             self.quote_asset,
             pair_graph,
-            rx,
+            UnboundedYapperReceiver::new(rx, 100_000, "batch pricer".into()),
             self.parser.get_tracer(),
             start_block,
             rest_pairs,
+            data_req.clone(),
         );
+
         let pricing = WaitingForPricerFuture::new(pricer, executor);
         let fetcher = MetadataFetcher::new(
             tip.then_some(self.clickhouse),
             pricing,
             self.force_dex_pricing,
             self.force_no_dex_pricing,
+            data_req,
+            start_block,
         );
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
@@ -435,15 +441,11 @@ impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        while self.futures.poll_next_unpin(cx).is_ready() {}
         if self.futures.is_empty() {
             return Poll::Ready(())
         }
 
-        if let Poll::Ready(None) = self.futures.poll_next_unpin(cx) {
-            return Poll::Ready(())
-        }
-
-        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }

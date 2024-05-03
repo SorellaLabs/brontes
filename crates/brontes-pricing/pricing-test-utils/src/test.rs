@@ -6,6 +6,7 @@ use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
     normalized_actions::Action, traits::TracingProvider, tree::BlockTree, FastHashMap,
+    UnboundedYapperReceiver,
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
@@ -59,10 +60,11 @@ impl PricingTestUtils {
             Arc::new(AtomicBool::new(false)),
             self.quote_address,
             pair_graph,
-            rx,
+            UnboundedYapperReceiver::new(rx, 100_000, "test".into()),
             self.tracer.get_provider(),
             block,
             created_pools,
+            Arc::new(AtomicBool::new(false)),
         ))
     }
 

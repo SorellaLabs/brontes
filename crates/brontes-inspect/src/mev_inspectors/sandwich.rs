@@ -610,13 +610,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .iter()
                     .flatten()
                     .filter_map(
-                        |(s, t)| {
-                            if s.is_empty() && t.is_empty() {
-                                None
-                            } else {
-                                Some(true)
-                            }
-                        },
+                        |(s, t)| if s.is_empty() && t.is_empty() { None } else { Some(true) },
                     )
                     .count()
                     == 0
@@ -652,13 +646,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .iter()
                     .flatten()
                     .filter_map(
-                        |(s, t)| {
-                            if s.is_empty() && t.is_empty() {
-                                None
-                            } else {
-                                Some(true)
-                            }
-                        },
+                        |(s, t)| if s.is_empty() && t.is_empty() { None } else { Some(true) },
                     )
                     .count()
                     == 0

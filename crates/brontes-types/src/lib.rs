@@ -35,3 +35,5 @@ pub mod utils;
 pub use utils::*;
 pub mod protocol;
 pub use protocol::*;
+pub mod channel_alerts;
+pub use channel_alerts::*;

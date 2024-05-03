@@ -36,6 +36,25 @@ pub struct StateTracker {
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
 }
 
+impl Drop for StateTracker {
+    fn drop(&mut self) {
+        let mut ver_byte_cnt = 0usize;
+        for p in self.verification_edge_state.values() {
+            ver_byte_cnt += 8;
+            ver_byte_cnt += p.estimate_mem()
+        }
+
+        let finalized_byte_cnt = self.finalized_edge_state.len() * 138;
+
+        tracing::info!(
+            target: "brontes::mem",
+            verification_mem_bytes = ver_byte_cnt,
+            finalized_mem_bytes = finalized_byte_cnt,
+            "finalized state tracker info"
+        );
+    }
+}
+
 impl Default for StateTracker {
     fn default() -> Self {
         Self::new()
@@ -62,16 +81,6 @@ impl StateTracker {
             }
             keep
         });
-    }
-
-    pub fn decrement_verification_state(&mut self, pool: Address, block: u64) {
-        if let Some(s) = self
-            .verification_edge_state
-            .get_mut(&pool)
-            .filter(|pool_state| pool_state.contains_block_state(block))
-        {
-            s.dec_state(block);
-        };
     }
 
     pub fn finalized_state(&self) -> FastHashMap<Address, &PoolState> {
@@ -136,9 +145,6 @@ impl StateTracker {
                     .verification_edge_state
                     .get_mut(&edge.pool_addr)
                     .filter(|pool_state| pool_state.contains_block_state(block))
-                    .map(|s| {
-                        s.inc_state(block);
-                    })
                     .is_some()
                 {
                     return None
@@ -152,16 +158,18 @@ impl StateTracker {
     /// removes all cached state for the given block now that we
     /// have finalized all subgraph creation for this block
     pub fn finalize_block(&mut self, block: u64) {
-        self.verification_edge_state
-            .iter_mut()
-            .for_each(|(pool, state)| {
-                let Some((should_finalize, state)) = state.remove_state(block) else {
-                    return;
-                };
-
-                if should_finalize {
+        self.verification_edge_state.retain(|pool, state| {
+            state
+                .remove_state(block)
+                .into_iter()
+                .for_each(|(should_finalize, mut state)| {
+                    if should_finalize == 0 {
+                        return
+                    }
                     match self.finalized_edge_state.entry(*pool) {
                         std::collections::hash_map::Entry::Vacant(v) => {
+                            // we use should finalize here
+                            state.dependents = should_finalize;
                             v.insert(state);
                         }
                         std::collections::hash_map::Entry::Occupied(mut o) => {
@@ -169,11 +177,13 @@ impl StateTracker {
                             if state.state.last_update > block {
                                 panic!("finalized state was ahead of regular state");
                             }
-                            old_state.dependents += state.dependents;
+                            old_state.dependents += should_finalize;
                         }
                     }
-                }
-            });
+                });
+
+            state.has_items()
+        });
     }
 
     pub fn update_pool_state(&mut self, address: Address, update: PoolUpdate) {
@@ -210,36 +220,22 @@ impl StateWithDependencies {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct PoolStateWithBlock(Vec<(bool, StateWithDependencies)>);
+pub struct PoolStateWithBlock(Vec<(u64, StateWithDependencies)>);
 
 impl PoolStateWithBlock {
+    fn has_items(&self) -> bool {
+        !self.0.is_empty()
+    }
+
+    fn estimate_mem(&self) -> usize {
+        self.0.len() * 152
+    }
+
     pub fn mark_state_as_finalized(&mut self, block: u64) {
         for (finalized, state) in &mut self.0 {
             if block == state.last_update {
-                *finalized = true;
+                *finalized += 1;
             }
-        }
-    }
-
-    pub fn inc_state(&mut self, block: u64) {
-        if let Some(state) = self
-            .0
-            .iter_mut()
-            .map(|(_, state)| state)
-            .find(|state| block == state.last_update)
-        {
-            state.inc(1);
-        }
-    }
-
-    pub fn dec_state(&mut self, block: u64) {
-        if let Some(state) = self
-            .0
-            .iter_mut()
-            .map(|(_, state)| state)
-            .find(|state| block == state.last_update)
-        {
-            state.dec(1);
         }
     }
 
@@ -259,11 +255,11 @@ impl PoolStateWithBlock {
             .map(|state| &state.state)
     }
 
-    pub fn remove_state(&mut self, block: u64) -> Option<(bool, StateWithDependencies)> {
-        let mut res = None;
+    pub fn remove_state(&mut self, block: u64) -> Vec<(u64, StateWithDependencies)> {
+        let mut res = vec![];
         self.0.retain(|(keep, state)| {
-            if state.last_update == block {
-                res = Some((*keep, state.clone()));
+            if state.last_update <= block {
+                res.push((*keep, state.clone()));
                 return false
             }
             true
@@ -273,7 +269,7 @@ impl PoolStateWithBlock {
     }
 
     pub fn add_state(&mut self, state: StateWithDependencies) {
-        self.0.push((false, state));
+        self.0.push((0, state));
     }
 
     pub fn contains_block_state(&self, block: u64) -> bool {

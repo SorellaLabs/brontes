@@ -22,6 +22,7 @@
 
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
+    UnboundedYapperReceiver,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -67,7 +68,6 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::{debug, error, info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
@@ -103,9 +103,11 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     current_block:   u64,
     completed_block: u64,
     finished:        Arc<AtomicBool>,
+    needs_more_data: Arc<AtomicBool>,
+
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx:       UnboundedReceiver<DexPriceMsg>,
+    update_rx:       UnboundedYapperReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
@@ -138,10 +140,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         finished: Arc<AtomicBool>,
         quote_asset: Address,
         graph_manager: GraphManager<DB>,
-        update_rx: UnboundedReceiver<DexPriceMsg>,
+        update_rx: UnboundedYapperReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
         new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
+        needs_more_data: Arc<AtomicBool>,
     ) -> Self {
         Self {
             finished,
@@ -157,6 +160,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             completed_block: current_block,
             overlap_update: None,
             skip_pricing: VecDeque::new(),
+            needs_more_data,
             bench: FunctionCallBench::default(),
         }
     }
@@ -284,7 +288,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
                 self.current_block = msg.block;
-                self.completed_block = msg.block + 1;
             }
         }
 
@@ -774,11 +777,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 .map(|(pair, block)| {
                     // if the rundown was forced. this means that we don't need to be so aggressive
                     // with the ign
-
                     let ignores = self
                         .graph_manager
                         .verify_subgraph_on_new_path_failure(pair)
                         .unwrap_or_default();
+
                     let extends = self.graph_manager.subgraph_extends(pair);
 
                     if ignores.is_empty() {
@@ -851,6 +854,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                 None
             })
             .collect_vec();
+
+        if verify.is_empty() {
+            return
+        }
 
         execute_on!(target = pricing, self.try_verify_subgraph(verify));
     }
@@ -939,6 +946,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .subgraph_verifier
             .get_rem_for_block(self.completed_block);
 
+        if rem_block.is_empty() {
+            return
+        }
+
         self.par_rundown(
             rem_block
                 .into_iter()
@@ -956,8 +967,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     }
 
     /// The price can pre-process up to 40 blocks in the future
-    fn process_future_blocks(&self) -> bool {
-        self.completed_block + 40 > self.current_block
+    fn process_future_blocks(&self) {
+        if self.completed_block + 4 > self.current_block {
+            self.needs_more_data.store(true, SeqCst);
+        } else {
+            self.needs_more_data.store(false, SeqCst);
+        }
     }
 
     /// Attempts to resolve the block & start processing the next block.
@@ -1006,10 +1021,21 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.completed_block += 1;
+        self.should_return().then_some((block, res))
+    }
 
-        // add new nodes to pair graph
-        Some((block, res))
+    // checks skip
+    fn should_return(&mut self) -> bool {
+        // remove ones lower than completed
+        self.skip_pricing.retain(|b| b >= &self.completed_block);
+
+        let res = self
+            .skip_pricing
+            .front()
+            .map(|f| f != &self.completed_block)
+            .unwrap_or(true);
+        self.completed_block += 1;
+        res
     }
 
     /// For the given DexQuotes, checks to see if the start price vs the end
@@ -1122,9 +1148,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.completed_block += 1;
-
-        Some((block, res))
+        self.should_return().then_some((block, res))
     }
 
     fn poll_state_processing(
@@ -1135,7 +1159,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
             self.on_pool_resolve(state)
         }
-
+        //
         let pairs = self.lazy_loader.pairs_to_verify();
         if !pairs.is_empty() {
             execute_on!(target = pricing, self.try_verify_subgraph(pairs));
@@ -1143,7 +1167,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
         self.try_flush_out_pending_verification();
 
-        // check if we can progress to the next block.
+        // // check if we can progress to the next block.
         self.try_resolve_block()
             .map(|prices| Poll::Ready(Some(prices)))
     }
@@ -1158,21 +1182,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        let mut work = 8;
-        loop {
-            work -= 1;
-            if work == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
-            }
+        if let Some(new_prices) = self.poll_state_processing(cx) {
+            return new_prices
+        }
 
-            if let Some(new_prices) = self.poll_state_processing(cx) {
-                return new_prices
-            }
-
-            if !self.process_future_blocks() {
-                continue
-            }
+        'outer: loop {
+            self.process_future_blocks();
 
             let mut block_updates = Vec::new();
             loop {
@@ -1228,21 +1243,20 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 }
 
                 // we poll here to continuously progress state fetches as they are slow
-                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                     self.on_pool_resolve(state);
                 }
+            }
+
+            if block_updates.is_empty() {
+                break 'outer
             }
 
             #[allow(clippy::blocks_in_conditions)]
             if block_updates
                 .first()
                 .map(|u| u.block)
-                .and_then(|block_update_num| {
-                    // remove all blocks before the current block
-                    self.skip_pricing.retain(|block| block >= &block_update_num);
-                    let front = self.skip_pricing.front()?;
-                    Some(&block_update_num == front)
-                })
+                .map(|block_update_num| self.skip_pricing.contains(&block_update_num))
                 .unwrap_or(false)
             {
                 self.on_pool_update_no_pricing(block_updates);
@@ -1250,6 +1264,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 execute_on!(target = pricing, self.on_pool_updates(block_updates));
             }
         }
+
+        if let Some(new_prices) = self.poll_state_processing(cx) {
+            return new_prices
+        }
+
+        cx.waker().wake_by_ref();
+        Poll::Pending
     }
 }
 

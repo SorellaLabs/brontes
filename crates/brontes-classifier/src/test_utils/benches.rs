@@ -231,7 +231,7 @@ impl ClassifierBenchUtils {
         // write protocol to libmdbx
         self.trace_loader
             .libmdbx
-            .0
+            .db
             .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
                 AddressToProtocolInfoData { key: protocol_address, value: protocol },
             ])?;

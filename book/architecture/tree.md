@@ -157,7 +157,11 @@ action_dispatch!(
 
 ### Implementing a New Classifier
 
-TODO write uniswap v3 example
+# TODO write uniswap v3 example
+
+TODO
+
+### Implementing a New Classifier
 
 ### Complex Classification
 

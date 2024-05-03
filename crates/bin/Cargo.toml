@@ -6,7 +6,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-# poirot
+
 brontes-core.workspace = true
 brontes-inspect.workspace = true
 brontes-types.workspace = true
@@ -15,6 +15,9 @@ brontes-database.workspace = true
 brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
+brontes-libmdbx  = { workspace = true, features = ["read-tx-timeouts"] }
+
+
 malachite.workspace = true
 toml = "0.8.2"
 indicatif.workspace = true
@@ -80,6 +83,7 @@ cfg-if = "1.0.0"
 metrics-process.workspace = true
 itertools.workspace = true
 fdlimit = "0.3.0"
+dhat = "0.3.3"
 
 tikv-jemallocator = { version = "0.5.0", features = [
   "unprefixed_malloc_on_supported_platforms",
@@ -93,11 +97,12 @@ default = [
   "brontes-inspect/default",
   "pretty-print",
   "jemalloc",
-  "local-reth"
+  "local-reth",
 ]
 
 jemalloc = []
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
+dhat-heap = []
 
 sorella-server = ["local-reth", "local-clickhouse"]
 

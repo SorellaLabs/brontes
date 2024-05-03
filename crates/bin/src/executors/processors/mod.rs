@@ -1,5 +1,4 @@
 pub mod mev;
-use std::sync::Arc;
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
@@ -13,7 +12,7 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
     fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &DB,
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
-        tree: Arc<BlockTree<Action>>,
-        metadata: Arc<Metadata>,
+        tree: BlockTree<Action>,
+        metadata: Metadata,
     ) -> impl Future<Output = ()> + Send;
 }
