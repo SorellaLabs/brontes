@@ -252,6 +252,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burn_gas_details: gas_details[1],
             backrun_burns: burns,
         };
+        tracing::info!("{:#?}", header);
         tracing::info!("{:#?}", jit_details);
 
         Some(Bundle { header, data: BundleData::Jit(jit_details) })
