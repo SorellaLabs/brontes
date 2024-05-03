@@ -41,7 +41,7 @@ use crate::local_provider::LocalProvider;
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
     pub libmdbx:          &'static LibmdbxReadWriter,
-    pub tracing_provider: TraceParser<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
+    pub tracing_provider: TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter>,
     // store so when we trace we don't get a closed rx error
     _metrics:             UnboundedReceiver<PoirotMetricEvents>,
 }
@@ -66,11 +66,12 @@ impl TraceLoader {
         &self,
         block: u64,
     ) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
-        if let Some(traces) = self.tracing_provider.execute_block(block).await {
+        if let Some(traces) = self.tracing_provider.clone().execute_block(block).await {
             Ok(traces)
         } else {
             self.fetch_missing_traces(block).await.unwrap();
             self.tracing_provider
+                .clone()
                 .execute_block(block)
                 .await
                 .ok_or_else(|| TraceLoaderError::BlockTraceError(block))
@@ -411,9 +412,9 @@ pub fn init_tracing() {
 pub async fn init_trace_parser(
     handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &LibmdbxReadWriter,
+    libmdbx: &'static LibmdbxReadWriter,
     max_tasks: u32,
-) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
+) -> TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
 
     let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
@@ -438,7 +439,7 @@ pub async fn init_trace_parser(
 pub async fn init_trace_parser(
     _handle: Handle,
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
-    libmdbx: &LibmdbxReadWriter,
+    libmdbx: &'static LibmdbxReadWriter,
     _max_tasks: u32,
 ) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");

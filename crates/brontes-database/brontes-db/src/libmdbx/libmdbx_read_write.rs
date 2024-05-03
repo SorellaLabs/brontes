@@ -450,8 +450,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
-        let eth_prices = determine_eth_prices(&cex_quotes);
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
+        let eth_prices = determine_eth_prices(&cex_quotes);
 
         #[cfg(feature = "cex-dex-markout")]
         let trades = self.fetch_trades(block_num).ok();
@@ -926,7 +926,7 @@ impl DBWriter for LibmdbxReadWriter {
     }
 
     /// only for internal functionality (i.e. clickhouse)
-    async fn insert_tree(&self, _tree: Arc<BlockTree<Action>>) -> eyre::Result<()> {
+    async fn insert_tree(&self, _tree: BlockTree<Action>) -> eyre::Result<()> {
         Ok(())
     }
 }

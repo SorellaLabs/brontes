@@ -28,10 +28,10 @@ use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, error, info};
-use tree_pruning::account_for_tax_tokens;
+use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};
 use utils::{decode_transfer, get_coinbase_transfer};
 
-use self::{erc20::try_decode_transfer, tree_pruning::remove_possible_transfer_double_counts};
+use self::erc20::try_decode_transfer;
 use crate::{
     classifiers::*, multi_frame_classification::parse_multi_frame_requests, ActionCollection,
     FactoryDiscoveryDispatch,
@@ -60,6 +60,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         header: Header,
         generate_pricing: bool,
     ) -> BlockTree<Action> {
+        // return BlockTree::new(header, 0)
         if !generate_pricing {
             self.pricing_update_sender
                 .send(DexPriceMsg::DisablePricingFor(header.number))

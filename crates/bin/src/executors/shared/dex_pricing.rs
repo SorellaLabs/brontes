@@ -35,6 +35,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
     for WaitingForPricerFuture<T, DB>
 {
     fn drop(&mut self) {
+        tracing::info!(rem_trees=?self.pending_trees.len(), keys=?self.pending_trees.keys().collect::<Vec<_>>(), "range has this many pending trees");
         // ensures that we properly drop everything
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
@@ -48,13 +49,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
     pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
-        let (tx, rx) = channel(100);
+        let (tx, rx) = channel(10);
         let tx_clone = tx.clone();
         let fut = Box::pin(async move {
             let block = pricer.current_block_processing();
             let res = pricer
                 .next()
-                .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
+                .instrument(span!(Level::ERROR, "Brontes Dex Pricing",
+            block_number=%block))
                 .await;
 
             if let Err(e) = tx_clone.try_send((pricer, res)) {
