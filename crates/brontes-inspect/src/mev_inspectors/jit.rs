@@ -65,7 +65,6 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                         TreeSearchBuilder::default().with_actions([
                                             Action::is_mint,
                                             Action::is_burn,
-                                            Action::is_collect,
                                             Action::is_transfer,
                                             Action::is_nested_action,
                                         ]),
@@ -156,17 +155,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, _collect, transfers): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
-            searcher_actions
-                .clone()
-                .into_iter()
-                .flatten()
-                .action_split((
-                    Action::try_mint,
-                    Action::try_burn,
-                    Action::try_collect,
-                    Action::try_transfer,
-                ));
+        let (mints, burns, transfers): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
+            .clone()
+            .into_iter()
+            .flatten()
+            .action_split((Action::try_mint, Action::try_burn, Action::try_transfer));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::trace!("missing mints & burns");
