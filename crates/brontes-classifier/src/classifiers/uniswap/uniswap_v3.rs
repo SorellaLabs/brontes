@@ -73,6 +73,11 @@ action_impl!(
      call_data: mintCall,
      return_data: mintReturn, _logs: UniswapV3MintCallLogs,  db_tx: &DB| {
          // needs extra logic based off of it uses the v3 position manager or not.
+         let from_address = if info.from_address == alloy_primitives::hex!("C36442b4a4522E871399CD717aBDD847Ab11FE88") {
+             call_data.recipient
+         } else {
+             info.from_address
+         };
 
 
 
@@ -90,7 +95,7 @@ action_impl!(
         Ok(NormalizedMint {
             protocol: Protocol::UniswapV3,
             trace_index: info.trace_idx,
-            from: info.from_address,
+            from: from_address,
             recipient: info.target_address,
             pool: info.target_address,
             token: vec![t0_info, t1_info],
