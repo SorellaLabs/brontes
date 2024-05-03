@@ -331,7 +331,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                     .or_default();
 
                                 for data in d {
-                                    let block = data.key;
                                     let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
                                         data.into_key_val()
                                     );
