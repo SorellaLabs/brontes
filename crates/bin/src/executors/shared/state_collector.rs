@@ -93,6 +93,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     }
 
     pub fn range_finished(&self) {
+        tracing::info!("range finished");
         self.mark_as_finished.store(true, SeqCst);
     }
 }
