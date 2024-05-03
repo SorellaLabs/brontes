@@ -20,7 +20,7 @@ use brontes_inspect::{Inspector, Inspectors};
 use brontes_types::{
     db::{cex::CexExchange, traits::LibmdbxReader},
     mev::Bundle,
-    BrontesTaskExecutor,
+    BrontesTaskExecutor, UnboundedYapperReceiver,
 };
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use futures::StreamExt;
@@ -160,7 +160,7 @@ fn spawn_db_writer_thread(
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
         |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(buffered_rx, 10);
+            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), 10);
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
