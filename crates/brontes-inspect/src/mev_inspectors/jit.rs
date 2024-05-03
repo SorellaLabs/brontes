@@ -165,6 +165,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
+        tracing::info!("{:#?}", mints);
+
         // assert mints and burns are same pool
         let mut pools = FastHashSet::default();
         mints.iter().for_each(|m| {
@@ -252,6 +254,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burn_gas_details: gas_details[1],
             backrun_burns: burns,
         };
+        tracing::info!("{:#?}", header);
+        tracing::info!("{:#?}", jit_details);
 
         Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
