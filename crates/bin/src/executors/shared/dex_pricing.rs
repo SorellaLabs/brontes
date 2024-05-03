@@ -129,6 +129,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
                 return Poll::Ready(None)
             }
         }
+        tracing::info!("poll recv not ready");
 
         Poll::Pending
     }
