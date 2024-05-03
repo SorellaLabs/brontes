@@ -1136,7 +1136,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        tracing::info!(?block, ?self.current_block, "on close");
         self.should_return().then_some((block, res))
     }
 
@@ -1170,7 +1169,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        tracing::info!(?self.completed_block, ?self.current_block);
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
@@ -1225,7 +1223,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
-                            tracing::info!("trying close");
                             return Poll::Ready(self.on_close())
                         }
                         break

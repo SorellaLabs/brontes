@@ -112,7 +112,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
                 debug!(target:"brontes","Generated dex prices for block: {} ", block);
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
-                    tracing::info!("done");
                     return Poll::Ready(None);
                 };
 
@@ -124,7 +123,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
                 return Poll::Ready(Some((tree, finalized_meta)))
             } else {
-                tracing::info!("done");
                 // means we have completed chunks
                 return Poll::Ready(None)
             }
