@@ -165,8 +165,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        tracing::info!(?mints);
-
         // assert mints and burns are same pool
         let mut pools = FastHashSet::default();
         mints.iter().for_each(|m| {
@@ -254,8 +252,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burn_gas_details: gas_details[1],
             backrun_burns: burns,
         };
-        tracing::info!("{:#?}", header);
-        tracing::info!("{:#?}", jit_details);
 
         Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
@@ -418,6 +414,19 @@ mod tests {
                 hex!("b420b67fab4f1902bcd1284934d9610631b9da9e616780dbcc85d7c815b50896").into(),
             ])
             .with_gas_paid_usd(81.8)
+            .with_expected_profit_usd(-92.53);
+
+        test_utils.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_old_v3_jit_721() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(16862007)
+            .with_gas_paid_usd(40.7)
             .with_expected_profit_usd(-10.61);
 
         test_utils.run_inspector(config, None).await.unwrap();
