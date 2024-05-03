@@ -4,7 +4,9 @@ use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
+use brontes_types::{
+    constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools, UnboundedYapperReceiver,
+};
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -92,7 +94,12 @@ impl RunArgs {
         init_threadpools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
-        let metrics_listener = PoirotMetricsListener::new(metrics_rx);
+        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+            metrics_rx,
+            10_000,
+            "metrics".to_string(),
+        ));
+
         task_executor.spawn_critical("metrics", metrics_listener);
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);

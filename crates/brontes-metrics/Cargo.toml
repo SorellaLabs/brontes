@@ -12,6 +12,7 @@ edition = "2021"
 # async
 tokio = { workspace = true, features = ["full", "tracing"] }
 futures.workspace = true
+brontes-types.workspace = true
 
 # tracing
 tracing.workspace = true
