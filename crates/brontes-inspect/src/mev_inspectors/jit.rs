@@ -156,23 +156,22 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, _collect, transfers): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = searcher_actions
-            .clone()
-            .into_iter()
-            .flatten()
-            .action_split((
-                Action::try_mint,
-                Action::try_burn,
-                Action::try_collect,
-                Action::try_transfer,
-            ));
+        let (mints, burns, _collect, transfers): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) =
+            searcher_actions
+                .clone()
+                .into_iter()
+                .flatten()
+                .action_split((
+                    Action::try_mint,
+                    Action::try_burn,
+                    Action::try_collect,
+                    Action::try_transfer,
+                ));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::trace!("missing mints & burns");
             return None
         }
-
-        tracing::info!("{:#?}", mints);
 
         // assert mints and burns are same pool
         let mut pools = FastHashSet::default();
@@ -259,8 +258,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burn_gas_details: gas_details[1],
             backrun_burns: burns,
         };
-        tracing::info!("{:#?}", header);
-        tracing::info!("{:#?}", jit_details);
 
         Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
