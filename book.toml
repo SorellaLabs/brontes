@@ -11,6 +11,7 @@ theme = "book/theme"
 git-repository-url = "https://github.com/SorellaLabs/brontes"
 default-theme = "ayu"
 no-section-label = true
+mathjax-support = true
 
 [output.html.fold]
 enable = true
@@ -18,3 +19,6 @@ level = 1
 
 [build]
 build-dir = "target/book"
+
+[rust]
+edition = "2021" 
