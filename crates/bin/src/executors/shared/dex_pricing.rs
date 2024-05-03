@@ -106,6 +106,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let (pricer, inner) = handle.unwrap();
             self.reschedule(pricer);
+            cx.waker().wake_by_ref();
 
             if let Some((block, prices)) = inner {
                 debug!(target:"brontes","Generated dex prices for block: {} ", block);

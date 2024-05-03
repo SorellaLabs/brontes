@@ -1232,7 +1232,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 }
 
                 // we poll here to continuously progress state fetches as they are slow
-                while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
                     self.on_pool_resolve(state);
                 }
             }
