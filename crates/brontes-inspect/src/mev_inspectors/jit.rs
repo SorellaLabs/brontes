@@ -66,6 +66,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                             Action::is_mint,
                                             Action::is_burn,
                                             Action::is_collect,
+                                            Action::is_transfer,
                                             Action::is_nested_action,
                                         ]),
                                     ),
@@ -73,6 +74,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                         actions.is_mint()
                                             || actions.is_burn()
                                             || actions.is_collect()
+                                            || actions.is_transfer()
                                     },
                                 )
                                 .collect::<Vec<_>>()
@@ -154,11 +156,16 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
+        let (mints, burns, _collect, transfers): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
-            .action_split((Action::try_mint, Action::try_burn, Action::try_collect));
+            .action_split((
+                Action::try_mint,
+                Action::try_burn,
+                Action::try_collect,
+                Action::try_transfer,
+            ));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::trace!("missing mints & burns");
@@ -178,11 +185,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info);
 
-        let has_collect = !collect.is_empty();
-        let deltas = searcher_actions
+        let deltas = transfers
             .into_iter()
-            .flatten()
-            .filter(|a| if has_collect { !a.is_burn() } else { true })
+            .map(Action::from)
             .account_for_actions();
 
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
