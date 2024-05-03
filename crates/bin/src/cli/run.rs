@@ -6,7 +6,6 @@ use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools};
 use clap::Parser;
-use futures::future::select;
 use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
@@ -149,13 +148,13 @@ impl RunArgs {
                     self.cli_only,
                     self.init_crit_tables,
                 )
-                .build(task_executor, shutdown.clone())
+                .build(task_executor, shutdown)
                 .await
                 .map_err(|e| {
                     tracing::error!(%e);
                     e
                 }) {
-                    let _ = select(shutdown, brontes).await;
+                    brontes.await;
                 }
             });
 

@@ -100,13 +100,14 @@ impl ClassifierTestUtils {
         Ok((
             ctr.clone(),
             BrontesBatchPricer::new(
-                ctr,
+                ctr.clone(),
                 quote_asset,
                 pair_graph,
                 UnboundedYapperReceiver::new(rx, 1000, "test".into()),
                 self.get_provider(),
                 block,
                 created_pools,
+                ctr.clone(),
             ),
         ))
     }

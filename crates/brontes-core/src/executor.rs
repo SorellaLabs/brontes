@@ -1,20 +1,16 @@
+use core::panic;
+
 use futures::{pin_mut, Future};
-use tokio::{runtime::Runtime, task::JoinHandle};
+use tokio::task::JoinHandle;
 
 /// executes tasks on the runtime
 /// used for a thread pool for the simulator
 
-pub struct Executor {
-    pub runtime: Runtime,
-}
+pub struct Executor;
 
 impl Executor {
     pub fn new() -> Self {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        Self { runtime }
+        Self
     }
 
     /// Spawns a task with a result output depending on the given [TaskKind]
@@ -28,10 +24,10 @@ impl Executor {
             fut.await
         };
 
-        let handle = self.runtime.handle().clone();
+        let handle = tokio::runtime::Handle::current();
         match task_kind {
             TaskKind::Default => handle.spawn(task),
-            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(task)),
+            TaskKind::Blocking => panic!(),
         }
     }
 
@@ -53,19 +49,11 @@ impl Executor {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        let handle = self.runtime.handle().clone();
+        let handle = tokio::runtime::Handle::current();
         match task_kind {
             TaskKind::Default => handle.spawn(fut),
-            TaskKind::Blocking => self.runtime.spawn_blocking(move || handle.block_on(fut)),
+            TaskKind::Blocking => panic!(),
         }
-    }
-
-    /// Spawns a future blocking tokio runtime
-    pub fn block_on_rt<F>(&self, fut: F)
-    where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        self.runtime.block_on(fut)
     }
 }
 
