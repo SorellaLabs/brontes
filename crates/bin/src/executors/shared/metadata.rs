@@ -47,7 +47,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Dro
     for MetadataFetcher<T, DB, CH>
 {
     fn drop(&mut self) {
-        tracing::info!(buf = self.result_buf.len(), "result buffer metadata fetcher");
+        tracing::debug!(buf = self.result_buf.len(), "result buffer metadata fetcher");
     }
 }
 

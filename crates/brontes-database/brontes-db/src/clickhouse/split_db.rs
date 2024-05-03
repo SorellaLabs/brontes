@@ -3,10 +3,9 @@ use std::{
     task::{Context, Poll},
 };
 
-use brontes_types::{UnboundedYapperReceiver, FastHashMap};
+use brontes_types::{FastHashMap, UnboundedYapperReceiver};
 use db_interfaces::{clickhouse::client::ClickhouseClient, Database};
 use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
-use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::clickhouse::dbms::*;
 
