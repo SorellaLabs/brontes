@@ -122,6 +122,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
                 return Poll::Ready(Some((tree, finalized_meta)))
             } else {
+                tracing::info!("done");
                 // means we have completed chunks
                 return Poll::Ready(None)
             }
