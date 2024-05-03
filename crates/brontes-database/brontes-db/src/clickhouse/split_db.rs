@@ -122,22 +122,29 @@ impl Stream for ClickhouseBuffered {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
+        let mut work = 128;
 
-        while let Poll::Ready(val) = this.rx.poll_recv(cx) {
-            match val {
-                Some(val) => {
-                    if !val.is_empty() {
-                        this.handle_incoming(val)
+        loop {
+            while let Poll::Ready(val) = this.rx.poll_recv(cx) {
+                match val {
+                    Some(val) => {
+                        if !val.is_empty() {
+                            this.handle_incoming(val)
+                        }
                     }
+                    None => return Poll::Ready(None),
                 }
-                None => return Poll::Ready(None),
+            }
+
+            if let Poll::Ready(Some(val)) = this.futs.poll_next_unpin(cx) {
+                return Poll::Ready(Some(val))
+            }
+
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
             }
         }
-
-        if let Poll::Ready(Some(val)) = this.futs.poll_next_unpin(cx) {
-            return Poll::Ready(Some(val))
-        }
-
-        Poll::Pending
     }
 }
