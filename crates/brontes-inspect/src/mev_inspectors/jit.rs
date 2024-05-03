@@ -413,7 +413,7 @@ mod tests {
                 hex!("ab001a0981e3da3d057c1b0c939a988d4d7cc98a903c66699feb59fc028ffe77").into(),
                 hex!("b420b67fab4f1902bcd1284934d9610631b9da9e616780dbcc85d7c815b50896").into(),
             ])
-            .with_gas_paid_usd(92.65)
+            .with_gas_paid_usd(81.8)
             .with_expected_profit_usd(-10.61);
 
         test_utils.run_inspector(config, None).await.unwrap();
