@@ -94,8 +94,11 @@ impl RunArgs {
         init_threadpools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
-        let metrics_listener =
-            PoirotMetricsListener::new(UnboundedYapperReceiver::new(metrics_rx, 10_000, "metrics"));
+        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+            metrics_rx,
+            10_000,
+            "metrics".to_string(),
+        ));
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
