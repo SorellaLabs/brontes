@@ -1,7 +1,7 @@
 use core::panic;
 
 use futures::{pin_mut, Future};
-use tokio::{runtime::Runtime, task::JoinHandle};
+use tokio::{task::JoinHandle};
 
 /// executes tasks on the runtime
 /// used for a thread pool for the simulator

@@ -115,8 +115,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         self.processing_futures.push(Box::pin(P::process_results(
             self.database,
             self.inspectors,
-            tree.into(),
-            meta.into(),
+            tree,
+            meta,
         )));
     }
 }

@@ -128,6 +128,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             self.collector.range_finished();
         }
 
-        return Poll::Pending
+        Poll::Pending
     }
 }

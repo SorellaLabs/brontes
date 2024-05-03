@@ -1255,8 +1255,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             #[allow(clippy::blocks_in_conditions)]
             if block_updates
                 .first()
-                .map(|u| u.block)
-                .and_then(|block_update_num| Some(self.skip_pricing.contains(&block_update_num)))
+                .map(|u| u.block).map(|block_update_num| self.skip_pricing.contains(&block_update_num))
                 .unwrap_or(false)
             {
                 self.on_pool_update_no_pricing(block_updates);
