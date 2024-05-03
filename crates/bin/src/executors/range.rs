@@ -118,6 +118,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 None if self.insert_futures.is_empty() => return Poll::Ready(()),
                 _ => {
                     tracing::info!(rem=?self.insert_futures.len(), "is not empty");
+                    break
                 }
             }
         }
