@@ -86,7 +86,7 @@ action_impl!(
         Ok(NormalizedMint {
             protocol: Protocol::UniswapV3,
             trace_index: info.trace_idx,
-            from: info.from_address,
+            from: call_data.recipient,
             recipient: call_data.recipient,
             pool: info.target_address,
             token: vec![t0_info, t1_info],
