@@ -67,6 +67,7 @@ impl Future for PoirotMetricsListener {
             // this.handle_event(event);
         }
 
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
