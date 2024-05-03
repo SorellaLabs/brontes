@@ -24,21 +24,22 @@ pub(crate) const RECEIVE: &str = "receive";
 pub(crate) const FALLBACK: &str = "fallback";
 use reth_primitives::BlockId;
 
-pub type ParserFuture<'a> =
-    Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
+pub type ParserFuture = Pin<
+    Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
+>;
 
-pub type TraceClickhouseFuture<'a> =
-    Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'a>>;
+pub type TraceClickhouseFuture =
+    Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'static>>;
 
-pub struct Parser<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
+pub struct Parser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     executor: Executor,
-    parser:   TraceParser<'a, T, DB>,
+    parser:   TraceParser<T, DB>,
 }
 
-impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
     pub async fn new(
         metrics_tx: UnboundedSender<PoirotMetricEvents>,
-        libmdbx: &'a DB,
+        libmdbx: &'static DB,
         tracing: T,
     ) -> Self {
         let executor = Executor::new();
@@ -70,7 +71,7 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
     pub fn execute(&self, block_num: u64) -> ParserFuture {
         // This will satisfy its lifetime scope do to the lifetime itself living longer
         // than the process that runs brontes.
-        let parser: &'static TraceParser<'_, T, DB> = unsafe { std::mem::transmute(&self.parser) };
+        let parser = self.parser.clone();
 
         Box::pin(
             self.executor
@@ -81,7 +82,7 @@ impl<'a, T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<'a, T, DB> {
     pub fn trace_for_clickhouse(&self, block_num: u64) -> TraceClickhouseFuture {
         // This will satisfy its lifetime scope do to the lifetime itself living longer
         // than the process that runs brontes.
-        let parser: &'static TraceParser<'_, T, DB> = unsafe { std::mem::transmute(&self.parser) };
+        let parser = self.parser.clone();
 
         Box::pin(
             self.executor

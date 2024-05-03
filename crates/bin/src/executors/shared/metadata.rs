@@ -1,5 +1,13 @@
 use core::panic;
-use std::{collections::VecDeque, pin::Pin, task::Poll};
+use std::{
+    collections::VecDeque,
+    pin::Pin,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    task::Poll,
+};
 
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
@@ -29,8 +37,18 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     dex_pricer_stream:     WaitingForPricerFuture<T, DB>,
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<(BlockTree<Action>, Metadata)>,
+    needs_more_data:       Arc<AtomicBool>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
+    block:                 u64,
+}
+
+impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Drop
+    for MetadataFetcher<T, DB, CH>
+{
+    fn drop(&mut self) {
+        tracing::info!(buf = self.result_buf.len(), "result buffer metadata fetcher");
+    }
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
@@ -41,10 +59,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         dex_pricer_stream: WaitingForPricerFuture<T, DB>,
         always_generate_price: bool,
         force_no_dex_pricing: bool,
+        needs_more_data: Arc<AtomicBool>,
+        block: u64,
     ) -> Self {
         Self {
+            block,
             clickhouse,
             dex_pricer_stream,
+            needs_more_data,
             clickhouse_futures: FuturesOrdered::new(),
             result_buf: VecDeque::new(),
             always_generate_price,
@@ -53,7 +75,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     }
 
     pub fn should_process_next_block(&self) -> bool {
-        self.dex_pricer_stream.pending_trees.len() < MAX_PENDING_TREES
+        self.needs_more_data.load(Ordering::SeqCst)
+            && self.dex_pricer_stream.pending_trees.len() < MAX_PENDING_TREES
             && self.result_buf.len() < MAX_PENDING_TREES
     }
 
@@ -149,8 +172,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        // ensure we don't skip blocks
         if let Some(res) = self.result_buf.pop_front() {
-            return Poll::Ready(Some(res))
+            let bn = res.0.header.number;
+            if bn == self.block {
+                self.block += 1;
+                return Poll::Ready(Some(res))
+            }
+            self.result_buf.push_front(res);
         }
 
         if self.force_no_dex_pricing {
@@ -165,6 +194,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 .add_pending_inspection(block, tree, meta)
         }
 
-        self.dex_pricer_stream.poll_next_unpin(cx)
+        self.dex_pricer_stream.poll_next_unpin(cx).map(|mid| {
+            if mid.is_some() {
+                self.block += 1;
+            }
+            mid
+        })
     }
 }

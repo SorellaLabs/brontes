@@ -22,16 +22,25 @@ use crate::errors::TraceParseError;
 
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
-//#[derive(Clone)]
-pub struct TraceParser<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx:               &'db DB,
+pub struct TraceParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
+    libmdbx:               &'static DB,
     pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for TraceParser<T, DB> {
+    fn clone(&self) -> Self {
+        Self {
+            libmdbx:    self.libmdbx,
+            tracer:     self.tracer.clone(),
+            metrics_tx: self.metrics_tx.clone(),
+        }
+    }
+}
+
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     pub async fn new(
-        libmdbx: &'db DB,
+        libmdbx: &'static DB,
         tracer: Arc<T>,
         metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
     ) -> Self {
@@ -42,7 +51,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         self.tracer.clone()
     }
 
-    pub async fn load_block_from_db(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+    pub async fn load_block_from_db(&self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         let mut traces = self.libmdbx.load_trace(block_num).ok()?;
         traces.sort_by(|a, b| a.tx_index.cmp(&b.tx_index));
         traces.dedup_by(|a, b| a.tx_index.eq(&b.tx_index));
@@ -50,7 +59,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
         Some((traces, self.tracer.header_by_number(block_num).await.ok()??))
     }
 
-    pub async fn trace_clickhouse_block(&self, block_num: u64) {
+    pub async fn trace_clickhouse_block(self, block_num: u64) {
         let parity_trace = self.trace_block(block_num).await;
         let receipts = self.get_receipts(block_num).await;
 
@@ -87,7 +96,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<'db, T, 
 
     /// executes the tracing of a given block
     #[allow(unreachable_code)]
-    pub async fn execute_block(&'db self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+    pub async fn execute_block(self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
             return Some(res)

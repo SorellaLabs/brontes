@@ -26,7 +26,7 @@ pub struct TipInspector<
 > {
     current_block:      u64,
     back_from_tip:      u64,
-    parser:             &'static Parser<'static, T, DB>,
+    parser:             &'static Parser<T, DB>,
     state_collector:    StateCollector<T, DB, CH>,
     database:           &'static DB,
     inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
@@ -41,7 +41,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         current_block: u64,
         back_from_tip: u64,
         state_collector: StateCollector<T, DB, CH>,
-        parser: &'static Parser<'static, T, DB>,
+        parser: &'static Parser<T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
     ) -> Self {
@@ -115,8 +115,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         self.processing_futures.push(Box::pin(P::process_results(
             self.database,
             self.inspectors,
-            tree.into(),
-            meta.into(),
+            tree,
+            meta,
         )));
     }
 }

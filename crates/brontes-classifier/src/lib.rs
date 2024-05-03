@@ -136,7 +136,6 @@ pub trait ActionCollection: Sync + Send {
 }
 
 pub trait IntoAction: Debug + Send + Sync {
-    #[allow(clippy::too_many_arguments)]
     fn decode_trace_data<DB: LibmdbxReader + DBWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
