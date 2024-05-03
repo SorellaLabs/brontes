@@ -2,7 +2,9 @@ use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{init_threadpools, unordered_buffer_map::BrontesStreamExt};
+use brontes_types::{
+    init_threadpools, unordered_buffer_map::BrontesStreamExt, UnboundedYapperReceiver,
+};
 use clap::Parser;
 use futures::{join, StreamExt};
 use tokio::sync::mpsc::unbounded_channel;
@@ -27,7 +29,12 @@ impl TipTraceArgs {
         init_threadpools(max_tasks as usize);
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
-        let metrics_listener = PoirotMetricsListener::new(metrics_rx);
+        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+            metrics_rx,
+            10_000,
+            "metrics".to_string(),
+        ));
+
         ctx.task_executor
             .spawn_critical("metrics", metrics_listener);
 
