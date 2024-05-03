@@ -54,7 +54,6 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, FastHashSet,
 };
-use function_call_bench::FunctionCallBench;
 use futures::{Stream, StreamExt};
 pub use graphs::{
     AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,

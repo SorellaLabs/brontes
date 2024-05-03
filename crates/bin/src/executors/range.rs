@@ -102,8 +102,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             if let Some(pb) = self.progress_bar.as_ref() {
                 pb.inc(1)
             };
-            // new block so ensure wake
-            cx.waker().wake_by_ref();
         }
 
         while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
@@ -124,10 +122,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.insert_futures.is_empty()
             && !self.collector.is_collecting_state()
         {
-            cx.waker().wake_by_ref();
             self.collector.range_finished();
         }
 
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
