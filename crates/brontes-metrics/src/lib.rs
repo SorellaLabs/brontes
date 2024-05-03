@@ -5,9 +5,9 @@ use std::{
     task::{Context, Poll},
 };
 
+use brontes_types::UnboundedYapperReceiver;
 use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
 use futures::Future;
-use tokio::sync::mpsc::UnboundedReceiver;
 use tracing::trace;
 
 use crate::trace::{types::TraceMetricEvent, TraceMetrics};
@@ -28,7 +28,7 @@ pub enum PoirotMetricEvents {
 /// receiver. Upon receiving new event, related metrics are updated.
 #[derive(Debug)]
 pub struct PoirotMetricsListener {
-    events_rx:        UnboundedReceiver<PoirotMetricEvents>,
+    events_rx:        UnboundedYapperReceiver<PoirotMetricEvents>,
     tx_metrics:       TraceMetrics,
     contract_metrics: HashMap<String, DynamicContractMetrics>,
 }
@@ -36,7 +36,7 @@ pub struct PoirotMetricsListener {
 impl PoirotMetricsListener {
     /// Creates a new `MetricsListener` with the provided receiver of
     /// MetricEvent.
-    pub fn new(events_rx: UnboundedReceiver<PoirotMetricEvents>) -> Self {
+    pub fn new(events_rx: UnboundedYapperReceiver<PoirotMetricEvents>) -> Self {
         Self {
             events_rx,
             tx_metrics: TraceMetrics::default(),
