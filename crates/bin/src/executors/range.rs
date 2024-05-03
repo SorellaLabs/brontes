@@ -117,8 +117,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                     self.on_price_finish(tree, meta);
                 }
                 None if self.insert_futures.is_empty() => return Poll::Ready(()),
-                //
-                _ => cx.waker().wake_by_ref(),
+                _ => {
+                    tracing::info!(rem_inserts=?self.insert_futures.len());
+                    cx.waker().wake_by_ref()
+                }
             }
         }
 
@@ -134,8 +136,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             self.collector.range_finished();
         }
 
-        // degen but rip for now
-        // cx.waker().wake_by_ref();
         Poll::Pending
     }
 }

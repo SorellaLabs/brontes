@@ -127,7 +127,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             && self.metadata_fetcher.is_finished()
             && self.collection_future.is_none()
         {
-            tracing::info!("state collector finito");
             return Poll::Ready(None)
         }
 
