@@ -17,10 +17,12 @@ use brontes_database::clickhouse::ReadOnlyMiddleware;
 use brontes_database::clickhouse::{dbms::BrontesClickhouseTableDataTypes, ClickhouseBuffered};
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
     db::{cex::CexExchange, traits::LibmdbxReader},
     mev::Bundle,
-    BrontesTaskExecutor, UnboundedYapperReceiver,
+    BrontesTaskExecutor,
 };
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use futures::StreamExt;

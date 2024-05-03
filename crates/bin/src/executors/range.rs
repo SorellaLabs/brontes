@@ -69,6 +69,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 graceful_guard = Some(guard);
             },
         }
+
         while data_batching.insert_futures.next().await.is_some() {}
 
         drop(graceful_guard);
@@ -96,14 +97,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.insert_futures.len() < 5
             && self.current_block != self.end_block
         {
+            cx.waker().wake_by_ref();
             let block = self.current_block;
             self.collector.fetch_state_for(block);
             self.current_block += 1;
             if let Some(pb) = self.progress_bar.as_ref() {
                 pb.inc(1)
             };
-            // new block so ensure wake
-            cx.waker().wake_by_ref();
         }
 
         while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
@@ -112,7 +112,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                     self.on_price_finish(tree, meta);
                 }
                 None if self.insert_futures.is_empty() => return Poll::Ready(()),
-                _ => {}
+                _ => break,
             }
         }
 
