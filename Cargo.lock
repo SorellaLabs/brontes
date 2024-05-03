@@ -1764,6 +1764,7 @@ name = "brontes-metrics"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "brontes-types",
  "colored",
  "eyre",
  "futures",
