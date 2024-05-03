@@ -87,7 +87,7 @@ action_impl!(
             protocol: Protocol::UniswapV3,
             trace_index: info.trace_idx,
             from: call_data.recipient,
-            recipient: call_data.recipient,
+            recipient: info.target_address,
             pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
