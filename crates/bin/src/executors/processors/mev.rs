@@ -32,18 +32,6 @@ impl Processor for MevProcessor {
         tree: BlockTree<Action>,
         metadata: Metadata,
     ) {
-        let tree = Arc::new(tree);
-        let metadata = Arc::new(metadata);
-
-        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
-            target = inspect,
-            compose_mev_results(inspectors, tree.clone(), metadata.clone())
-        );
-
-        #[cfg(feature = "local-clickhouse")]
-        let tree = Arc::try_unwrap(tree).unwrap();
-        let metadata = Arc::try_unwrap(metadata).unwrap();
-
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
@@ -52,7 +40,19 @@ impl Processor for MevProcessor {
         }
 
         #[cfg(feature = "local-clickhouse")]
-        insert_tree(db, tree, metadata.block_num).await;
+        insert_tree(db, tree.clone(), metadata.block_num).await;
+
+        if tree.tx_roots.is_empty() {
+            return
+        }
+
+        let tree = Arc::new(tree);
+        let metadata = Arc::new(metadata);
+
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
+            target = inspect,
+            compose_mev_results(inspectors, tree.clone(), metadata.clone())
+        );
 
         insert_mev_results(db, block_details, mev_details).await;
     }
