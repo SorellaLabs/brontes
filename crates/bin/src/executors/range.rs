@@ -70,11 +70,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             },
         }
 
-        tracing::info!(rem = ?data_batching.insert_futures.len(), "starting shutdown");
-        while data_batching.insert_futures.next().await.is_some() {
-            tracing::info!(rem = ?data_batching.insert_futures.len(), "clearing inserts");
-        }
-        tracing::info!("finished shutdown");
+        while data_batching.insert_futures.next().await.is_some() {}
 
         drop(graceful_guard);
     }
@@ -116,10 +112,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                     self.on_price_finish(tree, meta);
                 }
                 None if self.insert_futures.is_empty() => return Poll::Ready(()),
-                _ => {
-                    tracing::info!(rem=?self.insert_futures.len(), "is not empty");
-                    break
-                }
+                _ => break,
             }
         }
 
