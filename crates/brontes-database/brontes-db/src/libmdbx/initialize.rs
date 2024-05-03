@@ -209,15 +209,13 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                     .entry(Tables::CexPrice)
                                     .or_default();
                                 for data in d {
-                                    let block = data.key;
                                     let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
                                         data.into_key_val()
                                     );
-                                    entry.push(MinHeapData {
-                                        block,
-                                        data: (key.to_vec(),
+                                    entry.push(
+                                        (key.to_vec(),
                                         value)
-                                    });
+                                    );
                                 }
 
 
@@ -337,10 +335,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                     let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
                                         data.into_key_val()
                                     );
-                                    entry.push(MinHeapData {
-                                        block,
-                                        data: (key.to_vec(), value)
-                                    });
+                                    entry.push(
+                                        (key.to_vec(), value)
+                                    );
                                 }
                             }
                             Err(e) => {
