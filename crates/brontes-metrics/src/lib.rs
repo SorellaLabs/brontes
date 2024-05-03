@@ -26,7 +26,6 @@ pub enum PoirotMetricEvents {
 
 /// Metrics routine that listens to new metric events on the `events_rx`
 /// receiver. Upon receiving new event, related metrics are updated.
-#[derive(Debug)]
 pub struct PoirotMetricsListener {
     events_rx:        UnboundedYapperReceiver<PoirotMetricEvents>,
     tx_metrics:       TraceMetrics,
