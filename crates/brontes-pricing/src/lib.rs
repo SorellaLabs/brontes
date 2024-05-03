@@ -27,7 +27,7 @@ use brontes_types::{
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::graphs::StateWithDependencies;
-mod function_call_bench;
+pub mod function_call_bench;
 mod graphs;
 pub mod protocols;
 mod subgraph_query;
