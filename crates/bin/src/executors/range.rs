@@ -70,7 +70,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             },
         }
 
-        tracing::info!("starting shutdown");
+        tracing::info!(rem = ?data_batching.insert_futures.len(),"starting shutdown");
         while data_batching.insert_futures.next().await.is_some() {
             tracing::info!(rem = ?data_batching.insert_futures.len(), "shutdown");
         }
