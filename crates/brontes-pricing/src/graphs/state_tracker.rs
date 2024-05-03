@@ -46,7 +46,7 @@ impl Drop for StateTracker {
 
         let finalized_byte_cnt = self.finalized_edge_state.len() * 138;
 
-        tracing::info!(
+        tracing::debug!(
             target: "brontes::mem",
             verification_mem_bytes = ver_byte_cnt,
             finalized_mem_bytes = finalized_byte_cnt,
