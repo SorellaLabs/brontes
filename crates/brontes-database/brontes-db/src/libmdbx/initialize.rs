@@ -24,8 +24,7 @@ use super::tables::Tables;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{
-        cex_utils::CexRangeOrArbitrary, libmdbx_read_write::MinHeapData, types::CompressedTable,
-        LibmdbxData, LibmdbxReadWriter,
+        cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter,
     },
 };
 const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";

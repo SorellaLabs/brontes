@@ -69,7 +69,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 graceful_guard = Some(guard);
             },
         }
-        while data_batching.insert_futures.next().await.is_some() {}
+
+        while data_batching.insert_futures.next().await.is_some() {
+            tracing::info!(rem = ?data_batching.insert_futures.len(), "shutdown");
+        }
 
         drop(graceful_guard);
     }
