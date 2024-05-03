@@ -113,6 +113,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
             match result {
                 Some((tree, meta)) => {
+                    tracing::info!(?self.current_block, ?self.end_block);
                     self.on_price_finish(tree, meta);
                 }
                 None if self.insert_futures.is_empty() => return Poll::Ready(()),

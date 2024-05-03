@@ -1210,7 +1210,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             if update.block == self.current_block {
                                 block_updates.push(update);
                             } else {
-                                tracing::info!(block = ?self.current_block +1, "overlap");
                                 self.overlap_update = Some(update);
                                 break
                             }
