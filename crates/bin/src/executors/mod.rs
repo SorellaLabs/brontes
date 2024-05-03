@@ -441,8 +441,10 @@ impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        while self.futures.poll_next_unpin(cx).is_ready() {}
+        while let Poll::Ready(Some(_)) = self.futures.poll_next_unpin(cx) {}
+
         if self.futures.is_empty() {
+            tracing::info!("brontes shutting down");
             return Poll::Ready(())
         }
 

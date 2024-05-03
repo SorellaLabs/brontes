@@ -223,7 +223,7 @@ pub struct MultiBlockPoolFutures(
 impl Drop for MultiBlockPoolFutures {
     fn drop(&mut self) {
         let futures_cnt = self.0.values().map(|f| f.len()).sum::<usize>();
-        tracing::info!(target: "brontes::mem", rem_futures=futures_cnt, "current state fetch futures in pricing");
+        tracing::debug!(target: "brontes::mem", rem_futures=futures_cnt, "current state fetch futures in pricing");
     }
 }
 impl Default for MultiBlockPoolFutures {

@@ -24,8 +24,7 @@ use super::tables::Tables;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{
-        cex_utils::CexRangeOrArbitrary, libmdbx_read_write::MinHeapData, types::CompressedTable,
-        LibmdbxData, LibmdbxReadWriter,
+        cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter,
     },
 };
 const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";
@@ -209,15 +208,13 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                     .entry(Tables::CexPrice)
                                     .or_default();
                                 for data in d {
-                                    let block = data.key;
                                     let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
                                         data.into_key_val()
                                     );
-                                    entry.push(MinHeapData {
-                                        block,
-                                        data: (key.to_vec(),
+                                    entry.push(
+                                        (key.to_vec(),
                                         value)
-                                    });
+                                    );
                                 }
 
 
@@ -243,13 +240,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                     .or_default();
 
                                 for data in d {
-                                    let block = data.key;
                                     let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
                                         data.into_key_val()
                                     );
-                                    entry.push(MinHeapData {
-                                        block, data: (key.to_vec(), value)
-                                    });
+                                    entry.push(
+                                         (key.to_vec(), value)
+                                    );
                                 }
                             }
                             Err(e) => {
@@ -333,14 +329,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                     .or_default();
 
                                 for data in d {
-                                    let block = data.key;
                                     let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
                                         data.into_key_val()
                                     );
-                                    entry.push(MinHeapData {
-                                        block,
-                                        data: (key.to_vec(), value)
-                                    });
+                                    entry.push(
+                                        (key.to_vec(), value)
+                                    );
                                 }
                             }
                             Err(e) => {
@@ -363,14 +357,12 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                                     .or_default();
 
                                 for data in d {
-                                    let block = data.key;
                                     let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
                                         data.into_key_val()
                                     );
-                                    entry.push(MinHeapData {
-                                        block,
-                                        data: (key.to_vec(), value)
-                                    });
+                                    entry.push(
+                                        (key.to_vec(), value)
+                                    );
                                 }
                             }
                             Err(e) => {
