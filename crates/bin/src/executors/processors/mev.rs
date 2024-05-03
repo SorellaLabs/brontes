@@ -29,13 +29,20 @@ impl Processor for MevProcessor {
     async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &DB,
         inspectors: &[&dyn Inspector<Result = Self::InspectType>],
-        tree: Arc<BlockTree<Action>>,
-        metadata: Arc<Metadata>,
+        tree: BlockTree<Action>,
+        metadata: Metadata,
     ) {
+        let tree = Arc::new(tree);
+        let metadata = Arc::new(metadata);
+
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
             target = inspect,
             compose_mev_results(inspectors, tree.clone(), metadata.clone())
         );
+
+        #[cfg(feature = "local-clickhouse")]
+        let tree = Arc::try_unwrap(tree).unwrap();
+        let metadata = Arc::try_unwrap(metadata).unwrap();
 
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
@@ -45,7 +52,7 @@ impl Processor for MevProcessor {
         }
 
         #[cfg(feature = "local-clickhouse")]
-        insert_tree(db, tree.clone(), metadata.block_num).await;
+        insert_tree(db, tree, metadata.block_num).await;
 
         insert_mev_results(db, block_details, mev_details).await;
     }
@@ -54,16 +61,15 @@ impl Processor for MevProcessor {
 #[cfg(feature = "local-clickhouse")]
 async fn insert_tree<DB: DBWriter + LibmdbxReader>(
     db: &DB,
-    tree: Arc<BlockTree<Action>>,
+    mut tree_owned: BlockTree<Action>,
     block_num: u64,
 ) {
-    let mut tree_owned = (*tree).clone();
     remove_swap_transfers(&mut tree_owned);
     remove_mint_transfers(&mut tree_owned);
     remove_burn_transfers(&mut tree_owned);
     remove_collect_transfers(&mut tree_owned);
 
-    if let Err(e) = db.insert_tree(Arc::new(tree_owned)).await {
+    if let Err(e) = db.insert_tree(tree_owned).await {
         tracing::error!(err=%e, %block_num, "failed to insert tree into db");
     }
 }

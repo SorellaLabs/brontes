@@ -172,7 +172,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn insert_tree(&self, tree: std::sync::Arc<BlockTree<Action>>) -> eyre::Result<()> {
+    pub async fn insert_tree(&self, tree: BlockTree<Action>) -> eyre::Result<()> {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
