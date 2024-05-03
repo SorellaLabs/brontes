@@ -93,7 +93,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if !self.collector.is_collecting_state()
             && self.collector.should_process_next_block()
-            && self.insert_futures.len() < 10
+            && self.insert_futures.len() < 5
             && self.current_block != self.end_block
         {
             let block = self.current_block;
