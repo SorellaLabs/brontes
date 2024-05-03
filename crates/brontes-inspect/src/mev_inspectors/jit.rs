@@ -65,7 +65,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                         TreeSearchBuilder::default().with_actions([
                                             Action::is_mint,
                                             Action::is_burn,
-                                            Action::is_collect,
+                                            Action::is_transfer,
                                             Action::is_nested_action,
                                         ]),
                                     ),
@@ -73,6 +73,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                                         actions.is_mint()
                                             || actions.is_burn()
                                             || actions.is_collect()
+                                            || actions.is_transfer()
                                     },
                                 )
                                 .collect::<Vec<_>>()
@@ -154,11 +155,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, collect): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
+        let (mints, burns, transfers): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
-            .action_split((Action::try_mint, Action::try_burn, Action::try_collect));
+            .action_split((Action::try_mint, Action::try_burn, Action::try_transfer));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::trace!("missing mints & burns");
@@ -176,11 +177,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info);
 
-        let has_collect = !collect.is_empty();
-        let deltas = searcher_actions
+        let deltas = transfers
             .into_iter()
-            .flatten()
-            .filter(|a| if has_collect { !a.is_burn() } else { true })
+            .map(Action::from)
             .account_for_actions();
 
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
@@ -393,6 +392,40 @@ mod tests {
             ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)
+            .with_expected_profit_usd(-10.61);
+
+        test_utils.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_jit_blur_double() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![
+                hex!("95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce").into(),
+                WETH_ADDRESS,
+            ])
+            .with_mev_tx_hashes(vec![
+                hex!("70a315ed0b31138a0b841d9760dc6d4595414e50fecb60f05e031880f0d9398f").into(),
+                hex!("590edbb9e1046405a2a3586208e1e9384b8eca93dcbf03e9216da53ca8f94a6d").into(),
+                hex!("ab001a0981e3da3d057c1b0c939a988d4d7cc98a903c66699feb59fc028ffe77").into(),
+                hex!("b420b67fab4f1902bcd1284934d9610631b9da9e616780dbcc85d7c815b50896").into(),
+            ])
+            .with_gas_paid_usd(81.8)
+            .with_expected_profit_usd(-92.53);
+
+        test_utils.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_old_v3_jit_721() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(16862007)
+            .with_gas_paid_usd(40.7)
             .with_expected_profit_usd(-10.61);
 
         test_utils.run_inspector(config, None).await.unwrap();
