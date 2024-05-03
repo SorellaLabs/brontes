@@ -1170,6 +1170,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        tracing::info!(?self.completed_block, ?self.current_block);
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
