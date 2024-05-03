@@ -35,13 +35,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
     for WaitingForPricerFuture<T, DB>
 {
     fn drop(&mut self) {
-        tracing::info!(rem_trees=?self.pending_trees.len(), keys=?self.pending_trees.keys().collect::<Vec<_>>(), "range has this many pending trees");
+        tracing::debug!(rem_trees=?self.pending_trees.len(), keys=?self.pending_trees.keys().collect::<Vec<_>>(), "range has this many pending trees");
         // ensures that we properly drop everything
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let res = self.receiver.recv().await;
                 drop(res);
-                tracing::info!("droping pricing future");
+                tracing::debug!("droping pricing future");
             });
         });
     }
@@ -106,6 +106,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let (pricer, inner) = handle.unwrap();
             self.reschedule(pricer);
+            cx.waker().wake_by_ref();
 
             if let Some((block, prices)) = inner {
                 debug!(target:"brontes","Generated dex prices for block: {} ", block);

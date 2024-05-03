@@ -1,6 +1,5 @@
 use std::{
     cmp::max,
-    collections::BinaryHeap,
     ops::{Bound, RangeInclusive},
     path::Path,
     sync::Arc,
@@ -118,7 +117,7 @@ impl<T> Ord for MinHeapData<T> {
     }
 }
 
-type InsetQueue = DashMap<Tables, BinaryHeap<MinHeapData<(Vec<u8>, Vec<u8>)>>, ahash::RandomState>;
+type InsetQueue = DashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>, ahash::RandomState>;
 
 pub struct LibmdbxReadWriter {
     pub db:           Libmdbx,
@@ -789,7 +788,7 @@ impl DBWriter for LibmdbxReadWriter {
         let (key, value) = Self::convert_into_save_bytes(data);
 
         let mut entry = self.insert_queue.entry(Tables::MevBlocks).or_default();
-        entry.push(MinHeapData { block: block_number, data: (key.to_vec(), value) });
+        entry.push((key.to_vec(), value));
 
         if entry.len() > CLEAR_AM {
             self.insert_batched_data::<MevBlocks>(std::mem::take(&mut entry))?;
@@ -824,7 +823,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .for_each(|data| {
                     let data = data.into_key_val();
                     let (key, value) = Self::convert_into_save_bytes(data);
-                    entry.push(MinHeapData { block: block_num, data: (key.to_vec(), value) });
+                    entry.push((key.to_vec(), value));
                 });
 
             // assume 150 entries per block
@@ -904,7 +903,7 @@ impl DBWriter for LibmdbxReadWriter {
         let (key, value) = Self::convert_into_save_bytes(data);
 
         let mut entry = self.insert_queue.entry(Tables::TxTraces).or_default();
-        entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+        entry.push((key.to_vec(), value));
 
         if entry.len() > CLEAR_AM {
             self.insert_batched_data::<TxTraces>(std::mem::take(&mut entry))?;
@@ -981,40 +980,15 @@ impl LibmdbxReadWriter {
 
     fn insert_batched_data<T: CompressedTable>(
         &self,
-        mut data: BinaryHeap<MinHeapData<(Vec<u8>, Vec<u8>)>>,
+        data: Vec<(Vec<u8>, Vec<u8>)>,
     ) -> eyre::Result<()>
     where
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     {
-        // get collections of continuous batches. append if we have a set of operations,
-        // otherwise just put.
-        let mut current: Vec<MinHeapData<(Vec<u8>, Vec<u8>)>> = Vec::new();
-
         let tx = self.db.rw_tx()?;
 
-        while let Some(next) = data.pop() {
-            let block = next.block;
-            if let Some(last) = current.last() {
-                if last.block + 1 != block {
-                    let entries = std::mem::take(&mut current);
-                    for buffered_entry in entries {
-                        let (key, value) = buffered_entry.data;
-                        tx.put_bytes::<T>(&key, value)?;
-                    }
-                }
-                // next in seq, push to buf
-                current.push(next);
-            } else {
-                current.push(next);
-            }
-        }
-
-        let rem = std::mem::take(&mut current);
-        if !rem.is_empty() {
-            for buffered_entry in rem {
-                let (key, value) = buffered_entry.data;
-                tx.put_bytes::<T>(&key, value)?;
-            }
+        for (key, value) in data {
+            tx.put_bytes::<T>(&key, value)?;
         }
 
         tx.commit()?;
@@ -1044,7 +1018,7 @@ impl LibmdbxReadWriter {
                 .insert_queue
                 .entry(Tables::InitializedState)
                 .or_default();
-            entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+            entry.push((key.to_vec(), value));
 
             if entry.len() > CLEAR_AM * 300 {
                 self.insert_batched_data::<InitializedState>(std::mem::take(&mut entry))?;
@@ -1067,14 +1041,14 @@ impl LibmdbxReadWriter {
                 state.1.set(flag);
                 let data = InitializedStateData::new(block, state.1).into_key_val();
                 let (key, value) = Self::convert_into_save_bytes(data);
-                entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+                entry.push((key.to_vec(), value));
             } else {
                 let mut init_state = InitializedStateMeta::default();
                 init_state.set(flag);
                 let data = InitializedStateData::from((block, init_state)).into_key_val();
 
                 let (key, value) = Self::convert_into_save_bytes(data);
-                entry.push(MinHeapData { block, data: (key.to_vec(), value) });
+                entry.push((key.to_vec(), value));
             }
         }
         tx.commit()?;

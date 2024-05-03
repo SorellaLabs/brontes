@@ -47,7 +47,7 @@ impl Drop for SubGraphRegistry {
     fn drop(&mut self) {
         let subgraphs_cnt = self.sub_graphs.values().map(|f| f.len()).sum::<usize>();
 
-        tracing::info!(
+        tracing::debug!(
             target: "brontes::mem",
             pending_finalized_subs = self.pending_finalized_graphs.len(),
             subgraphs_len = subgraphs_cnt,

@@ -24,7 +24,17 @@ impl<T> UnboundedYapperReceiver<T> {
         self.chan.poll_recv(cx)
     }
 
-    pub fn recv(&mut self) -> Result<T, tokio::sync::mpsc::error::TryRecvError> {
+    pub async fn recv(&mut self) -> Option<T> {
+        let len = self.chan.len();
+        if len > self.yap_count {
+            let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
+            tracing::warn!(chan=%self.name, mb_usage=mb, "unbounded channel is above threshold");
+        }
+
+        self.chan.recv().await
+    }
+
+    pub fn try_recv(&mut self) -> Result<T, tokio::sync::mpsc::error::TryRecvError> {
         let len = self.chan.len();
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
