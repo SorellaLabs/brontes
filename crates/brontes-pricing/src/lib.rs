@@ -1136,6 +1136,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
+        tracing::info!(?block, "on close");
         self.should_return().then_some((block, res))
     }
 
