@@ -179,7 +179,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 self.block += 1;
                 return Poll::Ready(Some(res))
             } else {
-                tracing::info!(?bn self.block ,"no eq");
+                tracing::info!(?bn, self.block, "no eq");
             }
             self.result_buf.push_front(res);
         }
