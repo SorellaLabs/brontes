@@ -198,6 +198,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             if mid.is_some() {
                 self.block += 1;
             }
+            tracing::debug!(buf = self.result_buf.len(), "result buffer metadata fetcher");
             mid
         })
     }
