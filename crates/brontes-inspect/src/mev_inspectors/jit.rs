@@ -165,6 +165,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
+        tracing::info!(?mints);
+
         // assert mints and burns are same pool
         let mut pools = FastHashSet::default();
         mints.iter().for_each(|m| {
