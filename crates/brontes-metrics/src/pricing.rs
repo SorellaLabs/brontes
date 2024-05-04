@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{pin::Pin, time::Instant};
 
 use metrics::{Counter, Gauge, Histogram};
 use reth_metrics::Metrics;
@@ -20,12 +20,12 @@ pub struct DexPricingMetrics {
 
 impl DexPricingMetrics {
     pub async fn meter_state_load<R>(
-        &self,
-        f: FnOnce() -> (impl futures::Future<Output = R> + Send),
+        self,
+        f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
         let time = Instant::now();
         let res = f().await;
-        let elapsed = time.elapsed().as_millis();
+        let elapsed = time.elapsed().as_micros() as f64;
         self.state_load_time_us.record(elapsed);
 
         res

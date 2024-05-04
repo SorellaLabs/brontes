@@ -2,7 +2,6 @@ mod action_classifier;
 mod bench_struct_methods;
 mod discovery_classifier;
 mod libmdbx_test;
-mod metrics;
 mod transpose;
 
 use proc_macro::TokenStream;

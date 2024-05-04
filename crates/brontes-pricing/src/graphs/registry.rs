@@ -77,7 +77,7 @@ impl SubGraphRegistry {
                     subgraph.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });
-                    self.metrics.active_subgraphs.decrement(1);
+                    self.metrics.active_subgraphs.decrement(1.0);
                     return false
                 }
                 true
@@ -106,7 +106,7 @@ impl SubGraphRegistry {
                         });
                     } else {
                         // not replacing
-                        self.metrics.active_subgraphs.increment(1);
+                        self.metrics.active_subgraphs.increment(1.0);
                     }
                 }
             });
@@ -183,7 +183,7 @@ impl SubGraphRegistry {
             v.retain(|gt, s| {
                 let res = gt != &goes_through.ordered();
                 if !res {
-                    self.metrics.active_subgraphs.decrement(1);
+                    self.metrics.active_subgraphs.decrement(1.0);
                     s.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });

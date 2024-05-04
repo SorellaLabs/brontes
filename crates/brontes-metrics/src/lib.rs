@@ -6,7 +6,6 @@ use std::{
 };
 
 use brontes_types::UnboundedYapperReceiver;
-pub use collector::*;
 use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
 use futures::Future;
 use tracing::trace;

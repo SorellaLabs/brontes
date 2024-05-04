@@ -55,7 +55,7 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, FastHashSet,
 };
-use futures::{Stream, StreamExt};
+use futures::Stream;
 pub use graphs::{
     AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,
     VerificationResults,
@@ -916,7 +916,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     pool_info.pool_addr,
                     block,
                     pool_info.dex_type,
-                    &self.metrics,
+                    self.metrics.clone(),
                 );
                 triggered = true;
             } else {
@@ -1237,8 +1237,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                     }
                 }
 
+                let metrics = self.metrics.clone();
                 // we poll here to continuously progress state fetches as they are slow
-                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_metrics(&metrics, cx) {
                     self.on_pool_resolve(state);
                 }
             }

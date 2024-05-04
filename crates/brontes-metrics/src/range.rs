@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{pin::Pin, time::Instant};
 
 use metrics::{Counter, Gauge, Histogram};
 use reth_metrics::Metrics;
@@ -19,11 +19,11 @@ impl RangeMetrics {
 
     pub async fn meter_processing<R>(
         &self,
-        f: FnOnce() -> (impl futures::Future<Output = R> + Send),
+        f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
         let time = Instant::now();
         let res = f().await;
-        let elapsed = time.elapsed().as_millis();
+        let elapsed = time.elapsed().as_millis() as f64;
         self.processing_run_time_ms.record(elapsed);
 
         res

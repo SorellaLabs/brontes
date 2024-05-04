@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::FastHashMap;
 use itertools::Itertools;
-use tracing::{debug, Instrument};
+use tracing::debug;
 
 use crate::{
     types::{PoolState, PoolUpdate},
@@ -75,7 +75,7 @@ impl StateTracker {
             state.dec(amount);
             let keep = state.dependents != 0;
             if !keep {
-                self.metrics.active_state.decrement(1);
+                self.metrics.active_state.decrement(1.0);
                 tracing::debug!(?pool, "removing state");
             }
             keep
@@ -167,7 +167,7 @@ impl StateTracker {
                     }
                     match self.finalized_edge_state.entry(*pool) {
                         std::collections::hash_map::Entry::Vacant(v) => {
-                            self.metrics.active_state.instrument(1);
+                            self.metrics.active_state.increment(1.0);
                             // we use should finalize here
                             state.dependents = should_finalize;
                             v.insert(state);
