@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 
 use brontes_metrics::{
     pricing::DexPricingMetrics,
-    range::{FinishedRange, RangeMetrics},
+    range::{FinishedRange, GlobalRangeMetrics},
 };
 use futures::{future::join_all, Stream};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
@@ -148,7 +148,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .collect_vec(),
         );
-        let range_metrics = RangeMetrics::default();
+        let range_metrics = GlobalRangeMetrics::default();
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
