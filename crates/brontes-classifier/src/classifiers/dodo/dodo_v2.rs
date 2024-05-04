@@ -6,8 +6,6 @@ use brontes_types::{
 };
 use reth_primitives::U256;
 
-use crate::DodoDSPPool::{buySharesReturn, sellSharesReturn};
-
 action_impl!(
     Protocol::Dodo,
     crate::DodoDPPPool::sellBaseCall,

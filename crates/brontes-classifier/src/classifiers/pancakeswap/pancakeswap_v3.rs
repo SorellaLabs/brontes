@@ -6,7 +6,6 @@ use brontes_types::{
     Protocol, ToScaledRational,
 };
 
-use crate::PancakeSwapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
 
 action_impl!(
     Protocol::PancakeSwapV3,
