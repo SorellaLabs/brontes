@@ -1236,12 +1236,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                         break
                     }
                 }
-
-                let metrics = self.metrics.clone();
-                // we poll here to continuously progress state fetches as they are slow
-                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_metrics(&metrics, cx) {
-                    self.on_pool_resolve(state);
-                }
             }
 
             if block_updates.is_empty() {
