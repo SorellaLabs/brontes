@@ -20,6 +20,7 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required
 
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
     UnboundedYapperReceiver,
@@ -131,6 +132,8 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     overlap_update:  Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
     skip_pricing:    VecDeque<u64>,
+    /// metrics
+    metrics:         DexPricingMetrics,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
@@ -143,6 +146,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         current_block: u64,
         new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
         needs_more_data: Arc<AtomicBool>,
+        metrics: DexPricingMetrics,
     ) -> Self {
         Self {
             finished,
@@ -159,6 +163,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             overlap_update: None,
             skip_pricing: VecDeque::new(),
             needs_more_data,
+            metrics,
         }
     }
 
@@ -911,6 +916,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     pool_info.pool_addr,
                     block,
                     pool_info.dex_type,
+                    &self.metrics,
                 );
                 triggered = true;
             } else {

@@ -220,12 +220,3 @@ pub fn transposable(item: TokenStream) -> TokenStream {
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
-
-
-#[proc_macro_derive(MetricsMacroGenerator)]
-pub fn metrics_macro_macro(item: TokenStream) -> TokenStream {
-    let i_struct = parse_macro_input!(item as DeriveInput);
-    transpose::parse(i_struct)
-        .unwrap_or_else(syn::Error::into_compile_error)
-        .into()
-}

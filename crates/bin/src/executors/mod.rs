@@ -2,6 +2,7 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
+use brontes_metrics::range::RangeMetrics;
 use futures::{future::join_all, Stream};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
@@ -143,6 +144,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .collect_vec(),
         );
+        let range_metrics = RangeMetrics::default();
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
@@ -151,6 +153,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
                 let tables_pb = tables_pb.clone();
+                let metrics = range_metrics.clone();
 
                 #[allow(clippy::async_yields_async)]
                 async move {
@@ -167,6 +170,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         self.libmdbx,
                         self.inspectors,
                         prgrs_bar,
+                        metrics,
                     )
                 }
             },

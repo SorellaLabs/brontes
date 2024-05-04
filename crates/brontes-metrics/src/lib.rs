@@ -6,16 +6,17 @@ use std::{
 };
 
 use brontes_types::UnboundedYapperReceiver;
+pub use collector::*;
 use dyn_contracts::{types::DynamicContractMetricEvent, DynamicContractMetrics};
 use futures::Future;
 use tracing::trace;
 
 use crate::trace::{types::TraceMetricEvent, TraceMetrics};
-pub mod collector;
-pub use collector::*;
 pub mod dyn_contracts;
 pub mod prometheus_exporter;
 pub mod trace;
+pub mod range;
+pub mod pricing;
 
 /// metric event for traces
 #[derive(Clone, Debug)]

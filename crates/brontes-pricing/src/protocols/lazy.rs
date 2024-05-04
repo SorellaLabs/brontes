@@ -1,6 +1,7 @@
 use std::{collections::hash_map::Entry, pin::Pin, sync::Arc, task::Poll};
 
 use alloy_primitives::Address;
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{
     pair::Pair, traits::TracingProvider, unzip_either::IterExt, FastHashMap, FastHashSet,
 };
@@ -156,24 +157,24 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         address: Address,
         block_number: u64,
         ex_type: Protocol,
+        metrics: &DexPricingMetrics,
     ) {
+        metrics.state_load_queries.increment(1);
         let provider = self.provider.clone();
         self.add_state_trackers(block_number, id, address, pair);
 
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, pair);
         self.pool_load_futures
-            .add_future(block_number, Box::pin(fut));
+            .add_future(block_number, Box::pin(metrics.meter_state_load(fut)));
     }
-}
 
-impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
-    type Item = LazyResult;
-
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
+    pub fn poll_next_metrics(
+        &mut self,
+        metrics: &DexPricingMetrics,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
+    ) -> std::task::Poll<Option<LazyResult>> {
         if let Poll::Ready(Some(result)) = self.pool_load_futures.poll_next_unpin(cx) {
+            metrics.state_load_queries.decrement(1);
             match result {
                 Ok((block, addr, state, load)) => {
                     let deps = self.remove_state_trackers(block, &addr);

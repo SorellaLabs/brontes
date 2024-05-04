@@ -10,6 +10,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
+use brontes_metrics::range::RangeMetrics;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
@@ -31,6 +32,7 @@ pub struct RangeExecutorWithPricing<
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
     progress_bar:   Option<ProgressBar>,
+    metrics:        RangeMetrics,
     _p:             PhantomData<P>,
 }
 
@@ -44,6 +46,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         progress_bar: Option<ProgressBar>,
+        metrics: RangeMetrics,
     ) -> Self {
         Self {
             collector: state_collector,
@@ -53,6 +56,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             libmdbx,
             inspectors,
             progress_bar,
+            metrics,
             _p: PhantomData,
         }
     }
@@ -70,19 +74,23 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             },
         }
 
-        while data_batching.insert_futures.next().await.is_some() {}
+        while data_batching.insert_futures.next().await.is_some() {
+            data_batching.metrics.finished_block();
+        }
 
         drop(graceful_guard);
     }
 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
         debug!(target:"brontes","Completed DEX pricing");
-        self.insert_futures.push(Box::pin(P::process_results(
-            self.libmdbx,
-            self.inspectors,
-            tree,
-            meta,
-        )));
+        self.insert_futures.push(Box::pin(
+            self.metrics.clone().meter_processing(P::process_results(
+                self.libmdbx,
+                self.inspectors,
+                tree,
+                meta,
+            )),
+        ));
     }
 }
 
@@ -117,7 +125,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         }
 
         // poll insertion
-        while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {}
+        while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
+            self.metrics.finished_block();
+        }
 
         // mark complete if we are done with the range
         if self.current_block == self.end_block

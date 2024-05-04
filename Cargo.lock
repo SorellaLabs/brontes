@@ -1795,6 +1795,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "bytes",
