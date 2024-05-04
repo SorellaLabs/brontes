@@ -49,14 +49,8 @@ impl RangeMetrics {
 #[metrics(scope = "brontes_running_ranges")]
 pub struct FinishedRange {
     /// the active ranges running
-    pub running_ranges: Gauge,
-}
-
-#[derive(Metrics, Clone)]
-#[metrics(scope = "brontes_range_details")]
-pub struct RangeDetails {
-    /// total amount of blocks.
-    pub total_block: Counter,
-    /// Amount of range tasks
-    pub total_tasks: Counter,
+    pub running_ranges:  Gauge,
+    /// total amount of blocks. for the set range.
+    /// if at tip, then this is the range at init
+    pub total_set_range: Counter,
 }
