@@ -963,7 +963,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     /// The price can pre-process up to 40 blocks in the future
     fn process_future_blocks(&self) {
-        if self.completed_block + 40 > self.current_block {
+        if self.completed_block + 6 > self.current_block {
             self.needs_more_data.store(true, SeqCst);
         } else {
             self.needs_more_data.store(false, SeqCst);
