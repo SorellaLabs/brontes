@@ -11,6 +11,7 @@ harness = false
 # brontes
 brontes-types.workspace = true
 brontes-macros.workspace = true
+brontes-metrics.workspace = true
 brontes-database.workspace = true
 brontes-pricing.workspace = true
 brontes-core.workspace = true

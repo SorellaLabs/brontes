@@ -15,6 +15,7 @@ use brontes_database::{
     libmdbx::{LibmdbxReadWriter, LibmdbxReader},
     AddressToProtocolInfo, AddressToProtocolInfoData, TokenDecimals, TokenDecimalsData,
 };
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_pricing::{
     types::{DexPriceMsg, PoolUpdate},
     BrontesBatchPricer, GraphManager, Protocol,
@@ -108,6 +109,7 @@ impl ClassifierTestUtils {
                 block,
                 created_pools,
                 ctr.clone(),
+                DexPricingMetrics::default(),
             ),
         ))
     }
