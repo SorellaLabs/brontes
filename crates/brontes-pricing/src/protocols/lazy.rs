@@ -286,6 +286,7 @@ impl Stream for MultiBlockPoolFutures {
             let _ = self.0.remove(&cleared);
         });
 
+        assert!(result.len() == 1);
         if let Some(result) = result.pop() {
             return Poll::Ready(Some(result))
         }
