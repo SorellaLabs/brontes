@@ -31,27 +31,27 @@ impl ToTokens for ClosureDispatch {
         let log_data = self.logs.then_some(quote!(log_data,)).unwrap_or_default();
 
         tokens.extend(quote!(
-                let fixed_fields = call_info.get_fixed_fields();
-                let result: ::eyre::Result<_> = (#closure)
-                (
-                    fixed_fields,
-                    #call_data
-                    #return_data
-                    #log_data
-                    db_tx
-                );
+            let fixed_fields = call_info.get_fixed_fields();
+            let result: ::eyre::Result<_> = (#closure)
+            (
+                fixed_fields,
+                #call_data
+                #return_data
+                #log_data
+                db_tx
+            );
 
-                // metrics
-                if result.is_err() {
-                            let protocol= db_tx.get_protocol(call_info.target_address)
-                                .ok()?;
+            // metrics
+            if result.is_err() {
+                        let protocol= db_tx.get_protocol(call_info.target_address)
+                            ?;
 
-        crate::CLASSIFICATION_METRICS.get_or_init(|| ClassificationMetrics::default())
-            .bad_protocol_classification(protocol);
-                }
+            crate::CLASSIFICATION_METRICS.get_or_init(|| ClassificationMetrics::default())
+                .bad_protocol_classification(protocol);
+            }
 
 
-                let result = result?;
-            ))
+            let result = result?;
+        ))
     }
 }
