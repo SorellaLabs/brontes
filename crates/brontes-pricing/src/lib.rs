@@ -1016,6 +1016,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
+        self.metrics.processed_blocks.increment(1);
         self.should_return().then_some((block, res))
     }
 
@@ -1142,6 +1143,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
+        self.metrics.processed_blocks.increment(1);
         self.should_return().then_some((block, res))
     }
 
@@ -1150,7 +1152,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
         // because results tend to stack up, we always want to progress them first
-        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
+        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_metrics(&self.metrics, cx) {
             self.on_pool_resolve(state)
         }
         let pairs = self.lazy_loader.pairs_to_verify();

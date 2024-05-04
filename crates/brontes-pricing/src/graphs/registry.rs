@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use alloy_primitives::Address;
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
 use itertools::Itertools;
 use malachite::{
@@ -35,6 +36,8 @@ pub struct SubGraphRegistry {
     sub_graphs:               FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
     /// the pending_subgrpahs that haven't been finalized yet.
     pending_finalized_graphs: FastHashMap<u64, PendingRegistry>,
+    /// metrics
+    metrics:                  DexPricingMetrics,
 }
 
 /// holder for subgraphs that aren't active yet to avoid race conditions
@@ -57,11 +60,9 @@ impl Drop for SubGraphRegistry {
 }
 
 impl SubGraphRegistry {
-    pub fn new(
-        _subgraphs: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
-    ) -> Self {
+    pub fn new(metrics: DexPricingMetrics) -> Self {
         let sub_graphs = FastHashMap::default();
-        Self { sub_graphs, pending_finalized_graphs: FastHashMap::default() }
+        Self { sub_graphs, pending_finalized_graphs: FastHashMap::default(), metrics }
     }
 
     // for all subgraphs that haven't been used in a given time period, will
@@ -76,6 +77,7 @@ impl SubGraphRegistry {
                     subgraph.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });
+                    self.metrics.active_subgraphs.decrement(1);
                     return false
                 }
                 true
@@ -102,6 +104,9 @@ impl SubGraphRegistry {
                         old.get_all_pools().flatten().for_each(|edge| {
                             *removals.entry(edge.pool_addr).or_default() += 1;
                         });
+                    } else {
+                        // not replacing
+                        self.metrics.active_subgraphs.increment(1);
                     }
                 }
             });
@@ -178,10 +183,12 @@ impl SubGraphRegistry {
             v.retain(|gt, s| {
                 let res = gt != &goes_through.ordered();
                 if !res {
+                    self.metrics.active_subgraphs.decrement(1);
                     s.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });
                 }
+
                 res
             });
             !v.is_empty()

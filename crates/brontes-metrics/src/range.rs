@@ -16,7 +16,11 @@ impl RangeMetrics {
     pub fn finished_block(&self) {
         self.completed_blocks.increment(1);
     }
-    pub async fn meter_processing<R>(&self, f: FnOnce() -> impl futures::Future<Output = R> + Send) -> R {
+
+    pub async fn meter_processing<R>(
+        &self,
+        f: FnOnce() -> (impl futures::Future<Output = R> + Send),
+    ) -> R {
         let time = Instant::now();
         let res = f().await;
         let elapsed = time.elapsed().as_millis();

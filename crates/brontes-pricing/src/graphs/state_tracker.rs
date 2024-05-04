@@ -1,9 +1,10 @@
 use std::ops::RangeInclusive;
 
 use alloy_primitives::Address;
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::FastHashMap;
 use itertools::Itertools;
-use tracing::debug;
+use tracing::{debug, Instrument};
 
 use crate::{
     types::{PoolState, PoolUpdate},
@@ -34,6 +35,8 @@ pub struct StateTracker {
     finalized_edge_state:    FastHashMap<Address, StateWithDependencies>,
     /// state that verification is using
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
+    /// state count
+    metrics:                 DexPricingMetrics,
 }
 
 impl Drop for StateTracker {
@@ -55,17 +58,12 @@ impl Drop for StateTracker {
     }
 }
 
-impl Default for StateTracker {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl StateTracker {
-    pub fn new() -> Self {
+    pub fn new(metrics: DexPricingMetrics) -> Self {
         Self {
-            finalized_edge_state:    FastHashMap::default(),
+            finalized_edge_state: FastHashMap::default(),
             verification_edge_state: FastHashMap::default(),
+            metrics,
         }
     }
 
@@ -77,6 +75,7 @@ impl StateTracker {
             state.dec(amount);
             let keep = state.dependents != 0;
             if !keep {
+                self.metrics.active_state.decrement(1);
                 tracing::debug!(?pool, "removing state");
             }
             keep
@@ -168,6 +167,7 @@ impl StateTracker {
                     }
                     match self.finalized_edge_state.entry(*pool) {
                         std::collections::hash_map::Entry::Vacant(v) => {
+                            self.metrics.active_state.instrument(1);
                             // we use should finalize here
                             state.dependents = should_finalize;
                             v.insert(state);
