@@ -262,7 +262,7 @@ impl Stream for MultiBlockPoolFutures {
             return Poll::Ready(None)
         }
 
-        let (mut result, empty): (Vec<_>, Vec<_>) = self
+        let (mut results, empty): (Vec<_>, Vec<_>) = self
             .0
             .iter_mut()
             .sorted_by(|(b0, _), (b1, _)| b0.cmp(b1))
@@ -286,8 +286,9 @@ impl Stream for MultiBlockPoolFutures {
             let _ = self.0.remove(&cleared);
         });
 
-        assert!(result.len() == 1);
-        if let Some(result) = result.pop() {
+        if let Some(result) = results.pop() {
+            // no lossless
+            assert!(results.is_empty());
             return Poll::Ready(Some(result))
         }
 

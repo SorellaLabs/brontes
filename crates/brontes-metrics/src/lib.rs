@@ -13,6 +13,7 @@ use tracing::trace;
 use crate::trace::{types::TraceMetricEvent, TraceMetrics};
 pub mod dyn_contracts;
 pub mod pricing;
+pub mod inspectors;
 pub mod prometheus_exporter;
 pub mod range;
 pub mod trace;
