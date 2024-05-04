@@ -155,6 +155,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 let prgrs_bar = progress_bar.clone();
                 let tables_pb = tables_pb.clone();
                 let metrics = range_metrics.clone();
+                let pricing_metrics = pricing_metrics.clone();
 
                 #[allow(clippy::async_yields_async)]
                 async move {
@@ -348,7 +349,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let pricing_metrics = DexPricingMetrics::default();
 
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block, pricing_metrics)
+            self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -361,7 +362,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .await;
         } else {
             if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block, pricing_metrics)
+                self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
                     .for_each(|block_range| {
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                             "Range Executor",

@@ -18,7 +18,7 @@ impl RangeMetrics {
     }
 
     pub async fn meter_processing<R>(
-        &self,
+        self,
         f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
         let time = Instant::now();
