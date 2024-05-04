@@ -29,3 +29,10 @@ impl RangeMetrics {
         res
     }
 }
+
+#[derive(Metrics, Clone)]
+#[metrics(scope = "brontes_running_ranges")]
+pub struct FinishedRange {
+    /// the active ranges running
+    pub running_ranges: Gauge,
+}

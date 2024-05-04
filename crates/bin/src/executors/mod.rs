@@ -2,7 +2,10 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
-use brontes_metrics::{pricing::DexPricingMetrics, range::RangeMetrics};
+use brontes_metrics::{
+    pricing::DexPricingMetrics,
+    range::{FinishedRange, RangeMetrics},
+};
 use futures::{future::join_all, Stream};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
@@ -28,7 +31,7 @@ use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::shutdown::GracefulShutdown;
+use reth_tasks::{metrics, shutdown::GracefulShutdown};
 pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
@@ -388,7 +391,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             ));
         }
 
-        Ok(Brontes { futures })
+        let metrics = FinishedRange::default();
+        metrics.running_ranges.increment(futures.len() as f64);
+
+        Ok(Brontes { futures, metrics })
     }
 
     pub async fn build(
@@ -456,14 +462,17 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 }
 
 pub struct Brontes {
-    futures: FuturesUnordered<JoinHandle<()>>,
+    pub futures: FuturesUnordered<JoinHandle<()>>,
+    pub metrics: FinishedRange,
 }
 
 impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        while let Poll::Ready(Some(_)) = self.futures.poll_next_unpin(cx) {}
+        while let Poll::Ready(Some(_)) = self.futures.poll_next_unpin(cx) {
+            self.metrics.running_ranges.decrement(1.0);
+        }
 
         if self.futures.is_empty() {
             tracing::info!("brontes shutting down");
