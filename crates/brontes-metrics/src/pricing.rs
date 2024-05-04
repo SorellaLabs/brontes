@@ -13,7 +13,7 @@ pub struct DexPricingMetrics {
     /// current state load queries
     pub state_load_queries: Gauge,
     /// state load processing time
-    pub state_load_time_us: Histogram,
+    pub state_load_time_ms: Histogram,
     /// blocks processed,
     pub processed_blocks:   Counter,
 }
@@ -25,7 +25,7 @@ impl DexPricingMetrics {
     ) -> R {
         let time = Instant::now();
         let res = f().await;
-        let elapsed = time.elapsed().as_micros() as f64;
+        let elapsed = time.elapsed().as_millis() as f64;
         self.state_load_time_us.record(elapsed);
 
         res
