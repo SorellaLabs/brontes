@@ -34,7 +34,7 @@ pub(crate) async fn initialize_with_hooks<F: Hook + 'static>(
 
     // Build metrics stack
     Stack::new(recorder)
-        .push(PrefixLayer::new("mev-poirot"))
+        .push(PrefixLayer::new("brontes"))
         .install()
         .wrap_err("Couldn't set metrics recorder.")?;
 
