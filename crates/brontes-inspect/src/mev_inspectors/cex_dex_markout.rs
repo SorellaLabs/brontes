@@ -309,7 +309,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
-                let (window, default) = metadata
+                metadata
                     .cex_trades
                     .as_ref()
                     .unwrap()
@@ -320,7 +320,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         &swap.amount_out,
                         metadata.microseconds_block_timestamp(),
                         None,
-                    );
+                    )
             })
             .collect()
     }
