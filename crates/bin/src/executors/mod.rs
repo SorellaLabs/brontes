@@ -2,7 +2,7 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
-use brontes_metrics::range::RangeMetrics;
+use brontes_metrics::{pricing::DexPricingMetrics, range::RangeMetrics};
 use futures::{future::join_all, Stream};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
@@ -107,6 +107,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &'_ self,
         executor: BrontesTaskExecutor,
         end_block: u64,
+        pricing_metrics: DexPricingMetrics,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -166,7 +167,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     RangeExecutorWithPricing::new(
                         start_block,
                         end_block,
-                        self.init_state_collector(executor.clone(), start_block, end_block, false),
+                        self.init_state_collector(
+                            executor.clone(),
+                            start_block,
+                            end_block,
+                            false,
+                            pricing_metrics,
+                        ),
                         self.libmdbx,
                         self.inspectors,
                         prgrs_bar,
@@ -183,8 +190,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         start_block: u64,
         back_from_tip: u64,
+        pricing_metrics: DexPricingMetrics,
     ) -> TipInspector<T, DB, CH, P> {
-        let state_collector = self.init_state_collector(executor, start_block, start_block, true);
+        let state_collector =
+            self.init_state_collector(executor, start_block, start_block, true, pricing_metrics);
         TipInspector::new(
             start_block,
             back_from_tip,
@@ -201,6 +210,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         start_block: u64,
         end_block: u64,
         tip: bool,
+        pricing_metrics: DexPricingMetrics,
     ) -> StateCollector<T, DB, CH> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
@@ -223,7 +233,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .collect::<FastHashMap<_, _>>();
 
         let pair_graph =
-            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
+            GraphManager::init_from_db_state(pairs, self.libmdbx, pricing_metrics.clone());
 
         let data_req = Arc::new(AtomicBool::new(true));
 
@@ -236,6 +246,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             start_block,
             rest_pairs,
             data_req.clone(),
+            pricing_metrics.clone(),
         );
 
         let pricing = WaitingForPricerFuture::new(pricer, executor);
@@ -334,8 +345,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
+        let pricing_metrics = DexPricingMetrics::default();
+
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block)
+            self.build_range_executors(executor.clone(), end_block, pricing_metrics)
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
@@ -348,7 +361,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .await;
         } else {
             if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block)
+                self.build_range_executors(executor.clone(), end_block, pricing_metrics)
                     .for_each(|block_range| {
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                             "Range Executor",
@@ -361,8 +374,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     .await;
             }
 
-            let tip_inspector =
-                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip);
+            let tip_inspector = self.build_tip_inspector(
+                executor.clone(),
+                end_block,
+                self.back_from_tip,
+                pricing_metrics,
+            );
 
             futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                 "Tip Inspector",

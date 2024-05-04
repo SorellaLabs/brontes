@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use alloy_primitives::Address;
 use brontes_metrics::pricing::DexPricingMetrics;
-use brontes_types::{pair::Pair, price_graph_types::*, FastHashMap};
+use brontes_types::{pair::Pair, FastHashMap};
 use itertools::Itertools;
 use malachite::{
     num::{

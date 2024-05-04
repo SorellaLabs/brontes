@@ -73,12 +73,11 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: FastHashMap<(Address, Protocol), Pair>,
-        sub_graph_registry: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
         db: &'static DB,
         metrics: DexPricingMetrics,
     ) -> Self {
         let graph = AllPairGraph::init_from_hash_map(all_pool_data);
-        let registry = SubGraphRegistry::new(sub_graph_registry);
+        let registry = SubGraphRegistry::new(metrics.clone());
         let subgraph_verifier = SubgraphVerifier::new();
 
         Self {
