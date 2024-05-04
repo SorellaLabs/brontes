@@ -50,3 +50,9 @@ impl OutlierMetrics {
             .increment(1);
     }
 }
+
+impl std::fmt::Debug for OutlierMetrics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OutlierMetrics").finish()
+    }
+}
