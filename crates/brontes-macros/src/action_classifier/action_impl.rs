@@ -65,9 +65,9 @@ impl ActionMacro {
             .pop()
             .ok_or(syn::Error::new(return_import.span(), "invalid call import type"))?;
         let call_ident = call.value().ident.to_string();
-        let solidity = &call_ident[0..call_ident.len() - 4];
+        let solidity = call_ident[0..call_ident.len() - 4].to_string() + "Return";
 
-        call.value_mut().ident = Ident::new(solidity, call.span());
+        call.value_mut().ident = Ident::new(&solidity, call.span());
         return_import.segments.push(call.into_value());
 
         let dex_price_return =
