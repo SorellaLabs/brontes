@@ -169,6 +169,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
                     #[allow(clippy::async_yields_async)]
                     RangeExecutorWithPricing::new(
+                        batch_id,
                         start_block,
                         end_block,
                         self.init_state_collector(

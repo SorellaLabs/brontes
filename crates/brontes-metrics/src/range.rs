@@ -31,7 +31,7 @@ impl GlobalRangeMetrics {
 }
 
 #[derive(Metrics, Clone)]
-#[metrics(scope = "range_metrics")]
+#[metrics(dynamic = true)]
 pub struct RangeMetrics {
     /// the amount of blocks the inspector has completed
     pub completed_blocks: Counter,

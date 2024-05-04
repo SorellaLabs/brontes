@@ -41,6 +41,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     RangeExecutorWithPricing<T, DB, CH, P>
 {
     pub fn new(
+        id: usize,
         start_block: u64,
         end_block: u64,
         state_collector: StateCollector<T, DB, CH>,
@@ -49,7 +50,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         progress_bar: Option<ProgressBar>,
         global_metrics: GlobalRangeMetrics,
     ) -> Self {
-        let local_metrics = RangeMetrics::default();
+        let local_metrics = RangeMetrics::new(&format!("range {id}"));
         local_metrics
             .total_blocks
             .increment(end_block - start_block);
