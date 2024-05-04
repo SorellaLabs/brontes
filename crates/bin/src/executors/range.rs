@@ -97,7 +97,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.insert_futures.len() < 5
             && self.current_block != self.end_block
         {
-            cx.waker().wake_by_ref();
             let block = self.current_block;
             self.collector.fetch_state_for(block);
             self.current_block += 1;
@@ -124,10 +123,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.insert_futures.is_empty()
             && !self.collector.is_collecting_state()
         {
-            cx.waker().wake_by_ref();
             self.collector.range_finished();
         }
 
+        // for now fine
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
