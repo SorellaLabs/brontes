@@ -26,7 +26,7 @@ impl DexPricingMetrics {
         let time = Instant::now();
         let res = f().await;
         let elapsed = time.elapsed().as_millis() as f64;
-        self.state_load_time_us.record(elapsed);
+        self.state_load_time_ms.record(elapsed);
 
         res
     }
