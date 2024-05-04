@@ -1698,6 +1698,7 @@ dependencies = [
  "brontes-database",
  "brontes-inspect",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "clickhouse",

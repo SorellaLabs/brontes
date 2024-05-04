@@ -5,7 +5,7 @@ use syn::{
     parse::Parse,
     spanned::Spanned,
     token::{Paren, Star},
-    Error, ExprClosure, Ident, LitBool, Path, PathSegment, Token,
+    Error, ExprClosure, Ident, LitBool, Path, Token,
 };
 
 use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME};
@@ -70,11 +70,12 @@ impl ActionMacro {
         call.value_mut().ident = Ident::new(&solidity, call.span());
         return_import.segments.push(call.into_value());
 
-        let dex_price_return =
-            if action_type.to_string().to_lowercase().as_str() == "poolconfigupdate" {
-                quote!(Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result)))
-            } else {
-                quote!(
+        let dex_price_return = if action_type.to_string().to_lowercase().as_str()
+            == "poolconfigupdate"
+        {
+            quote!(Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result)))
+        } else {
+            quote!(
                 Ok(::brontes_pricing::types::DexPriceMsg::Update(
                     ::brontes_pricing::types::PoolUpdate {
                         block,
@@ -84,7 +85,7 @@ impl ActionMacro {
                     },
                 ))
             )
-            };
+        };
 
         Ok(quote! {
             #[allow(unused_imports)]

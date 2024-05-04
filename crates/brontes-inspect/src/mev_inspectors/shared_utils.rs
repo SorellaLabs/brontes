@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 #[cfg(not(feature = "pretty-print"))]
 use brontes_types::db::token_info::TokenInfoWithAddress;
 use brontes_types::{
@@ -28,11 +29,12 @@ pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
     #[allow(dead_code)]
     pub(crate) db:    &'db DB,
+    pub metrics:      OutlierMetrics,
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
     pub fn new(quote_address: Address, db: &'db DB) -> Self {
-        SharedInspectorUtils { quote: quote_address, db }
+        SharedInspectorUtils { quote: quote_address, db, metrics: OutlierMetrics::default() }
     }
 }
 type TokenDeltas = FastHashMap<Address, Rational>;

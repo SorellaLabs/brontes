@@ -9,48 +9,26 @@ use reth_primitives::Address;
 #[derive(Clone, Default)]
 pub struct OutlierMetrics {
     // missed data
-    pub cex_token_symbols:      DashMap<Address, Counter>,
-    pub cex_token_symbol_block: DashMap<Address, DashMap<u64, Counter>>,
-
+    pub cex_token_symbols:         DashMap<Address, Counter>,
     // missed data
-    pub dex_bad_pricing:        DashMap<Address, Counter>,
-    pub dex_token_symbol_block: DashMap<Address, DashMap<u64, Counter>>,
-
+    pub dex_bad_pricing:           DashMap<Address, Counter>,
     pub inspector_100x_price_type: DashMap<MevType, Counter>,
 
     pub branch_filtering_trigger: DashMap<MevType, DashMap<String, Counter>>,
 }
 
 impl OutlierMetrics {
-    pub fn missing_cex_token(&self, addr: Address, block: u64) {
+    pub fn missing_cex_token(&self, addr: Address) {
         self.cex_token_symbols
             .entry(addr)
             .or_insert_with(|| metrics::register_counter!(format!("{addr:?}_cex_symbol_missing")))
             .increment(1);
-
-        self.cex_token_symbol_block
-            .entry(addr)
-            .or_default()
-            .entry(block)
-            .or_insert_with(|| {
-                metrics::register_counter!(format!("cex_symbol_missing_block{addr:?}_{block}"))
-            })
-            .increment(1);
     }
 
-    pub fn bad_dex_pricing(&self, addr: Address, block: u64) {
+    pub fn bad_dex_pricing(&self, addr: Address) {
         self.dex_bad_pricing
             .entry(addr)
             .or_insert_with(|| metrics::register_counter!(format!("{addr:?}_dex_bad_pricing")))
-            .increment(1);
-
-        self.dex_token_symbol_block
-            .entry(addr)
-            .or_default()
-            .entry(block)
-            .or_insert_with(|| {
-                metrics::register_counter!(format!("dex_bad_pricing_symbol_block{addr:?}_{block}"))
-            })
             .increment(1);
     }
 

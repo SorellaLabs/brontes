@@ -6,7 +6,6 @@ use brontes_types::{
     Protocol, ToScaledRational,
 };
 
-
 action_impl!(
     Protocol::PancakeSwapV3,
     crate::PancakeSwapV3::swapCall,
