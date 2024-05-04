@@ -3,6 +3,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
     normalized_actions::Action, traits::TracingProvider, tree::BlockTree, FastHashMap,
@@ -68,6 +69,7 @@ impl PricingTestUtils {
             block,
             created_pools,
             Arc::new(AtomicBool::new(false)),
+            DexPricingMetrics::default(),
         ))
     }
 
