@@ -158,7 +158,7 @@ pub fn discovery_impl(input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 /// # Eth Curve Pool Discovery
-/// Curve is wierd since each factory contract (7 of them) has multiple
+/// Curve is weird since each factory contract (7 of them) has multiple
 /// implementations of each create base/plain/meta pool, so it has it's own impl
 /// ### Fields
 /// 1. `Protocol` (enum in types) - Curve version
