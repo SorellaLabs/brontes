@@ -211,7 +211,7 @@ Before implementing classifiers, you'll need to generate bindings for the Uniswa
 2. Place these ABI files in the [classifier-abis](https://github.com/SorellaLabs/brontes/tree/main/crates/brontes-classifier/classifier-abis) folder.
 3. Use the alloy [`sol!`](https://docs.rs/alloy-sol-macro/0.7.2/alloy_sol_macro/macro.sol.html) macro to generate the contract bindings. Add the invocation to `brontes_classifier` [`lib.rs`](https://github.com/SorellaLabs/brontes/blob/db359290fe4e6872219a4bab3113e472b277df18/crates/brontes-classifier/src/lib.rs) file
 
-```rust
+```rust,ignore
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
 sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
 ```
