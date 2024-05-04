@@ -10,7 +10,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_metrics::range::RangeMetrics;
+use brontes_metrics::range::{GlobalRangeMetrics, RangeMetrics};
 use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
@@ -32,7 +32,8 @@ pub struct RangeExecutorWithPricing<
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
     progress_bar:   Option<ProgressBar>,
-    metrics:        RangeMetrics,
+    global_metrics: GlobalRangeMetrics,
+    local_metrics:  RangeMetrics,
     _p:             PhantomData<P>,
 }
 
@@ -46,8 +47,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         progress_bar: Option<ProgressBar>,
-        metrics: RangeMetrics,
+        global_metrics: GlobalRangeMetrics,
     ) -> Self {
+        let local_metrics = RangeMetrics::default();
+        local_metrics
+            .total_blocks
+            .increment(end_block - start_block);
+
         Self {
             collector: state_collector,
             insert_futures: FuturesUnordered::default(),
@@ -56,7 +62,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             libmdbx,
             inspectors,
             progress_bar,
-            metrics,
+            global_metrics,
+            local_metrics,
             _p: PhantomData,
         }
     }
@@ -75,7 +82,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         }
 
         while data_batching.insert_futures.next().await.is_some() {
-            data_batching.metrics.finished_block();
+            data_batching.global_metrics.finished_block();
+            data_batching.local_metrics.finished_block();
         }
 
         drop(graceful_guard);
@@ -84,7 +92,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
         debug!(target:"brontes","Completed DEX pricing");
         self.insert_futures
-            .push(Box::pin(self.metrics.clone().meter_processing(|| {
+            .push(Box::pin(self.global_metrics.clone().meter_processing(|| {
                 Box::pin(P::process_results(self.libmdbx, self.inspectors, tree, meta))
             })));
     }
@@ -122,7 +130,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
         // poll insertion
         while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
-            self.metrics.finished_block();
+            self.global_metrics.finished_block();
+            self.local_metrics.finished_block();
         }
 
         // mark complete if we are done with the range

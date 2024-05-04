@@ -5,14 +5,14 @@ use reth_metrics::Metrics;
 
 #[derive(Metrics, Clone)]
 #[metrics(scope = "range_executor")]
-pub struct RangeMetrics {
+pub struct GlobalRangeMetrics {
     /// the amount of blocks the inspector has completed
     pub completed_blocks:       Counter,
     /// the runtime for inspectors
     pub processing_run_time_ms: Histogram,
 }
 
-impl RangeMetrics {
+impl GlobalRangeMetrics {
     pub fn finished_block(&self) {
         self.completed_blocks.increment(1);
     }
@@ -31,8 +31,32 @@ impl RangeMetrics {
 }
 
 #[derive(Metrics, Clone)]
+#[metrics(scope = "range_metrics")]
+pub struct RangeMetrics {
+    /// the amount of blocks the inspector has completed
+    pub completed_blocks: Counter,
+    /// the total blocks in the inspector range
+    pub total_blocks:     Counter,
+}
+
+impl RangeMetrics {
+    pub fn finished_block(&self) {
+        self.completed_blocks.increment(1);
+    }
+}
+
+#[derive(Metrics, Clone)]
 #[metrics(scope = "brontes_running_ranges")]
 pub struct FinishedRange {
     /// the active ranges running
     pub running_ranges: Gauge,
+}
+
+#[derive(Metrics, Clone)]
+#[metrics(scope = "brontes_range_details")]
+pub struct RangeDetails {
+    /// total amount of blocks.
+    pub total_block: Counter,
+    /// Amount of range tasks
+    pub total_tasks: Counter,
 }

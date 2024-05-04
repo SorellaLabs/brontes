@@ -31,7 +31,7 @@ use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
 pub use range::RangeExecutorWithPricing;
-use reth_tasks::{metrics, shutdown::GracefulShutdown};
+use reth_tasks::shutdown::GracefulShutdown;
 pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 

@@ -41,6 +41,10 @@ type TokenDeltas = FastHashMap<Address, Rational>;
 type AddressDeltas = FastHashMap<Address, TokenDeltas>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
+    pub fn get_metrics(&self) -> &OutlierMetrics {
+        &self.metrics
+    }
+
     /// Calculates the USD value of the token balance deltas by address
     pub fn usd_delta_by_address(
         &self,
@@ -333,6 +337,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     .to_float()
             })
             .sum::<f64>();
+
+        if profit_usd > bribe_usd * 100.0 {
+            self.metrics.inspector_100x_profit(mev_type);
+        }
 
         BundleHeader {
             block_number: metadata.block_num,
