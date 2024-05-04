@@ -98,7 +98,7 @@ action_impl!(
     }
 );
 
-// Pancakeswap
+// PancakeSwap
 action_impl!(
     Protocol::ZeroX,
     crate::ZeroXPancakeSwapFeature::sellToPancakeSwapCall,

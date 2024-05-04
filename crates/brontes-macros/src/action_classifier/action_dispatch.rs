@@ -112,7 +112,7 @@ fn expand_match_dispatch(
         #(
             #var_name => {
                 let target_address = call_info.target_address;
-                 return crate::IntoAction::decode_trace_data(
+                 return crate::IntoAction::decode_call_trace(
                     &self.#var_idx,
                     call_info,
                     block,
