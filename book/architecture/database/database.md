@@ -1,30 +1,30 @@
 # Brontes Database
 
-The Brontes database serves stores the off-chain data and on-chain metadata required by analysis pipeline.
+The Brontes database stores essential off-chain data and on-chain metadata in a local libmdbx db. This data is collected and stored in a Clickhouse database, which is managed and hosted by Sorella Labs.
 
-## Data Collection and Storage
+## Initializing the Database
 
-Upon initialization, Brontes engages with the Clickhouse database to download essential data for predefined historical ranges. This data is subsequently stored in a local libmdbx database.
-
-**Diagram 1: Brontes Initial Data Flow**
+Upon startup, Brontes will download the data from Clickhouse and store it in its local database.
 
 <div style="text-align: center;">
     <img src="./diagrams/db-download.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
     <p style="font-style: italic;">Figure 1: Production data flow from Clickhouse to Brontes' local storage</p>
 </div>
 
-## User Setup
+### Snapshot Sync
 
-To manage cloud egress costs effectively, we do not currently provide direct access to our clickhouse database. Users must download the latest db snapshot made available every Monday and Thursday. See the [Installation Guide](./installation/installation.md) for detailed instructions.
-
-Users that want to run brontes at chain tip, must request API access to connect directly to the Clickhouse database. This API provides a live stream of the lates data updates. Configuration details for API access can be found in the [Installation Guide](./installation/installation.md).
+To manage cloud egress costs, we do not currently provide api access to our clickhouse database for historical sync. Instead, users must download the latest db snapshot made available every Monday and Thursday. See the [Installation Guide](./installation/installation.md) for detailed instructions.
 
 <div style="text-align: center;">
-    <img src="./diagrams/user-download-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+    <img src="./diagrams/user-download-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 500px; height: auto;">
     <p style="font-style: italic;">Figure 2: User snapshot download and extraction process.</p>
 </div>
 
-## Querying Data
+### Live Sync
+
+Users that want to run brontes at chain tip, must request API access so that they can query the data at chain tip. Configuration details for API access can be found in the [Installation Guide](./installation/installation.md).
+
+## Data Flow
 
 <div style="text-align: center;">
     <img src="./diagrams/data-query-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
