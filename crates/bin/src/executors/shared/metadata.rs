@@ -172,19 +172,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        // ensure we don't skip blocks
-        if let Some(res) = self.result_buf.pop_front() {
-            let bn = res.0.header.number;
-            if bn == self.block {
-                self.block += 1;
-                return Poll::Ready(Some(res))
-            } else {
-                tracing::info!(?bn, ?self.block);
-            }
-            self.result_buf.push_front(res);
-        }
-
         if self.force_no_dex_pricing {
+            if let Some(res) = self.result_buf.pop_front() {
+                return Poll::Ready(Some(res))
+            }
             return Poll::Pending
         }
 
@@ -196,11 +187,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 .add_pending_inspection(block, tree, meta)
         }
 
-        self.dex_pricer_stream.poll_next_unpin(cx).map(|mid| {
-            if mid.is_some() {
-                self.block += 1;
-            }
-            mid
-        })
+        self.dex_pricer_stream
+            .poll_next_unpin(cx)
+            .map(|mid| mid.or_else(|| self.result_buf.pop_front()))
     }
 }
