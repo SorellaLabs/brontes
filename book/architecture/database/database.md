@@ -1,51 +1,38 @@
 # Brontes Database
 
-The Brontes database serves as a critical component of our platform, synthesizing off-chain data to support robust blockchain analytics. This document elucidates the data collection, storage, and access mechanisms implemented in Brontes.
+The Brontes database serves stores the off-chain data and on-chain metadata required by analysis pipeline.
 
 ## Data Collection and Storage
 
-Upon initialization, Brontes engages with the Clickhouse database to download essential data for predefined historical ranges. This data is subsequently stored in a local libmdbx database, enhancing Brontes' performance by mitigating its reliance on continuous central database connectivity.
+Upon initialization, Brontes engages with the Clickhouse database to download essential data for predefined historical ranges. This data is subsequently stored in a local libmdbx database.
 
 **Diagram 1: Brontes Initial Data Flow**
 
 <div style="text-align: center;">
- <img src="./diagrams/db-download.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+    <img src="./diagrams/db-download.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+    <p style="font-style: italic;">Figure 1: Production data flow from Clickhouse to Brontes' local storage</p>
 </div>
 
-_Figure 1: Production data flow from Clickhouse to Brontes' local storage._
+## User Setup
 
-## Enhancing User Access Through Snapshots
+To manage cloud egress costs effectively, we do not currently provide direct access to our clickhouse database. Users must download the latest db snapshot made available every Monday and Thursday. See the [Installation Guide](./installation/installation.md) for detailed instructions.
 
-To manage cloud egress costs effectively, Brontes provides bi-weekly snapshots of the libmdbx database. These snapshots are made available every Monday and Thursday, allowing users to maintain an up-to-date local database without incurring significant costs.
-
-- **Snapshots**: Brontes provides regularly updated snapshots of the libmdbx database for users focused on historical analysis. These snapshots are refreshed twice a week, every Monday and Thursday. Users must download these snapshots to run Brontes. See the [Installation Guide](./installation/installation.md) for detailed instructions.
-
-- **Real-Time Data**: Users that want to run brontes at chain tip, must request API access to connect directly to the Clickhouse database. This API provides a live stream of the data updates. Configuration details for API access can be found in the [Installation Guide](./installation/installation.md).
-
-**Diagram 2: Snapshot Management in Brontes**
+Users that want to run brontes at chain tip, must request API access to connect directly to the Clickhouse database. This API provides a live stream of the lates data updates. Configuration details for API access can be found in the [Installation Guide](./installation/installation.md).
 
 <div style="text-align: center;">
- <img src="./diagrams/user-download-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+    <img src="./diagrams/user-download-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+    <p style="font-style: italic;">Figure 2: User snapshot download and extraction process.</p>
 </div>
-
-_Figure 2: Showcases the snapshot download and extraction process._
-
-For detailed setup and operational instructions, refer to our [Installation Guide](./installation/installation.md).
 
 ## Querying Data
 
-Brontes employs a dual querying approach to meet different user needs:
-
-- **Historical Data**: Users can query historical data directly from their local libmdbx database, which is regularly updated via snapshots. This facilitates comprehensive data analysis without the need for real-time internet connectivity.
-- **Real-Time Data**: For up-to-the-minute data, users must connect to the Brontes API, which accesses the latest data directly from the Clickhouse database. This is crucial for users requiring immediate data for real-time decision-making.
-
-**Diagram 3: Querying Data in Brontes**
-
 <div style="text-align: center;">
- <img src="./diagrams/data-query-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+    <img src="./diagrams/data-query-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">
+    <p style="font-style: italic;">Figure 3: Querying methods for historical and real-time data..</p>
 </div>
 
-_Figure 3: Details the querying methods for historical and real-time data._
+- **Historical Data**: Users can query historical data directly from their local libmdbx database, which is regularly updated via snapshots.
+- **Real-Time Data**: For up-to-the-minute data, users must connect to the Brontes API, which accesses the latest data directly from the Clickhouse database.
 
 ## Data Flow
 
