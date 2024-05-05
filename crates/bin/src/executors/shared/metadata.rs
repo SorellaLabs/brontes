@@ -191,7 +191,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             Poll::Ready(Some(value)) => Poll::Ready(Some(value)),
             Poll::Ready(None) | Poll::Pending => {
                 if let Some(front) = self.result_buf.pop_front() {
-                    return poll::Ready(Some(front))
+                    Poll::Ready(Some(front))
+                } else {
+                    Poll::Pending
                 }
             }
         }
