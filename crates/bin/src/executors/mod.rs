@@ -40,7 +40,7 @@ use self::shared::{
 };
 use crate::cli::static_object;
 
-pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
+pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [0u8, 0u8, 0u8, 0u8];
 pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6923;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
