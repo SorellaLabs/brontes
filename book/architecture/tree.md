@@ -334,14 +334,12 @@ action_dispatch!(
 
 ## Multi Call Frame Classification
 
-In certain scenarios, actions extend beyond a single trace, incorporating multiple call frames that may involve complex interactions, such as flash loans or aggregator swaps. Multi call frame classification is designed to handle such scenarios, where a single call-frame is insufficient for complete action classification.
+In certain scenarios, actions extend beyond a single trace and involve nested actions that span through the child call frames, such as flash loans or aggregator swaps. Multi call frame classification is designed to handle such scenarios, where a single call-frame is insufficient for complete action classification.
 
 ### Process
 
-This process begins during the `action_dispatch`, where an action requiring multi call frame classification is identified and a request is marked at that trace index.
-
-1. **Action Classification**: Continue classifying all traces within a block until every trace is classified.
-2. **Request Retrieval**: After all traces are classified, retrieve multi call frame classification requests and process each request in reverse transaction tree order. This ensures that nested classifications, such as a batch swap within a flash loan, are handled correctly.
+1. **Mark Complex Classification during classification**: When we classify a trace into an action that requires multi call frame classification, we mark the trace index for retrieval during the multi call frame classification phase.
+2. **Request Retrieval**: After all traces are classified, retrieve multi call frame classification requests and process each request in reverse transaction tree order. This ensures that nested complex classifications are handled correctly.
 3. **Child Node Retrieval**: For each classification request, retrieve all child nodes relevant to the action, as specified by the `MultiCallFrameClassifier` implementation.
 
 ### Example: AaveV2 Liquidation
