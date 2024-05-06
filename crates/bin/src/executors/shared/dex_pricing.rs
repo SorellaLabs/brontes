@@ -17,7 +17,7 @@ use brontes_types::{
     BrontesTaskExecutor, FastHashMap,
 };
 use futures::{Stream, StreamExt};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{channel, error::TrySendError, Receiver, Sender};
 use tracing::{debug, span, Instrument, Level};
 
 pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
@@ -48,44 +48,42 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
-    pub fn new(mut pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
-        let (tx, rx) = channel(10);
+    pub fn new(pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
+        let (tx, rx) = channel(100);
         let tx_clone = tx.clone();
-        let fut = Box::pin(async move {
-            let block = pricer.current_block_processing();
-            let res = pricer
-                .next()
-                .instrument(span!(Level::ERROR, "Brontes Dex Pricing",
-            block_number=%block))
-                .await;
-
-            if let Err(e) = tx_clone.try_send((pricer, res)) {
-                tracing::error!(err=%e, "failed to send dex pricing result");
-            }
-        });
+        let fut = Box::pin(Self::pricing_thread(pricer, tx_clone));
 
         task_executor.spawn_critical("dex pricer", fut);
         Self { pending_trees: FastHashMap::default(), task_executor, tx, receiver: rx }
+    }
+
+    async fn pricing_thread(mut pricer: BrontesBatchPricer<T, DB>, tx: PricingSender<T, DB>) {
+        let block = pricer.current_block_processing();
+        let mut res = pricer
+            .next()
+            .instrument(span!(Level::ERROR, "Brontes Dex Pricing",
+            block_number=%block))
+            .await;
+
+        // we will keep trying to send util it is resolved;
+        while let Err(e) = tx.try_send((pricer, res)) {
+            let TrySendError::Full((f_pricer, f_res)) = e else {
+                tracing::error!(err=%e, "failed to send dex pricing result, channel closed");
+                return
+            };
+
+            pricer = f_pricer;
+            res = f_res;
+        }
     }
 
     pub fn is_done(&self) -> bool {
         self.pending_trees.is_empty()
     }
 
-    fn reschedule(&mut self, mut pricer: BrontesBatchPricer<T, DB>) {
+    fn reschedule(&mut self, pricer: BrontesBatchPricer<T, DB>) {
         let tx = self.tx.clone();
-        let fut = Box::pin(async move {
-            let block = pricer.current_block_processing();
-            let res = pricer
-                .next()
-                .instrument(span!(Level::ERROR, "Brontes Dex Pricing", block_number=%block))
-                .await;
-
-            if let Err(e) = tx.send((pricer, res)).await {
-                tracing::error!(err=%e, "pricing send failed");
-                drop(e.0);
-            }
-        });
+        let fut = Box::pin(Self::pricing_thread(pricer, tx));
 
         self.task_executor.spawn_critical("dex pricer", fut);
     }

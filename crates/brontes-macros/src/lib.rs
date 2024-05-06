@@ -1,9 +1,9 @@
 mod action_classifier;
 mod bench_struct_methods;
 mod discovery_classifier;
+mod function_metrics;
 mod libmdbx_test;
 mod transpose;
-mod function_metrics;
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput, ItemFn};
@@ -221,8 +221,9 @@ pub fn transposable(item: TokenStream) -> TokenStream {
         .into()
 }
 
-/// Simple utils for counters and gauges when it comes to tracking function metrics,
-/// NOTE: tracks call once function has returned; early returns won't be counted
+/// Simple utils for counters and gauges when it comes to tracking function
+/// metrics, NOTE: tracks call once function has returned; early returns won't
+/// be counted
 #[proc_macro_attribute]
 pub fn metrics_call(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemFn);
