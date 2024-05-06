@@ -40,7 +40,6 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     needs_more_data:       Arc<AtomicBool>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
-    block:                 u64,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Drop
@@ -60,10 +59,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
-        block: u64,
     ) -> Self {
         Self {
-            block,
             clickhouse,
             dex_pricer_stream,
             needs_more_data,
