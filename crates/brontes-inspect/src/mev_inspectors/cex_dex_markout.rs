@@ -26,7 +26,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::error;
+use tracing::warn;
 
 use crate::atomic_arb::is_stable_pair;
 
@@ -863,7 +863,7 @@ fn log_price_delta(
     token_in_address: &Address,
     token_out_address: &Address,
 ) {
-    error!(
+    warn!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
          - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
