@@ -27,7 +27,10 @@ impl Default for BrontesErrorMetrics {
 
 impl<S: Subscriber> Layer<S> for BrontesErrorMetrics {
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
-        if event.metadata().level().gt(&Level::INFO) {
+        if event.metadata().level().eq(&Level::INFO)
+            || event.metadata().level().eq(&Level::WARN)
+            || event.metadata().level().eq(&Level::ERROR)
+        {
             let level = event.metadata().level();
             let target = event.metadata().target();
             self.error_count
