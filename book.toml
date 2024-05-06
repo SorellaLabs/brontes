@@ -17,6 +17,9 @@ mathjax-support = true
 enable = true
 level = 1
 
+[output.linkcheck]
+matjax-support = true
+
 [build]
 build-dir = "target/book"
 
