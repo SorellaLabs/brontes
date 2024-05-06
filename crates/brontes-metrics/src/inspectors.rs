@@ -14,8 +14,7 @@ pub struct OutlierMetrics {
     // missed data
     pub dex_bad_pricing:           IntCounterVec,
     pub inspector_100x_price_type: IntCounterVec,
-
-    pub branch_filtering_trigger: IntCounterVec,
+    pub branch_filtering_trigger:  IntCounterVec,
 }
 
 impl Default for OutlierMetrics {

@@ -309,7 +309,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         };
 
                         if pct > MAX_PRICE_DIFF {
-                            self.utils.get_metrics().bad_dex_pricing(MevType::AtomicArb);
+                            self.utils.get_metrics().bad_dex_pricing(
+                                MevType::AtomicArb,
+                                Pair(swap.token_in.address, swap.token_out.address),
+                            );
                             tracing::warn!(
                                 ?effective_price,
                                 ?dex_pricing_rate,
