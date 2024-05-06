@@ -3,19 +3,36 @@ use metrics::Counter;
 use tracing::{Level, Subscriber};
 use tracing_subscriber::Layer;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct BrontesErrorMetrics {
-    error_count: DashMap<&'static str, Counter>,
+    error_count: prometheus::IntCounterVec,
+}
+impl BrontesErrorMetrics {
+    pub fn new() -> Self {
+        let error_count = prometheus::register_int_counter_vec!(
+            "brontes_log_count_with_target",
+            "the amount of logs per target with level",
+            &["level", "target"]
+        )
+        .unwrap();
+        Self { error_count }
+    }
+}
+
+impl Default for BrontesErrorMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<S: Subscriber> Layer<S> for BrontesErrorMetrics {
     fn on_event(&self, event: &tracing::Event<'_>, ctx: tracing_subscriber::layer::Context<'_, S>) {
-        if Level::ERROR.eq(event.metadata().level()) {
+        if event.metadata().level().gt(&Level::INFO) {
+            let level = event.metadata().level();
             let target = event.metadata().target();
             self.error_count
-                .entry(target)
-                .or_insert_with(|| metrics::register_counter!(format!("brontes_{target}_errors")))
-                .increment(1);
+                .with_label_values(&[&level.to_string(), &target])
+                .inc()
         }
     }
 }
