@@ -28,6 +28,10 @@ We will repeat this extension if volume is insufficient until we reach our max i
 
 The bi-exponential decay function is used to assign different weights to trades occurring before and after the block time. This approach allows us to skew the weighting to favour the post block time trades in consideration of the fact that arbitrageurs gain certainty in their DEX execution.
 
+# <<<<<<< HEAD
+
+> > > > > > > refs/remotes/origin/ludwig/architecture-book
+
 $$
 Weight(t) =
 \begin{cases}
