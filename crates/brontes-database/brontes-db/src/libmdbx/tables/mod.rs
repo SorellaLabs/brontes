@@ -602,38 +602,16 @@ macro_rules! compressed_table {
 }
 
 compressed_table!(
-    Table TokenDecimals {
-        #[serde_as]
+    Table DexPrice {
         Data {
-            #[serde(with = "address_string")]
-            key: Address,
-            value: TokenInfo
+            key: DexKey,
+            value: DexQuoteWithIndex,
+            compressed_value: DexQuoteWithIndexRedefined
         },
         Init {
             init_size: None,
-            init_method: Clickhouse,
-            http_endpoint: Some("token-decimals")
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table AddressToProtocolInfo {
-        #[serde_as]
-        Data {
-            #[serde(with = "address_string")]
-            key: Address,
-            #[serde(with = "protocol_info")]
-            value: ProtocolInfo,
-            compressed_value: ProtocolInfoRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Clickhouse,
-            http_endpoint: Some("protocol-info")
+            init_method: Other,
+            http_endpoint: Some("dex-pricing")
         },
         CLI {
             can_insert: False
@@ -652,6 +630,24 @@ compressed_table!(
             init_size: Some(100),
             init_method: Clickhouse,
             http_endpoint: Some("cex-price")
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table CexTrades {
+        Data {
+        key: u64,
+        value: CexTradeMap,
+        compressed_value: CexTradeMapRedefined
+        },
+        Init {
+            init_size: Some(100),
+            init_method: Clickhouse,
+            http_endpoint: None
         },
         CLI {
             can_insert: False
@@ -679,62 +675,6 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table DexPrice {
-        Data {
-            key: DexKey,
-            value: DexQuoteWithIndex,
-            compressed_value: DexQuoteWithIndexRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Other,
-            http_endpoint: Some("dex-pricing")
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table PoolCreationBlocks {
-        #[serde_as]
-        Data {
-            key: u64,
-            #[serde(with = "pools_libmdbx")]
-            value: PoolsToAddresses,
-            compressed_value: PoolsToAddressesRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Clickhouse,
-            http_endpoint: Some("pool-creation-blocks")
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table MevBlocks {
-        Data {
-            key: u64,
-            value: MevBlockWithClassified,
-            compressed_value: MevBlockWithClassifiedRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Other,
-            http_endpoint: None
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
     Table TxTraces {
         #[serde_as]
         Data {
@@ -747,26 +687,6 @@ compressed_table!(
             init_size: Some(1000),
             init_method: Clickhouse,
             http_endpoint: Some("tx-traces")
-        },
-        CLI {
-            can_insert: False
-        }
-    }
-);
-
-compressed_table!(
-    Table Builder {
-        #[serde_as]
-        Data {
-            #[serde(with = "address_string")]
-            key: Address,
-            value: BuilderInfo,
-            compressed_value: BuilderInfoRedefined
-        },
-        Init {
-            init_size: None,
-            init_method: Clickhouse,
-            http_endpoint: Some("builder")
         },
         CLI {
             can_insert: False
@@ -832,11 +752,71 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table InitializedState {
+    Table Builder {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: BuilderInfo,
+            compressed_value: BuilderInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse,
+            http_endpoint: Some("builder")
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table AddressToProtocolInfo {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            #[serde(with = "protocol_info")]
+            value: ProtocolInfo,
+            compressed_value: ProtocolInfoRedefined
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse,
+            http_endpoint: Some("protocol-info")
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table TokenDecimals {
+        #[serde_as]
+        Data {
+            #[serde(with = "address_string")]
+            key: Address,
+            value: TokenInfo
+        },
+        Init {
+            init_size: None,
+            init_method: Clickhouse,
+            http_endpoint: Some("token-decimals")
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table MevBlocks {
         Data {
             key: u64,
-            value: InitializedStateMeta,
-            compressed_value: InitializedStateMeta
+            value: MevBlockWithClassified,
+            compressed_value: MevBlockWithClassifiedRedefined
         },
         Init {
             init_size: None,
@@ -850,15 +830,35 @@ compressed_table!(
 );
 
 compressed_table!(
-    Table CexTrades {
+    Table PoolCreationBlocks {
+        #[serde_as]
         Data {
-        key: u64,
-        value: CexTradeMap,
-        compressed_value: CexTradeMapRedefined
+            key: u64,
+            #[serde(with = "pools_libmdbx")]
+            value: PoolsToAddresses,
+            compressed_value: PoolsToAddressesRedefined
         },
         Init {
-            init_size: Some(100),
+            init_size: None,
             init_method: Clickhouse,
+            http_endpoint: Some("pool-creation-blocks")
+        },
+        CLI {
+            can_insert: False
+        }
+    }
+);
+
+compressed_table!(
+    Table InitializedState {
+        Data {
+            key: u64,
+            value: InitializedStateMeta,
+            compressed_value: InitializedStateMeta
+        },
+        Init {
+            init_size: None,
+            init_method: Other,
             http_endpoint: None
         },
         CLI {
