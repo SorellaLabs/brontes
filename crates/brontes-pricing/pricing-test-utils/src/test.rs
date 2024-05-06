@@ -61,6 +61,7 @@ impl PricingTestUtils {
             FastHashMap::default()
         };
         Ok(BrontesBatchPricer::new(
+            0,
             Arc::new(AtomicBool::new(false)),
             self.quote_address,
             pair_graph,
