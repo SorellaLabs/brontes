@@ -1,5 +1,7 @@
 use std::{env, error::Error};
 
+use tracing_subscriber::Layer;
+
 #[cfg(all(feature = "jemalloc", unix))]
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
@@ -59,7 +61,10 @@ fn run() -> eyre::Result<()> {
 }
 
 fn init_tracing(verbosity: Directive) {
-    let layers = vec![brontes_tracing::stdout(verbosity)];
+    let layers = vec![
+        brontes_tracing::stdout(verbosity),
+        brontes_metrics::error_layer::BrontesErrorMetrics::default().boxed(),
+    ];
 
     brontes_tracing::init(layers);
 }
