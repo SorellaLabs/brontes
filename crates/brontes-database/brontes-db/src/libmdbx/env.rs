@@ -158,8 +158,8 @@ impl DatabaseEnv {
         inner_env.set_geometry(Geometry {
             // Maximum database size of 750 gigabytes
             size:        Some(0..(750 * GIGABYTE)),
-            // We grow the database in increments of 100 gigabytes
-            growth_step: Some(200 * MEGABYTE as isize),
+            // We grow the database in increments of 1 gigabyte
+            growth_step: Some(GIGABYTE as isize),
 
             shrink_threshold: Some(GIGABYTE as isize),
             page_size:        Some(PageSize::Set(default_page_size())),

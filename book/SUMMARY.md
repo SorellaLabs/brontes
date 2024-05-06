@@ -5,7 +5,9 @@
 - [Run Brontes](./run/run_brontes.md)
 - [Architecture Overview](./architecture/intro.md)
   - [Block Tree](./architecture/tree.md)
-  - [Database](./architecture/database.md)
+  - [Database](./architecture/database/database.md)
+    - [Tables Schema](./architecture/database/tables_schema.md)
+    - [Metadata Tables](./architecture/database/metadata-tables.md)
   - [Inspectors](./architecture/inspectors.md)
 - [Mev Inspectors Deep Dive](./mev_inspectors/intro.md)
 
