@@ -28,13 +28,13 @@ We will repeat this extension if volume is insufficient until we reach our max i
 
 The bi-exponential decay function is used to assign different weights to trades occurring before and after the block time. This approach allows us to skew the weighting to favour the post block time trades in consideration of the fact that arbitrageurs gain certainty in their DEX execution.
 
-\\[\
+$$
 Weight(t) =
 \begin{cases}
 e^{-\lambda_{pre} \cdot (BlockTime - t)} & \text{if } t < BlockTime \\\\
 e^{-\lambda_{post} \cdot (t - BlockTime)} & \text{if } t \geq BlockTime
 \end{cases}
-\\]
+$$
 
 Where:
 
@@ -43,12 +43,12 @@ Where:
 - \\( \lambda\_{pre} \\) is the decay rate before the block time.
 - \\( \lambda\_{post} \\) is the decay rate after the block time.
 
+Proposed values are [here](https://www.desmos.com/calculator/7ktqmde9ab)
+
 ### Adjusted Volume Weighted Average Price (VWAP)
 
 To integrate both volume information and the bi-exponential time decay into the VWAP, we adjust the calculation as follows:
 
-\\[\
+$$
 AdjustedVWAP = \frac{\sum (Price_i \times Volume_i \times TimingWeight_i)}{\sum (Volume_i \times TimingWeight_i)}
-\\]
-
-Proposed values are [here](https://www.desmos.com/calculator/7ktqmde9ab)
+$$
