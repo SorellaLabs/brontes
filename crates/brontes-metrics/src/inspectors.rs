@@ -92,7 +92,7 @@ impl OutlierMetrics {
     pub fn branch_filtering_trigger(&self, mev_type: MevType, branch_name: &'static str) {
         let t = mev_type.to_string();
 
-        self.inspector_100x_price_type
+        self.branch_filtering_trigger
             .get_metric_with_label_values(&[&t, branch_name])
             .unwrap()
             .inc();
