@@ -148,7 +148,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .collect_vec(),
         );
-        let range_metrics = GlobalRangeMetrics::default();
+        let range_metrics =
+            GlobalRangeMetrics::new(chunks.iter().map(|(start, end)| end - start).collect_vec());
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
@@ -336,8 +337,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         } else {
             #[cfg(feature = "local-reth")]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
-            #[cfg(not(feature = "local-reth"))]
-            let chain_tip = self.parser.get_latest_block_number().await.unwrap();
             (false, chain_tip - self.back_from_tip)
         }
     }

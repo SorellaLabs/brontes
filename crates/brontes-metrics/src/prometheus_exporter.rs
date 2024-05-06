@@ -8,6 +8,7 @@ use hyper::{
 };
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use metrics_util::layers::{PrefixLayer, Stack};
+use prometheus::{Encoder, TextEncoder};
 
 pub(crate) trait Hook: Fn() + Send + Sync {}
 impl<T: Fn() + Send + Sync> Hook for T {}
@@ -53,8 +54,17 @@ async fn start_endpoint<F: Hook + 'static>(
         async move {
             Ok::<_, Infallible>(service_fn(move |_: Request<Body>| {
                 (hook)();
-                let metrics = handle.render();
-                async move { Ok::<_, Infallible>(Response::new(Body::from(metrics))) }
+                let mut metrics_render = handle.render();
+
+                let mut buffer = Vec::new();
+                let encoder = TextEncoder::new();
+                // Gather the metrics.
+                let metric_families = prometheus::gather();
+                // Encode them to send.
+                encoder.encode(&metric_families, &mut buffer).unwrap();
+                metrics_render += &String::from_utf8(buffer.clone()).unwrap();
+
+                async move { Ok::<_, Infallible>(Response::new(Body::from(metrics_render))) }
             }))
         }
     });

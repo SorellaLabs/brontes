@@ -19,27 +19,27 @@ pub struct GlobalRangeMetrics {
 }
 
 impl GlobalRangeMetrics {
-    pub fn new(ranges: usize, per_range_blocks: &[usize]) -> Self {
+    pub fn new(per_range_blocks: Vec<u64>) -> Self {
         let completed_blocks_range = register_int_counter_vec!(
-            "brontes_range_speicifc_completed_blocks",
+            "brontes_range_specific_completed_blocks",
             "total blocks completed per range",
             &["range_id"],
         )
         .unwrap();
 
         let total_blocks_range = register_int_counter_vec!(
-            "brontes_range_total_blocks",
+            "brontes_range_specific_total_blocks",
             "total blocks for specific range",
             &["range_id"]
         )
         .unwrap();
 
-        for (i, block) in per_range_blocks.iter().enumerate() {
+        for (i, block) in per_range_blocks.into_iter().enumerate() {
             let strd = format!("{i}");
             let res = total_blocks_range
                 .get_metric_with_label_values(&[&strd])
                 .unwrap();
-            res.inc_by(*block as u64);
+            res.inc_by(block);
         }
 
         Self {
@@ -72,16 +72,6 @@ impl GlobalRangeMetrics {
         res
     }
 }
-
-#[derive(Clone)]
-pub struct RangeMetrics {
-    pub completed_blocks: IntCounterVec,
-    /// the amount of blocks the inspector has completed
-    /// the total blocks in the inspector range
-    pub total_blocks:     IntCounterVec,
-}
-
-impl RangeMetrics {}
 
 #[derive(Metrics, Clone)]
 #[metrics(scope = "brontes_running_ranges")]

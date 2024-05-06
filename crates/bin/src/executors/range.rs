@@ -10,7 +10,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_metrics::range::{GlobalRangeMetrics, RangeMetrics};
+use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
@@ -25,6 +25,7 @@ pub struct RangeExecutorWithPricing<
     CH: ClickhouseHandle,
     P: Processor,
 > {
+    id:             usize,
     collector:      StateCollector<T, DB, CH>,
     insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     current_block:  u64,
@@ -33,7 +34,6 @@ pub struct RangeExecutorWithPricing<
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
     progress_bar:   Option<ProgressBar>,
     global_metrics: GlobalRangeMetrics,
-    local_metrics:  RangeMetrics,
     _p:             PhantomData<P>,
 }
 
@@ -50,12 +50,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         progress_bar: Option<ProgressBar>,
         global_metrics: GlobalRangeMetrics,
     ) -> Self {
-        let local_metrics = RangeMetrics::new(&format!("range {id}"));
-        local_metrics
-            .total_blocks
-            .increment(end_block - start_block);
-
         Self {
+            id,
             collector: state_collector,
             insert_futures: FuturesUnordered::default(),
             current_block: start_block,
@@ -64,7 +60,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             inspectors,
             progress_bar,
             global_metrics,
-            local_metrics,
             _p: PhantomData,
         }
     }
@@ -83,8 +78,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         }
 
         while data_batching.insert_futures.next().await.is_some() {
-            data_batching.global_metrics.finished_block();
-            data_batching.local_metrics.finished_block();
+            data_batching
+                .global_metrics
+                .finished_block(data_batching.id);
         }
 
         drop(graceful_guard);
@@ -131,8 +127,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
         // poll insertion
         while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
-            self.global_metrics.finished_block();
-            self.local_metrics.finished_block();
+            self.global_metrics.finished_block(self.id);
         }
 
         // mark complete if we are done with the range
