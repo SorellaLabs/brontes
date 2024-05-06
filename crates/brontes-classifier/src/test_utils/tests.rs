@@ -101,6 +101,7 @@ impl ClassifierTestUtils {
         Ok((
             ctr.clone(),
             BrontesBatchPricer::new(
+                0,
                 ctr.clone(),
                 quote_asset,
                 pair_graph,
