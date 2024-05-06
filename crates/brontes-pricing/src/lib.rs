@@ -1165,10 +1165,15 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         &mut self,
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
-        // because results tend to stack up, we always want to progress them first
+        let mut budget = 60;
         while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_metrics(&self.metrics, cx) {
-            self.on_pool_resolve(state)
+            self.on_pool_resolve(state);
+            budget -= 1;
+            if budget == 0 {
+                break
+            }
         }
+
         let pairs = self.lazy_loader.pairs_to_verify();
         if !pairs.is_empty() {
             execute_on!(target = pricing, self.try_verify_subgraph(pairs));
@@ -1195,6 +1200,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
+        let mut budget = 128;
         'outer: loop {
             self.process_future_blocks();
 
@@ -1266,6 +1272,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 self.on_pool_update_no_pricing(block_updates);
             } else {
                 execute_on!(target = pricing, self.on_pool_updates(block_updates));
+            }
+
+            budget -= 1;
+            if budget == 0 {
+                break 'outer
             }
         }
 
