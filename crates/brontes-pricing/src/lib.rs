@@ -99,6 +99,7 @@ const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
 /// 5) Processes and returns formatted data from the applied state transitions
 /// before proceeding to the next block.
 pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
+    range_id:        usize,
     quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
@@ -138,6 +139,7 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn new(
+        range_id: usize,
         finished: Arc<AtomicBool>,
         quote_asset: Address,
         graph_manager: GraphManager<DB>,
@@ -149,6 +151,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         metrics: DexPricingMetrics,
     ) -> Self {
         Self {
+            range_id,
             finished,
             failed_pairs: FastHashMap::default(),
             new_graph_pairs,
@@ -1016,7 +1019,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.metrics.processed_blocks.increment(1);
+        self.metrics.range_finished_block(self.range_id);
         self.should_return().then_some((block, res))
     }
 
@@ -1143,7 +1146,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.metrics.processed_blocks.increment(1);
+        self.metrics.range_finished_block(self.range_id);
         self.should_return().then_some((block, res))
     }
 

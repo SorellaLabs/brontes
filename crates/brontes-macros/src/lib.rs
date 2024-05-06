@@ -1,6 +1,7 @@
 mod action_classifier;
 mod bench_struct_methods;
 mod discovery_classifier;
+mod function_metrics;
 mod libmdbx_test;
 mod transpose;
 

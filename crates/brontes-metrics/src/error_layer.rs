@@ -14,7 +14,7 @@ impl<S: Subscriber> Layer<S> for BrontesErrorMetrics {
             let target = event.metadata().target();
             self.error_count
                 .entry(target)
-                .or_insert_with(|| metrics::register_counter!(format!("{target}_errors")))
+                .or_insert_with(|| metrics::register_counter!(format!("brontes_{target}_errors")))
                 .increment(1);
         }
     }
