@@ -40,7 +40,7 @@ impl OutlierMetrics {
         .unwrap();
 
         let inspector_100x_price_type = prometheus::register_int_counter_vec!(
-            "brontes_100x profit",
+            "brontes_100x_profit",
             "the amount of arbs that exceed 100x profit ratio",
             &["mev_type"]
         )
