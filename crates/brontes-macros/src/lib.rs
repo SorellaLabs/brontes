@@ -221,6 +221,8 @@ pub fn transposable(item: TokenStream) -> TokenStream {
         .into()
 }
 
+/// Simple utils for counters and gauges when it comes to tracking function metrics,
+/// NOTE: tracks call once function has returned; early returns won't be counted
 #[proc_macro_attribute]
 pub fn metrics_call(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as ItemFn);

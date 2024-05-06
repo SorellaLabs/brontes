@@ -1,68 +1,55 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{
-    parse::{Parse, Parser},
-    spanned::Spanned,
-    Expr, ItemFn, MetaNameValue,
-};
+use syn::{parse::Parse, Expr, ItemFn, Token};
 
 pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
     // grab threads if specified
-    panic!("{}", attr.to_string());
-
-    let Some(field) = Parser::parse2(MetaNameValue::parse, attr.clone())
-        .map(|name_val| {
-            if name_val.path.segments.last()?.ident == "ptr" {
-                let Expr::Field(ref a) = name_val.value else { return None };
-                match &a.member {
-                    syn::Member::Named(n) => Some(n.to_owned()),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-        .ok()
-        .flatten()
-    else {
-        return Err(syn::Error::new(attr.span(), "invalid ptr to function call struct"))
-    };
+    let MetricList { ptr, fn_name, data } = syn::parse2(attr)?;
 
     let attrs = item.attrs;
     let vis = item.vis;
-    let mut sig = item.sig;
-    if sig.asyncness.is_some() {
-        return Err(syn::Error::new(sig.asyncness.span(), "function must not be async"))
-    }
-    sig.asyncness = None;
+    let sig = item.sig;
     let block = item.block;
-
-    let fn_name = sig.ident.to_string();
 
     Ok(quote!(
         #(#attrs)*
         #vis
         #sig
         {
-            let start = ::std::time::Instant::now();
             let result = #block;
-            let end = ::std::time::Instant::now();
-            self.#field.add_bench(#fn_name.to_string(), end.duration_since(start));
-
+            self.#ptr.#fn_name(#(#data),*);
             result
         }
     ))
 }
 
-// pub struct MetricList {
-//     // ptr to metric in struct
-//     ptr:     Ident,
-//     // recorder name
-//     fn_name: Ident,
-//
-//     data: Vec<MetaNameValue>,
-// }
-//
-// impl Parse for MetricList {
-//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {}
-// }
+pub struct MetricList {
+    // ptr to metric in struct
+    ptr:     Ident,
+    // recorder name
+    fn_name: Ident,
+    data:    Vec<Expr>,
+}
+
+impl Parse for MetricList {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let ptr: Ident = input.parse()?;
+        if ptr.to_string() != "ptr" {
+            return Err(syn::Error::new(ptr.span(), "first field must be ptr=location"))
+        }
+        input.parse::<Token![=]>()?;
+        let ptr_value: Ident = input.parse()?;
+
+        input.parse::<Token![,]>()?;
+        let fn_name: Ident = input.parse()?;
+
+        let mut data = Vec::new();
+        // take out all args
+        while input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+            data.push(input.parse()?);
+        }
+
+        Ok(Self { ptr: ptr_value, fn_name, data })
+    }
+}

@@ -7,17 +7,19 @@ use reth_metrics::Metrics;
 #[derive(Clone)]
 pub struct DexPricingMetrics {
     /// the amount of active subgraphs currently used for pricing
-    pub active_subgraphs:   Gauge,
+    pub active_subgraphs:    Gauge,
     /// the amount of active pool state loaded for the subgraphs
-    pub active_state:       Gauge,
+    pub active_state:        Gauge,
     /// current state load queries
-    pub state_load_queries: Gauge,
+    pub state_load_queries:  Gauge,
     /// state load processing time
-    pub state_load_time_ms: Histogram,
+    pub state_load_time_ms:  Histogram,
     /// blocks processed,
-    pub processed_blocks:   Counter,
+    pub processed_blocks:    Counter,
     /// block processing speed by range
-    pub range_processing:   IntCounterVec,
+    pub range_processing:    IntCounterVec,
+    /// function call count
+    pub function_call_count: IntCounterVec,
 }
 impl Default for DexPricingMetrics {
     fn default() -> Self {
@@ -44,6 +46,12 @@ impl DexPricingMetrics {
             &["range_id"]
         )
         .unwrap();
+        let function_call_count = prometheus::register_int_counter_vec!(
+            "dex_pricing_function_call_count",
+            "for each range and function name the call count",
+            &["range_id", "function_name"]
+        )
+        .unwrap();
 
         Self {
             processed_blocks,
@@ -52,7 +60,14 @@ impl DexPricingMetrics {
             active_state,
             active_subgraphs,
             range_processing,
+            function_call_count,
         }
+    }
+
+    pub fn function_call_count(&self, range_id: usize, function_name: &str) {
+        self.function_call_count
+            .with_label_values(&[&range_id.to_string(), function_name])
+            .inc()
     }
 
     pub fn range_finished_block(&self, range_id: usize) {
