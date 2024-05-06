@@ -10,6 +10,13 @@ use prometheus::IntCounterVec;
 pub struct ClassificationMetrics {
     pub bad_protocol_classification: IntCounterVec,
 }
+
+impl Default for ClassificationMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClassificationMetrics {
     pub fn new() -> Self {
         let bad_protocol_classification = prometheus::register_int_counter_vec!(

@@ -170,6 +170,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         }
     }
 
+    #[brontes_metrics::metrics_call()]
     pub fn current_block_processing(&self) -> u64 {
         self.completed_block
     }

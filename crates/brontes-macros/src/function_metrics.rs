@@ -1,12 +1,15 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::{
     parse::{Parse, Parser},
     spanned::Spanned,
     Expr, ItemFn, MetaNameValue,
 };
+
 pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
     // grab threads if specified
+    panic!("{}", attr.to_string());
+
     let Some(field) = Parser::parse2(MetaNameValue::parse, attr.clone())
         .map(|name_val| {
             if name_val.path.segments.last()?.ident == "ptr" {
@@ -50,3 +53,16 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
         }
     ))
 }
+
+// pub struct MetricList {
+//     // ptr to metric in struct
+//     ptr:     Ident,
+//     // recorder name
+//     fn_name: Ident,
+//
+//     data: Vec<MetaNameValue>,
+// }
+//
+// impl Parse for MetricList {
+//     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {}
+// }

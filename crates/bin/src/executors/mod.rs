@@ -174,6 +174,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         start_block,
                         end_block,
                         self.init_state_collector(
+                            batch_id,
                             executor.clone(),
                             start_block,
                             end_block,
@@ -193,13 +194,20 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     fn build_tip_inspector(
         &self,
+        range_id: usize,
         executor: BrontesTaskExecutor,
         start_block: u64,
         back_from_tip: u64,
         pricing_metrics: DexPricingMetrics,
     ) -> TipInspector<T, DB, CH, P> {
-        let state_collector =
-            self.init_state_collector(executor, start_block, start_block, true, pricing_metrics);
+        let state_collector = self.init_state_collector(
+            range_id,
+            executor,
+            start_block,
+            start_block,
+            true,
+            pricing_metrics,
+        );
         TipInspector::new(
             start_block,
             back_from_tip,
@@ -212,6 +220,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     fn init_state_collector(
         &self,
+        range_id: usize,
         executor: BrontesTaskExecutor,
         start_block: u64,
         end_block: u64,
@@ -244,6 +253,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let data_req = Arc::new(AtomicBool::new(true));
 
         let pricer = BrontesBatchPricer::new(
+            range_id,
             shutdown.clone(),
             self.quote_asset,
             pair_graph,
@@ -379,6 +389,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             }
 
             let tip_inspector = self.build_tip_inspector(
+                usize::MAX,
                 executor.clone(),
                 end_block,
                 self.back_from_tip,
