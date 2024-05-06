@@ -70,10 +70,19 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 
     async fn state_future(
         generate_pricing: bool,
+        block: u64,
         fut: ExecutionFut<'static>,
         classifier: &'static Classifier<'static, T, DB>,
     ) -> eyre::Result<BlockTree<Action>> {
-        let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
+        let (traces, header) = fut
+            .await
+            .inspect_err(|_| {
+                classifier.block_load_failure(block);
+            })?
+            .ok_or_else(|| eyre!("no traces found"))
+            .inspect_err(|_| {
+                classifier.block_load_failure(block);
+            })?;
 
         trace!("Got {} traces + header", traces.len());
         let res = classifier
@@ -87,7 +96,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         let execute_fut = self.parser.execute(block);
         let generate_pricing = self.metadata_fetcher.generate_dex_pricing(block, self.db);
         self.collection_future = Some(Box::pin(
-            Self::state_future(generate_pricing, execute_fut, self.classifier)
+            Self::state_future(generate_pricing, block, execute_fut, self.classifier)
                 .instrument(span!(Level::ERROR, "mev processor", block_number=%block)),
         ))
     }

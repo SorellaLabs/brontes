@@ -54,6 +54,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         Self { libmdbx, pricing_update_sender, provider }
     }
 
+    pub fn block_load_failure(&self, number: u64) {
+        self.pricing_update_sender
+            .send(DexPriceMsg::DisablePricingFor(number))
+            .unwrap();
+    }
+
     pub async fn build_block_tree(
         &self,
         traces: Vec<TxTrace>,
