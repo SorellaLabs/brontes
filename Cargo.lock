@@ -1780,6 +1780,7 @@ dependencies = [
  "reth-primitives",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

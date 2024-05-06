@@ -447,6 +447,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         };
 
                         if pct > MAX_PRICE_DIFF {
+                            self.utils.get_metrics().bad_dex_pricing(MevType::Sandwich);
                             tracing::warn!(
                                 ?effective_price,
                                 ?dex_pricing_rate,

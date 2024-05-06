@@ -78,6 +78,10 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
+                        self.utils.get_metrics().branch_filtering_trigger(
+                            MevType::CexDex,
+                            "is_solver_settlement_or_defi_automation",
+                        );
                         return None
                     }
                 }
@@ -89,6 +93,10 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                     .collect_action_vec(Action::try_swaps_merged);
 
                 if self.is_triangular_arb(&dex_swaps) {
+                    self.utils
+                        .get_metrics()
+                        .branch_filtering_trigger(MevType::CexDex, "is_triangular_arb");
+
                     return None
                 }
 
@@ -309,7 +317,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
-                metadata
+                let (window, other) = metadata
                     .cex_trades
                     .as_ref()
                     .unwrap()
@@ -320,7 +328,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         &swap.amount_out,
                         metadata.microseconds_block_timestamp(),
                         None,
-                    )
+                    );
+
+                if window.is_none() || other.is_none() {
+                    self.utils.get_metrics().missing_cex_pair(pair);
+                }
+
+                (window, other)
             })
             .collect()
     }
@@ -417,6 +431,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         {
             possible_cex_dex.into_bundle(info)
         } else {
+            self.utils
+                .get_metrics()
+                .branch_filtering_trigger(MevType::CexDex, "filter_possible_cex_dex");
             None
         }
     }

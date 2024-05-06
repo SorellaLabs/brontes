@@ -138,18 +138,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             AtomicArbType::Triangle => (is_profitable
                 || self.process_triangle_arb(&info, requirement_multiplier))
             .then_some(profit),
-            AtomicArbType::CrossPair(jump_index) => {
-                let stable_arb = is_stable_arb(&swaps, jump_index);
-                let cross_or = self.is_cross_pair_or_stable_arb(&info, requirement_multiplier);
+            AtomicArbType::CrossPair(jump_index) => (is_profitable
+                || self.is_stable_arb(&swaps, jump_index)
+                || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
+            .then_some(profit),
 
-                (is_profitable || stable_arb || cross_or).then_some(profit)
-            }
-
-            AtomicArbType::StablecoinArb => {
-                let cross_or = self.is_cross_pair_or_stable_arb(&info, requirement_multiplier);
-
-                (is_profitable || cross_or).then_some(profit)
-            }
+            AtomicArbType::StablecoinArb => (is_profitable
+                || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
+            .then_some(profit),
             AtomicArbType::LongTail => (self.is_long_tail(&info, requirement_multiplier)
                 && is_profitable)
                 .then_some(profit),
@@ -207,23 +203,59 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     }
 
     fn process_triangle_arb(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20 * multiplier)
+        let res = tx_info
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
-            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
+            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private;
+
+        if !res {
+            self.utils
+                .get_metrics()
+                .branch_filtering_trigger(MevType::AtomicArb, "process_triangle_arb");
+        }
+        res
     }
 
     fn is_cross_pair_or_stable_arb(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
+        let res = tx_info
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private
-            || tx_info.gas_details.coinbase_transfer.is_some()
+            || tx_info.gas_details.coinbase_transfer.is_some();
+        if !res {
+            self.utils
+                .get_metrics()
+                .branch_filtering_trigger(MevType::AtomicArb, "is_cross_pair_or_stable_arb");
+        }
+        res
     }
 
     fn is_long_tail(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
+        let res = tx_info
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private && tx_info.gas_details.coinbase_transfer.is_some()
-            || tx_info.mev_contract.is_some()
+            || tx_info.mev_contract.is_some();
+        if !res {
+            self.utils
+                .get_metrics()
+                .branch_filtering_trigger(MevType::AtomicArb, "is_long_tail");
+        }
+        res
+    }
+
+    fn is_stable_arb(&self, swaps: &[NormalizedSwap], jump_index: usize) -> bool {
+        let token_bought = &swaps[jump_index - 1].token_out.symbol;
+        let token_sold = &swaps[jump_index].token_in.symbol;
+
+        let res = is_stable_pair(token_sold, token_bought);
+        if !res {
+            self.utils
+                .get_metrics()
+                .branch_filtering_trigger(MevType::AtomicArb, "is_stable_arb");
+        }
+
+        res
     }
 
     fn valid_pricing<'a>(
@@ -277,6 +309,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         };
 
                         if pct > MAX_PRICE_DIFF {
+                            self.utils.get_metrics().bad_dex_pricing(MevType::AtomicArb);
                             tracing::warn!(
                                 ?effective_price,
                                 ?dex_pricing_rate,
@@ -326,13 +359,6 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
     }
 
     Some(AtomicArbType::Triangle)
-}
-
-fn is_stable_arb(swaps: &[NormalizedSwap], jump_index: usize) -> bool {
-    let token_bought = &swaps[jump_index - 1].token_out.symbol;
-    let token_sold = &swaps[jump_index].token_in.symbol;
-
-    is_stable_pair(token_sold, token_bought)
 }
 
 pub fn is_stable_pair(token_in: &str, token_out: &str) -> bool {

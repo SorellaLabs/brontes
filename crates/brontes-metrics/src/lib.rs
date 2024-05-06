@@ -12,6 +12,7 @@ use tracing::trace;
 
 use crate::trace::{types::TraceMetricEvent, TraceMetrics};
 pub mod classifier;
+pub mod tracing_subscriber;
 pub mod dyn_contracts;
 pub mod inspectors;
 pub mod pricing;

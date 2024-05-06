@@ -1,6 +1,6 @@
 use std::{pin::Pin, time::Instant};
 
-use brontes_types::{mev::MevType, FastHashMap};
+use brontes_types::{mev::MevType, pair::Pair, FastHashMap};
 use dashmap::DashMap;
 use metrics::{Counter, Gauge, Histogram};
 use reth_metrics::Metrics;
@@ -9,26 +9,26 @@ use reth_primitives::Address;
 #[derive(Clone, Default)]
 pub struct OutlierMetrics {
     // missed data
-    pub cex_token_symbols:         DashMap<Address, Counter>,
+    pub cex_pair_symbols:          DashMap<Pair, Counter>,
     // missed data
-    pub dex_bad_pricing:           DashMap<Address, Counter>,
+    pub dex_bad_pricing:           DashMap<MevType, Counter>,
     pub inspector_100x_price_type: DashMap<MevType, Counter>,
 
-    pub branch_filtering_trigger: DashMap<MevType, DashMap<String, Counter>>,
+    pub branch_filtering_trigger: DashMap<MevType, DashMap<&'static str, Counter>>,
 }
 
 impl OutlierMetrics {
-    pub fn missing_cex_token(&self, addr: Address) {
-        self.cex_token_symbols
+    pub fn missing_cex_pair(&self, addr: Pair) {
+        self.cex_pair_symbols
             .entry(addr)
             .or_insert_with(|| metrics::register_counter!(format!("{addr:?}_cex_symbol_missing")))
             .increment(1);
     }
 
-    pub fn bad_dex_pricing(&self, addr: Address) {
+    pub fn bad_dex_pricing(&self, mev: MevType) {
         self.dex_bad_pricing
-            .entry(addr)
-            .or_insert_with(|| metrics::register_counter!(format!("{addr:?}_dex_bad_pricing")))
+            .entry(mev)
+            .or_insert_with(|| metrics::register_counter!(format!("{mev}_dex_bad_pricing")))
             .increment(1);
     }
 
@@ -39,11 +39,11 @@ impl OutlierMetrics {
             .increment(1);
     }
 
-    pub fn branch_filtering_trigger(&self, mev_type: MevType, branch_name: String) {
+    pub fn branch_filtering_trigger(&self, mev_type: MevType, branch_name: &'static str) {
         self.branch_filtering_trigger
             .entry(mev_type)
             .or_default()
-            .entry(branch_name.clone())
+            .entry(branch_name)
             .or_insert_with(|| {
                 metrics::register_counter!(format!("{mev_type}_{branch_name}_filtering"))
             })
