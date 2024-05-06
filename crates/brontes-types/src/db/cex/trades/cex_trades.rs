@@ -14,7 +14,7 @@ use crate::{
 };
 
 type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
-// cex trades are sorted from lowest fill price to highest fill price
+
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize)]
 pub struct CexTradeMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>);
 
