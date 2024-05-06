@@ -106,8 +106,11 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                     return None
                 }
 
-                let mut possible_cex_dex: CexDexProcessing =
-                    self.detect_cex_dex(dex_swaps, &metadata)?;
+                let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
+                    dex_swaps,
+                    &metadata,
+                    tx_info.is_searcher_of_type(MevType::CexDex),
+                )?;
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
@@ -137,8 +140,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
+        marked_cex_dex: bool,
     ) -> Option<CexDexProcessing> {
-        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata);
+        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex);
 
         // pricing window
         let pricing_window_vwam = pricing
@@ -317,6 +321,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
+        marked_cex_dex: bool,
     ) -> Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> {
         dex_swaps
             .iter()
@@ -336,7 +341,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         None,
                     );
 
-                if window.is_none() || other.is_none() {
+                if (window.is_none() || other.is_none()) && marked_cex_dex {
                     self.utils.get_metrics().missing_cex_pair(pair);
                 }
 

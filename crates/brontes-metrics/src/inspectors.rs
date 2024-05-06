@@ -62,6 +62,7 @@ impl OutlierMetrics {
     }
 
     pub fn missing_cex_pair(&self, pair: Pair) {
+        let pair = pair.ordered();
         let t0 = format!("{:?}", pair.0);
         let t1 = format!("{:?}", pair.1);
         self.cex_pair_symbols
@@ -71,6 +72,7 @@ impl OutlierMetrics {
     }
 
     pub fn bad_dex_pricing(&self, mev: MevType, pair: Pair) {
+        let pair = pair.ordered();
         let t0 = format!("{:?}", pair.0);
         let t1 = format!("{:?}", pair.1);
 
