@@ -13,7 +13,6 @@ use reth_db::{
     DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-const MEGABYTE: usize = 1024 * 1024;
 const GIGABYTE: usize = 1024 * 1024 * 1024;
 
 /// MDBX allows up to 32767 readers (`MDBX_READERS_LIMIT`), but we limit it to
