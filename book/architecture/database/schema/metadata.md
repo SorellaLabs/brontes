@@ -2,9 +2,10 @@
 
 ## AddressMeta Table
 
+--
 **Table Name:** `AddressMeta`
 
-**Description:** Contains comprehensive metadata about blockchain addresses.
+**Description:** Comprehensive address metadata.
 
 **Key:** Address
 
@@ -12,7 +13,9 @@
 
 **Fields:**
 
-- **entity_name**, **nametag**, **labels**, **address_type**: Basic identification and classification data about the address.
+- **entity_name**, **nametag**: Entity name and alias.
+- **labels**: List of address labels.
+- **address_type**: Type of address (DEX, CEX, Aggregator...).
 - **contract_info**: [`ContractInfo`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/address_metadata.rs#L209) - Details about the contract if the address is a smart contract.
 - **ens**: Optional ENS name associated with the address.
 - **social_metadata**: [`Socials`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/address_metadata.rs#L234) - Links to social media and other external profiles related to the entity.
@@ -23,7 +26,7 @@
 
 **Table Names:** `SearcherEOAs` and `SearcherContracts`
 
-**Description:** Stores metadata about Ethereum addresses (EOAs and Contracts) involved in MEV search activities.
+**Description:** Searcher EOA & Contract Metadata.
 
 **Key:** Address
 
@@ -31,10 +34,13 @@
 
 **Fields:**
 
-- **fund**, **mev_count**, **pnl**, **gas_bids**: Key financial and operational metrics.
+- **fund**: Fund the searcher address is associated with.
+- **mev_count**: [`TollByType`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/mev/block.rs#L147) - MEV bundle count by type.
+- **pnl**: [`TollByType`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/searcher.rs#L21) - Aggregate Pnl by MEV type.
+- **gas_bids**: [`TollByType`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/searcher.rs#L21) - Gas bids by MEV type.
 - **builder**: If the searcher is vertically integrated, the builder's address.
-- **config_labels**: Types of MEV activities the searcher is involved in.
-- **sibling_searchers**: Addresses of related searcher accounts.
+- **config_labels**: Types of MEV this searcher captures. This is set at the config level in `config/searcher_config.toml`.
+- **sibling_searchers**: Addresses of searcher accounts associated with this address. This is needed so that we can accurately calculate PnL when searchers send their profit to a bank address or on of their other searcher addresses.
 
 ## Builder Table
 
@@ -42,7 +48,7 @@
 
 **Table Name:** `Builder`
 
-**Description:** Contains information about Ethereum block builders, including their operational and financial metrics.
+**Description:** Contains information about Ethereum block builders.
 
 **Key:** Address (Coinbase transfer address)
 
@@ -51,5 +57,5 @@
 **Fields:**
 
 - **name**, **fund**, **pub_keys**: Basic identification and operational details.
-- **searchers_eoas**, **searchers_contracts**: Lists of associated searcher addresses.
-- **ultrasound_relay_collateral_address**: Address used for collateral in ultrasound relay transactions.
+- **searchers_eoas**, **searchers_contracts**: Lists of the builder's searcher addresses.
+- **ultrasound_relay_collateral_address**: Address used to deposit collateral for the optimistic ultrasound relay.

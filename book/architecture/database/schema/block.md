@@ -2,9 +2,11 @@
 
 ## Block Info Table Schema
 
+--
+
 **Table Name:** `BlockInfo`
 
-**Description:** Stores metadata for each blockchain block, including timestamps and proposer information.
+**Description:** Stores p2p & mev-boost data for each block.
 
 **Key:** Block number (`u64`)
 
@@ -14,25 +16,25 @@
 
 - **block_hash**:
   - **Type:** `U256`
-  - **Description:** The hash of the block.
+  - **Description:** The block hash.
 - **block_timestamp**:
   - **Type:** `u64`
-  - **Description:** Timestamp when the block was mined.
+  - **Description:** Block timestamp.
 - **relay_timestamp**:
   - **Type:** `Option<u64>`
-  - **Description:** Timestamp when the block was received by a relay.
+  - **Description:** Timestamp when the block was received by the first relay.
 - **p2p_timestamp**:
   - **Type:** `Option<u64>`
-  - **Description:** Timestamp when the block was first seen by peers.
+  - **Description:** Timestamp when the block was first seen by a fibernode.
 - **proposer_fee_recipient**:
   - **Type:** `Option<Address>`
-  - **Description:** Address of the proposer receiving transaction fees.
+  - **Description:** Address of the proposer fee recipient.
 - **proposer_mev_reward**:
   - **Type:** `Option<u128>`
-  - **Description:** Amount of MEV reward claimed by the proposer.
+  - **Description:** Amount of MEV reward payed to the proposer.
 - **private_flow**:
   - **Type:** `Vec<TxHash>`
-  - **Description:** List of transaction hashes that were part of private transactions in the block.
+  - **Description:** List of transaction hashes that were not seen in the mempool by Chainbound fibernodes.
 
 ---
 
@@ -40,7 +42,7 @@
 
 **Table Name:** `TxTraces`
 
-**Description:** Contains the transaction traces for each block, providing detailed insights into transaction executions.
+**Description:** Contains the transaction traces produced by the custom `revm-inspector` for each block.
 
 **Key:** Block number (`u64`)
 
@@ -50,4 +52,4 @@
 
 - **traces**:
   - **Type:** `Option<Vec<TxTrace>>`
-  - **Description:** Detailed traces of transactions within the block.
+  - **Description:** A block's transaction traces.

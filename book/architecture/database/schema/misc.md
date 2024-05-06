@@ -2,25 +2,20 @@
 
 ## PoolsCreationBlock Table
 
+--
 **Table Name:** `PoolsCreationBlock`
 
-**Description:** Tracks the creation of liquidity pools within specific blocks, essential for the dex pricing module which uses this information to initialize and consider which pools to load for state management during a given block range.
+**Description:** Tracks the creation of liquidity pools within specific blocks, essential for the dex pricing module which uses this information to know which pools to initialize pools for a given block range.
 
 **Key:** Block number (`u64`)
 
 - **Type:** `u64`
-- **Description:** The block number in which liquidity pools were created.
+- **Description:** The block at which liquidity pools were created.
 
 **Value:** [`PoolsToAddresses`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/pool_creation_block.rs#L11)
 
 - **Type:** `Vec<Address>`
 - **Description:** A list of addresses representing newly created liquidity pools within the specified block.
-
-### Field Details
-
-- **Addresses**:
-  - **Type:** `Vec<Address>`
-  - **Description:** Contains the blockchain addresses of the liquidity pools created in the corresponding block, facilitating targeted analysis and interactions with these new pools.
 
 ## InitializedState Table
 
@@ -44,4 +39,4 @@
 
 - **State Meta**:
   - **Type:** `u8`
-  - **Description:** Encodes various states of data initialization, where different values may represent different stages or types of data that have been processed and are ready for use.
+  - **Description:** BitMap representing which tables have been downloaded and initialized for the given block number.
