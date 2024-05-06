@@ -82,6 +82,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
                 .await;
 
             if let Err(e) = tx.send((pricer, res)).await {
+                tracing::error!(err=%e, "pricing send failed");
                 drop(e.0);
             }
         });
@@ -123,6 +124,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
                 return Poll::Ready(Some((tree, finalized_meta)))
             } else {
+                tracing::error!("pricing returned completed");
                 // means we have completed chunks
                 return Poll::Ready(None)
             }
