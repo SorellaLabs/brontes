@@ -1165,7 +1165,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         &mut self,
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
-        let mut budget = 60;
+        let mut budget = 10;
         while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_metrics(&self.metrics, cx) {
             self.on_pool_resolve(state);
             budget -= 1;
@@ -1200,7 +1200,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
-        let mut budget = 128;
+        let mut budget = 2;
         'outer: loop {
             self.process_future_blocks();
 
@@ -1284,7 +1284,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
-        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
