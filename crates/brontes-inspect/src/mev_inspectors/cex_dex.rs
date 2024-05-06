@@ -47,6 +47,7 @@ use std::{
 };
 
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::{
         cex::{CexExchange, FeeAdjustedQuote},
@@ -86,9 +87,14 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
     /// * `db` - Database reader to our local libmdbx database
     /// * `cex_exchanges` - List of centralized exchanges to consider for
     ///   arbitrage.
-    pub fn new(quote: Address, db: &'db DB, cex_exchanges: &[CexExchange]) -> Self {
+    pub fn new(
+        quote: Address,
+        db: &'db DB,
+        cex_exchanges: &[CexExchange],
+        metrics: OutlierMetrics,
+    ) -> Self {
         Self {
-            utils:         SharedInspectorUtils::new(quote, db),
+            utils:         SharedInspectorUtils::new(quote, db, metrics),
             cex_exchanges: cex_exchanges.to_owned(),
         }
     }
@@ -202,7 +208,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 quotes.iter().filter_map(|quote| quote.as_ref()).collect();
 
             if some_quotes.is_empty() {
-                return None;
+                return None
             } else {
                 quotes_vwam.push(
                     metadata
@@ -293,7 +299,7 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 &dex_swap.token_out.address,
             );
 
-            return None;
+            return None
         }
 
         // A positive delta indicates potential profit from buying on DEX
@@ -539,7 +545,7 @@ pub struct CexDexProcessing {
 impl CexDexProcessing {
     pub fn construct_max_profit_route(&mut self) -> Option<()> {
         if self.per_exchange_pnl.iter().all(Option::is_none) {
-            return None;
+            return None
         }
 
         let mut transposed_arb_leg: Vec<Vec<&ExchangeLeg>> = vec![Vec::new(); self.dex_swaps.len()];

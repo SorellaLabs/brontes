@@ -5,6 +5,7 @@ use std::{
 };
 
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Mev, MevType, Sandwich},
@@ -37,8 +38,8 @@ pub struct SandwichInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db) }
+    pub fn new(quote: Address, db: &'db DB, metrics: OutlierMetrics) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
 

@@ -33,8 +33,8 @@ pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
-    pub fn new(quote_address: Address, db: &'db DB) -> Self {
-        SharedInspectorUtils { quote: quote_address, db, metrics: OutlierMetrics::default() }
+    pub fn new(quote_address: Address, db: &'db DB, metrics: OutlierMetrics) -> Self {
+        SharedInspectorUtils { quote: quote_address, db, metrics }
     }
 }
 type TokenDeltas = FastHashMap<Address, Rational>;

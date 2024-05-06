@@ -17,6 +17,7 @@ use brontes_database::clickhouse::ReadOnlyMiddleware;
 use brontes_database::clickhouse::{dbms::BrontesClickhouseTableDataTypes, ClickhouseBuffered};
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
+use brontes_metrics::inspectors::OutlierMetrics;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
@@ -135,11 +136,12 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     cex_exchanges: Vec<CexExchange>,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
     let mut res = Vec::new();
+    let metrics = OutlierMetrics::new();
     for inspector in inspectors
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
     {
-        res.push(inspector.init_mev_inspector(quote_token, db, &cex_exchanges));
+        res.push(inspector.init_mev_inspector(quote_token, db, &cex_exchanges, metrics.clone()));
     }
 
     &*Box::leak(res.into_boxed_slice())
