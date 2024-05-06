@@ -1,4 +1,4 @@
-use std::{pin::Pin, time::Instant};
+use std::{fmt::Debug, pin::Pin, time::Instant};
 
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::IntCounterVec;
@@ -22,6 +22,12 @@ pub struct DexPricingMetrics {
 impl Default for DexPricingMetrics {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Debug for DexPricingMetrics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DexPricingMetrics").finish()
     }
 }
 
