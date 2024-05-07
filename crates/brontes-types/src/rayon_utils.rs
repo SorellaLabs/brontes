@@ -4,13 +4,9 @@
 use std::sync::OnceLock;
 
 /// Takes all of our threadpools and initalizes them
-/// pricing gets 70% threads
-/// inspect gets 35% threads
-/// NOTE: we exceed 100% due to the call operation flow.
-/// we still expect to keep cpu usage near given value
 pub fn init_threadpools(max_tasks: usize) {
-    let pricing_tasks = (max_tasks as f64 * 0.70) as usize + 1;
-    let inspect_tasks = (max_tasks as f64 * 0.40) as usize + 1;
+    let pricing_tasks = (max_tasks as f64 * 0.7) as usize + 1;
+    let inspect_tasks = (max_tasks as f64 * 0.7) as usize + 1;
 
     init_pricing_threadpool(pricing_tasks);
     init_inspect_threadpool(inspect_tasks);
