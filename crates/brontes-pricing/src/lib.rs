@@ -580,48 +580,65 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// `on_state_load_error`.
 
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "pool_resolve")]
-    fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult { block, state, load_result, dependent_count } = state;
+    fn on_pool_resolve(&mut self, state: Vec<LazyResult>) {
+        let failed_queries = state
+            .into_iter()
+            .filter_map(|state| {
+                let LazyResult { block, state, load_result, dependent_count } = state;
 
-        if let Some(state) = state {
-            let addr = state.address();
-            let state = StateWithDependencies { state, dependents: dependent_count };
+                if let Some(state) = state {
+                    let addr = state.address();
+                    let state = StateWithDependencies { state, dependents: dependent_count };
 
-            self.graph_manager.new_state(addr, state);
+                    self.graph_manager.new_state(addr, state);
 
-            // pool was initialized this block. lets set the override to avoid invalid state
-            if !load_result.is_ok() {
-                self.buffer.overrides.entry(block).or_default().insert(addr);
-            }
-        } else if let LoadResult::Err { block, pool_address, pool_pair, protocol, deps, .. } =
-            load_result
-        {
-            self.new_graph_pairs
-                .insert(pool_address, (protocol, pool_pair));
-            self.graph_manager
-                .remove_pair_graph_address(pool_pair, pool_address);
-
-            let failed_queries = deps
-                .into_iter()
-                .filter(|&pair| {
-                    self.graph_manager
-                        .pool_dep_failure(&pair, pool_address, pool_pair)
-                })
-                .map(|pair| {
-                    self.lazy_loader.full_failure(pair);
-                    tracing::debug!(?pair, "failed state query dep");
-                    RequeryPairs {
-                        pair,
-                        extends_pair: None,
-                        block,
-                        frayed_ends: Default::default(),
-                        ignore_state: Default::default(),
+                    // pool was initialized this block. lets set the override to avoid invalid state
+                    if !load_result.is_ok() {
+                        self.buffer.overrides.entry(block).or_default().insert(addr);
                     }
-                })
-                .collect_vec();
 
-            self.requery_bad_state_par(failed_queries, false)
-        }
+                    return None
+                } else if let LoadResult::Err {
+                    block,
+                    pool_address,
+                    pool_pair,
+                    protocol,
+                    deps,
+                    ..
+                } = load_result
+                {
+                    self.new_graph_pairs
+                        .insert(pool_address, (protocol, pool_pair));
+                    self.graph_manager
+                        .remove_pair_graph_address(pool_pair, pool_address);
+
+                    let failed_queries = deps
+                        .into_iter()
+                        .filter(|&pair| {
+                            self.graph_manager
+                                .pool_dep_failure(&pair, pool_address, pool_pair)
+                        })
+                        .map(|pair| {
+                            self.lazy_loader.full_failure(pair);
+                            tracing::debug!(?pair, "failed state query dep");
+                            RequeryPairs {
+                                pair,
+                                extends_pair: None,
+                                block,
+                                frayed_ends: Default::default(),
+                                ignore_state: Default::default(),
+                            }
+                        })
+                        .collect_vec();
+
+                    return Some(failed_queries)
+                }
+                None
+            })
+            .flatten()
+            .collect_vec();
+
+        self.requery_bad_state_par(failed_queries, false);
     }
 
     /// Attempts to verify subgraphs for a given set of pairs and handles the
@@ -1167,14 +1184,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         &mut self,
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
-        let mut budget = 10;
+        let mut buf = vec![];
         while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_metrics(&self.metrics, cx) {
-            self.on_pool_resolve(state);
-            budget -= 1;
-            if budget == 0 {
-                cx.waker().wake_by_ref();
-                break
-            }
+            buf.push(state);
+        }
+
+        if !buf.is_empty() {
+            self.on_pool_resolve(buf);
         }
 
         let pairs = self.lazy_loader.pairs_to_verify();
