@@ -6,8 +6,8 @@ use brontes_core::test_utils::*;
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    normalized_actions::Action, traits::TracingProvider, tree::BlockTree, FastHashMap,
-    UnboundedYapperReceiver,
+    normalized_actions::Action, traits::TracingProvider, tree::BlockTree, BrontesTaskManager,
+    FastHashMap, UnboundedYapperReceiver,
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
@@ -60,6 +60,7 @@ impl PricingTestUtils {
         } else {
             FastHashMap::default()
         };
+        let ex = BrontesTaskManager::current().executor();
         Ok(BrontesBatchPricer::new(
             0,
             Arc::new(AtomicBool::new(false)),
@@ -71,6 +72,7 @@ impl PricingTestUtils {
             created_pools,
             Arc::new(AtomicBool::new(false)),
             DexPricingMetrics::default(),
+            ex
         ))
     }
 
