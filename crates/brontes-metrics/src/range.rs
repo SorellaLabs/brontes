@@ -122,7 +122,7 @@ impl GlobalRangeMetrics {
     }
 
     pub async fn tree_builder<R>(
-        &self,
+        self,
         id: usize,
         f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
@@ -136,7 +136,7 @@ impl GlobalRangeMetrics {
     }
 
     pub async fn block_tracing<R>(
-        &self,
+        self,
         id: usize,
         f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
