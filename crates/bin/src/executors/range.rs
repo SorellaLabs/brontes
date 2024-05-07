@@ -105,7 +105,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if !self.collector.is_collecting_state()
             && self.collector.should_process_next_block()
-            && self.insert_futures.len() < 5
             && self.current_block != self.end_block
         {
             cx.waker().wake_by_ref();
@@ -130,10 +129,23 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             }
         }
 
-        // poll insertion
-        while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
-            self.global_metrics.dec_inspector(self.id);
-            self.global_metrics.finished_block(self.id);
+        // if we have less than 5 inserts, force re-query
+        loop {
+            match self.insert_futures.poll_next_unpin(cx) {
+                Poll::Ready(Some(_)) => {
+                    self.global_metrics.dec_inspector(self.id);
+                    self.global_metrics.finished_block(self.id);
+                }
+                Poll::Ready(None) => {
+                    cx.waker().wake_by_ref();
+                    break
+                }
+                Poll::Pending if self.insert_futures.len() < 5 => {
+                    cx.waker().wake_by_ref();
+                    break
+                }
+                _ => break,
+            }
         }
 
         // mark complete if we are done with the range
