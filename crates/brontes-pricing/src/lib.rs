@@ -1238,11 +1238,16 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                                 block_updates.push(update);
                             } else {
                                 self.overlap_update = Some(update);
+                                cx.waker().wake_by_ref();
                                 break
                             }
                         }
                     }
-                    Poll::Ready(None) | Poll::Pending => {
+                    Poll::Ready(None) => {
+                        cx.waker().wake_by_ref();
+                        break
+                    }
+                    Poll::Pending => {
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
                             && self
