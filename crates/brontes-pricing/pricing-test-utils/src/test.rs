@@ -72,7 +72,7 @@ impl PricingTestUtils {
             created_pools,
             Arc::new(AtomicBool::new(false)),
             DexPricingMetrics::default(),
-            ex
+            ex,
         ))
     }
 

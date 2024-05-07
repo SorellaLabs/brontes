@@ -71,6 +71,18 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
             return vec![]
         }
 
+        self.utils
+            .get_metrics()
+            .run_inspector(MevType::CexDex, || self.process_tree_inner(tree, metadata))
+    }
+}
+
+impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
+    fn process_tree_inner(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<Bundle> {
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
@@ -133,9 +145,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
             })
             .collect::<Vec<_>>()
     }
-}
 
-impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     pub fn detect_cex_dex(
         &self,
         dex_swaps: Vec<NormalizedSwap>,
@@ -328,18 +338,27 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
-                let (window, other) = metadata
-                    .cex_trades
-                    .as_ref()
-                    .unwrap()
-                    .lock()
-                    .calculate_all_methods(
-                        &self.cex_exchanges,
-                        pair,
-                        &swap.amount_out,
-                        metadata.microseconds_block_timestamp(),
-                        None,
-                    );
+                let window = self.utils.get_metrics().run_cex_price_window(|| {
+                    metadata
+                        .cex_trades
+                        .as_ref()
+                        .unwrap()
+                        .lock()
+                        .calculate_time_window_vwam(
+                            &self.cex_exchanges,
+                            pair,
+                            &swap.amount_out,
+                            metadata.microseconds_block_timestamp(),
+                        )
+                });
+                let other = self.utils.get_metrics().run_cex_price_vol(|| {
+                    metadata
+                        .cex_trades
+                        .as_ref()
+                        .unwrap()
+                        .lock()
+                        .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_out, None)
+                });
 
                 if (window.is_none() || other.is_none()) && marked_cex_dex {
                     self.utils.get_metrics().missing_cex_pair(pair);

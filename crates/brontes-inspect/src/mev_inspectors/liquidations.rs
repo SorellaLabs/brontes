@@ -34,22 +34,26 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
-        let liq_txs = tree
-            .clone()
-            .collect_all(
-                TreeSearchBuilder::default()
-                    .with_actions([Action::is_swap, Action::is_liquidation]),
-            )
-            .collect_vec();
+        self.utils
+            .get_metrics()
+            .run_inspector(MevType::Liquidation, || {
+                let liq_txs = tree
+                    .clone()
+                    .collect_all(
+                        TreeSearchBuilder::default()
+                            .with_actions([Action::is_swap, Action::is_liquidation]),
+                    )
+                    .collect_vec();
 
-        liq_txs
-            .into_par_iter()
-            .filter_map(|(tx_hash, liq)| {
-                let info = tree.get_tx_info(tx_hash, self.utils.db)?;
+                liq_txs
+                    .into_par_iter()
+                    .filter_map(|(tx_hash, liq)| {
+                        let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
-                self.calculate_liquidation(info, metadata.clone(), liq)
+                        self.calculate_liquidation(info, metadata.clone(), liq)
+                    })
+                    .collect::<Vec<_>>()
             })
-            .collect::<Vec<_>>()
     }
 }
 

@@ -62,6 +62,18 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+        self.utils
+            .get_metrics()
+            .run_inspector(MevType::Sandwich, || self.process_tree_inner(tree, metadata))
+    }
+}
+
+impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
+    fn process_tree_inner(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<Bundle> {
         let search_args = TreeSearchBuilder::default().with_actions([
             Action::is_swap,
             Action::is_transfer,
@@ -190,9 +202,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                 .collect::<Vec<_>>(),
         )
     }
-}
 
-impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn calculate_sandwich(
         &self,
         tree: Arc<BlockTree<Action>>,

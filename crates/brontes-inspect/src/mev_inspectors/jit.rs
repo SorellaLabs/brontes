@@ -46,6 +46,18 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+        self.utils
+            .get_metrics()
+            .run_inspector(MevType::Jit, || self.process_tree_inner(tree, metadata))
+    }
+}
+
+impl<DB: LibmdbxReader> JitInspector<'_, DB> {
+    fn process_tree_inner(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<Bundle> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
@@ -142,9 +154,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             )
             .collect::<Vec<_>>()
     }
-}
 
-impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,

@@ -3,7 +3,7 @@ use std::{pin::Pin, time::Instant};
 use brontes_types::{mev::MevType, pair::Pair, FastHashMap};
 use dashmap::DashMap;
 use metrics::{Counter, Gauge, Histogram};
-use prometheus::IntCounterVec;
+use prometheus::{HistogramVec, IntCounterVec};
 use reth_metrics::Metrics;
 use reth_primitives::Address;
 
@@ -15,6 +15,9 @@ pub struct OutlierMetrics {
     pub dex_bad_pricing:           IntCounterVec,
     pub inspector_100x_price_type: IntCounterVec,
     pub branch_filtering_trigger:  IntCounterVec,
+    // runtimes
+    inspector_runtime:             HistogramVec,
+    cex_dex_price_speed:           HistogramVec,
 }
 
 impl Default for OutlierMetrics {
@@ -53,12 +56,46 @@ impl OutlierMetrics {
         )
         .unwrap();
 
+        let inspector_runtime = prometheus::register_histogram_vec!(
+            "inspector_runtime_ms",
+            "the runtime of the inspectors",
+            &["mev_type"]
+        )
+        .unwrap();
+
+        let cex_dex_price_speed = prometheus::register_histogram_vec!(
+            "cex_dex_price_speed",
+            "the runtime of the inspectors",
+            &["type"]
+        )
+        .unwrap();
+
         Self {
+            inspector_runtime,
             branch_filtering_trigger,
             inspector_100x_price_type,
             dex_bad_pricing,
             cex_pair_symbols,
+            cex_dex_price_speed,
         }
+    }
+
+    pub fn run_cex_price_window<R>(&self, f: impl FnOnce() -> R) -> R {
+        self.cex_dex_price_speed
+            .with_label_values(&["window"])
+            .observe_closure_duration(f)
+    }
+
+    pub fn run_cex_price_vol<R>(&self, f: impl FnOnce() -> R) -> R {
+        self.cex_dex_price_speed
+            .with_label_values(&["volume"])
+            .observe_closure_duration(f)
+    }
+
+    pub fn run_inspector<R>(&self, inspector_type: MevType, f: impl FnOnce() -> R) -> R {
+        self.inspector_runtime
+            .with_label_values(&[&inspector_type.to_string()])
+            .observe_closure_duration(f)
     }
 
     pub fn missing_cex_pair(&self, pair: Pair) {
