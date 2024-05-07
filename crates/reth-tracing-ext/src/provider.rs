@@ -4,27 +4,22 @@ use alloy_rpc_types::AnyReceiptEnvelope;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
 use reth_primitives::{
-    revm::env::{fill_tx_env, fill_tx_env_with_recovered},
-    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue,
-    TransactionSigned, TransactionSignedEcRecovered, TxHash, B256, U256,
+    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
+    B256, U256,
 };
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB};
 use reth_rpc::eth::{
     error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError},
-    revm_utils::EvmOverrides,
     EthTransactions,
 };
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
-    state::{AccountOverride, StateOverride},
-    BlockOverrides, Log, TransactionReceipt, TransactionRequest,
+    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
 use revm::{
-    precompile::{PrecompileSpecId, Precompiles},
     primitives::{
-        db::DatabaseRef, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, SpecId, TransactTo,
-        TxEnv,
+        db::DatabaseRef, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, TransactTo, TxEnv,
     },
     Database,
 };
@@ -445,8 +440,8 @@ pub(crate) fn ensure_success(result: ExecutionResult) -> EthResult<Bytes> {
         ExecutionResult::Revert { output, .. } => {
             Err(RpcInvalidTransactionError::Revert(RevertError::new(output)).into())
         }
-        ExecutionResult::Halt { reason, gas_used } => {
-            Err(RpcInvalidTransactionError::halt(reason, gas_used).into())
+        ExecutionResult::Halt { .. } => {
+            Err(RpcInvalidTransactionError::Revert(RevertError::new(Bytes::new())).into())
         }
     }
 }
