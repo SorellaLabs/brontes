@@ -101,7 +101,7 @@ default = [
   "local-reth",
 ]
 
-jemalloc = []
+jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
 dhat-heap = []
 
