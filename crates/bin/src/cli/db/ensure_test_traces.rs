@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_metrics::PoirotMetricsListener;
+use brontes_metrics::{range::GlobalRangeMetrics, PoirotMetricsListener};
 use brontes_types::{
     init_threadpools, unordered_buffer_map::BrontesStreamExt, UnboundedYapperReceiver,
 };
@@ -44,7 +44,7 @@ impl TestTraceArgs {
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         futures::stream::iter(self.blocks.into_iter())
-            .unordered_buffer_map(100, |i| parser.execute(i))
+            .unordered_buffer_map(100, |i| parser.execute(i, 0, GlobalRangeMetrics::new(vec![])))
             .map(|_res| ())
             .collect::<Vec<_>>()
             .await;

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_metrics::PoirotMetricsListener;
+use brontes_metrics::{range::GlobalRangeMetrics, PoirotMetricsListener};
 use brontes_types::{
     init_threadpools, unordered_buffer_map::BrontesStreamExt, UnboundedYapperReceiver,
 };
@@ -58,7 +58,7 @@ impl TraceArgs {
                         (i - self.start_block) as f64 / amount * 100.0
                     );
                 }
-                parser.execute(i)
+                parser.execute(i, 0, GlobalRangeMetrics::new(vec![]))
             })
             .map(|_res| ())
             .collect::<Vec<_>>()
