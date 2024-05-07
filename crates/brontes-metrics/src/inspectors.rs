@@ -81,21 +81,35 @@ impl OutlierMetrics {
     }
 
     pub fn run_cex_price_window<R>(&self, f: impl FnOnce() -> R) -> R {
+        let instant = Instant::now();
+        let res = f();
+        let elapsed = instant.elapsed().as_millis();
         self.cex_dex_price_speed
             .with_label_values(&["window"])
-            .observe_closure_duration(f)
+            .observe(elapsed as f64);
+        res
     }
 
     pub fn run_cex_price_vol<R>(&self, f: impl FnOnce() -> R) -> R {
+        let instant = Instant::now();
+        let res = f();
+        let elapsed = instant.elapsed().as_millis();
+
         self.cex_dex_price_speed
             .with_label_values(&["volume"])
-            .observe_closure_duration(f)
+            .observe(elapsed as f64);
+        res
     }
 
     pub fn run_inspector<R>(&self, inspector_type: MevType, f: impl FnOnce() -> R) -> R {
+        let instant = Instant::now();
+        let res = f();
+        let elapsed = instant.elapsed().as_millis();
+
         self.inspector_runtime
             .with_label_values(&[&inspector_type.to_string()])
-            .observe_closure_duration(f)
+            .observe(elapsed as f64);
+        res
     }
 
     pub fn missing_cex_pair(&self, pair: Pair) {
