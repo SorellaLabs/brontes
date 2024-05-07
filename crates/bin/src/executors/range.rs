@@ -109,7 +109,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         {
             cx.waker().wake_by_ref();
             let block = self.current_block;
-            self.collector.fetch_state_for(block);
+
+            self.collector
+                .fetch_state_for(block, self.id, self.global_metrics.clone());
+
             self.current_block += 1;
             if let Some(pb) = self.progress_bar.as_ref() {
                 pb.inc(1)
@@ -130,22 +133,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         }
 
         // if we have less than 5 inserts, force re-query
-        loop {
-            match self.insert_futures.poll_next_unpin(cx) {
-                Poll::Ready(Some(_)) => {
-                    self.global_metrics.dec_inspector(self.id);
-                    self.global_metrics.finished_block(self.id);
-                }
-                Poll::Ready(None) => {
-                    cx.waker().wake_by_ref();
-                    break
-                }
-                Poll::Pending if self.insert_futures.len() < 5 => {
-                    cx.waker().wake_by_ref();
-                    break
-                }
-                _ => break,
-            }
+        while let Poll::Ready(Some(res)) = self.insert_futures.poll_next_unpin(cx) {
+            self.global_metrics.dec_inspector(self.id);
+            self.global_metrics.finished_block(self.id);
         }
 
         // mark complete if we are done with the range

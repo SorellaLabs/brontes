@@ -2,7 +2,8 @@ use std::{pin::Pin, time::Instant};
 
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
-    register_int_counter_vec, register_int_gauge_vec, IntCounterVec, IntGaugeVec, Opts,
+    register_int_counter_vec, register_int_gauge_vec, HistogramVec, IntCounterVec, IntGaugeVec,
+    Opts,
 };
 use reth_metrics::Metrics;
 
@@ -21,6 +22,9 @@ pub struct GlobalRangeMetrics {
     pub poll_rate:                   IntCounterVec,
     /// pending inspector runs
     pub active_inspector_processing: IntGaugeVec,
+
+    pub block_tracing_throughput:  HistogramVec,
+    pub classification_throughput: HistogramVec,
 }
 
 impl GlobalRangeMetrics {
@@ -61,11 +65,31 @@ impl GlobalRangeMetrics {
             res.inc_by(block);
         }
 
+        let buckets = prometheus::exponential_buckets(1.0, 2.0, 22).unwrap();
+
+        let block_tracing = prometheus::register_histogram_vec!(
+            "block_tracing_throughput",
+            "block tracing speed",
+            &["range_id"],
+            buckets.clone()
+        )
+        .unwrap();
+
+        let tree_builder = prometheus::register_histogram_vec!(
+            "tree_builder_throughput",
+            "tree builder speed ",
+            &["range_ud"],
+            buckets
+        )
+        .unwrap();
+
         Self {
             poll_rate,
             active_inspector_processing,
             completed_blocks_range,
             total_blocks_range,
+            block_tracing_throughput: block_tracing,
+            classification_throughput: tree_builder,
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
         }
@@ -95,6 +119,34 @@ impl GlobalRangeMetrics {
             .inc();
 
         self.completed_blocks.increment(1);
+    }
+
+    pub async fn tree_builder<R>(
+        &self,
+        id: usize,
+        f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
+    ) -> R {
+        let instant = Instant::now();
+        let res = f().await;
+        let elapsed = instant.elapsed().as_millis();
+        self.classification_throughput
+            .with_label_values(&[&format!("{id}")])
+            .observe(elapsed as f64);
+        res
+    }
+
+    pub async fn block_tracing<R>(
+        &self,
+        id: usize,
+        f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
+    ) -> R {
+        let instant = Instant::now();
+        let res = f().await;
+        let elapsed = instant.elapsed().as_millis();
+        self.classification_throughput
+            .with_label_values(&[&format!("{id}")])
+            .observe(elapsed as f64);
+        res
     }
 
     pub async fn meter_processing<R>(
