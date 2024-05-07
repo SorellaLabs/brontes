@@ -88,6 +88,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
         debug!(target:"brontes","Completed DEX pricing");
+        self.global_metrics.inc_inspector(self.id);
         self.insert_futures
             .push(Box::pin(self.global_metrics.clone().meter_processing(|| {
                 Box::pin(P::process_results(self.libmdbx, self.inspectors, tree, meta))
@@ -128,6 +129,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
         // poll insertion
         while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
+            self.global_metrics.dec_inspector(self.id);
             self.global_metrics.finished_block(self.id);
         }
 
