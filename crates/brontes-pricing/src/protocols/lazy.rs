@@ -269,7 +269,6 @@ impl Stream for MultiBlockPoolFutures {
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         if self.0.is_empty() {
-            cx.waker().wake_by_ref();
             return Poll::Ready(None)
         }
 
