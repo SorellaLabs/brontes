@@ -2,7 +2,7 @@ use std::{pin::Pin, time::Instant};
 
 use brontes_types::{mev::MevType, pair::Pair, FastHashMap};
 use dashmap::DashMap;
-use metrics::{Counter, Gauge, Histogram};
+use metrics::{Counter, Gauge};
 use prometheus::{HistogramVec, IntCounterVec};
 use reth_metrics::Metrics;
 use reth_primitives::Address;
@@ -56,17 +56,21 @@ impl OutlierMetrics {
         )
         .unwrap();
 
+        let buckets = prometheus::exponential_buckets(1.0, 2.0, 22).unwrap();
+
         let inspector_runtime = prometheus::register_histogram_vec!(
             "inspector_runtime_ms",
             "the runtime of the inspectors",
-            &["mev_type"]
+            &["mev_type"],
+            buckets.clone()
         )
         .unwrap();
 
         let cex_dex_price_speed = prometheus::register_histogram_vec!(
             "cex_dex_price_speed",
             "the runtime of the inspectors",
-            &["type"]
+            &["type"],
+            buckets
         )
         .unwrap();
 
