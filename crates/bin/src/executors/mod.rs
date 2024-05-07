@@ -263,6 +263,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             rest_pairs,
             data_req.clone(),
             pricing_metrics.clone(),
+            executor.clone(),
         );
 
         let pricing = WaitingForPricerFuture::new(pricer, executor);

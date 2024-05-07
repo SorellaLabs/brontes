@@ -3,7 +3,8 @@ use std::{collections::hash_map::Entry, pin::Pin, sync::Arc, task::Poll};
 use alloy_primitives::Address;
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{
-    pair::Pair, traits::TracingProvider, unzip_either::IterExt, FastHashMap, FastHashSet,
+    pair::Pair, traits::TracingProvider, unzip_either::IterExt, BrontesTaskExecutor, FastHashMap,
+    FastHashSet,
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
@@ -68,18 +69,19 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_buf:          FastHashMap<Address, FastHashSet<BlockNumber>>,
     /// requests we are processing for a given block.
     req_per_block:     FastHashMap<BlockNumber, u64>,
-
-    state_tracking: LoadingStateTracker,
+    state_tracking:    LoadingStateTracker,
+    ex:                BrontesTaskExecutor,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
-    pub fn new(provider: Arc<T>) -> Self {
+    pub fn new(provider: Arc<T>, ex: BrontesTaskExecutor) -> Self {
         Self {
             state_tracking: LoadingStateTracker::default(),
             pool_buf: FastHashMap::default(),
             pool_load_futures: MultiBlockPoolFutures::new(),
             provider,
             req_per_block: FastHashMap::default(),
+            ex,
         }
     }
 
@@ -167,7 +169,11 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, pair);
         self.pool_load_futures.add_future(
             block_number,
-            Box::pin(tokio::spawn(metrics.meter_state_load(|| Box::pin(fut)))),
+            Box::pin(
+                self.ex
+                    .handle()
+                    .spawn(metrics.meter_state_load(|| Box::pin(fut))),
+            ),
         );
     }
 

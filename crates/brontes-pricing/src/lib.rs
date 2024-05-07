@@ -23,7 +23,7 @@
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
-    UnboundedYapperReceiver,
+    BrontesTaskExecutor, UnboundedYapperReceiver,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -149,6 +149,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
         needs_more_data: Arc<AtomicBool>,
         metrics: DexPricingMetrics,
+        executor: BrontesTaskExecutor,
     ) -> Self {
         Self {
             range_id,
@@ -160,7 +161,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             update_rx,
             graph_manager,
             dex_quotes: FastHashMap::default(),
-            lazy_loader: LazyExchangeLoader::new(provider),
+            lazy_loader: LazyExchangeLoader::new(provider, executor),
             current_block,
             completed_block: current_block,
             overlap_update: None,
