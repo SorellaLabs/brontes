@@ -3,10 +3,13 @@
 //! par_iter allocations.
 use std::sync::OnceLock;
 
-/// Takes all of our threadpools and initalizes them
+/// NOTE: we exceed 100% due to the call operation flow.
+/// we still expect to keep cpu usage near given value
 pub fn init_threadpools(max_tasks: usize) {
-    let pricing_tasks = (max_tasks as f64 * 0.7) as usize + 1;
-    let inspect_tasks = (max_tasks as f64 * 0.7) as usize + 1;
+    // expensive ops, up to 200 ms
+    let pricing_tasks = (max_tasks as f64 * 0.70) as usize + 1;
+    // inspector runtime ~ 50ms
+    let inspect_tasks = max_tasks;
 
     init_pricing_threadpool(pricing_tasks);
     init_inspect_threadpool(inspect_tasks);
