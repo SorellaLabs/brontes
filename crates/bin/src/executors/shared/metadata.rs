@@ -26,7 +26,7 @@ use super::dex_pricing::WaitingForPricerFuture;
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process
-const MAX_PENDING_TREES: usize = 45;
+const MAX_PENDING_TREES: usize = 10;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
@@ -186,6 +186,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
             Poll::Ready(Some(value)) => Poll::Ready(Some(value)),
+            Poll::Ready(None) if self.result_buf.is_empty() => return Poll::Ready(None),
             Poll::Ready(None) | Poll::Pending => {
                 if let Some(front) = self.result_buf.pop_front() {
                     Poll::Ready(Some(front))
