@@ -27,7 +27,8 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
-    FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
+    BrontesTaskExecutor, BrontesTaskManager, FastHashMap, TreeSearchBuilder,
+    UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
 use reth_db::DatabaseError;
@@ -97,6 +98,7 @@ impl ClassifierTestUtils {
             FastHashMap::default()
         };
         let ctr = Arc::new(AtomicBool::new(false));
+        let ex = BrontesTaskManager::current().executor();
 
         Ok((
             ctr.clone(),
@@ -111,6 +113,7 @@ impl ClassifierTestUtils {
                 created_pools,
                 ctr.clone(),
                 DexPricingMetrics::default(),
+                ex,
             ),
         ))
     }
