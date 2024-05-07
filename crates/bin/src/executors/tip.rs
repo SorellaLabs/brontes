@@ -10,6 +10,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
+use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
@@ -130,7 +131,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
             tracing::info!("starting new tip block");
             let block = self.current_block;
-            self.state_collector.fetch_state_for(block);
+            panic!("need to do");
+            self.state_collector
+                .fetch_state_for(block, 0, GlobalRangeMetrics::new(vec![]));
             self.current_block += 1;
         }
 
