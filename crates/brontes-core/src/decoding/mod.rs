@@ -15,7 +15,9 @@ mod dyn_decode;
 
 pub mod parser;
 mod utils;
-use brontes_metrics::{trace::types::TraceMetricEvent, PoirotMetricEvents};
+use brontes_metrics::{
+    range::GlobalRangeMetrics, trace::types::TraceMetricEvent, PoirotMetricEvents,
+};
 #[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";
 #[allow(dead_code)]
@@ -68,15 +70,15 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
     }
 
     /// executes the tracing of a given block
-    pub fn execute(&self, block_num: u64) -> ParserFuture {
+    pub fn execute(&self, block_num: u64, id: usize, metrics: GlobalRangeMetrics) -> ParserFuture {
         // This will satisfy its lifetime scope do to the lifetime itself living longer
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
-        Box::pin(
-            self.executor
-                .spawn_result_task_as(parser.execute_block(block_num), TaskKind::Default),
-        ) as ParserFuture
+        Box::pin(self.executor.spawn_result_task_as(
+            metrics.block_tracing(id, move || Box::pin(parser.execute_block(block_num))),
+            TaskKind::Default,
+        )) as ParserFuture
     }
 
     pub fn trace_for_clickhouse(&self, block_num: u64) -> TraceClickhouseFuture {
