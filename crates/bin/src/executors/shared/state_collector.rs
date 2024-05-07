@@ -99,7 +99,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 
     pub fn fetch_state_for(&mut self, block: u64, id: usize, metrics: GlobalRangeMetrics) {
         let metrics_c = metrics.clone();
-        let execute_fut = Box::pin(metrics_c.block_tracing(id, move || self.parser.execute(block))) as ParserFuture;
+        let execute_fut =
+            Box::pin(metrics_c.block_tracing(id, || self.parser.execute(block))) as ParserFuture;
 
         let generate_pricing = self.metadata_fetcher.generate_dex_pricing(block, self.db);
         self.collection_future = Some(Box::pin(
