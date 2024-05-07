@@ -1170,6 +1170,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             self.on_pool_resolve(state);
             budget -= 1;
             if budget == 0 {
+                cx.waker().wake_by_ref();
                 break
             }
         }
