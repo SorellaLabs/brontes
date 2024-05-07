@@ -20,6 +20,16 @@ pub trait TracingProvider: Send + Sync + 'static {
         block_overrides: Option<Box<BlockOverrides>>,
     ) -> eyre::Result<Bytes>;
 
+    /// eth call that is light in calcuations
+    /// will bypass threadpool
+    async fn eth_call_light(
+        &self,
+        request: TransactionRequest,
+        block_number: BlockId,
+    ) -> eyre::Result<Bytes> {
+        self.eth_call(request, Some(block_number), None, None).await
+    }
+
     async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>>;
 
     #[cfg(feature = "local-reth")]

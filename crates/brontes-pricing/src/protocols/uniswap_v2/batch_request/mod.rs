@@ -53,7 +53,7 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
     };
 
     let res = middleware
-        .eth_call(req, block.map(|i| i.into()), None, None)
+        .eth_call_light(req, block.unwrap().into())
         .map_err(|e| eyre::eyre!("v2 state call failed, err={}", e))
         .await?;
 
