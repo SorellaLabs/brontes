@@ -173,6 +173,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             if let Some(res) = self.result_buf.pop_front() {
                 return Poll::Ready(Some(res))
             }
+            cx.waker().wake_by_ref();
             return Poll::Pending
         }
 
