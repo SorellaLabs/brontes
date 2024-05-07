@@ -186,14 +186,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
             Poll::Ready(Some(value)) => Poll::Ready(Some(value)),
-            Poll::Ready(None) if self.result_buf.is_empty() => return Poll::Ready(None),
-            Poll::Ready(None) | Poll::Pending => {
-                if let Some(front) = self.result_buf.pop_front() {
-                    Poll::Ready(Some(front))
-                } else {
-                    Poll::Pending
-                }
-            }
+            Poll::Ready(None) => return Poll::Ready(self.result_buf.pop_front()),
+            Poll::Pending => Poll::Pending,
         }
     }
 }
