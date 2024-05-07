@@ -80,7 +80,7 @@ impl GlobalRangeMetrics {
     pub fn dec_inspector(&self, id: usize) {
         self.active_inspector_processing
             .with_label_values(&[&format!("{id}")])
-            .inc();
+            .dec();
     }
 
     pub fn poll_rate(&self, id: usize) {
