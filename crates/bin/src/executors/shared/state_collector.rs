@@ -101,7 +101,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         let execute_fut = Box::pin(
             metrics
                 .clone()
-                .block_tracing(id, || self.parser.execute(block)),
+                .block_tracing(id, move || self.parser.execute(block)),
         );
 
         let generate_pricing = self.metadata_fetcher.generate_dex_pricing(block, self.db);

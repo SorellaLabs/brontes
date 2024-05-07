@@ -111,8 +111,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             let block = self.current_block;
 
             let id = self.id;
+            let metrics = self.global_metrics.clone();
             self.collector
-                .fetch_state_for(block, id, self.global_metrics.clone());
+                .fetch_state_for(block, id, metrics);
 
             self.current_block += 1;
             if let Some(pb) = self.progress_bar.as_ref() {
