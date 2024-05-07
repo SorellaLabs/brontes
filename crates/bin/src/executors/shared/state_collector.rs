@@ -89,16 +89,21 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 
         trace!("Got {} traces + header", traces.len());
         let res = metrics
-            .tree_builder(id, || classifier.build_block_tree(traces, header, generate_pricing))
+            .tree_builder(id, || {
+                Box::pin(classifier.build_block_tree(traces, header, generate_pricing))
+            })
             .await;
 
         Ok(res)
     }
 
     pub fn fetch_state_for(&mut self, block: u64, id: usize, metrics: GlobalRangeMetrics) {
-        let execute_fut = metrics
-            .clone()
-            .block_tracing(id, || self.parser.execute(block));
+        let execute_fut = Box::pin(
+            metrics
+                .clone()
+                .block_tracing(id, || self.parser.execute(block)),
+        );
+
         let generate_pricing = self.metadata_fetcher.generate_dex_pricing(block, self.db);
         self.collection_future = Some(Box::pin(
             Self::state_future(generate_pricing, block, execute_fut, self.classifier, id, metrics)
