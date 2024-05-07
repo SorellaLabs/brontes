@@ -973,12 +973,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             && self.completed_block < self.current_block
     }
 
-    /// The price can pre-process up to 40 blocks in the future
-    fn process_future_blocks(&self) {
+    fn process_future_blocks(&self) -> bool {
         if self.completed_block + 6 > self.current_block {
             self.needs_more_data.store(true, SeqCst);
+            false
         } else {
             self.needs_more_data.store(false, SeqCst);
+            true
         }
     }
 
@@ -1205,7 +1206,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
 
         let mut budget = 2;
         'outer: loop {
-            self.process_future_blocks();
+            // if we signal that we don't need more data, we cutoff the rx
+            let cutoff = self.process_future_blocks();
 
             let mut block_updates = Vec::new();
             loop {
@@ -1260,6 +1262,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && self.finished.load(SeqCst)
                         {
                             return Poll::Ready(self.on_close())
+                        }
+                        // if  we are cutoff, i.e this will be pending forever until we catchup,
+                        // we ensure to reschedule
+                        if cutoff {
+                            cx.waker().wake_by_ref();
                         }
                         break
                     }
