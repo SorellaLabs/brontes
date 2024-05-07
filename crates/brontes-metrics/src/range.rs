@@ -10,12 +10,13 @@ pub struct GlobalRangeMetrics {
     pub completed_blocks:       Counter,
     /// the runtime for inspectors
     pub processing_run_time_ms: Histogram,
-    ///
     /// complete
     pub completed_blocks_range: IntCounterVec,
     /// the amount of blocks the inspector has completed
     /// the total blocks in the inspector range
     pub total_blocks_range:     IntCounterVec,
+    /// range poll rate
+    pub poll_rate:              IntCounterVec,
 }
 
 impl GlobalRangeMetrics {
@@ -34,6 +35,13 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
+        let poll_rate = register_int_counter_vec!(
+            "range_poll_rate",
+            "the poll rate for the future of the range",
+            &["range_id"]
+        )
+        .unwrap();
+
         for (i, block) in per_range_blocks.into_iter().enumerate() {
             let strd = format!("{i}");
             let res = total_blocks_range
@@ -43,11 +51,16 @@ impl GlobalRangeMetrics {
         }
 
         Self {
+            poll_rate,
             completed_blocks_range,
             total_blocks_range,
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
         }
+    }
+
+    pub fn poll_rate(&self, id: usize) {
+        self.poll_rate.with_label_values(&[&format!("{id}")]).inc();
     }
 
     pub fn finished_block(&self, id: usize) {

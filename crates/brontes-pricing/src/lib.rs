@@ -1193,6 +1193,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
 {
     type Item = (u64, DexQuotes);
 
+    #[brontes_macros::metrics_call(ptr=metrics, poll_rate, self.range_id)]
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,

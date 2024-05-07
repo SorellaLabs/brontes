@@ -1461,6 +1461,7 @@ dependencies = [
  "brontes-database",
  "brontes-inspect",
  "brontes-libmdbx",
+ "brontes-macros",
  "brontes-metrics",
  "brontes-pricing",
  "brontes-tracing",

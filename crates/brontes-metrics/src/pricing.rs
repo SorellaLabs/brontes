@@ -20,6 +20,8 @@ pub struct DexPricingMetrics {
     pub range_processing:    IntCounterVec,
     /// function call count
     pub function_call_count: IntCounterVec,
+    /// rate of poll
+    pub poll_rate:           IntCounterVec,
 }
 impl Default for DexPricingMetrics {
     fn default() -> Self {
@@ -53,6 +55,13 @@ impl DexPricingMetrics {
         )
         .unwrap();
 
+        let poll_rate = prometheus::register_int_counter_vec!(
+            "dex_pricing_range_poll_rate",
+            "the poll rate for the future of the range",
+            &["range_id"]
+        )
+        .unwrap();
+
         Self {
             processed_blocks,
             state_load_time_ms,
@@ -61,7 +70,15 @@ impl DexPricingMetrics {
             active_subgraphs,
             range_processing,
             function_call_count,
+            poll_rate,
         }
+    }
+
+    pub fn poll_rate(&self, range_id: usize) {
+        self.poll_rate
+            .get_metric_with_label_values(&[&range_id.to_string()])
+            .unwrap()
+            .inc();
     }
 
     pub fn function_call_count(&self, range_id: usize, function_name: &str) {

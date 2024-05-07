@@ -100,6 +100,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 {
     type Output = ();
 
+    #[brontes_macros::metrics_call(ptr=global_metrics, poll_rate, self.id)]
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if !self.collector.is_collecting_state()
             && self.collector.should_process_next_block()

@@ -6,8 +6,8 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-
 brontes-core.workspace = true
+brontes-macros.workspace = true
 brontes-inspect.workspace = true
 brontes-types.workspace = true
 brontes-classifier.workspace = true
