@@ -72,19 +72,14 @@ impl DiscoveryFill {
 
         futures::stream::iter(chunks)
             .map(|(start_block, end_block)| {
+                let bar = bar.clone();
                 ctx.task_executor
                     .spawn_critical_with_graceful_shutdown_signal(
                         "Discovery",
                         |shutdown| async move {
-                            DiscoveryExecutor::new(
-                                start_block,
-                                end_block,
-                                libmdbx,
-                                parser,
-                                bar.clone(),
-                            )
-                            .run_until_graceful_shutdown(shutdown)
-                            .await
+                            DiscoveryExecutor::new(start_block, end_block, libmdbx, parser, bar)
+                                .run_until_graceful_shutdown(shutdown)
+                                .await
                         },
                     );
             })
