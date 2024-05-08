@@ -420,9 +420,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
-        self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
         #[cfg(feature = "cex-dex-markout")]
         let trades = self.fetch_trades(block_num).ok();
@@ -451,9 +449,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
-        self.init_state_updating(block_num, META_FLAG)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        self.init_state_updating(block_num, CEX_QUOTES_FLAG)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
 
@@ -932,6 +928,7 @@ impl DBWriter for LibmdbxReadWriter {
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
         let data = BuilderData::new(builder_address, builder_info);
+        let _ = self.write_lock.lock().await;
         self.db
             .write_table::<Builder, BuilderData>(&[data])
             .expect("libmdbx write failure");
