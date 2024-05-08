@@ -108,8 +108,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.current_block != self.end_block
         {
             cx.waker().wake_by_ref();
-            let block = self.current_block;
 
+            let block = self.current_block;
             let id = self.id;
             let metrics = self.global_metrics.clone();
             self.collector.fetch_state_for(block, id, metrics);
@@ -136,19 +136,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             }
         }
 
-        // if we have less than 5 inserts, force re-query
         while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
             self.global_metrics.dec_inspector(self.id);
             self.global_metrics.finished_block(self.id);
-        }
-
-        // mark complete if we are done with the range
-        if self.current_block == self.end_block
-            && self.insert_futures.is_empty()
-            && !self.collector.is_collecting_state()
-        {
-            cx.waker().wake_by_ref();
-            self.collector.range_finished();
         }
 
         Poll::Pending
