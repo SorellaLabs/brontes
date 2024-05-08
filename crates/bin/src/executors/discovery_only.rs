@@ -92,6 +92,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryExecu
                 self.parser,
                 self.classifier.clone(),
             ));
+            self.running.push(fut);
+
             self.current_block += 1;
         }
 

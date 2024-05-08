@@ -135,7 +135,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         }
 
         // if we have less than 5 inserts, force re-query
-        while let Poll::Ready(Some(res)) = self.insert_futures.poll_next_unpin(cx) {
+        while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
             self.global_metrics.dec_inspector(self.id);
             self.global_metrics.finished_block(self.id);
         }

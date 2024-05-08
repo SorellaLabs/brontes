@@ -48,14 +48,12 @@ impl DiscoveryFill {
             get_tracing_provider(Path::new(&db_path), max_tasks as u64, ctx.task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
-        let mut end_block = parser.get_latest_block_number().unwrap();
 
         let start_block = if let Some(s) = self.start_block {
             s
         } else {
             libmdbx.client.max_traced_block().await.unwrap()
         };
-
         let end_block = parser.get_latest_block_number().unwrap();
 
         let bar = ProgressBar::new(end_block - start_block);
