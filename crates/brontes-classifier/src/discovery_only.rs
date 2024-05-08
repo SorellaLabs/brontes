@@ -244,7 +244,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         };
 
         // Attempt to decode the transfer
-        if let Err(_) = try_decode_transfer(
+        if try_decode_transfer(
             trace_idx,
             trace.get_calldata(),
             trace.get_from_addr(),
@@ -254,6 +254,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
             block,
             trace.get_msg_value(),
         )
+        .is_err()
         .await
         {
             for log in &trace.logs {

@@ -116,7 +116,7 @@ impl OutlierMetrics {
         let elapsed = instant.elapsed().as_millis();
 
         self.inspector_runtime
-            .with_label_values(&[&inspector_type.to_string()])
+            .with_label_values(&[inspector_type.as_ref()])
             .observe(elapsed as f64);
         res
     }
