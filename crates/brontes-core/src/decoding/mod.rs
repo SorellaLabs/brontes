@@ -81,14 +81,15 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         )) as ParserFuture
     }
 
-    pub fn execute_no_metrics(&self, block_num: u64) -> ParserFuture {
+    /// ensures no libmdbx write
+    pub fn execute_discovery(&self, block_num: u64) -> ParserFuture {
         // This will satisfy its lifetime scope do to the lifetime itself living longer
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
         Box::pin(
             self.executor
-                .spawn_result_task_as(parser.execute_block(block_num), TaskKind::Default),
+                .spawn_result_task_as(parser.execute_block_discovery(block_num), TaskKind::Default),
         ) as ParserFuture
     }
 

@@ -20,7 +20,7 @@ use tracing::debug;
 use super::shared::state_collector::StateCollector;
 use crate::{executors::ProgressBar, Processor};
 
-const MAX_PENDING_TREE_BUILDING: usize = 10;
+const MAX_PENDING_TREE_BUILDING: usize = 5;
 
 /// only runs discovery
 pub struct DiscoveryExecutor<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
