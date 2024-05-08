@@ -105,13 +105,13 @@ impl GlobalRangeMetrics {
     }
 
     pub fn add_pending_tree(&self, id: usize) {
-        self.active_inspector_processing
+        self.pending_trees
             .with_label_values(&[&format!("{id}")])
             .inc();
     }
 
     pub fn remove_pending_tree(&self, id: usize) {
-        self.active_inspector_processing
+        self.pending_trees
             .with_label_values(&[&format!("{id}")])
             .inc();
     }
