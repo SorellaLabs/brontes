@@ -526,7 +526,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 let searcher_info = row.1;
                 result.push((address, searcher_info));
             }
-
             Ok(result)
         })
     }
@@ -728,7 +727,6 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
-        let _ = self.write_lock.lock().await;
         self.write_searcher_eoa_info(eoa_address, eoa_info)
             .await
             .expect("libmdbx write failure");
@@ -1084,15 +1082,9 @@ impl LibmdbxReadWriter {
 
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         self.db.view_db(|tx| {
-            let res = tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
+            tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
                 eyre!("Failed to fetch Metadata's block info for block {}", block_num)
-            });
-
-            if res.is_err() {
-                self.init_state_updating(block_num, SKIP_FLAG)?;
-            }
-
-            res
+            })
         })
     }
 
