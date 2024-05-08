@@ -82,7 +82,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         parser: &'static Parser<T, DB>,
         classifier: DiscoveryOnlyClassifier<T, DB>,
     ) {
-        if let Ok((traces, header)) = parser.execute_no_metrics(block).await {
+        if let Ok(Some((traces, header))) = parser.execute_no_metrics(block).await {
             classifier.run_discovery(traces, header).await
         }
     }
