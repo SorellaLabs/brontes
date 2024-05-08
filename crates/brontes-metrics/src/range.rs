@@ -113,7 +113,7 @@ impl GlobalRangeMetrics {
     pub fn remove_pending_tree(&self, id: usize) {
         self.pending_trees
             .with_label_values(&[&format!("{id}")])
-            .inc();
+            .dec();
     }
 
     pub fn inc_inspector(&self, id: usize) {
