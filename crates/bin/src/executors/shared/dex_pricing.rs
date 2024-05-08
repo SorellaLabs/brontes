@@ -115,6 +115,17 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
                     return Poll::Ready(None);
                 };
 
+                // try drop trees that we know will never process but be loud about it if there
+                // are any. If any, ensure to fix
+                self.pending_trees.retain(|pending_block, _| {
+                    if &block > pending_block {
+                        tracing::error!(block=%pending_block, "pending tree never had dex pricing");
+                        return false
+                    }
+
+                    true
+                });
+
                 if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
                     tree.label_private_txes(&meta);
                 }
