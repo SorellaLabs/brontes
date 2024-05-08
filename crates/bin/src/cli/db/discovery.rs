@@ -45,7 +45,7 @@ impl DiscoveryFill {
         let libmdbx = static_object(load_read_only_database(brontes_db_endpoint)?);
 
         let tracer =
-            get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
+            get_tracing_provider(Path::new(&db_path), max_tasks as u64, ctx.task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
         let mut end_block = parser.get_latest_block_number().unwrap();
@@ -70,7 +70,7 @@ impl DiscoveryFill {
             })
             .collect_vec();
 
-        let res = futures::stream::iter(chunks)
+        futures::stream::iter(chunks)
             .map(|(start_block, end_block)| {
                 ctx.task_executor
                     .spawn_critical_with_graceful_shutdown_signal(
@@ -90,5 +90,6 @@ impl DiscoveryFill {
             })
             .collect::<Vec<_>>()
             .await;
+        Ok(())
     }
 }

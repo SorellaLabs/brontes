@@ -21,10 +21,18 @@ use crate::{
     FactoryDiscoveryDispatch,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct DiscoveryOnlyClassifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx:  &'db DB,
     provider: Arc<T>,
+}
+
+impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone
+    for DiscoveryOnlyClassifier<'db, T, DB>
+{
+    fn clone(&self) -> Self {
+        Self { libmdbx: self.libmdbx, provider: self.provider.clone() }
+    }
 }
 
 impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassifier<'db, T, DB> {
