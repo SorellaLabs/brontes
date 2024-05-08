@@ -937,11 +937,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let tree_clone_for_senders = tree.clone();
         let tree_clone_for_contracts = tree.clone();
 
-        // Using Rayon to execute functions in parallel
-        let (result_senders, result_contracts) = rayon::join(
-            || get_possible_sandwich_duplicate_senders(tree_clone_for_senders),
-            || get_possible_sandwich_duplicate_contracts(tree_clone_for_contracts),
-        );
+        let result_senders = get_possible_sandwich_duplicate_senders(tree_clone_for_senders);
+        let result_contracts = get_possible_sandwich_duplicate_contracts(tree_clone_for_contracts);
 
         // Combine and deduplicate results
         Itertools::unique(result_senders.into_iter().chain(result_contracts)).collect()
