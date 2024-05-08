@@ -11,14 +11,17 @@ use tracing::{error, info, trace};
 
 use crate::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
 
-pub fn run_command_until_exit<F, E>(command: impl FnOnce(CliContext) -> F) -> Result<(), E>
+pub fn run_command_until_exit<F, E>(
+    metrics_port: u16,
+    command: impl FnOnce(CliContext) -> F,
+) -> Result<(), E>
 where
     F: Future<Output = Result<(), E>>,
     E: Send + Sync + From<std::io::Error> + From<brontes_types::PanickedTaskError> + 'static,
 {
     let AsyncCliRunner { context, task_manager, tokio_runtime } = AsyncCliRunner::new()?;
     // initalize prometheus if we don't already have a endpoint
-    tokio_runtime.block_on(try_initialize_prometheus());
+    tokio_runtime.block_on(try_initialize_prometheus(metrics_port));
 
     // Executes the command until it finished or ctrl-c was fired
     let task_manager = tokio_runtime
@@ -47,7 +50,7 @@ pub fn tokio_runtime() -> Result<tokio::runtime::Runtime, std::io::Error> {
 
 /// tries to start prometheus. will fail if prometheus is
 /// already running
-async fn try_initialize_prometheus() {
+async fn try_initialize_prometheus(port: u16) {
     // initializes the prometheus endpoint
     if let Err(e) = initialize(
         SocketAddr::new(

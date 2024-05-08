@@ -12,7 +12,7 @@ use brontes_types::{
 };
 use malachite::{num::basic::traits::Zero, Rational};
 mod tree_pruning;
-mod utils;
+pub(crate) mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
