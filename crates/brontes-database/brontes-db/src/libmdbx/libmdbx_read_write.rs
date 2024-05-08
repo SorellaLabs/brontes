@@ -125,6 +125,10 @@ pub struct LibmdbxReadWriter {
     /// or results. If it is a new protocol it will instantly be inserted as we
     /// always want it to be available
     pub insert_queue: InsetQueue,
+    /// reths-libmdbx has a really inefficient when it comes to
+    /// handling duel writer contention. this is a quick fix
+    /// for it
+    write_lock:       tokio::sync::Mutex<()>,
 }
 
 impl Drop for LibmdbxReadWriter {
@@ -165,6 +169,7 @@ impl Drop for LibmdbxReadWriter {
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self {
+            write_lock:   tokio::sync::Mutex::new(()),
             db:           Libmdbx::init_db(path, log_level)?,
             insert_queue: DashMap::default(),
         })
@@ -727,6 +732,7 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
+        let _ = self.write_lock.lock().await;
         self.write_searcher_eoa_info(eoa_address, eoa_info)
             .await
             .expect("libmdbx write failure");
@@ -745,6 +751,7 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
+        let _ = self.write_lock.lock().await;
         self.db
             .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
             .expect("libmdbx write failure");
@@ -757,6 +764,7 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherContractsData::new(searcher_contract, searcher_info);
+        let _ = self.write_lock.lock().await;
         self.db
             .write_table::<SearcherContracts, SearcherContractsData>(&[data])
             .expect("libmdbx write failure");
@@ -770,6 +778,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = AddressMetaData::new(address, metadata);
 
+        let _ = self.write_lock.lock().await;
         self.db
             .write_table::<AddressMeta, AddressMetaData>(&[data])
             .expect("libmdx metadata write failure");
@@ -791,6 +800,7 @@ impl DBWriter for LibmdbxReadWriter {
         entry.push((key.to_vec(), value));
 
         if entry.len() > CLEAR_AM {
+            let _ = self.write_lock.lock().await;
             self.insert_batched_data::<MevBlocks>(std::mem::take(&mut entry))?;
         }
 
@@ -803,6 +813,7 @@ impl DBWriter for LibmdbxReadWriter {
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
+            let _ = self.write_lock.lock().await;
             self.init_state_updating(block_num, DEX_PRICE_FLAG)
                 .expect("libmdbx write failure");
 
@@ -841,6 +852,7 @@ impl DBWriter for LibmdbxReadWriter {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
+        let _ = self.write_lock.lock().await;
         self.db
             .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
                 address,
@@ -858,6 +870,7 @@ impl DBWriter for LibmdbxReadWriter {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        let _ = self.write_lock.lock().await;
         // add to default table
         let mut tokens = tokens.iter();
         let default = Address::ZERO;
@@ -905,10 +918,11 @@ impl DBWriter for LibmdbxReadWriter {
         let mut entry = self.insert_queue.entry(Tables::TxTraces).or_default();
         entry.push((key.to_vec(), value));
 
+        let _ = self.write_lock.lock().await;
+
         if entry.len() > CLEAR_AM {
             self.insert_batched_data::<TxTraces>(std::mem::take(&mut entry))?;
         }
-
         self.init_state_updating(block, TRACE_FLAG)
     }
 
@@ -931,7 +945,7 @@ impl DBWriter for LibmdbxReadWriter {
 }
 
 impl LibmdbxReadWriter {
-    pub fn flush_init_data(&self) -> eyre::Result<()> {
+    pub async fn flush_init_data(&self) -> eyre::Result<()> {
         self.insert_queue.alter_all(|table, mut res| {
             match table {
                 Tables::DexPrice => {
