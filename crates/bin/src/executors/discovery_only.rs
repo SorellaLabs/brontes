@@ -5,7 +5,7 @@ use std::{
 };
 
 use brontes_classifier::{discovery_only::DiscoveryOnlyClassifier, Classifier};
-use brontes_core::decoding::TracingProvider;
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::{
     clickhouse::ClickhouseHandle,
     libmdbx::{DBWriter, LibmdbxReader},
@@ -33,7 +33,7 @@ pub struct DiscoveryExecutor<
     end_block:     u64,
     db:            &'static DB,
     parser:        &'static Parser<T, DB>,
-    classifier:    DiscoveryOnlyClassifier<T, DB>,
+    classifier:    DiscoveryOnlyClassifier<'static, T, DB>,
     running:       FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
     progress_bar:  ProgressBar,
 }
@@ -82,8 +82,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         parser: &'static Parser<T, DB>,
         classifier: DiscoveryOnlyClassifier<T, DB>,
     ) {
-        let (traces, header) = parser.execute_no_metrics(block).await;
-        classifier.run_discovery(traces, header).await
+        if let Ok((traces, header)) = parser.execute_no_metrics(block).await {
+            classifier.run_discovery(traces, header).await
+        }
     }
 }
 

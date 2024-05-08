@@ -79,7 +79,7 @@ impl DiscoveryFill {
                             DiscoveryExecutor::new(
                                 start_block,
                                 end_block,
-                                lidbmdbx,
+                                libmdbx,
                                 parser,
                                 bar.clone(),
                             )
