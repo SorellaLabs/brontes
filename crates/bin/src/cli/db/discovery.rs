@@ -87,7 +87,7 @@ impl DiscoveryFill {
             .collect_vec();
 
         futures::stream::iter(chunks)
-            .map(|(start_block, end_block)| async {
+            .map(|(start_block, end_block)| {
                 let bar = bar.clone();
                 ctx.task_executor
                     .spawn_critical_with_graceful_shutdown_signal(
@@ -97,7 +97,7 @@ impl DiscoveryFill {
                                 .run_until_graceful_shutdown(shutdown)
                                 .await
                         },
-                    );
+                    )
             })
             .buffer_unordered(max_tasks)
             .collect::<Vec<_>>()
