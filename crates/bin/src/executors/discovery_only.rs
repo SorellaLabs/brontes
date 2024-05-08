@@ -73,7 +73,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryExecutor<T, DB> 
         parser: &'static Parser<T, DB>,
         classifier: DiscoveryOnlyClassifier<'static, T, DB>,
     ) {
-        if let Ok(Some((traces, header))) = parser.execute_no_metrics(block).await {
+        if let Ok(Some((traces, header))) = parser.execute_discovery(block).await {
             classifier.run_discovery(traces, header).await
         }
     }
