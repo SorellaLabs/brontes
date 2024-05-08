@@ -54,6 +54,9 @@ pub enum DatabaseCommands {
     /// Generates traces up to chain tip and inserts them into libmbx
     #[command(name = "trace-at-tip")]
     TraceAtTip(tip_tracer::TipTraceArgs),
+    /// from the start block, runs only discovery and inserts into clickhouse.
+    /// this ensures we have all classifier data.
+    #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
     #[command(name = "run-discovery")]
     Discovery(discovery::DiscoveryFill),
 }

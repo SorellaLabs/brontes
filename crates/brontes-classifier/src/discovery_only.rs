@@ -208,7 +208,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         {
             if results.1.is_new_pool() {
                 let Action::NewPool(p) = &results.1 else { unreachable!() };
-                self.insert_new_pool(block, p).await;
+                self.insert_new_pool(block, p.clone()).await;
             } else if results.1.is_pool_config_update() {
                 let Action::PoolConfigUpdate(p) = &results.1 else { unreachable!() };
                 if self
@@ -296,12 +296,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                 .into_iter()
                 // insert the pool returning if it has token values.
                 .filter(|pool| !self.contains_pool(pool.pool_address))
-                .map(|pool| async { self.insert_new_pool(block, &pool).await }),
+                .map(|pool| async move { self.insert_new_pool(block, pool).await }),
         )
         .await;
     }
 
-    async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+    async fn insert_new_pool(&self, block: u64, pool: NormalizedNewPool) {
         if self
             .libmdbx
             .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)

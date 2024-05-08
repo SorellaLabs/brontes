@@ -7,10 +7,13 @@ use brontes_types::{
 };
 use clap::Parser;
 use futures::{join, StreamExt};
+use indicatif::ProgressBar;
+use itertools::Itertools;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
     cli::{get_env_vars, get_tracing_provider, load_read_only_database, static_object},
+    discovery_only::DiscoveryExecutor,
     runner::CliContext,
 };
 
@@ -27,6 +30,7 @@ impl DiscoveryFill {
 
         let max_tasks = num_cpus::get_physical();
         init_threadpools(max_tasks as usize);
+
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
@@ -52,34 +56,39 @@ impl DiscoveryFill {
             libmdbx.client.max_traced_block().await.unwrap()
         };
 
-        // trace up to chaintip
-        let catchup = ctx.task_executor.spawn_critical("catchup", async move {
-            futures::stream::iter(start_block..=end_block)
-                .unordered_buffer_map(100, |i| parser.trace_for_clickhouse(i))
-                .map(|res| {
-                    drop(res);
-                    return
-                })
-                .collect::<Vec<_>>()
-                .await;
-        });
+        let end_block = parser.get_latest_block_number().unwrap();
 
-        let tip = ctx.task_executor.spawn_critical("tip", async move {
-            loop {
-                let tip = parser.get_latest_block_number().unwrap();
-                if tip + 1 > end_block {
-                    end_block += 1;
-                    let _ = parser.trace_for_clickhouse(end_block).await;
-                }
-            }
-        });
+        let bar = ProgressBar::new(end_block - start_block);
 
-        ctx.task_executor
-            .spawn_critical("tasks", async move {
-                let _ = join!(catchup, tip);
+        let chunks = (start_block..=end_block)
+            .chunks(max_tasks)
+            .into_iter()
+            .map(|mut c| {
+                let start = c.next().unwrap();
+                let end_block = c.last().unwrap_or(start_block);
+                (start, end_block)
             })
-            .await?;
+            .collect_vec();
 
-        Ok(())
+        let res = futures::stream::iter(chunks)
+            .map(|(start_block, end_block)| {
+                ctx.task_executor
+                    .spawn_critical_with_graceful_shutdown_signal(
+                        "Discovery",
+                        |shutdown| async move {
+                            DiscoveryExecutor::new(
+                                start_block,
+                                end_block,
+                                lidbmdbx,
+                                parser,
+                                bar.clone(),
+                            )
+                            .run_until_graceful_shutdown(shutdown)
+                            .await
+                        },
+                    );
+            })
+            .collect::<Vec<_>>()
+            .await;
     }
 }
