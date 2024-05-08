@@ -78,7 +78,7 @@ impl GlobalRangeMetrics {
         let tree_builder = prometheus::register_histogram_vec!(
             "tree_builder_throughput",
             "tree builder speed ",
-            &["range_ud"],
+            &["range_id"],
             buckets
         )
         .unwrap();
@@ -143,7 +143,7 @@ impl GlobalRangeMetrics {
         let instant = Instant::now();
         let res = f().await;
         let elapsed = instant.elapsed().as_millis();
-        self.classification_throughput
+        self.block_tracing_throughput
             .with_label_values(&[&format!("{id}")])
             .observe(elapsed as f64);
         res
