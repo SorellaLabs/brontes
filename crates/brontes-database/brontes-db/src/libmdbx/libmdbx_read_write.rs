@@ -945,7 +945,7 @@ impl DBWriter for LibmdbxReadWriter {
 }
 
 impl LibmdbxReadWriter {
-    pub async fn flush_init_data(&self) -> eyre::Result<()> {
+    pub fn flush_init_data(&self) -> eyre::Result<()> {
         self.insert_queue.alter_all(|table, mut res| {
             match table {
                 Tables::DexPrice => {
