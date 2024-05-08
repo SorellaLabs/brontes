@@ -23,8 +23,7 @@ use crate::{executors::ProgressBar, Processor};
 const MAX_PENDING_TREE_BUILDING: usize = 10;
 
 /// only runs discovery
-pub struct DiscoveryExecutor<T: TracingProvider, DB: DBWriter + LibmdbxReader>
-{
+pub struct DiscoveryExecutor<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     current_block: u64,
     end_block:     u64,
     db:            &'static DB,
@@ -34,9 +33,7 @@ pub struct DiscoveryExecutor<T: TracingProvider, DB: DBWriter + LibmdbxReader>
     progress_bar:  ProgressBar,
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter>
-    DiscoveryExecutor<T, DB, CH>
-{
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryExecutor<T, DB> {
     pub fn new(
         start_block: u64,
         end_block: u64,
@@ -84,9 +81,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter>
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future
-    for DiscoveryExecutor<T, DB, CH>
-{
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryExecutor<T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
