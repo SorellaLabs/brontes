@@ -7,7 +7,7 @@ use brontes_types::{
 };
 use clap::Parser;
 use futures::{join, StreamExt};
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use tokio::sync::mpsc::unbounded_channel;
 
@@ -56,7 +56,25 @@ impl DiscoveryFill {
         };
         let end_block = parser.get_latest_block_number().unwrap();
 
-        let bar = ProgressBar::new(end_block - start_block);
+        let bar = ProgressBar::with_draw_target(
+            Some(end_block - start_block),
+            ProgressDrawTarget::stderr_with_hz(100),
+        );
+        let style = ProgressStyle::default_bar()
+            .template(
+                "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
+                 ({percent}%) | ETA: {eta}",
+            )
+            .expect("Invalid progress bar template")
+            .progress_chars("█>-")
+            .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+            })
+            .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+            });
+        bar.set_style(style);
+        bar.set_message("Processing blocks:");
 
         let chunks = (start_block..=end_block)
             .chunks(max_tasks)

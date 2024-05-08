@@ -26,7 +26,6 @@ const MAX_PENDING_TREE_BUILDING: usize = 10;
 pub struct DiscoveryExecutor<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     current_block: u64,
     end_block:     u64,
-    db:            &'static DB,
     parser:        &'static Parser<T, DB>,
     classifier:    DiscoveryOnlyClassifier<'static, T, DB>,
     running:       FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
@@ -46,7 +45,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryExecutor<T, DB> 
             progress_bar,
             current_block: start_block,
             end_block,
-            db,
             parser,
             classifier,
             running: FuturesUnordered::default(),
@@ -103,7 +101,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryExecu
                 true
             }
             Poll::Pending => false,
-            Poll::Ready(None) => return Poll::Ready(()),
+            Poll::Ready(None) if self.current_block == self.end_block => return Poll::Ready(()),
+            Poll::Ready(None) => {
+                cx.waker().wake_by_ref();
+                false
+            }
         } {}
 
         Poll::Pending
