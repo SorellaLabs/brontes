@@ -992,10 +992,14 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     fn process_future_blocks(&self) -> bool {
         if self.completed_block + 6 > self.current_block {
+            self.metrics.needs_more_data(self.range_id, true);
             self.needs_more_data.store(true, SeqCst);
+
             false
         } else {
             self.needs_more_data.store(false, SeqCst);
+            self.metrics.needs_more_data(self.range_id, false);
+
             true
         }
     }
@@ -1220,7 +1224,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
-        let mut budget = 2;
+        // small budget as pretty heavy loop
+        let mut budget = 4;
         'outer: loop {
             // if we signal that we don't need more data, we cutoff the rx
             let cutoff = self.process_future_blocks();
@@ -1309,10 +1314,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             if budget == 0 {
                 break 'outer
             }
-        }
-
-        if let Some(new_prices) = self.poll_state_processing(cx) {
-            return new_prices
         }
 
         Poll::Pending

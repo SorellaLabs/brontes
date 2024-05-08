@@ -66,7 +66,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         header: Header,
         generate_pricing: bool,
     ) -> BlockTree<Action> {
-        if !generate_pricing || traces.is_empty() {
+        if !generate_pricing {
             self.pricing_update_sender
                 .send(DexPriceMsg::DisablePricingFor(header.number))
                 .unwrap();

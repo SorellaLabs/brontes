@@ -22,9 +22,10 @@ pub struct GlobalRangeMetrics {
     pub poll_rate:                   IntCounterVec,
     /// pending inspector runs
     pub active_inspector_processing: IntGaugeVec,
-
-    pub block_tracing_throughput:  HistogramVec,
-    pub classification_throughput: HistogramVec,
+    pub block_tracing_throughput:    HistogramVec,
+    pub classification_throughput:   HistogramVec,
+    /// amount of pending trees in dex pricing / metadata fetcher
+    pub pending_trees:               IntGaugeVec,
 }
 
 impl GlobalRangeMetrics {
@@ -83,7 +84,15 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
+        let pending_trees = register_int_gauge_vec!(
+            "range_pending_trees",
+            "amount of pending trees in metadata fetcher and dex pricer",
+            &["range_id"]
+        )
+        .unwrap();
+
         Self {
+            pending_trees,
             poll_rate,
             active_inspector_processing,
             completed_blocks_range,
@@ -93,6 +102,18 @@ impl GlobalRangeMetrics {
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
         }
+    }
+
+    pub fn add_pending_tree(&self, id: usize) {
+        self.active_inspector_processing
+            .with_label_values(&[&format!("{id}")])
+            .inc();
+    }
+
+    pub fn remove_pending_tree(&self, id: usize) {
+        self.active_inspector_processing
+            .with_label_values(&[&format!("{id}")])
+            .inc();
     }
 
     pub fn inc_inspector(&self, id: usize) {

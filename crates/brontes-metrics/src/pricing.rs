@@ -1,7 +1,7 @@
 use std::{fmt::Debug, pin::Pin, time::Instant};
 
 use metrics::{Counter, Gauge, Histogram};
-use prometheus::IntCounterVec;
+use prometheus::{IntCounterVec, IntGaugeVec};
 use reth_metrics::Metrics;
 
 #[derive(Clone)]
@@ -22,6 +22,8 @@ pub struct DexPricingMetrics {
     pub function_call_count: IntCounterVec,
     /// rate of poll
     pub poll_rate:           IntCounterVec,
+    /// wants more blocks
+    pub needs_more_data:     IntGaugeVec,
 }
 impl Default for DexPricingMetrics {
     fn default() -> Self {
@@ -62,7 +64,15 @@ impl DexPricingMetrics {
         )
         .unwrap();
 
+        let needs_more_data = prometheus::register_int_gauge_vec!(
+            "dex_pricing_needs_more_data",
+            "wether or not dex pricing is asking for more data",
+            &["range_id"]
+        )
+        .unwrap();
+
         Self {
+            needs_more_data,
             processed_blocks,
             state_load_time_ms,
             state_load_queries,
@@ -72,6 +82,12 @@ impl DexPricingMetrics {
             function_call_count,
             poll_rate,
         }
+    }
+
+    pub fn needs_more_data(&self, range_id: usize, enabled: bool) {
+        self.needs_more_data
+            .with_label_values(&[&range_id.to_string()])
+            .set(enabled as i64);
     }
 
     pub fn poll_rate(&self, range_id: usize) {
