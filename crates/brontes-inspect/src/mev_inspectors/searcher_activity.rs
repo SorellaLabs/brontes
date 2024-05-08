@@ -9,9 +9,7 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
 };
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -48,10 +46,8 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
         let search_args = TreeSearchBuilder::default()
             .with_actions([Action::is_transfer, Action::is_eth_transfer]);
 
-        let searcher_txs = tree.clone().collect_all(search_args).collect_vec();
-
-        searcher_txs
-            .into_par_iter()
+        tree.clone()
+            .collect_all(search_args)
             .filter_map(|(tx_hash, transfers)| {
                 if transfers.is_empty() {
                     return None

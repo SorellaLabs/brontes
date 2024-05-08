@@ -9,9 +9,7 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{b256, Address};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -37,16 +35,11 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         self.utils
             .get_metrics()
             .run_inspector(MevType::Liquidation, || {
-                let liq_txs = tree
-                    .clone()
+                tree.clone()
                     .collect_all(
                         TreeSearchBuilder::default()
                             .with_actions([Action::is_swap, Action::is_liquidation]),
                     )
-                    .collect_vec();
-
-                liq_txs
-                    .into_par_iter()
                     .filter_map(|(tx_hash, liq)| {
                         let info = tree.get_tx_info(tx_hash, self.utils.db)?;
 
