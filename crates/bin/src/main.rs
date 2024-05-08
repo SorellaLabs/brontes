@@ -51,12 +51,12 @@ fn run() -> eyre::Result<()> {
     init_tracing(opt.verbosity.directive());
 
     match opt.command {
-        Commands::Run(command) => {
-            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
-        }
-        Commands::Database(command) => {
-            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
-        }
+        Commands::Run(command) => runner::run_command_until_exit(opt.metrics_port, |ctx| {
+            command.execute(brontes_db_endpoint, ctx)
+        }),
+        Commands::Database(command) => runner::run_command_until_exit(opt.metrics_port, |ctx| {
+            command.execute(brontes_db_endpoint, ctx)
+        }),
     }
 }
 

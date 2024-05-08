@@ -5,6 +5,7 @@ use crate::runner::CliContext;
 mod db_clear;
 mod db_insert;
 mod db_query;
+mod discovery;
 #[cfg(feature = "local-clickhouse")]
 mod ensure_test_traces;
 mod export;
@@ -53,6 +54,11 @@ pub enum DatabaseCommands {
     /// Generates traces up to chain tip and inserts them into libmbx
     #[command(name = "trace-at-tip")]
     TraceAtTip(tip_tracer::TipTraceArgs),
+    /// from the start block, runs only discovery and inserts into clickhouse.
+    /// this ensures we have all classifier data.
+    #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+    #[command(name = "run-discovery")]
+    Discovery(discovery::DiscoveryFill),
 }
 
 impl Database {
@@ -65,6 +71,7 @@ impl Database {
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]

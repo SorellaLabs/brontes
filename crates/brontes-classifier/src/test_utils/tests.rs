@@ -27,8 +27,7 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
-    BrontesTaskExecutor, BrontesTaskManager, FastHashMap, TreeSearchBuilder,
-    UnboundedYapperReceiver,
+    BrontesTaskManager, FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
 use reth_db::DatabaseError;

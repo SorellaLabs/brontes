@@ -34,7 +34,7 @@ impl<S: Subscriber> Layer<S> for BrontesErrorMetrics {
             let level = event.metadata().level();
             let target = event.metadata().target();
             self.error_count
-                .with_label_values(&[&level.to_string(), &target])
+                .with_label_values(&[&level.to_string(), target])
                 .inc()
         }
     }

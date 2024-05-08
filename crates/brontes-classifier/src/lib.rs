@@ -18,6 +18,7 @@ use futures::Future;
 
 pub mod tree_builder;
 pub use tree_builder::Classifier;
+pub mod discovery_only;
 pub mod multi_frame_classification;
 
 #[cfg(feature = "tests")]

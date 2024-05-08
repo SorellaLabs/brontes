@@ -1,3 +1,4 @@
+pub mod discovery_only;
 mod processors;
 mod range;
 use std::ops::RangeInclusive;
