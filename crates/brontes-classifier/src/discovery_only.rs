@@ -254,8 +254,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
             block,
             trace.get_msg_value(),
         )
-        .is_err()
         .await
+        .is_err()
         {
             for log in &trace.logs {
                 if let Some((addr, ..)) = decode_transfer(log) {
