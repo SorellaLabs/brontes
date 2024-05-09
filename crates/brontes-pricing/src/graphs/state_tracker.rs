@@ -36,7 +36,7 @@ pub struct StateTracker {
     /// state that verification is using
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
     /// state count
-    metrics:                 DexPricingMetrics,
+    metrics:                 Option<DexPricingMetrics>,
 }
 
 impl Drop for StateTracker {
@@ -59,7 +59,7 @@ impl Drop for StateTracker {
 }
 
 impl StateTracker {
-    pub fn new(metrics: DexPricingMetrics) -> Self {
+    pub fn new(metrics: Option<DexPricingMetrics>) -> Self {
         Self {
             finalized_edge_state: FastHashMap::default(),
             verification_edge_state: FastHashMap::default(),
@@ -75,7 +75,9 @@ impl StateTracker {
             state.dec(amount);
             let keep = state.dependents != 0;
             if !keep {
-                self.metrics.active_state.decrement(1.0);
+                self.metrics
+                    .as_ref()
+                    .inspect(|m| m.active_state.decrement(1.0));
                 tracing::debug!(?pool, "removing state");
             }
             keep
@@ -167,7 +169,9 @@ impl StateTracker {
                     }
                     match self.finalized_edge_state.entry(*pool) {
                         std::collections::hash_map::Entry::Vacant(v) => {
-                            self.metrics.active_state.increment(1.0);
+                            self.metrics
+                                .as_ref()
+                                .inspect(|m| m.active_state.increment(1.0));
                             // we use should finalize here
                             state.dependents = should_finalize;
                             v.insert(state);

@@ -74,7 +74,7 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: FastHashMap<(Address, Protocol), Pair>,
         db: &'static DB,
-        metrics: DexPricingMetrics,
+        metrics: Option<DexPricingMetrics>,
     ) -> Self {
         let graph = AllPairGraph::init_from_hash_map(all_pool_data);
         let registry = SubGraphRegistry::new(metrics.clone());
