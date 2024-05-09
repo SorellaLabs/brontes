@@ -220,17 +220,14 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
     }
 }
 
+type FetchResult = Result<Result<PoolFetchSuccess, PoolFetchError>, JoinError>;
+
 /// The MultiBlockPoolFutures struct is a collection of FuturesOrdered in which,
 /// pool futures which are from earlier blocks are loaded first. This allows us
 /// to load state and verify pairs for blocks ahead while we wait for the
 /// current block pairs to all be verified making the pricing module very
 /// efficient.
-pub struct MultiBlockPoolFutures(
-    FastHashMap<
-        u64,
-        FuturesOrdered<BoxedFuture<Result<Result<PoolFetchSuccess, PoolFetchError>, JoinError>>>,
-    >,
-);
+pub struct MultiBlockPoolFutures(FastHashMap<u64, FuturesOrdered<BoxedFuture<FetchResult>>>);
 
 impl Drop for MultiBlockPoolFutures {
     fn drop(&mut self) {
