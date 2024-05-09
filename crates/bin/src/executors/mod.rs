@@ -486,24 +486,11 @@ impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        tracing::error!("pollin");
-        match self.futures.poll_next_unpin(cx) {
-            Poll::Ready(s) => {
-                tracing::error!("ready");
-            }
-            Poll::Pending => {
-                tracing::error!("pending");
-            }
-        }
-        while let Poll::Ready(Some(_)) = self.futures.poll_next_unpin(cx) {
-            tracing::error!("range resolve");
-            self.metrics.running_ranges.decrement(1.0);
-        }
-
-        if self.futures.is_empty() {
-            tracing::info!("brontes shutting down");
-            return Poll::Ready(())
-        }
+        while match self.futures.poll_next_unpin(cx) {
+            Poll::Ready(Some(_)) => true,
+            Poll::Ready(None) => return Poll::Ready(()),
+            Poll::Pending => return Poll::Pending,
+        } {}
 
         Poll::Pending
     }
