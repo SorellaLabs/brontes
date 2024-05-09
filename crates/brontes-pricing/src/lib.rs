@@ -1242,7 +1242,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         let mut budget = 4;
         'outer: loop {
             // if we signal that we don't need more data, we cutoff the rx
-            let cutoff = self.process_future_blocks();
+            let _cutoff = self.process_future_blocks();
 
             let mut block_updates = Vec::new();
             loop {
@@ -1297,11 +1297,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && self.finished.load(SeqCst)
                         {
                             return Poll::Ready(self.on_close())
-                        }
-                        // if  we are cutoff, i.e this will be pending forever until we catchup,
-                        // we ensure to reschedule
-                        if cutoff {
-                            cx.waker().wake_by_ref();
                         }
                         break
                     }
