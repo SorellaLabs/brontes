@@ -83,7 +83,7 @@ pub fn load_libmdbx(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<LibmdbxReadWriter> {
-    LibmdbxReadWriter::init_db(db_endpoint, None, ex)
+    LibmdbxReadWriter::init_db(db_endpoint, None, executor)
 }
 
 #[cfg(feature = "local-clickhouse")]
