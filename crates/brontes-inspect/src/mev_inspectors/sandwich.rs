@@ -463,10 +463,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         };
 
                         if pct > MAX_PRICE_DIFF {
-                            self.utils.get_metrics().bad_dex_pricing(
-                                MevType::Sandwich,
-                                Pair(swap.token_in.address, swap.token_out.address),
-                            );
+                            self.utils.get_metrics().inspect(|m| {
+                                m.bad_dex_pricing(
+                                    MevType::Sandwich,
+                                    Pair(swap.token_in.address, swap.token_out.address),
+                                )
+                            });
                             tracing::warn!(
                                 ?effective_price,
                                 ?dex_pricing_rate,

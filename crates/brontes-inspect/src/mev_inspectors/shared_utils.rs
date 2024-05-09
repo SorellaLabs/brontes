@@ -338,7 +338,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .sum::<f64>();
 
         if profit_usd > bribe_usd * 100.0 {
-            self.metrics.inspector_100x_profit(mev_type);
+            self.metrics
+                .as_ref()
+                .inspect(|m| m.inspector_100x_profit(mev_type));
         }
 
         BundleHeader {

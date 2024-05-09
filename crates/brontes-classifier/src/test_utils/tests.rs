@@ -111,7 +111,7 @@ impl ClassifierTestUtils {
                 block,
                 created_pools,
                 ctr.clone(),
-                DexPricingMetrics::default(),
+                None
                 ex,
             ),
         ))
