@@ -157,10 +157,10 @@ impl Libmdbx {
         F: FnOnce(&CompressedLibmdbxTx<RO>) -> eyre::Result<R>,
     {
         let tx = self.ro_tx()?;
-        let res = f(&tx);
+
         // tx.commit()?;
 
-        res
+        f(&tx)
     }
 
     /// returns a RO transaction
