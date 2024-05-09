@@ -166,8 +166,14 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.add_state_trackers(block_number, id, address, pair);
 
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, pair);
-        self.pool_load_futures
-            .add_future(block_number, Box::pin(metrics.meter_state_load(|| Box::pin(fut))));
+        self.pool_load_futures.add_future(
+            block_number,
+            Box::pin(
+                self.ex
+                    .handle()
+                    .spawn(metrics.meter_state_load(|| Box::pin(fut))),
+            ),
+        );
     }
 
     pub fn poll_next_metrics(
@@ -219,7 +225,10 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
 /// current block pairs to all be verified making the pricing module very
 /// efficient.
 pub struct MultiBlockPoolFutures(
-    FastHashMap<u64, FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>>,
+    FastHashMap<
+        u64,
+        FuturesOrdered<BoxedFuture<Result<Result<PoolFetchSuccess, PoolFetchError>, JoinError>>>,
+    >,
 );
 
 impl Drop for MultiBlockPoolFutures {
@@ -246,7 +255,7 @@ impl MultiBlockPoolFutures {
     pub fn add_future(
         &mut self,
         block: u64,
-        fut: BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>,
+        fut: BoxedFuture<Result<Result<PoolFetchSuccess, PoolFetchError>, JoinError>>,
     ) {
         self.0.entry(block).or_default().push_back(fut);
     }
@@ -290,7 +299,7 @@ impl Stream for MultiBlockPoolFutures {
         if let Some(result) = results.pop() {
             // no lossless
             assert!(results.is_empty());
-            return Poll::Ready(Some(result))
+            return Poll::Ready(Some(result.unwrap()))
         }
 
         Poll::Pending
