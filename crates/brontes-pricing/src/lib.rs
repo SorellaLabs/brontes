@@ -1136,7 +1136,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "on_close")]
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
-        tracing::error!("On Close");
         if self.completed_block > self.current_block
             || !self
                 .graph_manager
@@ -1145,7 +1144,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             return None
         }
 
-        tracing::error!("On Close Past None");
         self.graph_manager.finalize_block(self.completed_block);
 
         // if all block requests are complete, lets apply all the state transitions we
@@ -1289,7 +1287,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
-                            tracing::error!("on close");
                             return Poll::Ready(self.on_close())
                         }
                         // if  we are cutoff, i.e this will be pending forever until we catchup,
