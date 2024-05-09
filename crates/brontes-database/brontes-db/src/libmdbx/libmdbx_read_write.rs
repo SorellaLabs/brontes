@@ -884,44 +884,45 @@ impl DBWriter for LibmdbxReadWriter {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        let _ = self.write_lock.lock().await;
-        // add to default table
-        let mut tokens = tokens.iter();
-        let default = Address::ZERO;
-        self.db
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
-                AddressToProtocolInfoData::new(
-                    address,
-                    ProtocolInfo {
-                        protocol: classifier_name,
-                        init_block: block,
-                        token0: *tokens.next().unwrap_or(&default),
-                        token1: *tokens.next().unwrap_or(&default),
-                        token2: tokens.next().cloned(),
-                        token3: tokens.next().cloned(),
-                        token4: tokens.next().cloned(),
-                        curve_lp_token,
-                    },
-                ),
-            ])
-            .expect("libmdbx write failure");
-
-        // add to pool creation block
-        self.db.view_db(|tx| {
-            let mut addrs = tx
-                .get::<PoolCreationBlocks>(block)
-                .expect("libmdbx write failure")
-                .map(|i| i.0)
-                .unwrap_or_default();
-
-            addrs.push(address);
+        self.write_lock.lock().await.in_scope(|| {
+            // add to default table
+            let mut tokens = tokens.iter();
+            let default = Address::ZERO;
             self.db
-                .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
-                    PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
+                .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
+                    AddressToProtocolInfoData::new(
+                        address,
+                        ProtocolInfo {
+                            protocol: classifier_name,
+                            init_block: block,
+                            token0: *tokens.next().unwrap_or(&default),
+                            token1: *tokens.next().unwrap_or(&default),
+                            token2: tokens.next().cloned(),
+                            token3: tokens.next().cloned(),
+                            token4: tokens.next().cloned(),
+                            curve_lp_token,
+                        },
+                    ),
                 ])
                 .expect("libmdbx write failure");
 
-            Ok(())
+            // add to pool creation block
+            self.db.view_db(|tx| {
+                let mut addrs = tx
+                    .get::<PoolCreationBlocks>(block)
+                    .expect("libmdbx write failure")
+                    .map(|i| i.0)
+                    .unwrap_or_default();
+
+                addrs.push(address);
+                self.db
+                    .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
+                        PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
+                    ])
+                    .expect("libmdbx write failure");
+
+                Ok(())
+            })
         })
     }
 
@@ -933,12 +934,12 @@ impl DBWriter for LibmdbxReadWriter {
         let mut entry = self.insert_queue.entry(Tables::TxTraces).or_default();
         entry.push((key.to_vec(), value));
 
-        let _ = self.write_lock.lock().await;
-
-        if entry.len() > CLEAR_AM {
-            self.insert_batched_data::<TxTraces>(std::mem::take(&mut entry))?;
-        }
-        self.init_state_updating(block, TRACE_FLAG)
+        self.write_lock.lock().await.in_scope(|| {
+            if entry.len() > CLEAR_AM {
+                self.insert_batched_data::<TxTraces>(std::mem::take(&mut entry))?;
+            }
+            self.init_state_updating(block, TRACE_FLAG)
+        })
     }
 
     #[instrument(target = "libmdbx_read_write::write_builder_info", skip_all, level = "warn")]
@@ -948,10 +949,11 @@ impl DBWriter for LibmdbxReadWriter {
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
         let data = BuilderData::new(builder_address, builder_info);
-        let _ = self.write_lock.lock().await;
-        self.db
-            .write_table::<Builder, BuilderData>(&[data])
-            .expect("libmdbx write failure");
+        self.write_lock.lock().await.in_scope(|| {
+            self.db
+                .write_table::<Builder, BuilderData>(&[data])
+                .expect("libmdbx write failure");
+        });
         Ok(())
     }
 
