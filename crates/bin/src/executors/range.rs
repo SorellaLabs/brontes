@@ -78,7 +78,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 graceful_guard = Some(guard);
             },
         }
-        tracing::error!("select statement");
 
         while data_batching.insert_futures.next().await.is_some() {
             data_batching
@@ -86,11 +85,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 .finished_block(data_batching.id);
         }
 
-        tracing::error!("drop guard");
-
         drop(graceful_guard);
-
-        tracing::error!("dropped");
     }
 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
@@ -136,7 +131,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                     self.on_price_finish(tree, meta);
                 }
                 None if self.insert_futures.is_empty() && self.current_block == self.end_block => {
-                    tracing::error!("returning");
                     return Poll::Ready(())
                 }
                 None => {

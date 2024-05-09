@@ -368,9 +368,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
                         |shutdown| async move {
-                            tracing::info!("range executor starting");
                             block_range.run_until_graceful_shutdown(shutdown).await;
-                            tracing::info!("range executor returned");
                         },
                     ));
                     std::future::ready(())
@@ -383,9 +381,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                             "Range Executor",
                             |shutdown| async move {
-                                tracing::info!("range executor starting");
                                 block_range.run_until_graceful_shutdown(shutdown).await;
-                                tracing::info!("range executor returned");
                             },
                         ));
                         std::future::ready(())
