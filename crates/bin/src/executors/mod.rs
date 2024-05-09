@@ -490,6 +490,7 @@ impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        tracing::info!("poll");
         while match self.futures.poll_next_unpin(cx) {
             Poll::Ready(Some(_)) => {
                 self.metrics.running_ranges.decrement(1.0);
