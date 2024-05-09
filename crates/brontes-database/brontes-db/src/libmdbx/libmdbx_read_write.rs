@@ -18,16 +18,12 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
         cex::{CexPriceMap, FeeAdjustedQuote},
-        dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
-        initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG,
-        },
+        dex::{make_filter_key_range, DexPrices, DexQuotes},
+        initialized_state::{InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
-        pool_creation_block::PoolsToAddresses,
         searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress},
-        traces::TxTracesInner,
+        token_info::TokenInfoWithAddress,
         traits::{DBWriter, LibmdbxReader},
     },
     mev::{Bundle, MevBlock},
@@ -35,18 +31,21 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree, FastHashMap,
+    BlockTree, BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver,
 };
-use dashmap::DashMap;
 use eyre::{eyre, ErrReport};
 use futures::Future;
 use indicatif::ProgressBar;
 use itertools::Itertools;
 use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
-use tracing::{info, instrument, span, Level, Span};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tracing::{info, instrument};
 
-use super::types::ReturnKV;
+use super::{
+    libmdbx_writer::{LibmdbxWriter, WriterMessage},
+    types::ReturnKV,
+};
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
@@ -89,90 +88,27 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     ) -> eyre::Result<StateToInitialize>;
 }
 
-// how often we will append data
-const CLEAR_AM: usize = 100;
-
-#[derive(Debug)]
-pub struct MinHeapData<T> {
-    pub block: u64,
-    pub data:  T,
-}
-
-impl<T> PartialEq for MinHeapData<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.block.eq(&other.block)
-    }
-}
-impl<T> Eq for MinHeapData<T> {}
-
-impl<T> PartialOrd for MinHeapData<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<T> Ord for MinHeapData<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.block.cmp(&self.block)
-    }
-}
-
-type InsetQueue = DashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>, ahash::RandomState>;
-
 pub struct LibmdbxReadWriter {
-    pub db:           Libmdbx,
-    /// this only applies to non instant update tables. e.g DexPriceMapping,
-    /// or results. If it is a new protocol it will instantly be inserted as we
-    /// always want it to be available
-    pub insert_queue: InsetQueue,
-    /// reths-libmdbx has a really inefficient when it comes to
-    /// handling duel writer contention. this is a quick fix
-    /// for it
-    write_lock:       tokio::sync::Mutex<Span>,
-}
-
-impl Drop for LibmdbxReadWriter {
-    fn drop(&mut self) {
-        std::mem::take(&mut self.insert_queue)
-            .into_iter()
-            .for_each(|(table, values)| {
-                if values.is_empty() {
-                    return
-                }
-                match table {
-                    Tables::DexPrice => {
-                        self.insert_batched_data::<DexPrice>(values).unwrap();
-                    }
-                    Tables::CexPrice => {
-                        self.insert_batched_data::<CexPrice>(values).unwrap();
-                    }
-                    Tables::CexTrades => {
-                        self.insert_batched_data::<CexTrades>(values).unwrap();
-                    }
-                    Tables::MevBlocks => {
-                        self.insert_batched_data::<MevBlocks>(values).unwrap();
-                    }
-                    Tables::TxTraces => {
-                        self.insert_batched_data::<TxTraces>(values).unwrap();
-                    }
-                    Tables::InitializedState => {
-                        self.insert_batched_data::<InitializedState>(values)
-                            .unwrap();
-                    }
-
-                    table => unreachable!("{table} doesn't have batch inserts"),
-                }
-            });
-    }
+    pub db: Arc<Libmdbx>,
+    tx:     UnboundedSender<WriterMessage>,
 }
 
 impl LibmdbxReadWriter {
-    pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
-        Ok(Self {
-            write_lock:   tokio::sync::Mutex::new(span!(Level::WARN, "write-lock-span")),
-            db:           Libmdbx::init_db(path, log_level)?,
-            insert_queue: DashMap::default(),
-        })
+    pub fn init_db<P: AsRef<Path>>(
+        path: P,
+        log_level: Option<LogLevel>,
+        ex: &BrontesTaskExecutor,
+    ) -> eyre::Result<Self> {
+        let (tx, rx) = unbounded_channel();
+        let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
+        let db = Arc::new(Libmdbx::init_db(path, log_level)?);
+        // start writing task
+        let writer = LibmdbxWriter::new(db.clone(), yapper);
+        ex.spawn_critical_with_graceful_shutdown_signal("libmdbx writer", |shutdown| async move {
+            writer.run_until_shutdown(shutdown).await
+        });
+
+        Ok(Self { db, tx })
     }
 }
 
@@ -720,7 +656,6 @@ impl DBWriter for LibmdbxReadWriter {
         unreachable!()
     }
 
-    #[instrument(target = "libmdbx_read_write::searcher_info", skip_all, level = "warn")]
     async fn write_searcher_info(
         &self,
         eoa_address: Address,
@@ -728,154 +663,76 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
-        self.write_searcher_eoa_info(eoa_address, eoa_info)
-            .await
-            .expect("libmdbx write failure");
-
-        if let Some(contract_address) = contract_address {
-            self.write_searcher_contract_info(contract_address, contract_info.unwrap_or_default())
-                .await
-                .expect("libmdbx write failure");
-        }
-        Ok(())
+        Ok(self.tx.send(WriterMessage::SearcherInfo {
+            eoa_address,
+            contract_address,
+            eoa_info,
+            contract_info,
+        })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::searcher_eoa_info", skip_all, level = "warn")]
     async fn write_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
-        self.write_lock
-            .lock()
-            .await
-            .in_scope(|| {
-                self.db
-                    .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
-            })
-            .expect("libmdbx write failure");
-
-        Ok(())
+        Ok(self
+            .tx
+            .send(WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::searcher_contract_info", skip_all, level = "warn")]
     async fn write_searcher_contract_info(
         &self,
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let data = SearcherContractsData::new(searcher_contract, searcher_info);
-        self.write_lock.lock().await.in_scope(|| {
-            self.db
-                .write_table::<SearcherContracts, SearcherContractsData>(&[data])
-                .expect("libmdbx write failure");
-        });
-
-        Ok(())
+        Ok(self
+            .tx
+            .send(WriterMessage::SearcherContractInfo { searcher_contract, searcher_info })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::write_address_meta", skip_all, level = "warn")]
     async fn write_address_meta(
         &self,
         address: Address,
         metadata: AddressMetadata,
     ) -> eyre::Result<()> {
-        let data = AddressMetaData::new(address, metadata);
-
-        self.write_lock.lock().await.in_scope(|| {
-            self.db
-                .write_table::<AddressMeta, AddressMetaData>(&[data])
-                .expect("libmdx metadata write failure");
-        });
-
-        Ok(())
+        Ok(self
+            .tx
+            .send(WriterMessage::AddressMeta { address, metadata })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::write_address_meta", skip_all, level = "warn")]
     async fn save_mev_blocks(
         &self,
         block_number: u64,
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
-        let data =
-            MevBlocksData::new(block_number, MevBlockWithClassified { block, mev }).into_key_val();
-        let (key, value) = Self::convert_into_save_bytes(data);
-
-        let mut entry = self.insert_queue.entry(Tables::MevBlocks).or_default();
-        entry.push((key.to_vec(), value));
-
-        if entry.len() > CLEAR_AM {
-            self.write_lock
-                .lock()
-                .await
-                .in_scope(|| self.insert_batched_data::<MevBlocks>(std::mem::take(&mut entry)))?;
-        }
-
-        Ok(())
+        Ok(self
+            .tx
+            .send(WriterMessage::MevBlocks { block_number, block, mev })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::write_dex_quotes", skip_all, level = "warn")]
     async fn write_dex_quotes(
         &self,
-        block_num: u64,
+        block_number: u64,
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
-        if let Some(quotes) = quotes {
-            self.write_lock.lock().await.in_scope(|| {
-                self.init_state_updating(block_num, DEX_PRICE_FLAG)
-                    .expect("libmdbx write failure");
-
-                let mut entry = self.insert_queue.entry(Tables::DexPrice).or_default();
-
-                quotes
-                    .0
-                    .into_iter()
-                    .enumerate()
-                    .filter_map(|(idx, value)| value.map(|v| (idx, v)))
-                    .map(|(idx, value)| {
-                        let index = DexQuoteWithIndex {
-                            tx_idx: idx as u16,
-                            quote:  value.into_iter().collect_vec(),
-                        };
-                        DexPriceData::new(make_key(block_num, idx as u16), index)
-                    })
-                    .for_each(|data| {
-                        let data = data.into_key_val();
-                        let (key, value) = Self::convert_into_save_bytes(data);
-                        entry.push((key.to_vec(), value));
-                    });
-
-                // assume 150 entries per block
-                if entry.len() > CLEAR_AM * 150 {
-                    return self.insert_batched_data::<DexPrice>(std::mem::take(&mut entry))
-                }
-                Ok(())
-            })?;
-        }
-
-        Ok(())
+        Ok(self
+            .tx
+            .send(WriterMessage::DexQuotes { block_number, quotes })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::write_token_info", skip_all, level = "warn")]
     async fn write_token_info(
         &self,
         address: Address,
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        let _ = self.write_lock.lock().await;
-        self.db
-            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
-                address,
-                TokenInfo::new(decimals, symbol),
-            )])
-            .expect("libmdbx write failure");
-        Ok(())
+        Ok(self
+            .tx
+            .send(WriterMessage::TokenInfo { address, decimals, symbol })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::insert_pool", skip_all, level = "warn")]
     async fn insert_pool(
         &self,
         block: u64,
@@ -884,77 +741,27 @@ impl DBWriter for LibmdbxReadWriter {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        self.write_lock.lock().await.in_scope(|| {
-            // add to default table
-            let mut tokens = tokens.iter();
-            let default = Address::ZERO;
-            self.db
-                .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
-                    AddressToProtocolInfoData::new(
-                        address,
-                        ProtocolInfo {
-                            protocol: classifier_name,
-                            init_block: block,
-                            token0: *tokens.next().unwrap_or(&default),
-                            token1: *tokens.next().unwrap_or(&default),
-                            token2: tokens.next().cloned(),
-                            token3: tokens.next().cloned(),
-                            token4: tokens.next().cloned(),
-                            curve_lp_token,
-                        },
-                    ),
-                ])
-                .expect("libmdbx write failure");
-
-            // add to pool creation block
-            self.db.view_db(|tx| {
-                let mut addrs = tx
-                    .get::<PoolCreationBlocks>(block)
-                    .expect("libmdbx write failure")
-                    .map(|i| i.0)
-                    .unwrap_or_default();
-
-                addrs.push(address);
-                self.db
-                    .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
-                        PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
-                    ])
-                    .expect("libmdbx write failure");
-
-                Ok(())
-            })
-        })
+        Ok(self.tx.send(WriterMessage::Pool {
+            block,
+            address,
+            tokens: tokens.to_vec(),
+            curve_lp_token,
+            classifier_name,
+        })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::save_traces", skip_all, level = "warn")]
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        let data = TxTracesData::new(block, TxTracesInner { traces: Some(traces) }).into_key_val();
-        let (key, value) = Self::convert_into_save_bytes(data);
-
-        let mut entry = self.insert_queue.entry(Tables::TxTraces).or_default();
-        entry.push((key.to_vec(), value));
-
-        self.write_lock.lock().await.in_scope(|| {
-            if entry.len() > CLEAR_AM {
-                self.insert_batched_data::<TxTraces>(std::mem::take(&mut entry))?;
-            }
-            self.init_state_updating(block, TRACE_FLAG)
-        })
+        Ok(self.tx.send(WriterMessage::Traces { block, traces })?)
     }
 
-    #[instrument(target = "libmdbx_read_write::write_builder_info", skip_all, level = "warn")]
     async fn write_builder_info(
         &self,
         builder_address: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        let data = BuilderData::new(builder_address, builder_info);
-        self.write_lock.lock().await.in_scope(|| {
-            self.db
-                .write_table::<Builder, BuilderData>(&[data])
-                .expect("libmdbx write failure");
-        });
-        Ok(())
+        Ok(self
+            .tx
+            .send(WriterMessage::BuilderInfo { builder_address, builder_info })?)
     }
 
     /// only for internal functionality (i.e. clickhouse)
@@ -964,54 +771,6 @@ impl DBWriter for LibmdbxReadWriter {
 }
 
 impl LibmdbxReadWriter {
-    #[instrument(target = "libmdbx_read_write::flush_init_data", skip_all, level = "warn")]
-    pub fn flush_init_data(&self) -> eyre::Result<()> {
-        self.insert_queue.alter_all(|table, mut res| {
-            match table {
-                Tables::DexPrice => {
-                    let values = std::mem::take(&mut res);
-                    if let Err(e) = self.insert_batched_data::<DexPrice>(values) {
-                        tracing::error!(error=%e);
-                    }
-                }
-                Tables::CexPrice => {
-                    let values = std::mem::take(&mut res);
-                    if let Err(e) = self.insert_batched_data::<CexPrice>(values) {
-                        tracing::error!(error=%e);
-                    }
-                }
-                Tables::CexTrades => {
-                    let values = std::mem::take(&mut res);
-                    if let Err(e) = self.insert_batched_data::<CexTrades>(values) {
-                        tracing::error!(error=%e);
-                    }
-                }
-                Tables::MevBlocks => {
-                    let values = std::mem::take(&mut res);
-                    if let Err(e) = self.insert_batched_data::<MevBlocks>(values) {
-                        tracing::error!(error=%e);
-                    }
-                }
-                Tables::TxTraces => {
-                    let values = std::mem::take(&mut res);
-                    if let Err(e) = self.insert_batched_data::<TxTraces>(values) {
-                        tracing::error!(error=%e);
-                    }
-                }
-                Tables::InitializedState => {
-                    let values = std::mem::take(&mut res);
-                    if let Err(e) = self.insert_batched_data::<InitializedState>(values) {
-                        tracing::error!(error=%e);
-                    }
-                }
-                table => tracing::error!("{table} doesn't have batch inserts"),
-            }
-
-            res
-        });
-        Ok(())
-    }
-
     #[instrument(target = "libmdbx_read_write::insert_batched_data", skip_all, level = "warn")]
     fn insert_batched_data<T: CompressedTable>(
         &self,
@@ -1046,19 +805,8 @@ impl LibmdbxReadWriter {
         self.db.view_db(|tx| {
             let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
             state.set(flag);
-            let data = InitializedStateData::new(block, state).into_key_val();
-
-            let (key, value) = Self::convert_into_save_bytes(data);
-
-            let mut entry = self
-                .insert_queue
-                .entry(Tables::InitializedState)
-                .or_default();
-            entry.push((key.to_vec(), value));
-
-            if entry.len() > CLEAR_AM * 300 {
-                self.insert_batched_data::<InitializedState>(std::mem::take(&mut entry))?;
-            }
+            let data = InitializedStateData::new(block, state);
+            self.db.write_table(&[data])?;
 
             Ok(())
         })
@@ -1067,10 +815,7 @@ impl LibmdbxReadWriter {
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
         let tx = self.db.ro_tx()?;
         let mut range_cursor = tx.cursor_read::<InitializedState>()?;
-        let mut entry = self
-            .insert_queue
-            .entry(Tables::InitializedState)
-            .or_default();
+        let mut entry = Vec::new();
 
         for block in range {
             if let Some(mut state) = range_cursor.seek_exact(block)? {
@@ -1089,9 +834,7 @@ impl LibmdbxReadWriter {
         }
         tx.commit()?;
 
-        if entry.len() > CLEAR_AM * 300 {
-            self.insert_batched_data::<InitializedState>(std::mem::take(&mut entry))?;
-        }
+        self.insert_batched_data::<InitializedState>(entry)?;
 
         Ok(())
     }

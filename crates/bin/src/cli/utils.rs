@@ -35,20 +35,20 @@ use tracing::info;
 
 #[cfg(not(any(feature = "local-clickhouse", feature = "local-no-inserts")))]
 pub fn load_database(
-    _executor: &BrontesTaskExecutor,
+    executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<LibmdbxReadWriter> {
-    LibmdbxReadWriter::init_db(db_endpoint, None)
+    LibmdbxReadWriter::init_db(db_endpoint, None, executor)
 }
 
 /// This version is used when `local-clickhouse` is enabled but
 /// `local-no-inserts` is not.
 #[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
 pub fn load_database(
-    _executor: &BrontesTaskExecutor,
+    executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
     let clickhouse = Clickhouse::default();
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
 }
@@ -60,7 +60,7 @@ pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx);
@@ -71,15 +71,19 @@ pub fn load_database(
 
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 pub fn load_read_only_database(
+    executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
     let clickhouse = Clickhouse::default();
     Ok(ReadOnlyMiddleware::new(clickhouse, inner))
 }
 
-pub fn load_libmdbx(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
-    LibmdbxReadWriter::init_db(db_endpoint, None)
+pub fn load_libmdbx(
+    executor: &BrontesTaskExecutor,
+    db_endpoint: String,
+) -> eyre::Result<LibmdbxReadWriter> {
+    LibmdbxReadWriter::init_db(db_endpoint, None, ex)
 }
 
 #[cfg(feature = "local-clickhouse")]
