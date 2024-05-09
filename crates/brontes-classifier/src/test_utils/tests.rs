@@ -78,8 +78,7 @@ impl ClassifierTestUtils {
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph =
-            GraphManager::init_from_db_state(pairs, self.libmdbx, DexPricingMetrics::default());
+        let pair_graph = GraphManager::init_from_db_state(pairs, self.libmdbx, None);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
