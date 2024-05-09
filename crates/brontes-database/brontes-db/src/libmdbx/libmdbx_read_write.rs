@@ -20,7 +20,7 @@ use brontes_types::{
         cex::{CexPriceMap, FeeAdjustedQuote},
         dex::{make_filter_key_range, make_key, DexPrices, DexQuoteWithIndex, DexQuotes},
         initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
+            InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG,
         },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
@@ -44,7 +44,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools;
 use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
-use tracing::info;
+use tracing::{info, instrument};
 
 use super::types::ReturnKV;
 use crate::{
@@ -720,6 +720,7 @@ impl DBWriter for LibmdbxReadWriter {
         unreachable!()
     }
 
+    #[instrument(target = "libmdbx_read_write::searcher_info", skip_all, level = "warn")]
     async fn write_searcher_info(
         &self,
         eoa_address: Address,
@@ -739,6 +740,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::searcher_eoa_info", skip_all, level = "warn")]
     async fn write_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
@@ -752,6 +754,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::searcher_contract_info", skip_all, level = "warn")]
     async fn write_searcher_contract_info(
         &self,
         searcher_contract: Address,
@@ -765,6 +768,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::write_address_meta", skip_all, level = "warn")]
     async fn write_address_meta(
         &self,
         address: Address,
@@ -780,6 +784,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::write_address_meta", skip_all, level = "warn")]
     async fn save_mev_blocks(
         &self,
         block_number: u64,
@@ -801,6 +806,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::write_dex_quotes", skip_all, level = "warn")]
     async fn write_dex_quotes(
         &self,
         block_num: u64,
@@ -840,6 +846,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::write_token_info", skip_all, level = "warn")]
     async fn write_token_info(
         &self,
         address: Address,
@@ -856,6 +863,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::insert_pool", skip_all, level = "warn")]
     async fn insert_pool(
         &self,
         block: u64,
@@ -905,6 +913,7 @@ impl DBWriter for LibmdbxReadWriter {
         })
     }
 
+    #[instrument(target = "libmdbx_read_write::save_traces", skip_all, level = "warn")]
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         let data = TxTracesData::new(block, TxTracesInner { traces: Some(traces) }).into_key_val();
         let (key, value) = Self::convert_into_save_bytes(data);
@@ -920,6 +929,7 @@ impl DBWriter for LibmdbxReadWriter {
         self.init_state_updating(block, TRACE_FLAG)
     }
 
+    #[instrument(target = "libmdbx_read_write::write_builder_info", skip_all, level = "warn")]
     async fn write_builder_info(
         &self,
         builder_address: Address,
@@ -940,6 +950,7 @@ impl DBWriter for LibmdbxReadWriter {
 }
 
 impl LibmdbxReadWriter {
+    #[instrument(target = "libmdbx_read_write::flush_init_data", skip_all, level = "warn")]
     pub fn flush_init_data(&self) -> eyre::Result<()> {
         self.insert_queue.alter_all(|table, mut res| {
             match table {
@@ -987,6 +998,7 @@ impl LibmdbxReadWriter {
         Ok(())
     }
 
+    #[instrument(target = "libmdbx_read_write::insert_batched_data", skip_all, level = "warn")]
     fn insert_batched_data<T: CompressedTable>(
         &self,
         data: Vec<(Vec<u8>, Vec<u8>)>,
@@ -1015,6 +1027,7 @@ impl LibmdbxReadWriter {
         (key, value.compress())
     }
 
+    #[instrument(target = "libmdbx_read_write::init_state_updating", skip_all, level = "warn")]
     fn init_state_updating(&self, block: u64, flag: u8) -> eyre::Result<()> {
         self.db.view_db(|tx| {
             let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
