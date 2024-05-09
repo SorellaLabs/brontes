@@ -91,7 +91,7 @@ impl<'db, DB: LibmdbxReader> CexDexInspector<'db, DB> {
         quote: Address,
         db: &'db DB,
         cex_exchanges: &[CexExchange],
-        metrics: OutlierMetrics,
+        metrics: Option<OutlierMetrics>,
     ) -> Self {
         Self {
             utils:         SharedInspectorUtils::new(quote, db, metrics),

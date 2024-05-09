@@ -19,7 +19,7 @@ pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, metrics: OutlierMetrics) -> Self {
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
         Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
@@ -34,7 +34,22 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         self.utils
             .get_metrics()
-            .run_inspector(MevType::Liquidation, || {
+            .map(|m| {
+                m.run_inspector(MevType::Liquidation, || {
+                    tree.clone()
+                        .collect_all(
+                            TreeSearchBuilder::default()
+                                .with_actions([Action::is_swap, Action::is_liquidation]),
+                        )
+                        .filter_map(|(tx_hash, liq)| {
+                            let info = tree.get_tx_info(tx_hash, self.utils.db)?;
+
+                            self.calculate_liquidation(info, metadata.clone(), liq)
+                        })
+                        .collect::<Vec<_>>()
+                })
+            })
+            .unwrap_or_else(|| {
                 tree.clone()
                     .collect_all(
                         TreeSearchBuilder::default()

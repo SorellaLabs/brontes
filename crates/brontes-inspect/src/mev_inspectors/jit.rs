@@ -33,7 +33,7 @@ pub struct JitInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, metrics: OutlierMetrics) -> Self {
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
         Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
@@ -48,7 +48,12 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         self.utils
             .get_metrics()
-            .run_inspector(MevType::Jit, || self.process_tree_inner(tree, metadata))
+            .map(|m| {
+                m.run_inspector(MevType::Jit, || {
+                    self.process_tree_inner(tree.clone(), metadata.clone())
+                })
+            })
+            .unwrap_or_else(|| self.process_tree_inner(tree, metadata))
     }
 }
 

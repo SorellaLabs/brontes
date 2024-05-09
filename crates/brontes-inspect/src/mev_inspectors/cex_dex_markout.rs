@@ -49,7 +49,7 @@ impl<'db, DB: LibmdbxReader> CexDexMarkoutInspector<'db, DB> {
         quote: Address,
         db: &'db DB,
         cex_exchanges: &[CexExchange],
-        metrics: OutlierMetrics,
+        metrics: Option<OutlierMetrics>,
     ) -> Self {
         Self {
             utils:         SharedInspectorUtils::new(quote, db, metrics),
@@ -73,7 +73,12 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
 
         self.utils
             .get_metrics()
-            .run_inspector(MevType::CexDex, || self.process_tree_inner(tree, metadata))
+            .map(|m| {
+                m.run_inspector(MevType::CexDex, || {
+                    self.process_tree_inner(tree.clone(), metadata.clone())
+                })
+            })
+            .unwrap_or_else(|| self.process_tree_inner(tree.clone(), metadata.clone()))
     }
 }
 
@@ -96,10 +101,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
-                        self.utils.get_metrics().branch_filtering_trigger(
-                            MevType::CexDex,
-                            "is_solver_settlement_or_defi_automation",
-                        );
+                        self.utils.get_metrics().inspect(|m| {
+                            m.branch_filtering_trigger(
+                                MevType::CexDex,
+                                "is_solver_settlement_or_defi_automation",
+                            )
+                        });
                         return None
                     }
                 }
@@ -111,9 +118,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .collect_action_vec(Action::try_swaps_merged);
 
                 if self.is_triangular_arb(&dex_swaps) {
-                    self.utils
-                        .get_metrics()
-                        .branch_filtering_trigger(MevType::CexDex, "is_triangular_arb");
+                    self.utils.get_metrics().inspect(|m| {
+                        m.branch_filtering_trigger(MevType::CexDex, "is_triangular_arb")
+                    });
 
                     return None
                 }
@@ -338,30 +345,69 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
-                let window = self.utils.get_metrics().run_cex_price_window(|| {
-                    metadata
-                        .cex_trades
-                        .as_ref()
-                        .unwrap()
-                        .lock()
-                        .calculate_time_window_vwam(
-                            &self.cex_exchanges,
-                            pair,
-                            &swap.amount_out,
-                            metadata.microseconds_block_timestamp(),
-                        )
-                });
-                let other = self.utils.get_metrics().run_cex_price_vol(|| {
-                    metadata
-                        .cex_trades
-                        .as_ref()
-                        .unwrap()
-                        .lock()
-                        .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_out, None)
-                });
+                let window = self
+                    .utils
+                    .get_metrics()
+                    .map(|m| {
+                        m.run_cex_price_window(|| {
+                            metadata
+                                .cex_trades
+                                .as_ref()
+                                .unwrap()
+                                .lock()
+                                .calculate_time_window_vwam(
+                                    &self.cex_exchanges,
+                                    pair,
+                                    &swap.amount_out,
+                                    metadata.microseconds_block_timestamp(),
+                                )
+                        })
+                    })
+                    .unwrap_or_else(|| {
+                        metadata
+                            .cex_trades
+                            .as_ref()
+                            .unwrap()
+                            .lock()
+                            .calculate_time_window_vwam(
+                                &self.cex_exchanges,
+                                pair,
+                                &swap.amount_out,
+                                metadata.microseconds_block_timestamp(),
+                            )
+                    });
+
+                let other = self
+                    .utils
+                    .get_metrics()
+                    .map(|m| {
+                        m.run_cex_price_vol(|| {
+                            metadata
+                                .cex_trades
+                                .as_ref()
+                                .unwrap()
+                                .lock()
+                                .get_optimistic_vmap(
+                                    &self.cex_exchanges,
+                                    &pair,
+                                    &swap.amount_out,
+                                    None,
+                                )
+                        })
+                    })
+                    .unwrap_or_else(|| {
+                        metadata
+                            .cex_trades
+                            .as_ref()
+                            .unwrap()
+                            .lock()
+                            .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_out, None)
+                    });
 
                 if (window.is_none() || other.is_none()) && marked_cex_dex {
-                    self.utils.get_metrics().missing_cex_pair(pair);
+                    self.utils
+                        .get_metrics()
+                        .inspect(|m| m.missing_cex_pair(pair));
                 }
 
                 (window, other)
@@ -461,9 +507,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         {
             possible_cex_dex.into_bundle(info)
         } else {
-            self.utils
-                .get_metrics()
-                .branch_filtering_trigger(MevType::CexDex, "filter_possible_cex_dex");
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::CexDex, "filter_possible_cex_dex")
+            });
             None
         }
     }

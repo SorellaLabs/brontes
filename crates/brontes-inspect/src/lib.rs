@@ -140,7 +140,7 @@ impl Inspectors {
         quote_token: Address,
         db: &'static DB,
         cex_exchanges: &[CexExchange],
-        metrics: OutlierMetrics,
+        metrics: Option<OutlierMetrics>,
     ) -> DynMevInspector {
         match &self {
             Self::AtomicArb => {

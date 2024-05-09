@@ -32,7 +32,7 @@ pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, metrics: OutlierMetrics) -> Self {
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
         Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
@@ -47,7 +47,41 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, meta_data: Arc<Metadata>) -> Self::Result {
         self.utils
             .get_metrics()
-            .run_inspector(MevType::AtomicArb, || {
+            .map(|m| {
+                m.run_inspector(MevType::AtomicArb, || {
+                    tree.clone()
+                        .collect_all(TreeSearchBuilder::default().with_actions([
+                            Action::is_swap,
+                            Action::is_transfer,
+                            Action::is_eth_transfer,
+                            Action::is_nested_action,
+                        ]))
+                        .t_map(|(k, v)| {
+                            (
+                                k,
+                                self.utils
+                                    .flatten_nested_actions_default(v.into_iter())
+                                    .collect::<Vec<_>>(),
+                            )
+                        })
+                        .t_filter_map(|tree, (tx, actions)| {
+                            let info = tree.get_tx_info(tx, self.utils.db)?;
+                            self.process_swaps(
+                                info,
+                                meta_data.clone(),
+                                actions
+                                    .into_iter()
+                                    .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
+                                        Action::try_swaps_merged,
+                                        Action::try_transfer,
+                                        Action::try_eth_transfer,
+                                    )),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+            })
+            .unwrap_or_else(|| {
                 tree.clone()
                     .collect_all(TreeSearchBuilder::default().with_actions([
                         Action::is_swap,
@@ -214,9 +248,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private;
 
         if !res {
-            self.utils
-                .get_metrics()
-                .branch_filtering_trigger(MevType::AtomicArb, "process_triangle_arb");
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::AtomicArb, "process_triangle_arb")
+            });
         }
         res
     }
@@ -228,9 +262,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             || tx_info.is_private
             || tx_info.gas_details.coinbase_transfer.is_some();
         if !res {
-            self.utils
-                .get_metrics()
-                .branch_filtering_trigger(MevType::AtomicArb, "is_cross_pair_or_stable_arb");
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::AtomicArb, "is_cross_pair_or_stable_arb")
+            });
         }
         res
     }
@@ -244,7 +278,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         if !res {
             self.utils
                 .get_metrics()
-                .branch_filtering_trigger(MevType::AtomicArb, "is_long_tail");
+                .inspect(|m| m.branch_filtering_trigger(MevType::AtomicArb, "is_long_tail"));
         }
         res
     }
@@ -257,7 +291,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         if !res {
             self.utils
                 .get_metrics()
-                .branch_filtering_trigger(MevType::AtomicArb, "is_stable_arb");
+                .inspect(|m| m.branch_filtering_trigger(MevType::AtomicArb, "is_stable_arb"));
         }
 
         res
@@ -314,10 +348,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         };
 
                         if pct > MAX_PRICE_DIFF {
-                            self.utils.get_metrics().bad_dex_pricing(
-                                MevType::AtomicArb,
-                                Pair(swap.token_in.address, swap.token_out.address),
-                            );
+                            self.utils.get_metrics().inspect(|m| {
+                                m.bad_dex_pricing(
+                                    MevType::AtomicArb,
+                                    Pair(swap.token_in.address, swap.token_out.address),
+                                )
+                            });
                             tracing::warn!(
                                 ?effective_price,
                                 ?dex_pricing_rate,

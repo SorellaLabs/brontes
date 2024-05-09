@@ -27,13 +27,12 @@ use reth_primitives::TxHash;
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
-    #[allow(dead_code)]
     pub(crate) db:    &'db DB,
-    pub metrics:      OutlierMetrics,
+    pub metrics:      Option<OutlierMetrics>,
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
-    pub fn new(quote_address: Address, db: &'db DB, metrics: OutlierMetrics) -> Self {
+    pub fn new(quote_address: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
         SharedInspectorUtils { quote: quote_address, db, metrics }
     }
 }
@@ -41,8 +40,8 @@ type TokenDeltas = FastHashMap<Address, Rational>;
 type AddressDeltas = FastHashMap<Address, TokenDeltas>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
-    pub fn get_metrics(&self) -> &OutlierMetrics {
-        &self.metrics
+    pub fn get_metrics(&self) -> Option<&OutlierMetrics> {
+        self.metrics.as_ref()
     }
 
     /// Calculates the USD value of the token balance deltas by address
