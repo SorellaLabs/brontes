@@ -20,7 +20,7 @@ use tracing::debug;
 use super::shared::state_collector::StateCollector;
 use crate::{executors::ProgressBar, Processor};
 
-type InsertFutures = Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'static>>;
+type InsertFutures = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 
 pub struct RangeExecutorWithPricing<
     T: TracingProvider,
@@ -99,7 +99,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         let metrics = self.global_metrics.clone();
         let inspectors = self.inspectors;
         let libmdbx = self.libmdbx;
-        self.insert_futures.push(Box::pin(tokio::spawn(async move {
+        self.insert_futures.push(Box::pin(async move {
             if let Some(metrics) = metrics {
                 metrics
                     .meter_processing(|| {
@@ -109,7 +109,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             } else {
                 P::process_results(libmdbx, inspectors, tree, meta).await
             }
-        })));
+        }));
     }
 }
 

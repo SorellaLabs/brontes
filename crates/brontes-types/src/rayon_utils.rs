@@ -31,11 +31,17 @@ macro_rules! execute_on {
     (target=$t:tt, $($block:tt)+) => {
         execute_on!($t, { $($block)+ })
     };
+    (target=$t:tt, $($block:tt)+) => {
+        execute_on!($t, { $($block)+ })
+    };
     (pricing, $block:block) => {
         ::brontes_types::execute_on_pricing_threadpool(|| $block)
     };
     (inspect, $block:block) => {
         ::brontes_types::execute_on_inspect_threadpool(|| $block)
+    };
+    (async_inspect, $block:block) => {
+        ::brontes_types::execute_on_inspect_threadpool_async(move || $block)
     };
 }
 
@@ -84,4 +90,21 @@ where
         .get()
         .expect("threadpool not initialized")
         .install(op)
+}
+
+pub async fn execute_on_inspect_threadpool_async<OP, R>(op: OP) -> R
+where
+    OP: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    RAYON_INSPECT_THREADPOOL
+        .get()
+        .expect("threadpool not initialized")
+        .spawn_fifo(move || {
+            let res = op();
+            let _ = tx.send(res);
+        });
+
+    rx.await.unwrap()
 }
