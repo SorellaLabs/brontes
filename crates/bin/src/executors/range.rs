@@ -95,15 +95,18 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             .as_ref()
             .inspect(|m| m.inc_inspector(self.id));
 
-        self.insert_futures.push(Box::pin(tokio::spawn(async {
-            if let Some(metrics) = self.global_metrics.clone() {
+        let metrics = self.metrics.clone();
+        let inspectors = self.inspectors;
+        let libmdbx = self.libmdbx;
+        self.insert_futures.push(Box::pin(tokio::spawn(async move {
+            if let Some(metrics) = metrics {
                 metrics
                     .meter_processing(|| {
-                        Box::pin(P::process_results(self.libmdbx, self.inspectors, tree, meta))
+                        Box::pin(P::process_results(libmdbx, inspectors, tree, meta))
                     })
                     .await
             } else {
-                P::process_results(self.libmdbx, self.inspectors, tree, meta).await
+                P::process_results(libmdbx, inspectors, tree, meta).await
             }
         })));
     }
