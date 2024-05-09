@@ -95,7 +95,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             .as_ref()
             .inspect(|m| m.inc_inspector(self.id));
 
-        let metrics = self.metrics.clone();
+        let metrics = self.global_metrics.clone();
         let inspectors = self.inspectors;
         let libmdbx = self.libmdbx;
         self.insert_futures.push(Box::pin(tokio::spawn(async move {

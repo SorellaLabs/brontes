@@ -132,8 +132,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             tracing::info!("starting new tip block");
             let block = self.current_block;
             panic!("need to do");
-            self.state_collector
-                .fetch_state_for(block, 0, GlobalRangeMetrics::new(vec![]));
+            self.state_collector.fetch_state_for(block, 0, None);
             self.current_block += 1;
         }
 

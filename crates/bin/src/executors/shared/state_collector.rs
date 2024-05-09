@@ -89,8 +89,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 
         trace!("Got {} traces + header", traces.len());
 
-        metrics.add_pending_tree(id);
         let res = if let Some(metrics) = metrics {
+            metrics.add_pending_tree(id);
             metrics
                 .tree_builder(id, || {
                     Box::pin(classifier.build_block_tree(traces, header, generate_pricing))
