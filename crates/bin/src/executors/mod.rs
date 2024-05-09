@@ -491,7 +491,10 @@ impl Future for Brontes {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         while match self.futures.poll_next_unpin(cx) {
-            Poll::Ready(Some(_)) => true,
+            Poll::Ready(Some(_)) => {
+                self.metrics.running_ranges.decrement(1.0);
+                true
+            }
             Poll::Ready(None) => return Poll::Ready(()),
             Poll::Pending => return Poll::Pending,
         } {}
