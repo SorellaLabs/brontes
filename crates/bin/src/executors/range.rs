@@ -150,6 +150,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.insert_futures.is_empty()
             && !self.collector.is_collecting_state()
         {
+            // ensures this exits
+            cx.waker().wake_by_ref();
             self.collector.range_finished();
         }
 
