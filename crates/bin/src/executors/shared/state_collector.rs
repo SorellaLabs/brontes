@@ -90,16 +90,22 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         trace!("Got {} traces + header", traces.len());
 
         metrics.add_pending_tree(id);
-        let res = metrics
-            .tree_builder(id, || {
-                Box::pin(classifier.build_block_tree(traces, header, generate_pricing))
-            })
-            .await;
+        let res = if let Some(metrics) = metrics {
+            metrics
+                .tree_builder(id, || {
+                    Box::pin(classifier.build_block_tree(traces, header, generate_pricing))
+                })
+                .await
+        } else {
+            classifier
+                .build_block_tree(traces, header, generate_pricing)
+                .await
+        };
 
         Ok(res)
     }
 
-    pub fn fetch_state_for(&mut self, block: u64, id: usize, metrics: GlobalRangeMetrics) {
+    pub fn fetch_state_for(&mut self, block: u64, id: usize, metrics: Option<GlobalRangeMetrics>) {
         let execute_fut = self.parser.execute(block, id, metrics.clone());
 
         let generate_pricing = self.metadata_fetcher.generate_dex_pricing(block, self.db);

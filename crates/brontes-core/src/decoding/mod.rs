@@ -70,15 +70,29 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
     }
 
     /// executes the tracing of a given block
-    pub fn execute(&self, block_num: u64, id: usize, metrics: GlobalRangeMetrics) -> ParserFuture {
+    pub fn execute(
+        &self,
+        block_num: u64,
+        id: usize,
+        metrics: Option<GlobalRangeMetrics>,
+    ) -> ParserFuture {
         // This will satisfy its lifetime scope do to the lifetime itself living longer
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
-        Box::pin(self.executor.spawn_result_task_as(
-            metrics.block_tracing(id, move || Box::pin(parser.execute_block(block_num))),
-            TaskKind::Default,
-        )) as ParserFuture
+        if let Some(metrics) = metrics {
+            Box::pin(self.executor.spawn_result_task_as(
+                metrics.block_tracing(id, move || Box::pin(parser.execute_block(block_num))),
+                TaskKind::Default,
+            )) as ParserFuture
+        } else {
+            Box::pin(
+                self.executor.spawn_result_task_as(
+                    Box::pin(parser.execute_block(block_num)),
+                    TaskKind::Default,
+                ),
+            ) as ParserFuture
+        }
     }
 
     /// ensures no libmdbx write

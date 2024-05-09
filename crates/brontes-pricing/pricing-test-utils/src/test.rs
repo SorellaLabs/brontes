@@ -71,7 +71,7 @@ impl PricingTestUtils {
             block,
             created_pools,
             Arc::new(AtomicBool::new(false)),
-            DexPricingMetrics::default(),
+            None,
             ex,
         ))
     }

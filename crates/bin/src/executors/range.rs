@@ -82,7 +82,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         while data_batching.insert_futures.next().await.is_some() {
             data_batching
                 .global_metrics
-                .finished_block(data_batching.id);
+                .as_ref()
+                .inspect(|m| m.finished_block(data_batching.id));
         }
 
         drop(graceful_guard);
@@ -90,12 +91,21 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
         debug!(target:"brontes","Completed DEX pricing");
-        self.global_metrics.inc_inspector(self.id);
-        self.insert_futures.push(Box::pin(tokio::spawn(
-            self.global_metrics.clone().meter_processing(|| {
-                Box::pin(P::process_results(self.libmdbx, self.inspectors, tree, meta))
-            }),
-        )));
+        self.global_metrics
+            .as_ref()
+            .inspect(|m| m.inc_inspector(self.id));
+
+        self.insert_futures.push(Box::pin(tokio::spawn(async {
+            if let Some(metrics) = self.global_metrics.clone() {
+                metrics
+                    .meter_processing(|| {
+                        Box::pin(P::process_results(self.libmdbx, self.inspectors, tree, meta))
+                    })
+                    .await
+            } else {
+                P::process_results(self.libmdbx, self.inspectors, tree, meta).await
+            }
+        })));
     }
 }
 
@@ -127,7 +137,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
             match result {
                 Some((tree, meta)) => {
-                    self.global_metrics.remove_pending_tree(self.id);
+                    self.global_metrics
+                        .as_ref()
+                        .inspect(|m| m.remove_pending_tree(self.id));
                     self.on_price_finish(tree, meta);
                 }
                 None if self.insert_futures.is_empty() && self.current_block == self.end_block => {
@@ -141,8 +153,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         }
 
         while let Poll::Ready(Some(_)) = self.insert_futures.poll_next_unpin(cx) {
-            self.global_metrics.dec_inspector(self.id);
-            self.global_metrics.finished_block(self.id);
+            self.global_metrics.as_ref().inspect(|m| {
+                m.dec_inspector(self.id);
+                m.finished_block(self.id);
+            });
         }
 
         // mark complete if we are done with the range
