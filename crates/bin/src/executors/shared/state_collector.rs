@@ -75,7 +75,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         fut: ExecutionFut<'static>,
         classifier: &'static Classifier<'static, T, DB>,
         id: usize,
-        metrics: GlobalRangeMetrics,
+        metrics: Option<GlobalRangeMetrics>,
     ) -> eyre::Result<BlockTree<Action>> {
         let (traces, header) = fut
             .await

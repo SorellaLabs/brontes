@@ -138,9 +138,10 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     db: &'static DB,
     inspectors: Option<Vec<Inspectors>>,
     cex_exchanges: Vec<CexExchange>,
+    metrics: bool,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
     let mut res = Vec::new();
-    let metrics = OutlierMetrics::new();
+    let metrics = metrics.then(|| OutlierMetrics::new());
     for inspector in inspectors
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())

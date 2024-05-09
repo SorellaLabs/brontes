@@ -44,7 +44,7 @@ impl TestTraceArgs {
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         futures::stream::iter(self.blocks.into_iter())
-            .unordered_buffer_map(100, |i| parser.execute(i, 0, GlobalRangeMetrics::new(vec![])))
+            .unordered_buffer_map(100, |i| parser.execute(i, 0, None))
             .map(|_res| ())
             .collect::<Vec<_>>()
             .await;

@@ -38,11 +38,7 @@ impl PricingTestUtils {
             .protocols_created_before(block)
             .map_err(|_| PricingTestError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(
-            pairs,
-            self.tracer.libmdbx,
-            DexPricingMetrics::default(),
-        );
+        let pair_graph = GraphManager::init_from_db_state(pairs, self.tracer.libmdbx, None);
 
         let created_pools = if let Some(end_block) = end_block {
             self.tracer

@@ -58,7 +58,7 @@ impl TraceArgs {
                         (i - self.start_block) as f64 / amount * 100.0
                     );
                 }
-                parser.execute(i, 0, GlobalRangeMetrics::new(vec![]))
+                parser.execute(i, 0, None)
             })
             .map(|_res| ())
             .collect::<Vec<_>>()

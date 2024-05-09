@@ -74,6 +74,9 @@ pub struct RunArgs {
     /// Initialize full range database tables
     #[arg(long, default_value = "false")]
     pub init_crit_tables:     bool,
+    /// Metrics will be exported
+    #[arg(long, default_value = "true")]
+    pub with_metrics:         bool,
 }
 
 impl RunArgs {
@@ -129,7 +132,7 @@ impl RunArgs {
             self.force_no_dex_pricing = true;
         }
 
-        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges);
+        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges, self.with_metrics);
         let tracer =
             get_tracing_provider(Path::new(&reth_db_path), max_tasks, task_executor.clone());
 
@@ -154,6 +157,7 @@ impl RunArgs {
                     libmdbx,
                     self.cli_only,
                     self.init_crit_tables,
+                    self.with_metrics
                 )
                 .build(task_executor, shutdown)
                 .await
