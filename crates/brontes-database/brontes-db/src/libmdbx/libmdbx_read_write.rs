@@ -44,7 +44,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools;
 use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
-use tracing::{info, instrument};
+use tracing::{info, instrument, span, Level, Span};
 
 use super::types::ReturnKV;
 use crate::{
@@ -128,7 +128,7 @@ pub struct LibmdbxReadWriter {
     /// reths-libmdbx has a really inefficient when it comes to
     /// handling duel writer contention. this is a quick fix
     /// for it
-    write_lock:       tokio::sync::Mutex<()>,
+    write_lock:       tokio::sync::Mutex<Span>,
 }
 
 impl Drop for LibmdbxReadWriter {
@@ -169,7 +169,7 @@ impl Drop for LibmdbxReadWriter {
 impl LibmdbxReadWriter {
     pub fn init_db<P: AsRef<Path>>(path: P, log_level: Option<LogLevel>) -> eyre::Result<Self> {
         Ok(Self {
-            write_lock:   tokio::sync::Mutex::new(()),
+            write_lock:   tokio::sync::Mutex::new(span!(Level::WARN, "write-lock-span")),
             db:           Libmdbx::init_db(path, log_level)?,
             insert_queue: DashMap::default(),
         })
@@ -747,10 +747,15 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
-        let _ = self.write_lock.lock().await;
-        self.db
-            .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
+        self.write_lock
+            .lock()
+            .await
+            .in_scope(|| {
+                self.db
+                    .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
+            })
             .expect("libmdbx write failure");
+
         Ok(())
     }
 
@@ -761,10 +766,12 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherContractsData::new(searcher_contract, searcher_info);
-        let _ = self.write_lock.lock().await;
-        self.db
-            .write_table::<SearcherContracts, SearcherContractsData>(&[data])
-            .expect("libmdbx write failure");
+        self.write_lock.lock().await.in_scope(|| {
+            self.db
+                .write_table::<SearcherContracts, SearcherContractsData>(&[data])
+                .expect("libmdbx write failure");
+        });
+
         Ok(())
     }
 
@@ -776,10 +783,11 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         let data = AddressMetaData::new(address, metadata);
 
-        let _ = self.write_lock.lock().await;
-        self.db
-            .write_table::<AddressMeta, AddressMetaData>(&[data])
-            .expect("libmdx metadata write failure");
+        self.write_lock.lock().await.in_scope(|| {
+            self.db
+                .write_table::<AddressMeta, AddressMetaData>(&[data])
+                .expect("libmdx metadata write failure");
+        });
 
         Ok(())
     }
@@ -799,8 +807,10 @@ impl DBWriter for LibmdbxReadWriter {
         entry.push((key.to_vec(), value));
 
         if entry.len() > CLEAR_AM {
-            let _ = self.write_lock.lock().await;
-            self.insert_batched_data::<MevBlocks>(std::mem::take(&mut entry))?;
+            self.write_lock
+                .lock()
+                .await
+                .in_scope(|| self.insert_batched_data::<MevBlocks>(std::mem::take(&mut entry)))?;
         }
 
         Ok(())
@@ -813,34 +823,36 @@ impl DBWriter for LibmdbxReadWriter {
         quotes: Option<DexQuotes>,
     ) -> eyre::Result<()> {
         if let Some(quotes) = quotes {
-            let _ = self.write_lock.lock().await;
-            self.init_state_updating(block_num, DEX_PRICE_FLAG)
-                .expect("libmdbx write failure");
+            self.write_lock.lock().await.in_scope(|| {
+                self.init_state_updating(block_num, DEX_PRICE_FLAG)
+                    .expect("libmdbx write failure");
 
-            let mut entry = self.insert_queue.entry(Tables::DexPrice).or_default();
+                let mut entry = self.insert_queue.entry(Tables::DexPrice).or_default();
 
-            quotes
-                .0
-                .into_iter()
-                .enumerate()
-                .filter_map(|(idx, value)| value.map(|v| (idx, v)))
-                .map(|(idx, value)| {
-                    let index = DexQuoteWithIndex {
-                        tx_idx: idx as u16,
-                        quote:  value.into_iter().collect_vec(),
-                    };
-                    DexPriceData::new(make_key(block_num, idx as u16), index)
-                })
-                .for_each(|data| {
-                    let data = data.into_key_val();
-                    let (key, value) = Self::convert_into_save_bytes(data);
-                    entry.push((key.to_vec(), value));
-                });
+                quotes
+                    .0
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(idx, value)| value.map(|v| (idx, v)))
+                    .map(|(idx, value)| {
+                        let index = DexQuoteWithIndex {
+                            tx_idx: idx as u16,
+                            quote:  value.into_iter().collect_vec(),
+                        };
+                        DexPriceData::new(make_key(block_num, idx as u16), index)
+                    })
+                    .for_each(|data| {
+                        let data = data.into_key_val();
+                        let (key, value) = Self::convert_into_save_bytes(data);
+                        entry.push((key.to_vec(), value));
+                    });
 
-            // assume 150 entries per block
-            if entry.len() > CLEAR_AM * 150 {
-                self.insert_batched_data::<DexPrice>(std::mem::take(&mut entry))?;
-            }
+                // assume 150 entries per block
+                if entry.len() > CLEAR_AM * 150 {
+                    return self.insert_batched_data::<DexPrice>(std::mem::take(&mut entry))
+                }
+                Ok(())
+            })?;
         }
 
         Ok(())
