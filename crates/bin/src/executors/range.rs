@@ -20,6 +20,8 @@ use tracing::debug;
 use super::shared::state_collector::StateCollector;
 use crate::{executors::ProgressBar, Processor};
 
+type InsertFutures = Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'static>>;
+
 pub struct RangeExecutorWithPricing<
     T: TracingProvider,
     DB: DBWriter + LibmdbxReader,
@@ -28,8 +30,7 @@ pub struct RangeExecutorWithPricing<
 > {
     id:             usize,
     collector:      StateCollector<T, DB, CH>,
-    insert_futures:
-        FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'static>>>,
+    insert_futures: FuturesUnordered<InsertFutures>,
     current_block:  u64,
     end_block:      u64,
     libmdbx:        &'static DB,

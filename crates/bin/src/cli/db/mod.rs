@@ -5,6 +5,7 @@ use crate::runner::CliContext;
 mod db_clear;
 mod db_insert;
 mod db_query;
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 mod discovery;
 #[cfg(feature = "local-clickhouse")]
 mod ensure_test_traces;
@@ -71,6 +72,7 @@ impl Database {
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
             DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,

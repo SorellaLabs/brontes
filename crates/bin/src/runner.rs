@@ -9,7 +9,7 @@ use futures::pin_mut;
 use metrics_process::Collector;
 use tracing::{error, info, trace};
 
-use crate::{PROMETHEUS_ENDPOINT_IP, PROMETHEUS_ENDPOINT_PORT};
+use crate::PROMETHEUS_ENDPOINT_IP;
 
 pub fn run_command_until_exit<F, E>(
     metrics_port: u16,
@@ -53,10 +53,7 @@ pub fn tokio_runtime() -> Result<tokio::runtime::Runtime, std::io::Error> {
 async fn try_initialize_prometheus(port: u16) {
     // initializes the prometheus endpoint
     if let Err(e) = initialize(
-        SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)),
-            PROMETHEUS_ENDPOINT_PORT,
-        ),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::from(PROMETHEUS_ENDPOINT_IP)), port),
         Collector::default(),
     )
     .await

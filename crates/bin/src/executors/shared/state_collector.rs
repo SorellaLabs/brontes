@@ -8,7 +8,7 @@ use std::{
 };
 
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, ParserFuture};
+use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::{
@@ -22,7 +22,7 @@ use brontes_types::{
     BlockTree,
 };
 use eyre::eyre;
-use futures::{task::WakerRef, Future, FutureExt, Stream, StreamExt};
+use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 use tracing::{span, trace, Instrument, Level};

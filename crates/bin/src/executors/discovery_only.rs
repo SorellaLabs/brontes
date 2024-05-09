@@ -1,24 +1,15 @@
 use std::{
-    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
 
-use brontes_classifier::{discovery_only::DiscoveryOnlyClassifier, Classifier};
+use brontes_classifier::discovery_only::DiscoveryOnlyClassifier;
 use brontes_core::decoding::{Parser, TracingProvider};
-use brontes_database::{
-    clickhouse::ClickhouseHandle,
-    libmdbx::{DBWriter, LibmdbxReader},
-};
-use brontes_inspect::Inspector;
-use brontes_metrics::range::GlobalRangeMetrics;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
+use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
-use tracing::debug;
 
-use super::shared::state_collector::StateCollector;
-use crate::{executors::ProgressBar, Processor};
+use crate::executors::ProgressBar;
 
 const MAX_PENDING_TREE_BUILDING: usize = 5;
 

@@ -42,7 +42,6 @@ use self::shared::{
 use crate::cli::static_object;
 
 pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [0u8, 0u8, 0u8, 0u8];
-pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6923;
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
@@ -364,7 +363,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
-        let pricing_metrics = self.metrics.then(|| DexPricingMetrics::default());
+        let pricing_metrics = self.metrics.then(DexPricingMetrics::default);
 
         if had_end_block && self.start_block.is_some() {
             self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
