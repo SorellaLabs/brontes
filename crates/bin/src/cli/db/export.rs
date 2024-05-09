@@ -30,7 +30,7 @@ pub struct Export {
 
 impl Export {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
-        let libmdbx = static_object(load_libmdbx(brontes_db_endpoint, &ctx.task_executor)?);
+        let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint)?);
         let exporter =
             Arc::new(ParquetExporter::new(self.start_block, self.end_block, self.path, libmdbx));
 
