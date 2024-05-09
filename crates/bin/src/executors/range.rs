@@ -145,6 +145,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             self.global_metrics.finished_block(self.id);
         }
 
+        // mark complete if we are done with the range
+        if self.current_block == self.end_block
+            && self.insert_futures.is_empty()
+            && !self.collector.is_collecting_state()
+        {
+            self.collector.range_finished();
+        }
+
         Poll::Pending
     }
 }
