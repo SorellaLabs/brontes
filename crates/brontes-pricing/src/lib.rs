@@ -1226,6 +1226,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
+        // ensure clearing when finished
+        if self.finished.load(SeqCst) {
+            cx.waker().wake_by_ref();
+        }
+
         // small budget as pretty heavy loop
         let mut budget = 4;
         'outer: loop {
@@ -1284,6 +1289,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
+                            tracing::error!("on close");
                             return Poll::Ready(self.on_close())
                         }
                         // if  we are cutoff, i.e this will be pending forever until we catchup,
