@@ -17,7 +17,7 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
         #sig
         {
             let result = #block;
-            self.#ptr.#fn_name(#(#data),*);
+            self.#ptr.as_ref().inspect(|m| m.#fn_name(#(#data),*));
             result
         }
     ))

@@ -35,7 +35,7 @@ pub struct RangeExecutorWithPricing<
     libmdbx:        &'static DB,
     inspectors:     &'static [&'static dyn Inspector<Result = P::InspectType>],
     progress_bar:   Option<ProgressBar>,
-    global_metrics: GlobalRangeMetrics,
+    global_metrics: Option<GlobalRangeMetrics>,
     _p:             PhantomData<P>,
 }
 
@@ -50,7 +50,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         libmdbx: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
         progress_bar: Option<ProgressBar>,
-        global_metrics: GlobalRangeMetrics,
+        global_metrics: Option<GlobalRangeMetrics>,
     ) -> Self {
         Self {
             id,

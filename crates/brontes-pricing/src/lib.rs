@@ -134,7 +134,7 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     /// a queue of blocks that we should skip pricing for and just upkeep state
     skip_pricing:    VecDeque<u64>,
     /// metrics
-    metrics:         DexPricingMetrics,
+    metrics:         Option<DexPricingMetrics>,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
@@ -148,7 +148,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         current_block: u64,
         new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
         needs_more_data: Arc<AtomicBool>,
-        metrics: DexPricingMetrics,
+        metrics: Option<DexPricingMetrics>,
         executor: BrontesTaskExecutor,
     ) -> Self {
         Self {
