@@ -31,22 +31,6 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     task_executor:            BrontesTaskExecutor,
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Drop
-    for WaitingForPricerFuture<T, DB>
-{
-    fn drop(&mut self) {
-        tracing::debug!(rem_trees=?self.pending_trees.len(), keys=?self.pending_trees.keys().collect::<Vec<_>>(), "range has this many pending trees");
-        // ensures that we properly drop everything
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let res = self.receiver.recv().await;
-                drop(res);
-                tracing::debug!("droping pricing future");
-            });
-        });
-    }
-}
-
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
     pub fn new(pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
         let (tx, rx) = channel(100);
