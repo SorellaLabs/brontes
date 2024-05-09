@@ -28,8 +28,7 @@ pub struct RangeExecutorWithPricing<
 > {
     id:             usize,
     collector:      StateCollector<T, DB, CH>,
-    insert_futures:
-        FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'static>>>,
+    insert_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     current_block:  u64,
     end_block:      u64,
     libmdbx:        &'static DB,
@@ -91,11 +90,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
         debug!(target:"brontes","Completed DEX pricing");
         self.global_metrics.inc_inspector(self.id);
-        self.insert_futures.push(Box::pin(tokio::spawn(
-            self.global_metrics.clone().meter_processing(|| {
+        self.insert_futures
+            .push(Box::pin(self.global_metrics.clone().meter_processing(|| {
                 Box::pin(P::process_results(self.libmdbx, self.inspectors, tree, meta))
-            }),
-        )));
+            })));
     }
 }
 
