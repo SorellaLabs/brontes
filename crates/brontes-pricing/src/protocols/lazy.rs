@@ -160,7 +160,7 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         address: Address,
         block_number: u64,
         ex_type: Protocol,
-        metrics: DexPricingMetrics,
+        metrics: Option<DexPricingMetrics>,
     ) {
         let provider = self.provider.clone();
         self.add_state_trackers(block_number, id, address, pair);
@@ -168,17 +168,18 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, pair);
         self.pool_load_futures.add_future(
             block_number,
-            Box::pin(
-                self.ex
-                    .handle()
-                    .spawn(metrics.meter_state_load(|| Box::pin(fut))),
-            ),
+            Box::pin(self.ex.handle().spawn(async move {
+                if let Some(metrics) = metrics {
+                    metrics.meter_state_load(|| Box::pin(fut)).await
+                } else {
+                    fut.await
+                }
+            })),
         );
     }
 
-    pub fn poll_next_metrics(
+    pub fn poll_next(
         &mut self,
-        _metrics: &DexPricingMetrics,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<LazyResult>> {
         if let Poll::Ready(Some(result)) = self.pool_load_futures.poll_next_unpin(cx) {

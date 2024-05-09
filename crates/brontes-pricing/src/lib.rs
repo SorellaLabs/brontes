@@ -992,13 +992,17 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     fn process_future_blocks(&self) -> bool {
         if self.completed_block + 6 > self.current_block {
-            self.metrics.needs_more_data(self.range_id, true);
+            self.metrics
+                .as_ref()
+                .inspect(|m| m.needs_more_data(self.range_id, true));
             self.needs_more_data.store(true, SeqCst);
 
             false
         } else {
             self.needs_more_data.store(false, SeqCst);
-            self.metrics.needs_more_data(self.range_id, false);
+            self.metrics
+                .as_ref()
+                .inspect(|m| m.needs_more_data(self.range_id, false));
 
             true
         }
@@ -1051,7 +1055,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.metrics.range_finished_block(self.range_id);
+        self.metrics
+            .as_ref()
+            .inspect(|m| m.range_finished_block(self.range_id));
         self.should_return().then_some((block, res))
     }
 
@@ -1179,7 +1185,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
-        self.metrics.range_finished_block(self.range_id);
+        self.metrics
+            .as_ref()
+            .inspect(|m| m.range_finished_block(self.range_id));
+
         self.should_return().then_some((block, res))
     }
 
@@ -1189,7 +1198,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
         let mut buf = vec![];
-        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_metrics(&self.metrics, cx) {
+        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next(cx) {
             buf.push(state);
         }
 
