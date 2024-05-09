@@ -161,9 +161,9 @@ impl RunArgs {
                     tracing::error!(%e);
                     e
                 }) {
-                    tracing::error!("awaiting brontes");
+                    tracing::error!(target: "brontes", "awaiting brontes");
                     brontes.await;
-                    tracing::error!("brontes ret");
+                    tracing::error!(target: "brontes-ret", "awaiting brontes");
                 }
             });
 
