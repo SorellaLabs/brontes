@@ -43,7 +43,7 @@ use brontes_types::{
     tree::BlockTree,
 };
 use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
-// use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, sort_mev_by_type,
 };
@@ -85,7 +85,7 @@ fn run_inspectors(
 
     // Remove the classified mev txes from the possibly missed tx list
     let results = orchestra
-        .iter()
+        .par_iter()
         .flat_map(|inspector| {
             let span =
                 span!(Level::ERROR, "Inspector", inspector = %inspector.get_id(),block=&metadata.block_num);
