@@ -60,6 +60,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub libmdbx: &'static DB,
     pub cli_only: bool,
     pub init_crit_tables: bool,
+    pub metrics: bool,
     _p: PhantomData<P>,
 }
 
@@ -82,6 +83,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         libmdbx: &'static DB,
         cli_only: bool,
         init_crit_tables: bool,
+        metrics: bool,
     ) -> Self {
         Self {
             clickhouse,
@@ -98,6 +100,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             force_no_dex_pricing,
             cli_only,
             init_crit_tables,
+            metrics,
             _p: PhantomData,
         }
     }
@@ -111,7 +114,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &'_ self,
         executor: BrontesTaskExecutor,
         end_block: u64,
-        pricing_metrics: DexPricingMetrics,
+        pricing_metrics: Option<DexPricingMetrics>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -149,8 +152,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .collect_vec(),
         );
-        let range_metrics =
-            GlobalRangeMetrics::new(chunks.iter().map(|(start, end)| end - start).collect_vec());
+        let range_metrics = self.metrics.then(|| {
+            GlobalRangeMetrics::new(chunks.iter().map(|(start, end)| end - start).collect_vec())
+        });
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
@@ -199,7 +203,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         executor: BrontesTaskExecutor,
         start_block: u64,
         back_from_tip: u64,
-        pricing_metrics: DexPricingMetrics,
+        pricing_metrics: Option<DexPricingMetrics>,
     ) -> TipInspector<T, DB, CH, P> {
         let state_collector = self.init_state_collector(
             range_id,
@@ -226,7 +230,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         start_block: u64,
         end_block: u64,
         tip: bool,
-        pricing_metrics: DexPricingMetrics,
+        pricing_metrics: Option<DexPricingMetrics>,
     ) -> StateCollector<T, DB, CH> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
@@ -360,7 +364,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
-        let pricing_metrics = DexPricingMetrics::default();
+        let pricing_metrics = self.metrics.then(|| DexPricingMetrics::default());
 
         if had_end_block && self.start_block.is_some() {
             self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
