@@ -131,6 +131,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                     self.on_price_finish(tree, meta);
                 }
                 None if self.insert_futures.is_empty() && self.current_block == self.end_block => {
+                    tracing::error!("returning");
                     return Poll::Ready(())
                 }
                 None => {
