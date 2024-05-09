@@ -89,6 +89,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         tracing::error!("drop guard");
 
         drop(graceful_guard);
+
+        tracing::error!("dropped");
     }
 
     fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
