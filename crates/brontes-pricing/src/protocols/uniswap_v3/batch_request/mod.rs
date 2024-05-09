@@ -152,7 +152,7 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
         ..Default::default()
     };
     let res = middleware
-        .eth_call(req, block_number.map(Into::into), None, None)
+        .eth_call_light(req, block_number.unwrap().into())
         .await
         .map_err(|e| eyre::eyre!("v3 data fetch call failed, err={}", e))?;
 
