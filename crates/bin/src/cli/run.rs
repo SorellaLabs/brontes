@@ -69,7 +69,7 @@ pub struct RunArgs {
     #[arg(long, default_value = "5")]
     pub behind_tip:           u64,
     /// Run in CLI only mode (no TUI) - will output progress bars to stdout
-    #[arg(long, default_value = "true")]
+    #[arg(long, default_value = "false")]
     pub cli_only:             bool,
     /// Initialize full range database tables
     #[arg(long, default_value = "false")]
