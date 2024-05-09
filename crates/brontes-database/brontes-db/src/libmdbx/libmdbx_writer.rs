@@ -13,7 +13,6 @@ use brontes_types::{
         searcher::SearcherInfo,
         token_info::TokenInfo,
         traces::TxTracesInner,
-        traits::DBWriter,
     },
     mev::{Bundle, MevBlock},
     structured_trace::TxTrace,
@@ -64,6 +63,7 @@ impl<T> Ord for MinHeapData<T> {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum WriterMessage {
     DexQuotes {
         block_number: u64,
@@ -473,9 +473,8 @@ impl LibmdbxWriter {
                 tracing::error!(error=%e, "libmdbx write error on shutdown");
             }
         }
-        // this will clear out buffers
-        drop(inserts);
-        drop(graceful_guard);
+
+        drop(graceful_guard)
     }
 }
 

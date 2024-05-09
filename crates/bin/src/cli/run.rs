@@ -132,7 +132,13 @@ impl RunArgs {
             self.force_no_dex_pricing = true;
         }
 
-        let inspectors = init_inspectors(quote_asset, libmdbx, self.inspectors, self.cex_exchanges, self.with_metrics);
+        let inspectors = init_inspectors(
+            quote_asset,
+            libmdbx,
+            self.inspectors,
+            self.cex_exchanges,
+            self.with_metrics,
+        );
         let tracer =
             get_tracing_provider(Path::new(&reth_db_path), max_tasks, task_executor.clone());
 
@@ -157,7 +163,7 @@ impl RunArgs {
                     libmdbx,
                     self.cli_only,
                     self.init_crit_tables,
-                    self.with_metrics
+                    self.with_metrics,
                 )
                 .build(task_executor, shutdown)
                 .await
