@@ -418,8 +418,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         pricing: bool,
     ) -> Vec<TransactionAccounting> {
         bundle_txes
-            .into_par_iter()
-            .zip(bundle_deltas.into_par_iter())
+            .into_iter()
+            .zip(bundle_deltas)
             .map(|(tx_hash, deltas)| {
                 let address_deltas: Vec<AddressBalanceDeltas> = deltas
                     .into_iter()
