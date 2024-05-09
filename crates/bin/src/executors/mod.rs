@@ -428,7 +428,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         pin_mut!(build_future, shutdown);
         tokio::select! {
             res = &mut build_future => {
-                tracing::error!("build done");
                 return res
             },
             guard = shutdown => {
