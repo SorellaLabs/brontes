@@ -86,6 +86,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 .finished_block(data_batching.id);
         }
 
+        tracing::error!("drop guard");
+
         drop(graceful_guard);
     }
 
