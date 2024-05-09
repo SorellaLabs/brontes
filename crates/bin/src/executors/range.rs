@@ -78,6 +78,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 graceful_guard = Some(guard);
             },
         }
+        tracing::error!("select statement");
 
         while data_batching.insert_futures.next().await.is_some() {
             data_batching
