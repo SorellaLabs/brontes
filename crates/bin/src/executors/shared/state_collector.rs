@@ -4,7 +4,7 @@ use std::{
         atomic::{AtomicBool, Ordering::SeqCst},
         Arc,
     },
-    task::Poll,
+    task::{Poll, Waker},
 };
 
 use brontes_classifier::Classifier;
@@ -22,7 +22,7 @@ use brontes_types::{
     BlockTree,
 };
 use eyre::eyre;
-use futures::{Future, FutureExt, Stream, StreamExt};
+use futures::{task::WakerRef, Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tokio::task::JoinError;
 use tracing::{span, trace, Instrument, Level};
@@ -109,8 +109,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         ))
     }
 
-    pub fn range_finished(&self) {
-        self.mark_as_finished.store(true, SeqCst);
+    pub fn range_finished(&self, waker: &Waker) {
+        if !self.mark_as_finished.swap(true, SeqCst) {
+            waker.wake_by_ref();
+        }
     }
 }
 

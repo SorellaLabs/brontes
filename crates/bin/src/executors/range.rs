@@ -156,7 +156,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.insert_futures.is_empty()
             && !self.collector.is_collecting_state()
         {
-            self.collector.range_finished();
+            self.collector.range_finished(cx.waker());
         }
 
         Poll::Pending
