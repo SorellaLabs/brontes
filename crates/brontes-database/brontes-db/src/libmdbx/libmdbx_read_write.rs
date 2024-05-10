@@ -490,6 +490,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         if let Some(e) = lock.get(&searcher_eoa) {
             return Ok(Some(e.clone()))
         }
+        drop(lock);
 
         // lock.insert(address, metadata.clone());
         // let (tx, mut rx) = tokio::sync::oneshot::channel();
@@ -511,6 +512,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
+                    let mut lock = self.searcher_eoa.lock().unwrap();
                     lock.get_or_insert(searcher_eoa, || data.clone());
                     // let _ = self.cache_tx.send(CacheMsg::Update(
                     //     false,
@@ -538,11 +540,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
         //         return Ok(Some(val))
         //     }
         // }
-        let mut lock = self.searcher_contract.lock().unwrap();
 
+        let mut lock = self.searcher_contract.lock().unwrap();
         if let Some(e) = lock.get(&searcher_contract) {
             return Ok(Some(e.clone()))
         }
+        drop(lock);
+
         self.db
             .view_db(|tx| {
                 tx.get::<SearcherContracts>(searcher_contract)
@@ -550,6 +554,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
+                    let mut lock = self.searcher_contract.lock().unwrap();
                     lock.get_or_insert(searcher_contract, || data.clone());
                     // let _ = self.cache_tx.send(CacheMsg::Update(
                     //     false,
@@ -670,11 +675,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
         if let Some(e) = lock.get(&address) {
             return Ok(Some(e.clone()))
         }
+        drop(lock);
 
         self.db
             .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
             .inspect(|data| {
                 if let Some(data) = data {
+                    let mut lock = self.address_meta.lock().unwrap();
                     lock.get_or_insert(address, || data.clone());
                     // let _ = self.cache_tx.send(CacheMsg::Update(
                     //     false,
