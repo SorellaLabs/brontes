@@ -39,6 +39,8 @@ pub mod utils;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
+const GIGABYTE: u64 = 1024 * 1024 * 1024;
+
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
 
@@ -79,8 +81,8 @@ impl Libmdbx {
             mdbx_result(reth_mdbx_sys::mdbx_env_set_option(
                 ptr,
                 reth_mdbx_sys::MDBX_opt_sync_bytes,
-                // 10 gb
-                1_000_000_000u64 * 10,
+                // 2 gb
+                GIGABYTE * 2,
             ))
         })?;
 

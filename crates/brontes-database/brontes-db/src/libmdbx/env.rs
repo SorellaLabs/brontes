@@ -13,7 +13,6 @@ use reth_db::{
     DatabaseError,
 };
 use reth_interfaces::db::LogLevel;
-const MEGABYTE: usize = 1024 * 1024;
 const GIGABYTE: usize = 1024 * 1024 * 1024;
 
 /// MDBX allows up to 32767 readers (`MDBX_READERS_LIMIT`), but we limit it to
@@ -157,10 +156,9 @@ impl DatabaseEnv {
         inner_env.set_max_dbs(256);
         inner_env.set_geometry(Geometry {
             // Maximum database size of 750 gigabytes
-            size:        Some(0..(750 * GIGABYTE)),
-            // We grow the database in increments of 100 gigabytes
-            growth_step: Some(200 * MEGABYTE as isize),
-
+            size:             Some(0..(750 * GIGABYTE)),
+            // We grow the database in increments of a gigabyte
+            growth_step:      Some(GIGABYTE as isize),
             shrink_threshold: Some(GIGABYTE as isize),
             page_size:        Some(PageSize::Set(default_page_size())),
         });
@@ -212,6 +210,7 @@ impl DatabaseEnv {
         inner_env.set_flags(EnvironmentFlags {
             mode,
             coalesce: true,
+            no_rdahead: true,
             exclusive: args.exclusive.unwrap_or_default(),
             ..Default::default()
         });

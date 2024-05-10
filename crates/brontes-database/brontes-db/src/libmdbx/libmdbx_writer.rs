@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc, task::Poll};
+use std::{sync::Arc, task::Poll};
 
 use alloy_primitives::Address;
 use brontes_types::{
@@ -37,31 +37,6 @@ use crate::{
 const CLEAR_AM: usize = 100;
 
 type InsetQueue = FastHashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>>;
-
-#[derive(Debug)]
-pub struct MinHeapData<T> {
-    pub block: u64,
-    pub data:  T,
-}
-
-impl<T> PartialEq for MinHeapData<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.block.eq(&other.block)
-    }
-}
-impl<T> Eq for MinHeapData<T> {}
-
-impl<T> PartialOrd for MinHeapData<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<T> Ord for MinHeapData<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.block.cmp(&self.block)
-    }
-}
 
 #[allow(clippy::large_enum_variant)]
 pub enum WriterMessage {

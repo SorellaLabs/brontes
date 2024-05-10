@@ -104,7 +104,7 @@ impl ClassifierTestUtils {
                 ctr.clone(),
                 quote_asset,
                 pair_graph,
-                UnboundedYapperReceiver::new(rx, 1000, "test".into()),
+                UnboundedYapperReceiver::new(rx, 10000, "test".into()),
                 self.get_provider(),
                 block,
                 created_pools,

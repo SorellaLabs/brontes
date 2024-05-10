@@ -5,10 +5,9 @@ use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
 use reth_primitives::{BlockNumberOrTag, Header, B256};
-use tokio::{sync::mpsc::UnboundedSender, task::JoinError};
+use tokio::sync::mpsc::UnboundedSender;
 
 use self::parser::TraceParser;
-use crate::executor::{Executor, TaskKind};
 
 #[cfg(feature = "dyn-decode")]
 mod dyn_decode;
@@ -26,16 +25,13 @@ pub(crate) const RECEIVE: &str = "receive";
 pub(crate) const FALLBACK: &str = "fallback";
 use reth_primitives::BlockId;
 
-pub type ParserFuture = Pin<
-    Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'static>,
->;
+pub type ParserFuture =
+    Pin<Box<dyn Future<Output = Option<(Vec<TxTrace>, Header)>> + Send + 'static>>;
 
-pub type TraceClickhouseFuture =
-    Pin<Box<dyn Future<Output = Result<(), JoinError>> + Send + 'static>>;
+pub type TraceClickhouseFuture = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 
 pub struct Parser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    executor: Executor,
-    parser:   TraceParser<T, DB>,
+    parser: TraceParser<T, DB>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
@@ -44,11 +40,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         libmdbx: &'static DB,
         tracing: T,
     ) -> Self {
-        let executor = Executor::new();
-
         let parser = TraceParser::new(libmdbx, Arc::new(tracing), Arc::new(metrics_tx)).await;
 
-        Self { executor, parser }
+        Self { parser }
     }
 
     #[cfg(not(feature = "local-reth"))]
@@ -81,17 +75,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         let parser = self.parser.clone();
 
         if let Some(metrics) = metrics {
-            Box::pin(self.executor.spawn_result_task_as(
-                metrics.block_tracing(id, move || Box::pin(parser.execute_block(block_num))),
-                TaskKind::Default,
-            )) as ParserFuture
+            Box::pin(metrics.block_tracing(id, move || Box::pin(parser.execute_block(block_num))))
+                as ParserFuture
         } else {
-            Box::pin(
-                self.executor.spawn_result_task_as(
-                    Box::pin(parser.execute_block(block_num)),
-                    TaskKind::Default,
-                ),
-            ) as ParserFuture
+            Box::pin(parser.execute_block(block_num)) as ParserFuture
         }
     }
 
@@ -101,10 +88,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
-        Box::pin(
-            self.executor
-                .spawn_result_task_as(parser.execute_block_discovery(block_num), TaskKind::Default),
-        ) as ParserFuture
+        Box::pin(parser.execute_block_discovery(block_num)) as ParserFuture
     }
 
     pub fn trace_for_clickhouse(&self, block_num: u64) -> TraceClickhouseFuture {
@@ -112,9 +96,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
-        Box::pin(
-            self.executor
-                .spawn_result_task_as(parser.trace_clickhouse_block(block_num), TaskKind::Default),
-        ) as TraceClickhouseFuture
+        Box::pin(parser.trace_clickhouse_block(block_num)) as TraceClickhouseFuture
     }
 }

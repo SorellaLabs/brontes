@@ -16,7 +16,6 @@ use brontes_types::{
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
-    execute_on,
     normalized_actions::Action,
     structured_trace::TxTrace,
     traits::TracingProvider,
@@ -25,15 +24,13 @@ use brontes_types::{
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
-use tokio::task::JoinError;
 use tracing::{span, trace, Instrument, Level};
 
 use super::metadata::MetadataFetcher;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Action>>> + Send + 'a>>;
 
-type ExecutionFut<'a> =
-    Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
+type ExecutionFut<'a> = Pin<Box<dyn Future<Output = Option<(Vec<TxTrace>, Header)>> + Send + 'a>>;
 
 pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
@@ -80,13 +77,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     ) -> eyre::Result<BlockTree<Action>> {
         let (traces, header) = fut
             .await
-            .inspect_err(|_| {
+            .inspect(|_| {
                 classifier.block_load_failure(block);
-            })?
-            .ok_or_else(|| eyre!("no traces found"))
-            .inspect_err(|_| {
-                classifier.block_load_failure(block);
-            })?;
+            })
+            .ok_or_else(|| eyre!("no traces found"))?;
 
         trace!("Got {} traces + header", traces.len());
 
@@ -94,13 +88,18 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             metrics.add_pending_tree(id);
             metrics
                 .tree_builder(id, || {
-                    Box::pin(classifier.build_block_tree(traces, header, generate_pricing))
+                    Box::pin(tokio::spawn(classifier.build_block_tree(
+                        traces,
+                        header,
+                        generate_pricing,
+                    )))
                 })
                 .await
+                .unwrap()
         } else {
-            classifier
-                .build_block_tree(traces, header, generate_pricing)
+            tokio::spawn(classifier.build_block_tree(traces, header, generate_pricing))
                 .await
+                .unwrap()
         };
 
         Ok(res)
