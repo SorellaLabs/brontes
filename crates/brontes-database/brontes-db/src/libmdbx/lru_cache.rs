@@ -66,11 +66,11 @@ impl Future for LibmdbxLRUCache {
         let mut work = 2048;
         let this = self.get_mut();
         loop {
-            // work -= 1;
-            // if work == 0 {
-            //     cx.waker().wake_by_ref();
-            //     return Poll::Pending
-            // }
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
+            }
 
             if let Poll::Ready(v) = this.rx.poll_recv(cx) {
                 match v {
@@ -118,8 +118,6 @@ impl Future for LibmdbxLRUCache {
                     },
                     None => return Poll::Ready(()),
                 }
-            } else {
-                tracing::error!("somehow empty");
             }
         }
     }
