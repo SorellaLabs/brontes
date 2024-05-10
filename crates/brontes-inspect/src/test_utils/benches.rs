@@ -329,7 +329,7 @@ impl InspectorBenchUtils {
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
         c.bench_function(bench_name, move |b| {
-            b.iter(|| async {
+            b.iter(|| {
                 for _ in 0..=iters {
                     black_box(compose_mev_results(
                         inspectors.as_slice(),
