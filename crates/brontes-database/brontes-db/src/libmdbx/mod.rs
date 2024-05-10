@@ -161,7 +161,7 @@ impl Libmdbx {
     {
         let tx = self.ro_tx()?;
         let res = f(&tx);
-        tx.commit()?;
+        // tx.commit()?;
 
         res
     }
