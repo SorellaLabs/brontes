@@ -50,23 +50,23 @@ impl Processor for MevProcessor {
         let metadata = Arc::new(metadata);
         let block = metadata.block_num;
 
-        let Ok(ComposerResults { block_details, mev_details, possible_mev_txes: _ }) =
-            tokio::time::timeout(
-                Duration::from_secs(30),
-                execute_on!(async_inspect, {
-                    compose_mev_results(inspectors, tree.clone(), metadata.clone())
-                }),
-            )
-            .await
-        else {
-            tracing::error!(block_num = block, "compose mev results took more than 30 seconds");
-            return
-        };
-        // let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
-        //     execute_on!(async_inspect, {
-        //         compose_mev_results(inspectors, tree.clone(), metadata.clone())
-        //     })
-        //     .await;
+        // let Ok(ComposerResults { block_details, mev_details, possible_mev_txes: _ }) =
+        //     tokio::time::timeout(
+        //         Duration::from_secs(30),
+        //         execute_on!(async_inspect, {
+        //             compose_mev_results(inspectors, tree.clone(), metadata.clone())
+        //         }),
+        //     )
+        //     .await
+        // else {
+        //     tracing::error!(block_num = block, "compose mev results took more than 30 seconds");
+        //     return
+        // };
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
+            execute_on!(async_inspect, {
+                compose_mev_results(inspectors, tree.clone(), metadata.clone())
+            })
+            .await;
 
         insert_mev_results(db, block_details, mev_details).await;
     }
