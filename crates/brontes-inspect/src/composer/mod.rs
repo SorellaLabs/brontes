@@ -95,7 +95,8 @@ fn run_inspectors(
         .collect::<Vec<_>>();
     let end = start.elapsed().as_secs();
     if end > 10 {
-        tracing::error!(elapsed = end, "all inspectors took more than 10 seconds");
+        let block = metadata.block_num();
+        tracing::error!(elapsed = end, %block, "all inspectors took more than 10 seconds");
     }
 
     results.iter().for_each(|bundle| {
