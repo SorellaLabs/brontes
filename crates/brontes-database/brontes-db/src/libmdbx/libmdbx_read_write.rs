@@ -3,7 +3,6 @@ use std::{
     ops::{Bound, RangeInclusive},
     path::Path,
     sync::Arc,
-    time::{Duration, Instant},
 };
 
 use alloy_primitives::Address;
@@ -48,7 +47,6 @@ use tracing::{info, instrument};
 
 use super::{
     libmdbx_writer::{LibmdbxWriter, WriterMessage},
-    lru_cache::{CacheMsg, LibmdbxLRUCache, TryCacheFetch},
     types::ReturnKV,
 };
 use crate::{
@@ -56,8 +54,6 @@ use crate::{
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
     CompressedTable,
 };
-
-const CACHE_WAIT: Duration = Duration::from_micros(5);
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     /// initializes all the tables with data via the CLI
@@ -97,10 +93,9 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 
 use schnellru::{ByMemoryUsage, LruMap};
 pub struct LibmdbxReadWriter {
-    pub db:   Arc<Libmdbx>,
-    tx:       UnboundedSender<WriterMessage>,
-    cache_tx: UnboundedSender<CacheMsg>,
-    metrics:  Option<LibmdbxMetrics>,
+    pub db:  Arc<Libmdbx>,
+    tx:      UnboundedSender<WriterMessage>,
+    metrics: Option<LibmdbxMetrics>,
 
     // test
     address_meta:
@@ -124,12 +119,6 @@ impl LibmdbxReadWriter {
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
 
-        let (cache_tx, cache_rx) = unbounded_channel();
-        let cache_yapper =
-            UnboundedYapperReceiver::new(cache_rx, 100, "libmdbx cache yapper".to_string());
-
-        ex.spawn_critical("libmdbx cache", LibmdbxLRUCache::new(cache_yapper, 20));
-
         // start writing task
         let writer = LibmdbxWriter::new(db.clone(), yapper);
         ex.spawn_critical_with_graceful_shutdown_signal("libmdbx writer", |shutdown| async move {
@@ -139,7 +128,6 @@ impl LibmdbxReadWriter {
         Ok(Self {
             db,
             tx,
-            cache_tx,
             metrics: Some(LibmdbxMetrics::default()),
             address_meta: LruMap::with_hasher(
                 ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
@@ -490,21 +478,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         if let Some(e) = lock.get(&searcher_eoa) {
             return Ok(Some(e.clone()))
         }
-        drop(lock);
 
-        // lock.insert(address, metadata.clone());
-        // let (tx, mut rx) = tokio::sync::oneshot::channel();
-        // let _ = self
-        //     .cache_tx
-        //     .send(CacheMsg::Fetch(TryCacheFetch::SearcherEoa(searcher_eoa, tx)));
-        //
-        // let time = Instant::now();
-        // while time.elapsed() < CACHE_WAIT {
-        //     if let Ok(Some(val)) = rx.try_recv() {
-        //         tracing::warn!("searcher_eoa info cache");
-        //         return Ok(Some(val))
-        //     }
-        // }
         self.db
             .view_db(|tx| {
                 tx.get::<SearcherEOAs>(searcher_eoa)
@@ -512,12 +486,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
-                    let mut lock = self.searcher_eoa.lock().unwrap();
                     lock.get_or_insert(searcher_eoa, || data.clone());
-                    // let _ = self.cache_tx.send(CacheMsg::Update(
-                    //     false,
-                    //     super::lru_cache::CacheUpdate::SearcherEoa(searcher_eoa, data.clone()),
-                    // ));
                 }
             })
     }
@@ -527,25 +496,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        // let (tx, mut rx) = tokio::sync::oneshot::channel();
-        // let _ = self
-        //     .cache_tx
-        //     .send(CacheMsg::Fetch(TryCacheFetch::SearcherContract(searcher_contract,
-        // tx)));
-        //
-        // let time = Instant::now();
-        // while time.elapsed() < CACHE_WAIT {
-        //     if let Ok(Some(val)) = rx.try_recv() {
-        //         tracing::warn!("searcher_contract info cache");
-        //         return Ok(Some(val))
-        //     }
-        // }
-
         let mut lock = self.searcher_contract.lock().unwrap();
         if let Some(e) = lock.get(&searcher_contract) {
             return Ok(Some(e.clone()))
         }
-        drop(lock);
 
         self.db
             .view_db(|tx| {
@@ -554,15 +508,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
-                    let mut lock = self.searcher_contract.lock().unwrap();
                     lock.get_or_insert(searcher_contract, || data.clone());
-                    // let _ = self.cache_tx.send(CacheMsg::Update(
-                    //     false,
-                    //     super::lru_cache::CacheUpdate::SearcherContract(
-                    //         searcher_contract,
-                    //         data.clone(),
-                    //     ),
-                    // ));
                 }
             })
     }
@@ -675,18 +621,12 @@ impl LibmdbxReader for LibmdbxReadWriter {
         if let Some(e) = lock.get(&address) {
             return Ok(Some(e.clone()))
         }
-        drop(lock);
 
         self.db
             .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
             .inspect(|data| {
                 if let Some(data) = data {
-                    let mut lock = self.address_meta.lock().unwrap();
                     lock.get_or_insert(address, || data.clone());
-                    // let _ = self.cache_tx.send(CacheMsg::Update(
-                    //     false,
-                    //     super::lru_cache::CacheUpdate::AddressMeta(address,
-                    // data.clone()), ));
                 }
             })
     }
@@ -806,11 +746,6 @@ impl DBWriter for LibmdbxReadWriter {
         let mut lock = self.searcher_eoa.lock().unwrap();
         lock.insert(eoa_address, eoa_info.clone());
 
-        // let _ = self.cache_tx.send(CacheMsg::Update(
-        //     true,
-        //     super::lru_cache::CacheUpdate::SearcherEoa(eoa_address,
-        // eoa_info.clone()), ));
-
         if let (Some(addr), Some(info)) = (contract_address, &contract_info) {
             lock.insert(addr, info.clone());
         }
@@ -828,6 +763,9 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
+        let mut lock = self.searcher_eoa.lock().unwrap();
+        lock.insert(searcher_eoa, searcher_info.clone());
+
         Ok(self
             .tx
             .send(WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info })?)
@@ -838,6 +776,9 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
+        let mut lock = self.searcher_contract.lock().unwrap();
+        lock.insert(searcher_contract, searcher_info.clone());
+
         Ok(self
             .tx
             .send(WriterMessage::SearcherContractInfo { searcher_contract, searcher_info })?)
