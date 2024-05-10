@@ -1622,6 +1622,7 @@ dependencies = [
  "brontes-database",
  "brontes-libmdbx",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "bytes",

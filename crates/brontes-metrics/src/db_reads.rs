@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use prometheus::{HistogramVec, IntCounterVec};
 
 #[derive(Clone)]
@@ -30,5 +32,19 @@ impl LibmdbxMetrics {
         .unwrap();
 
         Self { read_count, read_speed }
+    }
+
+    pub fn db_read<R>(self, fn_name: &str, f: impl FnOnce() -> R) -> R {
+        self.read_count.with_label_values(&[fn_name]).inc();
+
+        let now = Instant::now();
+        let res = f();
+        let elasped = now.elapsed().as_micros();
+
+        self.read_speed
+            .with_label_values(&[fn_name])
+            .observe(elasped as f64);
+
+        res
     }
 }

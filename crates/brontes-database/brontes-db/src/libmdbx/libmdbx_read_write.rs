@@ -7,6 +7,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use brontes_metrics::db_reads::LibmdbxMetrics;
 use brontes_pricing::Protocol;
 #[cfg(feature = "cex-dex-markout")]
 use brontes_types::db::cex::cex_trades::CexTradeMap;
@@ -98,6 +99,7 @@ pub struct LibmdbxReadWriter {
     pub db:   Arc<Libmdbx>,
     tx:       UnboundedSender<WriterMessage>,
     cache_tx: UnboundedSender<CacheMsg>,
+    metrics:  Option<LibmdbxMetrics>,
 }
 
 impl LibmdbxReadWriter {
@@ -122,7 +124,7 @@ impl LibmdbxReadWriter {
             writer.run_until_shutdown(shutdown).await
         });
 
-        Ok(Self { db, tx, cache_tx })
+        Ok(Self { db, tx, cache_tx, metrics: Some(LibmdbxMetrics::default()) })
     }
 }
 
@@ -346,10 +348,12 @@ impl StateToInitialize {
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"get_dex_quotes")]
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
         self.fetch_dex_quotes(block)
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"load_trace")]
     fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>> {
         self.db.view_db(|tx| {
             tx.get::<TxTraces>(block_num)?
@@ -361,6 +365,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"protocol_info")]
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         let (tx, mut rx) = tokio::sync::oneshot::channel();
         let _ = self
@@ -388,6 +393,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata_no_dex_price")]
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
@@ -417,6 +423,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         ))
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
@@ -450,6 +457,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_token_info")]
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
@@ -478,6 +486,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_eoa_info")]
     fn try_fetch_searcher_eoa_info(
         &self,
         searcher_eoa: Address,
@@ -509,6 +518,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_contract_info")]
     fn try_fetch_searcher_contract_info(
         &self,
         searcher_contract: Address,
@@ -640,6 +650,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_address_metadata")]
     fn try_fetch_address_metadata(
         &self,
         address: Address,
@@ -668,6 +679,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_builder_info")]
     fn try_fetch_builder_info(
         &self,
         builder_coinbase_addr: Address,
