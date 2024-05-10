@@ -92,15 +92,18 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     ) -> eyre::Result<StateToInitialize>;
 }
 
+use schnellru::{ByMemoryUsage, LruMap};
 pub struct LibmdbxReadWriter {
     pub db:  Arc<Libmdbx>,
     tx:      UnboundedSender<WriterMessage>,
     metrics: Option<LibmdbxMetrics>,
 
     // test
-    address_meta:      DashMap<Address, AddressMetadata, ahash::RandomState>,
+    address_meta:
+        std::sync::Mutex<LruMap<Address, AddressMetadata, ByMemoryUsage, ahash::RandomState>>,
     searcher_eoa:      DashMap<Address, SearcherInfo, ahash::RandomState>,
-    searcher_contract: DashMap<Address, SearcherInfo, ahash::RandomState>,
+    searcher_contract:
+        std::sync::Mutex<LruMap<Address, SearcherInfo, ByMemoryUsage, ahash::RandomState>>,
 }
 
 const MEGABYTE: usize = 1024 * 1024;
@@ -111,6 +114,7 @@ impl LibmdbxReadWriter {
         log_level: Option<LogLevel>,
         ex: &BrontesTaskExecutor,
     ) -> eyre::Result<Self> {
+        let memory_per_table_mb = 100;
         let (tx, rx) = unbounded_channel();
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
@@ -125,9 +129,17 @@ impl LibmdbxReadWriter {
             db,
             tx,
             metrics: Some(LibmdbxMetrics::default()),
-            address_meta: DashMap::with_hasher(ahash::RandomState::new()),
+            address_meta: LruMap::with_hasher(
+                ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
+                ahash::RandomState::new(),
+            )
+            .into(),
             searcher_eoa: DashMap::with_hasher(ahash::RandomState::new()),
-            searcher_contract: DashMap::with_hasher(ahash::RandomState::new()),
+            searcher_contract: LruMap::with_hasher(
+                ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
+                ahash::RandomState::new(),
+            )
+            .into(),
         })
     }
 }
@@ -480,7 +492,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        if let Some(e) = self.searcher_contract.get(&searcher_contract) {
+        let mut lock = self.searcher_contract.lock().unwrap();
+        if let Some(e) = lock.get(&searcher_contract) {
             return Ok(Some(e.clone()))
         }
 
@@ -491,10 +504,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
-                    if !self.searcher_contract.contains_key(&searcher_contract) {
-                        self.searcher_contract
-                            .insert(searcher_contract, data.clone());
-                    }
+                    lock.get_or_insert(searcher_contract, || data.clone());
                 }
             })
     }
@@ -602,7 +612,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
-        if let Some(e) = self.address_meta.get(&address) {
+        let mut lock = self.address_meta.lock().unwrap();
+
+        if let Some(e) = lock.get(&address) {
             return Ok(Some(e.clone()))
         }
 
@@ -610,9 +622,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
             .inspect(|data| {
                 if let Some(data) = data {
-                    if !self.address_meta.contains_key(&address) {
-                        self.address_meta.insert(address, data.clone());
-                    }
+                    lock.get_or_insert(address, || data.clone());
                 }
             })
     }
@@ -732,7 +742,8 @@ impl DBWriter for LibmdbxReadWriter {
         self.searcher_eoa.insert(eoa_address, eoa_info.clone());
 
         if let (Some(addr), Some(info)) = (contract_address, &contract_info) {
-            self.searcher_contract.insert(addr, info.clone());
+            let mut lock = self.searcher_contract.lock().unwrap();
+            lock.insert(addr, info.clone());
         }
 
         Ok(self.tx.send(WriterMessage::SearcherInfo {
@@ -761,8 +772,8 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        self.searcher_contract
-            .insert(searcher_contract, searcher_info.clone());
+        let mut lock = self.searcher_contract.lock().unwrap();
+        lock.insert(searcher_contract, searcher_info.clone());
 
         Ok(self
             .tx
@@ -774,7 +785,8 @@ impl DBWriter for LibmdbxReadWriter {
         address: Address,
         metadata: AddressMetadata,
     ) -> eyre::Result<()> {
-        self.address_meta.insert(address, metadata.clone());
+        let mut lock = self.address_meta.lock().unwrap();
+        lock.insert(address, metadata.clone());
 
         Ok(self
             .tx
