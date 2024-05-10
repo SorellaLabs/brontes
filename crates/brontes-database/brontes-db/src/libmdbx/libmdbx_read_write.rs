@@ -3,7 +3,7 @@ use std::{
     ops::{Bound, RangeInclusive},
     path::Path,
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use alloy_primitives::Address;
@@ -55,6 +55,8 @@ use crate::{
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
     CompressedTable,
 };
+
+const CACHE_WAIT: Duration = Duration::from_micros(5);
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     /// initializes all the tables with data via the CLI
@@ -364,10 +366,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let _ = self
             .cache_tx
             .send(CacheMsg::Fetch(TryCacheFetch::ProtocolInfo(address, tx)));
-        std::thread::sleep(Duration::from_micros(10));
-        if let Ok(Some(val)) = rx.try_recv() {
-            tracing::error!("got protocol details from cache");
-            return Ok(val)
+
+        let time = Instant::now();
+        while time.elapsed() < CACHE_WAIT {
+            if let Ok(Some(val)) = rx.try_recv() {
+                tracing::error!("got protocol details from cache");
+                return Ok(val)
+            }
         }
 
         self.db
@@ -578,8 +583,29 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
+        let (tx, mut rx) = tokio::sync::oneshot::channel();
+        let _ = self
+            .cache_tx
+            .send(CacheMsg::Fetch(TryCacheFetch::AddressMeta(address, tx)));
+
+        let time = Instant::now();
+        while time.elapsed() < CACHE_WAIT {
+            if let Ok(Some(val)) = rx.try_recv() {
+                tracing::error!("got address meta from cache");
+                return Ok(Some(val))
+            }
+        }
+
         self.db
             .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
+            .inspect(|data| {
+                if let Some(data) = data {
+                    let _ = self.cache_tx.send(CacheMsg::Update(
+                        false,
+                        super::lru_cache::CacheUpdate::AddressMeta(address, data.clone()),
+                    ));
+                }
+            })
     }
 
     fn try_fetch_builder_info(
