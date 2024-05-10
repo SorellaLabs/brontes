@@ -136,7 +136,7 @@ alloy-primitives.workspace = true
 default = []
 sorella-server = ["local-reth", "local-clickhouse"]
 cex-dex-markout = ["brontes-types/cex-dex-markout"]
-tests = ["reth-tasks", "brontes-pricing/tests"]
+tests = ["brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
   "reth-tracing-ext/local-reth",
