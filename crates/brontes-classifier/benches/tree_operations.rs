@@ -32,7 +32,7 @@ fn bench_collect_block(c: &mut Criterion) {
 fn bench_collect_block_timeout(c: &mut Criterion) {
     let utils = ClassifierBenchUtils::new();
     utils
-        .bench_tree_operations("collect block", 15565152, c, |tree| {
+        .bench_tree_operations("collect block 15565152", 15565152, c, |tree| {
             tree.collect_all(TreeSearchBuilder::default().with_action(Action::is_transfer));
         })
         .unwrap();
