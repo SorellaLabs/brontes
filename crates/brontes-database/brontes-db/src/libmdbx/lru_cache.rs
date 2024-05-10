@@ -87,88 +87,97 @@ impl Future for LibmdbxLRUCache {
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
+        let mut work = 2048;
         let this = self.get_mut();
         loop {
-            match ready!(this.rx.poll_recv(cx)) {
-                Some(v) => match v {
-                    CacheMsg::Fetch(f) => match f {
-                        TryCacheFetch::AddressMeta(addr, tx) => {
-                            let _ = tx.send(this.address_meta.get(&addr).cloned());
-                        }
-                        TryCacheFetch::SearcherEoa(addr, tx) => {
-                            let _ = tx.send(this.searcher_eoa.get(&addr).cloned());
-                        }
-                        TryCacheFetch::SearcherContract(addr, tx) => {
-                            let _ = tx.send(this.searcher_contract.get(&addr).cloned());
-                        }
-                        TryCacheFetch::ProtocolInfo(addr, tx) => {
-                            let _ = tx.send(this.protocol_details.get(&addr).cloned());
-                        }
-                        TryCacheFetch::BuilderInfo(addr, tx) => {
-                            let _ = tx.send(this.builder_info.get(&addr).cloned());
-                        }
-                        TryCacheFetch::TokenInfo(addr, tx) => {
-                            let _ = tx.send(this.token_info.get(&addr).cloned());
-                        }
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
+            }
+
+            if let Poll::Ready(v) = this.rx.poll_recv(cx) {
+                match v {
+                    Some(v) => match v {
+                        CacheMsg::Fetch(f) => match f {
+                            TryCacheFetch::AddressMeta(addr, tx) => {
+                                let _ = tx.send(this.address_meta.get(&addr).cloned());
+                            }
+                            TryCacheFetch::SearcherEoa(addr, tx) => {
+                                let _ = tx.send(this.searcher_eoa.get(&addr).cloned());
+                            }
+                            TryCacheFetch::SearcherContract(addr, tx) => {
+                                let _ = tx.send(this.searcher_contract.get(&addr).cloned());
+                            }
+                            TryCacheFetch::ProtocolInfo(addr, tx) => {
+                                let _ = tx.send(this.protocol_details.get(&addr).cloned());
+                            }
+                            TryCacheFetch::BuilderInfo(addr, tx) => {
+                                let _ = tx.send(this.builder_info.get(&addr).cloned());
+                            }
+                            TryCacheFetch::TokenInfo(addr, tx) => {
+                                let _ = tx.send(this.token_info.get(&addr).cloned());
+                            }
+                        },
+                        CacheMsg::Update(write, update) => match update {
+                            CacheUpdate::AddressMeta(key, value) => {
+                                if write {
+                                    // always overwrite
+                                    this.address_meta.insert(key, value);
+                                } else {
+                                    // only overwrite if non-existent
+                                    this.address_meta.get_or_insert(key, || value);
+                                }
+                            }
+                            CacheUpdate::SearcherEoa(key, value) => {
+                                if write {
+                                    // always overwrite
+                                    this.searcher_eoa.insert(key, value);
+                                } else {
+                                    // only overwrite if non-existent
+                                    this.searcher_eoa.get_or_insert(key, || value);
+                                }
+                            }
+                            CacheUpdate::SearcherContract(key, value) => {
+                                if write {
+                                    // always overwrite
+                                    this.searcher_contract.insert(key, value);
+                                } else {
+                                    // only overwrite if non-existent
+                                    this.searcher_contract.get_or_insert(key, || value);
+                                }
+                            }
+                            CacheUpdate::ProtocolInfo(key, value) => {
+                                if write {
+                                    // always overwrite
+                                    this.protocol_details.insert(key, value);
+                                } else {
+                                    // only overwrite if non-existent
+                                    this.protocol_details.get_or_insert(key, || value);
+                                }
+                            }
+                            CacheUpdate::BuilderInfo(key, value) => {
+                                if write {
+                                    // always overwrite
+                                    this.builder_info.insert(key, value);
+                                } else {
+                                    // only overwrite if non-existent
+                                    this.builder_info.get_or_insert(key, || value);
+                                }
+                            }
+                            CacheUpdate::TokenInfo(key, value) => {
+                                if write {
+                                    // always overwrite
+                                    this.token_info.insert(key, value);
+                                } else {
+                                    // only overwrite if non-existent
+                                    this.token_info.get_or_insert(key, || value);
+                                }
+                            }
+                        },
                     },
-                    CacheMsg::Update(write, update) => match update {
-                        CacheUpdate::AddressMeta(key, value) => {
-                            if write {
-                                // always overwrite
-                                this.address_meta.insert(key, value);
-                            } else {
-                                // only overwrite if non-existent
-                                this.address_meta.get_or_insert(key, || value);
-                            }
-                        }
-                        CacheUpdate::SearcherEoa(key, value) => {
-                            if write {
-                                // always overwrite
-                                this.searcher_eoa.insert(key, value);
-                            } else {
-                                // only overwrite if non-existent
-                                this.searcher_eoa.get_or_insert(key, || value);
-                            }
-                        }
-                        CacheUpdate::SearcherContract(key, value) => {
-                            if write {
-                                // always overwrite
-                                this.searcher_contract.insert(key, value);
-                            } else {
-                                // only overwrite if non-existent
-                                this.searcher_contract.get_or_insert(key, || value);
-                            }
-                        }
-                        CacheUpdate::ProtocolInfo(key, value) => {
-                            if write {
-                                // always overwrite
-                                this.protocol_details.insert(key, value);
-                            } else {
-                                // only overwrite if non-existent
-                                this.protocol_details.get_or_insert(key, || value);
-                            }
-                        }
-                        CacheUpdate::BuilderInfo(key, value) => {
-                            if write {
-                                // always overwrite
-                                this.builder_info.insert(key, value);
-                            } else {
-                                // only overwrite if non-existent
-                                this.builder_info.get_or_insert(key, || value);
-                            }
-                        }
-                        CacheUpdate::TokenInfo(key, value) => {
-                            if write {
-                                // always overwrite
-                                this.token_info.insert(key, value);
-                            } else {
-                                // only overwrite if non-existent
-                                this.token_info.get_or_insert(key, || value);
-                            }
-                        }
-                    },
-                },
-                None => return Poll::Ready(()),
+                    None => return Poll::Ready(()),
+                }
             }
         }
     }
