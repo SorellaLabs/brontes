@@ -2,7 +2,8 @@
 
 ## PoolsCreationBlock Table
 
---
+---
+
 **Table Name:** `PoolsCreationBlock`
 
 **Description:** Tracks the creation of liquidity pools within specific blocks, essential for the dex pricing module which uses this information to know which pools to initialize pools for a given block range.

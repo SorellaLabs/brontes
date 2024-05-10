@@ -2,7 +2,7 @@
 
 ## Block Info Table Schema
 
---
+---
 
 **Table Name:** `BlockInfo`
 
@@ -36,9 +36,9 @@
   - **Type:** `Vec<TxHash>`
   - **Description:** List of transaction hashes that were not seen in the mempool by Chainbound fibernodes.
 
----
-
 ## TxTraces Table Schema
+
+---
 
 **Table Name:** `TxTraces`
 

@@ -2,7 +2,8 @@
 
 ## AddressMeta Table
 
---
+---
+
 **Table Name:** `AddressMeta`
 
 **Description:** Comprehensive address metadata.

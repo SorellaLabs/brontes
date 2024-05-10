@@ -1,5 +1,7 @@
 # MevBlocks Table
 
+---
+
 **Table Name:** `MevBlocks`
 
 **Description:** This table stores the output of Brontes' analytics pipeline.

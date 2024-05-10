@@ -2,7 +2,8 @@
 
 ## DexPrice Table
 
---
+---
+
 **Table Name:** `DexPrice`
 
 **Description:** This table stores DEX pricing data, providing transaction-level granularity for all active tokens within a block.
