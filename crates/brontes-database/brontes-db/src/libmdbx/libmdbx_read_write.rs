@@ -473,10 +473,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        let mut lock = self.searcher_eoa.lock().unwrap();
-
-        if let Some(e) = lock.get(&searcher_eoa) {
-            return Ok(Some(e.clone()))
+        if let Ok(mut lock) = self.searcher_eoa.try_lock() {
+            if let Some(e) = lock.get(&searcher_eoa) {
+                return Ok(Some(e.clone()))
+            }
         }
 
         self.db
@@ -486,7 +486,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
-                    lock.get_or_insert(searcher_eoa, || data.clone());
+                    if let Ok(mut lock) = self.searcher_eoa.lock() {
+                        lock.get_or_insert(searcher_eoa, || data.clone());
+                    }
                 }
             })
     }
