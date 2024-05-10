@@ -9,7 +9,7 @@ edition = "2021"
 brontes-types.workspace = true
 brontes-pricing.workspace = true
 reth-tracing-ext.workspace = true
-brontes-libmdbx  = { workspace = true, features = ["read-tx-timeouts"] }
+brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
 # alloy
 alloy-primitives = { workspace = true, features = [
   "rand",
@@ -112,7 +112,7 @@ rkyv.workspace = true
 auto_impl.workspace = true
 
 
-reth-tasks = { workspace = true, optional = true }
+reth-tasks = { workspace = true }
 
 [dev-dependencies]
 serial_test.workspace = true
