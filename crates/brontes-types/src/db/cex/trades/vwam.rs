@@ -116,7 +116,7 @@ impl CexTradeMap {
         pair: &Pair,
     ) -> FastHashSet<Address> {
         self.0
-            .par_iter()
+            .iter()
             .filter(|(k, _)| exchanges.contains(k))
             .flat_map(|(_, pairs)| {
                 pairs

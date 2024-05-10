@@ -443,7 +443,7 @@ impl LibmdbxWriter {
             },
         }
 
-        while let Ok(msg) = inserts.rx.try_recv() {
+        while let Some(msg) = inserts.rx.recv().await {
             if let Err(e) = inserts.handle_msg(msg) {
                 tracing::error!(error=%e, "libmdbx write error on shutdown");
             }
