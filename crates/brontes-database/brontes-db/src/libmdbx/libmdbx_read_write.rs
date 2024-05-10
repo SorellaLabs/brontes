@@ -46,6 +46,7 @@ use tracing::{info, instrument};
 
 use super::{
     libmdbx_writer::{LibmdbxWriter, WriterMessage},
+    lru_cache::{CacheMsg, LibmdbxLRUCache},
     types::ReturnKV,
 };
 use crate::{
@@ -91,8 +92,9 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 }
 
 pub struct LibmdbxReadWriter {
-    pub db: Arc<Libmdbx>,
-    tx:     UnboundedSender<WriterMessage>,
+    pub db:   Arc<Libmdbx>,
+    tx:       UnboundedSender<WriterMessage>,
+    cache_tx: UnboundedSender<CacheMsg>,
 }
 
 impl LibmdbxReadWriter {
@@ -104,13 +106,20 @@ impl LibmdbxReadWriter {
         let (tx, rx) = unbounded_channel();
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
+
+        let (cache_tx, cache_rx) = unbounded_channel();
+        let cache_yapper =
+            UnboundedYapperReceiver::new(cache_rx, 100, "libmdbx cache yapper".to_string());
+
+        ex.spawn_critical("libmdbx cache", LibmdbxLRUCache::new(cache_yapper, 20));
+
         // start writing task
         let writer = LibmdbxWriter::new(db.clone(), yapper);
         ex.spawn_critical_with_graceful_shutdown_signal("libmdbx writer", |shutdown| async move {
             writer.run_until_shutdown(shutdown).await
         });
 
-        Ok(Self { db, tx })
+        Ok(Self { db, tx, cache_tx })
     }
 }
 

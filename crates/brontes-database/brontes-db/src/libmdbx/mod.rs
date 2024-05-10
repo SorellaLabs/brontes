@@ -4,6 +4,7 @@
 use std::{ffi::c_int, path::Path};
 mod env;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
+pub mod lru_cache;
 
 pub mod cex_utils;
 pub mod libmdbx_writer;
@@ -160,7 +161,7 @@ impl Libmdbx {
     {
         let tx = self.ro_tx()?;
         let res = f(&tx);
-        // tx.commit()?;
+        tx.commit()?;
 
         res
     }

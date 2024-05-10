@@ -1667,6 +1667,7 @@ dependencies = [
  "reth-tasks",
  "reth-tracing-ext",
  "rkyv",
+ "schnellru",
  "serde",
  "serde_json",
  "serde_repr",
@@ -9111,9 +9112,9 @@ dependencies = [
 
 [[package]]
 name = "schnellru"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "772575a524feeb803e5b0fcbc6dd9f367e579488197c94c6e4023aad2305774d"
+checksum = "6b0cf7da6fc4477944d5529807234f66802fcb618fc62b9c05bedca7f9be6c43"
 dependencies = [
  "ahash",
  "cfg-if",
