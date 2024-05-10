@@ -9,6 +9,8 @@ use alloy_primitives::Address;
 use brontes_pricing::Protocol;
 #[cfg(feature = "cex-dex-markout")]
 use brontes_types::db::cex::cex_trades::CexTradeMap;
+#[cfg(not(feature = "cex-dex-markout"))]
+use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
 #[cfg(feature = "cex-dex-markout")]
 use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use brontes_types::{
@@ -19,7 +21,7 @@ use brontes_types::{
         builder::BuilderInfo,
         cex::{CexPriceMap, FeeAdjustedQuote},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
-        initialized_state::{InitializedStateMeta, CEX_QUOTES_FLAG, DEX_PRICE_FLAG, META_FLAG},
+        initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         searcher::SearcherInfo,

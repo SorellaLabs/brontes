@@ -31,9 +31,6 @@ macro_rules! execute_on {
     (target=$t:tt, $($block:tt)+) => {
         execute_on!($t, { $($block)+ })
     };
-    (target=$t:tt, $($block:tt)+) => {
-        execute_on!($t, { $($block)+ })
-    };
     (pricing, $block:block) => {
         ::brontes_types::execute_on_pricing_threadpool(|| $block)
     };
