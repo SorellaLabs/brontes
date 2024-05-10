@@ -3,6 +3,7 @@ use std::{
     ops::{Bound, RangeInclusive},
     path::Path,
     sync::Arc,
+    time::Duration,
 };
 
 use alloy_primitives::Address;
@@ -46,7 +47,7 @@ use tracing::{info, instrument};
 
 use super::{
     libmdbx_writer::{LibmdbxWriter, WriterMessage},
-    lru_cache::{CacheMsg, LibmdbxLRUCache},
+    lru_cache::{CacheMsg, LibmdbxLRUCache, TryCacheFetch},
     types::ReturnKV,
 };
 use crate::{
@@ -359,10 +360,28 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
-        self.db.view_db(|tx| {
-            tx.get::<AddressToProtocolInfo>(address)?
-                .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
-        })
+        let (tx, mut rx) = tokio::sync::oneshot::channel();
+        let _ = self
+            .cache_tx
+            .send(CacheMsg::Fetch(TryCacheFetch::ProtocolInfo(address, tx)));
+        std::thread::sleep(Duration::from_micros(10));
+        if let Ok(Some(val)) = rx.try_recv() {
+            tracing::error!("got protocol details from cache");
+            return Ok(val)
+        }
+
+        self.db
+            .view_db(|tx| {
+                tx.get::<AddressToProtocolInfo>(address)?.ok_or_else(|| {
+                    eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address)
+                })
+            })
+            .inspect(|data| {
+                let _ = self.cache_tx.send(CacheMsg::Update(
+                    false,
+                    super::lru_cache::CacheUpdate::ProtocolInfo(address, data.clone()),
+                ));
+            })
     }
 
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
