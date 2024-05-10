@@ -617,8 +617,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut recusive: u8,
     ) -> Option<Vec<Bundle>> {
         let mut res = vec![];
-        if recusive >= 5 {
-            tracing::warn!(recusive=%recusive,"Sandwich recisve");
+
+        if recusive >= 6 {
+            return None
         }
 
         if possible_front_runs_info.len() > 1 {
