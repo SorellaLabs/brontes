@@ -473,15 +473,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        if let Some(res) = self.try_call_n_times(5, || {
-            if let Ok(mut lock) = self.searcher_eoa.try_lock() {
-                if let Some(e) = lock.get(&searcher_eoa) {
-                    return Some(e.clone())
-                }
-            }
-            None
-        }) {
-            return Ok(Some(res))
+        let mut lock = self.searcher_eoa.lock().unwrap();
+        if let Some(e) = lock.get(&searcher_eoa) {
+            return Ok(Some(e.clone()))
         }
 
         self.db
@@ -491,9 +485,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
-                    if let Ok(mut lock) = self.searcher_eoa.lock() {
-                        lock.get_or_insert(searcher_eoa, || data.clone());
-                    }
+                    lock.get_or_insert(searcher_eoa, || data.clone());
                 }
             })
     }
@@ -503,15 +495,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        if let Some(res) = self.try_call_n_times(5, || {
-            if let Ok(mut lock) = self.searcher_contract.try_lock() {
-                if let Some(e) = lock.get(&searcher_contract) {
-                    return Some(e.clone())
-                }
-            }
-            None
-        }) {
-            return Ok(Some(res))
+        let mut lock = self.searcher_contract.lock().unwrap();
+        if let Some(e) = lock.get(&searcher_contract) {
+            return Ok(Some(e.clone()))
         }
 
         self.db
@@ -521,7 +507,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
-                    let mut lock = self.searcher_contract.lock().unwrap();
                     lock.get_or_insert(searcher_contract, || data.clone());
                 }
             })
@@ -881,16 +866,6 @@ impl DBWriter for LibmdbxReadWriter {
 }
 
 impl LibmdbxReadWriter {
-    fn try_call_n_times<R>(&self, mut n: isize, f: impl Fn() -> Option<R>) -> Option<R> {
-        while n != 0 {
-            if let Some(res) = f() {
-                return Some(res)
-            }
-            n -= 1;
-        }
-        None
-    }
-
     #[instrument(target = "libmdbx_read_write::insert_batched_data", skip_all, level = "warn")]
     fn insert_batched_data<T: CompressedTable>(
         &self,
