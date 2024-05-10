@@ -739,10 +739,10 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
-        let mut lock = self.searcher_eoa.lock().unwrap();
-        lock.insert(eoa_address, eoa_info.clone());
+        self.searcher_eoa.insert(eoa_address, eoa_info.clone());
 
         if let (Some(addr), Some(info)) = (contract_address, &contract_info) {
+            let mut lock = self.searcher_contract.lock().unwrap();
             lock.insert(addr, info.clone());
         }
 
@@ -759,8 +759,8 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let mut lock = self.searcher_eoa.lock().unwrap();
-        lock.insert(searcher_eoa, searcher_info.clone());
+        self.searcher_eoa
+            .insert(searcher_eoa, searcher_info.clone());
 
         Ok(self
             .tx
