@@ -183,7 +183,7 @@ fn bench_sandwich_regular_block(c: &mut Criterion) {
     bencher
         .bench_inspectors_block(
             "bench sandwich 12mil gas",
-            18500002,
+            16796568,
             0,
             vec![Inspectors::Sandwich],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
@@ -211,7 +211,7 @@ fn bench_backrun_regular_block(c: &mut Criterion) {
     bencher
         .bench_inspectors_block(
             "backrun 15 mill gas block",
-            18000103,
+            16796568,
             0,
             vec![Inspectors::AtomicArb],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
@@ -225,7 +225,7 @@ fn bench_jit_regular_block(c: &mut Criterion) {
     bencher
         .bench_inspectors_block(
             "jit 16 mill gas block",
-            18500009,
+            16796568,
             0,
             vec![Inspectors::Jit],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
@@ -240,7 +240,7 @@ fn bench_cex_dex_regular_block(c: &mut Criterion) {
     bencher
         .bench_inspectors_block(
             "cex dex 16 mill gas block",
-            18264694,
+            16796568,
             0,
             vec![Inspectors::CexDex],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
