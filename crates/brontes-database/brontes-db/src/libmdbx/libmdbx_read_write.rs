@@ -57,7 +57,7 @@ use crate::{
     CompressedTable,
 };
 
-const CACHE_WAIT: Duration = Duration::from_nanos(1);
+const CACHE_WAIT: Duration = Duration::from_micros(5);
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     /// initializes all the tables with data via the CLI
@@ -367,30 +367,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"protocol_info")]
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
-        let (tx, mut rx) = tokio::sync::oneshot::channel();
-        let _ = self
-            .cache_tx
-            .send(CacheMsg::Fetch(TryCacheFetch::ProtocolInfo(address, tx)));
-
-        let time = Instant::now();
-        while time.elapsed() < CACHE_WAIT {
-            if let Ok(Some(val)) = rx.try_recv() {
-                return Ok(val)
-            }
-        }
-
-        self.db
-            .view_db(|tx| {
-                tx.get::<AddressToProtocolInfo>(address)?.ok_or_else(|| {
-                    eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address)
-                })
-            })
-            .inspect(|data| {
-                let _ = self.cache_tx.send(CacheMsg::Update(
-                    false,
-                    super::lru_cache::CacheUpdate::ProtocolInfo(address, data.clone()),
-                ));
-            })
+        self.db.view_db(|tx| {
+            tx.get::<AddressToProtocolInfo>(address)?
+                .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
+        })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata_no_dex_price")]
@@ -461,29 +441,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
-        let (tx, mut rx) = tokio::sync::oneshot::channel();
-        let _ = self
-            .cache_tx
-            .send(CacheMsg::Fetch(TryCacheFetch::TokenInfo(address, tx)));
-
-        let time = Instant::now();
-        while time.elapsed() < CACHE_WAIT {
-            if let Ok(Some(val)) = rx.try_recv() {
-                return Ok(TokenInfoWithAddress { address, inner: val })
-            }
-        }
-        self.db
-            .view_db(|tx| {
-                tx.get::<TokenDecimals>(address)?
-                    .map(|inner| TokenInfoWithAddress { inner, address })
-                    .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
-            })
-            .inspect(|data| {
-                let _ = self.cache_tx.send(CacheMsg::Update(
-                    false,
-                    super::lru_cache::CacheUpdate::TokenInfo(address, data.inner.clone()),
-                ));
-            })
+        self.db.view_db(|tx| {
+            tx.get::<TokenDecimals>(address)?
+                .map(|inner| TokenInfoWithAddress { inner, address })
+                .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
+        })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_eoa_info")]
@@ -491,31 +453,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        let (tx, mut rx) = tokio::sync::oneshot::channel();
-        let _ = self
-            .cache_tx
-            .send(CacheMsg::Fetch(TryCacheFetch::SearcherEoa(searcher_eoa, tx)));
-
-        let time = Instant::now();
-        while time.elapsed() < CACHE_WAIT {
-            if let Ok(Some(val)) = rx.try_recv() {
-                return Ok(Some(val))
-            }
-        }
-
-        self.db
-            .view_db(|tx| {
-                tx.get::<SearcherEOAs>(searcher_eoa)
-                    .map_err(ErrReport::from)
-            })
-            .inspect(|data| {
-                if let Some(data) = data {
-                    let _ = self.cache_tx.send(CacheMsg::Update(
-                        false,
-                        super::lru_cache::CacheUpdate::SearcherEoa(searcher_eoa, data.clone()),
-                    ));
-                }
-            })
+        self.db.view_db(|tx| {
+            tx.get::<SearcherEOAs>(searcher_eoa)
+                .map_err(ErrReport::from)
+        })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_contract_info")]
@@ -684,34 +625,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         builder_coinbase_addr: Address,
     ) -> eyre::Result<Option<BuilderInfo>> {
-        let (tx, mut rx) = tokio::sync::oneshot::channel();
-        let _ = self
-            .cache_tx
-            .send(CacheMsg::Fetch(TryCacheFetch::BuilderInfo(builder_coinbase_addr, tx)));
-
-        let time = Instant::now();
-        while time.elapsed() < CACHE_WAIT {
-            if let Ok(Some(val)) = rx.try_recv() {
-                return Ok(Some(val))
-            }
-        }
-
-        self.db
-            .view_db(|tx| {
-                tx.get::<Builder>(builder_coinbase_addr)
-                    .map_err(ErrReport::from)
-            })
-            .inspect(|data| {
-                if let Some(data) = data {
-                    let _ = self.cache_tx.send(CacheMsg::Update(
-                        false,
-                        super::lru_cache::CacheUpdate::BuilderInfo(
-                            builder_coinbase_addr,
-                            data.clone(),
-                        ),
-                    ));
-                }
-            })
+        self.db.view_db(|tx| {
+            tx.get::<Builder>(builder_coinbase_addr)
+                .map_err(ErrReport::from)
+        })
     }
 
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
@@ -897,14 +814,6 @@ impl DBWriter for LibmdbxReadWriter {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        let _ = self.cache_tx.send(CacheMsg::Update(
-            true,
-            super::lru_cache::CacheUpdate::TokenInfo(
-                address,
-                brontes_types::db::token_info::TokenInfo { decimals, symbol: symbol.clone() },
-            ),
-        ));
-
         Ok(self
             .tx
             .send(WriterMessage::TokenInfo { address, decimals, symbol })?)
@@ -918,25 +827,6 @@ impl DBWriter for LibmdbxReadWriter {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        let mut tokens_iter = tokens.iter();
-        let default = Address::ZERO;
-
-        let protocol = ProtocolInfo {
-            protocol: classifier_name,
-            init_block: block,
-            token0: *tokens_iter.next().unwrap_or(&default),
-            token1: *tokens_iter.next().unwrap_or(&default),
-            token2: tokens_iter.next().cloned(),
-            token3: tokens_iter.next().cloned(),
-            token4: tokens_iter.next().cloned(),
-            curve_lp_token,
-        };
-
-        let _ = self.cache_tx.send(CacheMsg::Update(
-            true,
-            super::lru_cache::CacheUpdate::ProtocolInfo(address, protocol),
-        ));
-
         Ok(self.tx.send(WriterMessage::Pool {
             block,
             address,
@@ -955,11 +845,6 @@ impl DBWriter for LibmdbxReadWriter {
         builder_address: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        let _ = self.cache_tx.send(CacheMsg::Update(
-            true,
-            super::lru_cache::CacheUpdate::BuilderInfo(builder_address, builder_info.clone()),
-        ));
-
         Ok(self
             .tx
             .send(WriterMessage::BuilderInfo { builder_address, builder_info })?)

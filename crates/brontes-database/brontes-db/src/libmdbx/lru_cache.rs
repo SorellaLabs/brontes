@@ -1,13 +1,10 @@
 use std::task::Poll;
 
 use brontes_types::{
-    db::{
-        address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo, searcher::SearcherInfo, token_info::TokenInfo,
-    },
+    db::{address_metadata::AddressMetadata, searcher::SearcherInfo},
     UnboundedYapperReceiver,
 };
-use futures::{ready, Future};
+use futures::Future;
 use reth_primitives::Address;
 use schnellru::{ByMemoryUsage, LruMap};
 
@@ -22,9 +19,6 @@ pub enum TryCacheFetch {
     AddressMeta(Address, tokio::sync::oneshot::Sender<Option<AddressMetadata>>),
     SearcherEoa(Address, tokio::sync::oneshot::Sender<Option<SearcherInfo>>),
     SearcherContract(Address, tokio::sync::oneshot::Sender<Option<SearcherInfo>>),
-    ProtocolInfo(Address, tokio::sync::oneshot::Sender<Option<ProtocolInfo>>),
-    BuilderInfo(Address, tokio::sync::oneshot::Sender<Option<BuilderInfo>>),
-    TokenInfo(Address, tokio::sync::oneshot::Sender<Option<TokenInfo>>),
 }
 
 /// bool at end means it was from a write and to update.
@@ -32,9 +26,6 @@ pub enum CacheUpdate {
     AddressMeta(Address, AddressMetadata),
     SearcherEoa(Address, SearcherInfo),
     SearcherContract(Address, SearcherInfo),
-    ProtocolInfo(Address, ProtocolInfo),
-    BuilderInfo(Address, BuilderInfo),
-    TokenInfo(Address, TokenInfo),
 }
 
 /// reduces the amount of small table queries needed
@@ -44,9 +35,6 @@ pub struct LibmdbxLRUCache {
     address_meta:      LruMap<Address, AddressMetadata, ByMemoryUsage, ahash::RandomState>,
     searcher_eoa:      LruMap<Address, SearcherInfo, ByMemoryUsage, ahash::RandomState>,
     searcher_contract: LruMap<Address, SearcherInfo, ByMemoryUsage, ahash::RandomState>,
-    protocol_details:  LruMap<Address, ProtocolInfo, ByMemoryUsage, ahash::RandomState>,
-    builder_info:      LruMap<Address, BuilderInfo, ByMemoryUsage, ahash::RandomState>,
-    token_info:        LruMap<Address, TokenInfo, ByMemoryUsage, ahash::RandomState>,
 }
 impl LibmdbxLRUCache {
     pub fn new(rx: UnboundedYapperReceiver<CacheMsg>, memory_per_table_mb: usize) -> Self {
@@ -61,18 +49,6 @@ impl LibmdbxLRUCache {
                 ahash::RandomState::new(),
             ),
             searcher_contract: LruMap::with_hasher(
-                ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
-                ahash::RandomState::new(),
-            ),
-            protocol_details: LruMap::with_hasher(
-                ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
-                ahash::RandomState::new(),
-            ),
-            builder_info: LruMap::with_hasher(
-                ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
-                ahash::RandomState::new(),
-            ),
-            token_info: LruMap::with_hasher(
                 ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
                 ahash::RandomState::new(),
             ),
@@ -109,15 +85,6 @@ impl Future for LibmdbxLRUCache {
                             TryCacheFetch::SearcherContract(addr, tx) => {
                                 let _ = tx.send(this.searcher_contract.get(&addr).cloned());
                             }
-                            TryCacheFetch::ProtocolInfo(addr, tx) => {
-                                let _ = tx.send(this.protocol_details.get(&addr).cloned());
-                            }
-                            TryCacheFetch::BuilderInfo(addr, tx) => {
-                                let _ = tx.send(this.builder_info.get(&addr).cloned());
-                            }
-                            TryCacheFetch::TokenInfo(addr, tx) => {
-                                let _ = tx.send(this.token_info.get(&addr).cloned());
-                            }
                         },
                         CacheMsg::Update(write, update) => match update {
                             CacheUpdate::AddressMeta(key, value) => {
@@ -145,33 +112,6 @@ impl Future for LibmdbxLRUCache {
                                 } else {
                                     // only overwrite if non-existent
                                     this.searcher_contract.get_or_insert(key, || value);
-                                }
-                            }
-                            CacheUpdate::ProtocolInfo(key, value) => {
-                                if write {
-                                    // always overwrite
-                                    this.protocol_details.insert(key, value);
-                                } else {
-                                    // only overwrite if non-existent
-                                    this.protocol_details.get_or_insert(key, || value);
-                                }
-                            }
-                            CacheUpdate::BuilderInfo(key, value) => {
-                                if write {
-                                    // always overwrite
-                                    this.builder_info.insert(key, value);
-                                } else {
-                                    // only overwrite if non-existent
-                                    this.builder_info.get_or_insert(key, || value);
-                                }
-                            }
-                            CacheUpdate::TokenInfo(key, value) => {
-                                if write {
-                                    // always overwrite
-                                    this.token_info.insert(key, value);
-                                } else {
-                                    // only overwrite if non-existent
-                                    this.token_info.get_or_insert(key, || value);
                                 }
                             }
                         },
