@@ -164,6 +164,20 @@ fn bench_regular_block(c: &mut Criterion) {
         .unwrap()
 }
 
+fn bench_block_metrics_122(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_composer_block(
+            "block with metrics saying 112",
+            16796568,
+            0,
+            Inspectors::iter().collect_vec(),
+            vec![],
+            c,
+        )
+        .unwrap()
+}
+
 fn bench_sandwich_regular_block(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
@@ -255,6 +269,7 @@ criterion_group!(cex_dex, bench_markout_cexdex);
 
 criterion_group!(
     inspector_full_block_benches,
+    bench_block_metrics_122,
     bench_regular_block,
     bench_sandwich_regular_block,
     bench_liquidations_regular_block,
