@@ -57,7 +57,7 @@ use crate::{
     CompressedTable,
 };
 
-const CACHE_WAIT: Duration = Duration::from_micros(3);
+const CACHE_WAIT: Duration = Duration::from_nanos(1);
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     /// initializes all the tables with data via the CLI
