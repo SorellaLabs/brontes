@@ -453,10 +453,31 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        self.db.view_db(|tx| {
-            tx.get::<SearcherEOAs>(searcher_eoa)
-                .map_err(ErrReport::from)
-        })
+        let (tx, mut rx) = tokio::sync::oneshot::channel();
+        let _ = self
+            .cache_tx
+            .send(CacheMsg::Fetch(TryCacheFetch::SearcherEoa(searcher_eoa, tx)));
+
+        let time = Instant::now();
+        while time.elapsed() < CACHE_WAIT {
+            if let Ok(Some(val)) = rx.try_recv() {
+                tracing::warn!("searcher_eoa info cache");
+                return Ok(Some(val))
+            }
+        }
+        self.db
+            .view_db(|tx| {
+                tx.get::<SearcherEOAs>(searcher_eoa)
+                    .map_err(ErrReport::from)
+            })
+            .inspect(|data| {
+                if let Some(data) = data {
+                    let _ = self.cache_tx.send(CacheMsg::Update(
+                        false,
+                        super::lru_cache::CacheUpdate::SearcherEoa(searcher_eoa, data.clone()),
+                    ));
+                }
+            })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_contract_info")]
@@ -472,6 +493,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let time = Instant::now();
         while time.elapsed() < CACHE_WAIT {
             if let Ok(Some(val)) = rx.try_recv() {
+                tracing::warn!("searcher_contract info cache");
                 return Ok(Some(val))
             }
         }
@@ -604,6 +626,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let time = Instant::now();
         while time.elapsed() < CACHE_WAIT {
             if let Ok(Some(val)) = rx.try_recv() {
+                tracing::warn!("address meta info cache");
                 return Ok(Some(val))
             }
         }
