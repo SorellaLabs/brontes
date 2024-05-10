@@ -98,7 +98,7 @@ impl ClickhouseBuffered {
     }
 
     pub async fn shutdown(&mut self) {
-        while let Ok(value) = self.rx.try_recv() {
+        while let Some(value) = self.rx.recv().await {
             if value.is_empty() {
                 continue
             }
