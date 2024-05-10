@@ -38,7 +38,7 @@
 
 **Table Name:** `TokenDecimals`
 
-**Description:** Provides token decimals and symbols.
+**Description:** Token decimals and symbols.
 
 **Key:** Address
 

@@ -19,7 +19,7 @@
 - **address_type**: Type of address (DEX, CEX, Aggregator...).
 - **contract_info**: [`ContractInfo`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/address_metadata.rs#L209) - Details about the contract if the address is a smart contract.
 - **ens**: Optional ENS name associated with the address.
-- **social_metadata**: [`Socials`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/address_metadata.rs#L234) - Links to social media and other external profiles related to the entity.
+- **social_metadata**: [`Socials`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/address_metadata.rs#L234) - Links to social media profiles related to the entity.
 
 ## Searcher Info Tables
 
@@ -40,7 +40,7 @@
 - **pnl**: [`TollByType`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/searcher.rs#L21) - Aggregate Pnl by MEV type.
 - **gas_bids**: [`TollByType`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/searcher.rs#L21) - Gas bids by MEV type.
 - **builder**: If the searcher is vertically integrated, the builder's address.
-- **config_labels**: Types of MEV this searcher captures. This is set at the config level in `config/searcher_config.toml`.
+- **config_labels**: Types of MEV this searcher address captures. This is set at the config level in `config/searcher_config.toml`.
 - **sibling_searchers**: Addresses of searcher accounts associated with this address. This is needed so that we can accurately calculate PnL when searchers send their profit to a bank address or on of their other searcher addresses.
 
 ## Builder Table
