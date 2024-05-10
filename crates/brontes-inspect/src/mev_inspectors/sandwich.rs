@@ -200,6 +200,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                             searcher_actions,
                             victim_info,
                             victim_swaps_transfers,
+                            0,
                         )
                     },
                 )
@@ -217,6 +218,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut searcher_actions: Vec<Vec<Action>>,
         victim_info: Vec<Vec<TxInfo>>,
         victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
+        recusive: u8,
     ) -> Option<Vec<Bundle>> {
         // if all of the sandwichers have the same eoa or are all verified contracts.
         // then we can continue. otherwise false positive
@@ -256,6 +258,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 &searcher_actions,
                 &victim_info,
                 &victim_actions,
+                recusive,
             )
         }
 
@@ -611,10 +614,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         searcher_actions: &[Vec<Action>],
         victim_info: &[Vec<TxInfo>],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
+        mut recusive: u8,
     ) -> Option<Vec<Bundle>> {
         let mut res = vec![];
+        if recusive >= 5 {
+            tracing::warn!(recusive=%recusive,"Sandwich recisve");
+        }
 
         if possible_front_runs_info.len() > 1 {
+            recusive += 1;
             // remove dropped sandwiches
             if victim_info.is_empty() || victim_actions.is_empty() {
                 return None
@@ -648,6 +656,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions.to_vec(),
                     victim_info,
                     victim_actions,
+                    recusive,
                 )
             };
 
@@ -684,6 +693,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions,
                     victim_info,
                     victim_actions,
+                    recusive,
                 )
             };
             if let Some(front) = front_shrink {
