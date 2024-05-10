@@ -21,7 +21,6 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use reth_primitives::TxHash;
 
 #[derive(Debug)]
