@@ -765,7 +765,7 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let mut lock = self.searcher_eoa.lock().unwrap();
-        lock.insert(eoa_address, eoa_info.clone());
+        lock.insert(searcher_eoa, searcher_info.clone());
 
         Ok(self
             .tx
