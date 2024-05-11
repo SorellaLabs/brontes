@@ -9,7 +9,7 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeSearchBuilder,
 };
-use itertools::{multizip, zip};
+use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
