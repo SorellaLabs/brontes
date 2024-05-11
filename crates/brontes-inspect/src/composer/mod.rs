@@ -61,14 +61,13 @@ pub struct ComposerResults {
     pub possible_mev_txes: PossibleMevCollection,
 }
 
-pub fn compose_mev_results<DB: LibmdbxReader>(
+pub fn compose_mev_results(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Action>>,
     metadata: Arc<Metadata>,
-    db: &'static DB,
 ) -> ComposerResults {
     let (possible_mev_txes, classified_mev) =
-        run_inspectors(orchestra, tree.clone(), metadata.clone(), db);
+        run_inspectors(orchestra, tree.clone(), metadata.clone());
 
     let possible_arbs = possible_mev_txes.clone();
 
@@ -77,11 +76,10 @@ pub fn compose_mev_results<DB: LibmdbxReader>(
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
-fn run_inspectors<DB: LibmdbxReader>(
+fn run_inspectors(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Action>>,
     metadata: Arc<Metadata>,
-    db: &'static DB,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
     let mut possible_mev_txes =
         DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree.clone());
