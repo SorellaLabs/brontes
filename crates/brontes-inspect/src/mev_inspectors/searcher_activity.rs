@@ -7,8 +7,9 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, SearcherTx},
     normalized_actions::{accounting::ActionAccounting, Action},
     tree::BlockTree,
-    ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
+    ActionIter, FastHashSet, ToFloatNearest, TreeBase, TreeSearchBuilder,
 };
+use itertools::{multizip, zip};
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
@@ -51,14 +52,15 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
         let search_args = TreeSearchBuilder::default()
             .with_actions([Action::is_transfer, Action::is_eth_transfer]);
 
-        tree.clone()
-            .collect_all(search_args)
-            .filter_map(|(tx_hash, transfers)| {
+        let (hashes, transfers): (Vec<_>, Vec<_>) = tree.clone().collect_all(search_args).unzip();
+        let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);
+
+        multizip((hashes, transfers, tx_info))
+            .filter_map(|(tx_hash, transfers, info)| {
                 if transfers.is_empty() {
                     return None
                 }
-
-                let info = tree.get_tx_info(tx_hash, self.utils.db)?;
+                let info = info?;
 
                 (info.searcher_eoa_info.is_some() || info.searcher_contract_info.is_some()).then(
                     || {

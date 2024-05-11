@@ -88,15 +88,20 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        tree.clone()
+        let (hashes, swaps): (Vec<_>, Vec<_>) = tree
+            .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
                 Action::is_transfer,
                 Action::is_eth_transfer,
                 Action::is_aggregator,
             ]))
-            .filter_map(|(tx, swaps)| {
-                let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+            .unzip();
+
+        let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);
+        multizip((hashes, swaps, tx_info))
+            .filter_map(|(tx, swaps, tx_info)| {
+                let tx_info = tx_info?;
 
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {

@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use super::Node;
 use crate::{
-    db::{metadata::Metadata, traits::LibmdbxReader},
+    db::{metadata::Metadata, searcher::SearcherInfo, traits::LibmdbxReader},
     normalized_actions::{Action, MultiCallFrameClassification, NormalizedAction},
     tree::types::NodeWithDataRef,
-    FastHashSet, TreeSearchBuilder, TxInfo,
+    FastHashMap, FastHashSet, TreeSearchBuilder, TxInfo,
 };
 
 #[derive(Debug, Clone)]
@@ -60,10 +60,40 @@ impl<V: NormalizedAction> Root<V> {
     //TODO: Filter out know entities from address metadata enum variant or contract
     // info struct
 
+    pub fn get_tx_info_batch<DB: LibmdbxReader>(
+        &self,
+        block_number: u64,
+        database: &DB,
+        eoa: &FastHashMap<Address, SearcherInfo>,
+        contract: &FastHashMap<Address, SearcherInfo>,
+    ) -> eyre::Result<TxInfo> {
+        self.tx_info_internal(
+            block_number,
+            database,
+            |eoa_addr| Ok(eoa.get(&eoa_addr).cloned()),
+            |contract_addr| Ok(contract.get(&contract_addr).cloned()),
+        )
+    }
+
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,
         database: &DB,
+    ) -> eyre::Result<TxInfo> {
+        self.tx_info_internal(
+            block_number,
+            database,
+            |eoa_addr| database.try_fetch_searcher_eoa_info(eoa_addr),
+            |contract_addr| database.try_fetch_searcher_contract_info(contract_addr),
+        )
+    }
+
+    fn tx_info_internal<DB: LibmdbxReader>(
+        &self,
+        block_number: u64,
+        database: &DB,
+        eoa: impl Fn(Address) -> eyre::Result<Option<SearcherInfo>>,
+        contract: impl Fn(Address) -> eyre::Result<Option<SearcherInfo>>,
     ) -> eyre::Result<TxInfo> {
         let to_address = self
             .data_store
@@ -115,10 +145,8 @@ impl<V: NormalizedAction> Root<V> {
                 )
             });
 
-        let searcher_eoa_info = database.try_fetch_searcher_eoa_info(self.head.address)?;
-
-        let searcher_contract_info =
-            database.try_fetch_searcher_contract_info(self.get_to_address())?;
+        let searcher_eoa_info = eoa(self.head.address)?;
+        let searcher_contract_info = contract(self.get_to_address())?;
 
         // If the to address is a verified contract, or emits logs, or is classified
         // then shouldn't pass it as mev_contract to avoid the misclassification of

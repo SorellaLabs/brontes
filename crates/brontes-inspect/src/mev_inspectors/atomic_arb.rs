@@ -12,7 +12,7 @@ use brontes_types::{
     },
     pair::Pair,
     tree::BlockTree,
-    FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{
@@ -56,16 +56,22 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                             Action::is_eth_transfer,
                             Action::is_nested_action,
                         ]))
-                        .t_map(|(k, v)| {
+                        .t_full_map(|(k, v)| {
+                            let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
                             (
-                                k,
-                                self.utils
-                                    .flatten_nested_actions_default(v.into_iter())
-                                    .collect::<Vec<_>>(),
+                                k.get_tx_info_batch(&tx_hashes, self.utils.db),
+                                v.into_iter().map(|v| {
+                                    self.utils
+                                        .flatten_nested_actions_default(v.into_iter())
+                                        .collect::<Vec<_>>()
+                                }),
                             )
                         })
-                        .t_filter_map(|tree, (tx, actions)| {
-                            let info = tree.get_tx_info(tx, self.utils.db)?;
+                        .into_zip_tree(tree.clone())
+                        .filter_map(|(info, action)| {
+                            let info = info??;
+                            let actions = action?;
+
                             self.process_swaps(
                                 info,
                                 meta_data.clone(),
@@ -89,16 +95,22 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                         Action::is_eth_transfer,
                         Action::is_nested_action,
                     ]))
-                    .t_map(|(k, v)| {
+                    .t_full_map(|(k, v)| {
+                        let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
                         (
-                            k,
-                            self.utils
-                                .flatten_nested_actions_default(v.into_iter())
-                                .collect::<Vec<_>>(),
+                            k.get_tx_info_batch(&tx_hashes, self.utils.db),
+                            v.into_iter().map(|v| {
+                                self.utils
+                                    .flatten_nested_actions_default(v.into_iter())
+                                    .collect::<Vec<_>>()
+                            }),
                         )
                     })
-                    .t_filter_map(|tree, (tx, actions)| {
-                        let info = tree.get_tx_info(tx, self.utils.db)?;
+                    .into_zip_tree(tree.clone())
+                    .filter_map(|(info, action)| {
+                        let info = info??;
+                        let actions = action?;
+
                         self.process_swaps(
                             info,
                             meta_data.clone(),
