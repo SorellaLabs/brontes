@@ -30,7 +30,6 @@
 
 use std::{sync::Arc, time::Instant};
 
-use brontes_core::LibmdbxReader;
 use brontes_types::{mev::Mev, FastHashMap};
 use itertools::Itertools;
 use tracing::{span, Level};

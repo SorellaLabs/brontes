@@ -36,7 +36,6 @@ use brontes_types::{
     traits::TracingProvider,
     BlockTree, BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver,
 };
-use dashmap::DashMap;
 use eyre::{eyre, ErrReport};
 use futures::Future;
 use indicatif::ProgressBar;
@@ -102,7 +101,8 @@ pub struct LibmdbxReadWriter {
     // test
     address_meta:
         std::sync::Mutex<LruMap<Address, AddressMetadata, ByMemoryUsage, ahash::RandomState>>,
-    searcher_eoa:      DashMap<Address, SearcherInfo, ahash::RandomState>,
+    searcher_eoa:
+        std::sync::Mutex<LruMap<Address, SearcherInfo, ByMemoryUsage, ahash::RandomState>>,
     searcher_contract:
         std::sync::Mutex<LruMap<Address, SearcherInfo, ByMemoryUsage, ahash::RandomState>>,
 }
@@ -135,7 +135,11 @@ impl LibmdbxReadWriter {
                 ahash::RandomState::new(),
             )
             .into(),
-            searcher_eoa: DashMap::with_hasher(ahash::RandomState::new()),
+            searcher_eoa: LruMap::with_hasher(
+                ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
+                ahash::RandomState::new(),
+            )
+            .into(),
             searcher_contract: LruMap::with_hasher(
                 ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
                 ahash::RandomState::new(),
@@ -470,7 +474,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        if let Some(e) = self.searcher_eoa.get(&searcher_eoa) {
+        let mut lock = self.searcher_eoa.lock().unwrap();
+        if let Some(e) = lock.get(&searcher_eoa) {
             return Ok(Some(e.clone()))
         }
 
@@ -481,9 +486,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             })
             .inspect(|data| {
                 if let Some(data) = data {
-                    if !self.searcher_eoa.contains_key(&searcher_eoa) {
-                        self.searcher_eoa.insert(searcher_eoa, data.clone());
-                    }
+                    lock.get_or_insert(searcher_eoa, || data.clone());
                 }
             })
     }
@@ -740,7 +743,8 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
-        self.searcher_eoa.insert(eoa_address, eoa_info.clone());
+        let mut lock = self.searcher_eoa.lock().unwrap();
+        lock.insert(eoa_address, eoa_info.clone());
 
         if let (Some(addr), Some(info)) = (contract_address, &contract_info) {
             let mut lock = self.searcher_contract.lock().unwrap();
@@ -760,8 +764,8 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        self.searcher_eoa
-            .insert(searcher_eoa, searcher_info.clone());
+        let mut lock = self.searcher_eoa.lock().unwrap();
+        lock.insert(eoa_address, eoa_info.clone());
 
         Ok(self
             .tx
