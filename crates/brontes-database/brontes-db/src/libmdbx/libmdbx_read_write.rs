@@ -93,6 +93,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 }
 
 use schnellru::{ByMemoryUsage, LruMap};
+
 pub struct LibmdbxReadWriter {
     pub db:  Arc<Libmdbx>,
     tx:      UnboundedSender<WriterMessage>,

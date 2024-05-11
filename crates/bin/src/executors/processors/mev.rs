@@ -64,7 +64,7 @@ impl Processor for MevProcessor {
         // };
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
             execute_on!(async_inspect, {
-                compose_mev_results(inspectors, tree.clone(), metadata.clone())
+                compose_mev_results(inspectors, tree.clone(), metadata.clone(), db)
             })
             .await;
 
