@@ -33,6 +33,19 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         }
     }
 
+    fn try_fetch_searcher_infos(
+        &self,
+        eoa: Vec<Address>,
+        contract: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, (SearcherInfo, Option<SearcherInfo>)>> {
+        let eoa_info = self.try_fetch_searcher_eoa_infos(eoa)?;
+        let mut contract = self.try_fetch_searcher_contract_infos(contract)?;
+        Ok(eoa_info
+            .into_iter()
+            .map(|(k, v)| (k, (v, contract.remove(&k))))
+            .collect())
+    }
+
     fn fetch_all_searcher_info(&self) -> eyre::Result<AllSearcherInfo> {
         let eoa_info = self.fetch_all_searcher_eoa_info()?;
         let contract_info = self.fetch_all_searcher_contract_info()?;
@@ -53,6 +66,16 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>>;
+
+    fn try_fetch_searcher_eoa_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>>;
+
+    fn try_fetch_searcher_contract_infos(
+        &self,
+        searcher_contract: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>>;
 
     fn try_fetch_builder_info(
         &self,

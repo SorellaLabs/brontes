@@ -224,6 +224,20 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.try_fetch_searcher_eoa_info(searcher_eoa)
     }
 
+    fn try_fetch_searcher_eoa_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_eoa_infos(searcher_eoa)
+    }
+
+    fn try_fetch_searcher_contract_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_contract_infos(searcher_eoa)
+    }
+
     fn try_fetch_searcher_contract_info(
         &self,
         searcher_eoa: Address,
@@ -506,6 +520,20 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         builder_coinbase_addr: Address,
     ) -> eyre::Result<Option<BuilderInfo>> {
         self.inner.try_fetch_builder_info(builder_coinbase_addr)
+    }
+
+    fn try_fetch_searcher_eoa_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_eoa_infos(searcher_eoa)
+    }
+
+    fn try_fetch_searcher_contract_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_contract_infos(searcher_eoa)
     }
 
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
