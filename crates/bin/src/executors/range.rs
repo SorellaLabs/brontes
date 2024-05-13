@@ -14,7 +14,6 @@ use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
-use tokio::task::JoinError;
 use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
