@@ -2,7 +2,7 @@ use std::{
     cmp::max,
     ops::{Bound, RangeInclusive},
     path::Path,
-    sync::{atomic::AtomicBool, Arc},
+    sync::Arc,
 };
 
 use alloy_primitives::Address;
@@ -963,6 +963,10 @@ impl DBWriter for LibmdbxReadWriter {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
+        let token_info = TokenInfo::new(decimals, symbol.clone());
+        let mut lock = self.cache.token_info.lock().unwrap();
+        lock.insert(address, Some(token_info));
+
         Ok(self
             .tx
             .send(WriterMessage::TokenInfo { address, decimals, symbol })?)
@@ -976,6 +980,22 @@ impl DBWriter for LibmdbxReadWriter {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        let mut tokens_i = tokens.iter();
+        let default = Address::ZERO;
+        let details = ProtocolInfo {
+            protocol: classifier_name,
+            init_block: block,
+            token0: *tokens_i.next().unwrap_or(&default),
+            token1: *tokens_i.next().unwrap_or(&default),
+            token2: tokens_i.next().cloned(),
+            token3: tokens_i.next().cloned(),
+            token4: tokens_i.next().cloned(),
+            curve_lp_token,
+        };
+
+        let mut lock = self.cache.protocol_info.lock().unwrap();
+        lock.insert(address, Some(details));
+
         Ok(self.tx.send(WriterMessage::Pool {
             block,
             address,
