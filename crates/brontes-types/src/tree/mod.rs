@@ -57,7 +57,12 @@ impl<V: NormalizedAction> BlockTree<V> {
             .map(|root| (root, root.head.address, root.get_to_address()))
             .multiunzip();
 
-        let Ok(contract) = database.try_fetch_searcher_contract_infos(contract_info_addr) else {
+        let Ok(contract) = database.try_fetch_searcher_contract_infos(contract_info_addr.clone())
+        else {
+            return vec![]
+        };
+
+        let Ok(address_meta) = database.try_fetch_address_metadatas(contract_info_addr) else {
             return vec![]
         };
 

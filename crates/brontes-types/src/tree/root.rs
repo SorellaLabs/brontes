@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use super::Node;
 use crate::{
-    db::{metadata::Metadata, searcher::SearcherInfo, traits::LibmdbxReader},
+    db::{
+        address_metadata::AddressMetadata, metadata::Metadata, searcher::SearcherInfo,
+        traits::LibmdbxReader,
+    },
     normalized_actions::{Action, MultiCallFrameClassification, NormalizedAction},
     tree::types::NodeWithDataRef,
     FastHashMap, FastHashSet, TreeSearchBuilder, TxInfo,
@@ -66,12 +69,13 @@ impl<V: NormalizedAction> Root<V> {
         database: &DB,
         eoa: &FastHashMap<Address, SearcherInfo>,
         contract: &FastHashMap<Address, SearcherInfo>,
+        address_meta: &FastHashMap<Address, AddressMetadata>,
     ) -> eyre::Result<TxInfo> {
         self.tx_info_internal(
             block_number,
-            database,
             |eoa_addr| Ok(eoa.get(&eoa_addr).cloned()),
             |contract_addr| Ok(contract.get(&contract_addr).cloned()),
+            |address_metadata| Ok(address_meta.get(&address_metadata).cloned()),
         )
     }
 
@@ -82,18 +86,18 @@ impl<V: NormalizedAction> Root<V> {
     ) -> eyre::Result<TxInfo> {
         self.tx_info_internal(
             block_number,
-            database,
             |eoa_addr| database.try_fetch_searcher_eoa_info(eoa_addr),
             |contract_addr| database.try_fetch_searcher_contract_info(contract_addr),
+            |address_meta| database.try_fetch_address_metadata(address_meta),
         )
     }
 
     fn tx_info_internal<DB: LibmdbxReader>(
         &self,
         block_number: u64,
-        database: &DB,
         eoa: impl Fn(Address) -> eyre::Result<Option<SearcherInfo>>,
         contract: impl Fn(Address) -> eyre::Result<Option<SearcherInfo>>,
+        address: impl Fn(Address) -> eyre::Result<Option<AddressMetadata>>,
     ) -> eyre::Result<TxInfo> {
         let to_address = self
             .data_store
@@ -105,9 +109,8 @@ impl<V: NormalizedAction> Root<V> {
             .get_action()
             .get_to_address();
 
-        let address_meta = database
-            .try_fetch_address_metadata(to_address)
-            .map_err(|_| eyre::eyre!("Failed to fetch address metadata"))?;
+        let address_meta =
+            address(to_address).map_err(|_| eyre::eyre!("Failed to fetch address metadata"))?;
 
         let (is_verified_contract, contract_type) = match address_meta {
             Some(meta) => {

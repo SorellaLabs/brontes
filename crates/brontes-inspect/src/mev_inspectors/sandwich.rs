@@ -983,7 +983,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let result_contracts = get_possible_sandwich_duplicate_contracts(tree_clone_for_contracts);
 
         // Combine and deduplicate results
-        let mut set = Itertools::unique(result_senders.into_iter().chain(result_contracts))
+        let set = Itertools::unique(result_senders.into_iter().chain(result_contracts))
             .flat_map(Self::partition_into_gaps)
             .collect::<Vec<_>>();
 
