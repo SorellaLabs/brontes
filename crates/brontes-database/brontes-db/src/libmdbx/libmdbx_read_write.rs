@@ -96,8 +96,8 @@ pub struct LibmdbxReadWriter {
     pub db:  Arc<Libmdbx>,
     tx:      UnboundedSender<WriterMessage>,
     metrics: Option<LibmdbxMetrics>,
-    // 30 shards for now, might change in future
-    cache:   ReadWriteMultiplex<30>,
+    // 100 shards for now, might change in future
+    cache:   ReadWriteMultiplex<100>,
 }
 
 impl LibmdbxReadWriter {
@@ -106,7 +106,8 @@ impl LibmdbxReadWriter {
         log_level: Option<LogLevel>,
         ex: &BrontesTaskExecutor,
     ) -> eyre::Result<Self> {
-        let memory_per_table_mb = 1000;
+        // 10 g
+        let memory_per_table_mb = 10000;
         let (tx, rx) = unbounded_channel();
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
@@ -501,7 +502,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 |res| {
                     let mut out = FastHashMap::default();
                     for (key, value) in res {
-                        let Ok(Some(val)) = value else { continue;};
+                        let Ok(Some(val)) = value else {
+                            continue;
+                        };
                         out.insert(key, val);
                     }
                     Ok(out)
@@ -557,7 +560,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 |res| {
                     let mut out = FastHashMap::default();
                     for (key, value) in res {
-                        let Ok(Some(val)) = value else { continue;};
+                        let Ok(Some(val)) = value else {
+                            continue;
+                        };
                         out.insert(key, val);
                     }
                     Ok(out)
@@ -711,7 +716,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 |res| {
                     let mut out = FastHashMap::default();
                     for (key, value) in res {
-                        let Ok(Some(val)) = value else { continue;};
+                        let Ok(Some(val)) = value else {
+                            continue;
+                        };
                         out.insert(key, val);
                     }
                     Ok(out)
