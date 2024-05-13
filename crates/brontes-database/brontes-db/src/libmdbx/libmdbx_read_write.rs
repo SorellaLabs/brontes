@@ -414,8 +414,21 @@ impl LibmdbxReader for LibmdbxReadWriter {
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"protocol_info")]
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         self.db.view_db(|tx| {
-            tx.get::<AddressToProtocolInfo>(address)?
-                .ok_or_else(|| eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
+            let mut lock = self.cache.protocol_info.lock().unwrap();
+            match lock.get(&address) {
+                Some(Some(e)) => return Ok(e.clone()),
+                Some(None) => {
+                    return Err(eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
+                }
+                None => tx
+                    .get::<AddressToProtocolInfo>(address)
+                    .inspect(|data| {
+                        lock.get_or_insert(address, || data.clone());
+                    })?
+                    .ok_or_else(|| {
+                        eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address)
+                    }),
+            }
         })
     }
 
@@ -488,9 +501,20 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
         self.db.view_db(|tx| {
-            tx.get::<TokenDecimals>(address)?
-                .map(|inner| TokenInfoWithAddress { inner, address })
-                .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address))
+            let mut lock = self.cache.token_info.lock().unwrap();
+            match lock.get(&address) {
+                Some(Some(e)) => return Ok(TokenInfoWithAddress { inner: e.clone(), address }),
+                Some(None) => {
+                    return Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address))
+                }
+                None => tx
+                    .get::<TokenDecimals>(address)
+                    .inspect(|data| {
+                        lock.get_or_insert(address, || data.clone());
+                    })?
+                    .map(|inner| TokenInfoWithAddress { inner, address })
+                    .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
+            }
         })
     }
 
