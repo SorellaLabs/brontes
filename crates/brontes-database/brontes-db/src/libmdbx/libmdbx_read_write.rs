@@ -473,26 +473,27 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Vec<Address>,
     ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
-        let mut res = FastHashMap::default();
-        let mut lock = self.searcher_eoa.lock().unwrap();
-
-        for eoa in searcher_eoa {
-            if let Some(e) = lock.get(&eoa) {
-                res.insert(eoa, e.clone());
-            } else {
-                let next = self
-                    .db
-                    .view_db(|tx| tx.get::<SearcherEOAs>(eoa).map_err(ErrReport::from))
-                    .inspect(|data| {
-                        if let Some(data) = data {
-                            lock.get_or_insert(eoa, || data.clone());
-                        }
-                    })?;
-                let Some(next) = next else { continue };
-                res.insert(eoa, next);
+        self.db.view_db(|tx| {
+            let mut res = FastHashMap::default();
+            let mut lock = self.searcher_eoa.lock().unwrap();
+            for eoa in searcher_eoa {
+                if let Some(e) = lock.get(&eoa) {
+                    res.insert(eoa, e.clone());
+                } else {
+                    let next = tx
+                        .get::<SearcherEOAs>(eoa)
+                        .map_err(ErrReport::from)
+                        .inspect(|data| {
+                            if let Some(data) = data {
+                                lock.get_or_insert(eoa, || data.clone());
+                            }
+                        })?;
+                    let Some(next) = next else { continue };
+                    res.insert(eoa, next);
+                }
             }
-        }
-        Ok(res)
+            Ok(res)
+        })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_eoa_info")]
@@ -522,27 +523,29 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher: Vec<Address>,
     ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
-        let mut res = FastHashMap::default();
-        let mut lock = self.searcher_contract.lock().unwrap();
+        self.db.view_db(|tx| {
+            let mut res = FastHashMap::default();
+            let mut lock = self.searcher_contract.lock().unwrap();
 
-        for eoa in searcher {
-            if let Some(e) = lock.get(&eoa) {
-                res.insert(eoa, e.clone());
-            } else {
-                let next = self
-                    .db
-                    .view_db(|tx| tx.get::<SearcherContracts>(eoa).map_err(ErrReport::from))
-                    .inspect(|data| {
-                        if let Some(data) = data {
-                            lock.get_or_insert(eoa, || data.clone());
-                        }
-                    })?;
-                let Some(next) = next else { continue };
-                res.insert(eoa, next);
+            for eoa in searcher {
+                if let Some(e) = lock.get(&eoa) {
+                    res.insert(eoa, e.clone());
+                } else {
+                    let next = tx
+                        .get::<SearcherContracts>(eoa)
+                        .map_err(ErrReport::from)
+                        .inspect(|data| {
+                            if let Some(data) = data {
+                                lock.get_or_insert(eoa, || data.clone());
+                            }
+                        })?;
+
+                    let Some(next) = next else { continue };
+                    res.insert(eoa, next);
+                }
             }
-        }
-
-        Ok(res)
+            Ok(res)
+        })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_contract_info")]
