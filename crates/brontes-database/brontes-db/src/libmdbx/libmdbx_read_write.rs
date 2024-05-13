@@ -98,7 +98,6 @@ pub struct LibmdbxReadWriter {
     tx:      UnboundedSender<WriterMessage>,
     metrics: Option<LibmdbxMetrics>,
 
-    // test
     address_meta:
         std::sync::Mutex<LruMap<Address, AddressMetadata, ByMemoryUsage, ahash::RandomState>>,
     searcher_eoa:

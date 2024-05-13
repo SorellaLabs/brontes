@@ -122,7 +122,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         if !self.collector.is_collecting_state()
             && self.collector.should_process_next_block()
             && self.current_block != self.end_block
-            && self.insert_futures.len() < 6
+            && self.insert_futures.len() < 3
         {
             cx.waker().wake_by_ref();
             let block = self.current_block;
