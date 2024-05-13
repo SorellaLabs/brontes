@@ -6,7 +6,6 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use super::{
     cex_trades::CexTradeMap,
@@ -38,7 +37,7 @@ impl Display for ExchangePrice {
 }
 
 pub type MakerTaker = (ExchangePrice, ExchangePrice);
-type FoldVWAM = FastHashMap<Address, Vec<MakerTakerWithVolumeFilled>>;
+// type FoldVWAM = FastHashMap<Address, Vec<MakerTakerWithVolumeFilled>>;
 
 impl CexTradeMap {
     // Calculates VWAPs for the given pair across all provided exchanges - this
@@ -142,20 +141,20 @@ impl CexTradeMap {
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
-        let fold_fn = |(mut pair0_vwam, mut pair1_vwam): (FoldVWAM, FoldVWAM), (iter_0, iter_1)| {
-            for (k, v) in iter_0 {
-                pair0_vwam.entry(k).or_insert(vec![]).extend(v);
-            }
-            for (k, v) in iter_1 {
-                pair1_vwam.entry(k).or_insert(vec![]).extend(v);
-            }
-
-            (pair0_vwam, pair1_vwam)
-        };
+        // let fold_fn = |(mut pair0_vwam, mut pair1_vwam): (FoldVWAM, FoldVWAM),
+        // (iter_0, iter_1)| {     for (k, v) in iter_0 {
+        //         pair0_vwam.entry(k).or_insert(vec![]).extend(v);
+        //     }
+        //     for (k, v) in iter_1 {
+        //         pair1_vwam.entry(k).or_insert(vec![]).extend(v);
+        //     }
+        //
+        //     (pair0_vwam, pair1_vwam)
+        // };
 
         let (pair0_vwams, pair1_vwams) = self
             .calculate_intermediary_addresses(exchanges, pair)
-            .into_par_iter()
+            .into_iter()
             .filter_map(|intermediary| {
                 // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.0, intermediary);
@@ -197,14 +196,13 @@ impl CexTradeMap {
                 ))
             })
             .fold(
-                || (FastHashMap::default(), FastHashMap::default()),
+                (FastHashMap::default(), FastHashMap::default()),
                 |(mut pair0_vwam, mut pair1_vwam), ((iter0, prices0), (iter1, prices1))| {
                     pair0_vwam.entry(iter0).or_insert(vec![]).push(prices0);
                     pair1_vwam.entry(iter1).or_insert(vec![]).push(prices1);
                     (pair0_vwam, pair1_vwam)
                 },
-            )
-            .reduce(|| (FastHashMap::default(), FastHashMap::default()), fold_fn);
+            );
 
         // calculates best possible mult cross pair price
         calculate_multi_cross_pair(pair0_vwams, pair1_vwams, volume)
@@ -547,7 +545,7 @@ fn calculate_multi_cross_pair(
 
 // TODO: Potentially collect all sets from 100% to 120% then select best price
 fn _closest<'a>(
-    iter: impl ParallelIterator<Item = Vec<&'a CexTradePtr<'a>>>,
+    iter: impl Iterator<Item = Vec<&'a CexTradePtr<'a>>>,
     vol: &Rational,
 ) -> Option<Vec<&'a CexTradePtr<'a>>> {
     // sort from lowest to highest volume returning the first
