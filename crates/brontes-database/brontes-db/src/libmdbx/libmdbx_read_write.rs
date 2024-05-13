@@ -106,12 +106,15 @@ pub struct ReadWriteCache {
     pub address_meta: std::sync::Mutex<
         LruMap<Address, Option<AddressMetadata>, ByMemoryUsage, ahash::RandomState>,
     >,
-    pub searcher_eoa:
-        parking_lot::Mutex<LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>>,
-    pub searcher_contract:
-        parking_lot::Mutex<LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>>,
-    pub protocol_info:
-        parking_lot::Mutex<LruMap<Address, Option<ProtocolInfo>, ByMemoryUsage, ahash::RandomState>>,
+    pub searcher_eoa: parking_lot::Mutex<
+        LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>,
+    >,
+    pub searcher_contract: parking_lot::Mutex<
+        LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>,
+    >,
+    pub protocol_info: parking_lot::Mutex<
+        LruMap<Address, Option<ProtocolInfo>, ByMemoryUsage, ahash::RandomState>,
+    >,
     pub token_info:
         parking_lot::Mutex<LruMap<Address, Option<TokenInfo>, ByMemoryUsage, ahash::RandomState>>,
 }
@@ -414,7 +417,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"protocol_info")]
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         self.db.view_db(|tx| {
-            let mut lock = self.cache.protocol_info.lock().unwrap();
+            let mut lock = self.cache.protocol_info.lock();
             match lock.get(&address) {
                 Some(Some(e)) => return Ok(e.clone()),
                 Some(None) => {
@@ -501,7 +504,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
         self.db.view_db(|tx| {
-            let mut lock = self.cache.token_info.lock().unwrap();
+            let mut lock = self.cache.token_info.lock();
             match lock.get(&address) {
                 Some(Some(e)) => return Ok(TokenInfoWithAddress { inner: e.clone(), address }),
                 Some(None) => {
@@ -525,7 +528,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
         self.db.view_db(|tx| {
             let mut res = FastHashMap::default();
-            let mut lock = self.cache.searcher_eoa.lock().unwrap();
+            let mut lock = self.cache.searcher_eoa.lock();
             for eoa in searcher_eoa {
                 match lock.get(&eoa) {
                     Some(Some(val)) => {
@@ -553,7 +556,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        let mut lock = self.cache.searcher_eoa.lock().unwrap();
+        let mut lock = self.cache.searcher_eoa.lock();
         match lock.get(&searcher_eoa) {
             Some(Some(e)) => return Ok(Some(e.clone())),
             Some(None) => return Ok(None),
@@ -576,7 +579,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
         self.db.view_db(|tx| {
             let mut res = FastHashMap::default();
-            let mut lock = self.cache.searcher_contract.lock().unwrap();
+            let mut lock = self.cache.searcher_contract.lock();
 
             for eoa in searcher {
                 match lock.get(&eoa) {
@@ -605,7 +608,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        let mut lock = self.cache.searcher_contract.lock().unwrap();
+        let mut lock = self.cache.searcher_contract.lock();
         match lock.get(&searcher_contract) {
             Some(Some(e)) => return Ok(Some(e.clone())),
             Some(None) => return Ok(None),
@@ -881,11 +884,11 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
-        let mut lock = self.cache.searcher_eoa.lock().unwrap();
+        let mut lock = self.cache.searcher_eoa.lock();
         lock.insert(eoa_address, Some(eoa_info.clone()));
 
         if let (Some(addr), Some(info)) = (contract_address, &contract_info) {
-            let mut lock = self.cache.searcher_contract.lock().unwrap();
+            let mut lock = self.cache.searcher_contract.lock();
             lock.insert(addr, Some(info.clone()));
         }
 
@@ -902,7 +905,7 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let mut lock = self.cache.searcher_eoa.lock().unwrap();
+        let mut lock = self.cache.searcher_eoa.lock();
         lock.insert(searcher_eoa, Some(searcher_info.clone()));
 
         Ok(self
@@ -915,7 +918,7 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let mut lock = self.cache.searcher_contract.lock().unwrap();
+        let mut lock = self.cache.searcher_contract.lock();
         lock.insert(searcher_contract, Some(searcher_info.clone()));
 
         Ok(self
@@ -964,7 +967,7 @@ impl DBWriter for LibmdbxReadWriter {
         symbol: String,
     ) -> eyre::Result<()> {
         let token_info = TokenInfo::new(decimals, symbol.clone());
-        let mut lock = self.cache.token_info.lock().unwrap();
+        let mut lock = self.cache.token_info.lock();
         lock.insert(address, Some(token_info));
 
         Ok(self
@@ -993,7 +996,7 @@ impl DBWriter for LibmdbxReadWriter {
             curve_lp_token,
         };
 
-        let mut lock = self.cache.protocol_info.lock().unwrap();
+        let mut lock = self.cache.protocol_info.lock();
         lock.insert(address, Some(details));
 
         Ok(self.tx.send(WriterMessage::Pool {
