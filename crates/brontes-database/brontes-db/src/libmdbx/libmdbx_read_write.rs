@@ -695,6 +695,37 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_address_metadatas")]
+    fn try_fetch_address_metadatas(
+        &self,
+        addresses: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, AddressMetadata>> {
+        self.db.view_db(|tx| {
+            let mut res = FastHashMap::default();
+            let mut lock = self.cache.address_meta.lock().unwrap();
+
+            for eoa in addresses {
+                match lock.get(&eoa) {
+                    Some(Some(val)) => {
+                        res.insert(eoa, val.clone());
+                    }
+                    Some(None) => continue,
+                    None => {
+                        let next = tx
+                            .get::<AddressMeta>(eoa)
+                            .map_err(ErrReport::from)
+                            .inspect(|data| {
+                                lock.get_or_insert(eoa, || data.clone());
+                            })?;
+                        let Some(next) = next else { continue };
+                        res.insert(eoa, next);
+                    }
+                }
+            }
+            Ok(res)
+        })
+    }
+
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_address_metadata")]
     fn try_fetch_address_metadata(
         &self,

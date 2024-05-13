@@ -297,6 +297,13 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.try_fetch_address_metadata(address)
     }
 
+    fn try_fetch_address_metadatas(
+        &self,
+        address: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, AddressMetadata>> {
+        self.inner.try_fetch_address_metadatas(address)
+    }
+
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
         self.inner.fetch_all_address_metadata()
     }
@@ -565,6 +572,13 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
         self.inner.try_fetch_address_metadata(address)
+    }
+
+    fn try_fetch_address_metadatas(
+        &self,
+        address: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, AddressMetadata>> {
+        self.inner.try_fetch_address_metadatas(address)
     }
 
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {

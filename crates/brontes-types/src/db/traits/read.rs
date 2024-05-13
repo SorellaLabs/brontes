@@ -46,10 +46,10 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
             .collect())
     }
 
-    // fn try_fetch_address_metadatas(
-    //     &self,
-    //     addresses: Vec<Address>,
-    // ) -> FastHashMap<Address, AddressMetadata>;
+    fn try_fetch_address_metadatas(
+        &self,
+        addresses: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, AddressMetadata>>;
 
     fn fetch_all_searcher_info(&self) -> eyre::Result<AllSearcherInfo> {
         let eoa_info = self.fetch_all_searcher_eoa_info()?;
