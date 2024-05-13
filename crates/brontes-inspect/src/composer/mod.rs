@@ -83,9 +83,6 @@ fn run_inspectors(
     let mut possible_mev_txes =
         DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree.clone());
 
-    // Remove the classified mev txes from the possibly missed tx list
-    let start = Instant::now();
-
     let results = orchestra
         .par_iter()
         .flat_map(|inspector| {
@@ -94,11 +91,6 @@ fn run_inspectors(
             span.in_scope(|| inspector.process_tree(tree.clone(), metadata.clone()))
         })
         .collect::<Vec<_>>();
-    let end = start.elapsed().as_secs();
-    if end > 10 {
-        let block = metadata.block_num();
-        tracing::error!(elapsed = end, %block, "all inspectors took more than 10 seconds");
-    }
 
     results.iter().for_each(|bundle| {
         bundle
