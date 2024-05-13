@@ -21,8 +21,7 @@ use brontes_types::{
     ActionIter, FastHashMap, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use colored::Colorize;
-use itertools::multizip;
-use itertools::Itertools;
+use itertools::{multizip, Itertools};
 use malachite::{
     num::basic::traits::{One, Two, Zero},
     Rational,
