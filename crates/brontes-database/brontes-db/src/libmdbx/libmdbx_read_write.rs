@@ -107,13 +107,13 @@ pub struct ReadWriteCache {
         LruMap<Address, Option<AddressMetadata>, ByMemoryUsage, ahash::RandomState>,
     >,
     pub searcher_eoa:
-        std::sync::Mutex<LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>>,
+        parking_lot::Mutex<LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>>,
     pub searcher_contract:
-        std::sync::Mutex<LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>>,
+        parking_lot::Mutex<LruMap<Address, Option<SearcherInfo>, ByMemoryUsage, ahash::RandomState>>,
     pub protocol_info:
-        std::sync::Mutex<LruMap<Address, Option<ProtocolInfo>, ByMemoryUsage, ahash::RandomState>>,
+        parking_lot::Mutex<LruMap<Address, Option<ProtocolInfo>, ByMemoryUsage, ahash::RandomState>>,
     pub token_info:
-        std::sync::Mutex<LruMap<Address, Option<TokenInfo>, ByMemoryUsage, ahash::RandomState>>,
+        parking_lot::Mutex<LruMap<Address, Option<TokenInfo>, ByMemoryUsage, ahash::RandomState>>,
 }
 
 impl ReadWriteCache {
