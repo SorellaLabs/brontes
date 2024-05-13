@@ -34,7 +34,7 @@ use crate::{
 };
 
 // how often we will append data
-const CLEAR_AM: usize = 100;
+const CLEAR_AM: usize = 1000;
 
 type InsetQueue = FastHashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>>;
 
@@ -309,8 +309,7 @@ impl LibmdbxWriter {
                     entry.push((key.to_vec(), value));
                 });
 
-            // assume 150 entries per block
-            if entry.len() > CLEAR_AM * 150 {
+            if entry.len() > CLEAR_AM {
                 let data = std::mem::take(entry);
                 self.insert_batched_data::<DexPrice>(data)?;
             }
@@ -387,7 +386,8 @@ impl LibmdbxWriter {
         let entry = self.insert_queue.entry(Tables::TxTraces).or_default();
         entry.push((key.to_vec(), value));
 
-        if entry.len() > CLEAR_AM {
+        // fat table
+        if entry.len() > 5 {
             let data = std::mem::take(entry);
             self.insert_batched_data::<TxTraces>(data)?;
         }
@@ -422,7 +422,7 @@ impl LibmdbxWriter {
             .or_default();
         entry.push((key.to_vec(), value));
 
-        if entry.len() > CLEAR_AM * 300 {
+        if entry.len() > CLEAR_AM {
             let data = std::mem::take(entry);
             self.insert_batched_data::<InitializedState>(data)?;
         }
