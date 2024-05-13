@@ -63,10 +63,9 @@ impl<V: NormalizedAction> Root<V> {
     //TODO: Filter out know entities from address metadata enum variant or contract
     // info struct
 
-    pub fn get_tx_info_batch<DB: LibmdbxReader>(
+    pub fn get_tx_info_batch(
         &self,
         block_number: u64,
-        database: &DB,
         eoa: &FastHashMap<Address, SearcherInfo>,
         contract: &FastHashMap<Address, SearcherInfo>,
         address_meta: &FastHashMap<Address, AddressMetadata>,
@@ -92,7 +91,7 @@ impl<V: NormalizedAction> Root<V> {
         )
     }
 
-    fn tx_info_internal<DB: LibmdbxReader>(
+    fn tx_info_internal(
         &self,
         block_number: u64,
         eoa: impl Fn(Address) -> eyre::Result<Option<SearcherInfo>>,

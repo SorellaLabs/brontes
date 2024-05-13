@@ -71,7 +71,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         roots
             .into_iter()
             .map(|root| {
-                root.get_tx_info_batch(self.header.number, database, &eoa, &contract)
+                root.get_tx_info_batch(self.header.number, &eoa, &contract, &address_meta)
                     .ok()
             })
             .collect()
