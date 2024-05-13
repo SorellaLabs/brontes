@@ -4,9 +4,20 @@
 - [Installation](./installation/installation.md)
 - [Run Brontes](./run/run_brontes.md)
 - [Architecture Overview](./architecture/intro.md)
+
   - [Block Tree](./architecture/tree.md)
-  - [Database](./architecture/database.md)
+  - [Database](./architecture/database/database.md)
+
+    - [Tables Schema](./architecture/database/tables_schema.md)
+    - [Pricing Tables](./architecture/database/schema/pricing.md)
+    - [Block Tables](./architecture/database/schema/block.md)
+    - [Metadata Tables](./architecture/database/schema/metadata.md)
+    - [Classification Tables](./architecture/database/schema/classification.md)
+    - [Mev Block Tables](./architecture/database/schema/mev_blocks.md)
+    - [Misc Tables](./architecture/database/schema/misc.md)
+
   - [Inspectors](./architecture/inspectors.md)
+
 - [Mev Inspectors Deep Dive](./mev_inspectors/intro.md)
 
   - [Cex-Dex](./mev_inspectors/cex_dex.md)

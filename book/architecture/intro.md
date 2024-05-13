@@ -22,6 +22,6 @@ The Range Executor and the Tip Inspector both handle blocks through the same seq
 
 2. **Tree Construction**: Constructs a [`BlockTree`](https://sorellalabs.github.io/brontes/docs/brontes_types/tree/struct.BlockTree.html) encapsulating each transaction in its own `TransactionTree`. Traces are classified into [`NormalizedActions`](https://sorellalabs.github.io/brontes/docs/brontes_types/normalized_actions/trait.NormalizedAction.html). See [Block Tree](tree.md) for more details.
 
-3. **Metadata Query**: In parallel to the tree construction, Brontes fetches the block metadata from the brontes [database](./database.md), composed of DEX pricing, CEX pricing, private transaction sets and more.
+3. **Metadata Query**: In parallel to the tree construction, Brontes fetches the block metadata from the brontes [database](./database/database.md), composed of DEX pricing, CEX pricing, private transaction sets and more.
 
 4. **Inspection**: Specialized [Inspectors](./inspectors.md) process the classified blocks and metadata to identify various forms of MEV. The results are collected & analyzed by the [`Composer`](https://sorellalabs.github.io/brontes/docs/brontes_inspect/composer/index.html) (a sort of master inspector) which composes & deduplicates the results and stores them in the local libmbx database.

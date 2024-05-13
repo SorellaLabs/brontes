@@ -126,7 +126,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
             && self.insert_futures.len() < 6
         {
             cx.waker().wake_by_ref();
-
             let block = self.current_block;
             let id = self.id;
             let metrics = self.global_metrics.clone();

@@ -143,7 +143,7 @@ pub trait ActionCollection: Sync + Send {
 }
 
 pub trait IntoAction: Debug + Send + Sync {
-    fn decode_trace_data<DB: LibmdbxReader + DBWriter>(
+    fn decode_call_trace<DB: LibmdbxReader + DBWriter>(
         &self,
         call_info: CallFrameInfo<'_>,
         block: u64,
@@ -153,7 +153,7 @@ pub trait IntoAction: Debug + Send + Sync {
 }
 
 pub trait FactoryDiscovery {
-    fn decode_new_pool<T: TracingProvider>(
+    fn decode_create_trace<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
         deployed_address: Address,

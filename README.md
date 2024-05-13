@@ -11,6 +11,7 @@
 **[Install](https://sorellalabs.github.io/brontes/installation/installation.html)**
 | [User Book](https://sorellalabs.github.io/brontes/intro.html)
 | [Crate Docs](https://sorellalabs.github.io/brontes/docs/brontes/index.html)
+| [Methodology](https://sorellalabs.github.io/brontes/mev_inspectors/intro.html)
 
 [tg-badge]: https://img.shields.io/endpoint?color=neon&logo=telegram&label=chat&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fparadigm%5Freth
 [tg-url]: https://t.me/sorella_brontes

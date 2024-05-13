@@ -25,7 +25,6 @@ pub struct AddressMetadata {
     #[serde(deserialize_with = "socials::deserialize")]
     #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
     #[redefined(same_fields)]
-    //TODO: Joe make option on table
     pub social_metadata: Socials,
 }
 

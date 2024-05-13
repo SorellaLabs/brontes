@@ -111,24 +111,3 @@ website_url = "https://app.1inch.io/"
 crunchbase = "https://www.crunchbase.com/organization/1inch-limited"
 linkedin = "https://www.linkedin.com/company/1inch"
 ```
-
-#### Classifier Configuration
-
-Classifier configurations are used when an automated discovery process isn't possible. They manually classify addresses to their corresponding classifiers, which helps in decoding contract calls:
-
-**Example of a classifier configuration:**
-
-```toml
-[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14"]
-init_block = 18979624
-
-[[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14".token_info]]
-address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-decimals = 6
-symbol = "USDC"
-
-[[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14".token_info]]
-address = "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
-decimals = 8
-symbol = "WBTC"
-```
