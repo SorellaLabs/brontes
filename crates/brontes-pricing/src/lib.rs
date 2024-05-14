@@ -20,9 +20,10 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required
 
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
-    UnboundedYapperReceiver,
+    BrontesTaskExecutor, UnboundedYapperReceiver,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -54,7 +55,7 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, FastHashSet,
 };
-use futures::{Stream, StreamExt};
+use futures::Stream;
 pub use graphs::{
     AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,
     VerificationResults,
@@ -98,6 +99,7 @@ const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
 /// 5) Processes and returns formatted data from the applied state transitions
 /// before proceeding to the next block.
 pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
+    range_id:        usize,
     quote_asset:     Address,
     current_block:   u64,
     completed_block: u64,
@@ -131,10 +133,13 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     overlap_update:  Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
     skip_pricing:    VecDeque<u64>,
+    /// metrics
+    metrics:         Option<DexPricingMetrics>,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
     pub fn new(
+        range_id: usize,
         finished: Arc<AtomicBool>,
         quote_asset: Address,
         graph_manager: GraphManager<DB>,
@@ -143,8 +148,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         current_block: u64,
         new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
         needs_more_data: Arc<AtomicBool>,
+        metrics: Option<DexPricingMetrics>,
+        executor: BrontesTaskExecutor,
     ) -> Self {
         Self {
+            range_id,
             finished,
             failed_pairs: FastHashMap::default(),
             new_graph_pairs,
@@ -153,12 +161,13 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             update_rx,
             graph_manager,
             dex_quotes: FastHashMap::default(),
-            lazy_loader: LazyExchangeLoader::new(provider),
+            lazy_loader: LazyExchangeLoader::new(provider, executor),
             current_block,
             completed_block: current_block,
             overlap_update: None,
             skip_pricing: VecDeque::new(),
             needs_more_data,
+            metrics,
         }
     }
 
@@ -200,6 +209,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// Essentially, it ensures the graph manager remains synchronized with the
     /// latest block data, maintaining the integrity and accuracy of
     /// the decentralized exchange pricing mechanism.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "on_pool_updates")]
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
             return
@@ -279,6 +289,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         );
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "pool_updates_no_pricing")]
     fn on_pool_update_no_pricing(&mut self, updates: Vec<PoolUpdate>) {
         if let Some(msg) = updates.first() {
             if msg.block > self.current_block {
@@ -568,48 +579,66 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// pairs. In case of a load error, it handles the error by calling
     /// `on_state_load_error`.
 
-    fn on_pool_resolve(&mut self, state: LazyResult) {
-        let LazyResult { block, state, load_result, dependent_count } = state;
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "pool_resolve")]
+    fn on_pool_resolve(&mut self, state: Vec<LazyResult>) {
+        let failed_queries = state
+            .into_iter()
+            .filter_map(|state| {
+                let LazyResult { block, state, load_result, dependent_count } = state;
 
-        if let Some(state) = state {
-            let addr = state.address();
-            let state = StateWithDependencies { state, dependents: dependent_count };
+                if let Some(state) = state {
+                    let addr = state.address();
+                    let state = StateWithDependencies { state, dependents: dependent_count };
 
-            self.graph_manager.new_state(addr, state);
+                    self.graph_manager.new_state(addr, state);
 
-            // pool was initialized this block. lets set the override to avoid invalid state
-            if !load_result.is_ok() {
-                self.buffer.overrides.entry(block).or_default().insert(addr);
-            }
-        } else if let LoadResult::Err { block, pool_address, pool_pair, protocol, deps, .. } =
-            load_result
-        {
-            self.new_graph_pairs
-                .insert(pool_address, (protocol, pool_pair));
-            self.graph_manager
-                .remove_pair_graph_address(pool_pair, pool_address);
-
-            let failed_queries = deps
-                .into_iter()
-                .filter(|&pair| {
-                    self.graph_manager
-                        .pool_dep_failure(&pair, pool_address, pool_pair)
-                })
-                .map(|pair| {
-                    self.lazy_loader.full_failure(pair);
-                    tracing::debug!(?pair, "failed state query dep");
-                    RequeryPairs {
-                        pair,
-                        extends_pair: None,
-                        block,
-                        frayed_ends: Default::default(),
-                        ignore_state: Default::default(),
+                    // pool was initialized this block. lets set the override to avoid invalid state
+                    if !load_result.is_ok() {
+                        self.buffer.overrides.entry(block).or_default().insert(addr);
                     }
-                })
-                .collect_vec();
 
-            self.requery_bad_state_par(failed_queries, false)
-        }
+                    return None
+                } else if let LoadResult::Err {
+                    block,
+                    pool_address,
+                    pool_pair,
+                    protocol,
+                    deps,
+                    ..
+                } = load_result
+                {
+                    self.new_graph_pairs
+                        .insert(pool_address, (protocol, pool_pair));
+                    self.graph_manager
+                        .remove_pair_graph_address(pool_pair, pool_address);
+
+                    let failed_queries = deps
+                        .into_iter()
+                        .filter(|&pair| {
+                            self.graph_manager
+                                .pool_dep_failure(&pair, pool_address, pool_pair)
+                        })
+                        .map(|pair| {
+                            self.lazy_loader.full_failure(pair);
+                            tracing::debug!(?pair, "failed state query dep");
+                            RequeryPairs {
+                                pair,
+                                extends_pair: None,
+                                block,
+                                frayed_ends: Default::default(),
+                                ignore_state: Default::default(),
+                            }
+                        })
+                        .collect_vec();
+
+                    return Some(failed_queries)
+                }
+                None
+            })
+            .flatten()
+            .collect_vec();
+
+        self.requery_bad_state_par(failed_queries, false);
     }
 
     /// Attempts to verify subgraphs for a given set of pairs and handles the
@@ -623,6 +652,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// the failed pair for requery. After processing the verification
     /// results, it requeues any pairs that need to be reverified due to failed
     /// verification.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_verify_subgraph")]
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>) {
         self.graph_manager
             .subgraph_verifier
@@ -698,6 +728,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// requerying if necessary. 3. In cases where no valid paths are found
     /// after requery, it escalates the verification by analyzing alternative
     /// paths or pairs.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "bad_state_requery")]
     fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>, frayed_ext: bool) {
         if pairs.is_empty() {
             return
@@ -757,6 +788,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// of the low liquidity nodes and generate all unique paths through each
     /// and then add it to the subgraph. And then allow for these low liquidity
     /// nodes as they are the only nodes for the given pair.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "rundown")]
     fn par_rundown(&mut self, pairs: Vec<(PairWithFirstPoolHop, u64)>) {
         if pairs.is_empty() {
             return
@@ -867,6 +899,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     /// The function returns a boolean indicating whether any lazy loading was
     /// triggered during its execution. This function ensures that all necessary
     /// pool states are loaded and ready for accurate subgraph verification.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "add subgraph")]
     fn add_subgraph(
         &mut self,
         pair: PairWithFirstPoolHop,
@@ -911,6 +944,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
                     pool_info.pool_addr,
                     block,
                     pool_info.dex_type,
+                    self.metrics.clone(),
                 );
                 triggered = true;
             } else {
@@ -925,6 +959,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
 
     /// if the state loader isn't loading anything and we still have pending
     /// pairs,
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_flush_out_pending_verification")]
     fn try_flush_out_pending_verification(&mut self) {
         if !self.lazy_loader.can_progress(&self.completed_block) {
             return
@@ -955,16 +990,26 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             && self.completed_block < self.current_block
     }
 
-    /// The price can pre-process up to 40 blocks in the future
-    fn process_future_blocks(&self) {
-        if self.completed_block + 40 > self.current_block {
+    fn process_future_blocks(&self) -> bool {
+        if self.completed_block + 6 > self.current_block {
+            self.metrics
+                .as_ref()
+                .inspect(|m| m.needs_more_data(self.range_id, true));
             self.needs_more_data.store(true, SeqCst);
+
+            false
         } else {
             self.needs_more_data.store(false, SeqCst);
+            self.metrics
+                .as_ref()
+                .inspect(|m| m.needs_more_data(self.range_id, false));
+
+            true
         }
     }
 
     /// Attempts to resolve the block & start processing the next block.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_resolve_block")]
     fn try_resolve_block(&mut self) -> Option<(u64, DexQuotes)> {
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
@@ -1010,6 +1055,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
+        self.metrics
+            .as_ref()
+            .inspect(|m| m.range_finished_block(self.range_id));
         self.should_return().then_some((block, res))
     }
 
@@ -1023,6 +1071,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             .front()
             .map(|f| f != &self.completed_block)
             .unwrap_or(true);
+
         self.completed_block += 1;
         res
     }
@@ -1092,6 +1141,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         })
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "on_close")]
     fn on_close(&mut self) -> Option<(u64, DexQuotes)> {
         if self.completed_block > self.current_block
             || !self
@@ -1136,17 +1186,27 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
         self.graph_manager
             .prune_dead_subgraphs(self.completed_block);
 
+        self.metrics
+            .as_ref()
+            .inspect(|m| m.range_finished_block(self.range_id));
+
         self.should_return().then_some((block, res))
     }
 
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "poll_state_processing")]
     fn poll_state_processing(
         &mut self,
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
-        // because results tend to stack up, we always want to progress them first
-        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-            self.on_pool_resolve(state)
+        let mut buf = vec![];
+        while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next(cx) {
+            buf.push(state);
         }
+
+        if !buf.is_empty() {
+            self.on_pool_resolve(buf);
+        }
+
         let pairs = self.lazy_loader.pairs_to_verify();
         if !pairs.is_empty() {
             execute_on!(target = pricing, self.try_verify_subgraph(pairs));
@@ -1165,6 +1225,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
 {
     type Item = (u64, DexQuotes);
 
+    #[brontes_macros::metrics_call(ptr=metrics, poll_rate, self.range_id)]
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
@@ -1173,8 +1234,16 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             return new_prices
         }
 
+        // ensure clearing when finished
+        if self.finished.load(SeqCst) {
+            cx.waker().wake_by_ref();
+        }
+
+        // small budget as pretty heavy loop
+        let mut budget = 4;
         'outer: loop {
-            self.process_future_blocks();
+            // if we signal that we don't need more data, we cutoff the rx
+            let _cutoff = self.process_future_blocks();
 
             let mut block_updates = Vec::new();
             loop {
@@ -1210,11 +1279,16 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                                 block_updates.push(update);
                             } else {
                                 self.overlap_update = Some(update);
+                                cx.waker().wake_by_ref();
                                 break
                             }
                         }
                     }
-                    Poll::Ready(None) | Poll::Pending => {
+                    Poll::Ready(None) => {
+                        cx.waker().wake_by_ref();
+                        break
+                    }
+                    Poll::Pending => {
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
                             && self
@@ -1227,11 +1301,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                         }
                         break
                     }
-                }
-
-                // we poll here to continuously progress state fetches as they are slow
-                if let Poll::Ready(Some(state)) = self.lazy_loader.poll_next_unpin(cx) {
-                    self.on_pool_resolve(state);
                 }
             }
 
@@ -1250,13 +1319,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             } else {
                 execute_on!(target = pricing, self.on_pool_updates(block_updates));
             }
+
+            budget -= 1;
+            if budget == 0 {
+                break 'outer
+            }
         }
 
-        if let Some(new_prices) = self.poll_state_processing(cx) {
-            return new_prices
-        }
-
-        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }

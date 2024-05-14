@@ -11,6 +11,7 @@ harness = false
 # brontes
 brontes-types.workspace = true
 brontes-database.workspace = true
+brontes-metrics.workspace = true
 
 # database
 clickhouse.workspace = true

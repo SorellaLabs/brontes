@@ -4,10 +4,7 @@ use brontes_types::{
     normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
 
-use crate::{
-    BalancerV1::{swapExactAmountInReturn, swapExactAmountOutReturn},
-    NormalizedNewPool,
-};
+use crate::NormalizedNewPool;
 
 action_impl!(
     Protocol::BalancerV1,

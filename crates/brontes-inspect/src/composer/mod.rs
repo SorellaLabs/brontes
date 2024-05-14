@@ -83,7 +83,6 @@ fn run_inspectors(
     let mut possible_mev_txes =
         DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree.clone());
 
-    // Remove the classified mev txes from the possibly missed tx list
     let results = orchestra
         .par_iter()
         .flat_map(|inspector| {

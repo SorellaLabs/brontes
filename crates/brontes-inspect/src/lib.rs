@@ -74,6 +74,7 @@
 pub mod composer;
 pub mod discovery;
 pub mod mev_inspectors;
+use brontes_metrics::inspectors::OutlierMetrics;
 use mev_inspectors::searcher_activity::SearcherActivity;
 pub use mev_inspectors::*;
 
@@ -129,27 +130,33 @@ impl Inspectors {
         quote_token: Address,
         db: &'static DB,
         cex_exchanges: &[CexExchange],
+        metrics: Option<OutlierMetrics>,
     ) -> DynMevInspector {
         match &self {
             Self::AtomicArb => {
-                static_object(AtomicArbInspector::new(quote_token, db)) as DynMevInspector
+                static_object(AtomicArbInspector::new(quote_token, db, metrics)) as DynMevInspector
             }
-            Self::Jit => static_object(JitInspector::new(quote_token, db)) as DynMevInspector,
+            Self::Jit => {
+                static_object(JitInspector::new(quote_token, db, metrics)) as DynMevInspector
+            }
             #[cfg(not(feature = "cex-dex-markout"))]
-            Self::CexDex => static_object(CexDexInspector::new(quote_token, db, cex_exchanges))
-                as DynMevInspector,
+            Self::CexDex => {
+                static_object(CexDexInspector::new(quote_token, db, cex_exchanges, metrics))
+                    as DynMevInspector
+            }
             Self::Sandwich => {
-                static_object(SandwichInspector::new(quote_token, db)) as DynMevInspector
+                static_object(SandwichInspector::new(quote_token, db, metrics)) as DynMevInspector
             }
             Self::Liquidations => {
-                static_object(LiquidationInspector::new(quote_token, db)) as DynMevInspector
+                static_object(LiquidationInspector::new(quote_token, db, metrics))
+                    as DynMevInspector
             }
             Self::SearcherActivity => {
-                static_object(SearcherActivity::new(quote_token, db)) as DynMevInspector
+                static_object(SearcherActivity::new(quote_token, db, metrics)) as DynMevInspector
             }
             #[cfg(feature = "cex-dex-markout")]
             Self::CexDexMarkout => {
-                static_object(CexDexMarkoutInspector::new(quote_token, db, cex_exchanges))
+                static_object(CexDexMarkoutInspector::new(quote_token, db, cex_exchanges, metrics))
                     as DynMevInspector
             }
         }

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
@@ -8,9 +9,8 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::Itertools;
+use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::{b256, Address};
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -20,8 +20,8 @@ pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db) }
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
 
@@ -33,22 +33,40 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
-        let liq_txs = tree
-            .clone()
-            .collect_all(
-                TreeSearchBuilder::default()
-                    .with_actions([Action::is_swap, Action::is_liquidation]),
-            )
-            .collect_vec();
+        self.utils
+            .get_metrics()
+            .map(|m| {
+                m.run_inspector(MevType::Liquidation, || {
+                    let (tx, liq): (Vec<_>, Vec<_>) = tree
+                        .clone()
+                        .collect_all(
+                            TreeSearchBuilder::default()
+                                .with_actions([Action::is_swap, Action::is_liquidation]),
+                        )
+                        .unzip();
+                    let tx_info = tree.get_tx_info_batch(&tx, self.utils.db);
 
-        liq_txs
-            .into_par_iter()
-            .filter_map(|(tx_hash, liq)| {
-                let info = tree.get_tx_info(tx_hash, self.utils.db)?;
-
-                self.calculate_liquidation(info, metadata.clone(), liq)
+                    multizip((liq, tx_info))
+                        .filter_map(|(liq, info)| {
+                            let info = info?;
+                            self.calculate_liquidation(info, metadata.clone(), liq)
+                        })
+                        .collect::<Vec<_>>()
+                })
             })
-            .collect::<Vec<_>>()
+            .unwrap_or_else(|| {
+                tree.clone()
+                    .collect_all(
+                        TreeSearchBuilder::default()
+                            .with_actions([Action::is_swap, Action::is_liquidation]),
+                    )
+                    .filter_map(|(tx_hash, liq)| {
+                        let info = tree.get_tx_info(tx_hash, self.utils.db)?;
+
+                        self.calculate_liquidation(info, metadata.clone(), liq)
+                    })
+                    .collect::<Vec<_>>()
+            })
     }
 }
 

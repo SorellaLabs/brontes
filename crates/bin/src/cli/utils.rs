@@ -19,6 +19,7 @@ use brontes_database::clickhouse::ReadOnlyMiddleware;
 use brontes_database::clickhouse::{dbms::BrontesClickhouseTableDataTypes, ClickhouseBuffered};
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
+use brontes_metrics::inspectors::OutlierMetrics;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
@@ -36,20 +37,20 @@ use tracing::info;
 
 #[cfg(not(any(feature = "local-clickhouse", feature = "local-no-inserts")))]
 pub fn load_database(
-    _executor: &BrontesTaskExecutor,
+    executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<LibmdbxReadWriter> {
-    LibmdbxReadWriter::init_db(db_endpoint, None)
+    LibmdbxReadWriter::init_db(db_endpoint, None, executor)
 }
 
 /// This version is used when `local-clickhouse` is enabled but
 /// `local-no-inserts` is not.
 #[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
 pub fn load_database(
-    _executor: &BrontesTaskExecutor,
+    executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
     let clickhouse = Clickhouse::default();
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
 }
@@ -61,7 +62,7 @@ pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx);
@@ -73,15 +74,19 @@ pub fn load_database(
 
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 pub fn load_read_only_database(
+    executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None)?;
+    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
     let clickhouse = Clickhouse::default();
     Ok(ReadOnlyMiddleware::new(clickhouse, inner))
 }
 
-pub fn load_libmdbx(db_endpoint: String) -> eyre::Result<LibmdbxReadWriter> {
-    LibmdbxReadWriter::init_db(db_endpoint, None)
+pub fn load_libmdbx(
+    executor: &BrontesTaskExecutor,
+    db_endpoint: String,
+) -> eyre::Result<LibmdbxReadWriter> {
+    LibmdbxReadWriter::init_db(db_endpoint, None, executor)
 }
 
 #[cfg(feature = "local-clickhouse")]
@@ -138,13 +143,15 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     db: &'static DB,
     inspectors: Option<Vec<Inspectors>>,
     cex_exchanges: Vec<CexExchange>,
+    metrics: bool,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
     let mut res = Vec::new();
+    let metrics = metrics.then(OutlierMetrics::new);
     for inspector in inspectors
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
     {
-        res.push(inspector.init_mev_inspector(quote_token, db, &cex_exchanges));
+        res.push(inspector.init_mev_inspector(quote_token, db, &cex_exchanges, metrics.clone()));
     }
 
     &*Box::leak(res.into_boxed_slice())
@@ -162,12 +169,24 @@ fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
+    use brontes_database::clickhouse::ClickhouseConfig;
     use futures::pin_mut;
+
+    let _ = dotenv::dotenv();
+    let url = format!(
+        "{}:{}",
+        std::env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
+        std::env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
+    );
+    let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
+    let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
+
+    let config = ClickhouseConfig::new(user, pass, url, true, None);
 
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
         |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), clickhouse_config(), 100);
+            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), clickhouse_config(), 3000, 300);
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
@@ -188,4 +207,5 @@ fn spawn_db_writer_thread(
             drop(graceful_guard);
         },
     );
+    tracing::info!("started writer");
 }

@@ -1,10 +1,14 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use std::{fmt::Debug, sync::Arc};
+use std::{
+    fmt::Debug,
+    sync::{Arc, OnceLock},
+};
 
 use alloy_primitives::{Address, Bytes};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
+use brontes_metrics::classifier::ClassificationMetrics;
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, structured_trace::CallFrameInfo,
@@ -14,6 +18,7 @@ use futures::Future;
 
 pub mod tree_builder;
 pub use tree_builder::Classifier;
+pub mod discovery_only;
 pub mod multi_frame_classification;
 
 #[cfg(feature = "tests")]
@@ -124,6 +129,8 @@ sol! {
     function decimals() public view returns (uint8);
     function totalSupply() public view returns (uint256);
 }
+
+pub static CLASSIFICATION_METRICS: OnceLock<ClassificationMetrics> = OnceLock::new();
 
 pub trait ActionCollection: Sync + Send {
     fn dispatch<DB: LibmdbxReader + DBWriter>(

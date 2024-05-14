@@ -6,6 +6,7 @@ mod subgraph;
 mod yens;
 use std::time::Duration;
 
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{FastHashMap, FastHashSet};
 mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
@@ -72,15 +73,15 @@ pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
 impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
     pub fn init_from_db_state(
         all_pool_data: FastHashMap<(Address, Protocol), Pair>,
-        sub_graph_registry: FastHashMap<Pair, (Pair, Pair, Option<Pair>, Vec<SubGraphEdge>)>,
         db: &'static DB,
+        metrics: Option<DexPricingMetrics>,
     ) -> Self {
         let graph = AllPairGraph::init_from_hash_map(all_pool_data);
-        let registry = SubGraphRegistry::new(sub_graph_registry);
+        let registry = SubGraphRegistry::new(metrics.clone());
         let subgraph_verifier = SubgraphVerifier::new();
 
         Self {
-            graph_state: StateTracker::new(),
+            graph_state: StateTracker::new(metrics),
             all_pair_graph: graph,
             sub_graph_registry: registry,
             db,

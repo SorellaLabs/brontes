@@ -5,8 +5,8 @@ use brontes_classifier::Classifier;
 use brontes_core::test_utils::*;
 use brontes_pricing::{types::DexPriceMsg, BrontesBatchPricer, GraphManager};
 use brontes_types::{
-    normalized_actions::Action, traits::TracingProvider, tree::BlockTree, FastHashMap,
-    UnboundedYapperReceiver,
+    normalized_actions::Action, traits::TracingProvider, tree::BlockTree, BrontesTaskManager,
+    FastHashMap, UnboundedYapperReceiver,
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
@@ -37,8 +37,7 @@ impl PricingTestUtils {
             .protocols_created_before(block)
             .map_err(|_| PricingTestError::LibmdbxError)?;
 
-        let pair_graph =
-            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.tracer.libmdbx);
+        let pair_graph = GraphManager::init_from_db_state(pairs, self.tracer.libmdbx, None);
 
         let created_pools = if let Some(end_block) = end_block {
             self.tracer
@@ -56,7 +55,9 @@ impl PricingTestUtils {
         } else {
             FastHashMap::default()
         };
+        let ex = BrontesTaskManager::current().executor();
         Ok(BrontesBatchPricer::new(
+            0,
             Arc::new(AtomicBool::new(false)),
             self.quote_address,
             pair_graph,
@@ -65,6 +66,8 @@ impl PricingTestUtils {
             block,
             created_pools,
             Arc::new(AtomicBool::new(false)),
+            None,
+            ex,
         ))
     }
 

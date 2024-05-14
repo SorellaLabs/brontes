@@ -1,6 +1,7 @@
 mod action_classifier;
 mod bench_struct_methods;
 mod discovery_classifier;
+mod function_metrics;
 mod libmdbx_test;
 mod transpose;
 
@@ -216,6 +217,17 @@ pub fn bench_time(attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn transposable(item: TokenStream) -> TokenStream {
     let i_struct = parse_macro_input!(item as DeriveInput);
     transpose::parse(i_struct)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+/// Simple utils for counters and gauges when it comes to tracking function
+/// metrics, NOTE: tracks call once function has returned; early returns won't
+/// be counted
+#[proc_macro_attribute]
+pub fn metrics_call(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(item as ItemFn);
+    function_metrics::parse(item, attr.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

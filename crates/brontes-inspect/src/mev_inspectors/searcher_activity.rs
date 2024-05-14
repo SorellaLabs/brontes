@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::dex::BlockPrice,
     mev::{Bundle, BundleData, MevType, SearcherTx},
@@ -8,9 +9,8 @@ use brontes_types::{
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
 };
-use itertools::Itertools;
+use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -20,8 +20,8 @@ pub struct SearcherActivity<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> SearcherActivity<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db) }
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
 
@@ -33,19 +33,34 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+        self.utils
+            .get_metrics()
+            .map(|m| {
+                m.run_inspector(MevType::SearcherTx, || {
+                    self.process_tree_inner(tree.clone(), metadata.clone())
+                })
+            })
+            .unwrap_or_else(|| self.process_tree_inner(tree, metadata))
+    }
+}
+impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
+    fn process_tree_inner(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<Bundle> {
         let search_args = TreeSearchBuilder::default()
             .with_actions([Action::is_transfer, Action::is_eth_transfer]);
 
-        let searcher_txs = tree.clone().collect_all(search_args).collect_vec();
+        let (hashes, transfers): (Vec<_>, Vec<_>) = tree.clone().collect_all(search_args).unzip();
+        let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);
 
-        searcher_txs
-            .into_par_iter()
-            .filter_map(|(tx_hash, transfers)| {
+        multizip((hashes, transfers, tx_info))
+            .filter_map(|(tx_hash, transfers, info)| {
                 if transfers.is_empty() {
                     return None
                 }
-
-                let info = tree.get_tx_info(tx_hash, self.utils.db)?;
+                let info = info?;
 
                 (info.searcher_eoa_info.is_some() || info.searcher_contract_info.is_some()).then(
                     || {

@@ -7,8 +7,6 @@ use brontes_types::{
     ToScaledRational,
 };
 
-use crate::SushiSwapV3::{burnReturn, collectReturn, mintReturn, swapReturn};
-
 action_impl!(
     Protocol::SushiSwapV3,
     crate::SushiSwapV3::swapCall,

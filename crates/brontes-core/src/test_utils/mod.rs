@@ -11,7 +11,7 @@ use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::metadata::Metadata, init_threadpools, structured_trace::TxTrace, traits::TracingProvider,
-    FastHashMap,
+    BrontesTaskManager, FastHashMap,
 };
 use futures::future::join_all;
 use indicatif::MultiProgress;
@@ -366,8 +366,12 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             init_tracing();
             let brontes_db_endpoint =
                 env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
+            let manager = BrontesTaskManager::new(handle.clone(), true);
+            let ex = manager.executor();
+            handle.spawn(manager);
+
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None).unwrap_or_else(|e| {
+                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None, &ex).unwrap_or_else(|e| {
                     panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
                 }),
             ));

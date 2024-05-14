@@ -4,8 +4,11 @@
 use std::{ffi::c_int, path::Path};
 mod env;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
+pub mod cache_middleware;
+pub use cache_middleware::*;
 
 pub mod cex_utils;
+pub mod libmdbx_writer;
 
 pub mod initialize;
 mod libmdbx_read_write;
@@ -37,6 +40,8 @@ pub mod utils;
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
+
+const GIGABYTE: u64 = 1024 * 1024 * 1024;
 
 #[derive(Debug)]
 pub struct Libmdbx(DatabaseEnv);
@@ -78,8 +83,8 @@ impl Libmdbx {
             mdbx_result(reth_mdbx_sys::mdbx_env_set_option(
                 ptr,
                 reth_mdbx_sys::MDBX_opt_sync_bytes,
-                // 10 gb
-                1_000_000_000u64 * 10,
+                // 2 gb
+                GIGABYTE * 2,
             ))
         })?;
 
@@ -156,10 +161,9 @@ impl Libmdbx {
         F: FnOnce(&CompressedLibmdbxTx<RO>) -> eyre::Result<R>,
     {
         let tx = self.ro_tx()?;
-
         let res = f(&tx);
-        tx.commit()?;
 
+        tx.commit()?;
         res
     }
 
