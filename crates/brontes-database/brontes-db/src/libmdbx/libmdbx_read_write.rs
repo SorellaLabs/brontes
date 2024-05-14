@@ -1073,7 +1073,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .metrics
                 .clone()
                 .cache_write::<(), ProtocolInfo>("protocol_info", || {
-                    let mut lock = cache.protocol_info.lock();
+                    let mut lock = &cache.protocol_info;
                     lock.insert(address, Some(details));
                 })
         });
