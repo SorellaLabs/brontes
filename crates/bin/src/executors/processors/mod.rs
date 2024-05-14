@@ -11,7 +11,7 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
 
     fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &DB,
-        inspectors: &[&dyn Inspector<Result = Self::InspectType>],
+        inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
         tree: BlockTree<Action>,
         metadata: Metadata,
     ) -> impl Future<Output = ()> + Send;

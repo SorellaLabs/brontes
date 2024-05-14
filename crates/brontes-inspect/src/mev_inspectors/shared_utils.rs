@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 #[cfg(not(feature = "pretty-print"))]
 use brontes_types::db::token_info::TokenInfoWithAddress;
 use brontes_types::{
@@ -20,25 +21,28 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use reth_primitives::TxHash;
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
-    #[allow(dead_code)]
     pub(crate) db:    &'db DB,
+    pub metrics:      Option<OutlierMetrics>,
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
-    pub fn new(quote_address: Address, db: &'db DB) -> Self {
-        SharedInspectorUtils { quote: quote_address, db }
+    pub fn new(quote_address: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
+        SharedInspectorUtils { quote: quote_address, db, metrics }
     }
 }
 type TokenDeltas = FastHashMap<Address, Rational>;
 type AddressDeltas = FastHashMap<Address, TokenDeltas>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
+    pub fn get_metrics(&self) -> Option<&OutlierMetrics> {
+        self.metrics.as_ref()
+    }
+
     /// Calculates the USD value of the token balance deltas by address
     pub fn usd_delta_by_address(
         &self,
@@ -332,6 +336,12 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             })
             .sum::<f64>();
 
+        if profit_usd > bribe_usd * 100.0 {
+            self.metrics
+                .as_ref()
+                .inspect(|m| m.inspector_100x_profit(mev_type));
+        }
+
         BundleHeader {
             block_number: metadata.block_num,
             tx_index: info.tx_index,
@@ -407,8 +417,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         pricing: bool,
     ) -> Vec<TransactionAccounting> {
         bundle_txes
-            .into_par_iter()
-            .zip(bundle_deltas.into_par_iter())
+            .into_iter()
+            .zip(bundle_deltas)
             .map(|(tx_hash, deltas)| {
                 let address_deltas: Vec<AddressBalanceDeltas> = deltas
                     .into_iter()

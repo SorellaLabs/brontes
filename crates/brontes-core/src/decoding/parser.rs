@@ -146,6 +146,44 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         Some((traces.0, traces.2))
     }
 
+    #[allow(unreachable_code)]
+    pub async fn execute_block_discovery(self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+        if let Some(res) = self.load_block_from_db(block_num).await {
+            tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
+            return Some(res)
+        }
+        #[cfg(not(feature = "local-reth"))]
+        {
+            tracing::error!("no block found in db");
+            return None
+        }
+
+        let parity_trace = self.trace_block(block_num).await;
+        let receipts = self.get_receipts(block_num).await;
+
+        if parity_trace.0.is_none() && receipts.0.is_none() {
+            #[cfg(feature = "dyn-decode")]
+            self.metrics_tx
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.2).into())
+                .unwrap();
+            #[cfg(not(feature = "dyn-decode"))]
+            let _ = self
+                .metrics_tx
+                .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
+            return None
+        }
+        #[cfg(feature = "dyn-decode")]
+        let traces = self
+            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .await;
+        #[cfg(not(feature = "dyn-decode"))]
+        let traces = self
+            .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
+            .await;
+
+        Some((traces.0, traces.2))
+    }
+
     #[cfg(feature = "dyn-decode")]
     /// traces a block into a vec of tx traces
     pub(crate) async fn trace_block(

@@ -28,7 +28,7 @@ impl Processor for MevProcessor {
 
     async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &DB,
-        inspectors: &[&dyn Inspector<Result = Self::InspectType>],
+        inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
         tree: BlockTree<Action>,
         metadata: Metadata,
     ) {
@@ -49,10 +49,11 @@ impl Processor for MevProcessor {
         let tree = Arc::new(tree);
         let metadata = Arc::new(metadata);
 
-        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } = execute_on!(
-            target = inspect,
-            compose_mev_results(inspectors, tree.clone(), metadata.clone())
-        );
+        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
+            execute_on!(async_inspect, {
+                compose_mev_results(inspectors, tree.clone(), metadata.clone())
+            })
+            .await;
 
         insert_mev_results(db, block_details, mev_details).await;
     }

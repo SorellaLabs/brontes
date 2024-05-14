@@ -54,7 +54,7 @@ struct BfsArgs {
 
 const MIN_LIQUIDITY_USD_PEGGED_TOKEN: u128 = 15_000;
 const MIN_LIQUIDITY_USD_PEGGED_TOKEN_RUNDOWN: u128 = 7_500;
-const INACTIVE_REMOVAL_PERIOD: u64 = 100;
+const INACTIVE_REMOVAL_PERIOD: u64 = 750;
 
 /// [`PairSubGraph`] is a directed subgraph, specifically designed to calculate
 /// and optimize the pricing of a particular token pair in a decentralized

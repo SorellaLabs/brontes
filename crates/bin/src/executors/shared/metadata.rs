@@ -26,7 +26,7 @@ use super::dex_pricing::WaitingForPricerFuture;
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process
-const MAX_PENDING_TREES: usize = 45;
+const MAX_PENDING_TREES: usize = 5;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
@@ -40,7 +40,6 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     needs_more_data:       Arc<AtomicBool>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
-    block:                 u64,
 }
 
 impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Drop
@@ -60,10 +59,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
-        block: u64,
     ) -> Self {
         Self {
-            block,
             clickhouse,
             dex_pricer_stream,
             needs_more_data,
@@ -172,17 +169,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        // ensure we don't skip blocks
-        if let Some(res) = self.result_buf.pop_front() {
-            let bn = res.0.header.number;
-            if bn == self.block {
-                self.block += 1;
+        if self.force_no_dex_pricing {
+            if let Some(res) = self.result_buf.pop_front() {
                 return Poll::Ready(Some(res))
             }
-            self.result_buf.push_front(res);
-        }
-
-        if self.force_no_dex_pricing {
+            cx.waker().wake_by_ref();
             return Poll::Pending
         }
 
@@ -194,11 +185,16 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 .add_pending_inspection(block, tree, meta)
         }
 
-        self.dex_pricer_stream.poll_next_unpin(cx).map(|mid| {
-            if mid.is_some() {
-                self.block += 1;
+        match self.dex_pricer_stream.poll_next_unpin(cx) {
+            Poll::Ready(Some(value)) => Poll::Ready(Some(value)),
+            Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
+            Poll::Pending => {
+                if let Some(f) = self.result_buf.pop_front() {
+                    Poll::Ready(Some(f))
+                } else {
+                    Poll::Pending
+                }
             }
-            mid
-        })
+        }
     }
 }

@@ -45,6 +45,38 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
+    pub fn get_tx_info_batch<DB: LibmdbxReader>(
+        &self,
+        tx_hash: &[B256],
+        database: &DB,
+    ) -> Vec<Option<TxInfo>> {
+        let (roots, eoa_info_addr, contract_info_addr): (Vec<_>, Vec<_>, Vec<_>) = self
+            .tx_roots
+            .iter()
+            .filter(|r| tx_hash.contains(&r.tx_hash))
+            .map(|root| (root, root.head.address, root.get_to_address()))
+            .multiunzip();
+
+        let Ok(contract) = database.try_fetch_searcher_contract_infos(contract_info_addr.clone())
+        else {
+            return vec![]
+        };
+
+        let Ok(address_meta) = database.try_fetch_address_metadatas(contract_info_addr) else {
+            return vec![]
+        };
+
+        let Ok(eoa) = database.try_fetch_searcher_eoa_infos(eoa_info_addr) else { return vec![] };
+
+        roots
+            .into_iter()
+            .map(|root| {
+                root.get_tx_info_batch(self.header.number, &eoa, &contract, &address_meta)
+                    .ok()
+            })
+            .collect()
+    }
+
     pub fn get_tx_info<DB: LibmdbxReader>(&self, tx_hash: B256, database: &DB) -> Option<TxInfo> {
         self.tx_roots
             .iter()

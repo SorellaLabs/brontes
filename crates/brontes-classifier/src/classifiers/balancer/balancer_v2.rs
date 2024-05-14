@@ -15,10 +15,7 @@ use eyre::Error;
 use malachite::Rational;
 use reth_primitives::U256;
 
-use crate::{
-    BalancerV2Vault::PoolBalanceChanged, IGeneralPool::onSwap_0Return,
-    IMinimalSwapInfoPool::onSwap_1Return,
-};
+use crate::BalancerV2Vault::PoolBalanceChanged;
 
 action_impl!(
     Protocol::BalancerV2,

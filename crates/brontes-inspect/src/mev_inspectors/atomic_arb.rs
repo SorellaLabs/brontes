@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
@@ -11,7 +12,7 @@ use brontes_types::{
     },
     pair::Pair,
     tree::BlockTree,
-    FastHashSet, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{
@@ -31,8 +32,8 @@ pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db) }
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
 
@@ -44,36 +45,86 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, meta_data: Arc<Metadata>) -> Self::Result {
-        tree.clone()
-            .collect_all(TreeSearchBuilder::default().with_actions([
-                Action::is_swap,
-                Action::is_transfer,
-                Action::is_eth_transfer,
-                Action::is_nested_action,
-            ]))
-            .t_map(|(k, v)| {
-                (
-                    k,
-                    self.utils
-                        .flatten_nested_actions_default(v.into_iter())
-                        .collect::<Vec<_>>(),
-                )
+        self.utils
+            .get_metrics()
+            .map(|m| {
+                m.run_inspector(MevType::AtomicArb, || {
+                    tree.clone()
+                        .collect_all(TreeSearchBuilder::default().with_actions([
+                            Action::is_swap,
+                            Action::is_transfer,
+                            Action::is_eth_transfer,
+                            Action::is_nested_action,
+                        ]))
+                        .t_full_map(|(k, v)| {
+                            let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
+                            (
+                                k.get_tx_info_batch(&tx_hashes, self.utils.db),
+                                v.into_iter().map(|v| {
+                                    self.utils
+                                        .flatten_nested_actions_default(v.into_iter())
+                                        .collect::<Vec<_>>()
+                                }),
+                            )
+                        })
+                        .into_zip_tree(tree.clone())
+                        .filter_map(|(info, action)| {
+                            let info = info??;
+                            let actions = action?;
+
+                            self.process_swaps(
+                                info,
+                                meta_data.clone(),
+                                actions
+                                    .into_iter()
+                                    .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
+                                        Action::try_swaps_merged,
+                                        Action::try_transfer,
+                                        Action::try_eth_transfer,
+                                    )),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
             })
-            .t_filter_map(|tree, (tx, actions)| {
-                let info = tree.get_tx_info(tx, self.utils.db)?;
-                self.process_swaps(
-                    info,
-                    meta_data.clone(),
-                    actions
-                        .into_iter()
-                        .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
-                            Action::try_swaps_merged,
-                            Action::try_transfer,
-                            Action::try_eth_transfer,
-                        )),
-                )
+            .unwrap_or_else(|| {
+                tree.clone()
+                    .collect_all(TreeSearchBuilder::default().with_actions([
+                        Action::is_swap,
+                        Action::is_transfer,
+                        Action::is_eth_transfer,
+                        Action::is_nested_action,
+                    ]))
+                    .t_full_map(|(k, v)| {
+                        let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
+                        (
+                            k.get_tx_info_batch(&tx_hashes, self.utils.db),
+                            v.into_iter().map(|v| {
+                                self.utils
+                                    .flatten_nested_actions_default(v.into_iter())
+                                    .collect::<Vec<_>>()
+                            }),
+                        )
+                    })
+                    .into_zip_tree(tree.clone())
+                    .filter_map(|(info, action)| {
+                        let info = info??;
+                        let actions = action?;
+
+                        self.process_swaps(
+                            info,
+                            meta_data.clone(),
+                            actions
+                                .into_iter()
+                                .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
+                                    Action::try_swaps_merged,
+                                    Action::try_transfer,
+                                    Action::try_eth_transfer,
+                                )),
+                        )
+                    })
+                    .collect::<Vec<_>>()
             })
-            .collect::<Vec<_>>()
     }
 }
 
@@ -138,18 +189,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             AtomicArbType::Triangle => (is_profitable
                 || self.process_triangle_arb(&info, requirement_multiplier))
             .then_some(profit),
-            AtomicArbType::CrossPair(jump_index) => {
-                let stable_arb = is_stable_arb(&swaps, jump_index);
-                let cross_or = self.is_cross_pair_or_stable_arb(&info, requirement_multiplier);
+            AtomicArbType::CrossPair(jump_index) => (is_profitable
+                || self.is_stable_arb(&swaps, jump_index)
+                || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
+            .then_some(profit),
 
-                (is_profitable || stable_arb || cross_or).then_some(profit)
-            }
-
-            AtomicArbType::StablecoinArb => {
-                let cross_or = self.is_cross_pair_or_stable_arb(&info, requirement_multiplier);
-
-                (is_profitable || cross_or).then_some(profit)
-            }
+            AtomicArbType::StablecoinArb => (is_profitable
+                || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
+            .then_some(profit),
             AtomicArbType::LongTail => (self.is_long_tail(&info, requirement_multiplier)
                 && is_profitable)
                 .then_some(profit),
@@ -207,23 +254,59 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     }
 
     fn process_triangle_arb(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20 * multiplier)
+        let res = tx_info
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
-            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private
+            || tx_info.gas_details.coinbase_transfer.is_some() && tx_info.is_private;
+
+        if !res {
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::AtomicArb, "process_triangle_arb")
+            });
+        }
+        res
     }
 
     fn is_cross_pair_or_stable_arb(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
+        let res = tx_info
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private
-            || tx_info.gas_details.coinbase_transfer.is_some()
+            || tx_info.gas_details.coinbase_transfer.is_some();
+        if !res {
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::AtomicArb, "is_cross_pair_or_stable_arb")
+            });
+        }
+        res
     }
 
     fn is_long_tail(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
-        tx_info.is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
+        let res = tx_info
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private && tx_info.gas_details.coinbase_transfer.is_some()
-            || tx_info.mev_contract.is_some()
+            || tx_info.mev_contract.is_some();
+        if !res {
+            self.utils
+                .get_metrics()
+                .inspect(|m| m.branch_filtering_trigger(MevType::AtomicArb, "is_long_tail"));
+        }
+        res
+    }
+
+    fn is_stable_arb(&self, swaps: &[NormalizedSwap], jump_index: usize) -> bool {
+        let token_bought = &swaps[jump_index - 1].token_out.symbol;
+        let token_sold = &swaps[jump_index].token_in.symbol;
+
+        let res = is_stable_pair(token_sold, token_bought);
+        if !res {
+            self.utils
+                .get_metrics()
+                .inspect(|m| m.branch_filtering_trigger(MevType::AtomicArb, "is_stable_arb"));
+        }
+
+        res
     }
 
     fn valid_pricing<'a>(
@@ -277,6 +360,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         };
 
                         if pct > MAX_PRICE_DIFF {
+                            self.utils.get_metrics().inspect(|m| {
+                                m.bad_dex_pricing(
+                                    MevType::AtomicArb,
+                                    Pair(swap.token_in.address, swap.token_out.address),
+                                )
+                            });
                             tracing::warn!(
                                 ?effective_price,
                                 ?dex_pricing_rate,
@@ -326,13 +415,6 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
     }
 
     Some(AtomicArbType::Triangle)
-}
-
-fn is_stable_arb(swaps: &[NormalizedSwap], jump_index: usize) -> bool {
-    let token_bought = &swaps[jump_index - 1].token_out.symbol;
-    let token_sold = &swaps[jump_index].token_in.symbol;
-
-    is_stable_pair(token_sold, token_bought)
 }
 
 pub fn is_stable_pair(token_in: &str, token_out: &str) -> bool {

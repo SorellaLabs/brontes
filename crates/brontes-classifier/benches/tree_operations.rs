@@ -29,4 +29,18 @@ fn bench_collect_block(c: &mut Criterion) {
         .unwrap();
 }
 
-criterion_group!(tree_operations, bench_collect_tx, bench_collect_block);
+fn bench_collect_block_timeout(c: &mut Criterion) {
+    let utils = ClassifierBenchUtils::new();
+    utils
+        .bench_tree_operations("collect block 15565152", 15565152, c, |tree| {
+            tree.collect_all(TreeSearchBuilder::default().with_action(Action::is_transfer));
+        })
+        .unwrap();
+}
+
+criterion_group!(
+    tree_operations,
+    bench_collect_tx,
+    bench_collect_block,
+    bench_collect_block_timeout
+);

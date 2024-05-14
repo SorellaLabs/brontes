@@ -162,6 +162,7 @@ impl InspectorTestUtils {
                 CexExchange::BybitSpot,
                 CexExchange::Kucoin,
             ],
+            None,
         );
 
         let results = inspector.process_tree(tree.into(), metadata.into());
@@ -244,6 +245,7 @@ impl InspectorTestUtils {
                 CexExchange::Kucoin,
                 CexExchange::Upbit,
             ],
+            None,
         );
 
         let mut results = inspector.process_tree(tree.into(), metadata.into());
@@ -351,6 +353,7 @@ impl InspectorTestUtils {
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
+                    None,
                 )
             })
             .collect::<Vec<_>>();

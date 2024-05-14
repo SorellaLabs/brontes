@@ -13,24 +13,27 @@ use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
 use crate::clickhouse::dbms::*;
 
 pub struct ClickhouseBuffered {
-    client:      ClickhouseClient<BrontesClickhouseTables>,
-    rx:          UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
-    value_map:   FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
-    buffer_size: usize,
-    futs:        FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
+    client:            ClickhouseClient<BrontesClickhouseTables>,
+    rx:                UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
+    value_map:         FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
+    buffer_size_small: usize,
+    buffer_size_big:   usize,
+    futs:              FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
 }
 
 impl ClickhouseBuffered {
     pub fn new(
         rx: UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
         config: ClickhouseConfig,
-        buffer_size: usize,
+        buffer_size_small: usize,
+        buffer_size_big: usize,
     ) -> Self {
         Self {
             client: config.build(),
             rx,
             value_map: FastHashMap::default(),
-            buffer_size,
+            buffer_size_small,
+            buffer_size_big,
             futs: FuturesUnordered::default(),
         }
     }
@@ -40,8 +43,9 @@ impl ClickhouseBuffered {
 
         let entry = self.value_map.entry(enum_kind.clone()).or_default();
         entry.extend(value);
+        let size = if enum_kind.is_big() { self.buffer_size_big } else { self.buffer_size_small };
 
-        if entry.len() >= self.buffer_size {
+        if entry.len() >= size {
             let client = self.client.clone();
             self.futs
                 .push(Box::pin(Self::insert(client, std::mem::take(entry), enum_kind)));
