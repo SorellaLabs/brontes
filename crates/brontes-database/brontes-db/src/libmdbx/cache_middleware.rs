@@ -1,10 +1,12 @@
 use std::hash::{Hash, Hasher};
 
 use alloy_primitives::Address;
+use brontes_metrics::db_cache::CacheData;
 use brontes_types::db::{
     address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
     searcher::SearcherInfo, token_info::TokenInfo,
 };
+use moka::sync::Cache;
 use schnellru::{ByMemoryUsage, LruMap};
 
 const MEGABYTE: usize = 1024 * 1024;
@@ -17,7 +19,9 @@ pub struct ReadWriteMultiplex<const N: usize> {
 impl<const N: usize> ReadWriteMultiplex<N> {
     pub fn new(memory_per_table_mb: usize) -> Self {
         let memory_per_shard = memory_per_table_mb / N;
-        let cache = core::array::from_fn(|_| ReadWriteCache::new(memory_per_shard));
+        let metrics = CacheData::default();
+        let cache =
+            core::array::from_fn(|_| ReadWriteCache::new(memory_per_shard, metrics.clone()));
 
         Self { cache }
     }
@@ -79,17 +83,20 @@ pub struct ReadWriteCache {
     >,
     pub token_info:
         parking_lot::Mutex<LruMap<Address, Option<TokenInfo>, ByMemoryUsage, ahash::RandomState>>,
+
+    pub metrics: CacheData,
 }
 
 impl ReadWriteCache {
-    pub fn new(memory_per_table_mb: usize) -> Self {
+    pub fn new(memory_per_table_mb: usize, metrics: CacheData) -> Self {
         Self {
-            address_meta:      LruMap::with_hasher(
+            metrics,
+            address_meta: LruMap::with_hasher(
                 ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
                 ahash::RandomState::new(),
             )
             .into(),
-            searcher_eoa:      LruMap::with_hasher(
+            searcher_eoa: LruMap::with_hasher(
                 ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
                 ahash::RandomState::new(),
             )
@@ -99,12 +106,12 @@ impl ReadWriteCache {
                 ahash::RandomState::new(),
             )
             .into(),
-            protocol_info:     LruMap::with_hasher(
+            protocol_info: LruMap::with_hasher(
                 ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
                 ahash::RandomState::new(),
             )
             .into(),
-            token_info:        LruMap::with_hasher(
+            token_info: LruMap::with_hasher(
                 ByMemoryUsage::new(memory_per_table_mb * MEGABYTE),
                 ahash::RandomState::new(),
             )

@@ -11,6 +11,7 @@ brontes-pricing.workspace = true
 brontes-metrics.workspace = true
 brontes-macros.workspace = true
 brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
+moka = "0.12.7"
 
 reth-tracing-ext.workspace = true
 # alloy
