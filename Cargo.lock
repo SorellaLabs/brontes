@@ -1462,6 +1462,7 @@ dependencies = [
  "brontes-database",
  "brontes-inspect",
  "brontes-libmdbx",
+ "brontes-macros",
  "brontes-metrics",
  "brontes-pricing",
  "brontes-tracing",
@@ -1481,6 +1482,7 @@ dependencies = [
  "malachite",
  "metrics-process",
  "num_cpus",
+ "prometheus",
  "rayon",
  "reqwest",
  "reth-beacon-consensus",
@@ -1518,6 +1520,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "criterion",
@@ -1620,6 +1623,7 @@ dependencies = [
  "brontes-database",
  "brontes-libmdbx",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "bytes",
@@ -1639,6 +1643,7 @@ dependencies = [
  "itertools 0.12.1",
  "malachite",
  "modular-bitfield",
+ "moka",
  "owned_chunks",
  "page_size",
  "parity-scale-codec",
@@ -1665,6 +1670,7 @@ dependencies = [
  "reth-tasks",
  "reth-tracing-ext",
  "rkyv",
+ "schnellru",
  "serde",
  "serde_json",
  "serde_repr",
@@ -1698,6 +1704,7 @@ dependencies = [
  "brontes-database",
  "brontes-inspect",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "clickhouse",
@@ -1767,6 +1774,7 @@ dependencies = [
  "alloy-primitives",
  "brontes-types",
  "colored",
+ "dashmap",
  "eyre",
  "futures",
  "hyper 0.14.28",
@@ -1774,10 +1782,14 @@ dependencies = [
  "metrics-exporter-prometheus",
  "metrics-process",
  "metrics-util",
+ "procfs",
+ "prometheus",
  "reth-metrics",
  "reth-primitives",
+ "tikv-jemalloc-ctl",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1796,6 +1808,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "bytes",
@@ -5411,7 +5424,7 @@ dependencies = [
  "ipnet",
  "metrics",
  "metrics-util",
- "quanta",
+ "quanta 0.11.1",
  "thiserror",
  "tokio",
  "tracing",
@@ -5457,7 +5470,7 @@ dependencies = [
  "metrics",
  "num_cpus",
  "ordered-float 3.9.2",
- "quanta",
+ "quanta 0.11.1",
  "radix_trie",
  "sketches-ddsketch",
 ]
@@ -5529,6 +5542,26 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "moka"
+version = "0.12.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e0d88686dc561d743b40de8269b26eaf0dc58781bde087b0984646602021d08"
+dependencies = [
+ "crossbeam-channel",
+ "crossbeam-epoch",
+ "crossbeam-utils",
+ "once_cell",
+ "parking_lot 0.12.2",
+ "quanta 0.12.3",
+ "rustc_version 0.4.0",
+ "smallvec",
+ "tagptr",
+ "thiserror",
+ "triomphe",
+ "uuid",
 ]
 
 [[package]]
@@ -6766,6 +6799,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "brontes-macros",
+ "brontes-metrics",
  "brontes-pricing",
  "brontes-types",
  "bytes",
@@ -6889,6 +6923,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "prometheus"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d33c28a30771f7f96db69893f78b857f7450d7e0237e9c8fc6427a81bae7ed1"
+dependencies = [
+ "cfg-if",
+ "fnv",
+ "lazy_static",
+ "memchr",
+ "parking_lot 0.12.2",
+ "protobuf",
+ "thiserror",
+]
+
+[[package]]
 name = "proptest"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6918,6 +6967,12 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
+
+[[package]]
+name = "protobuf"
+version = "2.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
 
 [[package]]
 name = "ptr_meta"
@@ -6971,6 +7026,21 @@ dependencies = [
  "mach2",
  "once_cell",
  "raw-cpuid 10.7.0",
+ "wasi 0.11.0+wasi-snapshot-preview1",
+ "web-sys",
+ "winapi",
+]
+
+[[package]]
+name = "quanta"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e5167a477619228a0b284fac2674e3c388cba90631d7b7de620e6f1fcd08da5"
+dependencies = [
+ "crossbeam-utils",
+ "libc",
+ "once_cell",
+ "raw-cpuid 11.0.2",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "web-sys",
  "winapi",
@@ -9884,6 +9954,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tagptr"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
+
+[[package]]
 name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10019,6 +10095,17 @@ dependencies = [
  "byteorder",
  "integer-encoding",
  "ordered-float 2.10.1",
+]
+
+[[package]]
+name = "tikv-jemalloc-ctl"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "619bfed27d807b54f7f776b9430d4f8060e66ee138a28632ca898584d462c31c"
+dependencies = [
+ "libc",
+ "paste",
+ "tikv-jemalloc-sys",
 ]
 
 [[package]]
@@ -10447,6 +10534,12 @@ dependencies = [
  "tracing-log",
  "tracing-serde",
 ]
+
+[[package]]
+name = "triomphe"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "859eb650cfee7434994602c3a68b25d77ad9e68c8a6cd491616ef86661382eb3"
 
 [[package]]
 name = "trust-dns-client"

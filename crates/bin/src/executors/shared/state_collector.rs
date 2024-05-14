@@ -4,12 +4,13 @@ use std::{
         atomic::{AtomicBool, Ordering::SeqCst},
         Arc,
     },
-    task::Poll,
+    task::{Poll, Waker},
 };
 
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
+use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::{
     db::{
         metadata::Metadata,
@@ -23,15 +24,13 @@ use brontes_types::{
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
-use tokio::task::JoinError;
 use tracing::{span, trace, Instrument, Level};
 
 use super::metadata::MetadataFetcher;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Action>>> + Send + 'a>>;
 
-type ExecutionFut<'a> =
-    Pin<Box<dyn Future<Output = Result<Option<(Vec<TxTrace>, Header)>, JoinError>> + Send + 'a>>;
+type ExecutionFut<'a> = Pin<Box<dyn Future<Output = Option<(Vec<TxTrace>, Header)>> + Send + 'a>>;
 
 pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
@@ -70,30 +69,54 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 
     async fn state_future(
         generate_pricing: bool,
+        block: u64,
         fut: ExecutionFut<'static>,
         classifier: &'static Classifier<'static, T, DB>,
+        id: usize,
+        metrics: Option<GlobalRangeMetrics>,
     ) -> eyre::Result<BlockTree<Action>> {
-        let (traces, header) = fut.await?.ok_or_else(|| eyre!("no traces found"))?;
+        let Some((traces, header)) = fut.await else {
+            classifier.block_load_failure(block);
+            return Err(eyre!("no traces found"))
+        };
 
         trace!("Got {} traces + header", traces.len());
-        let res = classifier
-            .build_block_tree(traces, header, generate_pricing)
-            .await;
+
+        let res = if let Some(metrics) = metrics {
+            metrics.add_pending_tree(id);
+            metrics
+                .tree_builder(id, || {
+                    Box::pin(tokio::spawn(classifier.build_block_tree(
+                        traces,
+                        header,
+                        generate_pricing,
+                    )))
+                })
+                .await
+                .unwrap()
+        } else {
+            tokio::spawn(classifier.build_block_tree(traces, header, generate_pricing))
+                .await
+                .unwrap()
+        };
 
         Ok(res)
     }
 
-    pub fn fetch_state_for(&mut self, block: u64) {
-        let execute_fut = self.parser.execute(block);
+    pub fn fetch_state_for(&mut self, block: u64, id: usize, metrics: Option<GlobalRangeMetrics>) {
+        let execute_fut = self.parser.execute(block, id, metrics.clone());
+
         let generate_pricing = self.metadata_fetcher.generate_dex_pricing(block, self.db);
         self.collection_future = Some(Box::pin(
-            Self::state_future(generate_pricing, execute_fut, self.classifier)
+            Self::state_future(generate_pricing, block, execute_fut, self.classifier, id, metrics)
                 .instrument(span!(Level::ERROR, "mev processor", block_number=%block)),
         ))
     }
 
-    pub fn range_finished(&self) {
-        self.mark_as_finished.store(true, SeqCst);
+    pub fn range_finished(&self, waker: &Waker) {
+        if !self.mark_as_finished.swap(true, SeqCst) {
+            waker.wake_by_ref();
+        }
     }
 }
 

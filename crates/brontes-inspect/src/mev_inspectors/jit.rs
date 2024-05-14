@@ -2,6 +2,7 @@ use std::{collections::hash_map::Entry, sync::Arc};
 
 use alloy_primitives::{Address, B256};
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
@@ -18,6 +19,29 @@ use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
 };
 
+struct PossibleJitWithInfo {
+    pub searcher_info: [TxInfo; 2],
+    pub victim_info:   Vec<TxInfo>,
+    pub inner:         PossibleJit,
+}
+impl PossibleJitWithInfo {
+    pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
+        let searcher =
+            [info_set.get(&ps.frontrun_tx).cloned()?, info_set.get(&ps.backrun_tx).cloned()?];
+        let mut victims = vec![];
+
+        for victim in &ps.victims {
+            victims.push(info_set.get(victim).cloned()?);
+        }
+
+        Some(PossibleJitWithInfo {
+            searcher_info: searcher,
+            victim_info:   victims,
+            inner:         ps,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
     pub eoa:                   Address,
@@ -32,8 +56,8 @@ pub struct JitInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db) }
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
 }
 
@@ -45,15 +69,29 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+        self.utils
+            .get_metrics()
+            .map(|m| {
+                m.run_inspector(MevType::Jit, || {
+                    self.process_tree_inner(tree.clone(), metadata.clone())
+                })
+            })
+            .unwrap_or_else(|| self.process_tree_inner(tree, metadata))
+    }
+}
+
+impl<DB: LibmdbxReader> JitInspector<'_, DB> {
+    fn process_tree_inner(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<Bundle> {
         self.possible_jit_set(tree.clone())
             .into_iter()
             .filter_map(
-                |PossibleJit {
-                     eoa: _,
-                     frontrun_tx,
-                     backrun_tx,
-                     mev_executor_contract,
-                     victims,
+                |PossibleJitWithInfo {
+                    inner:  PossibleJit { frontrun_tx, backrun_tx, mev_executor_contract, victims,..},
+                    victim_info, searcher_info
                  }| {
                     let searcher_actions = [frontrun_tx, backrun_tx]
                         .iter()
@@ -87,10 +125,6 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         return None
                     }
 
-                    let info = [
-                        tree.get_tx_info(frontrun_tx, self.utils.db)?,
-                        tree.get_tx_info(backrun_tx, self.utils.db)?,
-                    ];
 
                     if victims
                         .iter()
@@ -125,13 +159,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                         return None
                     }
 
-                    let victim_info = victims
-                        .into_iter()
-                        .map(|v| tree.get_tx_info(v, self.utils.db).unwrap())
-                        .collect_vec();
-
                     self.calculate_jit(
-                        info,
+                        searcher_info,
                         metadata.clone(),
                         searcher_actions,
                         victim_actions,
@@ -141,9 +170,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
             )
             .collect::<Vec<_>>()
     }
-}
 
-impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
@@ -255,7 +282,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         Some(Bundle { header, data: BundleData::Jit(jit_details) })
     }
 
-    fn possible_jit_set(&self, tree: Arc<BlockTree<Action>>) -> Vec<PossibleJit> {
+    fn possible_jit_set(&self, tree: Arc<BlockTree<Action>>) -> Vec<PossibleJitWithInfo> {
         let iter = tree.tx_roots.iter();
 
         if iter.len() < 3 {
@@ -342,8 +369,27 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 }
             }
         }
+        // split out
+        let tx_set = set
+            .iter()
+            .flat_map(|jit| {
+                let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
+                set.extend(jit.victims.clone());
+                set
+            })
+            .unique()
+            .collect::<Vec<_>>();
 
-        set.into_iter().collect()
+        let tx_info_map = tree
+            .get_tx_info_batch(&tx_set, self.utils.db)
+            .into_iter()
+            .flatten()
+            .map(|info| (info.tx_hash, info))
+            .collect::<FastHashMap<_, _>>();
+
+        set.into_iter()
+            .filter_map(|jit| PossibleJitWithInfo::from_jit(jit, &tx_info_map))
+            .collect_vec()
     }
 
     fn get_bribes(&self, price: Arc<Metadata>, gas: &[GasDetails]) -> Rational {

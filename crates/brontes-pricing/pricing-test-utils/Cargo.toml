@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 #brontes 
+brontes-metrics.workspace = true
 itertools = "0.12.0"
 redefined.workspace = true
 

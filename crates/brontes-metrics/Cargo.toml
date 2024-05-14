@@ -16,6 +16,7 @@ brontes-types.workspace = true
 
 # tracing
 tracing.workspace = true
+tracing-subscriber.workspace = true
 reth-metrics.workspace = true
 alloy-primitives.workspace = true
 reth-primitives.workspace = true
@@ -26,12 +27,21 @@ metrics-exporter-prometheus.workspace = true
 metrics-util.workspace = true
 metrics-process.workspace = true
 metrics.workspace = true
+prometheus = "0.13.4"
 
 # errors
 eyre.workspace = true
 
 # http/rpc
 hyper.workspace = true
+dashmap = "5.5.3"
+
+[target.'cfg(unix)'.dependencies]
+tikv-jemalloc-ctl = { version = "0.5.0", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+procfs = "0.16.0"
 
 [features]
+jemalloc = ["dep:tikv-jemalloc-ctl"]
 tests = []

@@ -6,8 +6,8 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-
 brontes-core.workspace = true
+brontes-macros.workspace = true
 brontes-inspect.workspace = true
 brontes-types.workspace = true
 brontes-classifier.workspace = true
@@ -15,7 +15,7 @@ brontes-database.workspace = true
 brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
-brontes-libmdbx  = { workspace = true, features = ["read-tx-timeouts"] }
+brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
 
 
 malachite.workspace = true
@@ -81,6 +81,7 @@ cfg-if = "1.0.0"
 
 # prometheus
 metrics-process.workspace = true
+prometheus = "0.13.4"
 itertools.workspace = true
 fdlimit = "0.3.0"
 dhat = "0.3.3"
@@ -100,7 +101,7 @@ default = [
   "local-reth",
 ]
 
-jemalloc = []
+jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
 dhat-heap = []
 

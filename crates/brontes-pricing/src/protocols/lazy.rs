@@ -1,11 +1,14 @@
 use std::{collections::hash_map::Entry, pin::Pin, sync::Arc, task::Poll};
 
 use alloy_primitives::Address;
+use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{
-    pair::Pair, traits::TracingProvider, unzip_either::IterExt, FastHashMap, FastHashSet,
+    pair::Pair, traits::TracingProvider, unzip_either::IterExt, BrontesTaskExecutor, FastHashMap,
+    FastHashSet,
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
+use tokio::task::JoinError;
 
 use crate::{
     errors::AmmError,
@@ -66,18 +69,19 @@ pub struct LazyExchangeLoader<T: TracingProvider> {
     pool_buf:          FastHashMap<Address, FastHashSet<BlockNumber>>,
     /// requests we are processing for a given block.
     req_per_block:     FastHashMap<BlockNumber, u64>,
-
-    state_tracking: LoadingStateTracker,
+    state_tracking:    LoadingStateTracker,
+    ex:                BrontesTaskExecutor,
 }
 
 impl<T: TracingProvider> LazyExchangeLoader<T> {
-    pub fn new(provider: Arc<T>) -> Self {
+    pub fn new(provider: Arc<T>, ex: BrontesTaskExecutor) -> Self {
         Self {
             state_tracking: LoadingStateTracker::default(),
             pool_buf: FastHashMap::default(),
             pool_load_futures: MultiBlockPoolFutures::new(),
             provider,
             req_per_block: FastHashMap::default(),
+            ex,
         }
     }
 
@@ -156,23 +160,28 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         address: Address,
         block_number: u64,
         ex_type: Protocol,
+        metrics: Option<DexPricingMetrics>,
     ) {
         let provider = self.provider.clone();
         self.add_state_trackers(block_number, id, address, pair);
 
         let fut = ex_type.try_load_state(address, provider, block_number, pool_pair, pair);
-        self.pool_load_futures
-            .add_future(block_number, Box::pin(fut));
+        self.pool_load_futures.add_future(
+            block_number,
+            Box::pin(self.ex.handle().spawn(async move {
+                if let Some(metrics) = metrics {
+                    metrics.meter_state_load(|| Box::pin(fut)).await
+                } else {
+                    fut.await
+                }
+            })),
+        );
     }
-}
 
-impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
-    type Item = LazyResult;
-
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
+    pub fn poll_next(
+        &mut self,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
+    ) -> std::task::Poll<Option<LazyResult>> {
         if let Poll::Ready(Some(result)) = self.pool_load_futures.poll_next_unpin(cx) {
             match result {
                 Ok((block, addr, state, load)) => {
@@ -211,14 +220,14 @@ impl<T: TracingProvider> Stream for LazyExchangeLoader<T> {
     }
 }
 
+type FetchResult = Result<Result<PoolFetchSuccess, PoolFetchError>, JoinError>;
+
 /// The MultiBlockPoolFutures struct is a collection of FuturesOrdered in which,
 /// pool futures which are from earlier blocks are loaded first. This allows us
 /// to load state and verify pairs for blocks ahead while we wait for the
 /// current block pairs to all be verified making the pricing module very
 /// efficient.
-pub struct MultiBlockPoolFutures(
-    FastHashMap<u64, FuturesOrdered<BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>>>,
-);
+pub struct MultiBlockPoolFutures(FastHashMap<u64, FuturesOrdered<BoxedFuture<FetchResult>>>);
 
 impl Drop for MultiBlockPoolFutures {
     fn drop(&mut self) {
@@ -244,7 +253,7 @@ impl MultiBlockPoolFutures {
     pub fn add_future(
         &mut self,
         block: u64,
-        fut: BoxedFuture<Result<PoolFetchSuccess, PoolFetchError>>,
+        fut: BoxedFuture<Result<Result<PoolFetchSuccess, PoolFetchError>, JoinError>>,
     ) {
         self.0.entry(block).or_default().push_back(fut);
     }
@@ -261,7 +270,7 @@ impl Stream for MultiBlockPoolFutures {
             return Poll::Ready(None)
         }
 
-        let (mut result, empty): (Vec<_>, Vec<_>) = self
+        let (mut results, empty): (Vec<_>, Vec<_>) = self
             .0
             .iter_mut()
             .sorted_by(|(b0, _), (b1, _)| b0.cmp(b1))
@@ -285,8 +294,10 @@ impl Stream for MultiBlockPoolFutures {
             let _ = self.0.remove(&cleared);
         });
 
-        if let Some(result) = result.pop() {
-            return Poll::Ready(Some(result))
+        if let Some(result) = results.pop() {
+            // no lossless
+            assert!(results.is_empty());
+            return Poll::Ready(Some(result.unwrap()))
         }
 
         Poll::Pending

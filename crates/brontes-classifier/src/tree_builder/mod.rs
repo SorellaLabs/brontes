@@ -12,7 +12,7 @@ use brontes_types::{
 };
 use malachite::{num::basic::traits::Zero, Rational};
 mod tree_pruning;
-mod utils;
+pub(crate) mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -54,13 +54,18 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         Self { libmdbx, pricing_update_sender, provider }
     }
 
+    pub fn block_load_failure(&self, number: u64) {
+        self.pricing_update_sender
+            .send(DexPriceMsg::DisablePricingFor(number))
+            .unwrap();
+    }
+
     pub async fn build_block_tree(
         &self,
         traces: Vec<TxTrace>,
         header: Header,
         generate_pricing: bool,
     ) -> BlockTree<Action> {
-        // return BlockTree::new(header, 0)
         if !generate_pricing {
             self.pricing_update_sender
                 .send(DexPriceMsg::DisablePricingFor(header.number))

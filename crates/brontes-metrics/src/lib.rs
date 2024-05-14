@@ -11,8 +11,15 @@ use futures::Future;
 use tracing::trace;
 
 use crate::trace::{types::TraceMetricEvent, TraceMetrics};
+pub mod classifier;
+pub mod db_cache;
+pub mod db_reads;
 pub mod dyn_contracts;
+pub mod error_layer;
+pub mod inspectors;
+pub mod pricing;
 pub mod prometheus_exporter;
+pub mod range;
 pub mod trace;
 
 /// metric event for traces

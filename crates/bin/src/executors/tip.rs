@@ -130,7 +130,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
             tracing::info!("starting new tip block");
             let block = self.current_block;
-            self.state_collector.fetch_state_for(block);
+            self.state_collector.fetch_state_for(block, 0, None);
             self.current_block += 1;
         }
 
@@ -143,7 +143,6 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         }
         while let Poll::Ready(Some(_)) = self.processing_futures.poll_next_unpin(cx) {}
 
-        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }

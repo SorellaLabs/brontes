@@ -5,6 +5,7 @@ use std::{
 };
 
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Mev, MevType, Sandwich},
@@ -37,8 +38,42 @@ pub struct SandwichInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db) }
+    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
+    }
+}
+
+pub struct PossibleSandwichWithTxInfo {
+    inner:                   PossibleSandwich,
+    possible_frontruns_info: Vec<TxInfo>,
+    possible_backrun_info:   TxInfo,
+    victims_info:            Vec<Vec<TxInfo>>,
+}
+
+impl PossibleSandwichWithTxInfo {
+    pub fn from_ps(ps: PossibleSandwich, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
+        let backrun = info_set.get(&ps.possible_backrun).cloned()?;
+        let mut frontruns = vec![];
+
+        for fr in &ps.possible_frontruns {
+            frontruns.push(info_set.get(fr).cloned()?);
+        }
+
+        let mut victims = vec![];
+        for victim in &ps.victims {
+            let mut set = vec![];
+            for v in victim {
+                set.push(info_set.get(v).cloned()?);
+            }
+            victims.push(set);
+        }
+
+        Some(PossibleSandwichWithTxInfo {
+            possible_backrun_info:   backrun,
+            possible_frontruns_info: frontruns,
+            victims_info:            victims,
+            inner:                   ps,
+        })
     }
 }
 
@@ -61,6 +96,23 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+        self.utils
+            .get_metrics()
+            .map(|m| {
+                m.run_inspector(MevType::Sandwich, || {
+                    self.process_tree_inner(tree.clone(), metadata.clone())
+                })
+            })
+            .unwrap_or_else(|| self.process_tree_inner(tree.clone(), metadata.clone()))
+    }
+}
+
+impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
+    fn process_tree_inner(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<Bundle> {
         let search_args = TreeSearchBuilder::default().with_actions([
             Action::is_swap,
             Action::is_transfer,
@@ -69,22 +121,27 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         ]);
 
         Self::dedup_bundles(
-            Self::get_possible_sandwich(tree.clone())
+            self.get_possible_sandwich(tree.clone())
                 .into_iter()
-                .flat_map(Self::partition_into_gaps)
                 .filter_map(
-                    |PossibleSandwich {
-                         eoa: _e,
-                         possible_frontruns,
-                         possible_backrun,
-                         mev_executor_contract,
-                         victims,
+                    |PossibleSandwichWithTxInfo {
+                         inner:
+                             PossibleSandwich {
+                                 possible_frontruns,
+                                 possible_backrun,
+                                 mev_executor_contract,
+                                 victims,
+                                 ..
+                             },
+                         victims_info,
+                         possible_frontruns_info,
+                         possible_backrun_info,
                      }| {
                         if victims.iter().flatten().count() == 0 {
                             return None
                         };
 
-                        let (victim_swaps_transfers, victim_info): (Vec<_>, Vec<_>) = victims
+                        let victim_swaps_transfers: Vec<_> = victims
                             .into_iter()
                             .map(|victim| {
                                 (
@@ -99,7 +156,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                             })
                             .try_fold(vec![], |mut acc, (victim_set, hashes)| {
                                 let tree = victim_set.tree();
-                                let (actions, info) = victim_set
+                                let actions = victim_set
                                     .map(|s| {
                                         s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
                                             Action::try_swaps_merged,
@@ -124,16 +181,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                             })
                                             .any(|d| d)
                                         {
-                                            Some((
-                                                swap,
-                                                hashes
-                                                    .into_iter()
-                                                    .map(|hash| {
-                                                        tree.get_tx_info(hash, self.utils.db)
-                                                            .unwrap()
-                                                    })
-                                                    .collect::<Vec<_>>(),
-                                            ))
+                                            Some(swap)
                                         } else {
                                             None
                                         }
@@ -142,19 +190,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                                 if actions.is_empty() {
                                     None
                                 } else {
-                                    acc.push((actions, info));
+                                    acc.push(actions);
                                     Some(acc)
                                 }
-                            })?
-                            .into_iter()
-                            .unzip();
-
-                        let frontrun_info = possible_frontruns
-                            .iter()
-                            .flat_map(|pf| tree.get_tx_info(*pf, self.utils.db))
-                            .collect::<Vec<_>>();
-
-                        let back_run_info = tree.get_tx_info(possible_backrun, self.utils.db)?;
+                            })?;
 
                         let searcher_actions: Vec<Vec<Action>> = tree
                             .clone()
@@ -177,11 +216,12 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                         self.calculate_sandwich(
                             tree.clone(),
                             metadata.clone(),
-                            frontrun_info,
-                            back_run_info,
+                            possible_frontruns_info,
+                            possible_backrun_info,
                             searcher_actions,
-                            victim_info,
+                            victims_info,
                             victim_swaps_transfers,
+                            0,
                         )
                     },
                 )
@@ -189,9 +229,7 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
                 .collect::<Vec<_>>(),
         )
     }
-}
 
-impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     fn calculate_sandwich(
         &self,
         tree: Arc<BlockTree<Action>>,
@@ -201,6 +239,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut searcher_actions: Vec<Vec<Action>>,
         victim_info: Vec<Vec<TxInfo>>,
         victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
+        recusive: u8,
     ) -> Option<Vec<Bundle>> {
         // if all of the sandwichers have the same eoa or are all verified contracts.
         // then we can continue. otherwise false positive
@@ -240,6 +279,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 &searcher_actions,
                 &victim_info,
                 &victim_actions,
+                recusive,
             )
         }
 
@@ -447,6 +487,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                         };
 
                         if pct > MAX_PRICE_DIFF {
+                            self.utils.get_metrics().inspect(|m| {
+                                m.bad_dex_pricing(
+                                    MevType::Sandwich,
+                                    Pair(swap.token_in.address, swap.token_out.address),
+                                )
+                            });
                             tracing::warn!(
                                 ?effective_price,
                                 ?dex_pricing_rate,
@@ -589,10 +635,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         searcher_actions: &[Vec<Action>],
         victim_info: &[Vec<TxInfo>],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
+        mut recusive: u8,
     ) -> Option<Vec<Bundle>> {
         let mut res = vec![];
 
+        if recusive >= 6 {
+            return None
+        }
+
         if possible_front_runs_info.len() > 1 {
+            recusive += 1;
             // remove dropped sandwiches
             if victim_info.is_empty() || victim_actions.is_empty() {
                 return None
@@ -626,6 +678,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions.to_vec(),
                     victim_info,
                     victim_actions,
+                    recusive,
                 )
             };
 
@@ -662,6 +715,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions,
                     victim_info,
                     victim_actions,
+                    recusive,
                 )
             };
             if let Some(front) = front_shrink {
@@ -914,7 +968,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     ///
     /// The results from both functions are combined and deduplicated to form a
     /// comprehensive set of potential sandwich attacks.
-    fn get_possible_sandwich(tree: Arc<BlockTree<Action>>) -> Vec<PossibleSandwich> {
+    fn get_possible_sandwich(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+    ) -> Vec<PossibleSandwichWithTxInfo> {
         if tree.tx_roots.len() < 3 {
             return vec![]
         }
@@ -922,14 +979,35 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let tree_clone_for_senders = tree.clone();
         let tree_clone_for_contracts = tree.clone();
 
-        // Using Rayon to execute functions in parallel
-        let (result_senders, result_contracts) = rayon::join(
-            || get_possible_sandwich_duplicate_senders(tree_clone_for_senders),
-            || get_possible_sandwich_duplicate_contracts(tree_clone_for_contracts),
-        );
+        let result_senders = get_possible_sandwich_duplicate_senders(tree_clone_for_senders);
+        let result_contracts = get_possible_sandwich_duplicate_contracts(tree_clone_for_contracts);
 
         // Combine and deduplicate results
-        Itertools::unique(result_senders.into_iter().chain(result_contracts)).collect()
+        let set = Itertools::unique(result_senders.into_iter().chain(result_contracts))
+            .flat_map(Self::partition_into_gaps)
+            .collect::<Vec<_>>();
+
+        let tx_set = set
+            .iter()
+            .flat_map(|ps| {
+                let mut set = ps.possible_frontruns.clone();
+                set.push(ps.possible_backrun);
+                set.extend(ps.victims.iter().flatten().copied());
+                set
+            })
+            .unique()
+            .collect::<Vec<_>>();
+
+        let tx_info_map = tree
+            .get_tx_info_batch(&tx_set, self.utils.db)
+            .into_iter()
+            .flatten()
+            .map(|info| (info.tx_hash, info))
+            .collect::<FastHashMap<_, _>>();
+
+        set.into_iter()
+            .filter_map(|ps| PossibleSandwichWithTxInfo::from_ps(ps, &tx_info_map))
+            .collect_vec()
     }
 }
 

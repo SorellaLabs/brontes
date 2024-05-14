@@ -1,5 +1,7 @@
 use std::{env, error::Error};
 
+use tracing_subscriber::Layer;
+
 #[cfg(all(feature = "jemalloc", unix))]
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
@@ -49,17 +51,20 @@ fn run() -> eyre::Result<()> {
     init_tracing(opt.verbosity.directive());
 
     match opt.command {
-        Commands::Run(command) => {
-            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
-        }
-        Commands::Database(command) => {
-            runner::run_command_until_exit(|ctx| command.execute(brontes_db_endpoint, ctx))
-        }
+        Commands::Run(command) => runner::run_command_until_exit(opt.metrics_port, |ctx| {
+            command.execute(brontes_db_endpoint, ctx)
+        }),
+        Commands::Database(command) => runner::run_command_until_exit(opt.metrics_port, |ctx| {
+            command.execute(brontes_db_endpoint, ctx)
+        }),
     }
 }
 
 fn init_tracing(verbosity: Directive) {
-    let layers = vec![brontes_tracing::stdout(verbosity)];
+    let layers = vec![
+        brontes_tracing::stdout(verbosity),
+        brontes_metrics::error_layer::BrontesErrorMetrics::default().boxed(),
+    ];
 
     brontes_tracing::init(layers);
 }
