@@ -59,17 +59,7 @@ pub struct Clickhouse {
 
 impl Default for Clickhouse {
     fn default() -> Self {
-        let url = format!(
-            "{}:{}",
-            std::env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
-            std::env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
-        );
-        let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
-        let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
-
-        let config =
-            db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None);
-        Clickhouse::new(config, Default::default(), Default::default())
+        Clickhouse::new(clickhouse_config(), Default::default(), Default::default())
     }
 }
 
@@ -547,6 +537,21 @@ impl ClickhouseHandle for Clickhouse {
 
         Ok(trades)
     }
+}
+
+pub fn clickhouse_config() -> db_interfaces::clickhouse::config::ClickhouseConfig {
+    let url = format!(
+        "{}:{}",
+        std::env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
+        std::env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
+    );
+    let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
+    let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
+
+    let config =
+        db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None);
+
+    config
 }
 
 #[cfg(test)]
