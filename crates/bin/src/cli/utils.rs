@@ -178,8 +178,7 @@ fn spawn_db_writer_thread(
     let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
 
-    let config =
-        ClickhouseConfig::new(user, pass, url, true, None);
+    let config = ClickhouseConfig::new(user, pass, url, true, None);
 
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
@@ -205,4 +204,5 @@ fn spawn_db_writer_thread(
             drop(graceful_guard);
         },
     );
+    tracing::info!("started writer");
 }
