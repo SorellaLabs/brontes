@@ -36,8 +36,8 @@ impl BrontesClickhouseTables {
         matches!(
             self,
             BrontesClickhouseTables::ClickhouseTxTraces
-                | BrontesClickhouseTables::ClickhouseDexPriceMapping,
-            BrontesClickhouseTables::ClickhouseTree
+                | BrontesClickhouseTables::ClickhouseDexPriceMapping
+                | BrontesClickhouseTables::ClickhouseTree
         )
     }
 }
