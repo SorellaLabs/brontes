@@ -26,11 +26,12 @@ fn main() -> eyre::Result<()> {
     let _profiler = dhat::Profiler::new_heap();
     match run() {
         Ok(()) => {
+            println!("shit ran");
             info!(target: "brontes", "successful shutdown");
             Ok(())
         }
         Err(e) => {
-            println!("{:?}",e);
+            println!("error: {:?}", e);
             error!("Error: {:?}", e);
 
             let mut source: Option<&dyn Error> = e.source();
