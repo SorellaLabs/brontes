@@ -3,6 +3,8 @@ use std::{env, path::Path};
 use alloy_primitives::Address;
 #[cfg(not(feature = "local-reth"))]
 use brontes_core::local_provider::LocalProvider;
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+use brontes_database::clickhouse::clickhouse_config;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
@@ -186,9 +188,7 @@ fn spawn_db_writer_thread(
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
         |shutdown| async move {
-            println!("starting shit");
-            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), config, 5_000);
-            println!("shit started");
+            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), clickhouse_config(), 100);
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
