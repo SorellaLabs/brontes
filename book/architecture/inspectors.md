@@ -10,7 +10,7 @@ The `brontes_inspect` crate efficiently detects and analyzes MEV, emphasizing mo
 
 An `Inspector` is a trait defining the `process_tree` method, which takes a `BlockTree` and `Metadata` as input, returning a vector of tuples, each containing a `BundleHeader` and a `BundleData`.
 
-```rust
+```rust,ignore
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
@@ -46,7 +46,7 @@ Each inspector implements the `Inspector` trait, providing its unique implementa
 
 The `Composer` is a special type of inspector that combines the results of individual inspectors to identify more complex MEV strategies. It takes an array of individual inspectors, a `BlockTree`, and `Metadata` as input, running each inspector on the block and collecting their results.
 
-```rust
+```rust,ignore
 pub struct Composer<'a, const N: usize> {
     inspectors_execution: InspectorFut<'a>,
     pre_processing:       BlockPreprocessing,
