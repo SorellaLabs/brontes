@@ -44,7 +44,7 @@ impl CacheData {
 
         let write_bytes = prometheus::register_int_counter_vec!(
             "libmdbx_cache_read_bytes",
-            "cache read bytes",
+            "cache write bytes",
             &["table"]
         )
         .unwrap();
