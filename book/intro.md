@@ -14,24 +14,23 @@ _Documentation for Brontes users and developers._
 
 ## What is Brontes?
 
-[Brontes](https://github.com/SorellaLabs/brontes), developed by [Sorella Labs](https://twitter.com/Sorellalabs), is an advanced blockchain analytics pipeline built on top of [Reth](https://github.com/paradigmxyz/reth/). It transforms raw Ethereum data into a structured, analyzable format, enriched with a diverse set of off-chain data. Brontes provides a pipelined and modular framework for complex analytics, enabling developers data scientists, and researchers to focus on their analysis and methodology without being burdened by the intricacies of data preprocessing.
+[Brontes](https://github.com/SorellaLabs/brontes), developed by [Sorella Labs](https://twitter.com/Sorellalabs), is an advanced blockchain analytics pipeline built on top of [Reth](https://github.com/paradigmxyz/reth/). It transforms raw Ethereum data into a structured, analyzable format, enriched with off-chain data. Brontes provides a pipelined and modular framework for complex analytics, enabling data scientists, and researchers to focus on their analysis and methodology without being burdened by the intricacies of data preprocessing.
 
 ## Why Brontes?
 
-Analyzing blockchain data, particularly at the transaction trace level, is an overwhelming and time-consuming process. The sheer volume of data and the effort required for data classification, normalization, and preprocessing often hinder the ability of data scientists to focus on pioneering analysis and developing new methodologies.
+Analyzing blockchain data, particularly at the transaction trace level, is an overwhelming and time-consuming process. The sheer volume of data and the effort required for data classification, and normalization often hinder the ability of data scientists to focus on pioneering analysis and developing new methodologies.
 
-The grunt work of data classification, normalization, and more generally of data preprocessing is painful, especially when it comes to blockchain data. This arduous process becomes even more challenging as you dive into finer data granularity; at the transaction trace level, one can easily become overwhelmed by the sheer volume of intractable data.
-
-Albeit a few masochists might revel in the painstaking but necessary prep work, the rest of us don't exactly find joy in it; the true thrill in data analysis emerges in the exploration and refinement of new methodologies. This insight is what shapes our Inspector Framework and Brontes at its core. Our aim is to strip away the burden of these initial steps, giving data scientists, developers, and researchers the freedom to leap straight into what they genuinely enjoy—pioneering analysis.
+Albeit a few masochists might revel in the painstaking but necessary prep work, the rest of us don't exactly find joy in it; the true thrill emerges in the exploration and refinement of new methodologies. This insight is what shapes our Inspector Framework and Brontes at its core. Our aim is to strip away the burden of these initial steps, giving you the freedom to leap straight into pioneering analysis.
 
 ## Navigating This Book
 
 - To install Brontes, refer to the [installation guide](./installation/installation.md).
-- For running Brontes, follow the instructions in the [run guide](./run/run_brontes.md).
+- To run Brontes, follow the instructions in the [run guide](./run/run_brontes.md).
+- To learn about how brontes works under the hood, see the [architecture doc](./architecture/intro.md).
 
 ## Licensing and Community Involvement
 
 Initially developed and currently maintained by [Sorella Labs](https://twitter.com/Sorellalabs), Brontes is licensed under the GPL 2.0. We actively welcome community contributions, aiming for a future where the project is led collaboratively, by and for the community.
 
-[tg-badge]: https://img.shields.io/endpoint?color=neon&logo=telegram&label=chat&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fparadigm%5Freth
+[tg-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fsorella_brontes
 [tg-url]: https://t.me/sorella_brontes
