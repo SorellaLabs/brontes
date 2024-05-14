@@ -18,6 +18,7 @@ impl<const N: usize> ReadWriteMultiplex<N> {
         println!("opening cache");
         let memory_per_shard = memory_per_table_mb / N;
         let metrics = CacheData::default();
+        println!("opening cache");
         let cache =
             core::array::from_fn(|_| ReadWriteCache::new(memory_per_shard, metrics.clone()));
 
