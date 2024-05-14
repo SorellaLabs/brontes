@@ -48,7 +48,7 @@ use tracing::{info, instrument};
 use super::{
     libmdbx_writer::{LibmdbxWriter, WriterMessage},
     types::ReturnKV,
-    ReadWriteMultiplex,
+    ReadWriteCache,
 };
 use crate::{
     clickhouse::ClickhouseHandle,
@@ -97,7 +97,7 @@ pub struct LibmdbxReadWriter {
     tx:      UnboundedSender<WriterMessage>,
     metrics: Option<LibmdbxMetrics>,
     // 100 shards for now, might change in future
-    cache:   ReadWriteMultiplex<1>,
+    cache:   ReadWriteCache,
 }
 
 impl LibmdbxReadWriter {
@@ -122,7 +122,7 @@ impl LibmdbxReadWriter {
             db,
             tx,
             metrics: Some(LibmdbxMetrics::default()),
-            cache: ReadWriteMultiplex::new(memory_per_table_mb),
+            cache: ReadWriteCache::new(memory_per_table_mb),
         })
     }
 }
@@ -367,26 +367,25 @@ impl LibmdbxReader for LibmdbxReadWriter {
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"protocol_info")]
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         self.db.view_db(|tx| {
-            self.cache.cache(address, |cache| {
-                let lock = &cache.protocol_info;
-                match lock.get(&address) {
-                    Some(Some(e)) => return Ok(e.clone()),
-                    Some(None) => {
-                        return Err(eyre::eyre!(
-                            "entry for key {:?} in AddressToProtocolInfo",
-                            address
-                        ))
-                    }
-                    None => tx
-                        .get::<AddressToProtocolInfo>(address)
-                        .inspect(|data| {
-                            lock.get_with(address, || data.clone());
-                        })?
-                        .ok_or_else(|| {
-                            eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address)
-                        }),
+            match self
+                .cache
+                .protocol_info(true, |handle| handle.get(&address))
+            {
+                Some(Some(e)) => return Ok(e.clone()),
+                Some(None) => {
+                    return Err(eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
                 }
-            })
+                None => tx
+                    .get::<AddressToProtocolInfo>(address)
+                    .inspect(|data| {
+                        self.cache.protocol_info(false, |lock| {
+                            lock.get_with(address, || data.clone());
+                        })
+                    })?
+                    .ok_or_else(|| {
+                        eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address)
+                    }),
+            }
         })
     }
 
@@ -458,24 +457,22 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
-        self.db.view_db(|tx| {
-            self.cache.cache(address, |cache| {
-                let lock = &cache.token_info;
-                match lock.get(&address) {
-                    Some(Some(e)) => return Ok(TokenInfoWithAddress { inner: e.clone(), address }),
-                    Some(None) => {
-                        return Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address))
-                    }
-                    None => tx
-                        .get::<TokenDecimals>(address)
-                        .inspect(|data| {
-                            lock.get_with(address, || data.clone());
-                        })?
-                        .map(|inner| TokenInfoWithAddress { inner, address })
-                        .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
+        self.db
+            .view_db(|tx| match self.cache.token_info(true, |lock| lock.get(&address)) {
+                Some(Some(e)) => return Ok(TokenInfoWithAddress { inner: e.clone(), address }),
+                Some(None) => {
+                    return Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address))
                 }
+                None => tx
+                    .get::<TokenDecimals>(address)
+                    .inspect(|data| {
+                        self.cache.token_info(false, |lock| {
+                            lock.get_with(address, || data.clone());
+                        })
+                    })?
+                    .map(|inner| TokenInfoWithAddress { inner, address })
+                    .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
             })
-        })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_eoa_infos")]
@@ -484,38 +481,29 @@ impl LibmdbxReader for LibmdbxReadWriter {
         searcher_eoa: Vec<Address>,
     ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
         self.db.view_db(|tx| {
-            self.cache.multi_cache(
-                searcher_eoa,
-                |eoas, cache| {
-                    let lock = &cache.searcher_eoa;
-                    let mut res = Vec::with_capacity(eoas.len());
-                    for eoa in eoas {
-                        match lock.get(&eoa) {
-                            Some(Some(val)) => res.push((eoa, Ok(Some(val.clone())))),
-                            Some(None) => res.push((eoa, Ok(None))),
-                            None => res.push((
-                                eoa,
-                                tx.get::<SearcherEOAs>(eoa)
-                                    .map_err(ErrReport::from)
-                                    .inspect(|data| {
-                                        lock.get_with(eoa, || data.clone());
-                                    }),
-                            )),
+            let mut res = FastHashMap::default();
+            for eoa in searcher_eoa {
+                match self.cache.searcher_eoa(true, |h| h.get(&eoa)) {
+                    Some(Some(val)) => {
+                        res.insert(eoa, val.clone());
+                    }
+                    Some(None) => continue,
+                    None => {
+                        if let Ok(Some(r)) = tx
+                            .get::<SearcherEOAs>(eoa)
+                            .map_err(ErrReport::from)
+                            .inspect(|data| {
+                                self.cache.searcher_eoa(false, |f| {
+                                    f.get_with(eoa, || data.clone());
+                                })
+                            })
+                        {
+                            res.insert(eoa, r);
                         }
                     }
-                    res
-                },
-                |res| {
-                    let mut out = FastHashMap::default();
-                    for (key, value) in res {
-                        let Ok(Some(val)) = value else {
-                            continue;
-                        };
-                        out.insert(key, val);
-                    }
-                    Ok(out)
-                },
-            )
+                }
+            }
+            Ok(res)
         })
     }
 
@@ -524,22 +512,21 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        self.cache.cache(searcher_eoa, |cache| {
-            let lock = &cache.searcher_eoa;
-            match lock.get(&searcher_eoa) {
-                Some(Some(e)) => return Ok(Some(e.clone())),
-                Some(None) => return Ok(None),
-                None => self
-                    .db
-                    .view_db(|tx| {
-                        tx.get::<SearcherEOAs>(searcher_eoa)
-                            .map_err(ErrReport::from)
-                    })
-                    .inspect(|data| {
-                        lock.get_with(searcher_eoa, || data.clone());
-                    }),
-            }
-        })
+        match self.cache.searcher_eoa(true, |f| f.get(&searcher_eoa)) {
+            Some(Some(e)) => return Ok(Some(e.clone())),
+            Some(None) => return Ok(None),
+            None => self
+                .db
+                .view_db(|tx| {
+                    tx.get::<SearcherEOAs>(searcher_eoa)
+                        .map_err(ErrReport::from)
+                })
+                .inspect(|data| {
+                    self.cache.searcher_eoa(false, |f| {
+                        f.get_with(searcher_eoa, || data.clone());
+                    });
+                }),
+        }
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_searcher_contract_infos")]
@@ -548,38 +535,29 @@ impl LibmdbxReader for LibmdbxReadWriter {
         searcher: Vec<Address>,
     ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
         self.db.view_db(|tx| {
-            self.cache.multi_cache(
-                searcher,
-                |eoas, cache| {
-                    let lock = &cache.searcher_contract;
-                    let mut res = Vec::with_capacity(eoas.len());
-                    for eoa in eoas {
-                        match lock.get(&eoa) {
-                            Some(Some(val)) => res.push((eoa, Ok(Some(val.clone())))),
-                            Some(None) => res.push((eoa, Ok(None))),
-                            None => res.push((
-                                eoa,
-                                tx.get::<SearcherContracts>(eoa)
-                                    .map_err(ErrReport::from)
-                                    .inspect(|data| {
-                                        lock.get_with(eoa, || data.clone());
-                                    }),
-                            )),
+            let mut res = FastHashMap::default();
+            for contract in searcher {
+                match self.cache.searcher_contract(true, |h| h.get(&contract)) {
+                    Some(Some(val)) => {
+                        res.insert(contract, val.clone());
+                    }
+                    Some(None) => continue,
+                    None => {
+                        if let Ok(Some(r)) = tx
+                            .get::<SearcherContracts>(contract)
+                            .map_err(ErrReport::from)
+                            .inspect(|data| {
+                                self.cache.searcher_contract(false, |f| {
+                                    f.get_with(contract, || data.clone());
+                                })
+                            })
+                        {
+                            res.insert(contract, r);
                         }
                     }
-                    res
-                },
-                |res| {
-                    let mut out = FastHashMap::default();
-                    for (key, value) in res {
-                        let Ok(Some(val)) = value else {
-                            continue;
-                        };
-                        out.insert(key, val);
-                    }
-                    Ok(out)
-                },
-            )
+                }
+            }
+            Ok(res)
         })
     }
 
@@ -588,42 +566,24 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         searcher_contract: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
-        self.cache.cache(searcher_contract, |cache| {
-            // lock contention
-            let lock = cache
-                .metrics
-                .clone()
-                .cache_read("searcher_contract", || &cache.searcher_contract);
-
-            match lock.get(&searcher_contract) {
-                Some(Some(e)) => {
-                    cache
-                        .metrics
-                        .cache_read_bytes::<SearcherInfo>("searcher_contract", 1);
-                    return Ok(Some(e.clone()))
-                }
-                Some(None) => {
-                    cache
-                        .metrics
-                        .cache_read_bytes::<SearcherInfo>("searcher_contract", 1);
-                    return Ok(None)
-                }
-                None => self
-                    .db
-                    .view_db(|tx| {
-                        tx.get::<SearcherContracts>(searcher_contract)
-                            .map_err(ErrReport::from)
-                    })
-                    .inspect(|data| {
-                        cache.metrics.clone().cache_write::<(), SearcherInfo>(
-                            "searcher_contract",
-                            || {
-                                lock.get_with(searcher_contract, || data.clone());
-                            },
-                        );
-                    }),
-            }
-        })
+        match self
+            .cache
+            .searcher_contract(true, |f| f.get(&searcher_contract))
+        {
+            Some(Some(e)) => return Ok(Some(e.clone())),
+            Some(None) => return Ok(None),
+            None => self
+                .db
+                .view_db(|tx| {
+                    tx.get::<SearcherContracts>(searcher_contract)
+                        .map_err(ErrReport::from)
+                })
+                .inspect(|data| {
+                    self.cache.searcher_contract(false, |f| {
+                        f.get_with(searcher_contract, || data.clone());
+                    });
+                }),
+        }
     }
 
     fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
@@ -730,59 +690,29 @@ impl LibmdbxReader for LibmdbxReadWriter {
         addresses: Vec<Address>,
     ) -> eyre::Result<FastHashMap<Address, AddressMetadata>> {
         self.db.view_db(|tx| {
-            self.cache.multi_cache(
-                addresses,
-                |eoas, cache| {
-                    let mut lock = cache
-                        .metrics
-                        .clone()
-                        .cache_read("address_metadata", || &cache.address_meta);
-
-                    let mut res = Vec::with_capacity(eoas.len());
-                    let mut counter = 0;
-                    for eoa in eoas {
-                        match lock.get(&eoa) {
-                            Some(Some(val)) => {
-                                counter += 1;
-                                res.push((eoa, Ok(Some(val.clone()))))
-                            }
-                            Some(None) => {
-                                counter += 1;
-                                res.push((eoa, Ok(None)))
-                            }
-                            None => res.push((
-                                eoa,
-                                tx.get::<AddressMeta>(eoa).map_err(ErrReport::from).inspect(
-                                    |data| {
-                                        cache.metrics.clone().cache_write::<(), AddressMetadata>(
-                                            "address_metadata",
-                                            || {
-                                                lock.get_with(eoa, || data.clone());
-                                            },
-                                        );
-                                    },
-                                ),
-                            )),
+            let mut res = FastHashMap::default();
+            for addr in addresses {
+                match self.cache.address_meta(true, |h| h.get(&addr)) {
+                    Some(Some(val)) => {
+                        res.insert(addr, val.clone());
+                    }
+                    Some(None) => continue,
+                    None => {
+                        if let Ok(Some(r)) = tx
+                            .get::<AddressMeta>(addr)
+                            .map_err(ErrReport::from)
+                            .inspect(|data| {
+                                self.cache.address_meta(false, |f| {
+                                    f.get_with(addr, || data.clone());
+                                })
+                            })
+                        {
+                            res.insert(addr, r);
                         }
                     }
-
-                    cache
-                        .metrics
-                        .cache_read_bytes::<AddressMetadata>("address_metadata", counter);
-
-                    res
-                },
-                |res| {
-                    let mut out = FastHashMap::default();
-                    for (key, value) in res {
-                        let Ok(Some(val)) = value else {
-                            continue;
-                        };
-                        out.insert(key, val);
-                    }
-                    Ok(out)
-                },
-            )
+                }
+            }
+            Ok(res)
         })
     }
 
@@ -791,19 +721,18 @@ impl LibmdbxReader for LibmdbxReadWriter {
         &self,
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
-        self.cache.cache(address, |cache| {
-            let mut lock = &cache.address_meta;
-            match lock.get(&address) {
-                Some(Some(e)) => return Ok(Some(e.clone())),
-                Some(None) => return Ok(None),
-                None => self
-                    .db
-                    .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
-                    .inspect(|data| {
-                        lock.get_with(address, || data.clone());
-                    }),
-            }
-        })
+        match self.cache.address_meta(true, |f| f.get(&address)) {
+            Some(Some(e)) => return Ok(Some(e.clone())),
+            Some(None) => return Ok(None),
+            None => self
+                .db
+                .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
+                .inspect(|data| {
+                    self.cache.address_meta(false, |f| {
+                        f.get_with(address, || data.clone());
+                    });
+                }),
+        }
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_builder_info")]
@@ -918,25 +847,13 @@ impl DBWriter for LibmdbxReadWriter {
         eoa_info: SearcherInfo,
         contract_info: Option<SearcherInfo>,
     ) -> eyre::Result<()> {
-        self.cache.write(eoa_address, |cache| {
-            cache
-                .metrics
-                .clone()
-                .cache_write::<(), SearcherInfo>("eoa_info", || {
-                    let lock = &cache.searcher_eoa;
-                    lock.insert(eoa_address, Some(eoa_info.clone()));
-                })
+        self.cache.searcher_eoa(false, |handle| {
+            handle.insert(eoa_address, Some(eoa_info.clone()));
         });
 
         if let (Some(addr), Some(info)) = (contract_address, &contract_info) {
-            self.cache.write(addr, |cache| {
-                cache
-                    .metrics
-                    .clone()
-                    .cache_write::<(), SearcherInfo>("contract_info", || {
-                        let lock = &cache.searcher_contract;
-                        lock.insert(addr, Some(info.clone()));
-                    })
+            self.cache.searcher_contract(false, |handle| {
+                handle.insert(addr, Some(info.clone()));
             });
         }
 
@@ -953,14 +870,8 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        self.cache.write(searcher_eoa, |cache| {
-            cache
-                .metrics
-                .clone()
-                .cache_write::<(), SearcherInfo>("eoa_info", || {
-                    let mut lock = &cache.searcher_eoa;
-                    lock.insert(searcher_eoa, Some(searcher_info.clone()));
-                })
+        self.cache.searcher_eoa(false, |handle| {
+            handle.insert(searcher_eoa, Some(searcher_info.clone()));
         });
 
         Ok(self
@@ -973,14 +884,8 @@ impl DBWriter for LibmdbxReadWriter {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        self.cache.write(searcher_contract, |cache| {
-            cache
-                .metrics
-                .clone()
-                .cache_write::<(), SearcherInfo>("contract_info", || {
-                    let mut lock = &cache.searcher_contract;
-                    lock.insert(searcher_contract, Some(searcher_info.clone()));
-                })
+        self.cache.searcher_contract(false, |handle| {
+            handle.insert(searcher_contract, Some(searcher_info.clone()));
         });
 
         Ok(self
@@ -993,9 +898,8 @@ impl DBWriter for LibmdbxReadWriter {
         address: Address,
         metadata: AddressMetadata,
     ) -> eyre::Result<()> {
-        self.cache.write(address, |cache| {
-            let mut lock = &cache.address_meta;
-            lock.insert(address, Some(metadata.clone()));
+        self.cache.address_meta(false, |handle| {
+            handle.insert(address, Some(metadata.clone()));
         });
 
         Ok(self
@@ -1030,16 +934,9 @@ impl DBWriter for LibmdbxReadWriter {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
-        self.cache.write(address, |cache| {
+        self.cache.token_info(false, |handle| {
             let token_info = TokenInfo::new(decimals, symbol.clone());
-
-            cache
-                .metrics
-                .clone()
-                .cache_write::<(), TokenInfo>("token_info", || {
-                    let mut lock = &cache.token_info;
-                    lock.insert(address, Some(token_info));
-                })
+            handle.insert(address, Some(token_info.clone()));
         });
 
         Ok(self
@@ -1055,7 +952,7 @@ impl DBWriter for LibmdbxReadWriter {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
-        self.cache.write(address, |cache| {
+        self.cache.protocol_info(false, |handle| {
             let mut tokens_i = tokens.iter();
             let default = Address::ZERO;
             let details = ProtocolInfo {
@@ -1068,14 +965,7 @@ impl DBWriter for LibmdbxReadWriter {
                 token4: tokens_i.next().cloned(),
                 curve_lp_token,
             };
-
-            cache
-                .metrics
-                .clone()
-                .cache_write::<(), ProtocolInfo>("protocol_info", || {
-                    let mut lock = &cache.protocol_info;
-                    lock.insert(address, Some(details));
-                })
+            handle.insert(address, Some(details.clone()));
         });
 
         Ok(self.tx.send(WriterMessage::Pool {

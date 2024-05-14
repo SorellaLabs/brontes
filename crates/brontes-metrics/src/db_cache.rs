@@ -57,13 +57,11 @@ impl CacheData {
         }
     }
 
-    pub fn cache_read_bytes<S>(&self, table: &str, amount: usize) {
+    pub fn cache_read<R, S>(self, table: &str, f: impl FnOnce() -> R) -> R {
         self.cache_read_bytes
             .with_label_values(&[table])
-            .inc_by((std::mem::size_of::<S>() * amount) as u64);
-    }
+            .inc_by(std::mem::size_of::<S>() as u64);
 
-    pub fn cache_read<R>(self, table: &str, f: impl FnOnce() -> R) -> R {
         let now = Instant::now();
         let res = f();
         let elasped = now.elapsed().as_nanos();
