@@ -173,7 +173,7 @@ fn spawn_db_writer_thread(
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
         |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()) ClickhouseConfig::default(), 5_000);
+            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), ClickhouseConfig::default(), 5_000);
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
