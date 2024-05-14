@@ -173,7 +173,7 @@ rkyv = { git = "https://github.com/rkyv/rkyv.git", branch = "0.7-hashbrown-0.14"
 num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
-bitflags = "2.4"
+bitflags = "2.5.0"
 
 arrow = "51.0.0"
 polars = { version = "0.38.3", features = ["lazy"] }

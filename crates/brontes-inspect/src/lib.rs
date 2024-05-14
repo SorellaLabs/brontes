@@ -70,16 +70,6 @@
 //! orders results from individual inspectors. This ensures that lower-level
 //! actions are composed before higher-level actions, which could affect the
 //! composition.
-//!
-//! Additionally, the `Composer` provides a `Future` implementation for use in
-//! asynchronous contexts. When polled, it runs the individual inspectors in
-//! parallel and collects their results, processing them to identify complex MEV
-//! strategies.
-//!
-//! In summary, the `brontes_inspect` crate offers tools for detecting and
-//! analyzing MEV strategies in Ethereum transactions. Individual inspectors
-//! identify specific MEV strategies, while the `Composer` combines these
-//! results to identify more complex strategies.
 
 pub mod composer;
 pub mod discovery;

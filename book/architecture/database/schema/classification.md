@@ -2,7 +2,8 @@
 
 ## AddressToProtocolInfo Table
 
---
+---
+
 **Table Name:** `AddressToProtocolInfo`
 
 **Description:** Stores mappings of blockchain addresses to specific protocol info, used by the classifier dispatch to decode and normalize traces.
@@ -37,7 +38,7 @@
 
 **Table Name:** `TokenDecimals`
 
-**Description:** Provides token decimals and symbols.
+**Description:** Token decimals and symbols.
 
 **Key:** Address
 

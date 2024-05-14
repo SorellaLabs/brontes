@@ -2,7 +2,8 @@
 
 ## DexPrice Table
 
---
+---
+
 **Table Name:** `DexPrice`
 
 **Description:** This table stores DEX pricing data, providing transaction-level granularity for all active tokens within a block.
@@ -27,7 +28,7 @@
   - **Description:** A list of `DexPrices` for all active tokens in the transaction.
 - **DexPrices**:
   - **Type:** [`DexPrices`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/dex.rs#L46)
-  - **Description:** Dex Quote information including the state before and after the transaction and if the pricing originates from a swap or transfer.
+  - **Description:** Dex Quote including the state before and after the transaction and if the pricing originates from a swap or transfer.
 
 ## CexPrice Table
 
@@ -48,7 +49,7 @@
 
 - **exchange**:
   - **Type:** `CexExchange`
-  - **Description:** The exchange from which the price data is sourced.
+  - **Description:** The exchange from which the quote data is sourced.
 - **Pair**:
   - **Type:** `Pair`
   - **Description:** The pair (e.g., BTC/USD) for which the price is provided.
@@ -82,4 +83,4 @@
 - **CexTrades**:
 
   - **Type:** [`Vec<CexTrades>`](https://github.com/SorellaLabs/brontes/blob/e9935b20922ffcef21471de888dc9d695bc2bd03/crates/brontes-types/src/db/cex/trades/cex_trades.rs#L19)
-  - **Description:** Records of each trade, including the timestamp, price, and amount within the set time window (pre & post block time).
+  - **Description:** Records of each trade, including the timestamp, price, and amount.
