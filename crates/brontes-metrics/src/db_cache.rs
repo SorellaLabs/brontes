@@ -20,7 +20,7 @@ impl CacheData {
         let buckets = prometheus::exponential_buckets(1.0, 2.0, 15).unwrap();
 
         let read_speed = prometheus::register_histogram_vec!(
-            "libmdbx_cache_read_speed",
+            "libmdbx_cache_read_speed_ns",
             "libmdbx cache speed read",
             &["table"],
             buckets.clone()
@@ -28,7 +28,7 @@ impl CacheData {
         .unwrap();
 
         let write_speed = prometheus::register_histogram_vec!(
-            "libmdbx_cache_write_speed",
+            "libmdbx_cache_write_speed_ns",
             "libmdbx cache speed write",
             &["table"],
             buckets.clone()
@@ -43,7 +43,7 @@ impl CacheData {
         .unwrap();
 
         let write_bytes = prometheus::register_int_counter_vec!(
-            "libmdbx_cache_read_bytes",
+            "libmdbx_cache_write_bytes",
             "cache write bytes",
             &["table"]
         )
