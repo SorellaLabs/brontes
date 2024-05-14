@@ -15,6 +15,7 @@ pub struct ReadWriteMultiplex<const N: usize> {
 
 impl<const N: usize> ReadWriteMultiplex<N> {
     pub fn new(memory_per_table_mb: usize) -> Self {
+        println!("opening cache");
         let memory_per_shard = memory_per_table_mb / N;
         let metrics = CacheData::default();
         let cache =
