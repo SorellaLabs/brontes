@@ -2,7 +2,7 @@
 
 ## Block Info Table Schema
 
---
+---
 
 **Table Name:** `BlockInfo`
 
@@ -34,11 +34,11 @@
   - **Description:** Amount of MEV reward payed to the proposer.
 - **private_flow**:
   - **Type:** `Vec<TxHash>`
-  - **Description:** List of transaction hashes that were not seen in the mempool by Chainbound fibernodes.
-
----
+  - **Description:** List of transaction hashes that were not seen in the mempool via Chainbound fibernodes.
 
 ## TxTraces Table Schema
+
+---
 
 **Table Name:** `TxTraces`
 

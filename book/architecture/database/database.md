@@ -24,7 +24,7 @@ To manage cloud egress costs, we don't currently provide api access to our click
 
 ## Data Flow
 
-Brontes adapts its data retrieval method based on its operational mode: for historical block analysis, it accesses the pre-stored data locally; when operating at chain tip, it retrieves data through the Brontes API.
+Brontes adapts its data retrieval method based on its operational mode: for historical block analysis, it accesses the stored data locally; when operating at chain tip, it retrieves data through the Brontes API.
 
 <div style="text-align: center;">
     <img src="./diagrams/data-query-flow.png" alt="brontes-flow" style="border-radius: 20px; width: 500px; height: auto;">
@@ -47,7 +47,7 @@ Each value is mapped to a specific block. This data is fetched at each block bef
     <p style="font-style: italic;">Figure 4: Data usage.</p>
 </div>
 
-The `Metadata` struct aggregates the essential block specific data, used by all [`Inspectors`](https://sorellalabs.github.io/brontes/docs/brontes_inspect/index.html) during their analysis.
+The `Metadata` struct aggregates the essential block specific data, used by all [`Inspectors`](https://sorellalabs.github.io/brontes/docs/brontes_inspect/index.html).
 
 ```rust,ignore
 pub struct Metadata {
@@ -62,7 +62,7 @@ pub struct Metadata {
 - **[`BlockInfo`](./schema/block.md#block-info-table)**: P2P transaction, block and mev-boost data.
 - **[`DexPrice`](./schema/pricing.md#dex-price-table)**: DEX pricing with transaction level granularity for all active tokens in the block.
 - **[`CexPrice`](./schema/pricing.md#cexprice-table)** and **[`CexTrades`](./schema/pricing.md#cex-trades-table-schema)**: Centralized exchange quotes and trade data.
-- **[`BuilderInfo`](./schema/metadata.md#builder-table)**: Information on the block builder.
+- **[`BuilderInfo`](./schema/metadata.md#builder-table)**: Metadata on the Block builder.
 
 #### 2. Range-Agnostic Data
 
@@ -71,11 +71,11 @@ Valid across the full block range. This includes:
 **Data for Decoding & Normalization**:
 
 - [`TokenDecimals`](./schema/classification.md#token-decimals-table): Token decimals and symbols.
-- [`AddressToProtocolInfo`](./schema/classification.md#addresstoprotocolinfo-table): Maps contract addresses to their protocol, facilitating transaction decoding and normalization.
+- [`AddressToProtocolInfo`](./schema/classification.md#addresstoprotocolinfo-table): Maps contract addresses to their protocol, used during transaction decoding and normalization.
 
 **Metadata used by the Inspectors**:
 
-This data is used by the inspectors for filtering and analysis purposes. It is queried ad-hoc via the database handle provided by the inspectors' `SharedInspectorsUtils`. See Fig 4.
+This data is used by the inspectors for filtering and analysis. It is queried ad-hoc via the database handle provided by the inspectors' `SharedInspectorsUtils`. See Fig 4.
 
 - [`BuilderInfo`](./schema/metadata.md#builder-table): Information on ethereum block builders, including aggregate pnl & block count.
 - [`SearcherInfo`](./schema/metadata.md#searcher-info-tables): Information on searchers eoas and contracts, including summary statistics on mev bundle count and pnl by mev type.
