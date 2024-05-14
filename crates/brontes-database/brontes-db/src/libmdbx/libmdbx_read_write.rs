@@ -371,9 +371,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 .cache
                 .protocol_info(true, |handle| handle.get(&address))
             {
-                Some(Some(e)) => return Ok(e.clone()),
+                Some(Some(e)) => Ok(e.clone()),
                 Some(None) => {
-                    return Err(eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
+                    Err(eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address))
                 }
                 None => tx
                     .get::<AddressToProtocolInfo>(address)
@@ -459,10 +459,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         self.db
             .view_db(|tx| match self.cache.token_info(true, |lock| lock.get(&address)) {
-                Some(Some(e)) => return Ok(TokenInfoWithAddress { inner: e.clone(), address }),
-                Some(None) => {
-                    return Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address))
-                }
+                Some(Some(e)) => Ok(TokenInfoWithAddress { inner: e.clone(), address }),
+                Some(None) => Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
                 None => tx
                     .get::<TokenDecimals>(address)
                     .inspect(|data| {

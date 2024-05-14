@@ -28,7 +28,7 @@
 //! // Future execution of the composer to process MEV data
 //! ```
 
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
 
 use brontes_types::{mev::Mev, FastHashMap};
 use itertools::Itertools;
