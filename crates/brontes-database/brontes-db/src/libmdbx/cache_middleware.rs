@@ -4,7 +4,6 @@ use brontes_types::db::{
     address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
     searcher::SearcherInfo, token_info::TokenInfo,
 };
-use db_interfaces::clickhouse::config::ClickhouseConfig;
 use moka::{policy::EvictionPolicy, sync::SegmentedCache};
 
 const MEGABYTE: usize = 1024 * 1024;
@@ -20,6 +19,8 @@ impl<const N: usize> ReadWriteMultiplex<N> {
         let metrics = CacheData::default();
         let cache =
             core::array::from_fn(|_| ReadWriteCache::new(memory_per_shard, metrics.clone()));
+
+        println!("finished  cache");
 
         Self { cache }
     }
@@ -78,6 +79,7 @@ pub struct ReadWriteCache {
 
 impl ReadWriteCache {
     pub fn new(memory_per_table_mb: usize, metrics: CacheData) -> Self {
+        println!("starting cache");
         Self {
             metrics,
             address_meta: SegmentedCache::builder(100)
