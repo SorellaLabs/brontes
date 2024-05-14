@@ -106,8 +106,8 @@ impl LibmdbxReadWriter {
         log_level: Option<LogLevel>,
         ex: &BrontesTaskExecutor,
     ) -> eyre::Result<Self> {
-        // 10 g
-        let memory_per_table_mb = 10000;
+        // 25 gb total
+        let memory_per_table_mb = 50000;
         let (tx, rx) = unbounded_channel();
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
@@ -486,18 +486,24 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.db.view_db(|tx| {
             self.cache.multi_cache(
                 searcher_eoa,
-                |eoa, cache| {
+                |eoas, cache| {
                     let mut lock = cache.searcher_eoa.lock();
-                    match lock.get(&eoa) {
-                        Some(Some(val)) => Ok(Some(val.clone())),
-                        Some(None) => return Ok(None),
-                        None => tx
-                            .get::<SearcherEOAs>(eoa)
-                            .map_err(ErrReport::from)
-                            .inspect(|data| {
-                                lock.get_or_insert(eoa, || data.clone());
-                            }),
+                    let mut res = Vec::with_capacity(eoas.len());
+                    for eoa in eoas {
+                        match lock.get(&eoa) {
+                            Some(Some(val)) => res.push((eoa, Ok(Some(val.clone())))),
+                            Some(None) => res.push((eoa, Ok(None))),
+                            None => res.push((
+                                eoa,
+                                tx.get::<SearcherEOAs>(eoa)
+                                    .map_err(ErrReport::from)
+                                    .inspect(|data| {
+                                        lock.get_or_insert(eoa, || data.clone());
+                                    }),
+                            )),
+                        }
                     }
+                    res
                 },
                 |res| {
                     let mut out = FastHashMap::default();
@@ -544,18 +550,24 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.db.view_db(|tx| {
             self.cache.multi_cache(
                 searcher,
-                |eoa, cache| {
+                |eoas, cache| {
                     let mut lock = cache.searcher_contract.lock();
-                    match lock.get(&eoa) {
-                        Some(Some(val)) => Ok(Some(val.clone())),
-                        Some(None) => return Ok(None),
-                        None => tx
-                            .get::<SearcherContracts>(eoa)
-                            .map_err(ErrReport::from)
-                            .inspect(|data| {
-                                lock.get_or_insert(eoa, || data.clone());
-                            }),
+                    let mut res = Vec::with_capacity(eoas.len());
+                    for eoa in eoas {
+                        match lock.get(&eoa) {
+                            Some(Some(val)) => res.push((eoa, Ok(Some(val.clone())))),
+                            Some(None) => res.push((eoa, Ok(None))),
+                            None => res.push((
+                                eoa,
+                                tx.get::<SearcherContracts>(eoa)
+                                    .map_err(ErrReport::from)
+                                    .inspect(|data| {
+                                        lock.get_or_insert(eoa, || data.clone());
+                                    }),
+                            )),
+                        }
                     }
+                    res
                 },
                 |res| {
                     let mut out = FastHashMap::default();
@@ -700,18 +712,24 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.db.view_db(|tx| {
             self.cache.multi_cache(
                 addresses,
-                |addr, cache| {
+                |eoas, cache| {
                     let mut lock = cache.address_meta.lock();
-                    match lock.get(&addr) {
-                        Some(Some(val)) => Ok(Some(val.clone())),
-                        Some(None) => return Ok(None),
-                        None => tx
-                            .get::<AddressMeta>(addr)
-                            .map_err(ErrReport::from)
-                            .inspect(|data| {
-                                lock.get_or_insert(addr, || data.clone());
-                            }),
+                    let mut res = Vec::with_capacity(eoas.len());
+                    for eoa in eoas {
+                        match lock.get(&eoa) {
+                            Some(Some(val)) => res.push((eoa, Ok(Some(val.clone())))),
+                            Some(None) => res.push((eoa, Ok(None))),
+                            None => res.push((
+                                eoa,
+                                tx.get::<AddressMeta>(eoa).map_err(ErrReport::from).inspect(
+                                    |data| {
+                                        lock.get_or_insert(eoa, || data.clone());
+                                    },
+                                ),
+                            )),
+                        }
                     }
+                    res
                 },
                 |res| {
                     let mut out = FastHashMap::default();

@@ -1,9 +1,12 @@
 use std::hash::{Hash, Hasher};
 
 use alloy_primitives::Address;
-use brontes_types::db::{
-    address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-    searcher::SearcherInfo, token_info::TokenInfo,
+use brontes_types::{
+    db::{
+        address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
+        searcher::SearcherInfo, token_info::TokenInfo,
+    },
+    FastHashMap,
 };
 use schnellru::{ByMemoryUsage, LruMap};
 
@@ -34,17 +37,22 @@ impl<const N: usize> ReadWriteMultiplex<N> {
     pub fn multi_cache<R, O>(
         &self,
         keys: Vec<Address>,
-        f: impl Fn(Address, &ReadWriteCache) -> R,
+        f: impl Fn(Vec<Address>, &ReadWriteCache) -> Vec<(Address, R)>,
         collect: impl FnOnce(Vec<(Address, R)>) -> O,
     ) -> O {
         let mut out = Vec::with_capacity(keys.len());
+        let mut shards: Vec<Vec<Address>> = vec![vec![]; N];
+
         for addr in keys {
             let mut hasher = ahash::AHasher::default();
             addr.hash(&mut hasher);
             let key = hasher.finish() as usize;
             let shard = key % N;
+            shards[shard].push(addr);
+        }
 
-            out.push((addr, f(addr, &self.cache[shard])));
+        for (key, shard_data) in shards.into_iter().enumerate() {
+            out.extend(f(shard_data, &self.cache[key]));
         }
 
         collect(out)
