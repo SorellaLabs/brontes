@@ -167,13 +167,24 @@ fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
-    use futures::pin_mut;
     use brontes_database::clickhouse::ClickhouseConfig;
+    use futures::pin_mut;
+
+    let url = format!(
+        "{}:{}",
+        std::env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
+        std::env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
+    );
+    let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
+    let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
+
+    let config =
+        db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None);
 
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
         |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), ClickhouseConfig::default(), 5_000);
+            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), config, 5_000);
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
