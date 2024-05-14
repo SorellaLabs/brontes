@@ -51,11 +51,26 @@ use crate::{
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
 
-#[derive(Default)]
 pub struct Clickhouse {
-    client:              ClickhouseClient<BrontesClickhouseTables>,
-    cex_download_config: CexDownloadConfig,
-    buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>>,
+    pub client:              ClickhouseClient<BrontesClickhouseTables>,
+    pub cex_download_config: CexDownloadConfig,
+    pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>>,
+}
+
+impl Default for Clickhouse {
+    fn default() -> Self {
+        let url = format!(
+            "{}:{}",
+            std::env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
+            std::env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
+        );
+        let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
+        let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
+
+        let config =
+            db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None);
+        Clickhouse::new(config, Default::default(), Default::default())
+    }
 }
 
 impl Clickhouse {
@@ -64,7 +79,7 @@ impl Clickhouse {
         cex_download_config: CexDownloadConfig,
         buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>>,
     ) -> Self {
-        let client = ClickhouseClient::new(config);
+        let client = config.build();
         Self { client, cex_download_config, buffered_insert_tx }
     }
 
@@ -555,7 +570,7 @@ mod tests {
         FastHashMap, GasDetails,
     };
     use db_interfaces::{
-        clickhouse::{dbms::ClickhouseDBMS, test_utils::test_db::ClickhouseTestingClient},
+        clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestingClient},
         test_utils::TestDatabase,
     };
     use tokio::sync::mpsc::unbounded_channel;
@@ -824,7 +839,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_all_inserts() {
         init_threadpools(10);
-        let test_db = ClickhouseTestingClient::<BrontesClickhouseTables>::default();
+        let test_db = ClickhouseTestingClient { client: Clickhouse::default().client };
 
         let tables = &BrontesClickhouseTables::all_tables();
 
@@ -836,11 +851,7 @@ mod tests {
     #[cfg(feature = "cex-dex-markout")]
     #[brontes_macros::test]
     async fn test_db_trades() {
-        let db_client = Clickhouse {
-            client:              ClickhouseClient::<BrontesClickhouseTables>::default(),
-            cex_download_config: Default::default(),
-            buffered_insert_tx:  None,
-        };
+        let db_client = Clickhouse::default();
 
         let db_cex_trades = db_client
             .get_cex_trades(CexRangeOrArbitrary::Arbitrary(&[18700684]))
