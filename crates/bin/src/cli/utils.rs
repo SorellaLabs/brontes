@@ -179,7 +179,7 @@ fn spawn_db_writer_thread(
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
 
     let config =
-        db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None);
+        ClickhouseConfig::new(user, pass, url, true, None);
 
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
