@@ -211,7 +211,6 @@ impl DatabaseEnv {
             mode,
             no_rdahead: true,
             coalesce: true,
-            no_rdahead: true,
             exclusive: args.exclusive.unwrap_or_default(),
             ..Default::default()
         });
