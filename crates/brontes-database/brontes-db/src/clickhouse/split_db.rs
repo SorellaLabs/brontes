@@ -4,7 +4,10 @@ use std::{
 };
 
 use brontes_types::{FastHashMap, UnboundedYapperReceiver};
-use db_interfaces::{clickhouse::client::ClickhouseClient, Database};
+use db_interfaces::{
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
+    Database,
+};
 use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
 
 use crate::clickhouse::dbms::*;
@@ -20,10 +23,11 @@ pub struct ClickhouseBuffered {
 impl ClickhouseBuffered {
     pub fn new(
         rx: UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
+        config: ClickhouseConfig,
         buffer_size: usize,
     ) -> Self {
         Self {
-            client: ClickhouseClient::default(),
+            client: config.build(),
             rx,
             value_map: FastHashMap::default(),
             buffer_size,
