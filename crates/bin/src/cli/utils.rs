@@ -168,11 +168,12 @@ fn spawn_db_writer_thread(
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
     use futures::pin_mut;
+    use brontes_database::clickhouse::ClickhouseConfig;
 
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
         |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), 5_000);
+            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()) ClickhouseConfig::default(), 5_000);
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
