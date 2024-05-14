@@ -64,7 +64,8 @@ pub fn load_database(
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx);
-    let clickhouse = Clickhouse::new(Default::default(), Default::default(), Some(tx));
+    let mut clickhouse = Clickhouse::default();
+    clickhouse.buffered_insert_tx = Some(tx);
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner))
 }
@@ -90,7 +91,9 @@ pub fn load_libmdbx(
 pub async fn load_clickhouse(
     cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
 ) -> eyre::Result<Clickhouse> {
-    Ok(Clickhouse::new(Default::default(), cex_download_config, None))
+    let mut clickhouse = Clickhouse::default();
+    clickhouse.cex_download_config = cex_download_config;
+    Ok(clickhouse)
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
