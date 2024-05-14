@@ -31,6 +31,16 @@ clickhouse_dbms!(
     ]
 );
 
+impl BrontesClickhouseTables {
+    pub const fn is_big(&self) -> bool {
+        matches!(
+            self,
+            BrontesClickhouseTables::TxTraces | BrontesClickhouseTables::DexPriceMapping,
+            BrontesClickhouseTables::Tree
+        )
+    }
+}
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     "brontes",
