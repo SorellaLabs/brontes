@@ -59,6 +59,17 @@ impl ActionMacro {
         let call_fn_name =
             Ident::new(&format!("{ACTION_SIG_NAME}_{}", exchange_name_w_call), Span::call_site());
 
+        let mut return_import = path_to_call.clone();
+        let mut call = return_import
+            .segments
+            .pop()
+            .ok_or(syn::Error::new(return_import.span(), "invalid call import type"))?;
+        let call_ident = call.value().ident.to_string();
+        let solidity = call_ident[0..call_ident.len() - 4].to_string() + "Return";
+
+        call.value_mut().ident = Ident::new(&solidity, call.span());
+        return_import.segments.push(call.into_value());
+
         let dex_price_return = if action_type.to_string().to_lowercase().as_str()
             == "poolconfigupdate"
         {
@@ -79,6 +90,8 @@ impl ActionMacro {
         Ok(quote! {
             #[allow(unused_imports)]
             use #path_to_call;
+            #[allow(unused_imports)]
+            use #return_import;
 
             #[allow(non_snake_case)]
             pub const fn #call_fn_name() -> [u8; 5] {

@@ -40,6 +40,16 @@ impl ToTokens for ClosureDispatch {
                 #log_data
                 db_tx
             );
+
+            // metrics
+            if result.is_err() {
+                let protocol= db_tx.get_protocol(call_info.target_address)?;
+                crate::CLASSIFICATION_METRICS.get_or_init(||
+                    brontes_metrics::classifier::ClassificationMetrics::default())
+                    .bad_protocol_classification(protocol);
+            }
+
+
             let result = result?;
         ))
     }

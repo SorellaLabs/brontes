@@ -6,7 +6,6 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use super::{utils::PairTradeWalker, CexTrades};
 use crate::{db::cex::CexExchange, pair::Pair, FastHashMap, FastHashSet};
@@ -146,7 +145,7 @@ impl<'a> TimeWindowTrades<'a> {
         block_timestamp: u64,
     ) -> Option<MakerTakerWindowVWAP> {
         self.calculate_intermediary_addresses(exchanges, pair)
-            .into_par_iter()
+            .into_iter()
             .filter_map(|intermediary| {
                 // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.0, intermediary);
@@ -335,7 +334,7 @@ impl<'a> TimeWindowTrades<'a> {
         pair: &Pair,
     ) -> FastHashSet<Address> {
         self.0
-            .par_iter()
+            .iter()
             .filter(|(k, _)| exchanges.contains(k))
             .flat_map(|(_, pairs)| {
                 pairs

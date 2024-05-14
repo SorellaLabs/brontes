@@ -8,8 +8,12 @@ edition = "2021"
 # brontes
 brontes-types.workspace = true
 brontes-pricing.workspace = true
+brontes-metrics.workspace = true
+brontes-macros.workspace = true
+brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
+moka = { version = "0.12.7", features = ["sync"] }
+
 reth-tracing-ext.workspace = true
-brontes-libmdbx  = { workspace = true, features = ["read-tx-timeouts"] }
 # alloy
 alloy-primitives = { workspace = true, features = [
   "rand",
@@ -104,6 +108,7 @@ reqwest = { workspace = true, features = ["stream"] }
 toml = "0.8.9"
 indicatif.workspace = true
 page_size = "0.6.0"
+schnellru = "0.2.2"
 
 # benches
 criterion = "0.5"
@@ -112,7 +117,7 @@ rkyv.workspace = true
 auto_impl.workspace = true
 
 
-reth-tasks = { workspace = true, optional = true }
+reth-tasks = { workspace = true }
 
 [dev-dependencies]
 serial_test.workspace = true
@@ -136,7 +141,7 @@ alloy-primitives.workspace = true
 default = []
 sorella-server = ["local-reth", "local-clickhouse"]
 cex-dex-markout = ["brontes-types/cex-dex-markout"]
-tests = ["reth-tasks", "brontes-pricing/tests"]
+tests = ["brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",
   "reth-tracing-ext/local-reth",

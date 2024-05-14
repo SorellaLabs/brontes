@@ -224,6 +224,20 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.try_fetch_searcher_eoa_info(searcher_eoa)
     }
 
+    fn try_fetch_searcher_eoa_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_eoa_infos(searcher_eoa)
+    }
+
+    fn try_fetch_searcher_contract_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_contract_infos(searcher_eoa)
+    }
+
     fn try_fetch_searcher_contract_info(
         &self,
         searcher_eoa: Address,
@@ -281,6 +295,13 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
         self.inner.try_fetch_address_metadata(address)
+    }
+
+    fn try_fetch_address_metadatas(
+        &self,
+        address: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, AddressMetadata>> {
+        self.inner.try_fetch_address_metadatas(address)
     }
 
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
@@ -508,6 +529,20 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         self.inner.try_fetch_builder_info(builder_coinbase_addr)
     }
 
+    fn try_fetch_searcher_eoa_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_eoa_infos(searcher_eoa)
+    }
+
+    fn try_fetch_searcher_contract_infos(
+        &self,
+        searcher_eoa: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, SearcherInfo>> {
+        self.inner.try_fetch_searcher_contract_infos(searcher_eoa)
+    }
+
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
         self.inner.fetch_all_builder_info()
     }
@@ -537,6 +572,13 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
         self.inner.try_fetch_address_metadata(address)
+    }
+
+    fn try_fetch_address_metadatas(
+        &self,
+        address: Vec<Address>,
+    ) -> eyre::Result<FastHashMap<Address, AddressMetadata>> {
+        self.inner.try_fetch_address_metadatas(address)
     }
 
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {

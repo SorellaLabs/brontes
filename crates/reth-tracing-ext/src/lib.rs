@@ -183,7 +183,7 @@ pub struct StackStep {
 
 /// Opens up an existing database at the specified path.
 pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
-    reth_db::open_db(path.as_ref(), DatabaseArguments::new(Default::default()))
+    reth_db::open_db_read_only(path.as_ref(), DatabaseArguments::new(Default::default()))
 }
 
 #[cfg(all(test, feature = "local-reth"))]

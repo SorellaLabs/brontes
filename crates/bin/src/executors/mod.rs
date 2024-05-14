@@ -1,7 +1,12 @@
+pub mod discovery_only;
 mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
+use brontes_metrics::{
+    pricing::DexPricingMetrics,
+    range::{FinishedRange, GlobalRangeMetrics},
+};
 use futures::{future::join_all, Stream};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 pub use processors::*;
@@ -36,8 +41,7 @@ use self::shared::{
 };
 use crate::cli::static_object;
 
-pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [127u8, 0u8, 0u8, 1u8];
-pub const PROMETHEUS_ENDPOINT_PORT: u16 = 6423;
+pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [0u8, 0u8, 0u8, 0u8];
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
@@ -55,6 +59,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub libmdbx: &'static DB,
     pub cli_only: bool,
     pub init_crit_tables: bool,
+    pub metrics: bool,
     _p: PhantomData<P>,
 }
 
@@ -77,6 +82,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         libmdbx: &'static DB,
         cli_only: bool,
         init_crit_tables: bool,
+        metrics: bool,
     ) -> Self {
         Self {
             clickhouse,
@@ -93,6 +99,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             force_no_dex_pricing,
             cli_only,
             init_crit_tables,
+            metrics,
             _p: PhantomData,
         }
     }
@@ -106,6 +113,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &'_ self,
         executor: BrontesTaskExecutor,
         end_block: u64,
+        pricing_metrics: Option<DexPricingMetrics>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         // calculate the chunk size using min batch size and max_tasks.
         // max tasks defaults to 25% of physical threads of the system if not set
@@ -143,6 +151,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .collect_vec(),
         );
+        let range_metrics = self.metrics.then(|| {
+            GlobalRangeMetrics::new(chunks.iter().map(|(start, end)| end - start).collect_vec())
+        });
 
         futures::stream::iter(chunks.into_iter().enumerate().map(
             move |(batch_id, (start_block, end_block))| {
@@ -151,6 +162,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
                 let tables_pb = tables_pb.clone();
+                let metrics = range_metrics.clone();
+                let pricing_metrics = pricing_metrics.clone();
 
                 #[allow(clippy::async_yields_async)]
                 async move {
@@ -161,12 +174,21 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
                     #[allow(clippy::async_yields_async)]
                     RangeExecutorWithPricing::new(
+                        batch_id,
                         start_block,
                         end_block,
-                        self.init_state_collector(executor.clone(), start_block, end_block, false),
+                        self.init_state_collector(
+                            batch_id,
+                            executor.clone(),
+                            start_block,
+                            end_block,
+                            false,
+                            pricing_metrics,
+                        ),
                         self.libmdbx,
                         self.inspectors,
                         prgrs_bar,
+                        metrics,
                     )
                 }
             },
@@ -176,11 +198,20 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     fn build_tip_inspector(
         &self,
+        range_id: usize,
         executor: BrontesTaskExecutor,
         start_block: u64,
         back_from_tip: u64,
+        pricing_metrics: Option<DexPricingMetrics>,
     ) -> TipInspector<T, DB, CH, P> {
-        let state_collector = self.init_state_collector(executor, start_block, start_block, true);
+        let state_collector = self.init_state_collector(
+            range_id,
+            executor,
+            start_block,
+            start_block,
+            true,
+            pricing_metrics,
+        );
         TipInspector::new(
             start_block,
             back_from_tip,
@@ -193,10 +224,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     fn init_state_collector(
         &self,
+        range_id: usize,
         executor: BrontesTaskExecutor,
         start_block: u64,
         end_block: u64,
         tip: bool,
+        pricing_metrics: Option<DexPricingMetrics>,
     ) -> StateCollector<T, DB, CH> {
         let shutdown = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded_channel();
@@ -219,11 +252,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             .collect::<FastHashMap<_, _>>();
 
         let pair_graph =
-            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
+            GraphManager::init_from_db_state(pairs, self.libmdbx, pricing_metrics.clone());
 
         let data_req = Arc::new(AtomicBool::new(true));
 
         let pricer = BrontesBatchPricer::new(
+            range_id,
             shutdown.clone(),
             self.quote_asset,
             pair_graph,
@@ -232,6 +266,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             start_block,
             rest_pairs,
             data_req.clone(),
+            pricing_metrics.clone(),
+            executor.clone(),
         );
 
         let pricing = WaitingForPricerFuture::new(pricer, executor);
@@ -241,7 +277,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             self.force_dex_pricing,
             self.force_no_dex_pricing,
             data_req,
-            start_block,
         );
 
         StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
@@ -316,8 +351,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         } else {
             #[cfg(feature = "local-reth")]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
-            #[cfg(not(feature = "local-reth"))]
-            let chain_tip = self.parser.get_latest_block_number().await.unwrap();
             (false, chain_tip - self.back_from_tip)
         }
     }
@@ -330,13 +363,15 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
+        let pricing_metrics = self.metrics.then(DexPricingMetrics::default);
+
         if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block)
+            self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                         "Range Executor",
                         |shutdown| async move {
-                            block_range.run_until_graceful_shutdown(shutdown).await
+                            block_range.run_until_graceful_shutdown(shutdown).await;
                         },
                     ));
                     std::future::ready(())
@@ -344,12 +379,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .await;
         } else {
             if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block)
+                self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
                     .for_each(|block_range| {
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                             "Range Executor",
                             |shutdown| async move {
-                                block_range.run_until_graceful_shutdown(shutdown).await
+                                block_range.run_until_graceful_shutdown(shutdown).await;
                             },
                         ));
                         std::future::ready(())
@@ -357,8 +392,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     .await;
             }
 
-            let tip_inspector =
-                self.build_tip_inspector(executor.clone(), end_block, self.back_from_tip);
+            let tip_inspector = self.build_tip_inspector(
+                usize::MAX,
+                executor.clone(),
+                end_block,
+                self.back_from_tip,
+                pricing_metrics,
+            );
 
             futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
                 "Tip Inspector",
@@ -366,7 +406,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             ));
         }
 
-        Ok(Brontes { futures })
+        let metrics = FinishedRange::default();
+        metrics.running_ranges.increment(futures.len() as f64);
+        metrics
+            .total_set_range
+            .increment(end_block - self.start_block.unwrap());
+
+        Ok(Brontes { futures, metrics })
     }
 
     pub async fn build(
@@ -434,19 +480,23 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 }
 
 pub struct Brontes {
-    futures: FuturesUnordered<JoinHandle<()>>,
+    pub futures: FuturesUnordered<JoinHandle<()>>,
+    pub metrics: FinishedRange,
 }
 
 impl Future for Brontes {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        while let Poll::Ready(Some(_)) = self.futures.poll_next_unpin(cx) {}
-
-        if self.futures.is_empty() {
-            tracing::info!("brontes shutting down");
-            return Poll::Ready(())
-        }
+        while match self.futures.poll_next_unpin(cx) {
+            Poll::Ready(Some(_)) => {
+                tracing::info!("range finished");
+                self.metrics.running_ranges.decrement(1.0);
+                true
+            }
+            Poll::Ready(None) => return Poll::Ready(()),
+            Poll::Pending => return Poll::Pending,
+        } {}
 
         Poll::Pending
     }

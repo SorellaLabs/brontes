@@ -164,12 +164,40 @@ fn bench_regular_block(c: &mut Criterion) {
         .unwrap()
 }
 
+fn bench_block_400_tx(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_composer_block(
+            "bench block 400txs gas",
+            18055829,
+            0,
+            Inspectors::iter().collect_vec(),
+            vec![],
+            c,
+        )
+        .unwrap()
+}
+
+fn bench_block_metrics_122(c: &mut Criterion) {
+    let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
+    bencher
+        .bench_composer_block(
+            "block with metrics saying 112",
+            16796568,
+            0,
+            Inspectors::iter().collect_vec(),
+            vec![],
+            c,
+        )
+        .unwrap()
+}
+
 fn bench_sandwich_regular_block(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
         .bench_inspectors_block(
             "bench sandwich 12mil gas",
-            18500002,
+            16796568,
             0,
             vec![Inspectors::Sandwich],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
@@ -197,7 +225,7 @@ fn bench_backrun_regular_block(c: &mut Criterion) {
     bencher
         .bench_inspectors_block(
             "backrun 15 mill gas block",
-            18000103,
+            16796568,
             0,
             vec![Inspectors::AtomicArb],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
@@ -211,7 +239,7 @@ fn bench_jit_regular_block(c: &mut Criterion) {
     bencher
         .bench_inspectors_block(
             "jit 16 mill gas block",
-            18500009,
+            16796568,
             0,
             vec![Inspectors::Jit],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
@@ -226,7 +254,7 @@ fn bench_cex_dex_regular_block(c: &mut Criterion) {
     bencher
         .bench_inspectors_block(
             "cex dex 16 mill gas block",
-            18264694,
+            16796568,
             0,
             vec![Inspectors::CexDex],
             vec![hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into()],
@@ -255,6 +283,8 @@ criterion_group!(cex_dex, bench_markout_cexdex);
 
 criterion_group!(
     inspector_full_block_benches,
+    bench_block_400_tx,
+    bench_block_metrics_122,
     bench_regular_block,
     bench_sandwich_regular_block,
     bench_liquidations_regular_block,

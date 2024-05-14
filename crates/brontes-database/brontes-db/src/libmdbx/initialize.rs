@@ -202,20 +202,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-
-                                let mut entry = libmdbx
-                                    .insert_queue
-                                    .entry(Tables::CexPrice)
-                                    .or_default();
-                                for data in d {
-                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
-                                        data.into_key_val()
-                                    );
-                                    entry.push(
-                                        (key.to_vec(),
-                                        value)
-                                    );
-                                }
+                                libmdbx.db.write_table(&d)?;
 
 
                             }
@@ -233,20 +220,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
+                                libmdbx.db.write_table(&d)?;
 
-                                let mut entry = libmdbx
-                                    .insert_queue
-                                    .entry(Tables::CexTrades)
-                                    .or_default();
-
-                                for data in d {
-                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
-                                        data.into_key_val()
-                                    );
-                                    entry.push(
-                                         (key.to_vec(), value)
-                                    );
-                                }
                             }
                             Err(e) => {
                                 error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -279,8 +254,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
-
-        self.libmdbx.flush_init_data()?;
 
         Ok(())
     }
@@ -322,20 +295,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
+                                libmdbx.db.write_table(&d)?;
 
-                                let mut entry = libmdbx
-                                    .insert_queue
-                                    .entry(Tables::CexPrice)
-                                    .or_default();
-
-                                for data in d {
-                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
-                                        data.into_key_val()
-                                    );
-                                    entry.push(
-                                        (key.to_vec(), value)
-                                    );
-                                }
                             }
                             Err(e) => {
                                 info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -351,19 +312,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                let mut entry = libmdbx
-                                    .insert_queue
-                                    .entry(Tables::CexTrades)
-                                    .or_default();
-
-                                for data in d {
-                                    let (key, value) = LibmdbxReadWriter::convert_into_save_bytes(
-                                        data.into_key_val()
-                                    );
-                                    entry.push(
-                                        (key.to_vec(), value)
-                                    );
-                                }
+                                libmdbx.db.write_table(&d)?;
                             }
                             Err(e) => {
                                 info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -395,8 +344,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
-
-        self.libmdbx.flush_init_data()?;
 
         Ok(())
     }

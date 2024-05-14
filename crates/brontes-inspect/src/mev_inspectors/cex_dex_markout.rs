@@ -6,6 +6,7 @@ use std::{
 };
 
 use brontes_database::libmdbx::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::{
         cex::{
@@ -20,13 +21,13 @@ use brontes_types::{
     ActionIter, FastHashMap, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use colored::Colorize;
-use itertools::Itertools;
+use itertools::{multizip, Itertools};
 use malachite::{
     num::basic::traits::{One, Two, Zero},
     Rational,
 };
 use reth_primitives::Address;
-use tracing::error;
+use tracing::warn;
 
 use crate::atomic_arb::is_stable_pair;
 
@@ -44,9 +45,14 @@ pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> CexDexMarkoutInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, cex_exchanges: &[CexExchange]) -> Self {
+    pub fn new(
+        quote: Address,
+        db: &'db DB,
+        cex_exchanges: &[CexExchange],
+        metrics: Option<OutlierMetrics>,
+    ) -> Self {
         Self {
-            utils:         SharedInspectorUtils::new(quote, db),
+            utils:         SharedInspectorUtils::new(quote, db, metrics),
             cex_exchanges: cex_exchanges.to_owned(),
         }
     }
@@ -65,19 +71,47 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
             return vec![]
         }
 
-        tree.clone()
+        self.utils
+            .get_metrics()
+            .map(|m| {
+                m.run_inspector(MevType::CexDex, || {
+                    self.process_tree_inner(tree.clone(), metadata.clone())
+                })
+            })
+            .unwrap_or_else(|| self.process_tree_inner(tree.clone(), metadata.clone()))
+    }
+}
+
+impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
+    fn process_tree_inner(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        metadata: Arc<Metadata>,
+    ) -> Vec<Bundle> {
+        let (hashes, swaps): (Vec<_>, Vec<_>) = tree
+            .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
                 Action::is_transfer,
                 Action::is_eth_transfer,
                 Action::is_aggregator,
             ]))
-            .filter_map(|(tx, swaps)| {
-                let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+            .unzip();
+
+        let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);
+        multizip((hashes, swaps, tx_info))
+            .filter_map(|(tx, swaps, tx_info)| {
+                let tx_info = tx_info?;
 
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
+                        self.utils.get_metrics().inspect(|m| {
+                            m.branch_filtering_trigger(
+                                MevType::CexDex,
+                                "is_solver_settlement_or_defi_automation",
+                            )
+                        });
                         return None
                     }
                 }
@@ -89,11 +123,18 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
                     .collect_action_vec(Action::try_swaps_merged);
 
                 if self.is_triangular_arb(&dex_swaps) {
+                    self.utils.get_metrics().inspect(|m| {
+                        m.branch_filtering_trigger(MevType::CexDex, "is_triangular_arb")
+                    });
+
                     return None
                 }
 
-                let mut possible_cex_dex: CexDexProcessing =
-                    self.detect_cex_dex(dex_swaps, &metadata)?;
+                let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
+                    dex_swaps,
+                    &metadata,
+                    tx_info.is_searcher_of_type(MevType::CexDex),
+                )?;
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
@@ -116,15 +157,14 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
             })
             .collect::<Vec<_>>()
     }
-}
 
-impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     pub fn detect_cex_dex(
         &self,
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
+        marked_cex_dex: bool,
     ) -> Option<CexDexProcessing> {
-        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata);
+        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex);
 
         // pricing window
         let pricing_window_vwam = pricing
@@ -303,24 +343,79 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
+        marked_cex_dex: bool,
     ) -> Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> {
         dex_swaps
             .iter()
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
-                metadata
-                    .cex_trades
-                    .as_ref()
-                    .unwrap()
-                    .lock()
-                    .calculate_all_methods(
-                        &self.cex_exchanges,
-                        pair,
-                        &swap.amount_out,
-                        metadata.microseconds_block_timestamp(),
-                        None,
-                    )
+                let window = self
+                    .utils
+                    .get_metrics()
+                    .map(|m| {
+                        m.run_cex_price_window(|| {
+                            metadata
+                                .cex_trades
+                                .as_ref()
+                                .unwrap()
+                                .lock()
+                                .calculate_time_window_vwam(
+                                    &self.cex_exchanges,
+                                    pair,
+                                    &swap.amount_out,
+                                    metadata.microseconds_block_timestamp(),
+                                )
+                        })
+                    })
+                    .unwrap_or_else(|| {
+                        metadata
+                            .cex_trades
+                            .as_ref()
+                            .unwrap()
+                            .lock()
+                            .calculate_time_window_vwam(
+                                &self.cex_exchanges,
+                                pair,
+                                &swap.amount_out,
+                                metadata.microseconds_block_timestamp(),
+                            )
+                    });
+
+                let other = self
+                    .utils
+                    .get_metrics()
+                    .map(|m| {
+                        m.run_cex_price_vol(|| {
+                            metadata
+                                .cex_trades
+                                .as_ref()
+                                .unwrap()
+                                .lock()
+                                .get_optimistic_vmap(
+                                    &self.cex_exchanges,
+                                    &pair,
+                                    &swap.amount_out,
+                                    None,
+                                )
+                        })
+                    })
+                    .unwrap_or_else(|| {
+                        metadata
+                            .cex_trades
+                            .as_ref()
+                            .unwrap()
+                            .lock()
+                            .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_out, None)
+                    });
+
+                if (window.is_none() || other.is_none()) && marked_cex_dex {
+                    self.utils
+                        .get_metrics()
+                        .inspect(|m| m.missing_cex_pair(pair));
+                }
+
+                (window, other)
             })
             .collect()
     }
@@ -417,6 +512,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         {
             possible_cex_dex.into_bundle(info)
         } else {
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::CexDex, "filter_possible_cex_dex")
+            });
             None
         }
     }
@@ -863,7 +961,7 @@ fn log_price_delta(
     token_in_address: &Address,
     token_out_address: &Address,
 ) {
-    error!(
+    warn!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
          - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\

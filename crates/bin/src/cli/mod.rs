@@ -22,6 +22,8 @@ pub struct Args {
     /// verbosity fo the logs
     #[clap(flatten)]
     pub verbosity:       Verbosity,
+    #[clap(long, default_value = "6923")]
+    pub metrics_port:    u16,
 }
 
 #[derive(Debug, Subcommand)]

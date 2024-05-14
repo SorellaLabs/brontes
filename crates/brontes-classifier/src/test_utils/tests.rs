@@ -26,7 +26,7 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
-    FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
+    BrontesTaskManager, FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
 use reth_db::DatabaseError;
@@ -77,8 +77,7 @@ impl ClassifierTestUtils {
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph =
-            GraphManager::init_from_db_state(pairs, FastHashMap::default(), self.libmdbx);
+        let pair_graph = GraphManager::init_from_db_state(pairs, self.libmdbx, None);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
@@ -96,18 +95,22 @@ impl ClassifierTestUtils {
             FastHashMap::default()
         };
         let ctr = Arc::new(AtomicBool::new(false));
+        let ex = BrontesTaskManager::current().executor();
 
         Ok((
             ctr.clone(),
             BrontesBatchPricer::new(
+                0,
                 ctr.clone(),
                 quote_asset,
                 pair_graph,
-                UnboundedYapperReceiver::new(rx, 1000, "test".into()),
+                UnboundedYapperReceiver::new(rx, 10000, "test".into()),
                 self.get_provider(),
                 block,
                 created_pools,
                 ctr.clone(),
+                None,
+                ex,
             ),
         ))
     }
