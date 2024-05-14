@@ -1,12 +1,9 @@
 use std::hash::{Hash, Hasher};
 
 use alloy_primitives::Address;
-use brontes_types::{
-    db::{
-        address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-        searcher::SearcherInfo, token_info::TokenInfo,
-    },
-    FastHashMap,
+use brontes_types::db::{
+    address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
+    searcher::SearcherInfo, token_info::TokenInfo,
 };
 use schnellru::{ByMemoryUsage, LruMap};
 
