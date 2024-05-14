@@ -30,6 +30,7 @@ fn main() -> eyre::Result<()> {
             Ok(())
         }
         Err(e) => {
+            println!("{:?}",e);
             error!("Error: {:?}", e);
 
             let mut source: Option<&dyn Error> = e.source();
