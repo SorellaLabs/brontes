@@ -97,7 +97,7 @@ pub struct LibmdbxReadWriter {
     tx:      UnboundedSender<WriterMessage>,
     metrics: Option<LibmdbxMetrics>,
     // 100 shards for now, might change in future
-    cache:   ReadWriteMultiplex<100>,
+    cache:   ReadWriteMultiplex<1>,
 }
 
 impl LibmdbxReadWriter {
@@ -368,7 +368,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
         self.db.view_db(|tx| {
             self.cache.cache(address, |cache| {
-                let mut lock = cache.protocol_info.lock();
+                let lock = &cache.protocol_info;
                 match lock.get(&address) {
                     Some(Some(e)) => return Ok(e.clone()),
                     Some(None) => {
@@ -380,7 +380,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                     None => tx
                         .get::<AddressToProtocolInfo>(address)
                         .inspect(|data| {
-                            lock.get_or_insert(address, || data.clone());
+                            lock.get_with(address, || data.clone());
                         })?
                         .ok_or_else(|| {
                             eyre::eyre!("entry for key {:?} in AddressToProtocolInfo", address)
@@ -460,7 +460,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         self.db.view_db(|tx| {
             self.cache.cache(address, |cache| {
-                let mut lock = cache.token_info.lock();
+                let lock = &cache.token_info;
                 match lock.get(&address) {
                     Some(Some(e)) => return Ok(TokenInfoWithAddress { inner: e.clone(), address }),
                     Some(None) => {
@@ -469,7 +469,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                     None => tx
                         .get::<TokenDecimals>(address)
                         .inspect(|data| {
-                            lock.get_or_insert(address, || data.clone());
+                            lock.get_with(address, || data.clone());
                         })?
                         .map(|inner| TokenInfoWithAddress { inner, address })
                         .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
@@ -487,7 +487,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             self.cache.multi_cache(
                 searcher_eoa,
                 |eoas, cache| {
-                    let mut lock = cache.searcher_eoa.lock();
+                    let lock = &cache.searcher_eoa;
                     let mut res = Vec::with_capacity(eoas.len());
                     for eoa in eoas {
                         match lock.get(&eoa) {
@@ -498,7 +498,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                                 tx.get::<SearcherEOAs>(eoa)
                                     .map_err(ErrReport::from)
                                     .inspect(|data| {
-                                        lock.get_or_insert(eoa, || data.clone());
+                                        lock.get_with(eoa, || data.clone());
                                     }),
                             )),
                         }
@@ -525,7 +525,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         searcher_eoa: Address,
     ) -> eyre::Result<Option<SearcherInfo>> {
         self.cache.cache(searcher_eoa, |cache| {
-            let mut lock = cache.searcher_eoa.lock();
+            let lock = &cache.searcher_eoa;
             match lock.get(&searcher_eoa) {
                 Some(Some(e)) => return Ok(Some(e.clone())),
                 Some(None) => return Ok(None),
@@ -536,7 +536,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                             .map_err(ErrReport::from)
                     })
                     .inspect(|data| {
-                        lock.get_or_insert(searcher_eoa, || data.clone());
+                        lock.get_with(searcher_eoa, || data.clone());
                     }),
             }
         })
@@ -551,7 +551,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             self.cache.multi_cache(
                 searcher,
                 |eoas, cache| {
-                    let mut lock = cache.searcher_contract.lock();
+                    let lock = &cache.searcher_contract;
                     let mut res = Vec::with_capacity(eoas.len());
                     for eoa in eoas {
                         match lock.get(&eoa) {
@@ -562,7 +562,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                                 tx.get::<SearcherContracts>(eoa)
                                     .map_err(ErrReport::from)
                                     .inspect(|data| {
-                                        lock.get_or_insert(eoa, || data.clone());
+                                        lock.get_with(eoa, || data.clone());
                                     }),
                             )),
                         }
@@ -590,10 +590,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<Option<SearcherInfo>> {
         self.cache.cache(searcher_contract, |cache| {
             // lock contention
-            let mut lock = cache
+            let lock = cache
                 .metrics
                 .clone()
-                .cache_read("searcher_contract", || cache.searcher_contract.lock());
+                .cache_read("searcher_contract", || &cache.searcher_contract);
 
             match lock.get(&searcher_contract) {
                 Some(Some(e)) => {
@@ -618,7 +618,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                         cache.metrics.clone().cache_write::<(), SearcherInfo>(
                             "searcher_contract",
                             || {
-                                lock.get_or_insert(searcher_contract, || data.clone());
+                                lock.get_with(searcher_contract, || data.clone());
                             },
                         );
                     }),
@@ -736,7 +736,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                     let mut lock = cache
                         .metrics
                         .clone()
-                        .cache_read("address_metadata", || cache.address_meta.lock());
+                        .cache_read("address_metadata", || &cache.address_meta);
 
                     let mut res = Vec::with_capacity(eoas.len());
                     let mut counter = 0;
@@ -757,7 +757,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                                         cache.metrics.clone().cache_write::<(), AddressMetadata>(
                                             "address_metadata",
                                             || {
-                                                lock.get_or_insert(eoa, || data.clone());
+                                                lock.get_with(eoa, || data.clone());
                                             },
                                         );
                                     },
@@ -792,7 +792,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         address: Address,
     ) -> eyre::Result<Option<AddressMetadata>> {
         self.cache.cache(address, |cache| {
-            let mut lock = cache.address_meta.lock();
+            let mut lock = &cache.address_meta;
             match lock.get(&address) {
                 Some(Some(e)) => return Ok(Some(e.clone())),
                 Some(None) => return Ok(None),
@@ -800,7 +800,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                     .db
                     .view_db(|tx| tx.get::<AddressMeta>(address).map_err(ErrReport::from))
                     .inspect(|data| {
-                        lock.get_or_insert(address, || data.clone());
+                        lock.get_with(address, || data.clone());
                     }),
             }
         })
@@ -923,7 +923,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .metrics
                 .clone()
                 .cache_write::<(), SearcherInfo>("eoa_info", || {
-                    let mut lock = cache.searcher_eoa.lock();
+                    let lock = &cache.searcher_eoa;
                     lock.insert(eoa_address, Some(eoa_info.clone()));
                 })
         });
@@ -934,7 +934,7 @@ impl DBWriter for LibmdbxReadWriter {
                     .metrics
                     .clone()
                     .cache_write::<(), SearcherInfo>("contract_info", || {
-                        let mut lock = cache.searcher_contract.lock();
+                        let lock = &cache.searcher_contract;
                         lock.insert(addr, Some(info.clone()));
                     })
             });
@@ -958,7 +958,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .metrics
                 .clone()
                 .cache_write::<(), SearcherInfo>("eoa_info", || {
-                    let mut lock = cache.searcher_eoa.lock();
+                    let mut lock = &cache.searcher_eoa;
                     lock.insert(searcher_eoa, Some(searcher_info.clone()));
                 })
         });
@@ -978,7 +978,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .metrics
                 .clone()
                 .cache_write::<(), SearcherInfo>("contract_info", || {
-                    let mut lock = cache.searcher_contract.lock();
+                    let mut lock = &cache.searcher_contract;
                     lock.insert(searcher_contract, Some(searcher_info.clone()));
                 })
         });
@@ -994,7 +994,7 @@ impl DBWriter for LibmdbxReadWriter {
         metadata: AddressMetadata,
     ) -> eyre::Result<()> {
         self.cache.write(address, |cache| {
-            let mut lock = cache.address_meta.lock();
+            let mut lock = &cache.address_meta;
             lock.insert(address, Some(metadata.clone()));
         });
 
@@ -1037,7 +1037,7 @@ impl DBWriter for LibmdbxReadWriter {
                 .metrics
                 .clone()
                 .cache_write::<(), TokenInfo>("token_info", || {
-                    let mut lock = cache.token_info.lock();
+                    let mut lock = &cache.token_info;
                     lock.insert(address, Some(token_info));
                 })
         });

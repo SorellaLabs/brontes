@@ -1,10 +1,10 @@
 use alloy_primitives::Address;
-use db_interfaces::clickhouse::config::ClickhouseConfig;
 use brontes_metrics::db_cache::CacheData;
 use brontes_types::db::{
     address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
     searcher::SearcherInfo, token_info::TokenInfo,
 };
+use db_interfaces::clickhouse::config::ClickhouseConfig;
 use moka::{policy::EvictionPolicy, sync::SegmentedCache};
 
 const MEGABYTE: usize = 1024 * 1024;
