@@ -192,7 +192,7 @@ impl DatabaseEnv {
                              node."
                         };
                         tracing::warn!(
-                            target: "storage::db::mdbx",
+                            target: "brontes::db::mdbx",
                             ?process_id,
                             ?thread_id,
                             ?read_txn_id,
@@ -209,6 +209,7 @@ impl DatabaseEnv {
         }
         inner_env.set_flags(EnvironmentFlags {
             mode,
+            no_rdahead: true,
             coalesce: true,
             no_rdahead: true,
             exclusive: args.exclusive.unwrap_or_default(),
