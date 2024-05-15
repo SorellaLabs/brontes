@@ -183,29 +183,31 @@ fn spawn_db_writer_thread(
 
     let config = ClickhouseConfig::new(user, pass, url, true, None);
 
-    executor.spawn_critical_with_graceful_shutdown_signal(
-        "clickhouse insert process",
-        |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(
-                UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),
-                clickhouse_config(),
-                3000,
-                300,
-            );
-            pin_mut!(clickhouse_writer, shutdown);
+    ClickhouseBuffered::new(
+        UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),
+        clickhouse_config(),
+        3000,
+        600,
+    )
+    .run();
 
-            let mut graceful_guard = None;
-            tokio::select! {
-                _ = &mut clickhouse_writer => {
-                },
-                guard = &mut shutdown => {
-                    graceful_guard = Some(guard);
-                }
-            }
-
-            clickhouse_writer.shutdown().await;
-            drop(graceful_guard);
-        },
-    );
+    // executor.spawn_critical_with_graceful_shutdown_signal(
+    //     "clickhouse insert process",
+    //     |shutdown| async move {
+    //         pin_mut!(clickhouse_writer, shutdown);
+    //
+    //         let mut graceful_guard = None;
+    //         tokio::select! {
+    //             _ = &mut clickhouse_writer => {
+    //             },
+    //             guard = &mut shutdown => {
+    //                 graceful_guard = Some(guard);
+    //             }
+    //         }
+    //
+    //         clickhouse_writer.shutdown().await;
+    //         drop(graceful_guard);
+    //     },
+    // );
     tracing::info!("started writer");
 }

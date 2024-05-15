@@ -114,9 +114,10 @@ impl LibmdbxReadWriter {
 
         // start writing task
         let writer = LibmdbxWriter::new(db.clone(), yapper);
-        ex.spawn_critical_with_graceful_shutdown_signal("libmdbx writer", |shutdown| async move {
-            writer.run_until_shutdown(shutdown).await
-        });
+        writer.run();
+        // ex.spawn_critical_with_graceful_shutdown_signal("libmdbx writer", |shutdown|
+        // async move {     writer.run_until_shutdown(shutdown).await
+        // });
 
         Ok(Self {
             db,

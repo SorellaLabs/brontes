@@ -106,6 +106,25 @@ impl ClickhouseBuffered {
         Ok(())
     }
 
+    pub fn run(mut self) {
+        std::thread::spawn(move || {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .worker_threads(2)
+                .build()
+                .unwrap()
+                .block_on(async move {
+                    self.run_to_completion().await;
+                });
+        });
+    }
+
+    pub async fn run_to_completion(mut self) {
+        let pinned = std::pin::pin!(self);
+        pinned.await;
+        pinned.shutdown().await;
+    }
+
     pub async fn shutdown(&mut self) {
         while let Some(value) = self.rx.recv().await {
             if value.is_empty() {

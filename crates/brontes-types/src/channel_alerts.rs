@@ -14,6 +14,10 @@ impl<T> UnboundedYapperReceiver<T> {
         Self { chan, yap_count, name }
     }
 
+    pub fn blocking_recv(&mut self) -> Option<T> {
+        self.chan.blocking_recv()
+    }
+
     pub fn poll_recv(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>> {
         let len = self.chan.len();
         if len > self.yap_count {

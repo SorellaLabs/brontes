@@ -430,49 +430,65 @@ impl LibmdbxWriter {
         Ok(())
     }
 
-    pub async fn run_until_shutdown(self, shutdown: GracefulShutdown) {
-        let inserts = self;
-        pin_mut!(inserts, shutdown);
-        let mut graceful_guard = None;
-        tokio::select! {
-            _ = &mut inserts => {
-            },
-            guard = shutdown => {
-                graceful_guard = Some(guard);
-            },
-        }
-
-        while let Some(msg) = inserts.rx.recv().await {
-            if let Err(e) = inserts.handle_msg(msg) {
-                tracing::error!(error=%e, "libmdbx write error on shutdown");
-            }
-        }
-
-        drop(graceful_guard)
-    }
-}
-
-impl Future for LibmdbxWriter {
-    type Output = ();
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let mut budget = 128;
-        let this = self.get_mut();
-        loop {
-            if let Poll::Ready(Some(msg)) = this.rx.poll_recv(cx) {
-                if let Err(e) = this.handle_msg(msg) {
+    pub fn run(mut self) {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .worker_threads(2)
+            .build()
+            .unwrap()
+            .block_on(async move {});
+        std::thread::spawn(move || {
+            while let Some(msg) = self.rx.blocking_recv() {
+                if let Err(e) = self.handle_msg(msg) {
                     tracing::error!(error=%e, "libmdbx write error");
                 }
             }
-
-            budget -= 1;
-            if budget == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
-            }
-        }
+        });
     }
+
+    // pub async fn run_until_shutdown(self, shutdown: GracefulShutdown) {
+    //     let inserts = self;
+    //     pin_mut!(inserts, shutdown);
+    //     let mut graceful_guard = None;
+    //     tokio::select! {
+    //         _ = &mut inserts => {
+    //         },
+    //         guard = shutdown => {
+    //             graceful_guard = Some(guard);
+    //         },
+    //     }
+    //
+    //     while let Some(msg) = inserts.rx.recv().await {
+    //         if let Err(e) = inserts.handle_msg(msg) {
+    //             tracing::error!(error=%e, "libmdbx write error on shutdown");
+    //         }
+    //     }
+    //
+    //     drop(graceful_guard)
+    // }
 }
+
+// impl Future for LibmdbxWriter {
+//     type Output = ();
+//
+//     fn poll(
+//         self: std::pin::Pin<&mut Self>,
+//         cx: &mut std::task::Context<'_>,
+//     ) -> std::task::Poll<Self::Output> {
+//         let mut budget = 128;
+//         let this = self.get_mut();
+//         loop {
+//             if let Poll::Ready(Some(msg)) = this.rx.poll_recv(cx) {
+//                 if let Err(e) = this.handle_msg(msg) {
+//                     tracing::error!(error=%e, "libmdbx write error");
+//                 }
+//             }
+//
+//             budget -= 1;
+//             if budget == 0 {
+//                 cx.waker().wake_by_ref();
+//                 return Poll::Pending
+//             }
+//         }
+//     }
+// }
