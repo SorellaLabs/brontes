@@ -129,7 +129,7 @@ impl Environment {
                     warned = true;
                     warn!(target: "brontes-libmdbx", "Process stalled, awaiting read-write transaction lock.");
                 }
-                sleep(Duration::from_millis(250));
+                sleep(Duration::from_millis(5));
                 continue
             }
 
