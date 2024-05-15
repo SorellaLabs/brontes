@@ -430,9 +430,14 @@ impl LibmdbxWriter {
 
     pub fn run(mut self) {
         // we do this to avoid tokio load
-        std::thread::spawn(move || {
-            while let Some(msg) = self.rx.blocking_recv() {
-                if let Err(e) = self.handle_msg(msg) {
+        std::thread::spawn(move || loop {
+            let mut messages = vec![];
+            while let Ok(msg) = self.rx.try_recv() {
+                messages.push(msg);
+            }
+
+            for message in messages {
+                if let Err(e) = self.handle_msg(message) {
                     tracing::error!(error=%e, "libmdbx write error");
                 }
             }
