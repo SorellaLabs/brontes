@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use brontes_types::{FastHashMap, Shutdown, UnboundedYapperReceiver};
+use brontes_types::{FastHashMap, GracefulShutdown, UnboundedYapperReceiver};
 use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,
@@ -107,7 +107,7 @@ impl ClickhouseBuffered {
     }
 
     /// Done like this to avoid runtime load and ensure we always are sending
-    pub fn run(mut self, shutdown: Shutdown) {
+    pub fn run(mut self, shutdown: GracefulShutdown) {
         std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
@@ -120,13 +120,19 @@ impl ClickhouseBuffered {
         });
     }
 
-    pub async fn run_to_completion(mut self, shutdown: Shutdown) {
+    pub async fn run_to_completion(mut self, shutdown: GracefulShutdown) {
         let mut pinned = std::pin::pin!(self);
+        let mut shutdown_g = None;
         tokio::select! {
             _ = &mut pinned => {}
-            _ = shutdown => {}
+            i = shutdown => {
+                shutdown_g = Some(i);
+            }
         };
         pinned.shutdown().await;
+
+        tracing::trace!(was_shutdown = shutdown_g.is_some());
+        drop(shutdown_g);
     }
 
     pub async fn shutdown(&mut self) {

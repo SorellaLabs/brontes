@@ -183,7 +183,7 @@ fn spawn_db_writer_thread(
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
 
     let config = ClickhouseConfig::new(user, pass, url, true, None);
-    let shutdown = executor.on_shutdown_signal().clone();
+    let shutdown = executor.get_graceful_shutdown();
 
     ClickhouseBuffered::new(
         UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),
