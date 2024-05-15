@@ -177,7 +177,7 @@ macro_rules! db_types {
         #[allow(clippy::large_enum_variant)]
         pub enum BrontesClickhouseTableDataTypes {
             $(
-                $db_type($db_type),
+                $db_type(Box<$db_type>),
             )*
         }
 
@@ -197,7 +197,7 @@ macro_rules! db_types {
         $(
             impl From<$db_type> for BrontesClickhouseTableDataTypes {
                 fn from(value: $db_type) -> BrontesClickhouseTableDataTypes {
-                    BrontesClickhouseTableDataTypes::$db_type(value)
+                    BrontesClickhouseTableDataTypes::$db_type(Box::new(value))
                 }
             }
 
