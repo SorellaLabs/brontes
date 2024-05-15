@@ -144,8 +144,11 @@ impl ClickhouseBuffered {
         tracing::info!("writing remaining items");
 
         for (enum_kind, entry) in &mut self.value_map {
-            let _ =
-                Self::insert(self.client.clone(), std::mem::take(entry), enum_kind.clone()).await;
+            self.futs.push(Box::pin(Self::insert(
+                self.client.clone(),
+                std::mem::take(entry),
+                enum_kind.clone(),
+            )));
         }
 
         while (self.futs.next().await).is_some() {}
