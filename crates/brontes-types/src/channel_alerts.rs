@@ -18,7 +18,7 @@ impl<T> UnboundedYapperReceiver<T> {
         let len = self.chan.len();
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
-            tracing::warn!(chan=%self.name, mb_usage=mb, "unbounded channel is above threshold");
+            tracing::warn!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
         }
 
         self.chan.poll_recv(cx)
@@ -28,7 +28,7 @@ impl<T> UnboundedYapperReceiver<T> {
         let len = self.chan.len();
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
-            tracing::warn!(chan=%self.name, mb_usage=mb, "unbounded channel is above threshold");
+            tracing::warn!(chan=%self.name, pending=len, mb_usage=mb, "unbounded channel is above threshold");
         }
 
         self.chan.recv().await
@@ -38,7 +38,7 @@ impl<T> UnboundedYapperReceiver<T> {
         let len = self.chan.len();
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
-            tracing::warn!(chan=%self.name, mb_usage=mb, "unbounded channel is above threshold");
+            tracing::warn!(chan=%self.name, pending=len, mb_usage=mb, "unbounded channel is above threshold");
         }
 
         self.chan.try_recv()
