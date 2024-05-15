@@ -1250,7 +1250,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 match self.update_rx.poll_recv(cx).map(|inner| {
                     inner.and_then(|action| match action {
                         DexPriceMsg::DisablePricingFor(block) => {
-                            tracing::info!("disable pricing");
                             self.skip_pricing.push_back(block);
                             tracing::debug!(?block, "skipping pricing");
                             Some(PollResult::Skip)
@@ -1273,7 +1272,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
                 }) {
                     Poll::Ready(Some(u)) => {
                         if let PollResult::State(update) = u {
-                            tracing::info!("update");
                             if let Some(overlap) = self.overlap_update.take() {
                                 block_updates.push(overlap);
                             }
