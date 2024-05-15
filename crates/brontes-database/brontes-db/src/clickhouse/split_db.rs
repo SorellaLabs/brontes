@@ -66,7 +66,7 @@ impl ClickhouseBuffered {
                                 .into_iter()
                                 .filter_map(|d| match d {
                                     BrontesClickhouseTableDataTypes::$inner(inner_data) => {
-                                        Some(inner_data)
+                                        Some(*inner_data)
                                     }
                                     _ => None,
                                 })
