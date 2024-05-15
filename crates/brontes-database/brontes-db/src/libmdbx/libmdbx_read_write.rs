@@ -106,7 +106,7 @@ impl LibmdbxReadWriter {
         log_level: Option<LogLevel>,
         ex: &BrontesTaskExecutor,
     ) -> eyre::Result<Self> {
-        let memory_per_table_mb = 1_000;
+        let memory_per_table_mb = 10_000;
         let (tx, rx) = unbounded_channel();
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
