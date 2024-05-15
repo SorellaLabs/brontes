@@ -21,20 +21,6 @@ pub struct ClickhouseBuffered {
     futs:              FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
 }
 
-impl Drop for ClickhouseBuffered {
-    fn drop(&mut self) {
-        println!("droping");
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .worker_threads(4)
-            .build()
-            .unwrap()
-            .block_on(async {
-                self.shutdown().await;
-            });
-    }
-}
-
 impl ClickhouseBuffered {
     pub fn new(
         rx: UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
@@ -121,7 +107,7 @@ impl ClickhouseBuffered {
     }
 
     /// Done like this to avoid runtime load and ensure we always are sending
-    pub fn run(mut self) {
+    pub fn run(mut self, shutdown: Shutdown) {
         std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
@@ -129,18 +115,22 @@ impl ClickhouseBuffered {
                 .build()
                 .unwrap()
                 .block_on(async move {
-                    self.run_to_completion().await;
+                    self.run_to_completion(shutdown).await;
                 });
         });
     }
 
-    pub async fn run_to_completion(mut self) {
+    pub async fn run_to_completion(mut self, shutdown: Shutdown) {
         let mut pinned = std::pin::pin!(self);
-        (&mut pinned).await;
+        tokio::select! {
+            _ => &mut pinned => {}
+            _ => shutdown => {}
+        };
         pinned.shutdown().await;
     }
 
     pub async fn shutdown(&mut self) {
+        tracing::info!("starting shutdown process clickhouse writer");
         while let Some(value) = self.rx.recv().await {
             if value.is_empty() {
                 continue
@@ -150,6 +140,8 @@ impl ClickhouseBuffered {
             let entry = self.value_map.entry(enum_kind.clone()).or_default();
             entry.extend(value);
         }
+
+        tracing::info!("writing remaining items");
 
         for (enum_kind, entry) in &mut self.value_map {
             let _ =
