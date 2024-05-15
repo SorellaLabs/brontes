@@ -120,8 +120,8 @@ impl ClickhouseBuffered {
     }
 
     pub async fn run_to_completion(mut self) {
-        let pinned = std::pin::pin!(self);
-        pinned.await;
+        let mut pinned = std::pin::pin!(self);
+        (&mut pinned).await;
         pinned.shutdown().await;
     }
 

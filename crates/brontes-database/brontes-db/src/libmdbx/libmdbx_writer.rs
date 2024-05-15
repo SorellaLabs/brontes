@@ -431,12 +431,6 @@ impl LibmdbxWriter {
     }
 
     pub fn run(mut self) {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .worker_threads(2)
-            .build()
-            .unwrap()
-            .block_on(async move {});
         std::thread::spawn(move || {
             while let Some(msg) = self.rx.blocking_recv() {
                 if let Err(e) = self.handle_msg(msg) {
