@@ -71,6 +71,7 @@ impl ClickhouseBuffered {
                                     _ => None,
                                 })
                                 .collect::<Vec<_>>();
+
                             if insert_data.is_empty() {
                                 panic!("you did this wrong idiot");
                             }
@@ -125,10 +126,10 @@ impl ClickhouseBuffered {
     }
 }
 
-impl Stream for ClickhouseBuffered {
-    type Item = eyre::Result<()>;
+impl Future for ClickhouseBuffered {
+    type Item = ();
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Item> {
         let this = self.get_mut();
         let mut work = 128;
 
@@ -140,12 +141,14 @@ impl Stream for ClickhouseBuffered {
                             this.handle_incoming(val)
                         }
                     }
-                    None => return Poll::Ready(None),
+                    None => return Poll::Ready(()),
                 }
             }
 
-            if let Poll::Ready(Some(val)) = this.futs.poll_next_unpin(cx) {
-                return Poll::Ready(Some(val))
+            while let Poll::Ready(Some(val)) = this.futs.poll_next_unpin(cx) {
+                if let Err(e) = val {
+                    tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+                }
             }
 
             work -= 1;

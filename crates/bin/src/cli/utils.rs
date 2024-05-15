@@ -186,20 +186,20 @@ fn spawn_db_writer_thread(
     executor.spawn_critical_with_graceful_shutdown_signal(
         "clickhouse insert process",
         |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), clickhouse_config(), 3000, 300);
+            let clickhouse_writer = ClickhouseBuffered::new(
+                UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),
+                clickhouse_config(),
+                3000,
+                300,
+            );
             pin_mut!(clickhouse_writer, shutdown);
 
             let mut graceful_guard = None;
-            while graceful_guard.is_none() {
-                tokio::select! {
-                    Some(val) = &mut clickhouse_writer.next() => {
-                        if let Err(e) = val {
-                            tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
-                        }
-                    },
-                    guard = &mut shutdown => {
-                        graceful_guard = Some(guard);
-                    }
+            tokio::select! {
+                _ = &mut clickhouse_writer => {
+                },
+                guard = &mut shutdown => {
+                    graceful_guard = Some(guard);
                 }
             }
 
