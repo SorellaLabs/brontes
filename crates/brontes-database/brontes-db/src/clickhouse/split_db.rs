@@ -127,9 +127,9 @@ impl ClickhouseBuffered {
 }
 
 impl Future for ClickhouseBuffered {
-    type Item = ();
+    type Output = ();
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Item> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
         let mut work = 128;
 
