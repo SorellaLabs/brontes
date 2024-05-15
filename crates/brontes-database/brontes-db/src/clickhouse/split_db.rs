@@ -3,13 +3,13 @@ use std::{
     task::{Context, Poll},
 };
 
-use reth_tasks::shutdown::GracefulShutdown;
-use brontes_types::{FastHashMap,  UnboundedYapperReceiver};
+use brontes_types::{FastHashMap, UnboundedYapperReceiver};
 use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,
 };
 use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
+use reth_tasks::shutdown::GracefulShutdown;
 
 use crate::clickhouse::dbms::*;
 
