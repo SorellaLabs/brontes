@@ -149,6 +149,7 @@ impl ClickhouseBuffered {
         }
 
         while (self.futs.next().await).is_some() {}
+        tracing::info!("all items written");
     }
 }
 
