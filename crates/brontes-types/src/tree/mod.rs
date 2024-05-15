@@ -50,12 +50,19 @@ impl<V: NormalizedAction> BlockTree<V> {
         tx_hash: &[B256],
         database: &DB,
     ) -> Vec<Option<TxInfo>> {
-        let (roots, eoa_info_addr, contract_info_addr): (Vec<_>, Vec<_>, Vec<_>) = self
+        let (roots, mut eoa_info_addr, mut contract_info_addr): (Vec<_>, Vec<_>, Vec<_>) = self
             .tx_roots
             .iter()
             .filter(|r| tx_hash.contains(&r.tx_hash))
             .map(|root| (root, root.head.address, root.get_to_address()))
             .multiunzip();
+
+        // reduce db calls
+        eoa_info_addr.sort_unstable();
+        eoa_info_addr.dedup();
+
+        contract_info_addr.sort_unstable();
+        contract_info_addr.dedup();
 
         let Ok(contract) = database.try_fetch_searcher_contract_infos(contract_info_addr.clone())
         else {

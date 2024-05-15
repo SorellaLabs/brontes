@@ -106,6 +106,7 @@ impl ClickhouseBuffered {
         Ok(())
     }
 
+    /// Done like this to avoid runtime load and ensure we always are sending
     pub fn run(mut self) {
         std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
