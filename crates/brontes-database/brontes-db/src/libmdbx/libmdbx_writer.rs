@@ -34,7 +34,7 @@ use crate::{
 };
 
 // how often we will append data
-const CLEAR_AM: usize = 1000;
+const CLEAR_AM: usize = 100;
 
 type InsetQueue = FastHashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>>;
 
