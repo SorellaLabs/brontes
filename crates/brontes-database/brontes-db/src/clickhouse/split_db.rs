@@ -123,8 +123,8 @@ impl ClickhouseBuffered {
     pub async fn run_to_completion(mut self, shutdown: Shutdown) {
         let mut pinned = std::pin::pin!(self);
         tokio::select! {
-            _ => &mut pinned => {}
-            _ => shutdown => {}
+            _ = &mut pinned => {}
+            _ = shutdown => {}
         };
         pinned.shutdown().await;
     }
