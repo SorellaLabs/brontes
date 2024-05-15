@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use brontes_types::{FastHashMap, UnboundedYapperReceiver};
+use brontes_types::{FastHashMap, UnboundedYapperReceiver, Shudown};
 use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,

@@ -171,6 +171,7 @@ fn spawn_db_writer_thread(
 ) {
     use brontes_database::clickhouse::ClickhouseConfig;
     use futures::pin_mut;
+    use reth_tasks::shutdown;
 
     let _ = dotenv::dotenv();
     let url = format!(
@@ -182,6 +183,7 @@ fn spawn_db_writer_thread(
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
 
     let config = ClickhouseConfig::new(user, pass, url, true, None);
+    let shutdown = executor.on_shutdown_signal().clone();
 
     ClickhouseBuffered::new(
         UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),
@@ -189,7 +191,7 @@ fn spawn_db_writer_thread(
         3000,
         600,
     )
-    .run();
+    .run(shutdown);
 
     // executor.spawn_critical_with_graceful_shutdown_signal(
     //     "clickhouse insert process",
