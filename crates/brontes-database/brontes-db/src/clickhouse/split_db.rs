@@ -21,6 +21,19 @@ pub struct ClickhouseBuffered {
     futs:              FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
 }
 
+impl Drop for ClickhouseBuffered {
+    fn drop(&mut self) {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .worker_threads(4)
+            .build()
+            .unwrap()
+            .block_on(async {
+                self.shutdown().await;
+            });
+    }
+}
+
 impl ClickhouseBuffered {
     pub fn new(
         rx: UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,

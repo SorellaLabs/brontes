@@ -1,4 +1,4 @@
-use std::{sync::Arc, task::Poll};
+use std::sync::Arc;
 
 use alloy_primitives::Address;
 use brontes_types::{
@@ -18,10 +18,8 @@ use brontes_types::{
     structured_trace::TxTrace,
     FastHashMap, Protocol, UnboundedYapperReceiver,
 };
-use futures::{pin_mut, Future};
 use itertools::Itertools;
 use reth_db::table::{Compress, Encode};
-use reth_tasks::shutdown::GracefulShutdown;
 use tracing::instrument;
 
 use crate::{
