@@ -858,8 +858,8 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(self.tx.send(WriterMessage::SearcherInfo {
             eoa_address,
             contract_address,
-            eoa_info,
-            contract_info,
+            eoa_info: Box::new(eoa_info),
+            contract_info: Box::new(contract_info),
         })?)
     }
 
@@ -872,9 +872,10 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(searcher_eoa, Some(searcher_info.clone()));
         });
 
-        Ok(self
-            .tx
-            .send(WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info })?)
+        Ok(self.tx.send(WriterMessage::SearcherEoaInfo {
+            searcher_eoa,
+            searcher_info: Box::new(searcher_info),
+        })?)
     }
 
     async fn write_searcher_contract_info(
@@ -886,9 +887,10 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(searcher_contract, Some(searcher_info.clone()));
         });
 
-        Ok(self
-            .tx
-            .send(WriterMessage::SearcherContractInfo { searcher_contract, searcher_info })?)
+        Ok(self.tx.send(WriterMessage::SearcherContractInfo {
+            searcher_contract,
+            searcher_info: Box::new(searcher_info),
+        })?)
     }
 
     async fn write_address_meta(
@@ -902,7 +904,7 @@ impl DBWriter for LibmdbxReadWriter {
 
         Ok(self
             .tx
-            .send(WriterMessage::AddressMeta { address, metadata })?)
+            .send(WriterMessage::AddressMeta { address, metadata: Box::new(metadata) })?)
     }
 
     async fn save_mev_blocks(
@@ -913,7 +915,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         Ok(self
             .tx
-            .send(WriterMessage::MevBlocks { block_number, block, mev })?)
+            .send(WriterMessage::MevBlocks { block_number, block: Box::new(block), mev })?)
     }
 
     async fn write_dex_quotes(
@@ -984,9 +986,10 @@ impl DBWriter for LibmdbxReadWriter {
         builder_address: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        Ok(self
-            .tx
-            .send(WriterMessage::BuilderInfo { builder_address, builder_info })?)
+        Ok(self.tx.send(WriterMessage::BuilderInfo {
+            builder_address,
+            builder_info: Box::new(builder_info),
+        })?)
     }
 
     /// only for internal functionality (i.e. clickhouse)

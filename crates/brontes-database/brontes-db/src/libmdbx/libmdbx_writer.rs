@@ -38,7 +38,6 @@ const CLEAR_AM: usize = 1000;
 
 type InsetQueue = FastHashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>>;
 
-#[allow(clippy::large_enum_variant)]
 pub enum WriterMessage {
     DexQuotes {
         block_number: u64,
@@ -51,30 +50,30 @@ pub enum WriterMessage {
     },
     MevBlocks {
         block_number: u64,
-        block:        MevBlock,
+        block:        Box<MevBlock>,
         mev:          Vec<Bundle>,
     },
     SearcherInfo {
         eoa_address:      Address,
         contract_address: Option<Address>,
-        eoa_info:         SearcherInfo,
-        contract_info:    Option<SearcherInfo>,
+        eoa_info:         Box<SearcherInfo>,
+        contract_info:    Box<Option<SearcherInfo>>,
     },
     SearcherEoaInfo {
         searcher_eoa:  Address,
-        searcher_info: SearcherInfo,
+        searcher_info: Box<SearcherInfo>,
     },
     SearcherContractInfo {
         searcher_contract: Address,
-        searcher_info:     SearcherInfo,
+        searcher_info:     Box<SearcherInfo>,
     },
     BuilderInfo {
         builder_address: Address,
-        builder_info:    BuilderInfo,
+        builder_info:    Box<BuilderInfo>,
     },
     AddressMeta {
         address:  Address,
-        metadata: AddressMetadata,
+        metadata: Box<AddressMetadata>,
     },
     Pool {
         block:           u64,
@@ -150,13 +149,13 @@ impl LibmdbxWriter {
                 self.write_token_info(address, decimals, symbol)?
             }
             WriterMessage::MevBlocks { block_number, block, mev } => {
-                self.save_mev_blocks(block_number, block, mev)?
+                self.save_mev_blocks(block_number, *block, mev)?
             }
             WriterMessage::BuilderInfo { builder_address, builder_info } => {
-                self.write_builder_info(builder_address, builder_info)?;
+                self.write_builder_info(builder_address, *builder_info)?;
             }
             WriterMessage::AddressMeta { address, metadata } => {
-                self.write_address_meta(address, metadata)?;
+                self.write_address_meta(address, *metadata)?;
             }
             WriterMessage::SearcherInfo {
                 eoa_address,
@@ -164,13 +163,13 @@ impl LibmdbxWriter {
                 eoa_info,
                 contract_info,
             } => {
-                self.write_searcher_info(eoa_address, contract_address, eoa_info, contract_info)?;
+                self.write_searcher_info(eoa_address, contract_address, *eoa_info, *contract_info)?;
             }
             WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info } => {
-                self.write_searcher_eoa_info(searcher_eoa, searcher_info)?;
+                self.write_searcher_eoa_info(searcher_eoa, *searcher_info)?;
             }
             WriterMessage::SearcherContractInfo { searcher_contract, searcher_info } => {
-                self.write_searcher_contract_info(searcher_contract, searcher_info)?;
+                self.write_searcher_contract_info(searcher_contract, *searcher_info)?;
             }
         }
         Ok(())
