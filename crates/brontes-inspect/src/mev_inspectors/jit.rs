@@ -93,6 +93,40 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     inner:  PossibleJit { frontrun_tx, backrun_tx, mev_executor_contract, victims,..},
                     victim_info, searcher_info
                  }| {
+                    let victim_actions = victims
+                        .iter()
+                        .map(|victim| {
+                            self.utils
+                                .flatten_nested_actions(
+                                    tree.clone().collect(
+                                        victim,
+                                        TreeSearchBuilder::default().with_actions([
+                                            Action::is_swap,
+                                            Action::is_nested_action,
+                                        ]),
+                                    ),
+                                    &|actions| actions.is_swap(),
+                                )
+                                .collect::<Vec<_>>()
+                        })
+                        .collect_vec();
+
+                    if victim_actions.iter().any(|inner| inner.is_empty()) {
+                        tracing::trace!("no victim actions found");
+                        return None
+                    }
+
+                    if victims
+                        .iter()
+                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                        .filter(|d| !d.is_revert())
+                        .any(|d| mev_executor_contract == d.get_to_address())
+                    {
+                        tracing::trace!("victim address is same as mev executor contract");
+                        return None
+                    }
+
+
                     let searcher_actions = [frontrun_tx, backrun_tx]
                         .iter()
                         .map(|tx| {
@@ -124,40 +158,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
                     if searcher_actions.is_empty() {
                         tracing::trace!("no searcher actions found");
-                        return None
-                    }
-
-
-                    if victims
-                        .iter()
-                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                        .filter(|d| !d.is_revert())
-                        .any(|d| mev_executor_contract == d.get_to_address())
-                    {
-                        tracing::trace!("victim address is same as mev executor contract");
-                        return None
-                    }
-
-                    let victim_actions = victims
-                        .iter()
-                        .map(|victim| {
-                            self.utils
-                                .flatten_nested_actions(
-                                    tree.clone().collect(
-                                        victim,
-                                        TreeSearchBuilder::default().with_actions([
-                                            Action::is_swap,
-                                            Action::is_nested_action,
-                                        ]),
-                                    ),
-                                    &|actions| actions.is_swap(),
-                                )
-                                .collect::<Vec<_>>()
-                        })
-                        .collect_vec();
-
-                    if victim_actions.iter().any(|inner| inner.is_empty()) {
-                        tracing::trace!("no victim actions found");
                         return None
                     }
 
