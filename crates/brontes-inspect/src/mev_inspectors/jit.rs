@@ -28,7 +28,7 @@ impl PossibleJitWithInfo {
     pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
         let searcher =
             [info_set.get(&ps.frontrun_tx).cloned()?, info_set.get(&ps.backrun_tx).cloned()?];
-        let mut victims = vec![];
+        let mut victims = Vec::with_capacity(ps.victims.len());
 
         for victim in &ps.victims {
             victims.push(info_set.get(victim).cloned()?);
@@ -104,6 +104,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                                             Action::is_mint,
                                             Action::is_burn,
                                             Action::is_transfer,
+                                            Action::is_eth_transfer,
                                             Action::is_nested_action,
                                         ]),
                                     ),
@@ -112,6 +113,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                                             || actions.is_burn()
                                             || actions.is_collect()
                                             || actions.is_transfer()
+                                            || actions.is_eth_transfer()
                                     },
                                 )
                                 .collect::<Vec<_>>()
@@ -182,11 +184,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, transfers): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
+        let ((mints, burns), rem): ((Vec<_>, Vec<_>), Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
-            .action_split((Action::try_mint, Action::try_burn, Action::try_transfer));
+            .action_split_out((Action::try_mint, Action::try_burn));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::trace!("missing mints & burns");
@@ -204,10 +206,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info);
 
-        let deltas = transfers
-            .into_iter()
-            .map(Action::from)
-            .account_for_actions();
+        let deltas = rem.into_iter().account_for_actions();
 
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info[1].tx_index,
