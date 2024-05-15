@@ -23,7 +23,7 @@ pub struct ClickhouseBuffered {
 
 impl Drop for ClickhouseBuffered {
     fn drop(&mut self) {
-        tracing::error!("droping");
+        println!("droping");
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .worker_threads(4)
