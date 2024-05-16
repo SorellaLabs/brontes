@@ -21,7 +21,7 @@ pub(crate) fn build_mev_header(
     let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd, total_mev_bribe) =
         orchestra_data.iter().fold(
             (0u128, 0f64, 0u128),
-            |(total_fee_paid, total_profit_usd, total_mev_bribe)| {
+            |(total_fee_paid, total_profit_usd, mev_bribe), bundle| {
                 let fee_paid = bundle.data.total_priority_fee_paid(
                     tree.header.base_fee_per_gas.unwrap_or_default() as u128,
                 );
@@ -31,7 +31,7 @@ pub(crate) fn build_mev_header(
                 (
                     total_fee_paid + fee_paid,
                     total_profit_usd + profit_usd,
-                    total_mev_bribe + bundle.data.bribe(),
+                    mev_bribe + bundle.data.bribe(),
                 )
             },
         );
