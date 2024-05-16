@@ -87,11 +87,12 @@ pub fn load_libmdbx(
     LibmdbxReadWriter::init_db(db_endpoint, None, executor)
 }
 
+#[allow(clippy::field_reassign_with_default)]
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse(
     cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
 ) -> eyre::Result<Clickhouse> {
-    let mut clickhouse = Clickhouse::default();
+    let mut clickhouse = Clickhouse;
     clickhouse.cex_download_config = cex_download_config;
     Ok(clickhouse)
 }
