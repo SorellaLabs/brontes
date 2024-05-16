@@ -98,7 +98,7 @@ where
     RAYON_INSPECT_THREADPOOL
         .get()
         .expect("threadpool not initialized")
-        .spawn(move || {
+        .install(move || {
             let res = op();
             let _ = tx.send(res);
         });

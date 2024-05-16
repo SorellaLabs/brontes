@@ -131,7 +131,7 @@ impl BrontesTaskManager {
                 .unwrap_or(false)
             {
                 debug!("graceful shutdown timed out");
-                return false;
+                return false
             }
             std::hint::spin_loop();
         }
@@ -347,6 +347,14 @@ impl BrontesTaskExecutor {
             .in_current_span();
 
         self.handle.spawn(task)
+    }
+
+    pub fn get_graceful_shutdown(&self) -> GracefulShutdown {
+        let on_shutdown = LocalGracefulShutdown::new(
+            self.on_shutdown.clone(),
+            LocalGracefulShutdownGuard::new(Arc::clone(&self.graceful_tasks)),
+        );
+        unsafe { std::mem::transmute(on_shutdown) }
     }
 
     /// This spawns a critical task onto the runtime.

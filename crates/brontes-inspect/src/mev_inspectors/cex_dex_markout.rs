@@ -99,8 +99,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .unzip();
 
         let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);
-        multizip((hashes, swaps, tx_info))
-            .filter_map(|(tx, swaps, tx_info)| {
+        multizip((swaps, tx_info))
+            .filter_map(|(swaps, tx_info)| {
                 let tx_info = tx_info?;
 
                 // Return early if the tx is a solver settling trades

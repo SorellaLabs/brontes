@@ -8,7 +8,8 @@ use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,
 };
-use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
+use futures::{stream::FuturesUnordered, Future, StreamExt};
+use reth_tasks::shutdown::GracefulShutdown;
 
 use crate::clickhouse::dbms::*;
 
@@ -66,11 +67,12 @@ impl ClickhouseBuffered {
                                 .into_iter()
                                 .filter_map(|d| match d {
                                     BrontesClickhouseTableDataTypes::$inner(inner_data) => {
-                                        Some(inner_data)
+                                        Some(*inner_data)
                                     }
                                     _ => None,
                                 })
                                 .collect::<Vec<_>>();
+
                             if insert_data.is_empty() {
                                 panic!("you did this wrong idiot");
                             }
@@ -105,30 +107,65 @@ impl ClickhouseBuffered {
         Ok(())
     }
 
+    /// Done like this to avoid runtime load and ensure we always are sending
+    pub fn run(self, shutdown: GracefulShutdown) {
+        std::thread::spawn(move || {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(async move {
+                    self.run_to_completion(shutdown).await;
+                });
+        });
+    }
+
+    pub async fn run_to_completion(mut self, shutdown: GracefulShutdown) {
+        let mut pinned = std::pin::pin!(self);
+        let mut shutdown_g = None;
+        tokio::select! {
+            _ = &mut pinned => {}
+            i = shutdown => {
+                shutdown_g = Some(i);
+            }
+        };
+        pinned.shutdown().await;
+
+        // we do this so doesn't get instant dropped by compiler
+        tracing::trace!(was_shutdown = shutdown_g.is_some());
+        drop(shutdown_g);
+    }
+
     pub async fn shutdown(&mut self) {
-        while let Some(value) = self.rx.recv().await {
-            if value.is_empty() {
-                continue
+        tracing::info!("starting shutdown process clickhouse writer");
+        while !self.rx.is_closed() {
+            while let Ok(value) = self.rx.try_recv() {
+                if value.is_empty() {
+                    continue
+                }
+
+                let enum_kind = value.first().as_ref().unwrap().get_db_enum();
+                let entry = self.value_map.entry(enum_kind.clone()).or_default();
+                entry.extend(value);
             }
 
-            let enum_kind = value.first().as_ref().unwrap().get_db_enum();
-            let entry = self.value_map.entry(enum_kind.clone()).or_default();
-            entry.extend(value);
-        }
+            for (enum_kind, entry) in &mut self.value_map {
+                self.futs.push(Box::pin(Self::insert(
+                    self.client.clone(),
+                    std::mem::take(entry),
+                    enum_kind.clone(),
+                )));
+            }
 
-        for (enum_kind, entry) in &mut self.value_map {
-            let _ =
-                Self::insert(self.client.clone(), std::mem::take(entry), enum_kind.clone()).await;
+            while (self.futs.next().await).is_some() {}
         }
-
-        while (self.futs.next().await).is_some() {}
     }
 }
 
-impl Stream for ClickhouseBuffered {
-    type Item = eyre::Result<()>;
+impl Future for ClickhouseBuffered {
+    type Output = ();
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
         let mut work = 128;
 
@@ -140,12 +177,14 @@ impl Stream for ClickhouseBuffered {
                             this.handle_incoming(val)
                         }
                     }
-                    None => return Poll::Ready(None),
+                    None => return Poll::Ready(()),
                 }
             }
 
-            if let Poll::Ready(Some(val)) = this.futs.poll_next_unpin(cx) {
-                return Poll::Ready(Some(val))
+            while let Poll::Ready(Some(val)) = this.futs.poll_next_unpin(cx) {
+                if let Err(e) = val {
+                    tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
+                }
             }
 
             work -= 1;

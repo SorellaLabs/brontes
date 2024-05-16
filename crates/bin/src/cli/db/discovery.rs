@@ -2,11 +2,9 @@ use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{
-    init_threadpools, unordered_buffer_map::BrontesStreamExt, UnboundedYapperReceiver,
-};
+use brontes_types::{init_threadpools, UnboundedYapperReceiver};
 use clap::Parser;
-use futures::{join, StreamExt};
+use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use tokio::sync::mpsc::unbounded_channel;
