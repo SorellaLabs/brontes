@@ -240,7 +240,10 @@ impl<'a> TimeWindowTrades<'a> {
                 .unzip();
 
         if trades.is_empty() {
+            tracing::debug!("no trades found");
             return None
+        } else {
+            tracing::debug!("{:#?}", trades);
         }
 
         let mut walker = PairTradeWalker::new(
