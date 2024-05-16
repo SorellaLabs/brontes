@@ -22,6 +22,7 @@ use futures::{pin_mut, Future};
 use itertools::Itertools;
 use reth_db::table::{Compress, Encode};
 use reth_tasks::shutdown::GracefulShutdown;
+use tokio::sync::Notify;
 use tracing::instrument;
 
 use crate::{
@@ -86,7 +87,7 @@ pub enum WriterMessage {
         block:  u64,
         traces: Vec<TxTrace>,
     },
-    Init(InitTables),
+    Init(InitTables, Arc<Notify>),
 }
 
 macro_rules! init {
@@ -191,8 +192,9 @@ impl LibmdbxWriter {
             WriterMessage::SearcherContractInfo { searcher_contract, searcher_info } => {
                 self.write_searcher_contract_info(searcher_contract, *searcher_info)?;
             }
-            WriterMessage::Init(init) => {
+            WriterMessage::Init(init, not) => {
                 init.write_data(self.db.clone())?;
+                not.notify_one();
             }
         }
         Ok(())

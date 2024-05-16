@@ -37,7 +37,6 @@ impl Display for ExchangePrice {
 }
 
 pub type MakerTaker = (ExchangePrice, ExchangePrice);
-// type FoldVWAM = FastHashMap<Address, Vec<MakerTakerWithVolumeFilled>>;
 
 impl CexTradeMap {
     // Calculates VWAPs for the given pair across all provided exchanges - this
@@ -141,17 +140,6 @@ impl CexTradeMap {
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     ) -> Option<MakerTaker> {
-        // let fold_fn = |(mut pair0_vwam, mut pair1_vwam): (FoldVWAM, FoldVWAM),
-        // (iter_0, iter_1)| {     for (k, v) in iter_0 {
-        //         pair0_vwam.entry(k).or_insert(vec![]).extend(v);
-        //     }
-        //     for (k, v) in iter_1 {
-        //         pair1_vwam.entry(k).or_insert(vec![]).extend(v);
-        //     }
-        //
-        //     (pair0_vwam, pair1_vwam)
-        // };
-
         let (pair0_vwams, pair1_vwams) = self
             .calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
