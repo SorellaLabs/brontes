@@ -92,7 +92,7 @@ pub fn load_libmdbx(
 pub async fn load_clickhouse(
     cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
 ) -> eyre::Result<Clickhouse> {
-    let mut clickhouse = Clickhouse;
+    let mut clickhouse = Clickhouse::default();
     clickhouse.cex_download_config = cex_download_config;
     Ok(clickhouse)
 }
