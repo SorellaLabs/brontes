@@ -35,6 +35,7 @@ pub struct MevBlock {
     pub cumulative_gas_used: u128,
     pub cumulative_priority_fee: u128,
     pub total_bribe: u128,
+    pub total_mev_bribe: u128,
     pub cumulative_mev_priority_fee_paid: u128,
     pub builder_address: Address,
     pub builder_eth_profit: f64,
@@ -338,6 +339,7 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("cumulative_gas_used", &self.cumulative_gas_used)?;
         ser_struct.serialize_field("cumulative_priority_fee", &self.cumulative_priority_fee)?;
         ser_struct.serialize_field("total_bribe", &self.total_bribe)?;
+        ser_struct.serialize_field("total_mev_bribe", &self.total_mev_bribe)?;
         ser_struct.serialize_field(
             "cumulative_mev_priority_fee_paid",
             &self.cumulative_mev_priority_fee_paid,
@@ -447,6 +449,7 @@ impl DbRow for MevBlock {
         "cumulative_gas_used",
         "cumulative_priority_fee",
         "total_bribe",
+        "total_mev_bribe",
         "cumulative_mev_priority_fee_paid",
         "builder_address",
         "builder_eth_profit",
