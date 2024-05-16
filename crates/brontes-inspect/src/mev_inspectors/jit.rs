@@ -317,11 +317,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.get_to_address(),
-                                    victims:               victims.clone(),
+                                    eoa:               root.head.address,
+                                    frontrun_tx:       *prev_tx_hash,
+                                    backrun_tx:        root.tx_hash,
+                                    executor_contract: root.get_to_address(),
+                                    victims:           victims.clone(),
                                 });
                             }
                         }
@@ -347,11 +347,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.get_to_address(),
-                                    victims:               victims.clone(),
+                                    eoa:               root.head.address,
+                                    frontrun_tx:       *prev_tx_hash,
+                                    backrun_tx:        root.tx_hash,
+                                    executor_contract: root.get_to_address(),
+                                    victims:           victims.clone(),
                                 });
                             }
                         }
