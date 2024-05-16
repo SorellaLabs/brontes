@@ -383,10 +383,12 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 {
                     return None
                 }
-                let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
+
                 if jit.victims.len() > 20 {
                     return None
                 }
+
+                let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
                 set.extend(jit.victims.clone());
                 Some(set)
             })

@@ -12,9 +12,7 @@ use brontes_types::{
         cex::{CexPriceMap, CexPriceMapRedefined, CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, META_FLAG, TRACE_FLAG,
-        },
+        initialized_state::{InitializedStateMeta, CEX_QUOTES_FLAG, META_FLAG, TRACE_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
