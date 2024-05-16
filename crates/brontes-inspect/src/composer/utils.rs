@@ -18,17 +18,19 @@ pub(crate) fn build_mev_header(
     mev_count: MevCount,
     orchestra_data: &[Bundle],
 ) -> MevBlock {
-    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd) =
-        orchestra_data
-            .iter()
-            .fold((0u128, 0f64), |(total_fee_paid, total_profit_usd), bundle| {
+    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd, cumulative_mev_bribe) =
+        orchestra_data.iter().fold(
+            (0u128, 0f64, 0u128),
+            |(total_fee_paid, total_profit_usd), bundle| {
                 let fee_paid = bundle.data.total_priority_fee_paid(
                     tree.header.base_fee_per_gas.unwrap_or_default() as u128,
                 );
+
                 let profit_usd = bundle.header.profit_usd;
 
-                (total_fee_paid + fee_paid, total_profit_usd + profit_usd)
-            });
+                (total_fee_paid + fee_paid, total_profit_usd + profit_usd, bundle.data.bribe())
+            },
+        );
 
     let pre_processing = pre_process(tree.clone());
 
