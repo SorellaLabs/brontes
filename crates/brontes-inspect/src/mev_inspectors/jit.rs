@@ -44,11 +44,11 @@ impl PossibleJitWithInfo {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
-    pub eoa:                   Address,
-    pub frontrun_tx:           B256,
-    pub backrun_tx:            B256,
-    pub mev_executor_contract: Address,
-    pub victims:               Vec<B256>,
+    pub eoa:               Address,
+    pub frontrun_tx:       B256,
+    pub backrun_tx:        B256,
+    pub executor_contract: Address,
+    pub victims:           Vec<B256>,
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -90,8 +90,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .into_iter()
             .filter_map(
                 |PossibleJitWithInfo {
-                    inner:  PossibleJit { frontrun_tx, backrun_tx, mev_executor_contract, victims,..},
-                    victim_info, searcher_info
+                     inner: PossibleJit { frontrun_tx, backrun_tx, executor_contract, victims, .. },
+                     victim_info,
+                     searcher_info,
                  }| {
                     let searcher_actions = [frontrun_tx, backrun_tx]
                         .iter()
@@ -154,7 +155,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                         .iter()
                         .map(|v| tree.get_root(*v).unwrap().get_root_action())
                         .filter(|d| !d.is_revert())
-                        .any(|d| mev_executor_contract == d.get_to_address())
+                        .any(|d| executor_contract == d.get_to_address())
                     {
                         tracing::trace!("victim address is same as mev executor contract");
                         return None
