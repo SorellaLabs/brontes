@@ -17,6 +17,7 @@ use futures::{join, stream::iter, StreamExt};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Notify;
 use toml::Table as tomlTable;
 use tracing::{error, info};
 
@@ -113,7 +114,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &'db self,
         clear_table: bool,
         progress_bar: ProgressBar,
-        f: impl Fn(Vec<D>) -> eyre::Result<()> + Send + Clone + 'static,
+        f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -136,7 +137,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         match data {
             Ok(d) => {
                 progress_bar.inc(1);
-                f(d)?;
+                let not = Arc::new(Notify::new());
+                f(d, not.clone())?;
+                not.notified().await;
             }
             Err(e) => {
                 error!(target: "brontes::init", error=%e, "error initing {}", T::NAME)
@@ -153,7 +156,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         mark_init: Option<u8>,
         cex_table_flag: bool,
         pb: ProgressBar,
-        f: impl Fn(Vec<D>) -> eyre::Result<()> + Send + Clone + 'static,
+        f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -209,9 +212,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
+                                let not = Arc::new(Notify::new());
                                 unsafe {
-                                    f(std::mem::transmute(d))?;
+                                    f(std::mem::transmute(d), not.clone())?;
                                 }
+                                not.notified().await;
                             }
                             Err(e) => {
                                 error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -227,9 +232,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
+                                let not = Arc::new(Notify::new());
                                 unsafe {
-                                    f(std::mem::transmute(d))?;
+                                    f(std::mem::transmute(d), not.clone())?;
                                 }
+                                not.notified().await;
 
                             }
                             Err(e) => {
@@ -242,7 +249,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     match data {
                         Ok(d) => {
                             pb.inc(count);
-                            f(d)?;
+                                let not = Arc::new(Notify::new());
+                                f(d, not.clone())?;
+                                not.notified().await;
                         }
                         Err(e) => {
                             info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -252,7 +261,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
                 if let Some(flag) = mark_init {
                     let ranges = libmdbx.inited_range_items(start..=end, flag)?;
-                    libmdbx.send_message(WriterMessage::Init(ranges.into()))?;
+                    let not = Arc::new(Notify::new());
+                    libmdbx.send_message(WriterMessage::Init(ranges.into(),not.clone()))?;
+                    not.notified().await;
                 }
 
 
@@ -274,7 +285,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         mark_init: Option<u8>,
         cex_table_flag: bool,
         pb: ProgressBar,
-        f: impl Fn(Vec<D>) -> eyre::Result<()> + Send + Clone + 'static,
+        f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -307,9 +318,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
+                                let not = Arc::new(Notify::new());
                                 unsafe {
-                                    f(std::mem::transmute(d))?;
+                                    f(std::mem::transmute(d), not.clone())?;
                                 }
+                                not.notified().await;
 
                             }
                             Err(e) => {
@@ -326,9 +339,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
+                                let not = Arc::new(Notify::new());
                                 unsafe {
-                                    f(std::mem::transmute(d))?;
+                                    f(std::mem::transmute(d), not.clone())?;
                                 }
+                                not.notified().await;
                             }
                             Err(e) => {
                                 info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -340,7 +355,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     match data {
                         Ok(d) => {
                             pb.inc(count);
-                            f(d)?;
+                            let not = Arc::new(Notify::new());
+                            f(d, not.clone())?;
+                            not.notified().await;
                         }
                         Err(e) => {
                             info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -350,7 +367,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
                 if let Some(flag) = mark_init {
                     let ranges = libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
-                    libmdbx.send_message(WriterMessage::Init(ranges.into()))?;
+
+                    let not = Arc::new(Notify::new());
+                    libmdbx.send_message(WriterMessage::Init(ranges.into(),not.clone()))?;
+                    not.notified().await;
                 }
 
                 Ok::<(), eyre::Report>(())

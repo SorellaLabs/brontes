@@ -106,7 +106,7 @@ impl CexTradesConverter {
                                 symbol.address_pair.1 = USDC_ADDRESS;
                             }
 
-                            let pair = if &trade.side == "buy" {
+                            let pair = if &trade.side == "sell" {
                                 symbol.address_pair.flip()
                             } else {
                                 symbol.address_pair
