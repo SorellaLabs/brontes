@@ -363,7 +363,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 .calculate_time_window_vwam(
                                     &self.cex_exchanges,
                                     pair,
-                                    &swap.amount_out,
+                                    &swap.amount_in,
                                     metadata.microseconds_block_timestamp(),
                                 )
                         })
