@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use toml::Table as tomlTable;
 use tracing::{error, info};
 
-use super::tables::Tables;
+use super::{libmdbx_writer::WriterMessage, tables::Tables};
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{
@@ -46,6 +46,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         tracer: Arc<TP>,
     ) -> Self {
         Self { libmdbx, clickhouse, tracer }
+    }
+
+    pub fn get_libmdbx_handle(&self) -> &'static LibmdbxReadWriter {
+        self.libmdbx
     }
 
     pub async fn initialize(
@@ -109,6 +113,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &'db self,
         clear_table: bool,
         progress_bar: ProgressBar,
+        f: impl Fn(Vec<D>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -131,7 +136,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         match data {
             Ok(d) => {
                 progress_bar.inc(1);
-                self.libmdbx.db.write_table(&d)?
+                f(d)?;
             }
             Err(e) => {
                 error!(target: "brontes::init", error=%e, "error initing {}", T::NAME)
@@ -148,6 +153,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         mark_init: Option<u8>,
         cex_table_flag: bool,
         pb: ProgressBar,
+        f: impl Fn(Vec<D>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -191,6 +197,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let libmdbx = self.libmdbx;
             let pb = pb.clone();
             let count = end - start;
+            let f = f.clone();
 
             async move {
                 if cex_table_flag {
@@ -202,9 +209,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.db.write_table(&d)?;
-
-
+                                unsafe {
+                                    f(std::mem::transmute(d))?;
+                                }
                             }
                             Err(e) => {
                                 error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -220,7 +227,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.db.write_table(&d)?;
+                                unsafe {
+                                    f(std::mem::transmute(d))?;
+                                }
 
                             }
                             Err(e) => {
@@ -233,7 +242,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     match data {
                         Ok(d) => {
                             pb.inc(count);
-                            libmdbx.db.write_table(&d)?;
+                            f(d)?;
                         }
                         Err(e) => {
                             info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -242,7 +251,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 }
 
                 if let Some(flag) = mark_init {
-                    libmdbx.inited_range(start..=end, flag)?;
+                    let ranges = libmdbx.inited_range_items(start..=end, flag)?;
+                    libmdbx.send_message(WriterMessage::Init(ranges.into()))?;
                 }
 
 
@@ -264,6 +274,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         mark_init: Option<u8>,
         cex_table_flag: bool,
         pb: ProgressBar,
+        f: impl Fn(Vec<D>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
         T: CompressedTable,
@@ -284,6 +295,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let libmdbx = self.libmdbx;
             let pb = pb.clone();
             let count = inner_range.len() as u64;
+            let f = f.clone();
 
             async move {
                 if cex_table_flag {
@@ -295,7 +307,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.db.write_table(&d)?;
+                                unsafe {
+                                    f(std::mem::transmute(d))?;
+                                }
 
                             }
                             Err(e) => {
@@ -312,7 +326,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         match data {
                             Ok(d) => {
                                 pb.inc(count);
-                                libmdbx.db.write_table(&d)?;
+                                unsafe {
+                                    f(std::mem::transmute(d))?;
+                                }
                             }
                             Err(e) => {
                                 info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -324,7 +340,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     match data {
                         Ok(d) => {
                             pb.inc(count);
-                            libmdbx.db.write_table(&d)?;
+                            f(d)?;
                         }
                         Err(e) => {
                             info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
@@ -333,7 +349,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 }
 
                 if let Some(flag) = mark_init {
-                    libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
+                    let ranges = libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
+                    libmdbx.send_message(WriterMessage::Init(ranges.into()))?;
                 }
 
                 Ok::<(), eyre::Report>(())

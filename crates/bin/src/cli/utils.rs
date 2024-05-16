@@ -27,8 +27,6 @@ use brontes_types::{
     mev::Bundle,
     BrontesTaskExecutor,
 };
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
-use futures::StreamExt;
 use itertools::Itertools;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
@@ -89,6 +87,7 @@ pub fn load_libmdbx(
     LibmdbxReadWriter::init_db(db_endpoint, None, executor)
 }
 
+#[allow(clippy::field_reassign_with_default)]
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse(
     cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
@@ -170,42 +169,15 @@ fn spawn_db_writer_thread(
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
     use brontes_database::clickhouse::ClickhouseConfig;
-    use futures::pin_mut;
 
-    let _ = dotenv::dotenv();
-    let url = format!(
-        "{}:{}",
-        std::env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
-        std::env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not found in .env")
-    );
-    let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
-    let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
+    let shutdown = executor.get_graceful_shutdown();
+    ClickhouseBuffered::new(
+        UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),
+        clickhouse_config(),
+        3000,
+        600,
+    )
+    .run(shutdown);
 
-    let config = ClickhouseConfig::new(user, pass, url, true, None);
-
-    executor.spawn_critical_with_graceful_shutdown_signal(
-        "clickhouse insert process",
-        |shutdown| async move {
-            let clickhouse_writer = ClickhouseBuffered::new(UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()), clickhouse_config(), 3000, 300);
-            pin_mut!(clickhouse_writer, shutdown);
-
-            let mut graceful_guard = None;
-            while graceful_guard.is_none() {
-                tokio::select! {
-                    Some(val) = &mut clickhouse_writer.next() => {
-                        if let Err(e) = val {
-                            tracing::error!(target: "brontes", "error writing to clickhouse {:?}", e);
-                        }
-                    },
-                    guard = &mut shutdown => {
-                        graceful_guard = Some(guard);
-                    }
-                }
-            }
-
-            clickhouse_writer.shutdown().await;
-            drop(graceful_guard);
-        },
-    );
     tracing::info!("started writer");
 }

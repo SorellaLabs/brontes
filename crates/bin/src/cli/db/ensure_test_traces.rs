@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_metrics::{range::GlobalRangeMetrics, PoirotMetricsListener};
+use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
     init_threadpools, unordered_buffer_map::BrontesStreamExt, UnboundedYapperReceiver,
 };
