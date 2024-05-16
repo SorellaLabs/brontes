@@ -18,7 +18,7 @@ pub(crate) fn build_mev_header(
     mev_count: MevCount,
     orchestra_data: &[Bundle],
 ) -> MevBlock {
-    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd, cumulative_mev_bribe) =
+    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd, total_mev_bribe) =
         orchestra_data.iter().fold(
             (0u128, 0f64, 0u128),
             |(total_fee_paid, total_profit_usd), bundle| {
@@ -47,6 +47,7 @@ pub(crate) fn build_mev_header(
         cumulative_gas_used: pre_processing.cumulative_gas_used,
         cumulative_priority_fee: pre_processing.cumulative_priority_fee,
         total_bribe: pre_processing.total_bribe,
+        total_mev_bribe,
         cumulative_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
         builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
