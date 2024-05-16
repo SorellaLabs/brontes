@@ -38,7 +38,6 @@ const CLEAR_AM: usize = 1000;
 
 type InsetQueue = FastHashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>>;
 
-#[allow(clippy::large_enum_variant)]
 pub enum WriterMessage {
     DexQuotes {
         block_number: u64,
@@ -51,30 +50,30 @@ pub enum WriterMessage {
     },
     MevBlocks {
         block_number: u64,
-        block:        MevBlock,
+        block:        Box<MevBlock>,
         mev:          Vec<Bundle>,
     },
     SearcherInfo {
         eoa_address:      Address,
         contract_address: Option<Address>,
-        eoa_info:         SearcherInfo,
-        contract_info:    Option<SearcherInfo>,
+        eoa_info:         Box<SearcherInfo>,
+        contract_info:    Box<Option<SearcherInfo>>,
     },
     SearcherEoaInfo {
         searcher_eoa:  Address,
-        searcher_info: SearcherInfo,
+        searcher_info: Box<SearcherInfo>,
     },
     SearcherContractInfo {
         searcher_contract: Address,
-        searcher_info:     SearcherInfo,
+        searcher_info:     Box<SearcherInfo>,
     },
     BuilderInfo {
         builder_address: Address,
-        builder_info:    BuilderInfo,
+        builder_info:    Box<BuilderInfo>,
     },
     AddressMeta {
         address:  Address,
-        metadata: AddressMetadata,
+        metadata: Box<AddressMetadata>,
     },
     Pool {
         block:           u64,
@@ -87,7 +86,62 @@ pub enum WriterMessage {
         block:  u64,
         traces: Vec<TxTrace>,
     },
+    Init(InitTables),
 }
+
+macro_rules! init {
+    ($($table:ident),*) => {
+        paste::paste!(
+            pub enum InitTables {
+                $(
+                    $table(Vec<[<$table Data>]>)
+                ),*
+            }
+
+            $(
+                impl From<Vec<[<$table Data>]>> for InitTables {
+                    fn from(data: Vec<[<$table Data>]>) -> Self {
+                        InitTables::$table(data)
+                    }
+                }
+            )*
+
+            impl InitTables {
+                pub fn write_data(self, handle: Arc<Libmdbx>) -> eyre::Result<()> {
+                    match self {
+                        $(
+                            Self::$table(data) => {
+                               handle
+                                    .write_table::<$table, [<$table Data>]>(&data)
+                                    .expect("libmdbx write failure");
+
+                                Ok(())
+                            }
+                        )*
+                    }
+
+                }
+            }
+        );
+
+    };
+}
+init!(
+    TokenDecimals,
+    AddressToProtocolInfo,
+    PoolCreationBlocks,
+    Builder,
+    AddressMeta,
+    CexPrice,
+    BlockInfo,
+    TxTraces,
+    CexTrades,
+    DexPrice,
+    MevBlocks,
+    SearcherEOAs,
+    SearcherContracts,
+    InitializedState
+);
 
 /// due to libmdbx's 1 write tx limit. it makes sense
 /// to split db and ensure we never breach this
@@ -95,41 +149,6 @@ pub struct LibmdbxWriter {
     db:           Arc<Libmdbx>,
     insert_queue: InsetQueue,
     rx:           UnboundedYapperReceiver<WriterMessage>,
-}
-
-impl Drop for LibmdbxWriter {
-    fn drop(&mut self) {
-        std::mem::take(&mut self.insert_queue)
-            .into_iter()
-            .for_each(|(table, values)| {
-                if values.is_empty() {
-                    return
-                }
-                match table {
-                    Tables::DexPrice => {
-                        self.insert_batched_data::<DexPrice>(values).unwrap();
-                    }
-                    Tables::CexPrice => {
-                        self.insert_batched_data::<CexPrice>(values).unwrap();
-                    }
-                    Tables::CexTrades => {
-                        self.insert_batched_data::<CexTrades>(values).unwrap();
-                    }
-                    Tables::MevBlocks => {
-                        self.insert_batched_data::<MevBlocks>(values).unwrap();
-                    }
-                    Tables::TxTraces => {
-                        self.insert_batched_data::<TxTraces>(values).unwrap();
-                    }
-                    Tables::InitializedState => {
-                        self.insert_batched_data::<InitializedState>(values)
-                            .unwrap();
-                    }
-
-                    table => unreachable!("{table} doesn't have batch inserts"),
-                }
-            });
-    }
 }
 
 impl LibmdbxWriter {
@@ -150,13 +169,13 @@ impl LibmdbxWriter {
                 self.write_token_info(address, decimals, symbol)?
             }
             WriterMessage::MevBlocks { block_number, block, mev } => {
-                self.save_mev_blocks(block_number, block, mev)?
+                self.save_mev_blocks(block_number, *block, mev)?
             }
             WriterMessage::BuilderInfo { builder_address, builder_info } => {
-                self.write_builder_info(builder_address, builder_info)?;
+                self.write_builder_info(builder_address, *builder_info)?;
             }
             WriterMessage::AddressMeta { address, metadata } => {
-                self.write_address_meta(address, metadata)?;
+                self.write_address_meta(address, *metadata)?;
             }
             WriterMessage::SearcherInfo {
                 eoa_address,
@@ -164,13 +183,16 @@ impl LibmdbxWriter {
                 eoa_info,
                 contract_info,
             } => {
-                self.write_searcher_info(eoa_address, contract_address, eoa_info, contract_info)?;
+                self.write_searcher_info(eoa_address, contract_address, *eoa_info, *contract_info)?;
             }
             WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info } => {
-                self.write_searcher_eoa_info(searcher_eoa, searcher_info)?;
+                self.write_searcher_eoa_info(searcher_eoa, *searcher_info)?;
             }
             WriterMessage::SearcherContractInfo { searcher_contract, searcher_info } => {
-                self.write_searcher_contract_info(searcher_contract, searcher_info)?;
+                self.write_searcher_contract_info(searcher_contract, *searcher_info)?;
+            }
+            WriterMessage::Init(init) => {
+                init.write_data(self.db.clone())?;
             }
         }
         Ok(())
@@ -431,7 +453,20 @@ impl LibmdbxWriter {
         Ok(())
     }
 
-    pub async fn run_until_shutdown(self, shutdown: GracefulShutdown) {
+    pub fn run(self, shutdown: GracefulShutdown) {
+        // we do this to avoid main tokio runtime load
+        std::thread::spawn(move || {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(async move {
+                    self.run_until_shutdown(shutdown).await;
+                });
+        });
+    }
+
+    async fn run_until_shutdown(self, shutdown: GracefulShutdown) {
         let inserts = self;
         pin_mut!(inserts, shutdown);
         let mut graceful_guard = None;
@@ -443,13 +478,50 @@ impl LibmdbxWriter {
             },
         }
 
-        while let Some(msg) = inserts.rx.recv().await {
-            if let Err(e) = inserts.handle_msg(msg) {
-                tracing::error!(error=%e, "libmdbx write error on shutdown");
+        while !inserts.rx.is_closed() {
+            while let Ok(msg) = inserts.rx.try_recv() {
+                if let Err(e) = inserts.handle_msg(msg) {
+                    tracing::error!(error=%e, "libmdbx write error on shutdown");
+                }
             }
+            inserts.insert_remaining();
         }
-
+        // we do this so doesn't get instant dropped by compiler
+        tracing::trace!(was_shutdown = graceful_guard.is_some());
         drop(graceful_guard)
+    }
+
+    fn insert_remaining(&mut self) {
+        std::mem::take(&mut self.insert_queue)
+            .into_iter()
+            .for_each(|(table, values)| {
+                if values.is_empty() {
+                    return
+                }
+                match table {
+                    Tables::DexPrice => {
+                        self.insert_batched_data::<DexPrice>(values).unwrap();
+                    }
+                    Tables::CexPrice => {
+                        self.insert_batched_data::<CexPrice>(values).unwrap();
+                    }
+                    Tables::CexTrades => {
+                        self.insert_batched_data::<CexTrades>(values).unwrap();
+                    }
+                    Tables::MevBlocks => {
+                        self.insert_batched_data::<MevBlocks>(values).unwrap();
+                    }
+                    Tables::TxTraces => {
+                        self.insert_batched_data::<TxTraces>(values).unwrap();
+                    }
+                    Tables::InitializedState => {
+                        self.insert_batched_data::<InitializedState>(values)
+                            .unwrap();
+                    }
+
+                    table => unreachable!("{table} doesn't have batch inserts"),
+                }
+            });
     }
 }
 
@@ -460,20 +532,18 @@ impl Future for LibmdbxWriter {
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        let mut budget = 128;
         let this = self.get_mut();
-        loop {
-            if let Poll::Ready(Some(msg)) = this.rx.poll_recv(cx) {
-                if let Err(e) = this.handle_msg(msg) {
-                    tracing::error!(error=%e, "libmdbx write error");
-                }
-            }
+        let mut messages = vec![];
+        while let Poll::Ready(Some(msg)) = this.rx.poll_recv(cx) {
+            messages.push(msg);
+        }
 
-            budget -= 1;
-            if budget == 0 {
-                cx.waker().wake_by_ref();
-                return Poll::Pending
+        for msg in messages.drain(..) {
+            if let Err(e) = this.handle_msg(msg) {
+                tracing::error!(error=%e, "libmdbx write error");
             }
         }
+
+        Poll::Pending
     }
 }

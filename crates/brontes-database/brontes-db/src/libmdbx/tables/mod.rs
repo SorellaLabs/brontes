@@ -12,9 +12,7 @@ use brontes_types::{
         cex::{CexPriceMap, CexPriceMapRedefined, CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, META_FLAG, TRACE_FLAG,
-        },
+        initialized_state::{InitializedStateMeta, META_FLAG, TRACE_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -37,11 +35,18 @@ use crate::{
 };
 mod const_sql;
 use alloy_primitives::Address;
+#[cfg(not(feature = "cex-dex-markout"))]
+use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
+#[cfg(feature = "cex-dex-markout")]
+use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
 
-use super::{initialize::LibmdbxInitializer, types::IntoTableKey, CompressedTable};
+use super::{
+    initialize::LibmdbxInitializer, libmdbx_writer::WriterMessage, types::IntoTableKey,
+    CompressedTable,
+};
 
 pub const NUM_TABLES: usize = 14;
 
@@ -150,12 +155,14 @@ impl Tables {
         initializer: &LibmdbxInitializer<T, CH>,
         crit_progress: ProgressBar,
     ) -> eyre::Result<()> {
+        let handle = initializer.get_libmdbx_handle();
         match self {
             Tables::TokenDecimals => {
                 initializer
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
                         false,
                         crit_progress,
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
@@ -164,6 +171,7 @@ impl Tables {
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
                         false,
                         crit_progress,
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
@@ -172,17 +180,24 @@ impl Tables {
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
                         false,
                         crit_progress,
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
             Tables::Builder => {
                 initializer
-                    .clickhouse_init_no_args::<Builder, BuilderData>(false, crit_progress)
+                    .clickhouse_init_no_args::<Builder, BuilderData>(false, crit_progress, |f| {
+                        handle.send_message(WriterMessage::Init(f.into()))
+                    })
                     .await
             }
             Tables::AddressMeta => {
                 initializer
-                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(false, crit_progress)
+                    .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(
+                        false,
+                        crit_progress,
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                    )
                     .await
             }
             _ => unimplemented!("{:?} isn't a full range table", self),
@@ -196,7 +211,9 @@ impl Tables {
         clear_table: bool,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
+        let handle = initializer.get_libmdbx_handle();
         match self {
+            #[cfg(not(feature = "cex-dex-markout"))]
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
@@ -209,10 +226,13 @@ impl Tables {
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b))
                             .cloned()
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await?;
                 Ok(())
             }
+            #[cfg(feature = "cex-dex-markout")]
+            Tables::CexPrice => Ok(()),
             Tables::BlockInfo => {
                 initializer
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
@@ -224,6 +244,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
@@ -240,12 +261,14 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
+            #[cfg(feature = "cex-dex-markout")]
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
@@ -257,9 +280,13 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
+            #[cfg(not(feature = "cex-dex-markout"))]
+            Tables::CexTrades => Ok(()),
+
             _ => unimplemented!("'initialize_table' not implemented for {:?}", self),
         }
     }
@@ -273,6 +300,7 @@ impl Tables {
         block_range: &'static [u64],
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
     ) -> eyre::Result<()> {
+        let handle = initializer.get_libmdbx_handle();
         match self {
             Tables::TokenDecimals => {
                 unimplemented!(
@@ -289,6 +317,7 @@ impl Tables {
                     "'initialize_table_arbitrary_state' not implemented for PoolCreationBlocks"
                 );
             }
+            #[cfg(not(feature = "cex-dex-markout"))]
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
@@ -299,9 +328,12 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b.clone()))
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
+            #[cfg(feature = "cex-dex-markout")]
+            Tables::CexPrice => Ok(()),
             Tables::BlockInfo => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
@@ -312,6 +344,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
@@ -327,6 +360,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
@@ -341,6 +375,7 @@ impl Tables {
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
+            #[cfg(feature = "cex-dex-markout")]
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
@@ -351,9 +386,12 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
                             .unwrap(),
+                        |f| handle.send_message(WriterMessage::Init(f.into())),
                     )
                     .await
             }
+            #[cfg(not(feature = "cex-dex-markout"))]
+            Tables::CexTrades => Ok(()),
         }
     }
 

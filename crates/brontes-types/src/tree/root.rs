@@ -78,6 +78,10 @@ impl<V: NormalizedAction> Root<V> {
         )
     }
 
+    pub fn tx_must_contain_action(&self, f: impl Fn(&V) -> bool) -> bool {
+        self.data_store.0.iter().flatten().flatten().any(f)
+    }
+
     pub fn get_tx_info<DB: LibmdbxReader>(
         &self,
         block_number: u64,

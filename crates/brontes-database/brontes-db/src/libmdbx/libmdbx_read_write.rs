@@ -106,17 +106,15 @@ impl LibmdbxReadWriter {
         log_level: Option<LogLevel>,
         ex: &BrontesTaskExecutor,
     ) -> eyre::Result<Self> {
-        // 25 gb total
-        let memory_per_table_mb = 50000;
+        let memory_per_table_mb = 10_000;
         let (tx, rx) = unbounded_channel();
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
+        let shutdown = ex.get_graceful_shutdown();
 
-        // start writing task
+        // start writing task on own thread
         let writer = LibmdbxWriter::new(db.clone(), yapper);
-        ex.spawn_critical_with_graceful_shutdown_signal("libmdbx writer", |shutdown| async move {
-            writer.run_until_shutdown(shutdown).await
-        });
+        writer.run(shutdown);
 
         Ok(Self {
             db,
@@ -453,13 +451,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"try_fetch_token_info")]
+    #[brontes_macros::metrics_call(ptr=metrics,scope, db_read, "try_fetch_token_info")]
     fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
         let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
 
         self.db
             .view_db(|tx| match self.cache.token_info(true, |lock| lock.get(&address)) {
-                Some(Some(e)) => Ok(TokenInfoWithAddress { inner: e.clone(), address }),
+                Some(Some(e)) => Ok(TokenInfoWithAddress { inner: e, address }),
                 Some(None) => Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
                 None => tx
                     .get::<TokenDecimals>(address)
@@ -858,8 +856,8 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(self.tx.send(WriterMessage::SearcherInfo {
             eoa_address,
             contract_address,
-            eoa_info,
-            contract_info,
+            eoa_info: Box::new(eoa_info),
+            contract_info: Box::new(contract_info),
         })?)
     }
 
@@ -872,9 +870,10 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(searcher_eoa, Some(searcher_info.clone()));
         });
 
-        Ok(self
-            .tx
-            .send(WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info })?)
+        Ok(self.tx.send(WriterMessage::SearcherEoaInfo {
+            searcher_eoa,
+            searcher_info: Box::new(searcher_info),
+        })?)
     }
 
     async fn write_searcher_contract_info(
@@ -886,9 +885,10 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(searcher_contract, Some(searcher_info.clone()));
         });
 
-        Ok(self
-            .tx
-            .send(WriterMessage::SearcherContractInfo { searcher_contract, searcher_info })?)
+        Ok(self.tx.send(WriterMessage::SearcherContractInfo {
+            searcher_contract,
+            searcher_info: Box::new(searcher_info),
+        })?)
     }
 
     async fn write_address_meta(
@@ -902,7 +902,7 @@ impl DBWriter for LibmdbxReadWriter {
 
         Ok(self
             .tx
-            .send(WriterMessage::AddressMeta { address, metadata })?)
+            .send(WriterMessage::AddressMeta { address, metadata: Box::new(metadata) })?)
     }
 
     async fn save_mev_blocks(
@@ -913,7 +913,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         Ok(self
             .tx
-            .send(WriterMessage::MevBlocks { block_number, block, mev })?)
+            .send(WriterMessage::MevBlocks { block_number, block: Box::new(block), mev })?)
     }
 
     async fn write_dex_quotes(
@@ -984,9 +984,10 @@ impl DBWriter for LibmdbxReadWriter {
         builder_address: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        Ok(self
-            .tx
-            .send(WriterMessage::BuilderInfo { builder_address, builder_info })?)
+        Ok(self.tx.send(WriterMessage::BuilderInfo {
+            builder_address,
+            builder_info: Box::new(builder_info),
+        })?)
     }
 
     /// only for internal functionality (i.e. clickhouse)
@@ -1037,6 +1038,46 @@ impl LibmdbxReadWriter {
         })
     }
 
+    pub fn inited_range_arbitrary(
+        &self,
+        range: impl Iterator<Item = u64>,
+        flag: u8,
+    ) -> eyre::Result<Vec<InitializedStateData>> {
+        self.db.view_db(|tx| {
+            let mut res = Vec::new();
+            for block in range {
+                let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
+                state.set(flag);
+                res.push(InitializedStateData::new(block, state));
+            }
+            Ok(res)
+        })
+    }
+
+    pub fn inited_range_items(
+        &self,
+        range: RangeInclusive<u64>,
+        flag: u8,
+    ) -> eyre::Result<Vec<InitializedStateData>> {
+        let tx = self.db.ro_tx()?;
+        let mut range_cursor = tx.cursor_read::<InitializedState>()?;
+        let mut res = Vec::new();
+
+        for block in range {
+            if let Some(mut state) = range_cursor.seek_exact(block)? {
+                state.1.set(flag);
+                res.push(InitializedStateData::new(block, state.1));
+            } else {
+                let mut init_state = InitializedStateMeta::default();
+                init_state.set(flag);
+                res.push(InitializedStateData::from((block, init_state)));
+            }
+        }
+
+        tx.commit()?;
+        Ok(res)
+    }
+
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
         let tx = self.db.ro_tx()?;
         let mut range_cursor = tx.cursor_read::<InitializedState>()?;
@@ -1061,17 +1102,6 @@ impl LibmdbxReadWriter {
 
         self.insert_batched_data::<InitializedState>(entry)?;
 
-        Ok(())
-    }
-
-    pub fn inited_range_arbitrary(
-        &self,
-        range: impl Iterator<Item = u64>,
-        flag: u8,
-    ) -> eyre::Result<()> {
-        for block in range {
-            self.init_state_updating(block, flag)?;
-        }
         Ok(())
     }
 
@@ -1128,6 +1158,10 @@ impl LibmdbxReadWriter {
 
             Ok(DexQuotes(dex_quotes))
         })
+    }
+
+    pub fn send_message(&self, message: WriterMessage) -> eyre::Result<()> {
+        Ok(self.tx.send(message)?)
     }
 }
 
