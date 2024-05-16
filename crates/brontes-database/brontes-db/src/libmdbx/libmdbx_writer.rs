@@ -479,7 +479,7 @@ impl LibmdbxWriter {
         }
 
         while !inserts.rx.is_closed() {
-            while let Some(msg) = inserts.rx.recv().await {
+            while let Ok(msg) = inserts.rx.try_recv() {
                 if let Err(e) = inserts.handle_msg(msg) {
                     tracing::error!(error=%e, "libmdbx write error on shutdown");
                 }

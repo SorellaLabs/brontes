@@ -139,7 +139,7 @@ impl ClickhouseBuffered {
     pub async fn shutdown(&mut self) {
         tracing::info!("starting shutdown process clickhouse writer");
         while !self.rx.is_closed() {
-            while let Some(value) = self.rx.recv().await {
+            while let Ok(value) = self.rx.try_recv() {
                 if value.is_empty() {
                     continue
                 }
@@ -148,8 +148,6 @@ impl ClickhouseBuffered {
                 let entry = self.value_map.entry(enum_kind.clone()).or_default();
                 entry.extend(value);
             }
-
-            tracing::info!("writing remaining items");
 
             for (enum_kind, entry) in &mut self.value_map {
                 self.futs.push(Box::pin(Self::insert(
@@ -160,7 +158,6 @@ impl ClickhouseBuffered {
             }
 
             while (self.futs.next().await).is_some() {}
-            tracing::info!("all items written");
         }
     }
 }
