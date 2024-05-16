@@ -171,7 +171,7 @@ impl Tables {
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
                         false,
                         crit_progress,
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -180,7 +180,7 @@ impl Tables {
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
                         false,
                         crit_progress,
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -196,7 +196,7 @@ impl Tables {
                     .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(
                         false,
                         crit_progress,
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -226,7 +226,7 @@ impl Tables {
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b))
                             .cloned()
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await?;
                 Ok(())
@@ -244,7 +244,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -261,7 +261,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -280,7 +280,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -328,7 +328,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b.clone()))
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -344,7 +344,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -360,7 +360,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
@@ -386,7 +386,7 @@ impl Tables {
                             .iter()
                             .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
                             .unwrap(),
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
