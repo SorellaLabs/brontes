@@ -8,7 +8,7 @@ use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,
 };
-use futures::{stream::FuturesUnordered, Future, Stream, StreamExt};
+use futures::{stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 
 use crate::clickhouse::dbms::*;
@@ -108,7 +108,7 @@ impl ClickhouseBuffered {
     }
 
     /// Done like this to avoid runtime load and ensure we always are sending
-    pub fn run(mut self, shutdown: GracefulShutdown) {
+    pub fn run(self, shutdown: GracefulShutdown) {
         std::thread::spawn(move || {
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
