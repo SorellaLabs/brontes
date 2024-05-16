@@ -110,9 +110,8 @@ impl ClickhouseBuffered {
     /// Done like this to avoid runtime load and ensure we always are sending
     pub fn run(mut self, shutdown: GracefulShutdown) {
         std::thread::spawn(move || {
-            tokio::runtime::Builder::new_multi_thread()
+            tokio::runtime::Builder::new_current_thread()
                 .enable_all()
-                .worker_threads(4)
                 .build()
                 .unwrap()
                 .block_on(async move {
@@ -132,34 +131,37 @@ impl ClickhouseBuffered {
         };
         pinned.shutdown().await;
 
+        // we do this so doesn't get instant dropped by compiler
         tracing::trace!(was_shutdown = shutdown_g.is_some());
         drop(shutdown_g);
     }
 
     pub async fn shutdown(&mut self) {
         tracing::info!("starting shutdown process clickhouse writer");
-        while let Ok(value) = self.rx.try_recv() {
-            if value.is_empty() {
-                continue
+        while !self.rx.is_closed() {
+            while let Some(value) = self.rx.recv().await {
+                if value.is_empty() {
+                    continue
+                }
+
+                let enum_kind = value.first().as_ref().unwrap().get_db_enum();
+                let entry = self.value_map.entry(enum_kind.clone()).or_default();
+                entry.extend(value);
             }
 
-            let enum_kind = value.first().as_ref().unwrap().get_db_enum();
-            let entry = self.value_map.entry(enum_kind.clone()).or_default();
-            entry.extend(value);
+            tracing::info!("writing remaining items");
+
+            for (enum_kind, entry) in &mut self.value_map {
+                self.futs.push(Box::pin(Self::insert(
+                    self.client.clone(),
+                    std::mem::take(entry),
+                    enum_kind.clone(),
+                )));
+            }
+
+            while (self.futs.next().await).is_some() {}
+            tracing::info!("all items written");
         }
-
-        tracing::info!("writing remaining items");
-
-        for (enum_kind, entry) in &mut self.value_map {
-            self.futs.push(Box::pin(Self::insert(
-                self.client.clone(),
-                std::mem::take(entry),
-                enum_kind.clone(),
-            )));
-        }
-
-        while (self.futs.next().await).is_some() {}
-        tracing::info!("all items written");
     }
 }
 

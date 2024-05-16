@@ -44,6 +44,10 @@ impl<T> UnboundedYapperReceiver<T> {
         self.chan.recv().await
     }
 
+    pub fn is_closed(&self) -> bool {
+        self.chan.is_closed()
+    }
+
     pub fn try_recv(&mut self) -> Result<T, tokio::sync::mpsc::error::TryRecvError> {
         let len = self.chan.len();
         if len > self.yap_count {

@@ -110,13 +110,11 @@ impl LibmdbxReadWriter {
         let (tx, rx) = unbounded_channel();
         let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
         let db = Arc::new(Libmdbx::init_db(path, log_level)?);
+        let shutdown = ex.get_graceful_shutdown();
 
-        // start writing task
+        // start writing task on own thread
         let writer = LibmdbxWriter::new(db.clone(), yapper);
-        writer.run();
-        // ex.spawn_critical_with_graceful_shutdown_signal("libmdbx writer", |shutdown|
-        // async move {     writer.run_until_shutdown(shutdown).await
-        // });
+        writer.run(shutdown);
 
         Ok(Self {
             db,
@@ -1040,6 +1038,46 @@ impl LibmdbxReadWriter {
         })
     }
 
+    pub fn inited_range_arbitrary(
+        &self,
+        range: impl Iterator<Item = u64>,
+        flag: u8,
+    ) -> eyre::Result<Vec<InitializedStateData>> {
+        self.db.view_db(|tx| {
+            let mut res = Vec::new();
+            for block in range {
+                let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
+                state.set(flag);
+                res.push(InitializedStateData::new(block, state));
+            }
+            Ok(res)
+        })
+    }
+
+    pub fn inited_range_items(
+        &self,
+        range: RangeInclusive<u64>,
+        flag: u8,
+    ) -> eyre::Result<Vec<InitializedStateData>> {
+        let tx = self.db.ro_tx()?;
+        let mut range_cursor = tx.cursor_read::<InitializedState>()?;
+        let mut res = Vec::new();
+
+        for block in range {
+            if let Some(mut state) = range_cursor.seek_exact(block)? {
+                state.1.set(flag);
+                res.push(InitializedStateData::new(block, state.1));
+            } else {
+                let mut init_state = InitializedStateMeta::default();
+                init_state.set(flag);
+                res.push(InitializedStateData::from((block, init_state)));
+            }
+        }
+
+        tx.commit()?;
+        Ok(res)
+    }
+
     pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
         let tx = self.db.ro_tx()?;
         let mut range_cursor = tx.cursor_read::<InitializedState>()?;
@@ -1064,17 +1102,6 @@ impl LibmdbxReadWriter {
 
         self.insert_batched_data::<InitializedState>(entry)?;
 
-        Ok(())
-    }
-
-    pub fn inited_range_arbitrary(
-        &self,
-        range: impl Iterator<Item = u64>,
-        flag: u8,
-    ) -> eyre::Result<()> {
-        for block in range {
-            self.init_state_updating(block, flag)?;
-        }
         Ok(())
     }
 
@@ -1131,6 +1158,10 @@ impl LibmdbxReadWriter {
 
             Ok(DexQuotes(dex_quotes))
         })
+    }
+
+    pub fn send_message(&self, message: WriterMessage) -> eyre::Result<()> {
+        Ok(self.tx.send(message)?)
     }
 }
 

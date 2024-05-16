@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, task::Poll};
 
 use alloy_primitives::Address;
 use brontes_types::{
@@ -18,8 +18,10 @@ use brontes_types::{
     structured_trace::TxTrace,
     FastHashMap, Protocol, UnboundedYapperReceiver,
 };
+use futures::{pin_mut, Future};
 use itertools::Itertools;
 use reth_db::table::{Compress, Encode};
+use reth_tasks::shutdown::GracefulShutdown;
 use tracing::instrument;
 
 use crate::{
@@ -84,7 +86,62 @@ pub enum WriterMessage {
         block:  u64,
         traces: Vec<TxTrace>,
     },
+    Init(InitTables),
 }
+
+macro_rules! init {
+    ($($table:ident),*) => {
+        paste::paste!(
+            pub enum InitTables {
+                $(
+                    $table(Vec<[<$table Data>]>)
+                ),*
+            }
+
+            $(
+                impl From<Vec<[<$table Data>]>> for InitTables {
+                    fn from(data: Vec<[<$table Data>]>) -> Self {
+                        InitTables::$table(data)
+                    }
+                }
+            )*
+
+            impl InitTables {
+                pub fn write_data(self, handle: Arc<Libmdbx>) -> eyre::Result<()> {
+                    match self {
+                        $(
+                            Self::$table(data) => {
+                               handle
+                                    .write_table::<$table, [<$table Data>]>(&data)
+                                    .expect("libmdbx write failure");
+
+                                Ok(())
+                            }
+                        )*
+                    }
+
+                }
+            }
+        );
+
+    };
+}
+init!(
+    TokenDecimals,
+    AddressToProtocolInfo,
+    PoolCreationBlocks,
+    Builder,
+    AddressMeta,
+    CexPrice,
+    BlockInfo,
+    TxTraces,
+    CexTrades,
+    DexPrice,
+    MevBlocks,
+    SearcherEOAs,
+    SearcherContracts,
+    InitializedState
+);
 
 /// due to libmdbx's 1 write tx limit. it makes sense
 /// to split db and ensure we never breach this
@@ -92,41 +149,6 @@ pub struct LibmdbxWriter {
     db:           Arc<Libmdbx>,
     insert_queue: InsetQueue,
     rx:           UnboundedYapperReceiver<WriterMessage>,
-}
-
-impl Drop for LibmdbxWriter {
-    fn drop(&mut self) {
-        std::mem::take(&mut self.insert_queue)
-            .into_iter()
-            .for_each(|(table, values)| {
-                if values.is_empty() {
-                    return
-                }
-                match table {
-                    Tables::DexPrice => {
-                        self.insert_batched_data::<DexPrice>(values).unwrap();
-                    }
-                    Tables::CexPrice => {
-                        self.insert_batched_data::<CexPrice>(values).unwrap();
-                    }
-                    Tables::CexTrades => {
-                        self.insert_batched_data::<CexTrades>(values).unwrap();
-                    }
-                    Tables::MevBlocks => {
-                        self.insert_batched_data::<MevBlocks>(values).unwrap();
-                    }
-                    Tables::TxTraces => {
-                        self.insert_batched_data::<TxTraces>(values).unwrap();
-                    }
-                    Tables::InitializedState => {
-                        self.insert_batched_data::<InitializedState>(values)
-                            .unwrap();
-                    }
-
-                    table => unreachable!("{table} doesn't have batch inserts"),
-                }
-            });
-    }
 }
 
 impl LibmdbxWriter {
@@ -168,6 +190,9 @@ impl LibmdbxWriter {
             }
             WriterMessage::SearcherContractInfo { searcher_contract, searcher_info } => {
                 self.write_searcher_contract_info(searcher_contract, *searcher_info)?;
+            }
+            WriterMessage::Init(init) => {
+                init.write_data(self.db.clone())?;
             }
         }
         Ok(())
@@ -428,65 +453,97 @@ impl LibmdbxWriter {
         Ok(())
     }
 
-    pub fn run(mut self) {
-        // we do this to avoid tokio load
-        std::thread::spawn(move || loop {
-            let mut messages = vec![];
-            while let Ok(msg) = self.rx.try_recv() {
-                messages.push(msg);
-            }
-
-            for message in messages {
-                if let Err(e) = self.handle_msg(message) {
-                    tracing::error!(error=%e, "libmdbx write error");
-                }
-            }
+    pub fn run(self, shutdown: GracefulShutdown) {
+        // we do this to avoid main tokio runtime load
+        std::thread::spawn(move || {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(async move {
+                    self.run_until_shutdown(shutdown).await;
+                });
         });
     }
 
-    // pub async fn run_until_shutdown(self, shutdown: GracefulShutdown) {
-    //     let inserts = self;
-    //     pin_mut!(inserts, shutdown);
-    //     let mut graceful_guard = None;
-    //     tokio::select! {
-    //         _ = &mut inserts => {
-    //         },
-    //         guard = shutdown => {
-    //             graceful_guard = Some(guard);
-    //         },
-    //     }
-    //
-    //     while let Some(msg) = inserts.rx.recv().await {
-    //         if let Err(e) = inserts.handle_msg(msg) {
-    //             tracing::error!(error=%e, "libmdbx write error on shutdown");
-    //         }
-    //     }
-    //
-    //     drop(graceful_guard)
-    // }
+    async fn run_until_shutdown(self, shutdown: GracefulShutdown) {
+        let inserts = self;
+        pin_mut!(inserts, shutdown);
+        let mut graceful_guard = None;
+        tokio::select! {
+            _ = &mut inserts => {
+            },
+            guard = shutdown => {
+                graceful_guard = Some(guard);
+            },
+        }
+
+        while !inserts.rx.is_closed() {
+            while let Some(msg) = inserts.rx.recv().await {
+                if let Err(e) = inserts.handle_msg(msg) {
+                    tracing::error!(error=%e, "libmdbx write error on shutdown");
+                }
+            }
+            inserts.insert_remaining();
+        }
+        // we do this so doesn't get instant dropped by compiler
+        tracing::trace!(was_shutdown = graceful_guard.is_some());
+        drop(graceful_guard)
+    }
+
+    fn insert_remaining(&mut self) {
+        std::mem::take(&mut self.insert_queue)
+            .into_iter()
+            .for_each(|(table, values)| {
+                if values.is_empty() {
+                    return
+                }
+                match table {
+                    Tables::DexPrice => {
+                        self.insert_batched_data::<DexPrice>(values).unwrap();
+                    }
+                    Tables::CexPrice => {
+                        self.insert_batched_data::<CexPrice>(values).unwrap();
+                    }
+                    Tables::CexTrades => {
+                        self.insert_batched_data::<CexTrades>(values).unwrap();
+                    }
+                    Tables::MevBlocks => {
+                        self.insert_batched_data::<MevBlocks>(values).unwrap();
+                    }
+                    Tables::TxTraces => {
+                        self.insert_batched_data::<TxTraces>(values).unwrap();
+                    }
+                    Tables::InitializedState => {
+                        self.insert_batched_data::<InitializedState>(values)
+                            .unwrap();
+                    }
+
+                    table => unreachable!("{table} doesn't have batch inserts"),
+                }
+            });
+    }
 }
 
-// impl Future for LibmdbxWriter {
-//     type Output = ();
-//
-//     fn poll(
-//         self: std::pin::Pin<&mut Self>,
-//         cx: &mut std::task::Context<'_>,
-//     ) -> std::task::Poll<Self::Output> {
-//         let mut budget = 128;
-//         let this = self.get_mut();
-//         loop {
-//             if let Poll::Ready(Some(msg)) = this.rx.poll_recv(cx) {
-//                 if let Err(e) = this.handle_msg(msg) {
-//                     tracing::error!(error=%e, "libmdbx write error");
-//                 }
-//             }
-//
-//             budget -= 1;
-//             if budget == 0 {
-//                 cx.waker().wake_by_ref();
-//                 return Poll::Pending
-//             }
-//         }
-//     }
-// }
+impl Future for LibmdbxWriter {
+    type Output = ();
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let this = self.get_mut();
+        let mut messages = vec![];
+        while let Poll::Ready(Some(msg)) = this.rx.poll_recv(cx) {
+            messages.push(msg);
+        }
+
+        for msg in messages.drain(..) {
+            if let Err(e) = this.handle_msg(msg) {
+                tracing::error!(error=%e, "libmdbx write error");
+            }
+        }
+
+        Poll::Pending
+    }
+}
