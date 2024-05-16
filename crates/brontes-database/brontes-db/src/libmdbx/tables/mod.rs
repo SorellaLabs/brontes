@@ -162,7 +162,7 @@ impl Tables {
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
                         false,
                         crit_progress,
-                        |f| handle.send_message(WriterMessage::Init(f.into())),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
