@@ -28,8 +28,8 @@ impl PossibleJitWithInfo {
     pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
         let searcher =
             [info_set.get(&ps.frontrun_tx).cloned()?, info_set.get(&ps.backrun_tx).cloned()?];
-        let mut victims = vec![];
 
+        let mut victims = Vec::with_capacity(ps.victims.len());
         for victim in &ps.victims {
             victims.push(info_set.get(victim).cloned()?);
         }
@@ -44,11 +44,11 @@ impl PossibleJitWithInfo {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
-    pub eoa:                   Address,
-    pub frontrun_tx:           B256,
-    pub backrun_tx:            B256,
-    pub mev_executor_contract: Address,
-    pub victims:               Vec<B256>,
+    pub eoa:               Address,
+    pub frontrun_tx:       B256,
+    pub backrun_tx:        B256,
+    pub executor_contract: Address,
+    pub victims:           Vec<B256>,
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -90,8 +90,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .into_iter()
             .filter_map(
                 |PossibleJitWithInfo {
-                    inner:  PossibleJit { frontrun_tx, backrun_tx, mev_executor_contract, victims,..},
-                    victim_info, searcher_info
+                     inner: PossibleJit { frontrun_tx, backrun_tx, executor_contract, victims, .. },
+                     victim_info,
+                     searcher_info,
                  }| {
                     let searcher_actions = [frontrun_tx, backrun_tx]
                         .iter()
@@ -104,6 +105,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                                             Action::is_mint,
                                             Action::is_burn,
                                             Action::is_transfer,
+                                            Action::is_eth_transfer,
                                             Action::is_nested_action,
                                         ]),
                                     ),
@@ -112,6 +114,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                                             || actions.is_burn()
                                             || actions.is_collect()
                                             || actions.is_transfer()
+                                            || actions.is_eth_transfer()
                                     },
                                 )
                                 .collect::<Vec<_>>()
@@ -122,17 +125,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
                     if searcher_actions.is_empty() {
                         tracing::trace!("no searcher actions found");
-                        return None
-                    }
-
-
-                    if victims
-                        .iter()
-                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                        .filter(|d| !d.is_revert())
-                        .any(|d| mev_executor_contract == d.get_to_address())
-                    {
-                        tracing::trace!("victim address is same as mev executor contract");
                         return None
                     }
 
@@ -159,6 +151,16 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                         return None
                     }
 
+                    if victims
+                        .iter()
+                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                        .filter(|d| !d.is_revert())
+                        .any(|d| executor_contract == d.get_to_address())
+                    {
+                        tracing::trace!("victim address is same as mev executor contract");
+                        return None
+                    }
+
                     self.calculate_jit(
                         searcher_info,
                         metadata.clone(),
@@ -182,11 +184,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<TxInfo>,
     ) -> Option<Bundle> {
         // grab all mints and burns
-        let (mints, burns, transfers): (Vec<_>, Vec<_>, Vec<_>) = searcher_actions
+        let ((mints, burns), rem): ((Vec<_>, Vec<_>), Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
-            .action_split((Action::try_mint, Action::try_burn, Action::try_transfer));
+            .action_split_out((Action::try_mint, Action::try_burn));
 
         if mints.is_empty() || burns.is_empty() {
             tracing::trace!("missing mints & burns");
@@ -204,9 +206,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info);
 
-        let deltas = transfers
+        let deltas = rem
             .into_iter()
-            .map(Action::from)
+            .filter(|f| f.is_transfer() || f.is_eth_transfer())
             .account_for_actions();
 
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
@@ -315,11 +317,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.get_to_address(),
-                                    victims:               victims.clone(),
+                                    eoa:               root.head.address,
+                                    frontrun_tx:       *prev_tx_hash,
+                                    backrun_tx:        root.tx_hash,
+                                    executor_contract: root.get_to_address(),
+                                    victims:           victims.clone(),
                                 });
                             }
                         }
@@ -345,11 +347,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             if !victims.is_empty() {
                                 // Create
                                 set.insert(PossibleJit {
-                                    eoa:                   root.head.address,
-                                    frontrun_tx:           *prev_tx_hash,
-                                    backrun_tx:            root.tx_hash,
-                                    mev_executor_contract: root.get_to_address(),
-                                    victims:               victims.clone(),
+                                    eoa:               root.head.address,
+                                    frontrun_tx:       *prev_tx_hash,
+                                    backrun_tx:        root.tx_hash,
+                                    executor_contract: root.get_to_address(),
+                                    victims:           victims.clone(),
                                 });
                             }
                         }
@@ -372,11 +374,26 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         // split out
         let tx_set = set
             .iter()
-            .flat_map(|jit| {
+            .filter_map(|jit| {
+                if !(tree
+                    .tx_must_contain_action(jit.frontrun_tx, |action| action.is_mint())
+                    .unwrap()
+                    && tree
+                        .tx_must_contain_action(jit.backrun_tx, |action| action.is_burn())
+                        .unwrap())
+                {
+                    return None
+                }
+
+                if jit.victims.len() > 20 {
+                    return None
+                }
+
                 let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
                 set.extend(jit.victims.clone());
-                set
+                Some(set)
             })
+            .flatten()
             .unique()
             .collect::<Vec<_>>();
 
@@ -388,6 +405,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect::<FastHashMap<_, _>>();
 
         set.into_iter()
+            .filter(|jit| jit.victims.len() <= 20)
             .filter_map(|jit| PossibleJitWithInfo::from_jit(jit, &tx_info_map))
             .collect_vec()
     }
