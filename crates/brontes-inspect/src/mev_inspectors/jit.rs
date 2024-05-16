@@ -374,6 +374,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let tx_set = set
             .iter()
             .filter_map(|jit| {
+                if !(tree
+                    .tx_must_contain_action(jit.frontrun_tx, |action| action.is_mint())
+                    .unwrap()
+                    && tree
+                        .tx_must_contain_action(jit.backrun_tx, |action| action.is_burn())
+                        .unwrap())
+                {
+                    return None
+                }
                 let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
                 if jit.victims.len() > 20 {
                     return None

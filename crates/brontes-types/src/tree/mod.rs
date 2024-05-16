@@ -45,6 +45,13 @@ impl<V: NormalizedAction> BlockTree<V> {
         }
     }
 
+    pub fn tx_must_contain_action(&self, tx_hash: B256, f: impl Fn(&V) -> bool) -> Option<bool> {
+        self.tx_roots
+            .iter()
+            .find(|r| r.tx_hash == tx_hash)
+            .map(|root| root.tx_must_contain_action(f))
+    }
+
     pub fn get_tx_info_batch<DB: LibmdbxReader>(
         &self,
         tx_hash: &[B256],
