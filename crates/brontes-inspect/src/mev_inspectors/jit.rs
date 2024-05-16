@@ -206,7 +206,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info);
 
-        let deltas = rem.into_iter().account_for_actions();
+        let deltas = rem
+            .into_iter()
+            .filter(|f| f.is_transfer() || f.is_eth_transfer())
+            .account_for_actions();
 
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info[1].tx_index,

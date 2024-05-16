@@ -1317,7 +1317,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
             {
                 self.on_pool_update_no_pricing(block_updates);
             } else {
-                execute_on!(target = pricing, self.on_pool_updates(block_updates));
+                self.on_pool_updates(block_updates);
             }
 
             budget -= 1;
