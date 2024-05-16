@@ -243,7 +243,6 @@ impl<'a> TimeWindowTrades<'a> {
             tracing::debug!("no trades found");
             return None
         }
-        tracing::info!(?pair, ?vol);
         let mut walker = PairTradeWalker::new(
             trades,
             ptrs,
