@@ -992,10 +992,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter_map(|ps| {
                 let mut set = ps.possible_frontruns.clone();
                 set.push(ps.possible_backrun);
-                if ps.victims.len() > 30 {
+                // max multihop of 10 or max total victim of 30
+                if ps.victims.len() > 10 || ps.victims.iter().flatten().count() > 30 {
                     return None
                 }
-                
+
                 set.extend(ps.victims.iter().flatten().copied());
                 Some(set)
             })
@@ -1011,6 +1012,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .collect::<FastHashMap<_, _>>();
 
         set.into_iter()
+            .filter(|sando| {
+                sando.victims.len() <= 10 && sando.victims.iter().flatten().count() <= 30
+            })
             .filter_map(|ps| PossibleSandwichWithTxInfo::from_ps(ps, &tx_info_map))
             .collect_vec()
     }

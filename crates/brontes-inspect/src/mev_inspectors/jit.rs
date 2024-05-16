@@ -375,7 +375,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .iter()
             .filter_map(|jit| {
                 let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
-                if jit.victims.len() > 30 {
+                if jit.victims.len() > 20 {
                     return None
                 }
                 set.extend(jit.victims.clone());
@@ -393,6 +393,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect::<FastHashMap<_, _>>();
 
         set.into_iter()
+            .filter(|jit| jit.victims.len() <= 20)
             .filter_map(|jit| PossibleJitWithInfo::from_jit(jit, &tx_info_map))
             .collect_vec()
     }
