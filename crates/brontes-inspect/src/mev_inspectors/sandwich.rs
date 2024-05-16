@@ -989,12 +989,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let tx_set = set
             .iter()
-            .flat_map(|ps| {
+            .filter_map(|ps| {
                 let mut set = ps.possible_frontruns.clone();
                 set.push(ps.possible_backrun);
+                if ps.victims.len() > 30 {
+                    return None
+                }
+                
                 set.extend(ps.victims.iter().flatten().copied());
-                set
+                Some(set)
             })
+            .flatten()
             .unique()
             .collect::<Vec<_>>();
 
@@ -1065,7 +1070,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Action>>) -> Vec<
         }
     }
 
-    possible_sandwiches.values().cloned().collect()
+    possible_sandwiches.into_values().collect()
 }
 
 /// This function iterates through the block tree to identify potential
@@ -1133,7 +1138,7 @@ fn get_possible_sandwich_duplicate_contracts(
         }
     }
 
-    possible_sandwiches.values().cloned().collect()
+    possible_sandwiches.into_values().collect()
 }
 
 //TODO: Add support for this type of flashloan sandwich
