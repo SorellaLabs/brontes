@@ -87,6 +87,7 @@ impl TraceLoader {
             if let Ok(res) = self.test_metadata_with_pricing(block) {
                 Ok(res)
             } else {
+                tracing::info!("test fetching missing metadata with pricing");
                 self.fetch_missing_metadata(block).await?;
                 self.test_metadata_with_pricing(block)
                     .map_err(|_| TraceLoaderError::NoMetadataFound(block))
@@ -94,6 +95,7 @@ impl TraceLoader {
         } else if let Ok(res) = self.test_metadata(block) {
             Ok(res)
         } else {
+            tracing::info!("test fetching missing metadata no pricing");
             self.fetch_missing_metadata(block).await?;
             return self
                 .test_metadata(block)
@@ -134,8 +136,10 @@ impl TraceLoader {
         let tables = Arc::new(vec![
             (Tables::BlockInfo, Tables::BlockInfo.build_init_state_progress_bar(&multi, 4)),
             (Tables::CexPrice, Tables::CexPrice.build_init_state_progress_bar(&multi, 4)),
+            (Tables::CexTrades, Tables::CexTrades.build_init_state_progress_bar(&multi, 4)),
         ]);
-        let (a, b) = futures::future::join(
+
+        let (a, b, c) = futures::join!(
             self.libmdbx.initialize_tables(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
@@ -150,12 +154,20 @@ impl TraceLoader {
                 Tables::CexPrice,
                 false,
                 Some((block - 2, block + 2)),
+                tables.clone(),
+            ),
+            self.libmdbx.initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                Tables::CexTrades,
+                false,
+                Some((block - 2, block + 2)),
                 tables,
             ),
-        )
-        .await;
+        );
         a?;
         b?;
+        c?;
 
         multi.clear().unwrap();
 
