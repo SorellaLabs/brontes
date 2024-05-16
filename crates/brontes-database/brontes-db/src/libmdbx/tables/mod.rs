@@ -35,6 +35,10 @@ use crate::{
 };
 mod const_sql;
 use alloy_primitives::Address;
+#[cfg(not(feature = "cex-dex-markout"))]
+use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
+#[cfg(feature = "cex-dex-markout")]
+use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
