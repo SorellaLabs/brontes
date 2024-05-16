@@ -46,12 +46,16 @@ impl ReadWriteCache {
                 .build_with_hasher(ahash::RandomState::new()),
             protocol_info: SegmentedCache::builder(200)
                 .eviction_policy(EvictionPolicy::lru())
-                .max_capacity(1_000_000)
+                .max_capacity(
+                    ((memory_per_table_mb * MEGABYTE) / std::mem::size_of::<ProtocolInfo>()) as u64,
+                )
                 .build_with_hasher(ahash::RandomState::new()),
 
             token_info: SegmentedCache::builder(200)
                 .eviction_policy(EvictionPolicy::lru())
-                .max_capacity(10_000_000)
+                .max_capacity(
+                    ((memory_per_table_mb * MEGABYTE) / std::mem::size_of::<TokenInfo>()) as u64,
+                )
                 .build_with_hasher(ahash::RandomState::new()),
         }
     }
