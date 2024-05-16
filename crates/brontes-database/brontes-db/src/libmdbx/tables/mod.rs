@@ -186,8 +186,8 @@ impl Tables {
             }
             Tables::Builder => {
                 initializer
-                    .clickhouse_init_no_args::<Builder, BuilderData>(false, crit_progress, |f| {
-                        handle.send_message(WriterMessage::Init(f.into()))
+                    .clickhouse_init_no_args::<Builder, BuilderData>(false, crit_progress, |f,not| {
+                        handle.send_message(WriterMessage::Init(f.into(),not))
                     })
                     .await
             }
