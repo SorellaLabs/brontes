@@ -376,8 +376,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .iter()
             .filter_map(|jit| {
                 let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
-                if jit.victims.len() > 20 {
-                    tracing::error!("really fat jit, > 20 ");
+                if jit.victims.len() > 30 {
+                    tracing::error!("really fat jit, > 30 ");
                     return None
                 }
                 set.extend(jit.victims.clone());
