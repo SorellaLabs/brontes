@@ -21,14 +21,18 @@ pub(crate) fn build_mev_header(
     let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd, total_mev_bribe) =
         orchestra_data.iter().fold(
             (0u128, 0f64, 0u128),
-            |(total_fee_paid, total_profit_usd, bundle)| {
+            |(total_fee_paid, total_profit_usd, total_mev_bribe)| {
                 let fee_paid = bundle.data.total_priority_fee_paid(
                     tree.header.base_fee_per_gas.unwrap_or_default() as u128,
                 );
 
                 let profit_usd = bundle.header.profit_usd;
 
-                (total_fee_paid + fee_paid, total_profit_usd + profit_usd, bundle.data.bribe())
+                (
+                    total_fee_paid + fee_paid,
+                    total_profit_usd + profit_usd,
+                    total_mev_bribe + bundle.data.bribe(),
+                )
             },
         );
 
