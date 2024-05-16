@@ -28,8 +28,8 @@ impl PossibleJitWithInfo {
     pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
         let searcher =
             [info_set.get(&ps.frontrun_tx).cloned()?, info_set.get(&ps.backrun_tx).cloned()?];
-        let mut victims = Vec::with_capacity(ps.victims.len());
 
+        let mut victims = Vec::with_capacity(ps.victims.len());
         for victim in &ps.victims {
             victims.push(info_set.get(victim).cloned()?);
         }
@@ -374,11 +374,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         // split out
         let tx_set = set
             .iter()
-            .flat_map(|jit| {
+            .filter_map(|jit| {
                 let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
+                if jit.victims.len() > 20 {
+                    tracing::error!("really fat jit, > 20 ");
+                    return None
+                }
                 set.extend(jit.victims.clone());
-                set
-            })
+                Some(set)
+            }).flatten()
             .unique()
             .collect::<Vec<_>>();
 
