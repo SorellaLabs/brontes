@@ -347,6 +347,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     ) -> Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> {
         dex_swaps
             .iter()
+            .filter(|swap| swap.amount_out != Rational::ZERO)
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
@@ -363,7 +364,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 .calculate_time_window_vwam(
                                     &self.cex_exchanges,
                                     pair,
-                                    &swap.amount_in,
+                                    &swap.amount_out,
                                     metadata.microseconds_block_timestamp(),
                                 )
                         })
@@ -1013,7 +1014,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(8958.161)
+            .with_expected_profit_usd(8958.161528605704)
             .with_gas_paid_usd(79748.18);
 
         inspector_util.run_inspector(config, None).await.unwrap();
