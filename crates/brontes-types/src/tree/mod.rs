@@ -3,7 +3,7 @@ use std::{panic::AssertUnwindSafe, sync::Arc};
 use itertools::Itertools;
 use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
-use tracing::{error, span, Level};
+use tracing::{error, info, span, Level};
 
 use crate::{normalized_actions::MultiCallFrameClassification, tree::types::NodeWithDataRef};
 
@@ -131,7 +131,7 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.run_in_span_mut(|this| {
             // in case the block is empty
             if this.tx_roots.is_empty() {
-                error!(block = this.header.number, "The block tree is empty");
+                info!(block = this.header.number, "The block tree is empty");
                 this.tx_roots.iter_mut().for_each(|root| root.finalize());
                 return
             }
