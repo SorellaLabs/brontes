@@ -535,11 +535,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .collect_vec();
 
         let len = bundles.len();
-
         let mut removals = Vec::new();
+
         for i in 0..len {
+            if removals.contains(&i) {
+                continue
+            }
+
             for j in 0..len {
-                if i == j {
+                if i == j || removals.contains(&j) {
                     continue
                 }
 
