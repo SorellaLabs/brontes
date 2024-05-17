@@ -178,6 +178,5 @@ fn spawn_db_writer_thread(
         800,
     )
     .run(shutdown);
-
     tracing::info!("started writer");
 }

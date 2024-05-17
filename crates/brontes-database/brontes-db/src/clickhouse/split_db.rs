@@ -10,6 +10,7 @@ use db_interfaces::{
 };
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
+use tokio::task::JoinError;
 
 use crate::clickhouse::dbms::*;
 
@@ -19,7 +20,8 @@ pub struct ClickhouseBuffered {
     value_map:         FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
     buffer_size_small: usize,
     buffer_size_big:   usize,
-    futs:              FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
+    futs:
+        FuturesUnordered<Pin<Box<dyn Future<Output = Result<eyre::Result<()>, JoinError>> + Send>>>,
 }
 
 impl ClickhouseBuffered {
@@ -48,8 +50,11 @@ impl ClickhouseBuffered {
 
         if entry.len() >= size {
             let client = self.client.clone();
-            self.futs
-                .push(Box::pin(Self::insert(client, std::mem::take(entry), enum_kind)));
+            self.futs.push(Box::pin(tokio::spawn(Self::insert(
+                client,
+                std::mem::take(entry),
+                enum_kind,
+            ))));
         }
     }
 
@@ -110,7 +115,8 @@ impl ClickhouseBuffered {
     /// Done like this to avoid runtime load and ensure we always are sending
     pub fn run(self, shutdown: GracefulShutdown) {
         std::thread::spawn(move || {
-            tokio::runtime::Builder::new_current_thread()
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(4)
                 .enable_all()
                 .build()
                 .unwrap()
@@ -150,11 +156,11 @@ impl ClickhouseBuffered {
             }
 
             for (enum_kind, entry) in &mut self.value_map {
-                self.futs.push(Box::pin(Self::insert(
+                self.futs.push(Box::pin(tokio::spawn(Self::insert(
                     self.client.clone(),
                     std::mem::take(entry),
                     enum_kind.clone(),
-                )));
+                ))));
             }
 
             while (self.futs.next().await).is_some() {}
@@ -170,6 +176,7 @@ impl Future for ClickhouseBuffered {
         let mut work = 128;
 
         loop {
+            let mut cnt = 500;
             while let Poll::Ready(val) = this.rx.poll_recv(cx) {
                 match val {
                     Some(val) => {
@@ -178,6 +185,11 @@ impl Future for ClickhouseBuffered {
                         }
                     }
                     None => return Poll::Ready(()),
+                }
+
+                cnt -= 1;
+                if cnt == 0 {
+                    break
                 }
             }
 
