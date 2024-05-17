@@ -221,7 +221,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             MevType::AtomicArb,
             !has_dex_price,
         );
-        tracing::debug!("{:#?}", header);
+        tracing::debug!("{:#?}\n\n {:#?}", header, data);
 
         Some(Bundle { header, data })
     }
