@@ -257,6 +257,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         {
             return None
         }
+        tracing::info!(?possible_front_runs_info);
 
         let back_run_actions = searcher_actions.pop()?;
 
