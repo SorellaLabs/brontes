@@ -257,13 +257,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         {
             return None
         }
-        tracing::info!(
-            ?possible_front_runs_info,
-            ?victim_info,
-            ?backrun_info,
-            "{:#?}",
-            victim_actions
-        );
 
         let back_run_actions = searcher_actions.pop()?;
 
@@ -504,7 +497,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                 ?effective_price,
                                 ?dex_pricing_rate,
                                 ?swap,
-                                "to big of a delta for pricing on atomic arbs"
+                                "to big of a delta for pricing on sandwiches"
                             );
                         }
 
