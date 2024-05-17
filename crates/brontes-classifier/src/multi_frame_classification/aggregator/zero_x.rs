@@ -15,7 +15,6 @@ impl MultiCallFrameClassifier for ZeroXAgg {
     fn create_classifier(
         request: MultiFrameRequest,
     ) -> Option<MultiCallFrameClassification<Action>> {
-        tracing::info!("0x agg");
         Some(MultiCallFrameClassification {
             trace_index:         request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
@@ -25,6 +24,8 @@ impl MultiCallFrameClassifier for ZeroXAgg {
             ]),
             parse_fn:            Box::new(|this_action, child_nodes| {
                 let this = this_action.try_aggregator_mut().unwrap();
+
+                tracing::info!("0x agg {:#?}", this);
                 let mut prune_nodes = Vec::new();
 
                 for (trace_index, action) in child_nodes {
