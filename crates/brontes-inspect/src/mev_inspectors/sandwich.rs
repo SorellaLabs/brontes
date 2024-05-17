@@ -1473,7 +1473,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_missed_sandwich_complex() {
+    async fn test_complex_missed_sandwich() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
