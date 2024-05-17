@@ -395,7 +395,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 .get_optimistic_vmap(
                                     &self.cex_exchanges,
                                     &pair,
-                                    &swap.amount_out,
+                                    &swap.amount_in,
                                     None,
                                 )
                         })
@@ -406,9 +406,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             .as_ref()
                             .unwrap()
                             .lock()
-                            .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_out, None)
+                            .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_in, None)
                     });
-                tracing::info!(?window, ?other);
+                tracing::info!(?pair, ?window, ?other);
 
                 if (window.is_none() || other.is_none()) && marked_cex_dex {
                     self.utils
