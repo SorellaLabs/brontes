@@ -15,6 +15,7 @@ impl MultiCallFrameClassifier for ZeroXAgg {
     fn create_classifier(
         request: MultiFrameRequest,
     ) -> Option<MultiCallFrameClassification<Action>> {
+        tracing::info!("0x agg");
         Some(MultiCallFrameClassification {
             trace_index:         request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
