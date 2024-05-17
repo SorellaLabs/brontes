@@ -279,6 +279,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // quote is likely invalid
 
         let swap_rate = swap.swap_rate();
+        tracing::info!(?swap_rate);
         let smaller = min(&swap_rate, &cex_quote.0);
         let larger = max(&swap_rate, &cex_quote.0);
 
