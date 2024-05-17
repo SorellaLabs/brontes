@@ -364,7 +364,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 .calculate_time_window_vwam(
                                     &self.cex_exchanges,
                                     pair,
-                                    &swap.amount_in,
+                                    &swap.amount_out,
                                     metadata.microseconds_block_timestamp(),
                                 )
                         })
@@ -378,7 +378,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             .calculate_time_window_vwam(
                                 &self.cex_exchanges,
                                 pair,
-                                &swap.amount_in,
+                                &swap.amount_out,
                                 metadata.microseconds_block_timestamp(),
                             )
                     });
@@ -396,7 +396,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 .get_optimistic_vmap(
                                     &self.cex_exchanges,
                                     &pair,
-                                    &swap.amount_in,
+                                    &swap.amount_out,
                                     None,
                                 )
                         })
@@ -407,7 +407,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             .as_ref()
                             .unwrap()
                             .lock()
-                            .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_in, None)
+                            .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_out, None)
                     });
                 tracing::info!(?pair, ?window, ?other);
 
