@@ -524,15 +524,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// with more transactions as it is the most correct
     #[allow(clippy::comparison_chain)]
     fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
-        tracing::debug!("pre_dedup:
-                        {:#?}", bundles);
+        tracing::debug!(
+            "pre_dedup:
+                        {:#?}",
+            bundles
+        );
         let mut bundles = bundles
             .into_iter()
             .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
             .collect_vec();
 
         let len = bundles.len();
-
 
         let mut removals = Vec::new();
         for i in 0..len {
@@ -567,7 +569,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             bundles.remove(idx);
         });
 
-        bundles.into_iter().map(|res| res.1).collect_vec()
+        let res = bundles.into_iter().map(|res| res.1).collect_vec();
+        tracing::debug!(
+            "\n\n\n\npost dedup:
+                        {:#?}",
+            res
+        );
+        res
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
