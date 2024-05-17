@@ -448,6 +448,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         break
                     }
                 }
+                tracing::info!(?transfer, "ok path");
 
                 // Return the adjusted transfer as an action
                 Some((
@@ -477,6 +478,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             fee: Rational::ZERO,
                             trace_index: trace_idx,
                         };
+                        tracing::info!(?transfer, "error path");
 
                         return Some((
                             vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
