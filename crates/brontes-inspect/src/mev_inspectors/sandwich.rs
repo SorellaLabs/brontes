@@ -1462,4 +1462,17 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_missclassified_as_atomic() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_block(16812883)
+            .with_gas_paid_usd(365.6)
+            .with_expected_profit_usd(27.3);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
