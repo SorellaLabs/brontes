@@ -658,4 +658,19 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_ibethv2() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "93ac782b37a95f385ac0df6b5b24ded6f4701c81e96698ca528e9606ee970066"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS]);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
