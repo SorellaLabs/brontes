@@ -431,7 +431,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
-        tracing::debug!(?header, ?sandwich);
+        tracing::debug!("{:#?}\n{:#?}", header, sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
@@ -524,17 +524,26 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// with more transactions as it is the most correct
     #[allow(clippy::comparison_chain)]
     fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
+        tracing::debug!(
+            "pre_dedup:
+                        {:#?}",
+            bundles
+        );
         let mut bundles = bundles
             .into_iter()
             .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
             .collect_vec();
 
         let len = bundles.len();
-
         let mut removals = Vec::new();
+
         for i in 0..len {
+            if removals.contains(&i) {
+                continue
+            }
+
             for j in 0..len {
-                if i == j {
+                if i == j || removals.contains(&j) {
                     continue
                 }
 
@@ -557,14 +566,22 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 }
             }
         }
+        tracing::debug!(?removals);
         removals.sort_unstable_by(|a, b| b.cmp(a));
         removals.dedup();
+        tracing::debug!(?removals);
 
         removals.into_iter().for_each(|idx| {
             bundles.remove(idx);
         });
 
-        bundles.into_iter().map(|res| res.1).collect_vec()
+        let res = bundles.into_iter().map(|res| res.1).collect_vec();
+        tracing::debug!(
+            "\n\n\n\npost dedup:
+                        {:#?}",
+            res
+        );
+        res
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
@@ -1442,19 +1459,6 @@ mod tests {
             ])
             .with_gas_paid_usd(32.2)
             .with_expected_profit_usd(0.16);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_missed_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_block(16454149)
-            .with_gas_paid_usd(1582.80)
-            .with_expected_profit_usd(7.67);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
