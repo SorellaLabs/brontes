@@ -160,7 +160,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             info.tx_index as usize,
         );
 
-
         let rev = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::Average,
