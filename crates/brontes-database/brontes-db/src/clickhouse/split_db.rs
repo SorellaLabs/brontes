@@ -14,14 +14,15 @@ use tokio::task::JoinError;
 
 use crate::clickhouse::dbms::*;
 
+type InsertFut = Pin<Box<dyn Future<Output = Result<eyre::Result<()>, JoinError>> + Send>>;
+
 pub struct ClickhouseBuffered {
     client:            ClickhouseClient<BrontesClickhouseTables>,
     rx:                UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
     value_map:         FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
     buffer_size_small: usize,
     buffer_size_big:   usize,
-    futs:
-        FuturesUnordered<Pin<Box<dyn Future<Output = Result<eyre::Result<()>, JoinError>> + Send>>>,
+    futs:              FuturesUnordered<InsertFut>,
 }
 
 impl ClickhouseBuffered {
