@@ -137,6 +137,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
+        tracing::debug!("{:#?} {:#?}", swaps, transfers);
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
         let account_deltas = transfers
@@ -158,6 +159,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 .unique(),
             info.tx_index as usize,
         );
+
 
         let rev = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
