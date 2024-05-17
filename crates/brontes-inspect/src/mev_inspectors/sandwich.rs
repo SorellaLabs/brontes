@@ -840,7 +840,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
                     fp || bp
                 });
-                tracing::debug!(?front_run, ?back_run, ?generated_pool_overlap);
+                tracing::debug!(?front_run, ?back_run, ?generated_pool_overlap, "{:#?}", v);
                 has_sandwich |= front_run && back_run;
 
                 front_run || back_run || generated_pool_overlap
@@ -852,7 +852,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // wiggle room is to deal with unknowns
         if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
             let victim_pct = (was_victims as f64) / (amount as f64);
-            tracing::debug!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich, "sandiwch no vicitm");
+            tracing::debug!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich, "sandiwch no vicitm\n\n\n\n\n\n\n");
             return false
         }
 
