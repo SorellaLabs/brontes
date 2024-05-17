@@ -426,6 +426,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         .await
         {
             Ok(mut transfer) => {
+                tracing::info!(?transfer, "ok path");
                 // go through the log to look for discrepancy of transfer amount
                 for log in &trace.logs {
                     if let Some((addr, from, to, amount)) = decode_transfer(log) {
