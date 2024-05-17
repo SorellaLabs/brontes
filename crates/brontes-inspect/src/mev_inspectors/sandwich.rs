@@ -564,6 +564,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         }
         removals.sort_unstable_by(|a, b| b.cmp(a));
         removals.dedup();
+        tracing::debug!(?removals);
 
         removals.into_iter().for_each(|idx| {
             bundles.remove(idx);
