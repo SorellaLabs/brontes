@@ -840,6 +840,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
                     fp || bp
                 });
+                tracing::debug!(?front_run, ?back_run, ?generated_pool_overlap);
                 has_sandwich |= front_run && back_run;
 
                 front_run || back_run || generated_pool_overlap
