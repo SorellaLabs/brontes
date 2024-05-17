@@ -431,7 +431,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_swaps: back_run_swaps,
             backrun_gas_details: backrun_info.gas_details,
         };
-        tracing::debug!("{:#?}\n{:#?}",header, sandwich);
+        tracing::debug!("{:#?}\n{:#?}", header, sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
@@ -524,12 +524,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// with more transactions as it is the most correct
     #[allow(clippy::comparison_chain)]
     fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
+        tracing::debug!("pre_dedup:
+                        {:#?}", bundles);
         let mut bundles = bundles
             .into_iter()
             .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
             .collect_vec();
 
         let len = bundles.len();
+
 
         let mut removals = Vec::new();
         for i in 0..len {
