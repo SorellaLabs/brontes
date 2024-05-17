@@ -40,6 +40,7 @@ impl MultiCallFrameClassifier for ZeroXAgg {
                         _ => {}
                     }
                 }
+                tracing::info!("0x agg {:#?}", this);
                 prune_nodes
             }),
         })
