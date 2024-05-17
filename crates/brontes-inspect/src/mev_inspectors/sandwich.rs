@@ -829,6 +829,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 let back_run =
                     Self::check_for_overlap(&v, &back_run_tokens, &back_run_pools, false);
 
+                tracing::debug!(?front_run, ?back_run, "{:#?}", v);
                 let generated_pool_overlap = Self::generate_possible_pools_from_transfers(
                     v.into_iter().flat_map(|(_, t)| t),
                 )
@@ -840,7 +841,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
                     fp || bp
                 });
-                tracing::debug!(?front_run, ?back_run, ?generated_pool_overlap, "{:#?}", v);
                 has_sandwich |= front_run && back_run;
 
                 front_run || back_run || generated_pool_overlap
