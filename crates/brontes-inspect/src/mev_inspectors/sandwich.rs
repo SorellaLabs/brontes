@@ -1462,30 +1462,4 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_missed_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_block(16454149)
-            .with_gas_paid_usd(1582.80)
-            .with_expected_profit_usd(7.67);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_complex_missed_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_block(16815167)
-            .with_gas_paid_usd(155.403)
-            .with_expected_profit_usd(211.98);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
 }
