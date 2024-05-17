@@ -257,7 +257,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         {
             return None
         }
-        tracing::info!(?possible_front_runs_info, ?backrun_info);
+        tracing::info!(
+            ?possible_front_runs_info,
+            ?victim_info,
+            ?backrun_info,
+            "{:#?}",
+            victim_actions
+        );
 
         let back_run_actions = searcher_actions.pop()?;
 
@@ -525,11 +531,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// with more transactions as it is the most correct
     #[allow(clippy::comparison_chain)]
     fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
-        tracing::debug!(
-            "pre_dedup:
-                        {:#?}",
-            bundles
-        );
         let mut bundles = bundles
             .into_iter()
             .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
@@ -567,22 +568,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 }
             }
         }
-        tracing::debug!(?removals);
         removals.sort_unstable_by(|a, b| b.cmp(a));
         removals.dedup();
-        tracing::debug!(?removals);
 
         removals.into_iter().for_each(|idx| {
             bundles.remove(idx);
         });
 
-        let res = bundles.into_iter().map(|res| res.1).collect_vec();
-        tracing::debug!(
-            "\n\n\n\npost dedup:
-                        {:#?}",
-            res
-        );
-        res
+        bundles.into_iter().map(|res| res.1).collect_vec()
     }
 
     fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
@@ -829,7 +822,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 let back_run =
                     Self::check_for_overlap(&v, &back_run_tokens, &back_run_pools, false);
 
-                tracing::debug!(?front_run, ?back_run, "{:#?}", v);
                 let generated_pool_overlap = Self::generate_possible_pools_from_transfers(
                     v.into_iter().flat_map(|(_, t)| t),
                 )
