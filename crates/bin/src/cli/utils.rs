@@ -168,8 +168,6 @@ fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
 ) {
-    use brontes_database::clickhouse::ClickhouseConfig;
-
     let shutdown = executor.get_graceful_shutdown();
     ClickhouseBuffered::new(
         UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),

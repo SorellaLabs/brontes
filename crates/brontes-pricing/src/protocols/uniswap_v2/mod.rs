@@ -9,7 +9,10 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use async_trait::async_trait;
 use brontes_types::{normalized_actions::Action, traits::TracingProvider, ToScaledRational};
-use malachite::{num::arithmetic::traits::Pow, Natural, Rational};
+use malachite::{
+    num::{arithmetic::traits::Pow, basic::traits::Zero},
+    Natural, Rational,
+};
 use serde::{Deserialize, Serialize};
 
 use self::batch_request::get_v2_pool_data;
@@ -204,6 +207,10 @@ impl UniswapV2Pool {
                 Natural::from(10u64).pow(self.token_b_decimals as u64),
             ),
         );
+
+        if r_0 == Rational::ZERO || r_1 == Rational::ZERO {
+            return Err(ArithmeticError::UniV2DivZero)
+        }
 
         if base_token == self.token_a {
             Ok(r_1 / r_0)

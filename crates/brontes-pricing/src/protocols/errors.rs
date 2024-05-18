@@ -71,6 +71,8 @@ pub enum ArithmeticError {
     U128ConversionError,
     #[error("Uniswap v3 math error")]
     UniswapV3MathError(#[from] UniswapV3MathError),
+    #[error("v2 div by zero")]
+    UniV2DivZero,
 }
 
 #[derive(Error, Debug)]
