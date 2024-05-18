@@ -248,7 +248,7 @@ pub fn calculate_builder_profit(
             return (
                 builder_payments
                     - builder_sponsorship_amount
-                    - metadata.proposer_mev_reward.unwrap_or_default() as i128,
+                    - metadata.proposer_mev_reward.unwrap() as i128,
                 mev_searching_profit,
             )
         }
@@ -256,11 +256,7 @@ pub fn calculate_builder_profit(
 
     let payment_from_collateral_addr: i128 = tree.tx_roots.last().map_or(0, |root| {
         if root.get_from_address() == collateral_address
-            && root.get_to_address()
-                == metadata
-                    .block_metadata
-                    .proposer_fee_recipient
-                    .unwrap_or_default()
+            && root.get_to_address() == metadata.block_metadata.proposer_fee_recipient.unwrap()
         {
             match root.get_root_action() {
                 Action::EthTransfer(transfer) => transfer.value.to(), /* Assuming transfer. */
