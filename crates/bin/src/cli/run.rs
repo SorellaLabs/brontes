@@ -86,6 +86,11 @@ impl RunArgs {
         ctx: CliContext,
     ) -> eyre::Result<()> {
         banner::print_banner();
+
+        if self.start_block > self.end_block {
+            return Err(eyre::eyre!("start block must be less than end block"));
+        }
+
         // Fetch required environment variables.
         let reth_db_path = get_env_vars()?;
         tracing::info!(target: "brontes", "got env vars");
