@@ -226,7 +226,7 @@ impl PairSubGraph {
                         let tvl_added = r0 + r1;
                         let start_tvl = self.start_nodes_liq.get(&edge.pool_addr).unwrap();
 
-                        if tvl_added < *start_tvl {
+                        if tvl_added < *start_tvl && start_tvl != &Rational::ZERO {
                             tvl_added / start_tvl <= Rational::ONE_HALF
                         } else {
                             false

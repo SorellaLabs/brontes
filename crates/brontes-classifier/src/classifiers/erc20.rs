@@ -29,6 +29,7 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
     block: u64,
     value: U256,
 ) -> eyre::Result<NormalizedTransfer> {
+    tracing::info!(?from, ?token);
     let (from_addr, to_addr, amount) = if let Some((from_addr, to_addr, amount)) =
         transferCall::abi_decode(&calldata, false)
             .map(|t| Some((from, t._0, t._1)))
@@ -43,6 +44,7 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
     } else if depositCall::abi_decode(&calldata, false).is_ok() {
         (token, from, value)
     } else {
+        tracing::info!("no bueno");
         return Err(eyre::eyre!("failed to decode transfer for token: {:?}", token))
     };
 
