@@ -172,7 +172,10 @@ pub fn calculate_builder_profit(
     let builder_payments: i128 =
         (pre_processing.cumulative_priority_fee + pre_processing.total_bribe) as i128;
 
-    if metadata.proposer_fee_recipient.is_none() | metadata.proposer_mev_reward.is_none() {
+    if metadata.proposer_fee_recipient.is_none()
+        | metadata.proposer_mev_reward.is_none()
+        | metadata.builder_info.is_none()
+    {
         debug!("Isn't an mev-boost block");
         return (builder_payments, 0.0)
     }
