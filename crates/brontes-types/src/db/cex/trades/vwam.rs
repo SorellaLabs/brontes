@@ -82,15 +82,7 @@ impl CexTradeMap {
 
         let res = self
             .get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref(), bypass_vol)
-            .or_else(|| {
-                self.get_vwam_via_intermediary(
-                    exchanges,
-                    pair,
-                    volume,
-                    quality.as_ref(),
-                    bypass_vol,
-                )
-            });
+            .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()));
 
         if res.is_none() {
             tracing::debug!(?pair, "no vwam found");
@@ -148,7 +140,6 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
-        bypass_vol: bool,
     ) -> Option<MakerTaker> {
         let (pair0_vwams, pair1_vwams) = self
             .calculate_intermediary_addresses(exchanges, pair)
