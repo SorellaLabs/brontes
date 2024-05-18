@@ -178,10 +178,10 @@ impl Libmdbx {
         I: FnMut(Option<T::Key>, &CompressedLibmdbxTx<RO>) -> eyre::Result<CompressedCursor<T, RO>>,
         F: Fn(&mut CompressedCursor<T, RO>) -> eyre::Result<Option<R>>,
     {
-        let time = Instant::now();
         let mut res = Vec::new();
 
         loop {
+            let time = Instant::now();
             let tx = self.ro_tx()?;
             let mut cur = i(start.clone(), &tx)?;
             while time.elapsed() < Duration::from_secs(30) {
