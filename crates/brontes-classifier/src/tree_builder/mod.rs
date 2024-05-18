@@ -426,7 +426,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         .await
         {
             Ok(mut transfer) => {
-                tracing::info!(?transfer, "ok path");
                 // go through the log to look for discrepancy of transfer amount
                 for log in &trace.logs {
                     if let Some((addr, from, to, amount)) = decode_transfer(log) {
@@ -449,7 +448,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         break
                     }
                 }
-                tracing::info!(?transfer, "ok path");
 
                 // Return the adjusted transfer as an action
                 Some((
@@ -479,7 +477,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             fee: Rational::ZERO,
                             trace_index: trace_idx,
                         };
-                        tracing::info!(?transfer, "error path");
 
                         return Some((
                             vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
