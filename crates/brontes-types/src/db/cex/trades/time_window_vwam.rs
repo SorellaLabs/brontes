@@ -14,7 +14,7 @@ const PRE_DECAY: f64 = -0.0000005;
 const POST_DECAY: f64 = -0.0000002;
 
 const START_POST_TIME_US: u64 = 50_000;
-const START_PRE_TIME_US: u64 = 50_000;
+const START_PRE_TIME_US: u64 = 1_000_000;
 
 const MAX_POST_TIME_US: u64 = 8_000_000;
 const MAX_PRE_TIME_US: u64 = 5_000_000;
@@ -279,8 +279,7 @@ impl<'a> TimeWindowTrades<'a> {
                 break
             }
 
-            let min_expand = (walker.get_max_time_delta(block_timestamp) >= PRE_SCALING_DIFF
-                || walker.get_min_time_delta(block_timestamp) >= POST_SCALING_DIFF)
+            let min_expand = (walker.get_max_time_delta(block_timestamp) >= PRE_SCALING_DIFF)
                 .then_some(TIME_STEP)
                 .unwrap_or_default();
 
