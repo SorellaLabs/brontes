@@ -38,10 +38,26 @@ pub(crate) fn build_mev_header(
 
     let pre_processing = pre_process(tree.clone());
 
-    let (builder_eth_profit, builder_mev_profit_usd) =
-        calculate_builder_profit(tree, metadata, orchestra_data, &pre_processing);
+    let (
+        builder_eth_profit,
+        builder_mev_profit_usd,
+        fallback_mev_reward,
+        fallback_proposer_address,
+    ) = calculate_builder_profit(tree, metadata, orchestra_data, &pre_processing);
 
     let builder_eth_profit = builder_eth_profit.to_scaled_rational(18);
+
+    let proposer_mev_reward = metadata.proposer_mev_reward.or(fallback_mev_reward);
+    let proposer_profit_usd = proposer_mev_reward.map(|mev_reward| {
+        f64::rounding_from(
+            mev_reward.to_scaled_rational(18) * &metadata.eth_prices,
+            RoundingMode::Nearest,
+        )
+        .0
+    });
+    let proposer_fee_recipient = metadata
+        .proposer_fee_recipient
+        .or(fallback_proposer_address);
 
     MevBlock {
         block_hash: metadata.block_hash.into(),
@@ -61,15 +77,9 @@ pub(crate) fn build_mev_header(
         )
         .0,
         builder_mev_profit_usd,
-        proposer_fee_recipient: metadata.proposer_fee_recipient,
-        proposer_mev_reward: metadata.proposer_mev_reward,
-        proposer_profit_usd: metadata.proposer_mev_reward.map(|mev_reward| {
-            f64::rounding_from(
-                mev_reward.to_scaled_rational(18) * &metadata.eth_prices,
-                RoundingMode::Nearest,
-            )
-            .0
-        }),
+        proposer_fee_recipient,
+        proposer_mev_reward,
+        proposer_profit_usd,
         cumulative_mev_profit_usd,
         possible_mev,
     }
@@ -167,7 +177,7 @@ pub fn calculate_builder_profit(
     metadata: &Arc<Metadata>,
     bundles: &[Bundle],
     pre_processing: &BlockPreprocessing,
-) -> (i128, f64) {
+) -> (i128, f64, Option<u128>, Option<Address>) {
     let builder_address = tree.header.beneficiary;
     let builder_payments: i128 =
         (pre_processing.cumulative_priority_fee + pre_processing.total_bribe) as i128;
@@ -181,25 +191,32 @@ pub fn calculate_builder_profit(
             if let Some(ultrasound_relay_collateral_address) =
                 builder_info.ultrasound_relay_collateral_address
             {
-                let payment_from_collateral_addr: i128 =
-                    payment_from_collateral(&tree, ultrasound_relay_collateral_address, metadata);
-                return (builder_payments - payment_from_collateral_addr, builder_mev_profits);
+                let (payment_from_collateral_addr, proposer_fee_recipient) =
+                    payment_from_collateral(&tree, ultrasound_relay_collateral_address);
+                return (
+                    builder_payments - payment_from_collateral_addr,
+                    builder_mev_profits,
+                    Some(payment_from_collateral_addr as u128),
+                    proposer_fee_recipient,
+                );
             } else if let Some(root) = tree.tx_roots.last() {
                 if root.get_from_address() == builder_address {
                     if let Action::EthTransfer(transfer) = root.get_root_action() {
                         return (
                             builder_payments - transfer.value.to::<i128>(),
                             builder_mev_profits,
+                            Some(transfer.value.to::<u128>()),
+                            Some(transfer.to),
                         );
                     }
                 }
-                return (builder_payments, 0.0)
+                return (builder_payments, 0.0, None, None);
             } else {
                 debug!("Isn't an mev-boost block");
-                return (builder_payments, 0.0)
+                return (builder_payments, 0.0, None, None);
             }
         } else {
-            return (builder_payments, 0.0)
+            return (builder_payments, 0.0, None, None)
         }
     }
 
@@ -209,17 +226,27 @@ pub fn calculate_builder_profit(
         if let Some(ultrasound_relay_collateral_address) =
             builder_info.ultrasound_relay_collateral_address
         {
-            let payment_from_collateral_addr: i128 =
-                payment_from_collateral(&tree, ultrasound_relay_collateral_address, metadata);
+            let (payment_from_collateral_addr, proposer_fee_recipient) =
+                payment_from_collateral(&tree, ultrasound_relay_collateral_address);
 
-            return (builder_payments - payment_from_collateral_addr, builder_mev_profits);
+            return (
+                builder_payments - payment_from_collateral_addr,
+                builder_mev_profits,
+                None,
+                proposer_fee_recipient,
+            );
         } else if let Some(root) = tree.tx_roots.last() {
             if let Action::EthTransfer(transfer) = root.get_root_action() {
-                return (builder_payments - transfer.value.to::<i128>(), builder_mev_profits);
+                return (
+                    builder_payments - transfer.value.to::<i128>(),
+                    builder_mev_profits,
+                    None,
+                    None,
+                )
             }
         } else {
             debug!("Isn't an mev-boost block");
-            return (builder_payments, 0.0)
+            return (builder_payments, 0.0, None, None)
         };
     };
 
@@ -239,6 +266,8 @@ pub fn calculate_builder_profit(
                     - builder_sponsorship_amount
                     - metadata.proposer_mev_reward.unwrap_or_default() as i128,
                 0.0,
+                None,
+                None,
             )
         }
     };
@@ -258,41 +287,36 @@ pub fn calculate_builder_profit(
                     - builder_sponsorship_amount
                     - metadata.proposer_mev_reward.unwrap_or_default() as i128,
                 mev_searching_profit,
+                None,
+                None,
             )
         }
     };
 
-    let payment_from_collateral_addr: i128 =
-        payment_from_collateral(&tree, collateral_address, metadata);
+    let (payment_from_collateral_addr, _) = payment_from_collateral(&tree, collateral_address);
 
     // Calculate final profit considering the sponsorship amount and any collateral
     // payment
     (
         builder_payments - builder_sponsorship_amount - payment_from_collateral_addr,
         mev_searching_profit,
+        None,
+        None,
     )
 }
 
 fn payment_from_collateral(
     tree: &Arc<BlockTree<Action>>,
     collateral_address: Address,
-    metadata: &Arc<Metadata>,
-) -> i128 {
-    tree.tx_roots.last().map_or(0, |root| {
-        if root.get_from_address() == collateral_address
-            && root.get_to_address()
-                == metadata
-                    .block_metadata
-                    .proposer_fee_recipient
-                    .unwrap_or_default()
-        {
+) -> (i128, Option<Address>) {
+    tree.tx_roots.last().map_or((0, None), |root| {
+        if root.get_from_address() == collateral_address {
             match root.get_root_action() {
-                Action::EthTransfer(transfer) => transfer.value.to(), /* Assuming transfer. */
-                // value is u128
-                _ => 0,
+                Action::EthTransfer(transfer) => (transfer.value.to(), Some(transfer.to)),
+                _ => (0, None),
             }
         } else {
-            0
+            (0, None)
         }
     })
 }
@@ -304,12 +328,13 @@ fn calculate_mev_searching_profit(bundles: &[Bundle], builder_info: &BuilderInfo
         bundles
             .iter()
             .filter(|bundle| {
-                builder_info.searchers_eoas.contains(&bundle.header.eoa)
-                    || bundle
-                        .header
-                        .mev_contract
-                        .map(|mc| builder_info.searchers_contracts.contains(&mc))
-                        .unwrap_or(false)
+                bundle.mev_type() != MevType::SearcherTx
+                    && (builder_info.searchers_eoas.contains(&bundle.header.eoa)
+                        || bundle
+                            .header
+                            .mev_contract
+                            .map(|mc| builder_info.searchers_contracts.contains(&mc))
+                            .unwrap_or(false))
             })
             .map(|bundle| bundle.header.profit_usd)
             .sum()
