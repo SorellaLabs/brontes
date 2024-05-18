@@ -657,7 +657,7 @@ impl CexDexProcessing {
 
     pub fn into_bundle(self, tx_info: &TxInfo) -> Option<(f64, BundleData)> {
         Some((
-            self.max_profit
+            self.global_vmam_cex_dex
                 .as_ref()?
                 .aggregate_pnl
                 .maker_taker_mid
