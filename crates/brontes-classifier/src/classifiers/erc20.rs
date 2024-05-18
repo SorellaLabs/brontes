@@ -31,8 +31,12 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
 ) -> eyre::Result<NormalizedTransfer> {
     let (from_addr, to_addr, amount) = if let Some((from_addr, to_addr, amount)) =
         transferCall::abi_decode(&calldata, false)
-            .map(|t| Some((from, t._0, t._1)))
+            .map(|t| {
+                tracing::info!("transfer");
+                Some((from, t._0, t._1))
+            })
             .unwrap_or_else(|_| {
+                tracing::info!("transfer from");
                 transferFromCall::abi_decode(&calldata, false)
                     .ok()
                     .map(|t| (t._0, t._1, t._2))
