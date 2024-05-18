@@ -584,44 +584,39 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
-        self.db.view_db(|tx| {
-            let mut cursor = tx.cursor_read::<SearcherEOAs>()?;
-
-            let mut result = Vec::new();
-
-            // Start the walk from the first key-value pair
-            let walker = cursor.walk(None)?;
-
-            // Iterate over all the key-value pairs using the walker
-            for row in walker {
-                let row = row?;
-                let address = row.0;
-                let searcher_info = row.1;
-                result.push((address, searcher_info));
-            }
-            Ok(result)
-        })
+        self.db.export_db(
+            None,
+            |start_key, tx| {
+                let mut cur = tx.cursor_read::<SearcherEOAs>()?;
+                if let Some(key) = start_key {
+                    let _ = cur.seek(key);
+                } else {
+                    // move to first entry and make sure .next() is first
+                    let _ = cur.first();
+                    let _ = cur.prev();
+                }
+                Ok(cur)
+            },
+            |cursor| Ok(cursor.next().map(|inner| inner.map(|i| (i.0, i.1)))?),
+        )
     }
 
     fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
-        self.db.view_db(|tx| {
-            let mut cursor = tx.cursor_read::<SearcherContracts>()?;
-
-            let mut result = Vec::new();
-
-            // Start the walk from the first key-value pair
-            let walker = cursor.walk(None)?;
-
-            // Iterate over all the key-value pairs using the walker
-            for row in walker {
-                let row = row?;
-                let address = row.0;
-                let searcher_info = row.1;
-                result.push((address, searcher_info));
-            }
-
-            Ok(result)
-        })
+        self.db.export_db(
+            None,
+            |start_key, tx| {
+                let mut cur = tx.cursor_read::<SearcherContracts>()?;
+                if let Some(key) = start_key {
+                    let _ = cur.seek(key);
+                } else {
+                    // move to first entry and make sure .next() is first
+                    let _ = cur.first();
+                    let _ = cur.prev();
+                }
+                Ok(cur)
+            },
+            |cursor| Ok(cursor.next().map(|inner| inner.map(|i| (i.0, i.1)))?),
+        )
     }
 
     fn protocols_created_before(
@@ -744,24 +739,21 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
-        self.db.view_db(|tx| {
-            let mut cursor = tx.cursor_read::<Builder>()?;
-
-            let mut result = Vec::new();
-
-            // Start the walk from the first key-value pair
-            let walker = cursor.walk(None)?;
-
-            // Iterate over all the key-value pairs using the walker
-            for row in walker {
-                let row = row?;
-                let address = row.0;
-                let searcher_info = row.1;
-                result.push((address, searcher_info));
-            }
-
-            Ok(result)
-        })
+        self.db.export_db(
+            None,
+            |start_key, tx| {
+                let mut cur = tx.cursor_read::<Builder>()?;
+                if let Some(key) = start_key {
+                    let _ = cur.seek(key);
+                } else {
+                    // move to first entry and make sure .next() is first
+                    let _ = cur.first();
+                    let _ = cur.prev();
+                }
+                Ok(cur)
+            },
+            |cursor| Ok(cursor.next().map(|inner| inner.map(|i| (i.0, i.1)))?),
+        )
     }
 
     fn try_fetch_mev_blocks(
@@ -769,64 +761,64 @@ impl LibmdbxReader for LibmdbxReadWriter {
         start_block: Option<u64>,
         end_block: u64,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        self.db.view_db(|tx| {
-            let mut cursor = tx.cursor_read::<MevBlocks>()?;
-            let mut res = Vec::new();
-
-            let range = if let Some(start) = start_block {
-                (Bound::Included(start), Bound::Excluded(end_block))
-            } else {
-                (Bound::Unbounded, Bound::Excluded(end_block))
-            };
-
-            for entry in cursor.walk_range(range)?.flatten() {
-                res.push(entry.1);
-            }
-
-            Ok(res)
-        })
+        self.db.export_db(
+            start_block,
+            |start_key, tx| {
+                let mut cur = tx.cursor_read::<MevBlocks>()?;
+                if let Some(key) = start_key {
+                    let _ = cur.seek(key);
+                } else {
+                    // move to first entry and make sure .next() is first
+                    let _ = cur.first();
+                    let _ = cur.prev();
+                }
+                Ok(cur)
+            },
+            |cursor| {
+                Ok(cursor
+                    .next()
+                    .map(|inner| inner.filter(|f| f.0 <= end_block).map(|i| i.1))?)
+            },
+        )
     }
 
     fn fetch_all_mev_blocks(
         &self,
         start_block: Option<u64>,
     ) -> eyre::Result<Vec<MevBlockWithClassified>> {
-        self.db.view_db(|tx| {
-            let mut cursor = tx.cursor_read::<MevBlocks>()?;
-
-            let mut res = Vec::new();
-
-            // Start the walk from the first key-value pair
-            let walker = cursor.walk(start_block)?;
-
-            // Iterate over all the key-value pairs using the walker
-            for row in walker {
-                res.push(row?.1);
-            }
-
-            Ok(res)
-        })
+        self.db.export_db(
+            start_block,
+            |start_key, tx| {
+                let mut cur = tx.cursor_read::<MevBlocks>()?;
+                if let Some(key) = start_key {
+                    let _ = cur.seek(key);
+                } else {
+                    // move to first entry and make sure .next() is first
+                    let _ = cur.first();
+                    let _ = cur.prev();
+                }
+                Ok(cur)
+            },
+            |cursor| Ok(cursor.next().map(|inner| inner.map(|i| i.1))?),
+        )
     }
 
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
-        self.db.view_db(|tx| {
-            let mut cursor = tx.cursor_read::<AddressMeta>()?;
-
-            let mut result = Vec::new();
-
-            // Start the walk from the first key-value pair
-            let walker = cursor.walk(None)?;
-
-            // Iterate over all the key-value pairs using the walker
-            for row in walker {
-                let row = row?;
-                let address = row.0;
-                let metadata = row.1;
-                result.push((address, metadata));
-            }
-
-            Ok(result)
-        })
+        self.db.export_db(
+            None,
+            |start_key, tx| {
+                let mut cur = tx.cursor_read::<AddressMeta>()?;
+                if let Some(key) = start_key {
+                    let _ = cur.seek(key);
+                } else {
+                    // move to first entry and make sure .next() is first
+                    let _ = cur.first();
+                    let _ = cur.prev();
+                }
+                Ok(cur)
+            },
+            |cursor| Ok(cursor.next().map(|inner| inner.map(|i| (i.0, i.1)))?),
+        )
     }
 }
 
