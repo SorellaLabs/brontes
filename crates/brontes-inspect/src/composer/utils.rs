@@ -185,6 +185,7 @@ pub fn calculate_builder_profit(
     // Handles the case where we are missing data from the relays, but this is a
     // mev-boost block
     if metadata.proposer_fee_recipient.is_none() || metadata.proposer_mev_reward.is_none() {
+        println!("builder_info: {:?}", metadata.builder_info);
         if let Some(builder_info) = metadata.builder_info.as_ref() {
             let builder_mev_profits = calculate_mev_searching_profit(bundles, builder_info);
 
@@ -219,36 +220,6 @@ pub fn calculate_builder_profit(
             return (builder_payments, 0.0, None, None)
         }
     }
-
-    if let Some(builder_info) = metadata.builder_info.as_ref() {
-        let builder_mev_profits = calculate_mev_searching_profit(bundles, builder_info);
-        println!("builder_info: {:?}", builder_info);
-        if let Some(ultrasound_relay_collateral_address) =
-            builder_info.ultrasound_relay_collateral_address
-        {
-            let (payment_from_collateral_addr, proposer_fee_recipient) =
-                payment_from_collateral(&tree, ultrasound_relay_collateral_address);
-
-            return (
-                builder_payments - payment_from_collateral_addr,
-                builder_mev_profits,
-                None,
-                proposer_fee_recipient,
-            );
-        } else if let Some(root) = tree.tx_roots.last() {
-            if let Action::EthTransfer(transfer) = root.get_root_action() {
-                return (
-                    builder_payments - transfer.value.to::<i128>(),
-                    builder_mev_profits,
-                    None,
-                    None,
-                )
-            }
-        } else {
-            debug!("Isn't an mev-boost block");
-            return (builder_payments, 0.0, None, None)
-        };
-    };
 
     let builder_sponsorship_amount = calculate_builder_sponsorship_amount(
         tree.clone(),
