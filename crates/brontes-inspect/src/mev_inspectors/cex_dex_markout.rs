@@ -209,6 +209,38 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             pricing_vwam
         };
 
+        let max_optimistic: Vec<Option<MakerTaker>> = dex_swaps
+            .iter()
+            .map(|swap| {
+                metadata
+                    .cex_trades
+                    .as_ref()
+                    .unwrap()
+                    .lock()
+                    .get_optimistic_vmap(
+                        &self.cex_exchanges,
+                        &Pair(swap.token_in.address, swap.token_out.address),
+                        &swap.amount_out,
+                        None,
+                    )
+            })
+            .collect();
+
+        let max_optimsitic_results = PossibleCexDex::from_exchange_legs(
+            dex_swaps
+                .iter()
+                .zip(max_optimistic)
+                .filter_map(|(dex_swap, price)| {
+                    Some(self.profit_classifier(
+                        &dex_swap,
+                        (price.clone()?.1.price, price?.1.price),
+                        metadata,
+                        CexExchange::VWAP,
+                    ))
+                })
+                .collect_vec(),
+        );
+
         let vwam_result = PossibleCexDex::from_exchange_legs(
             dex_swaps
                 .iter()
@@ -263,7 +295,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(PossibleCexDex::from_exchange_legs)
             .collect_vec();
 
-        CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl)
+        CexDexProcessing::new(dex_swaps, max_optimsitic_results, per_exchange_pnl)
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
