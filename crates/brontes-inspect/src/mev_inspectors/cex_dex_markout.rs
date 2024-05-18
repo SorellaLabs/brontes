@@ -313,6 +313,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 pair,
                 &vol,
                 metadata.block_timestamp * 1000000,
+                true,
             )?
             .0
             .global_exchange_price;
