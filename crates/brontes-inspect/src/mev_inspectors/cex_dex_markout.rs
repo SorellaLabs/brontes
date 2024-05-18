@@ -232,7 +232,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .zip(max_optimistic)
                 .filter_map(|(dex_swap, price)| {
                     Some(self.profit_classifier(
-                        &dex_swap,
+                        dex_swap,
                         (price.clone()?.1.price, price?.1.price),
                         metadata,
                         CexExchange::VWAP,
