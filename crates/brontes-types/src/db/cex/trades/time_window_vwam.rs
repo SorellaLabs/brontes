@@ -19,8 +19,8 @@ const START_PRE_TIME_US: u64 = 50_000;
 const MAX_POST_TIME_US: u64 = 8_000_000;
 const MAX_PRE_TIME_US: u64 = 5_000_000;
 
-const PRE_SCALING_DIFF: u64 = 500_000;
-const POST_SCALING_DIFF: u64 = 1_000_000;
+const PRE_SCALING_DIFF: u64 = 300_000;
+const POST_SCALING_DIFF: u64 = 300_000;
 const TIME_STEP: u64 = 50_000;
 
 pub type PriceWithVolume = (Rational, Rational);
