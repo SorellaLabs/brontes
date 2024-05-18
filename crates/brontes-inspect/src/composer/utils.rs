@@ -172,10 +172,7 @@ pub fn calculate_builder_profit(
     let builder_payments: i128 =
         (pre_processing.cumulative_priority_fee + pre_processing.total_bribe) as i128;
 
-    if metadata.proposer_fee_recipient.is_none()
-        | metadata.proposer_mev_reward.is_none()
-        | metadata.builder_info.is_none()
-    {
+    if metadata.proposer_fee_recipient.is_none() | metadata.proposer_mev_reward.is_none() {
         debug!("Isn't an mev-boost block");
         return (builder_payments, 0.0)
     }
@@ -251,7 +248,7 @@ pub fn calculate_builder_profit(
             return (
                 builder_payments
                     - builder_sponsorship_amount
-                    - metadata.proposer_mev_reward.unwrap() as i128,
+                    - metadata.proposer_mev_reward.unwrap_or_default() as i128,
                 mev_searching_profit,
             )
         }
@@ -259,7 +256,11 @@ pub fn calculate_builder_profit(
 
     let payment_from_collateral_addr: i128 = tree.tx_roots.last().map_or(0, |root| {
         if root.get_from_address() == collateral_address
-            && root.get_to_address() == metadata.block_metadata.proposer_fee_recipient.unwrap()
+            && root.get_to_address()
+                == metadata
+                    .block_metadata
+                    .proposer_fee_recipient
+                    .unwrap_or_default()
         {
             match root.get_root_action() {
                 Action::EthTransfer(transfer) => transfer.value.to(), /* Assuming transfer. */
