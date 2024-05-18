@@ -583,6 +583,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         }
     }
 
+    #[instrument(level = "error", skip_all)]
     fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
         self.db.export_db(
             None,
@@ -601,6 +602,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         )
     }
 
+    #[instrument(level = "error", skip_all)]
     fn fetch_all_searcher_contract_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
         self.db.export_db(
             None,
@@ -738,6 +740,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
+    #[instrument(level = "error", skip_all)]
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>> {
         self.db.export_db(
             None,
@@ -756,6 +759,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         )
     }
 
+    #[instrument(level = "error", skip_all)]
     fn try_fetch_mev_blocks(
         &self,
         start_block: Option<u64>,
@@ -782,6 +786,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         )
     }
 
+    #[instrument(level = "error", skip_all)]
     fn fetch_all_mev_blocks(
         &self,
         start_block: Option<u64>,
@@ -803,6 +808,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         )
     }
 
+    #[instrument(level = "error", skip_all)]
     fn fetch_all_address_metadata(&self) -> eyre::Result<Vec<(Address, AddressMetadata)>> {
         self.db.export_db(
             None,
