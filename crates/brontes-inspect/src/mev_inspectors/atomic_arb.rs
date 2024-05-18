@@ -137,6 +137,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
+        tracing::debug!("{:#?} {:#?}", swaps, transfers);
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
         let account_deltas = transfers
@@ -221,7 +222,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             MevType::AtomicArb,
             !has_dex_price,
         );
-        tracing::debug!("{:#?}", header);
+        tracing::debug!("{:#?}\n\n {:#?}", header, data);
 
         Some(Bundle { header, data })
     }
@@ -657,5 +658,22 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS]);
 
         inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_ibethv2() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "93ac782b37a95f385ac0df6b5b24ded6f4701c81e96698ca528e9606ee970066"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(28.06)
+            .with_gas_paid_usd(4.38);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
