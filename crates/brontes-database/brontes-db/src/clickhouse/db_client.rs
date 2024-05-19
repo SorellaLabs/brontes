@@ -68,7 +68,7 @@ impl Clickhouse {
     pub fn new(
         config: ClickhouseConfig,
         cex_download_config: CexDownloadConfig,
-        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>>,
+        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseTableData>>>,
         tip: bool,
     ) -> Self {
         let client = config.build();
@@ -95,7 +95,7 @@ impl Clickhouse {
         let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![joined.into()])?;
+            tx.send(vec![(joined, self.tip).into()])?;
         }
 
         Ok(())
