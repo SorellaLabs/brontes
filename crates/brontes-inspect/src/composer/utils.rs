@@ -17,6 +17,7 @@ pub(crate) fn build_mev_header(
     possible_mev: PossibleMevCollection,
     mev_count: MevCount,
     orchestra_data: &[Bundle],
+    quote_token: Address,
 ) -> MevBlock {
     let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd, total_mev_bribe) =
         orchestra_data.iter().fold(
@@ -36,6 +37,8 @@ pub(crate) fn build_mev_header(
             },
         );
 
+    let eth_price = metadata.get_eth_price(quote_token);
+
     let pre_processing = pre_process(tree.clone());
 
     let (
@@ -49,11 +52,7 @@ pub(crate) fn build_mev_header(
 
     let proposer_mev_reward = metadata.proposer_mev_reward.or(fallback_mev_reward);
     let proposer_profit_usd = proposer_mev_reward.map(|mev_reward| {
-        f64::rounding_from(
-            mev_reward.to_scaled_rational(18) * &metadata.eth_prices,
-            RoundingMode::Nearest,
-        )
-        .0
+        f64::rounding_from(mev_reward.to_scaled_rational(18) * &eth_price, RoundingMode::Nearest).0
     });
     let proposer_fee_recipient = metadata
         .proposer_fee_recipient
@@ -63,7 +62,7 @@ pub(crate) fn build_mev_header(
         block_hash: metadata.block_hash.into(),
         block_number: metadata.block_num,
         mev_count,
-        eth_price: f64::rounding_from(&metadata.eth_prices, RoundingMode::Nearest).0,
+        eth_price: f64::rounding_from(&eth_price, RoundingMode::Nearest).0,
         cumulative_gas_used: pre_processing.cumulative_gas_used,
         cumulative_priority_fee: pre_processing.cumulative_priority_fee,
         total_bribe: pre_processing.total_bribe,
@@ -72,7 +71,7 @@ pub(crate) fn build_mev_header(
         builder_address: pre_processing.builder_address,
         builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
         builder_profit_usd: f64::rounding_from(
-            &builder_eth_profit * &metadata.eth_prices,
+            &builder_eth_profit * &eth_price,
             RoundingMode::Nearest,
         )
         .0,
@@ -235,14 +234,14 @@ fn calculate_payments(
     if let Some((mev_proposer_reward, proposer_address)) =
         proposer_payment(tree, builder_address, builder_info.ultrasound_relay_collateral_address)
     {
-        return (
+        (
             builder_payments - builder_sponsorship_amount - mev_proposer_reward,
             mev_searching_profit,
             Some(mev_proposer_reward as u128),
             proposer_address,
         )
     } else {
-        return (
+        (
             builder_payments
                 - builder_sponsorship_amount
                 - metadata.proposer_mev_reward.unwrap_or_default() as i128,
@@ -258,7 +257,7 @@ fn proposer_payment(
     builder_address: Address,
     collateral_address: Option<Address>,
 ) -> Option<(i128, Option<Address>)> {
-    tree.tx_roots.last().map_or(None, |root| {
+    tree.tx_roots.last().and_then(|root| {
         if root.get_from_address() == collateral_address.unwrap_or(builder_address)
             || root.get_from_address() == builder_address
         {

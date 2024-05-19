@@ -107,6 +107,10 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
         "CexDex"
     }
 
+    fn get_quote_token(&self) -> Address {
+        self.utils.quote
+    }
+
     /// Processes the block tree to find CEX-DEX arbitrage
     /// opportunities. This is the entry point for the inspection process,
     /// identifying transactions that include swap actions.

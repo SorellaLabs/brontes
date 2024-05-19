@@ -95,6 +95,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         "Sandwich"
     }
 
+    fn get_quote_token(&self) -> Address {
+        self.utils.quote
+    }
+
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         self.utils
             .get_metrics()

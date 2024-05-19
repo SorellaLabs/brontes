@@ -153,6 +153,89 @@ impl Metadata {
         gas_used_rational * eth_price
     }
 
+    pub fn get_eth_price(&self, quote_token: Address) -> Rational {
+        let eth_price = if self.block_metadata.eth_prices == Rational::ZERO {
+            if let Some(dex_quotes) = &self.dex_quotes {
+                if dex_quotes.0.is_empty() {
+                    #[cfg(feature = "cex-dex-markout")]
+                    {
+                        let trades = [
+                            CexExchange::Binance,
+                            CexExchange::Coinbase,
+                            CexExchange::BybitSpot,
+                            CexExchange::Okex,
+                            CexExchange::Kucoin,
+                        ];
+                        let baseline_for_tokeprice = Rational::from_unsigneds(1u32, 10u32);
+                        let pair = Pair(quote_token, WETH_ADDRESS);
+
+                        self.cex_trades
+                            .as_ref()
+                            .and_then(|trade_map| {
+                                tracing::debug!("getting eth price");
+                                Some(
+                                    trade_map
+                                        .lock()
+                                        .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                        .0
+                                        .price,
+                                )
+                            })
+                            .unwrap_or(Rational::ZERO)
+                    }
+                    #[cfg(not(feature = "cex-dex-markout"))]
+                    Rational::ZERO
+                } else {
+                    dex_quotes
+                        .price_for_block(
+                            Pair(WETH_ADDRESS, quote_token),
+                            crate::db::dex::BlockPrice::Average,
+                        )
+                        .unwrap_or(Rational::ZERO)
+                }
+            } else {
+                #[cfg(feature = "cex-dex-markout")]
+                {
+                    let trades = [
+                        CexExchange::Binance,
+                        CexExchange::Coinbase,
+                        CexExchange::BybitSpot,
+                        CexExchange::Okex,
+                        CexExchange::Kucoin,
+                    ];
+                    let baseline_for_tokeprice = Rational::from_unsigneds(1u32, 10u32);
+                    let pair = Pair(quote_token, WETH_ADDRESS);
+
+                    self.cex_trades
+                        .as_ref()
+                        .and_then(|trade_map| {
+                            tracing::debug!("getting eth price");
+                            Some(
+                                trade_map
+                                    .lock()
+                                    .get_optimistic_vmap(
+                                        &trades,
+                                        &pair,
+                                        &baseline_for_tokeprice,
+                                        None,
+                                    )?
+                                    .0
+                                    .price,
+                            )
+                        })
+                        .unwrap_or(Rational::ZERO)
+                }
+                #[cfg(not(feature = "cex-dex-markout"))]
+                Rational::ZERO
+            }
+        } else {
+            self.block_metadata.eth_prices.clone()
+        };
+        tracing::debug!(?eth_price);
+
+        eth_price
+    }
+
     pub fn into_full_metadata(mut self, dex_quotes: DexQuotes) -> Self {
         self.dex_quotes = Some(dex_quotes);
         self
