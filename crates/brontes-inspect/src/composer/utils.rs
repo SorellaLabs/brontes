@@ -6,7 +6,7 @@ use brontes_types::{
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Action,
     tree::BlockTree,
-    FastHashMap, GasDetails, ToScaledRational, TreeSearchBuilder,
+    FastHashMap, GasDetails, ToFloatNearest, ToScaledRational, TreeSearchBuilder,
 };
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
@@ -55,7 +55,7 @@ pub(crate) fn build_mev_header(
         total_mev_bribe,
         total_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
-        builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
+        builder_eth_profit: builder_eth_profit.clone().to_float(),
         builder_profit_usd: f64::rounding_from(
             &builder_eth_profit * &eth_price,
             RoundingMode::Nearest,
@@ -202,8 +202,8 @@ pub fn calculate_builder_profit(
     let builder_payments: i128 =
         (pre_processing.total_priority_fee + pre_processing.total_bribe) as i128;
 
-    let mut proposer_mev_reward = 0;
-    let mut proposer_fee_recipient = None;
+    let proposer_mev_reward;
+    let proposer_fee_recipient;
     let mut mev_searching_profit = 0.0;
     let mut vertically_integrated_searcher_tip = 0;
 
@@ -227,9 +227,6 @@ pub fn calculate_builder_profit(
         (mev_searching_profit, vertically_integrated_searcher_tip) =
             calculate_mev_searching_profit(bundles, builder_info);
     } else {
-        if let Some(mev_reward) = metadata.proposer_mev_reward {
-            println!("mev_reward: {}", mev_reward);
-        }
         (proposer_mev_reward, proposer_fee_recipient) =
             proposer_payment(&tree, builder_address, None, metadata.proposer_fee_recipient)
                 .unwrap_or((
