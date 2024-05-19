@@ -36,7 +36,10 @@ pub(crate) fn build_mev_header(
     )
     .0;
 
+    println!("Block Builder ETH Profit: {:?}", block_pnl.builder_eth_profit);
     let builder_eth_profit = block_pnl.builder_eth_profit.to_scaled_rational(18);
+
+    println!("Block Builder ETH Profit: {:?}", builder_eth_profit);
 
     let proposer_mev_reward = block_pnl.mev_reward;
     let proposer_profit_usd = proposer_mev_reward.map(|mev_reward| {
