@@ -182,45 +182,6 @@ pub fn calculate_builder_profit(
     let builder_payments: i128 =
         (pre_processing.cumulative_priority_fee + pre_processing.total_bribe) as i128;
 
-    // Handles the case where we are missing data from the relays, but this is a
-    // mev-boost block
-    if metadata.proposer_fee_recipient.is_none() || metadata.proposer_mev_reward.is_none() {
-        println!("builder_info: {:?}", metadata.builder_info);
-        if let Some(builder_info) = metadata.builder_info.as_ref() {
-            let builder_mev_profits = calculate_mev_searching_profit(bundles, builder_info);
-
-            if let Some(ultrasound_relay_collateral_address) =
-                builder_info.ultrasound_relay_collateral_address
-            {
-                let (payment_from_collateral_addr, proposer_fee_recipient) =
-                    payment_from_collateral(&tree, ultrasound_relay_collateral_address);
-                return (
-                    builder_payments - payment_from_collateral_addr,
-                    builder_mev_profits,
-                    Some(payment_from_collateral_addr as u128),
-                    proposer_fee_recipient,
-                );
-            } else if let Some(root) = tree.tx_roots.last() {
-                if root.get_from_address() == builder_address {
-                    if let Action::EthTransfer(transfer) = root.get_root_action() {
-                        return (
-                            builder_payments - transfer.value.to::<i128>(),
-                            builder_mev_profits,
-                            Some(transfer.value.to::<u128>()),
-                            Some(transfer.to),
-                        );
-                    }
-                }
-                return (builder_payments, 0.0, None, None);
-            } else {
-                debug!("Isn't an mev-boost block");
-                return (builder_payments, 0.0, None, None);
-            }
-        } else {
-            return (builder_payments, 0.0, None, None)
-        }
-    }
-
     let builder_sponsorship_amount = calculate_builder_sponsorship_amount(
         tree.clone(),
         builder_address,
@@ -232,13 +193,17 @@ pub fn calculate_builder_profit(
         Some(info) => info,
         None => {
             debug!("Builder info not available, proceeding without it.");
+
+            let (proposer_mev_reward, proposer_address) =
+                proposer_payment(&tree, builder_address, None).unwrap_or((
+                    metadata.proposer_mev_reward.unwrap_or_default() as i128,
+                    metadata.proposer_fee_recipient,
+                ));
             return (
-                builder_payments
-                    - builder_sponsorship_amount
-                    - metadata.proposer_mev_reward.unwrap_or_default() as i128,
+                builder_payments - builder_sponsorship_amount - proposer_mev_reward,
                 0.0,
-                None,
-                None,
+                Some(proposer_mev_reward as u128),
+                proposer_address,
             )
         }
     };
@@ -247,47 +212,62 @@ pub fn calculate_builder_profit(
     // searchers
     let mev_searching_profit: f64 = calculate_mev_searching_profit(bundles, builder_info);
 
-    let collateral_address = match builder_info.ultrasound_relay_collateral_address {
-        Some(address) => address,
-        None => {
-            // If there's no ultrasound relay collateral address, we don't have to account
-            // for collateral address based payments
-            debug!("No ultrasound relay collateral address found.");
-            return (
-                builder_payments
-                    - builder_sponsorship_amount
-                    - metadata.proposer_mev_reward.unwrap_or_default() as i128,
-                mev_searching_profit,
-                None,
-                None,
-            )
-        }
-    };
-
-    let (payment_from_collateral_addr, _) = payment_from_collateral(&tree, collateral_address);
-
-    // Calculate final profit considering the sponsorship amount and any collateral
-    // payment
-    (
-        builder_payments - builder_sponsorship_amount - payment_from_collateral_addr,
+    calculate_payments(
+        &tree,
+        builder_info,
+        metadata,
+        builder_address,
+        builder_payments,
+        builder_sponsorship_amount,
         mev_searching_profit,
-        None,
-        None,
     )
 }
 
-fn payment_from_collateral(
+fn calculate_payments(
     tree: &Arc<BlockTree<Action>>,
-    collateral_address: Address,
-) -> (i128, Option<Address>) {
-    tree.tx_roots.last().map_or((0, None), |root| {
-        if root.get_from_address() == collateral_address {
+    builder_info: &BuilderInfo,
+    metadata: &Metadata,
+    builder_address: Address,
+    builder_payments: i128,
+    builder_sponsorship_amount: i128,
+    mev_searching_profit: f64,
+) -> (i128, f64, Option<u128>, Option<Address>) {
+    if let Some((mev_proposer_reward, proposer_address)) =
+        proposer_payment(tree, builder_address, builder_info.ultrasound_relay_collateral_address)
+    {
+        return (
+            builder_payments - builder_sponsorship_amount - mev_proposer_reward,
+            mev_searching_profit,
+            Some(mev_proposer_reward as u128),
+            proposer_address,
+        )
+    } else {
+        return (
+            builder_payments
+                - builder_sponsorship_amount
+                - metadata.proposer_mev_reward.unwrap_or_default() as i128,
+            mev_searching_profit,
+            None,
+            None,
+        )
+    }
+}
+
+fn proposer_payment(
+    tree: &Arc<BlockTree<Action>>,
+    builder_address: Address,
+    collateral_address: Option<Address>,
+) -> Option<(i128, Option<Address>)> {
+    tree.tx_roots.last().map_or(None, |root| {
+        if root.get_from_address() == collateral_address.unwrap_or(builder_address)
+            || root.get_from_address() == builder_address
+        {
             match root.get_root_action() {
-                Action::EthTransfer(transfer) => (transfer.value.to(), Some(transfer.to)),
-                _ => (0, None),
+                Action::EthTransfer(transfer) => Some((transfer.value.to(), Some(transfer.to))),
+                _ => None,
             }
         } else {
-            (0, None)
+            None
         }
     })
 }
