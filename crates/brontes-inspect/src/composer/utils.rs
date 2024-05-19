@@ -36,10 +36,7 @@ pub(crate) fn build_mev_header(
     )
     .0;
 
-    println!("Block Builder ETH Profit: {:?}", block_pnl.builder_eth_profit);
     let builder_eth_profit = block_pnl.builder_eth_profit.to_scaled_rational(18);
-
-    println!("Block Builder ETH Profit: {:?}", builder_eth_profit);
 
     let proposer_mev_reward = block_pnl.mev_reward;
     let proposer_profit_usd = proposer_mev_reward.map(|mev_reward| {
@@ -161,7 +158,7 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 #[derive(Debug)]
 pub struct BlockPnL {
     // ETH profit made by the block builder (in wei)
-    pub builder_eth_profit:     u128,
+    pub builder_eth_profit:     i128,
     // USD profit of the builders searchers
     pub builder_mev_profit_usd: f64,
     // ETH reward paid to the proposer (in wei)
@@ -175,7 +172,7 @@ pub struct BlockPnL {
 
 impl BlockPnL {
     pub fn new(
-        builder_eth_profit: u128,
+        builder_eth_profit: i128,
         builder_mev_profit_usd: f64,
         mev_reward: Option<u128>,
         proposer_fee_recipient: Option<Address>,
@@ -245,12 +242,8 @@ pub fn calculate_builder_profit(
         proposer_fee_recipient,
     );
 
-    println!("Builder Payments: {:?}", builder_payments);
-    println!("Builder Sponsorship Amount: {:?}", builder_sponsorship_amount);
-    println!("Proposer MEV Reward: {:?}", proposer_mev_reward);
-
     BlockPnL::new(
-        (builder_payments - builder_sponsorship_amount - proposer_mev_reward) as u128,
+        builder_payments - builder_sponsorship_amount - proposer_mev_reward,
         mev_searching_profit,
         Some(proposer_mev_reward as u128),
         proposer_fee_recipient,
