@@ -20,6 +20,7 @@ use crate::{
     constants::WETH_ADDRESS,
     db::redefined_types::primitives::*,
     implement_table_value_codecs_with_zc,
+    normalized_actions::NormalizedSwap,
     pair::Pair,
     serde_utils::{option_addresss, u256, vec_txhash},
     FastHashSet,
@@ -99,6 +100,8 @@ impl Metadata {
                                             &baseline_for_tokeprice,
                                             None,
                                             true,
+                                            &NormalizedSwap::default(),
+                                            TxHash::default(),
                                         )?
                                         .0
                                         .price,
@@ -142,6 +145,8 @@ impl Metadata {
                                         &baseline_for_tokeprice,
                                         None,
                                         true,
+                                        &NormalizedSwap::default(),
+                                        TxHash::default(),
                                     )?
                                     .0
                                     .price,
@@ -189,6 +194,8 @@ impl Metadata {
                                             &baseline_for_tokeprice,
                                             None,
                                             true,
+                                            &NormalizedSwap::default(),
+                                            TxHash::default(),
                                         )?
                                         .0
                                         .price,
@@ -232,6 +239,8 @@ impl Metadata {
                                         &baseline_for_tokeprice,
                                         None,
                                         true,
+                                        &NormalizedSwap::default(),
+                                        TxHash::default(),
                                     )?
                                     .0
                                     .price,

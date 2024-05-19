@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -236,6 +237,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         possible_pricing?,
                         metadata,
                         CexExchange::VWAP,
+                        tx_hash,
                     ))
                 })
                 .collect_vec(),
@@ -261,6 +263,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     ),
                                     metadata,
                                     *ex,
+                                    tx_hash,
                                 ),
                             )
                         })
@@ -291,6 +294,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         cex_quote: (Rational, Rational),
         metadata: &Metadata,
         exchange: CexExchange,
+        tx_hash: FixedBytes<32>,
     ) -> Option<ExchangeLeg> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
@@ -331,6 +335,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &vol,
                 metadata.block_timestamp * 1000000,
                 true,
+                swap,
+                tx_hash,
             )?
             .0
             .global_exchange_price;

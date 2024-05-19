@@ -72,48 +72,69 @@ impl fmt::Display for MevBlock {
             writeln!(f, "{}", line.green())?;
         }
 
-        let block_value = (self.total_priority_fee + self.total_bribe).to_scaled_rational(18);
+        let block_value = (self.total_priority_fee + self.total_bribe)
+            .to_scaled_rational(18)
+            .to_float();
 
         writeln!(f, "{} {}", "Block Number:".bold(), self.block_number)?;
         // Block value section
         writeln!(f, "\n{}: {:.6} ETH", "Block Value:".bold().red().underline(), block_value)?;
-        // Mev section
+
+        // Mev
         writeln!(f, "\n{}", "Mev:".bold().red().underline())?;
         writeln!(f, "{}", self.mev_count.to_string().bold())?;
-        writeln!(f, "  - Total MEV Profit (USD): {}", format_profit(self.total_mev_profit_usd))?;
-        writeln!(f, "  - Mev Gas:")?;
         writeln!(
             f,
-            "    - Total Bribe Paid by MEV bots: {:.6} ETH",
-            self.total_bribe as f64 * 1e-18
-        )?;
-        writeln!(
-            f,
-            "    - Total Priority Fee Paid by MEV bots: {:.6} ETH",
-            self.total_mev_priority_fee_paid as f64 * 1e-18
+            "  - {} {}",
+            "Total MEV Profit (USD):".purple().bold(),
+            format_profit(self.total_mev_profit_usd)
         )?;
 
-        let block_value = block_value.to_float();
+        writeln!(f, "  - {}", "Gas:".bold().underline())?;
         writeln!(
             f,
-            "  -VI Searcher Bribes: {:.6} ETH ({:.2}% of total Block Value)",
-            self.builder_searcher_bribes as f64 * 1e-18,
-            self.builder_searcher_bribes as f64 * 1e-18 / block_value
+            "    - {} {:.6} ETH ({:.2}% MEV)",
+            "Total Builder Tips:".bold(),
+            self.total_bribe as f64 * 1e-18,
+            (self.total_mev_bribe as f64 * 1e-18) / (self.total_bribe as f64 * 1e-18) * 100.0
+        )?;
+        writeln!(
+            f,
+            "    - {} {:.6} ETH ({:.2}% MEV)",
+            "Total Priority Fee:".bold(),
+            self.total_mev_priority_fee_paid as f64 * 1e-18,
+            (self.total_mev_priority_fee_paid as f64 * 1e-18)
+                / (self.total_priority_fee as f64 * 1e-18)
+                * 100.0
         )?;
 
+        // Builder PnL
+        writeln!(f, "\n{}", "Builder PnL:".bold().red().underline())?;
+
+        let builder_profit_color = if self.builder_profit_usd < 0.0 { "red" } else { "green" };
         writeln!(
             f,
-            "  -VI Searcher Bribes (in USD): {:.6} USD ({:.2}% of total Block Value)",
-            self.builder_searcher_bribes as f64 * 1e-18,
-            self.builder_searcher_bribes as f64 * 1e-18 / block_value
+            "  - {} {:.6} ETH ({:.6} USD)",
+            "Builder Profit:".bold(),
+            format!("{:.6}", self.builder_eth_profit).color(builder_profit_color),
+            format_profit(self.builder_profit_usd).color(builder_profit_color)
         )?;
 
         let builder_mev_profit_color =
             if self.builder_mev_profit_usd < 0.0 { "red" } else { "green" };
         writeln!(
             f,
-            "  - Builder MEV Profit: {:.6} USD",
+            "  - {}: {:.6} USD",
+            "Builder MEV Profit".bold().purple(),
             format!("{:.6}", self.builder_mev_profit_usd).color(builder_mev_profit_color)
+        )?;
+
+        writeln!(
+            f,
+            "  - {} {:.6} ETH ({:.2}% of Builder Profit)",
+            "VI Bribes:".bold(),
+            self.builder_searcher_bribes as f64 * 1e-18,
+            self.builder_searcher_bribes as f64 * 1e-18 / self.builder_eth_profit
         )?;
 
         // Proposer section
@@ -220,7 +241,7 @@ impl fmt::Display for MevCount {
             writeln!(f, "    - Liquidation: {}", count.to_string().bold())?;
         }
         if let Some(count) = self.searcher_tx_count {
-            writeln!(f, "   - Searcher Transactions: {}", count.to_string().bold())?;
+            writeln!(f, "    - Searcher TXs: {}", count.to_string().bold())?;
         }
 
         Ok(())

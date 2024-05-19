@@ -6,7 +6,6 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use serde_with::de;
 
 use super::{
     utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker},
@@ -164,11 +163,10 @@ impl<'a> TimeWindowTrades<'a> {
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
-                // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.0, intermediary);
-                // bnb / eth 0.1298price
+
                 let pair1 = Pair(intermediary, pair.1);
-                // check if we have a path
+
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
 
@@ -323,6 +321,7 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if &trade_volume_global < vol && !bypass_vol {
+            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
             return None
         }
 
@@ -347,6 +346,7 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if trade_volume_global == Rational::ZERO {
+            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
             return None
         }
 

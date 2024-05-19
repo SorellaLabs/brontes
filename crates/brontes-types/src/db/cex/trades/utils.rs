@@ -1,10 +1,13 @@
 use std::marker::PhantomData;
 
 use alloy_primitives::TxHash;
+use malachite::Rational;
 use tracing::trace;
 
 use super::CexTrades;
-use crate::{db::cex::CexExchange, normalized_actions::NormalizedSwap, FastHashMap};
+use crate::{
+    db::cex::CexExchange, normalized_actions::NormalizedSwap, utils::ToFloatNearest, FastHashMap,
+};
 
 /// Manages the traversal and collection of trade data within dynamically
 /// adjustable time windows.
@@ -225,22 +228,22 @@ pub fn log_missing_trade_data(dex_swap: &NormalizedSwap, tx_hash: &TxHash) {
 pub fn log_insufficient_trade_volume(
     dex_swap: &NormalizedSwap,
     tx_hash: &TxHash,
-    trade_volume_global: &u128,
-    required_volume: &u128,
+    trade_volume_global: Rational,
+    required_volume: Rational,
 ) {
     trace!(
         target: "brontes::time_window_vwam",
         "\n\x1b[1;31mInsufficient Trade Volume for {} - {}:\x1b[0m\n\
-         - Cex Volume: {}\n\
-         - Required Volume: {}\n\
+         - Cex Volume:  {:.6}\n\
+         - Required Volume:  {:.6}\n\
          - Token Contracts:\n\
             * Token Out: https://etherscan.io/address/{}\n\
             * Token In: https://etherscan.io/address/{}\n\
          - Transaction Hash: https://etherscan.io/tx/{}",
         dex_swap.token_out_symbol(),
         dex_swap.token_in_symbol(),
-        trade_volume_global,
-        required_volume,
+        trade_volume_global.to_float(),
+        required_volume.to_float(),
         dex_swap.token_out.address,
         dex_swap.token_in.address,
         tx_hash
