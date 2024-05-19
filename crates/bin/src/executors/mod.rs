@@ -395,6 +395,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     .await;
             }
 
+            tracing::info!("starting tip inspector");
             let tip_inspector = self.build_tip_inspector(
                 usize::MAX,
                 executor.clone(),
