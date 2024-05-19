@@ -2,6 +2,7 @@ use std::{
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
+    time::Duration,
 };
 
 use brontes_core::decoding::{Parser, TracingProvider};
@@ -13,6 +14,7 @@ use brontes_inspect::Inspector;
 use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
+use tokio::time::{interval, Interval};
 use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
@@ -31,6 +33,7 @@ pub struct TipInspector<
     database:           &'static DB,
     inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
+    poll_interval:      Interval,
     _p:                 PhantomData<P>,
 }
 
@@ -53,6 +56,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             parser,
             processing_futures: FuturesUnordered::new(),
             database,
+            poll_interval: interval(Duration::from_secs(3)),
             _p: PhantomData,
         }
     }
@@ -127,6 +131,10 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // given we pull the next block sync, we use this to trigger looking
+        // for the next block.
+        while self.poll_interval.poll_tick(cx).is_ready() {}
+
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
             tracing::info!("starting new tip block");
             let block = self.current_block;
