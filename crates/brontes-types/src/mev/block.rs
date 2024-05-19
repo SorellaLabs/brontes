@@ -115,9 +115,9 @@ impl fmt::Display for MevBlock {
         let builder_profit_color = if self.builder_profit_usd < 0.0 { "red" } else { "green" };
         writeln!(
             f,
-            "  - {} {:.6} ETH ({:.6} USD)",
+            "  - {} {:.9} ETH ({:.6} USD)",
             "Builder Profit:".bold(),
-            format!("{:.6}", self.builder_eth_profit).color(builder_profit_color),
+            format!("{:.6}", self.builder_eth_profit * 1e-18).color(builder_profit_color),
             format_profit(self.builder_profit_usd).color(builder_profit_color)
         )?;
 
