@@ -32,7 +32,7 @@ use crate::{
 #[derive(Clone)]
 pub struct ClickhouseMiddleware<I: DBWriter> {
     #[allow(dead_code)] // on tests feature
-    client: Clickhouse,
+    pub client: Clickhouse,
     inner:  Arc<I>,
 }
 
