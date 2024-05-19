@@ -68,7 +68,7 @@ impl Clickhouse {
     pub fn new(
         config: ClickhouseConfig,
         cex_download_config: CexDownloadConfig,
-        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseTableData>>>,
+        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
         tip: bool,
     ) -> Self {
         let client = config.build();
