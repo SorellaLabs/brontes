@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use alloy_primitives::Address;
 use brontes_metrics::db_cache::CacheData;
 use brontes_types::db::{
@@ -8,12 +10,13 @@ use moka::{policy::EvictionPolicy, sync::SegmentedCache};
 
 const MEGABYTE: usize = 1024 * 1024;
 
+#[derive(Clone)]
 pub struct ReadWriteCache {
-    address_meta:      SegmentedCache<Address, Option<AddressMetadata>, ahash::RandomState>,
-    searcher_eoa:      SegmentedCache<Address, Option<SearcherInfo>, ahash::RandomState>,
-    searcher_contract: SegmentedCache<Address, Option<SearcherInfo>, ahash::RandomState>,
-    protocol_info:     SegmentedCache<Address, Option<ProtocolInfo>, ahash::RandomState>,
-    token_info:        SegmentedCache<Address, Option<TokenInfo>, ahash::RandomState>,
+    address_meta:      Arc<SegmentedCache<Address, Option<AddressMetadata>, ahash::RandomState>>,
+    searcher_eoa:      Arc<SegmentedCache<Address, Option<SearcherInfo>, ahash::RandomState>>,
+    searcher_contract: Arc<SegmentedCache<Address, Option<SearcherInfo>, ahash::RandomState>>,
+    protocol_info:     Arc<SegmentedCache<Address, Option<ProtocolInfo>, ahash::RandomState>>,
+    token_info:        Arc<SegmentedCache<Address, Option<TokenInfo>, ahash::RandomState>>,
 
     pub metrics: CacheData,
 }
@@ -29,34 +32,39 @@ impl ReadWriteCache {
                     ((memory_per_table_mb * MEGABYTE) / std::mem::size_of::<AddressMetadata>())
                         as u64,
                 )
-                .build_with_hasher(ahash::RandomState::new()),
+                .build_with_hasher(ahash::RandomState::new())
+                .into(),
 
             searcher_eoa: SegmentedCache::builder(200)
                 .eviction_policy(EvictionPolicy::lru())
                 .max_capacity(
                     ((memory_per_table_mb * MEGABYTE) / std::mem::size_of::<SearcherInfo>()) as u64,
                 )
-                .build_with_hasher(ahash::RandomState::new()),
+                .build_with_hasher(ahash::RandomState::new())
+                .into(),
 
             searcher_contract: SegmentedCache::builder(200)
                 .eviction_policy(EvictionPolicy::lru())
                 .max_capacity(
                     ((memory_per_table_mb * MEGABYTE) / std::mem::size_of::<SearcherInfo>()) as u64,
                 )
-                .build_with_hasher(ahash::RandomState::new()),
+                .build_with_hasher(ahash::RandomState::new())
+                .into(),
             protocol_info: SegmentedCache::builder(200)
                 .eviction_policy(EvictionPolicy::lru())
                 .max_capacity(
                     ((memory_per_table_mb * MEGABYTE) / std::mem::size_of::<ProtocolInfo>()) as u64,
                 )
-                .build_with_hasher(ahash::RandomState::new()),
+                .build_with_hasher(ahash::RandomState::new())
+                .into(),
 
             token_info: SegmentedCache::builder(200)
                 .eviction_policy(EvictionPolicy::lru())
                 .max_capacity(
                     ((memory_per_table_mb * MEGABYTE) / std::mem::size_of::<TokenInfo>()) as u64,
                 )
-                .build_with_hasher(ahash::RandomState::new()),
+                .build_with_hasher(ahash::RandomState::new())
+                .into(),
         }
     }
 
