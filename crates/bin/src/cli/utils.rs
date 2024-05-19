@@ -41,6 +41,11 @@ pub fn load_database(
     LibmdbxReadWriter::init_db(db_endpoint, None, executor)
 }
 
+#[cfg(not(any(feature = "local-clickhouse", feature = "local-no-inserts")))]
+pub fn load_tip_database(cur: &LibmdbxReadWriter) -> eyre::Result<LibmdbxReadWriter> {
+    Ok(cur.clone())
+}
+
 /// This version is used when `local-clickhouse` is enabled but
 /// `local-no-inserts` is not.
 #[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
@@ -50,7 +55,18 @@ pub fn load_database(
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
     let clickhouse = Clickhouse::default();
-    Ok(ClickhouseMiddleware::new(clickhouse, inner))
+    Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
+}
+
+/// This version is used when `local-clickhouse` is enabled but
+/// `local-no-inserts` is not. for tip tracer
+#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
+pub fn load_tip_database(
+    cur: &ClickhouseMiddleware<LibmdbxReadWriter>,
+) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
+    let mut tip = cur.clone();
+    tip.client.tip = true;
+    Ok(tip)
 }
 
 /// This version is used when `local-clickhouse` and
@@ -67,7 +83,19 @@ pub fn load_database(
     let mut clickhouse = Clickhouse::default();
     clickhouse.buffered_insert_tx = Some(tx);
 
-    Ok(ClickhouseMiddleware::new(clickhouse, inner))
+    Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
+}
+
+/// This version is used when `local-clickhouse` and
+/// `local-no-inserts` is enabled this also will set a config in the clickhouse
+/// to ensure that
+#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+pub fn load_tip_database(
+    cur: &ClickhouseMiddleware<LibmdbxReadWriter>,
+) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
+    let mut tip = cur.clone();
+    tip.client.tip = true;
+    Ok(tip)
 }
 
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
@@ -77,7 +105,7 @@ pub fn load_read_only_database(
 ) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor)?;
     let clickhouse = Clickhouse::default();
-    Ok(ReadOnlyMiddleware::new(clickhouse, inner))
+    Ok(ReadOnlyMiddleware::new(clickhouse, inner.into()))
 }
 
 pub fn load_libmdbx(

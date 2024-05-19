@@ -57,6 +57,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub clickhouse: &'static CH,
     pub parser: &'static Parser<T, DB>,
     pub libmdbx: &'static DB,
+    pub tip_db: &'static DB,
     pub cli_only: bool,
     pub init_crit_tables: bool,
     pub metrics: bool,
@@ -80,6 +81,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         clickhouse: &'static CH,
         parser: &'static Parser<T, DB>,
         libmdbx: &'static DB,
+        tip_db: &'static DB,
         cli_only: bool,
         init_crit_tables: bool,
         metrics: bool,
@@ -100,6 +102,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             cli_only,
             init_crit_tables,
             metrics,
+            tip_db,
             _p: PhantomData,
         }
     }
@@ -217,7 +220,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             back_from_tip,
             state_collector,
             self.parser,
-            self.libmdbx,
+            self.tip_db,
             self.inspectors,
         )
     }

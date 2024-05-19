@@ -29,14 +29,15 @@ use crate::{
     Tables,
 };
 
+#[derive(Clone)]
 pub struct ClickhouseMiddleware<I: DBWriter> {
     #[allow(dead_code)] // on tests feature
     client: Clickhouse,
-    inner:  I,
+    inner:  Arc<I>,
 }
 
 impl<I: DBWriter> ClickhouseMiddleware<I> {
-    pub fn new(client: Clickhouse, inner: I) -> Self {
+    pub fn new(client: Clickhouse, inner: Arc<I>) -> Self {
         Self { inner, client }
     }
 }

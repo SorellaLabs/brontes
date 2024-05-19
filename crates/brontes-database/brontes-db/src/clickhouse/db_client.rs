@@ -51,6 +51,7 @@ use crate::{
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
 
+#[derive(Clone)]
 pub struct Clickhouse {
     pub tip:                 bool,
     pub client:              ClickhouseClient<BrontesClickhouseTables>,
