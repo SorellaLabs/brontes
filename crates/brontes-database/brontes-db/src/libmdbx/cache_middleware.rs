@@ -10,6 +10,7 @@ use moka::{policy::EvictionPolicy, sync::SegmentedCache};
 
 const MEGABYTE: usize = 1024 * 1024;
 
+#[derive(Clone)]
 pub struct ReadWriteCache {
     address_meta:      Arc<SegmentedCache<Address, Option<AddressMetadata>, ahash::RandomState>>,
     searcher_eoa:      Arc<SegmentedCache<Address, Option<SearcherInfo>, ahash::RandomState>>,
