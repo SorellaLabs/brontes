@@ -16,11 +16,6 @@ use crate::clickhouse::dbms::*;
 
 type InsertFut = Pin<Box<dyn Future<Output = Result<eyre::Result<()>, JoinError>> + Send>>;
 
-pub struct BrontesClickhouseData {
-    pub data:         BrontesClickhouseTableDataTypes,
-    pub force_insert: bool,
-}
-
 pub struct ClickhouseBuffered {
     client:            ClickhouseClient<BrontesClickhouseTables>,
     rx:                UnboundedYapperReceiver<Vec<BrontesClickhouseData>>,
