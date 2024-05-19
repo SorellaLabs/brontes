@@ -413,7 +413,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         metrics.running_ranges.increment(futures.len() as f64);
         metrics
             .total_set_range
-            .increment(end_block - self.start_block.unwrap());
+            .increment(end_block - self.start_block.unwrap_or(end_block));
 
         Ok(Brontes { futures, metrics })
     }
