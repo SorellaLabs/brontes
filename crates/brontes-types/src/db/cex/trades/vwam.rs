@@ -68,6 +68,7 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        bypass_vol: bool,
     ) -> Option<MakerTaker> {
         if pair.0 == pair.1 {
             return Some((
@@ -80,7 +81,7 @@ impl CexTradeMap {
         self.ensure_proper_order(exchanges, pair);
 
         let res = self
-            .get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref())
+            .get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref(), bypass_vol)
             .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()));
 
         if res.is_none() {
@@ -256,6 +257,7 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        bypass_vol: bool,
     ) -> Option<MakerTaker> {
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
@@ -303,7 +305,7 @@ impl CexTradeMap {
         //   by price)
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
 
-        self.get_most_accurate_basket(trade_queue, volume)
+        self.get_most_accurate_basket(trade_queue, volume, bypass_vol)
     }
 
     fn get_most_accurate_basket_intermediary(
@@ -368,6 +370,7 @@ impl CexTradeMap {
         &self,
         mut queue: PairTradeQueue<'_>,
         volume: &Rational,
+        bypass_vol: bool,
     ) -> Option<MakerTaker> {
         let mut trades = Vec::new();
 
@@ -387,7 +390,7 @@ impl CexTradeMap {
             trades.push(next);
         }
 
-        if &cur_vol < volume {
+        if &cur_vol < volume && !bypass_vol {
             return None
         }
 

@@ -313,6 +313,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 pair,
                 &vol,
                 metadata.block_timestamp * 1000000,
+                true,
             )?
             .0
             .global_exchange_price;
@@ -366,6 +367,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     pair,
                                     &swap.amount_out,
                                     metadata.microseconds_block_timestamp(),
+                                    marked_cex_dex,
                                 )
                         })
                     })
@@ -380,6 +382,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 pair,
                                 &swap.amount_out,
                                 metadata.microseconds_block_timestamp(),
+                                marked_cex_dex,
                             )
                     });
 
@@ -398,6 +401,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     &pair,
                                     &swap.amount_out,
                                     None,
+                                    marked_cex_dex,
                                 )
                         })
                     })
@@ -407,7 +411,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             .as_ref()
                             .unwrap()
                             .lock()
-                            .get_optimistic_vmap(&self.cex_exchanges, &pair, &swap.amount_out, None)
+                            .get_optimistic_vmap(
+                                &self.cex_exchanges,
+                                &pair,
+                                &swap.amount_out,
+                                None,
+                                marked_cex_dex,
+                            )
                     });
 
                 if (window.is_none() || other.is_none()) && marked_cex_dex {
