@@ -458,7 +458,8 @@ impl LibmdbxWriter {
     pub fn run(self, shutdown: GracefulShutdown) {
         // we do this to avoid main tokio runtime load
         std::thread::spawn(move || {
-            tokio::runtime::Builder::new_current_thread()
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
                 .enable_all()
                 .build()
                 .unwrap()
