@@ -25,9 +25,11 @@ impl CexTradeMap {
         volume: &Rational,
         block_timestamp: u64,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        bypass_vol: bool,
     ) -> (Option<MakerTakerWindowVWAP>, Option<MakerTaker>) {
-        let vwam = self.get_optimistic_vmap(exchanges, &pair, volume, quality);
-        let window = self.calculate_time_window_vwam(exchanges, pair, volume, block_timestamp);
+        let vwam = self.get_optimistic_vmap(exchanges, &pair, volume, quality, bypass_vol);
+        let window =
+            self.calculate_time_window_vwam(exchanges, pair, volume, block_timestamp, bypass_vol);
 
         (window, vwam)
     }
@@ -38,9 +40,10 @@ impl CexTradeMap {
         pair: Pair,
         volume: &Rational,
         block_timestamp: u64,
+        bypass_vol: bool,
     ) -> Option<MakerTakerWindowVWAP> {
         TimeWindowTrades::new_from_cex_trade_map(&mut self.0, block_timestamp, exchanges, pair)
-            .get_price(exchanges, pair, volume, block_timestamp)
+            .get_price(exchanges, pair, volume, block_timestamp, bypass_vol)
     }
 
     pub fn get_optimistic_vmap(
@@ -49,7 +52,8 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        bypass_vol: bool,
     ) -> Option<MakerTaker> {
-        self.get_price(exchanges, pair, volume, quality)
+        self.get_price(exchanges, pair, volume, quality, bypass_vol)
     }
 }

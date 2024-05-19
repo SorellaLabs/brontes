@@ -118,6 +118,7 @@ impl<'a> TimeWindowTrades<'a> {
         pair: Pair,
         volume: &Rational,
         timestamp: u64,
+        bypass_vol: bool,
     ) -> Option<MakerTakerWindowVWAP> {
         if pair.0 == pair.1 {
             return Some((
@@ -127,8 +128,12 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         let res = self
-            .get_vwap_price(exchanges, pair, volume, timestamp)
-            .or_else(|| self.get_vwap_price_via_intermediary(exchanges, &pair, volume, timestamp));
+            .get_vwap_price(exchanges, pair, volume, timestamp, bypass_vol)
+            .or_else(|| {
+                self.get_vwap_price_via_intermediary(
+                    exchanges, &pair, volume, timestamp, bypass_vol,
+                )
+            });
 
         if res.is_none() {
             tracing::debug!(?pair, "No price VMAP found for pair in time window.");
@@ -143,6 +148,7 @@ impl<'a> TimeWindowTrades<'a> {
         pair: &Pair,
         volume: &Rational,
         block_timestamp: u64,
+        bypass_vol: bool,
     ) -> Option<MakerTakerWindowVWAP> {
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
@@ -169,10 +175,12 @@ impl<'a> TimeWindowTrades<'a> {
                 }
 
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
-                let res = self.get_vwap_price(exchanges, pair0, volume, block_timestamp)?;
+                let res =
+                    self.get_vwap_price(exchanges, pair0, volume, block_timestamp, bypass_vol)?;
 
                 let new_vol = volume * &res.0.global_exchange_price;
-                let pair1_v = self.get_vwap_price(exchanges, pair1, &new_vol, block_timestamp)?;
+                let pair1_v =
+                    self.get_vwap_price(exchanges, pair1, &new_vol, block_timestamp, bypass_vol)?;
 
                 let maker = res.0 * pair1_v.0;
                 let taker = res.1 * pair1_v.1;
@@ -230,6 +238,7 @@ impl<'a> TimeWindowTrades<'a> {
         pair: Pair,
         vol: &Rational,
         block_timestamp: u64,
+        bypass_vol: bool,
     ) -> Option<MakerTakerWindowVWAP> {
         let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
             self.0
@@ -285,7 +294,7 @@ impl<'a> TimeWindowTrades<'a> {
             walker.expand_time_bounds(min_expand, TIME_STEP);
         }
 
-        if &trade_volume_global < vol {
+        if &trade_volume_global < vol && !bypass_vol {
             return None
         }
 
