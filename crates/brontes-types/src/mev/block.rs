@@ -17,7 +17,7 @@ use serde_with::serde_as;
 use super::MevType;
 use crate::{
     db::redefined_types::primitives::{AddressRedefined, B256Redefined},
-    display::utils::{fomrat_ethre, formate_etherscan_address_url},
+    display::utils::formate_etherscan_address_url,
     ToFloatNearest, ToScaledRational,
 };
 #[allow(unused_imports)]
