@@ -13,7 +13,7 @@ use tokio::sync::mpsc::unbounded_channel;
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
     banner,
-    cli::{get_tracing_provider, init_inspectors},
+    cli::{get_tracing_provider, init_inspectors, load_tip_database},
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
 };
@@ -66,7 +66,7 @@ pub struct RunArgs {
     #[arg(long, default_value = "false")]
     pub force_no_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
-    #[arg(long, default_value = "5")]
+    #[arg(long, default_value = "10")]
     pub behind_tip:           u64,
     /// Run in CLI only mode (no TUI) - will output progress bars to stdout
     #[arg(long, default_value = "false")]
@@ -107,6 +107,7 @@ impl RunArgs {
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
         let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint)?);
+        let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
         let cex_download_config = CexDownloadConfig::new(
@@ -161,6 +162,7 @@ impl RunArgs {
                     clickhouse,
                     parser,
                     libmdbx,
+                    tip,
                     self.cli_only,
                     self.init_crit_tables,
                     self.with_metrics,

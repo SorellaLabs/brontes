@@ -51,15 +51,17 @@ use crate::{
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
 
+#[derive(Clone)]
 pub struct Clickhouse {
+    pub tip:                 bool,
     pub client:              ClickhouseClient<BrontesClickhouseTables>,
     pub cex_download_config: CexDownloadConfig,
-    pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>>,
+    pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
 }
 
 impl Default for Clickhouse {
     fn default() -> Self {
-        Clickhouse::new(clickhouse_config(), Default::default(), Default::default())
+        Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false)
     }
 }
 
@@ -67,10 +69,11 @@ impl Clickhouse {
     pub fn new(
         config: ClickhouseConfig,
         cex_download_config: CexDownloadConfig,
-        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseTableDataTypes>>>,
+        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
+        tip: bool,
     ) -> Self {
         let client = config.build();
-        Self { client, cex_download_config, buffered_insert_tx }
+        Self { client, cex_download_config, buffered_insert_tx, tip }
     }
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
@@ -93,7 +96,7 @@ impl Clickhouse {
         let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![joined.into()])?;
+            tx.send(vec![(joined, self.tip).into()])?;
         }
 
         Ok(())
@@ -107,7 +110,7 @@ impl Clickhouse {
         let joined = JoinedSearcherInfo::new_eoa(searcher_contract, searcher_info);
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![joined.into()])?;
+            tx.send(vec![(joined, self.tip).into()])?;
         }
 
         Ok(())
@@ -121,7 +124,7 @@ impl Clickhouse {
         let info = BuilderInfoWithAddress::new_with_address(builder_eoa, builder_info);
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![info.into()])?;
+            tx.send(vec![(info, self.tip).into()])?;
         }
 
         Ok(())
@@ -134,24 +137,30 @@ impl Clickhouse {
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![block.into()])?;
+            tx.send(vec![(block, self.tip).into()])?;
 
             let (bundle_headers, bundle_data): (Vec<_>, Vec<_>) = mev
                 .into_iter()
                 .map(|bundle| (bundle.header, bundle.data))
                 .unzip();
 
-            tx.send(bundle_headers.into_iter().map(Into::into).collect())?;
+            tx.send(
+                bundle_headers
+                    .into_iter()
+                    .zip(vec![self.tip].into_iter().cycle())
+                    .map(Into::into)
+                    .collect(),
+            )?;
 
             bundle_data.into_iter().try_for_each(|data| {
                 match data {
-                    BundleData::Sandwich(s) => tx.send(vec![s.into()])?,
-                    BundleData::AtomicArb(s) => tx.send(vec![s.into()])?,
-                    BundleData::JitSandwich(s) => tx.send(vec![s.into()])?,
-                    BundleData::Jit(s) => tx.send(vec![s.into()])?,
-                    BundleData::CexDex(s) => tx.send(vec![s.into()])?,
-                    BundleData::Liquidation(s) => tx.send(vec![s.into()])?,
-                    BundleData::Unknown(s) => tx.send(vec![s.into()])?,
+                    BundleData::Sandwich(s) => tx.send(vec![(s, self.tip).into()])?,
+                    BundleData::AtomicArb(s) => tx.send(vec![(s, self.tip).into()])?,
+                    BundleData::JitSandwich(s) => tx.send(vec![(s, self.tip).into()])?,
+                    BundleData::Jit(s) => tx.send(vec![(s, self.tip).into()])?,
+                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip).into()])?,
+                    BundleData::Liquidation(s) => tx.send(vec![(s, self.tip).into()])?,
+                    BundleData::Unknown(s) => tx.send(vec![(s, self.tip).into()])?,
                 };
 
                 Ok(()) as eyre::Result<()>
@@ -170,7 +179,13 @@ impl Clickhouse {
             let quotes_with_block = DexQuotesWithBlockNumber::new_with_block(block_num, q);
 
             if let Some(tx) = self.buffered_insert_tx.as_ref() {
-                tx.send(quotes_with_block.into_iter().map(Into::into).collect())?;
+                tx.send(
+                    quotes_with_block
+                        .into_iter()
+                        .zip(vec![self.tip].into_iter().cycle())
+                        .map(Into::into)
+                        .collect(),
+                )?;
             }
         }
 
@@ -185,7 +200,13 @@ impl Clickhouse {
             .collect::<Vec<_>>();
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(roots.into_iter().map(Into::into).collect())?;
+            tx.send(
+                roots
+                    .into_iter()
+                    .zip(vec![self.tip].into_iter().cycle())
+                    .map(Into::into)
+                    .collect(),
+            )?;
         }
 
         Ok(())
@@ -200,7 +221,7 @@ impl Clickhouse {
         let data = TokenInfoWithAddress { address, inner: TokenInfo { symbol, decimals } };
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![data.into()])?
+            tx.send(vec![(data, self.tip).into()])?
         };
 
         Ok(())
@@ -218,7 +239,7 @@ impl Clickhouse {
             ProtocolInfoClickhouse::new(block, address, tokens, curve_lp_token, classifier_name);
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![data.into()])?
+            tx.send(vec![(data, self.tip).into()])?
         };
 
         Ok(())
@@ -226,7 +247,13 @@ impl Clickhouse {
 
     pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(traces.into_iter().map(Into::into).collect())?
+            tx.send(
+                traces
+                    .into_iter()
+                    .zip(vec![self.tip].into_iter().cycle())
+                    .map(Into::into)
+                    .collect(),
+            )?
         };
 
         Ok(())
