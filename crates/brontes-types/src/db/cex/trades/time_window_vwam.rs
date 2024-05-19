@@ -12,7 +12,10 @@ use super::{
     CexTrades,
 };
 use crate::{
-    constants::USDC_ADDRESS, db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair,
+    constants::{USDC_ADDRESS, USDT_ADDRESS},
+    db::cex::CexExchange,
+    normalized_actions::NormalizedSwap,
+    pair::Pair,
     FastHashMap, FastHashSet,
 };
 
@@ -157,7 +160,7 @@ impl<'a> TimeWindowTrades<'a> {
         pair: &Pair,
         volume: &Rational,
         block_timestamp: u64,
-        mut bypass_vol: bool,
+        bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
@@ -184,11 +187,9 @@ impl<'a> TimeWindowTrades<'a> {
                     return None
                 }
 
-                let mut bypassing_usdc_pair = false;
-
-                if pair0.0 == USDC_ADDRESS && !bypass_vol {
-                    bypass_vol = true;
-                    bypassing_usdc_pair = true;
+                let mut bypass_intermediary_vol = false;
+                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS {
+                    bypass_intermediary_vol = true;
                 }
 
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
@@ -197,17 +198,13 @@ impl<'a> TimeWindowTrades<'a> {
                     pair0,
                     volume,
                     block_timestamp,
-                    bypass_vol,
+                    bypass_vol || bypass_intermediary_vol,
                     dex_swap,
                     tx_hash,
                 )?;
 
-                if bypassing_usdc_pair {
-                    bypass_vol = false;
-                }
-
-                if pair1.1 == USDC_ADDRESS && !bypass_vol {
-                    bypass_vol = true;
+                if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS {
+                    bypass_intermediary_vol = true;
                 }
 
                 let new_vol = volume * &res.0.global_exchange_price;
@@ -216,7 +213,7 @@ impl<'a> TimeWindowTrades<'a> {
                     pair1,
                     &new_vol,
                     block_timestamp,
-                    bypass_vol,
+                    bypass_vol || bypass_intermediary_vol,
                     dex_swap,
                     tx_hash,
                 )?;
