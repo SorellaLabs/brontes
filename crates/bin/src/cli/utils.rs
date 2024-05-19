@@ -16,7 +16,7 @@ use brontes_database::clickhouse::ClickhouseMiddleware;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_database::clickhouse::ReadOnlyMiddleware;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
-use brontes_database::clickhouse::{dbms::BrontesClickhouseTableDataTypes, ClickhouseBuffered};
+use brontes_database::clickhouse::{dbms::BrontesClickhouseData, ClickhouseBuffered};
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
 use brontes_metrics::inspectors::OutlierMetrics;
@@ -194,7 +194,7 @@ pub fn get_env_vars() -> eyre::Result<String> {
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
-    buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseTableDataTypes>>,
+    buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseData>>,
 ) {
     let shutdown = executor.get_graceful_shutdown();
     ClickhouseBuffered::new(
