@@ -245,6 +245,10 @@ pub fn calculate_builder_profit(
         proposer_fee_recipient,
     );
 
+    println!("Builder Payments: {:?}", builder_payments);
+    println!("Builder Sponsorship Amount: {:?}", builder_sponsorship_amount);
+    println!("Proposer MEV Reward: {:?}", proposer_mev_reward);
+
     BlockPnL::new(
         (builder_payments - builder_sponsorship_amount - proposer_mev_reward) as u128,
         mev_searching_profit,
