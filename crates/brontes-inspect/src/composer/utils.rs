@@ -19,25 +19,23 @@ pub(crate) fn build_mev_header(
     orchestra_data: &[Bundle],
     quote_token: Address,
 ) -> MevBlock {
-    let (cumulative_mev_priority_fee_paid, cumulative_mev_profit_usd, total_mev_bribe) =
-        orchestra_data.iter().fold(
-            (0u128, 0.0, 0u128),
-            |(total_fee_paid, total_profit_usd, mev_bribe), bundle| {
-                let fee_paid = bundle.data.total_priority_fee_paid(
-                    tree.header.base_fee_per_gas.unwrap_or_default() as u128,
-                );
-                let profit_usd = if bundle.mev_type() != MevType::SearcherTx {
-                    bundle.header.profit_usd
-                } else {
-                    0.0
-                };
-                (
-                    total_fee_paid + fee_paid,
-                    total_profit_usd + profit_usd,
-                    mev_bribe + bundle.data.bribe(),
-                )
-            },
-        );
+    let (total_mev_priority_fee_paid, total_mev_profit_usd, total_mev_bribe) = orchestra_data
+        .iter()
+        .fold((0u128, 0.0, 0u128), |(total_fee_paid, total_profit_usd, mev_bribe), bundle| {
+            let fee_paid = bundle
+                .data
+                .total_priority_fee_paid(tree.header.base_fee_per_gas.unwrap_or_default() as u128);
+            let profit_usd = if bundle.mev_type() != MevType::SearcherTx {
+                bundle.header.profit_usd
+            } else {
+                0.0
+            };
+            (
+                total_fee_paid + fee_paid,
+                total_profit_usd + profit_usd,
+                mev_bribe + bundle.data.bribe(),
+            )
+        });
 
     let eth_price = metadata.get_eth_price(quote_token);
 
@@ -48,7 +46,14 @@ pub(crate) fn build_mev_header(
         builder_mev_profit_usd,
         fallback_mev_reward,
         fallback_proposer_address,
+        builder_searcher_tip,
     ) = calculate_builder_profit(tree, metadata, orchestra_data, &pre_processing);
+
+    let builder_searcher_bribes_usd = f64::rounding_from(
+        builder_searcher_tip.to_scaled_rational(18) * &eth_price,
+        RoundingMode::Nearest,
+    )
+    .0;
 
     let builder_eth_profit = builder_eth_profit.to_scaled_rational(18);
 
@@ -65,11 +70,11 @@ pub(crate) fn build_mev_header(
         block_number: metadata.block_num,
         mev_count,
         eth_price: f64::rounding_from(&eth_price, RoundingMode::Nearest).0,
-        cumulative_gas_used: pre_processing.cumulative_gas_used,
-        cumulative_priority_fee: pre_processing.cumulative_priority_fee,
+        total_gas_used: pre_processing.total_gas_used,
+        total_priority_fee: pre_processing.total_priority_fee,
         total_bribe: pre_processing.total_bribe,
         total_mev_bribe,
-        cumulative_mev_priority_fee_paid,
+        total_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
         builder_eth_profit: f64::rounding_from(&builder_eth_profit, RoundingMode::Nearest).0,
         builder_profit_usd: f64::rounding_from(
@@ -78,10 +83,12 @@ pub(crate) fn build_mev_header(
         )
         .0,
         builder_mev_profit_usd,
+        builder_searcher_bribes: builder_searcher_tip,
+        builder_searcher_bribes_usd,
         proposer_fee_recipient,
         proposer_mev_reward,
         proposer_profit_usd,
-        cumulative_mev_profit_usd,
+        total_mev_profit_usd,
         possible_mev,
     }
 }
@@ -178,10 +185,10 @@ pub fn calculate_builder_profit(
     metadata: &Arc<Metadata>,
     bundles: &[Bundle],
     pre_processing: &BlockPreprocessing,
-) -> (i128, f64, Option<u128>, Option<Address>) {
+) -> (i128, f64, Option<u128>, Option<Address>, u128) {
     let builder_address = tree.header.beneficiary;
     let builder_payments: i128 =
-        (pre_processing.cumulative_priority_fee + pre_processing.total_bribe) as i128;
+        (pre_processing.total_priority_fee + pre_processing.total_bribe) as i128;
 
     let builder_sponsorship_amount = calculate_builder_sponsorship_amount(
         tree.clone(),
@@ -205,13 +212,15 @@ pub fn calculate_builder_profit(
                 0.0,
                 Some(proposer_mev_reward as u128),
                 proposer_address,
+                0,
             )
         }
     };
 
     // Calculate the builder's mev profit from it's associated vertically integrated
     // searchers
-    let mev_searching_profit: f64 = calculate_mev_searching_profit(bundles, builder_info);
+    let (mev_searching_profit, vertically_integrated_searcher_tip) =
+        calculate_mev_searching_profit(bundles, builder_info);
 
     calculate_payments(
         &tree,
@@ -221,6 +230,7 @@ pub fn calculate_builder_profit(
         builder_payments,
         builder_sponsorship_amount,
         mev_searching_profit,
+        vertically_integrated_searcher_tip,
     )
 }
 
@@ -232,7 +242,8 @@ fn calculate_payments(
     builder_payments: i128,
     builder_sponsorship_amount: i128,
     mev_searching_profit: f64,
-) -> (i128, f64, Option<u128>, Option<Address>) {
+    builder_searcher_tip: u128,
+) -> (i128, f64, Option<u128>, Option<Address>, u128) {
     if let Some((mev_proposer_reward, proposer_address)) =
         proposer_payment(tree, builder_address, builder_info.ultrasound_relay_collateral_address)
     {
@@ -241,6 +252,7 @@ fn calculate_payments(
             mev_searching_profit,
             Some(mev_proposer_reward as u128),
             proposer_address,
+            builder_searcher_tip,
         )
     } else {
         (
@@ -250,6 +262,7 @@ fn calculate_payments(
             mev_searching_profit,
             None,
             None,
+            builder_searcher_tip,
         )
     }
 }
@@ -273,24 +286,30 @@ fn proposer_payment(
     })
 }
 
-fn calculate_mev_searching_profit(bundles: &[Bundle], builder_info: &BuilderInfo) -> f64 {
+/// Accounts for the profit made by the builders vertically integrated searchers
+fn calculate_mev_searching_profit(bundles: &[Bundle], builder_info: &BuilderInfo) -> (f64, u128) {
     if builder_info.searchers_eoas.is_empty() && builder_info.searchers_contracts.is_empty() {
-        0.0
-    } else {
-        bundles
-            .iter()
-            .filter(|bundle| {
-                bundle.mev_type() != MevType::SearcherTx
-                    && (builder_info.searchers_eoas.contains(&bundle.header.eoa)
-                        || bundle
-                            .header
-                            .mev_contract
-                            .map(|mc| builder_info.searchers_contracts.contains(&mc))
-                            .unwrap_or(false))
-            })
-            .map(|bundle| bundle.header.profit_usd)
-            .sum()
+        return (0.0, 0);
     }
+    bundles
+        .iter()
+        .filter(|bundle| {
+            builder_info.searchers_eoas.contains(&bundle.header.eoa)
+                || bundle
+                    .header
+                    .mev_contract
+                    .map(|mev_contract| builder_info.searchers_contracts.contains(&mev_contract))
+                    .unwrap_or(false)
+        })
+        .fold((0.0, 0), |(accumulated_profit, accumulated_gas), bundle| {
+            let profit = if bundle.mev_type() != MevType::SearcherTx {
+                bundle.header.profit_usd
+            } else {
+                0.0
+            };
+            let gas_paid = bundle.data.total_gas_paid();
+            (accumulated_profit + profit, accumulated_gas + gas_paid)
+        })
 }
 
 fn calculate_builder_sponsorship_amount(
@@ -331,26 +350,21 @@ fn calculate_builder_sponsorship_amount(
 }
 
 pub struct BlockPreprocessing {
-    cumulative_gas_used:     u128,
-    cumulative_priority_fee: u128,
-    total_bribe:             u128,
-    builder_address:         Address,
-    gas_details_by_address:  FastHashMap<Address, GasDetails>,
+    total_gas_used:         u128,
+    total_priority_fee:     u128,
+    total_bribe:            u128,
+    builder_address:        Address,
+    gas_details_by_address: FastHashMap<Address, GasDetails>,
 }
 
 /// Pre-processes the block data for the Builder PNL calculation
 pub(crate) fn pre_process(tree: Arc<BlockTree<Action>>) -> BlockPreprocessing {
     let builder_address = tree.header.beneficiary;
 
-    let (gas_details_by_address, cumulative_gas_used, cumulative_priority_fee, total_bribe) =
+    let (gas_details_by_address, total_gas_used, total_priority_fee, total_bribe) =
         tree.tx_roots.iter().fold(
             (FastHashMap::default(), 0u128, 0u128, 0u128),
-            |(
-                mut gas_details_by_address,
-                cumulative_gas_used,
-                cumulative_priority_fee,
-                total_bribe,
-            ),
+            |(mut gas_details_by_address, total_gas_used, total_priority_fee, total_bribe),
              root| {
                 let address = root.get_from_address();
                 let gas_details_item = &root.gas_details;
@@ -366,16 +380,16 @@ pub(crate) fn pre_process(tree: Arc<BlockTree<Action>>) -> BlockPreprocessing {
 
                 (
                     gas_details_by_address,
-                    cumulative_gas_used + gas_used,
-                    cumulative_priority_fee + priority_fee * gas_used,
+                    total_gas_used + gas_used,
+                    total_priority_fee + priority_fee * gas_used,
                     total_bribe + coinbase_transfer,
                 )
             },
         );
 
     BlockPreprocessing {
-        cumulative_gas_used,
-        cumulative_priority_fee,
+        total_gas_used,
+        total_priority_fee,
         total_bribe,
         builder_address,
         gas_details_by_address,

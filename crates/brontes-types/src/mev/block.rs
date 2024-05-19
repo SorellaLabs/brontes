@@ -15,7 +15,10 @@ use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::MevType;
-use crate::db::redefined_types::primitives::{AddressRedefined, B256Redefined};
+use crate::{
+    db::redefined_types::primitives::{AddressRedefined, B256Redefined},
+    ToFloatNearest, ToScaledRational,
+};
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
@@ -27,26 +30,30 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSer, rDeser, Archive))]
 pub struct MevBlock {
-    pub block_hash: B256,
-    pub block_number: u64,
+    pub block_hash:                  B256,
+    pub block_number:                u64,
     #[redefined(same_fields)]
-    pub mev_count: MevCount,
-    pub eth_price: f64,
-    pub cumulative_gas_used: u128,
-    pub cumulative_priority_fee: u128,
-    pub total_bribe: u128,
-    pub total_mev_bribe: u128,
-    pub cumulative_mev_priority_fee_paid: u128,
-    pub builder_address: Address,
-    pub builder_eth_profit: f64,
-    pub builder_profit_usd: f64,
+    pub mev_count:                   MevCount,
+    pub eth_price:                   f64,
+    pub total_gas_used:              u128,
+    pub total_priority_fee:          u128,
+    pub total_bribe:                 u128,
+    pub total_mev_bribe:             u128,
+    pub total_mev_priority_fee_paid: u128,
+    pub builder_address:             Address,
+    pub builder_eth_profit:          f64,
+    pub builder_profit_usd:          f64,
     // Builder MEV profit from their vertically integrated searchers (in USD)
-    pub builder_mev_profit_usd: f64,
-    pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward: Option<u128>,
-    pub proposer_profit_usd: Option<f64>,
-    pub cumulative_mev_profit_usd: f64,
-    pub possible_mev: PossibleMevCollection,
+    pub builder_mev_profit_usd:      f64,
+    // Bribes paid to the builder by their own searchers
+    pub builder_searcher_bribes:     u128,
+    // Bribes paid to the builder by their own searchers (in USD)
+    pub builder_searcher_bribes_usd: f64,
+    pub proposer_fee_recipient:      Option<Address>,
+    pub proposer_mev_reward:         Option<u128>,
+    pub proposer_profit_usd:         Option<f64>,
+    pub total_mev_profit_usd:        f64,
+    pub possible_mev:                PossibleMevCollection,
 }
 
 impl fmt::Display for MevBlock {
@@ -65,36 +72,40 @@ impl fmt::Display for MevBlock {
             writeln!(f, "{}", line.green())?;
         }
 
-        writeln!(f, "Block Number: {}", self.block_number)?;
+        let block_value = (self.total_priority_fee + self.total_bribe).to_scaled_rational(18);
+
+        writeln!(f, "{} {}", "Block Number:".bold(), self.block_number)?;
+        // Block value section
+        writeln!(f, "\n{}: {:.6} ETH", "Block Value:".bold().red().underline(), block_value)?;
         // Mev section
         writeln!(f, "\n{}", "Mev:".bold().red().underline())?;
         writeln!(f, "{}", self.mev_count.to_string().bold())?;
-        writeln!(
-            f,
-            "  - Cumulative MEV Profit (USD): {}",
-            format_profit(self.cumulative_mev_profit_usd)
-        )?;
+        writeln!(f, "  - Total MEV Profit (USD): {}", format_profit(self.total_mev_profit_usd))?;
         writeln!(f, "  - Mev Gas:")?;
-        writeln!(f, "    - Total Bribe: {:.6} ETH", self.total_bribe as f64 * 1e-18)?;
         writeln!(
             f,
-            "    - Cumulative MEV Priority Fee Paid: {:.6} ETH",
-            self.cumulative_mev_priority_fee_paid as f64 * 1e-18
+            "    - Total Bribe Paid by MEV bots: {:.6} ETH",
+            self.total_bribe as f64 * 1e-18
+        )?;
+        writeln!(
+            f,
+            "    - Total Priority Fee Paid by MEV bots: {:.6} ETH",
+            self.total_mev_priority_fee_paid as f64 * 1e-18
         )?;
 
-        // Builder section
-        writeln!(f, "{}", "Builder:".bold().red().underline())?;
-        writeln!(f, "  - Builder Address: {:?}", self.builder_address)?;
-        let builder_profit_color = if self.builder_eth_profit < 0.0 { "red" } else { "green" };
+        let block_value = block_value.to_float();
         writeln!(
             f,
-            "  - Builder Profit (USD): {}",
-            format_profit(self.builder_profit_usd).color(builder_profit_color)
+            "  -VI Searcher Bribes: {:.6} ETH ({:.2}% of total Block Value)",
+            self.builder_searcher_bribes as f64 * 1e-18,
+            self.builder_searcher_bribes as f64 * 1e-18 / block_value
         )?;
+
         writeln!(
             f,
-            "  - Builder ETH Profit: {:.6} ETH",
-            format!("{:.6}", self.builder_eth_profit).color(builder_profit_color)
+            "  -VI Searcher Bribes (in USD): {:.6} USD ({:.2}% of total Block Value)",
+            self.builder_searcher_bribes as f64 * 1e-18,
+            self.builder_searcher_bribes as f64 * 1e-18 / block_value
         )?;
 
         let builder_mev_profit_color =
@@ -336,14 +347,12 @@ impl Serialize for MevBlock {
         )?;
 
         ser_struct.serialize_field("eth_price", &self.eth_price)?;
-        ser_struct.serialize_field("cumulative_gas_used", &self.cumulative_gas_used)?;
-        ser_struct.serialize_field("cumulative_priority_fee", &self.cumulative_priority_fee)?;
+        ser_struct.serialize_field("total_gas_used", &self.total_gas_used)?;
+        ser_struct.serialize_field("total_priority_fee", &self.total_priority_fee)?;
         ser_struct.serialize_field("total_bribe", &self.total_bribe)?;
         ser_struct.serialize_field("total_mev_bribe", &self.total_mev_bribe)?;
-        ser_struct.serialize_field(
-            "cumulative_mev_priority_fee_paid",
-            &self.cumulative_mev_priority_fee_paid,
-        )?;
+        ser_struct
+            .serialize_field("total_mev_priority_fee_paid", &self.total_mev_priority_fee_paid)?;
         ser_struct.serialize_field("builder_address", &format!("{:?}", self.builder_address))?;
         ser_struct.serialize_field("builder_eth_profit", &self.builder_eth_profit)?;
         ser_struct.serialize_field("builder_profit_usd", &self.builder_profit_usd)?;
@@ -357,7 +366,7 @@ impl Serialize for MevBlock {
         )?;
         ser_struct.serialize_field("proposer_mev_reward", &self.proposer_mev_reward)?;
         ser_struct.serialize_field("proposer_profit_usd", &self.proposer_profit_usd)?;
-        ser_struct.serialize_field("cumulative_mev_profit_usd", &self.cumulative_mev_profit_usd)?;
+        ser_struct.serialize_field("total_mev_profit_usd", &self.total_mev_profit_usd)?;
 
         let mut possible_tx_hashes = Vec::new();
         let mut possible_tx_idxes = Vec::new();
@@ -446,11 +455,11 @@ impl DbRow for MevBlock {
         "mev_count.atomic_backrun_count",
         "mev_count.liquidation_count",
         "eth_price",
-        "cumulative_gas_used",
-        "cumulative_priority_fee",
+        "total_gas_used",
+        "total_priority_fee",
         "total_bribe",
         "total_mev_bribe",
-        "cumulative_mev_priority_fee_paid",
+        "total_mev_priority_fee_paid",
         "builder_address",
         "builder_eth_profit",
         "builder_profit_usd",
@@ -458,7 +467,7 @@ impl DbRow for MevBlock {
         "proposer_fee_recipient",
         "proposer_mev_reward",
         "proposer_profit_usd",
-        "cumulative_mev_profit_usd",
+        "total_mev_profit_usd",
         "possible_mev.tx_hash",
         "possible_mev.tx_idx",
         "possible_mev.gas_details.coinbase_transfer",
@@ -481,10 +490,10 @@ impl DbRow for MevBlock {
 // `mev_count.atomic_backrun_count` Array(UInt64),
 // `mev_count.liquidation_count` Array(UInt64),
 // `eth_price` Float64,
-// `cumulative_gas_used` UInt128,
-// `cumulative_priority_fee` UInt128,
+// `total_gas_used` UInt128,
+// `total_priority_fee` UInt128,
 // `total_bribe` UInt128,
-// `cumulative_mev_priority_fee_paid` UInt128,
+// `total_mev_priority_fee_paid` UInt128,
 // `builder_address` String,
 // `builder_eth_profit` Float64,
 // `builder_profit_usd` Float64,
@@ -492,7 +501,7 @@ impl DbRow for MevBlock {
 // `proposer_fee_recipient` Nullable(String),
 // `proposer_mev_reward` Nullable(UInt128),
 // `proposer_profit_usd` Nullable(Float64),
-// `cumulative_mev_profit_usd` Float64,
+// `total_mev_profit_usd` Float64,
 // `possible_mev.tx_hash` Array(String),
 // `possible_mev.tx_idx` Array(UInt64),
 // `possible_mev.gas_details.coinbase_transfer` Array(Nullable(UInt128)),
