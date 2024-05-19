@@ -52,7 +52,8 @@ pub struct RunArgs {
     #[arg(
         long,
         short,
-        default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
+        default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin,Bitmex,Deribit,Kraken,Upbit,Huobi,\
+                         GateIo,Bitstamp,Gemini",
         value_delimiter = ','
     )]
     pub cex_exchanges:        Vec<CexExchange>,

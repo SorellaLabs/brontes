@@ -12,7 +12,8 @@ use super::{
     CexTrades,
 };
 use crate::{
-    db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair, FastHashMap, FastHashSet,
+    constants::USDC_ADDRESS, db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair,
+    FastHashMap, FastHashSet,
 };
 
 const PRE_DECAY: f64 = -0.0000005;
@@ -156,7 +157,7 @@ impl<'a> TimeWindowTrades<'a> {
         pair: &Pair,
         volume: &Rational,
         block_timestamp: u64,
-        bypass_vol: bool,
+        mut bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
@@ -183,6 +184,13 @@ impl<'a> TimeWindowTrades<'a> {
                     return None
                 }
 
+                let mut bypassing_usdc_pair = false;
+
+                if pair0.0 == USDC_ADDRESS && !bypass_vol {
+                    bypass_vol = true;
+                    bypassing_usdc_pair = true;
+                }
+
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
                 let res = self.get_vwap_price(
                     exchanges,
@@ -193,6 +201,14 @@ impl<'a> TimeWindowTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
+
+                if bypassing_usdc_pair {
+                    bypass_vol = false;
+                }
+
+                if pair1.1 == USDC_ADDRESS && !bypass_vol {
+                    bypass_vol = true;
+                }
 
                 let new_vol = volume * &res.0.global_exchange_price;
                 let pair1_v = self.get_vwap_price(
