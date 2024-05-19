@@ -861,7 +861,7 @@ fn format_bribe(value: f64) -> ColoredString {
     format!("${:.2}", value).red()
 }
 
-fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
+pub fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
     format!("https://etherscan.io/tx/{:?}", tx_hash)
         .underline()
         .to_string()

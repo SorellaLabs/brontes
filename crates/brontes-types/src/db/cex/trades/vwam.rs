@@ -1,6 +1,6 @@
 use std::{cmp::max, fmt::Display};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -11,7 +11,10 @@ use super::{
     cex_trades::CexTradeMap,
     utils::{CexTradePtr, PairTradeQueue},
 };
-use crate::{db::cex::CexExchange, pair::Pair, utils::ToFloatNearest, FastHashMap, FastHashSet};
+use crate::{
+    db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair, utils::ToFloatNearest,
+    FastHashMap, FastHashSet,
+};
 
 /// TODO: lets prob not set this to 100%
 const BASE_EXECUTION_QUALITY: usize = 45;
@@ -69,6 +72,8 @@ impl CexTradeMap {
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
         if pair.0 == pair.1 {
             return Some((
