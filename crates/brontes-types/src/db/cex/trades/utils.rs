@@ -211,7 +211,7 @@ impl<'ptr> CexTradePtr<'ptr> {
 
 pub fn log_missing_trade_data(dex_swap: &NormalizedSwap, tx_hash: &TxHash) {
     trace!(
-        target: "brontes::time_window_vwam",
+        target: "brontes::time_window_vwam::missing_trade_data",
         "\n\x1b[1;No trade data for {} - {}:\x1b[0m\n\
          - Token Contracts:\n\
             * Token Out: https://etherscan.io/address/{}\n\
@@ -232,7 +232,7 @@ pub fn log_insufficient_trade_volume(
     required_volume: Rational,
 ) {
     trace!(
-        target: "brontes::time_window_vwam",
+        target: "brontes::time_window_vwam::insufficient_trade_volume",
         "\n\x1b[1;31mInsufficient Trade Volume for {} - {}:\x1b[0m\n\
          - Cex Volume:  {:.6}\n\
          - Required Volume:  {:.6}\n\

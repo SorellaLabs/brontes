@@ -17,6 +17,7 @@ use serde_with::serde_as;
 use super::MevType;
 use crate::{
     db::redefined_types::primitives::{AddressRedefined, B256Redefined},
+    display::utils::{fomrat_ethre, formate_etherscan_address_url},
     ToFloatNearest, ToScaledRational,
 };
 #[allow(unused_imports)]
@@ -135,6 +136,12 @@ impl fmt::Display for MevBlock {
             "VI Bribes:".bold(),
             self.builder_searcher_bribes as f64 * 1e-18,
             self.builder_searcher_bribes as f64 * 1e-18 / self.builder_eth_profit
+        )?;
+        writeln!(
+            f,
+            "  - {} {}",
+            "Builder Address::".bold(),
+            formate_etherscan_address_url(&self.builder_address)
         )?;
 
         // Proposer section

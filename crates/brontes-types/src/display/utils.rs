@@ -867,7 +867,7 @@ pub fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
         .to_string()
 }
 
-fn formate_etherscan_address_url(tx_hash: &Address) -> String {
+pub fn formate_etherscan_address_url(tx_hash: &Address) -> String {
     format!("https://etherscan.io/address/{:?}", tx_hash)
         .underline()
         .to_string()
