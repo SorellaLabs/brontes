@@ -149,7 +149,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
                     dex_swaps,
                     &metadata,
-                    tx_info.is_searcher_of_type(MevType::CexDex),
+                    tx_info.is_searcher_of_type(MevType::CexDex)
+                        || tx_info.is_labelled_searcher_of_type(MevType::CexDex),
                     tx_info.tx_hash,
                 )?;
 
