@@ -1,7 +1,11 @@
 #![allow(non_camel_case_types)]
 #![allow(private_bounds)]
 
-use std::{ffi::c_int, path::Path};
+use std::{
+    ffi::c_int,
+    path::Path,
+    time::{Duration, Instant},
+};
 mod env;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 pub mod cache_middleware;
@@ -30,7 +34,10 @@ use reth_interfaces::db::LogLevel;
 use tables::*;
 use tracing::info;
 
-use self::types::{CompressedTable, LibmdbxData};
+use self::{
+    cursor::CompressedCursor,
+    types::{CompressedTable, LibmdbxData},
+};
 
 pub mod implementation;
 pub use implementation::compressed_wrappers::*;
@@ -154,6 +161,44 @@ impl Libmdbx {
         tx.commit()?;
 
         Ok(res)
+    }
+
+    /// Used when exporting db to parquet, automatically will deal with
+    /// longstanding writes.
+    pub fn export_db<F, R, T, I>(
+        &self,
+        mut start: Option<T::Key>,
+        mut i: I,
+        f: F,
+    ) -> eyre::Result<Vec<R>>
+    where
+        T: CompressedTable,
+        T::Key: Clone,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        I: FnMut(Option<T::Key>, &CompressedLibmdbxTx<RO>) -> eyre::Result<CompressedCursor<T, RO>>,
+        F: Fn(&mut CompressedCursor<T, RO>) -> eyre::Result<Option<R>>,
+    {
+        let mut res = Vec::new();
+
+        loop {
+            let time = Instant::now();
+            let tx = self.ro_tx()?;
+            let mut cur = i(start.clone(), &tx)?;
+            while time.elapsed() < Duration::from_secs(30) {
+                let call_res = f(&mut cur)?;
+                match call_res {
+                    Some(val) => res.push(val),
+                    None => return Ok(res),
+                }
+            }
+            if let Some(key) = cur.prev()? {
+                start = Some(key.0);
+            } else {
+                return Ok(res)
+            }
+            tracing::info!("recycling tx on long lived read");
+            tx.commit()?;
+        }
     }
 
     pub fn view_db<F, R>(&self, f: F) -> eyre::Result<R>

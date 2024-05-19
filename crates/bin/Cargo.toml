@@ -99,7 +99,12 @@ default = [
   "pretty-print",
   "jemalloc",
   "local-reth",
+<<<<<<< HEAD
   "cex-dex-markout"
+=======
+  "cex-dex-markout",
+
+>>>>>>> main
 ]
 
 jemalloc = ["brontes-metrics/jemalloc"]

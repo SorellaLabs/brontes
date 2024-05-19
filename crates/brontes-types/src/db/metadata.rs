@@ -93,7 +93,13 @@ impl Metadata {
                                 Some(
                                     trade_map
                                         .lock()
-                                        .get_price(&trades, &pair, &baseline_for_tokeprice, None)?
+                                        .get_price(
+                                            &trades,
+                                            &pair,
+                                            &baseline_for_tokeprice,
+                                            None,
+                                            true,
+                                        )?
                                         .0
                                         .price,
                                 )
@@ -135,6 +141,7 @@ impl Metadata {
                                         &pair,
                                         &baseline_for_tokeprice,
                                         None,
+                                        true,
                                     )?
                                     .0
                                     .price,
