@@ -990,21 +990,20 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
             && self.completed_block < self.current_block
     }
 
-    fn process_future_blocks(&self) -> bool {
+    /// lets the state loader know if  it should be pre processing more blocks.
+    /// this lets us sync between the two tasks and only let a certain amount
+    /// of pre-processing occur.
+    fn process_future_blocks(&self) {
         if self.completed_block + 6 > self.current_block {
             self.metrics
                 .as_ref()
                 .inspect(|m| m.needs_more_data(self.range_id, true));
             self.needs_more_data.store(true, SeqCst);
-
-            false
         } else {
             self.needs_more_data.store(false, SeqCst);
             self.metrics
                 .as_ref()
                 .inspect(|m| m.needs_more_data(self.range_id, false));
-
-            true
         }
     }
 
@@ -1242,8 +1241,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
         // small budget as pretty heavy loop
         let mut budget = 4;
         'outer: loop {
-            // if we signal that we don't need more data, we cutoff the rx
-            let _cutoff = self.process_future_blocks();
+            self.process_future_blocks();
 
             let mut block_updates = Vec::new();
             loop {
