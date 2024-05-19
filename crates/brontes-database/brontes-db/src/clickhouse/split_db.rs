@@ -157,6 +157,10 @@ impl ClickhouseBuffered {
             }
 
             for (enum_kind, entry) in &mut self.value_map {
+                if entry.is_empty() {
+                    continue
+                }
+
                 self.futs.push(Box::pin(tokio::spawn(Self::insert(
                     self.client.clone(),
                     std::mem::take(entry),
