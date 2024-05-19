@@ -122,3 +122,5 @@ searchers_contracts = ["0x000000000035B5e5ad9019092C665357240f594e"]
 name = "Boba Builder"
 searchers_contracts = ["0xb0baBabE78a9be0810fAdf99Dd2eD31ed12568bE", "0x000000e1fddf4fe15db5f23ae3ee83c6a11e8dd1"]
 
+[builders."0x690b9a9e9aa1c9db991c7721a92d351db4fac990"]
+name = "builder0x69"

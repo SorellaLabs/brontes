@@ -226,6 +226,16 @@ pub fn calculate_builder_profit(
         // searchers
         (mev_searching_profit, vertically_integrated_searcher_tip) =
             calculate_mev_searching_profit(bundles, builder_info);
+    } else {
+        if let Some(mev_reward) = metadata.proposer_mev_reward {
+            println!("mev_reward: {}", mev_reward);
+        }
+        (proposer_mev_reward, proposer_fee_recipient) =
+            proposer_payment(&tree, builder_address, None, metadata.proposer_fee_recipient)
+                .unwrap_or((
+                    metadata.proposer_mev_reward.unwrap_or_default() as i128,
+                    metadata.proposer_fee_recipient,
+                ));
     }
 
     let builder_sponsorship_amount = calculate_builder_sponsorship_amount(
