@@ -66,7 +66,7 @@ pub struct RunArgs {
     #[arg(long, default_value = "false")]
     pub force_no_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
-    #[arg(long, default_value = "5")]
+    #[arg(long, default_value = "10")]
     pub behind_tip:           u64,
     /// Run in CLI only mode (no TUI) - will output progress bars to stdout
     #[arg(long, default_value = "false")]

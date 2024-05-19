@@ -136,8 +136,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         while self.poll_interval.poll_tick(cx).is_ready() {}
 
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
-            tracing::info!("starting new tip block");
             let block = self.current_block;
+            tracing::info!(%block,"starting new tip block");
             self.state_collector.fetch_state_for(block, 0, None);
             self.current_block += 1;
         }
