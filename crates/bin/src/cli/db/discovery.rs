@@ -20,13 +20,15 @@ pub struct DiscoveryFill {
     /// Start Block
     #[arg(long, short)]
     pub start_block: Option<u64>,
+    #[arg(long, short)]
+    pub max_tasks:   Option<usize>,
 }
 
 impl DiscoveryFill {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
-        let max_tasks = num_cpus::get_physical();
+        let max_tasks = self.max_tasks.unwrap_or(num_cpus::get_physical());
         init_threadpools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();

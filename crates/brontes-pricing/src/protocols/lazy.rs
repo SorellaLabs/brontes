@@ -122,19 +122,6 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         self.add_protocol_parent(block, id, address, pair)
     }
 
-    pub fn add_protocol_parent(
-        &mut self,
-        block: u64,
-        id: Option<u64>,
-        address: Address,
-        pair: PairWithFirstPoolHop,
-    ) {
-        self.state_tracking
-            .add_protocol_dependent(address, block, pair);
-        self.state_tracking
-            .add_pending_pool(pair, address, block, id);
-    }
-
     // removes state trackers return a list of pairs that is dependent on the state
     pub fn remove_state_trackers(
         &mut self,
@@ -150,6 +137,19 @@ impl<T: TracingProvider> LazyExchangeLoader<T> {
         }
 
         self.state_tracking.remove_pool(*address, block)
+    }
+
+    pub fn add_protocol_parent(
+        &mut self,
+        block: u64,
+        id: Option<u64>,
+        address: Address,
+        pair: PairWithFirstPoolHop,
+    ) {
+        self.state_tracking
+            .add_protocol_dependent(address, block, pair);
+        self.state_tracking
+            .add_pending_pool(pair, address, block, id);
     }
 
     pub fn lazy_load_exchange(
