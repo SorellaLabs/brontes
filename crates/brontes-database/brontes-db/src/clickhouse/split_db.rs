@@ -16,9 +16,14 @@ use crate::clickhouse::dbms::*;
 
 type InsertFut = Pin<Box<dyn Future<Output = Result<eyre::Result<()>, JoinError>> + Send>>;
 
+pub struct BrontesClickhouseData {
+    pub data:         BrontesClickhouseTableDataTypes,
+    pub force_insert: bool,
+}
+
 pub struct ClickhouseBuffered {
     client:            ClickhouseClient<BrontesClickhouseTables>,
-    rx:                UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
+    rx:                UnboundedYapperReceiver<Vec<BrontesClickhouseData>>,
     value_map:         FastHashMap<BrontesClickhouseTables, Vec<BrontesClickhouseTableDataTypes>>,
     buffer_size_small: usize,
     buffer_size_big:   usize,
@@ -27,7 +32,7 @@ pub struct ClickhouseBuffered {
 
 impl ClickhouseBuffered {
     pub fn new(
-        rx: UnboundedYapperReceiver<Vec<BrontesClickhouseTableDataTypes>>,
+        rx: UnboundedYapperReceiver<Vec<BrontesClickhouseData>>,
         config: ClickhouseConfig,
         buffer_size_small: usize,
         buffer_size_big: usize,
@@ -42,14 +47,20 @@ impl ClickhouseBuffered {
         }
     }
 
-    fn handle_incoming(&mut self, value: Vec<BrontesClickhouseTableDataTypes>) {
-        let enum_kind = value.first().as_ref().unwrap().get_db_enum();
+    fn handle_incoming(&mut self, value: Vec<BrontesClickhouseData>) {
+        let enum_kind = value.first().as_ref().unwrap().data.get_db_enum();
+        let mut force_insert = false;
 
         let entry = self.value_map.entry(enum_kind.clone()).or_default();
-        entry.extend(value);
+
+        entry.extend(value.into_iter().map(|value| {
+            force_insert |= value.force_insert;
+            value.data
+        }));
+
         let size = if enum_kind.is_big() { self.buffer_size_big } else { self.buffer_size_small };
 
-        if entry.len() >= size {
+        if entry.len() >= size || force_insert {
             let client = self.client.clone();
             self.futs.push(Box::pin(tokio::spawn(Self::insert(
                 client,
@@ -151,9 +162,9 @@ impl ClickhouseBuffered {
                     continue
                 }
 
-                let enum_kind = value.first().as_ref().unwrap().get_db_enum();
+                let enum_kind = value.first().as_ref().unwrap().data.get_db_enum();
                 let entry = self.value_map.entry(enum_kind.clone()).or_default();
-                entry.extend(value);
+                entry.extend(value.into_iter().map(|v| v.data));
             }
 
             for (enum_kind, entry) in &mut self.value_map {

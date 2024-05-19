@@ -170,6 +170,11 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+pub struct BrontesClickhouseData {
+    pub data:         BrontesClickhouseTableDataTypes,
+    pub force_insert: bool,
+}
+
 macro_rules! db_types {
     ($(($db_type:ident, $db_table:ident)),*) => {
         #[derive(Debug, Clone, serde::Serialize)]
@@ -195,6 +200,15 @@ macro_rules! db_types {
         }
 
         $(
+            impl From<($db_type, bool)> for BrontesClickhouseData {
+                fn from(value: ($db_type, bool)) ->BrontesClickhouseData {
+                    BrontesClickhouseData {
+                        data: BrontesClickhouseTableDataTypes::$db_type(Box::new(value.0)),
+                        force_insert: value.1
+                    }
+                }
+            }
+
             impl From<$db_type> for BrontesClickhouseTableDataTypes {
                 fn from(value: $db_type) -> BrontesClickhouseTableDataTypes {
                     BrontesClickhouseTableDataTypes::$db_type(Box::new(value))
