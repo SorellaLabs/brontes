@@ -194,7 +194,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                tracing::debug!(?pair, ?intermediary, "trying via intermediary");
+                tracing::debug!(?pair, ?intermediary, ?volume, "trying via intermediary");
                 let res = self.get_vwap_price(
                     exchanges,
                     pair0,
