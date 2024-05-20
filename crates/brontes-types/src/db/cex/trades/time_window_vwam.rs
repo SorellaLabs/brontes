@@ -73,7 +73,7 @@ impl Div for WindowExchangePrice {
             })
             .collect();
 
-        self.global_exchange_price *= rhs.global_exchange_price;
+        self.global_exchange_price /= rhs.global_exchange_price;
 
         self
     }
