@@ -259,6 +259,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     maker
                         .iter()
                         .map(|(ex, (m_price, _))| {
+                            tracing::info!("window");
                             (
                                 ex,
                                 self.profit_classifier(
