@@ -250,7 +250,7 @@ impl<'a> TimeWindowTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
-                println!(?pair1_v.0, ?res.0);
+                trace!(?pair1_v.0, ?res.0);
 
                 let maker = pair1_v.0 * res.0;
                 let taker = pair1_v.1 * res.1;
