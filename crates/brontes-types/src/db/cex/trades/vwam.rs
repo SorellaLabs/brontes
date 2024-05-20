@@ -1,6 +1,6 @@
 use std::{cmp::max, fmt::Display};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
@@ -11,7 +11,13 @@ use super::{
     cex_trades::CexTradeMap,
     utils::{CexTradePtr, PairTradeQueue},
 };
-use crate::{db::cex::CexExchange, pair::Pair, utils::ToFloatNearest, FastHashMap, FastHashSet};
+use crate::{
+    db::cex::{utils::log_missing_trade_data, CexExchange},
+    normalized_actions::NormalizedSwap,
+    pair::Pair,
+    utils::ToFloatNearest,
+    FastHashMap, FastHashSet,
+};
 
 /// TODO: lets prob not set this to 100%
 const BASE_EXECUTION_QUALITY: usize = 45;
@@ -69,6 +75,8 @@ impl CexTradeMap {
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
         if pair.0 == pair.1 {
             return Some((
@@ -81,8 +89,25 @@ impl CexTradeMap {
         self.ensure_proper_order(exchanges, pair);
 
         let res = self
-            .get_vwam_no_intermediary(exchanges, pair, volume, quality.as_ref(), bypass_vol)
-            .or_else(|| self.get_vwam_via_intermediary(exchanges, pair, volume, quality.as_ref()));
+            .get_vwam_no_intermediary(
+                exchanges,
+                pair,
+                volume,
+                quality.as_ref(),
+                bypass_vol,
+                dex_swap,
+                tx_hash,
+            )
+            .or_else(|| {
+                self.get_vwam_via_intermediary(
+                    exchanges,
+                    pair,
+                    volume,
+                    quality.as_ref(),
+                    dex_swap,
+                    tx_hash,
+                )
+            });
 
         if res.is_none() {
             tracing::debug!(?pair, "no vwam found");
@@ -140,6 +165,8 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
         let (pair0_vwams, pair1_vwams) = self
             .calculate_intermediary_addresses(exchanges, pair)
@@ -169,7 +196,9 @@ impl CexTradeMap {
 
                 let (i, res) = (
                     intermediary,
-                    self.get_vwam_via_intermediary_spread(exchanges, &pair0, volume, quality)?,
+                    self.get_vwam_via_intermediary_spread(
+                        exchanges, &pair0, volume, quality, dex_swap, tx_hash,
+                    )?,
                 );
 
                 let new_vol = volume * &res.prices.0.price;
@@ -179,7 +208,7 @@ impl CexTradeMap {
                     (
                         intermediary,
                         self.get_vwam_via_intermediary_spread(
-                            exchanges, &pair1, &new_vol, quality,
+                            exchanges, &pair1, &new_vol, quality, dex_swap, tx_hash,
                         )?,
                     ),
                 ))
@@ -203,6 +232,8 @@ impl CexTradeMap {
         pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWithVolumeFilled> {
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
@@ -239,6 +270,7 @@ impl CexTradeMap {
             .collect::<Vec<_>>();
 
         if trades.is_empty() {
+            log_missing_trade_data(dex_swap, &tx_hash);
             return None
         }
         // Populate trade queue per exchange
@@ -258,6 +290,8 @@ impl CexTradeMap {
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
@@ -295,6 +329,7 @@ impl CexTradeMap {
             .collect::<Vec<_>>();
 
         if trades.is_empty() {
+            log_missing_trade_data(dex_swap, &tx_hash);
             return None
         }
         // Populate trade queue per exchange
