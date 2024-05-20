@@ -758,17 +758,4 @@ mod tests {
             .await
             .unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_proper_download_of_trades() {
-        let block_range = (18264690, 18264700);
-        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
-        init_threadpools(10);
-        let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
-        let (tx, _rx) = unbounded_channel();
-        let tracing_client =
-            init_trace_parser(tokio::runtime::Handle::current().clone(), tx, libmdbx, 4).await;
-
-        let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracing_client.get_tracer());
-    }
 }
