@@ -6,7 +6,10 @@ use std::{
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Zero},
+    },
     Rational,
 };
 use tracing::trace;
@@ -64,7 +67,7 @@ impl Div for WindowExchangePrice {
                 let other_vol = &other_vol * &other_price;
                 let vol = this_vol + other_vol;
 
-                let price = other_price / this_price;
+                let price = other_price / this_price.reciprocal();
 
                 Some((exchange, (price, vol)))
             })
@@ -201,7 +204,7 @@ impl<'a> TimeWindowTrades<'a> {
             .filter_map(|intermediary| {
                 trace!(?intermediary, "trying inter");
 
-                let pair0 = Pair(intermediary, pair.1);
+                let pair0 = Pair(pair.1, intermediary);
                 let pair1 = Pair(pair.0, intermediary);
 
                 let mut has_pair0 = false;
@@ -240,7 +243,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                let new_vol = volume * &res.0.global_exchange_price;
+                let new_vol = volume / &res.0.global_exchange_price.reciprocal();
                 let pair1_v = self.get_vwap_price(
                     exchanges,
                     pair1,
