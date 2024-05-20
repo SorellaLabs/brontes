@@ -116,7 +116,6 @@ human_bytes = "0.4.3"
 rkyv.workspace = true
 auto_impl.workspace = true
 
-
 reth-tasks = { workspace = true }
 
 [dev-dependencies]
@@ -138,7 +137,7 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-default = []
+default = ["cex-dex-markout"]
 sorella-server = ["local-reth", "local-clickhouse"]
 cex-dex-markout = ["brontes-types/cex-dex-markout"]
 tests = ["brontes-pricing/tests"]

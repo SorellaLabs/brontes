@@ -6,7 +6,8 @@ use tracing::trace;
 
 use super::CexTrades;
 use crate::{
-    db::cex::CexExchange, normalized_actions::NormalizedSwap, utils::ToFloatNearest, FastHashMap,
+    db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair, utils::ToFloatNearest,
+    FastHashMap,
 };
 
 /// Manages the traversal and collection of trade data within dynamically
@@ -226,6 +227,7 @@ pub fn log_missing_trade_data(dex_swap: &NormalizedSwap, tx_hash: &TxHash) {
 }
 
 pub fn log_insufficient_trade_volume(
+    pair: Pair,
     dex_swap: &NormalizedSwap,
     tx_hash: &TxHash,
     trade_volume_global: Rational,
@@ -239,13 +241,16 @@ pub fn log_insufficient_trade_volume(
          - Token Contracts:\n\
             * Token Out: https://etherscan.io/address/{}\n\
             * Token In: https://etherscan.io/address/{}\n\
-         - Transaction Hash: https://etherscan.io/tx/{}",
+         - Transaction Hash: https://etherscan.io/tx/{}\n\
+        - pair {:#?}
+                                   ",
         dex_swap.token_out_symbol(),
         dex_swap.token_in_symbol(),
         trade_volume_global.to_float(),
         required_volume.to_float(),
         dex_swap.token_out.address,
         dex_swap.token_in.address,
-        tx_hash
+        tx_hash,
+        pair
     );
 }

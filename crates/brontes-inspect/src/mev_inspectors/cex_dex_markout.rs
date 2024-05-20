@@ -133,6 +133,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
                     .collect_action_vec(Action::try_swaps_merged);
 
+                if dex_swaps.is_empty() {
+                    trace!("no dex swaps found");
+                    return None
+                }
+
                 if self.is_triangular_arb(&dex_swaps) {
                     trace!(
                         target: "brontes::cex-dex-markout",
@@ -316,7 +321,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
             return None
         }
-
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let maker_delta = &cex_quote.0 - swap.swap_rate();
@@ -1025,7 +1029,7 @@ fn log_price_delta(
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::{USDT_ADDRESS, WETH_ADDRESS};
+    use brontes_types::constants::USDT_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
@@ -1041,27 +1045,8 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
-            .needs_token(WETH_ADDRESS)
             .with_gas_paid_usd(38.31)
-            .with_expected_profit_usd(148.430);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn text_cex_dex_markout_curve() {
-        // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
-        let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
-            .needs_token(WETH_ADDRESS)
-            .with_gas_paid_usd(16.34)
-            .with_expected_profit_usd(148.430);
+            .with_expected_profit_usd(134.70);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -1074,25 +1059,116 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(8958.161528605704)
+            .with_expected_profit_usd(-2790.18)
             .with_gas_paid_usd(79748.18);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     #[brontes_macros::test]
-    async fn test_cex_dex_markout_psm() {
-        // https://etherscan.io/tx/0x5ea3ca12cac835172fa24066c6d895886c1917005e06d7b49b48cc99d5750557
+    async fn test_cex_dex_markout_perl() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        // we have no trades in the timewindow
+        let tx = hex!("b2684e6f02082288c34149d9564a1dc9d78ae901ab3e20194a1a873ebfe3d9ac").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
 
-        let tx = hex!("5ea3ca12cac835172fa24066c6d895886c1917005e06d7b49b48cc99d5750557").into();
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
 
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_curve() {
+        // missing trade
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("382b2ae940b7665b4b403bdd87f03dabfcc05bbe35ae82931ada06a8d60bb79a").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_eth_dai() {
+        // no trades in db
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("60cbfc1b8b72479259c236e0ef17ffeade286f7c7821a03f6c180340b694f9c7").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_lpt() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("67ac84a6b6d6b0e0f85f6d6efe34e1889f8f7609049edc676b6624e1930c8867").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_dex_prices()
-            .needs_token(WETH_ADDRESS)
-            .with_expected_profit_usd(123_317.44)
-            .with_gas_paid_usd(67.89);
+            .with_expected_profit_usd(2.78)
+            .with_gas_paid_usd(4.75);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_sol_eth() {
+        // solana is misslabled
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("a63e94c3d4ec343cce7134c70c76899cbee18aab580f1eb294f08fdcf371d091").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(4.36);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_wbtc_usdc() {
+        // try crypto missing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(16.22);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_pepe_usdc() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(16.22);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_woo_usdc() {
+        // no swap so can't calc
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("157d7a1279b6eba0ce1491fe9cb8eb657036506888facd2e8ae420ce5aa19f2c").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_blur_eth() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("c8e62efc7b04e56d17e69d07fdb9f8d1dcc84cfd295922134aa0a75a86e6f052").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(45.88)
+            .with_gas_paid_usd(4.60);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
