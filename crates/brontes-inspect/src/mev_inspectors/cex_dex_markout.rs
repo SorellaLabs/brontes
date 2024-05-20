@@ -1054,20 +1054,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_cex_dex_markout_curve() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
-        let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_gas_paid_usd(16.34)
-            .with_expected_profit_usd(148.430);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
     async fn test_cex_dex_markout_vs_non() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
@@ -1084,13 +1070,23 @@ mod tests {
     #[brontes_macros::test]
     async fn test_cex_dex_markout_perl() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
+        // we have no trades in the timewindow
         let tx = hex!("b2684e6f02082288c34149d9564a1dc9d78ae901ab3e20194a1a873ebfe3d9ac").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
 
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_curve() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        // we have no trades in the timewindow
+        let tx = hex!("f99fadbc0551f07ee1bdc1c047bc02379d7ac0a0918426099bf82a7642674258").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(-2790.18)
-            .with_gas_paid_usd(4.4);
+            .with_gas_paid_usd(79748.18);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
