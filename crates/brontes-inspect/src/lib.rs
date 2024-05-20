@@ -5,8 +5,8 @@
 //!
 //! ## Inspector
 //!
-//! `Inspector` is a trait defining a method `process_tree`. This method takes a
-//! `BlockTree` and `Metadata` as input and returns a vector of tuples, each
+//! `Inspector` is a trait defining a method `inspect_block`. This method takes
+//! a `BlockTree` and `Metadata` as input and returns a vector of tuples, each
 //! containing a `BundleHeader` and a `BundleData`.
 //!
 //! ```ignore
@@ -14,7 +14,7 @@
 //! pub trait Inspector: Send + Sync {
 //!     type Result: Send + Sync;
 //!
-//!     async fn process_tree(
+//!     async fn inspect_block(
 //!         &self,
 //!         tree: Arc<BlockTree<Action>>,
 //!         metadata: Arc<Metadata>,
@@ -36,7 +36,7 @@
 //! - [`long_tail`](long_tail/index.html)
 //!
 //! Each inspector implements the `Inspector` trait and provides its own
-//! implementation of the `process_tree` method.
+//! implementation of the `inspect_block` method.
 //!
 //! ## Composer
 //!
@@ -90,7 +90,7 @@ pub trait Inspector: Send + Sync {
 
     /// Used for log span so we know which errors come from which inspector
     fn get_id(&self) -> &str;
-    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
+    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
     fn get_quote_token(&self) -> Address;
 }
 

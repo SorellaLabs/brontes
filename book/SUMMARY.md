@@ -20,10 +20,11 @@
 
 - [Mev Inspectors Deep Dive](./mev_inspectors/intro.md)
 
-  - [Cex-Dex](./mev_inspectors/cex_dex.md)
-  - [Sandwich](./mev_inspectors/sandwich.md)
-  - [Just in time Liquidity](./mev_inspectors/jit.md)
+  - [Cex-Dex Arbitrage](./mev_inspectors/cex_dex.md)
+  - [Sandwich Attack](./mev_inspectors/sandwich.md)
   - [Atomic Arbitrage](./mev_inspectors/atomic-arb.md)
+  - [JIT Liquidity](./mev_inspectors/jit-liquidity.md)
+  - [Liquidation](./mev_inspectors/liquidation.md)
 
 - [CLI Reference](./cli/cli.md) <!-- CLI_REFERENCE START -->
   - [`brontes`](./cli/brontes.md)

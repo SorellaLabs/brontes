@@ -60,7 +60,7 @@ pub struct ComposerResults {
     pub possible_mev_txes: PossibleMevCollection,
 }
 
-pub fn compose_mev_results(
+pub fn run_block_inspection(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Action>>,
     metadata: Arc<Metadata>,
@@ -91,7 +91,7 @@ fn run_inspectors(
         .flat_map(|inspector| {
             let span =
                 span!(Level::ERROR, "Inspector", inspector = %inspector.get_id(),block=&metadata.block_num);
-            span.in_scope(|| inspector.process_tree(tree.clone(), metadata.clone()))
+            span.in_scope(|| inspector.inspect_block(tree.clone(), metadata.clone()))
         })
         .collect::<Vec<_>>();
 

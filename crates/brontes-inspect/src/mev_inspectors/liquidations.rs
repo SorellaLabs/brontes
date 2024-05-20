@@ -36,7 +36,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         self.utils
             .get_metrics()
             .map(|m| {
