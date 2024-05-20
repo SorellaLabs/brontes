@@ -1161,4 +1161,17 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_blur_eth() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("c8e62efc7b04e56d17e69d07fdb9f8d1dcc84cfd295922134aa0a75a86e6f052").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(16.22);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
