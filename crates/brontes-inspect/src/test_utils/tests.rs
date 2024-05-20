@@ -33,7 +33,7 @@ use brontes_types::{
 };
 use thiserror::Error;
 
-use crate::{composer::compose_mev_results, Inspectors};
+use crate::{composer::run_block_inspection, Inspectors};
 
 type StateTests = Option<Box<dyn for<'a> Fn(&'a Bundle)>>;
 
@@ -165,7 +165,7 @@ impl InspectorTestUtils {
             None,
         );
 
-        let results = inspector.process_tree(tree.into(), metadata.into());
+        let results = inspector.inspect_block(tree.into(), metadata.into());
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
 
         Ok(())
@@ -248,7 +248,7 @@ impl InspectorTestUtils {
             None,
         );
 
-        let mut results = inspector.process_tree(tree.into(), metadata.into());
+        let mut results = inspector.inspect_block(tree.into(), metadata.into());
 
         assert_eq!(
             results.len(),
@@ -358,7 +358,7 @@ impl InspectorTestUtils {
             })
             .collect::<Vec<_>>();
 
-        let results = compose_mev_results(inspector.as_slice(), tree.into(), metadata.into());
+        let results = run_block_inspection(inspector.as_slice(), tree.into(), metadata.into());
 
         let mut results = results
             .mev_details

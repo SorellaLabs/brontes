@@ -36,19 +36,19 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
         self.utils.quote
     }
 
-    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         self.utils
             .get_metrics()
             .map(|m| {
                 m.run_inspector(MevType::SearcherTx, || {
-                    self.process_tree_inner(tree.clone(), metadata.clone())
+                    self.inspect_block_inner(tree.clone(), metadata.clone())
                 })
             })
-            .unwrap_or_else(|| self.process_tree_inner(tree, metadata))
+            .unwrap_or_else(|| self.inspect_block_inner(tree, metadata))
     }
 }
 impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
-    fn process_tree_inner(
+    fn inspect_block_inner(
         &self,
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,

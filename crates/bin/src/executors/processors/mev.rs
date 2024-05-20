@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::{
-    composer::{compose_mev_results, ComposerResults},
+    composer::{run_block_inspection, ComposerResults},
     Inspector,
 };
 #[cfg(feature = "local-clickhouse")]
@@ -51,7 +51,7 @@ impl Processor for MevProcessor {
 
         let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
             execute_on!(async_inspect, {
-                compose_mev_results(inspectors, tree.clone(), metadata.clone())
+                run_block_inspection(inspectors, tree.clone(), metadata.clone())
             })
             .await;
 
