@@ -251,8 +251,8 @@ impl<'a> TimeWindowTrades<'a> {
                     tx_hash,
                 )?;
 
-                let maker = res.0 / pair1_v.0;
-                let taker = res.1 / pair1_v.1;
+                let maker = pair1_v.0 / res.0;
+                let taker = pair1_v.1 / res.1;
 
                 Some((maker, taker))
             })
@@ -323,7 +323,7 @@ impl<'a> TimeWindowTrades<'a> {
             log_missing_trade_data(dex_swap, &tx_hash);
             return None
         } else {
-            trace!(trade_qty=%trades.len(), "have trades");
+            trace!(?trades.len(), "have trades");
         }
 
         let mut walker = PairTradeWalker::new(
