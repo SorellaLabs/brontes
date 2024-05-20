@@ -324,7 +324,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             trace!("got valid prices");
         }
 
-
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let maker_delta = &cex_quote.0 - swap.swap_rate();
@@ -466,6 +465,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .get_metrics()
                         .inspect(|m| m.missing_cex_pair(pair));
                 }
+                trace!(?window, ?other);
 
                 (window, other)
             })

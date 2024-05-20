@@ -253,7 +253,6 @@ impl<'a> TimeWindowTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
-                trace!(pair1=?pair1_v.0, pair0=?res.0);
 
                 let maker = pair1_v.0 / res.0;
                 let taker = pair1_v.1 / res.1;
