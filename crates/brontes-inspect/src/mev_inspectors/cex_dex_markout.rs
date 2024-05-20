@@ -238,6 +238,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .iter()
                 .zip(calculation_vwam)
                 .filter_map(|(swap, possible_pricing)| {
+                    tracing::info!("vwam");
                     Some(self.profit_classifier(
                         swap,
                         possible_pricing?,
