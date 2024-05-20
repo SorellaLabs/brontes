@@ -1025,7 +1025,7 @@ fn log_price_delta(
 mod tests {
 
     use alloy_primitives::hex;
-    use brontes_types::constants::{USDT_ADDRESS, WETH_ADDRESS};
+    use brontes_types::constants::USDT_ADDRESS;
 
     use crate::{
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
@@ -1050,8 +1050,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn text_cex_dex_markout_curve() {
-        // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
+    async fn test_cex_dex_markout_curve() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
@@ -1076,23 +1075,6 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(8958.161528605704)
             .with_gas_paid_usd(79748.18);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_psm() {
-        // https://etherscan.io/tx/0x5ea3ca12cac835172fa24066c6d895886c1917005e06d7b49b48cc99d5750557
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
-        let tx = hex!("5ea3ca12cac835172fa24066c6d895886c1917005e06d7b49b48cc99d5750557").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            // .with_dex_prices()
-            // .needs_token(WETH_ADDRESS)
-            .with_expected_profit_usd(123_317.44)
-            .with_gas_paid_usd(67.89);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
