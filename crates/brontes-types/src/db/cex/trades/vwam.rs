@@ -520,12 +520,12 @@ fn calculate_multi_cross_pair(
 
                         let maker = ExchangePrice {
                             exchanges: maker_exchanges,
-                            price:     &second_vwam.prices.0.price / &first_vwam.prices.0.price,
+                            price:     &first_vwam.prices.0.price / &second_vwam.prices.0.price,
                         };
 
                         let taker = ExchangePrice {
                             exchanges: taker_exchanges,
-                            price:     &second_vwam.prices.1.price / &first_vwam.prices.1.price,
+                            price:     &first_vwam.prices.1.price / &second_vwam.prices.1.price,
                         };
 
                         (volume_pct, maker, taker)
