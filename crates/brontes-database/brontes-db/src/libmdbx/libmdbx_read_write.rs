@@ -798,7 +798,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 } else {
                     // move to first entry and make sure .next() is first
                     let _ = cur.first();
-                    let _ = cur.prev();
+                    // let _ = cur.prev();
                 }
                 Ok(cur)
             },

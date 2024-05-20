@@ -3,7 +3,10 @@ use std::{cmp::max, fmt::Display};
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Zero},
+    },
     Rational,
 };
 
@@ -173,9 +176,9 @@ impl CexTradeMap {
             .into_iter()
             .filter_map(|intermediary| {
                 // usdc / bnb 0.004668534080298786price
-                let pair0 = Pair(pair.0, intermediary);
+                let pair0 = Pair(pair.1, intermediary);
                 // bnb / eth 0.1298price
-                let pair1 = Pair(intermediary, pair.1);
+                let pair1 = Pair(pair.0, intermediary);
                 // check if we have a path
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
@@ -201,7 +204,7 @@ impl CexTradeMap {
                     )?,
                 );
 
-                let new_vol = volume * &res.prices.0.price;
+                let new_vol = volume / &res.prices.0.price.clone().reciprocal();
 
                 Some((
                     (i, res),
@@ -520,12 +523,12 @@ fn calculate_multi_cross_pair(
 
                         let maker = ExchangePrice {
                             exchanges: maker_exchanges,
-                            price:     &first_vwam.prices.0.price * &second_vwam.prices.0.price,
+                            price:     &first_vwam.prices.0.price / &second_vwam.prices.0.price,
                         };
 
                         let taker = ExchangePrice {
                             exchanges: taker_exchanges,
-                            price:     &first_vwam.prices.1.price * &second_vwam.prices.1.price,
+                            price:     &first_vwam.prices.1.price / &second_vwam.prices.1.price,
                         };
 
                         (volume_pct, maker, taker)

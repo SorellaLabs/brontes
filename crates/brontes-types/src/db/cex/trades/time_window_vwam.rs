@@ -1,11 +1,18 @@
-use std::{f64::consts::E, ops::Mul};
+use std::{
+    f64::consts::E,
+    ops::{Div, Mul},
+};
 
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Zero},
+    },
     Rational,
 };
+use tracing::trace;
 
 use super::{
     utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker},
@@ -43,6 +50,34 @@ pub struct WindowExchangePrice {
     pub global_exchange_price:             Rational,
 }
 
+impl Div for WindowExchangePrice {
+    type Output = WindowExchangePrice;
+
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    fn div(mut self, mut rhs: Self) -> Self::Output {
+        // adjust the price with volume
+        self.exchange_price_with_volume_direct = self
+            .exchange_price_with_volume_direct
+            .into_iter()
+            .filter_map(|(exchange, (this_price, this_vol))| {
+                let (other_price, other_vol) =
+                    rhs.exchange_price_with_volume_direct.remove(&exchange)?;
+
+                let this_vol = &this_price * &this_vol;
+                let other_vol = &other_vol * &other_price;
+                let vol = this_vol + other_vol;
+
+                let price = this_price / other_price;
+
+                Some((exchange, (price, vol)))
+            })
+            .collect();
+
+        self.global_exchange_price /= rhs.global_exchange_price;
+
+        self
+    }
+}
 // used for intermediary calcs
 impl Mul for WindowExchangePrice {
     type Output = WindowExchangePrice;
@@ -167,9 +202,10 @@ impl<'a> TimeWindowTrades<'a> {
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
-                let pair0 = Pair(pair.0, intermediary);
+                trace!(?intermediary, "trying inter");
 
-                let pair1 = Pair(intermediary, pair.1);
+                let pair0 = Pair(pair.1, intermediary);
+                let pair1 = Pair(pair.0, intermediary);
 
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
@@ -192,7 +228,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                tracing::debug!(?pair, ?intermediary, "trying via intermediary");
+                tracing::debug!(?pair, ?intermediary, ?volume, "trying via intermediary");
                 let res = self.get_vwap_price(
                     exchanges,
                     pair0,
@@ -207,7 +243,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                let new_vol = volume * &res.0.global_exchange_price;
+                let new_vol = volume / &res.0.global_exchange_price.clone().reciprocal();
                 let pair1_v = self.get_vwap_price(
                     exchanges,
                     pair1,
@@ -218,8 +254,8 @@ impl<'a> TimeWindowTrades<'a> {
                     tx_hash,
                 )?;
 
-                let maker = res.0 * pair1_v.0;
-                let taker = res.1 * pair1_v.1;
+                let maker = pair1_v.0 / res.0;
+                let taker = pair1_v.1 / res.1;
 
                 Some((maker, taker))
             })
@@ -289,6 +325,8 @@ impl<'a> TimeWindowTrades<'a> {
         if trades.is_empty() {
             log_missing_trade_data(dex_swap, &tx_hash);
             return None
+        } else {
+            trace!(trade_qty=%trades.len(), "have trades");
         }
 
         let mut walker = PairTradeWalker::new(
@@ -334,7 +372,13 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if &trade_volume_global < vol && !bypass_vol {
-            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
+            log_insufficient_trade_volume(
+                pair,
+                dex_swap,
+                &tx_hash,
+                trade_volume_global,
+                vol.clone(),
+            );
             return None
         }
 
@@ -359,7 +403,13 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if trade_volume_global == Rational::ZERO {
-            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
+            log_insufficient_trade_volume(
+                pair,
+                dex_swap,
+                &tx_hash,
+                trade_volume_global,
+                vol.clone(),
+            );
             return None
         }
 
