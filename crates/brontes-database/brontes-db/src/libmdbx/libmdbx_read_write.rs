@@ -9,6 +9,8 @@ use brontes_types::db::cex::cex_trades::CexTradeMap;
 use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
 #[cfg(feature = "cex-dex-markout")]
 use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
+#[cfg(not(feature = "local-reth"))]
+use brontes_types::db::initialized_state::TRACE_FLAG;
 use brontes_types::{
     constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{

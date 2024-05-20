@@ -393,7 +393,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     &swap.amount_out,
                                     metadata.microseconds_block_timestamp(),
                                     marked_cex_dex,
-                                    &swap,
+                                    swap,
                                     tx_hash,
                                 )
                         })
@@ -410,7 +410,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 &swap.amount_out,
                                 metadata.microseconds_block_timestamp(),
                                 marked_cex_dex,
-                                &swap,
+                                swap,
                                 tx_hash,
                             )
                     });
@@ -431,7 +431,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     &swap.amount_out,
                                     None,
                                     marked_cex_dex,
-                                    &swap,
+                                    swap,
                                     tx_hash,
                                 )
                         })
@@ -448,7 +448,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 &swap.amount_out,
                                 None,
                                 marked_cex_dex,
-                                &swap,
+                                swap,
                                 tx_hash,
                             )
                     });
@@ -1044,6 +1044,23 @@ mod tests {
             .with_dex_prices()
             .needs_token(WETH_ADDRESS)
             .with_gas_paid_usd(38.31)
+            .with_expected_profit_usd(148.430);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn text_curve_cex_dex() {
+        // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .needs_token(WETH_ADDRESS)
+            .with_gas_paid_usd(16.34)
             .with_expected_profit_usd(148.430);
 
         inspector_util.run_inspector(config, None).await.unwrap();
