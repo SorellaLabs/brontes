@@ -34,6 +34,7 @@ use brontes_types::{mev::Mev, FastHashMap};
 use itertools::Itertools;
 use tracing::{span, Level};
 
+mod composer_filters;
 mod mev_filters;
 mod utils;
 use brontes_types::{
@@ -42,7 +43,8 @@ use brontes_types::{
     normalized_actions::Action,
     tree::BlockTree,
 };
-use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
+use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER};
+use mev_filters::MEV_DEDUPLICATION_FILTER;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, sort_mev_by_type,
@@ -60,7 +62,7 @@ pub struct ComposerResults {
     pub possible_mev_txes: PossibleMevCollection,
 }
 
-pub fn compose_mev_results(
+pub fn run_block_inspection(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Action>>,
     metadata: Arc<Metadata>,
@@ -91,7 +93,7 @@ fn run_inspectors(
         .flat_map(|inspector| {
             let span =
                 span!(Level::ERROR, "Inspector", inspector = %inspector.get_id(),block=&metadata.block_num);
-            span.in_scope(|| inspector.process_tree(tree.clone(), metadata.clone()))
+            span.in_scope(|| inspector.inspect_block(tree.clone(), metadata.clone()))
         })
         .collect::<Vec<_>>();
 
