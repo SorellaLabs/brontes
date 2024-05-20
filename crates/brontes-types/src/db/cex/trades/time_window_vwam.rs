@@ -336,7 +336,13 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if &trade_volume_global < vol && !bypass_vol {
-            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
+            log_insufficient_trade_volume(
+                pair,
+                dex_swap,
+                &tx_hash,
+                trade_volume_global,
+                vol.clone(),
+            );
             return None
         }
 
@@ -361,7 +367,13 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if trade_volume_global == Rational::ZERO {
-            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
+            log_insufficient_trade_volume(
+                pair,
+                dex_swap,
+                &tx_hash,
+                trade_volume_global,
+                vol.clone(),
+            );
             return None
         }
 

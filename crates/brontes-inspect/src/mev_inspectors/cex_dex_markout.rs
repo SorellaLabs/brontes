@@ -1140,7 +1140,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_pepe_usdc() {
-        // should be there if intermediary
+        // should be there if intermediary. however thats failing
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
@@ -1153,14 +1153,13 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_woo_usdc() {
+        // no swap so can't calc
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("157d7a1279b6eba0ce1491fe9cb8eb657036506888facd2e8ae420ce5aa19f2c").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(4.80)
-            .with_gas_paid_usd(16.22);
+            .with_mev_tx_hashes(vec![tx]);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 
     #[brontes_macros::test]
