@@ -34,6 +34,7 @@ use brontes_types::{mev::Mev, FastHashMap};
 use itertools::Itertools;
 use tracing::{span, Level};
 
+mod composer_filters;
 mod mev_filters;
 mod utils;
 use brontes_types::{
@@ -42,7 +43,8 @@ use brontes_types::{
     normalized_actions::Action,
     tree::BlockTree,
 };
-use mev_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER, MEV_DEDUPLICATION_FILTER};
+use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER};
+use mev_filters::MEV_DEDUPLICATION_FILTER;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, sort_mev_by_type,
