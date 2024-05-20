@@ -6,7 +6,7 @@ use brontes_types::db::{cex::CexExchange, metadata::Metadata};
 use criterion::{black_box, Criterion};
 
 use super::InspectorTestUtilsError;
-use crate::{composer::compose_mev_results, Inspectors};
+use crate::{composer::run_block_inspection, Inspectors};
 
 pub struct InspectorBenchUtils {
     classifier_inspector: ClassifierTestUtils,
@@ -66,7 +66,7 @@ impl InspectorBenchUtils {
             b.iter(|| {
                 for _ in 0..=iters {
                     for inspector in &inspectors {
-                        black_box(inspector.process_tree(tree.clone(), metadata.clone()));
+                        black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
                     }
                 }
             });
@@ -131,7 +131,7 @@ impl InspectorBenchUtils {
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
+                    black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -186,7 +186,7 @@ impl InspectorBenchUtils {
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
+                    black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -226,7 +226,7 @@ impl InspectorBenchUtils {
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.process_tree(tree.clone(), metadata.clone()));
+                    black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
                 }
             });
         });
@@ -280,7 +280,7 @@ impl InspectorBenchUtils {
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(compose_mev_results(
+                    black_box(run_block_inspection(
                         inspectors.as_slice(),
                         tree.clone(),
                         metadata.clone(),
@@ -331,7 +331,7 @@ impl InspectorBenchUtils {
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(compose_mev_results(
+                    black_box(run_block_inspection(
                         inspectors.as_slice(),
                         tree.clone(),
                         metadata.clone(),
