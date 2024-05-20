@@ -28,19 +28,15 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<MevBlock>) -> Result<RecordBatc
     let eth_price_array = build_float64_array(mev_blocks.iter().map(|mb| mb.eth_price).collect());
 
     let gas_used_array =
-        u128_to_binary_array(mev_blocks.iter().map(|mb| mb.cumulative_gas_used).collect());
-    let priority_fee_array = u128_to_binary_array(
-        mev_blocks
-            .iter()
-            .map(|mb| mb.cumulative_priority_fee)
-            .collect(),
-    );
+        u128_to_binary_array(mev_blocks.iter().map(|mb| mb.total_gas_used).collect());
+    let priority_fee_array =
+        u128_to_binary_array(mev_blocks.iter().map(|mb| mb.total_priority_fee).collect());
     let total_bribe_array =
         u128_to_binary_array(mev_blocks.iter().map(|mb| mb.total_bribe).collect());
-    let cumulative_mev_priority_fee_paid_array = u128_to_binary_array(
+    let total_mev_priority_fee_paid_array = u128_to_binary_array(
         mev_blocks
             .iter()
-            .map(|mb| mb.cumulative_mev_priority_fee_paid)
+            .map(|mb| mb.total_mev_priority_fee_paid)
             .collect(),
     );
 
@@ -60,10 +56,10 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<MevBlock>) -> Result<RecordBatc
             .map(|mb| mb.builder_mev_profit_usd)
             .collect(),
     );
-    let cumulative_mev_profit_usds_array = build_float64_array(
+    let total_mev_profit_usds_array = build_float64_array(
         mev_blocks
             .iter()
-            .map(|mb| mb.cumulative_mev_profit_usd)
+            .map(|mb| mb.total_mev_profit_usd)
             .collect(),
     );
 
@@ -90,7 +86,7 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<MevBlock>) -> Result<RecordBatc
             Arc::new(gas_used_array),
             Arc::new(priority_fee_array),
             Arc::new(total_bribe_array),
-            Arc::new(cumulative_mev_priority_fee_paid_array),
+            Arc::new(total_mev_priority_fee_paid_array),
             Arc::new(builder_address_array),
             Arc::new(builder_eth_profits_array),
             Arc::new(builder_usd_profits_array),
@@ -98,7 +94,7 @@ pub fn mev_block_to_record_batch(mev_blocks: Vec<MevBlock>) -> Result<RecordBatc
             Arc::new(proposer_fee_recipient_array),
             Arc::new(proposer_mev_reward_array),
             Arc::new(proposer_profit_usd_array),
-            Arc::new(cumulative_mev_profit_usds_array),
+            Arc::new(total_mev_profit_usds_array),
         ],
     )
 }
@@ -109,10 +105,10 @@ fn build_schema(mev_count_array: &StructArray) -> Schema {
         Field::new("block_number", DataType::UInt64, false),
         Field::new("mev_count", mev_count_array.data_type().clone(), false),
         Field::new("eth_price", DataType::Float64, false),
-        Field::new("cumulative_gas_used", DataType::Binary, false),
-        Field::new("cumulative_priority_fee", DataType::Binary, false),
+        Field::new("total_gas_used", DataType::Binary, false),
+        Field::new("total_priority_fee", DataType::Binary, false),
         Field::new("total_bribe", DataType::Binary, false),
-        Field::new("cumulative_mev_priority_fee_paid", DataType::Binary, false),
+        Field::new("total_mev_priority_fee_paid", DataType::Binary, false),
         Field::new("builder_address", DataType::Utf8, false),
         Field::new("builder_eth_profit", DataType::Float64, false),
         Field::new("builder_profit_usd", DataType::Float64, false),
@@ -120,7 +116,7 @@ fn build_schema(mev_count_array: &StructArray) -> Schema {
         Field::new("proposer_fee_recipient", DataType::Utf8, true),
         Field::new("proposer_mev_reward", DataType::Binary, true),
         Field::new("proposer_profit_usd", DataType::Float64, true),
-        Field::new("cumulative_mev_profit_usd", DataType::Float64, false),
+        Field::new("total_mev_profit_usd", DataType::Float64, false),
     ])
 }
 
