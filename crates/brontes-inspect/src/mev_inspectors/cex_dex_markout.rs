@@ -1080,4 +1080,18 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_perl() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("b2684e6f02082288c34149d9564a1dc9d78ae901ab3e20194a1a873ebfe3d9ac").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(-2790.18)
+            .with_gas_paid_usd(4.4);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
