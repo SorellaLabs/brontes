@@ -289,7 +289,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(PossibleCexDex::from_exchange_legs)
             .collect_vec();
 
-        tracing::trace!("{:#?}", per_exchange_pnl);
         CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl)
     }
 
@@ -1170,7 +1169,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(4.80)
-            .with_gas_paid_usd(16.22);
+            .with_gas_paid_usd(4.60);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
