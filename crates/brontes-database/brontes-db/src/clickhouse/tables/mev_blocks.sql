@@ -12,10 +12,10 @@ CREATE TABLE mev.mev_blocks ON CLUSTER eth_cluster0
         `liquidation_count` UInt64
     ),
     `eth_price` Float64,
-    `cumulative_gas_used` UInt128,
-    `cumulative_priority_fee` UInt128,
+    `total_gas_used` UInt128,
+    `total_priority_fee` UInt128,
     `total_bribe` UInt128,
-    `cumulative_mev_priority_fee_paid` UInt128,
+    `total_mev_priority_fee_paid` UInt128,
     `builder_address` String,
     `builder_eth_profit` Float64,
     `builder_profit_usd` Float64,
@@ -23,7 +23,7 @@ CREATE TABLE mev.mev_blocks ON CLUSTER eth_cluster0
     `proposer_fee_recipient` Nullable(String),
     `proposer_mev_reward` Nullable(UInt128),
     `proposer_profit_usd` Nullable(Float64),
-    `cumulative_mev_profit_usd` Float64,
+    `total_mev_profit_usd` Float64,
     `possible_mev` Nested (
         `tx_hash` String,
         `tx_idx` UInt64,
