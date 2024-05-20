@@ -1081,8 +1081,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_cex_dex_markout_curve() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-        // we have no trades in the timewindow
-        let tx = hex!("f99fadbc0551f07ee1bdc1c047bc02379d7ac0a0918426099bf82a7642674258").into();
+        let tx = hex!("382b2ae940b7665b4b403bdd87f03dabfcc05bbe35ae82931ada06a8d60bb79a").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(-2790.18)
