@@ -133,6 +133,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
                     .collect_action_vec(Action::try_swaps_merged);
 
+                if dex_swaps.is_empty() {
+                    trace!("no dex swaps found");
+                    return None
+                }
+
                 if self.is_triangular_arb(&dex_swaps) {
                     trace!(
                         target: "brontes::cex-dex-markout",
@@ -184,7 +189,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
     ) -> Option<CexDexProcessing> {
         let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex, tx_hash);
-
 
         // pricing window
         let pricing_window_vwam = pricing
@@ -285,7 +289,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(PossibleCexDex::from_exchange_legs)
             .collect_vec();
 
-            tracing::trace!("{:#?}", per_exchange_pnl);
+        tracing::trace!("{:#?}", per_exchange_pnl);
         CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl)
     }
 
