@@ -89,8 +89,8 @@ reth-tracing-ext.workspace = true
 
 
 [features]
+default = ["cex-dex-markout"]
 tests = []
-default = []
 cex-dex-markout = []
 test_pricing = []
 

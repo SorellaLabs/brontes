@@ -26,7 +26,7 @@ pub struct RawCexTrades {
 
 pub struct CexTradesConverter {
     pub block_times: Vec<CexBlockTimes>,
-    pub symbols:     FastHashMap<(CexExchange, String), CexSymbols>,
+    pub symbols:     FastHashMap<String, CexSymbols>,
     pub trades:      Vec<RawCexTrades>,
 }
 
@@ -39,12 +39,12 @@ impl CexTradesConverter {
     ) -> Self {
         let symbols = symbols
             .into_iter()
-            .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
+            .map(|c| (c.symbol_pair.clone(), c))
             .collect::<FastHashMap<_, _>>();
 
         let trades = trades
             .into_iter()
-            .filter(|trade| symbols.contains_key(&(trade.exchange, trade.symbol.clone())))
+            .filter(|trade| symbols.contains_key(&trade.symbol))
             .collect();
 
         Self {
@@ -94,11 +94,7 @@ impl CexTradesConverter {
                         let mut exchange_symbol_map = FastHashMap::default();
 
                         trades.into_iter().for_each(|trade| {
-                            let mut symbol = self
-                                .symbols
-                                .get(&(trade.exchange, trade.symbol.clone()))
-                                .unwrap()
-                                .clone();
+                            let mut symbol = self.symbols.get(&trade.symbol).unwrap().clone();
 
                             if symbol.address_pair.1
                                 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")

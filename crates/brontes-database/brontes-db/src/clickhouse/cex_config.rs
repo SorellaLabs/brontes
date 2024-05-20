@@ -16,7 +16,7 @@ impl CexDownloadConfig {
 impl Default for CexDownloadConfig {
     fn default() -> Self {
         Self {
-            time_window:      (0.5, 2.0),
+            time_window:      (5.0, 8.0),
             exchanges_to_use: vec![
                 CexExchange::Binance,
                 CexExchange::Coinbase,
