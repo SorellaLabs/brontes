@@ -3,7 +3,10 @@ use std::{cmp::max, fmt::Display};
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Zero},
+    },
     Rational,
 };
 
@@ -175,7 +178,7 @@ impl CexTradeMap {
                 // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.1, intermediary);
                 // bnb / eth 0.1298price
-                let pair1 = Pair(intermediary, pair.0);
+                let pair1 = Pair(pair.0, intermediary);
                 // check if we have a path
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
@@ -201,7 +204,7 @@ impl CexTradeMap {
                     )?,
                 );
 
-                let new_vol = volume * &res.prices.0.price;
+                let new_vol = volume / &res.prices.0.price.clone().reciprocal();
 
                 Some((
                     (i, res),
