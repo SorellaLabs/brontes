@@ -90,7 +90,7 @@ statrs = "0.16"
 
 
 [features]
-default = ["pretty-print"]
+default = ["pretty-print", "cex-dex-markout"]
 cex-dex-markout = [
   "brontes-types/cex-dex-markout",
   "brontes-database/cex-dex-markout",
