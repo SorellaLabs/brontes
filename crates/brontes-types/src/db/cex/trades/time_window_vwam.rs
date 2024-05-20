@@ -1,4 +1,7 @@
-use std::{f64::consts::E, ops::Mul};
+use std::{
+    f64::consts::E,
+    ops::{Div, Mul},
+};
 
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
@@ -44,6 +47,34 @@ pub struct WindowExchangePrice {
     pub global_exchange_price:             Rational,
 }
 
+impl Div for WindowExchangePrice {
+    type Output = WindowExchangePrice;
+
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    fn div(mut self, mut rhs: Self) -> Self::Output {
+        // adjust the price with volume
+        self.exchange_price_with_volume_direct = self
+            .exchange_price_with_volume_direct
+            .into_iter()
+            .filter_map(|(exchange, (this_price, this_vol))| {
+                let (other_price, other_vol) =
+                    rhs.exchange_price_with_volume_direct.remove(&exchange)?;
+
+                let this_vol = &this_price * &this_vol;
+                let other_vol = &other_vol * &other_price;
+                let vol = this_vol + other_vol;
+
+                let price = other_price / this_price;
+
+                Some((exchange, (price, vol)))
+            })
+            .collect();
+
+        self.global_exchange_price *= rhs.global_exchange_price;
+
+        self
+    }
+}
 // used for intermediary calcs
 impl Mul for WindowExchangePrice {
     type Output = WindowExchangePrice;
@@ -169,8 +200,8 @@ impl<'a> TimeWindowTrades<'a> {
             .into_iter()
             .filter_map(|intermediary| {
                 trace!(?intermediary, "trying inter");
-                let pair0 = Pair(pair.1, intermediary);
 
+                let pair0 = Pair(pair.1, intermediary);
                 let pair1 = Pair(intermediary, pair.0);
 
                 let mut has_pair0 = false;
@@ -220,8 +251,8 @@ impl<'a> TimeWindowTrades<'a> {
                     tx_hash,
                 )?;
 
-                let maker = res.0 * pair1_v.0;
-                let taker = res.1 * pair1_v.1;
+                let maker = pair1_v.0 / res.0;
+                let taker = pair1_v.1 / res.1;
 
                 Some((maker, taker))
             })
