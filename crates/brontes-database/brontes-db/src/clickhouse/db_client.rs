@@ -582,7 +582,7 @@ pub fn clickhouse_config() -> db_interfaces::clickhouse::config::ClickhouseConfi
 mod tests {
     use std::sync::Arc;
 
-    use alloy_primitives::hex;
+    use alloy_primitives::{hex, TxHash};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
@@ -901,6 +901,8 @@ mod tests {
             &pair,
             &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
             None,
+            &NormalizedSwap::default(),
+            TxHash::default(),
         );
 
         let trades = cex_trade_map

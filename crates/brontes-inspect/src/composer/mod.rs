@@ -27,9 +27,9 @@
 //! let composer = Composer::new(&orchestra, tree, metadata);
 //! // Future execution of the composer to process MEV data
 //! ```
-
 use std::sync::Arc;
 
+use alloy_primitives::Address;
 use brontes_types::{mev::Mev, FastHashMap};
 use itertools::Itertools;
 use tracing::{span, Level};
@@ -70,8 +70,11 @@ pub fn compose_mev_results(
 
     let possible_arbs = possible_mev_txes.clone();
 
+    let quote_token = orchestra[0].get_quote_token();
+
     let (block_details, mev_details) =
-        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev);
+        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token);
+
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
 }
 
@@ -116,6 +119,7 @@ fn on_orchestra_resolution(
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
+    quote_token: Address,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
@@ -133,7 +137,14 @@ fn on_orchestra_resolution(
 
     let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
 
-    let header = build_mev_header(&metadata, tree, possible_mev_txes, mev_count, &filtered_bundles);
+    let header = build_mev_header(
+        &metadata,
+        tree,
+        possible_mev_txes,
+        mev_count,
+        &filtered_bundles,
+        quote_token,
+    );
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));
 

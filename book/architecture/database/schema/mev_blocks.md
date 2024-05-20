@@ -38,13 +38,13 @@
   - **Description:** A count of various types of MEV bundles detected.
 - **eth_price**
   - **Description:** The CEX price of ETH when the block was produced.
-- **cumulative_gas_used**
+- **total_gas_used**
   - **Description:** The total gas used in the block.
-- **cumulative_priority_fee**
+- **total_priority_fee**
   - **Description:** The total priority fee paid in the block.
 - **total_bribe**
   - **Description:** The total direct builder payment in the block.
-- **cumulative_mev_priority_fee_paid**:
+- **total_mev_priority_fee_paid**:
   - **Description:** The total priority fee paid by MEV bundles in the block.
 - **builder_address**:
   - **Type:** `Address`
@@ -54,9 +54,11 @@
 - **builder_profit_usd**
   - **Description:** Builder PnL in USD.
 - **builder_mev_profit_usd**
-
   - **Description:** Vertically integrated searcher PnL in USD.
-
+- **builder_searcher_bribe**
+  - **Description:** Builder bribe paid by vertically integrated searchers to the block builder.
+- **builder_searcher_bribe_usd**
+  - **Description:** Builder bribe paid by vertically integrated searchers to the block builder in USD.
 - **proposer_fee_recipient**:
   - **Type:** `Option<Address>`
   - **Description:** Proposer fee recipient address.
@@ -64,8 +66,8 @@
   - **Description:** Proposer MEV reward queried from the relay data API.
 - **proposer_profit_usd**
   - **Description:** Proposer PnL in USD.
-- **cumulative_mev_profit_usd**
-  - **Description:** Cumulative MEV profit of all MEV bundles in the block.
+- **total_mev_profit_usd**
+  - **Description:** Total MEV profit of all MEV bundles in the block.
 
 ## Bundle Fields
 

@@ -105,6 +105,7 @@ pub trait Inspector: Send + Sync {
     /// Used for log span so we know which errors come from which inspector
     fn get_id(&self) -> &str;
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
+    fn get_quote_token(&self) -> Address;
 }
 
 #[derive(

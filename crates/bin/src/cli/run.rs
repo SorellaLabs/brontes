@@ -42,11 +42,11 @@ pub struct RunArgs {
     pub inspectors:           Option<Vec<Inspectors>>,
     /// The sliding time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp
-    #[arg(long = "tw-before", short = 'b', default_value = if cfg!(feature = "cex-dex-markout") { "3.0" } else { "0.5" })]
+    #[arg(long = "tw-before", short = 'b', default_value = if cfg!(feature = "cex-dex-markout") { "5.0" } else { "0.5" })]
     pub time_window_before:   f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-markout") { "5.0" } else { "2.0" })]
+    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-markout") { "8.0" } else { "2.0" })]
     pub time_window_after:    f64,
     /// CEX exchanges to consider for cex-dex analysis
     #[arg(
@@ -86,6 +86,11 @@ impl RunArgs {
         ctx: CliContext,
     ) -> eyre::Result<()> {
         banner::print_banner();
+
+        if self.start_block > self.end_block {
+            return Err(eyre::eyre!("start block must be less than end block"));
+        }
+
         // Fetch required environment variables.
         let reth_db_path = get_env_vars()?;
         tracing::info!(target: "brontes", "got env vars");

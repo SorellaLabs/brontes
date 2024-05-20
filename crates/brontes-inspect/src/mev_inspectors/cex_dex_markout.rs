@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -14,6 +15,7 @@ use brontes_types::{
         },
         dex::PriceAt,
     },
+    display::utils::format_etherscan_url,
     mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
     normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     pair::Pair,
@@ -27,7 +29,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use tracing::warn;
+use tracing::{trace, warn};
 
 use crate::atomic_arb::is_stable_pair;
 
@@ -38,7 +40,6 @@ pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000)
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
-//TODO: Create distinct cex-dex-markout type
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     utils:         SharedInspectorUtils<'db, DB>,
     cex_exchanges: Vec<CexExchange>,
@@ -63,6 +64,10 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
 
     fn get_id(&self) -> &str {
         "CexDexMarkout"
+    }
+
+    fn get_quote_token(&self) -> Address {
+        self.utils.quote
     }
 
     fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
@@ -106,6 +111,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 // Return early if the tx is a solver settling trades
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
+                        trace!(
+                            target: "brontes::cex-dex-markout",
+                            "Filtered out CexDex tx because it is a contract of type {:?}\n Tx: {}",
+                            contract_type,
+                            format_etherscan_url(&tx_info.tx_hash)
+                        );
                         self.utils.get_metrics().inspect(|m| {
                             m.branch_filtering_trigger(
                                 MevType::CexDex,
@@ -123,6 +134,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .collect_action_vec(Action::try_swaps_merged);
 
                 if self.is_triangular_arb(&dex_swaps) {
+                    trace!(
+                        target: "brontes::cex-dex-markout",
+                        "Filtered out CexDex because it is a triangular arb\n Tx: {}",
+                        format_etherscan_url(&tx_info.tx_hash)
+                    );
                     self.utils.get_metrics().inspect(|m| {
                         m.branch_filtering_trigger(MevType::CexDex, "is_triangular_arb")
                     });
@@ -133,7 +149,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
                     dex_swaps,
                     &metadata,
-                    tx_info.is_searcher_of_type(MevType::CexDex),
+                    tx_info.is_searcher_of_type(MevType::CexDex)
+                        || tx_info.is_labelled_searcher_of_type(MevType::CexDex),
+                    tx_info.tx_hash,
                 )?;
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
@@ -163,8 +181,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
         marked_cex_dex: bool,
+        tx_hash: FixedBytes<32>,
     ) -> Option<CexDexProcessing> {
-        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex);
+        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex, tx_hash);
 
         // pricing window
         let pricing_window_vwam = pricing
@@ -219,6 +238,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         possible_pricing?,
                         metadata,
                         CexExchange::VWAP,
+                        tx_hash,
                     ))
                 })
                 .collect_vec(),
@@ -244,6 +264,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     ),
                                     metadata,
                                     *ex,
+                                    tx_hash,
                                 ),
                             )
                         })
@@ -274,6 +295,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         cex_quote: (Rational, Rational),
         metadata: &Metadata,
         exchange: CexExchange,
+        tx_hash: FixedBytes<32>,
     ) -> Option<ExchangeLeg> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
@@ -314,6 +336,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &vol,
                 metadata.block_timestamp * 1000000,
                 true,
+                swap,
+                tx_hash,
             )?
             .0
             .global_exchange_price;
@@ -345,6 +369,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
         marked_cex_dex: bool,
+        tx_hash: FixedBytes<32>,
     ) -> Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> {
         dex_swaps
             .iter()
@@ -368,6 +393,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     &swap.amount_out,
                                     metadata.microseconds_block_timestamp(),
                                     marked_cex_dex,
+                                    swap,
+                                    tx_hash,
                                 )
                         })
                     })
@@ -383,6 +410,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 &swap.amount_out,
                                 metadata.microseconds_block_timestamp(),
                                 marked_cex_dex,
+                                swap,
+                                tx_hash,
                             )
                     });
 
@@ -402,6 +431,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     &swap.amount_out,
                                     None,
                                     marked_cex_dex,
+                                    swap,
+                                    tx_hash,
                                 )
                         })
                     })
@@ -417,6 +448,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 &swap.amount_out,
                                 None,
                                 marked_cex_dex,
+                                swap,
+                                tx_hash,
                             )
                     });
 
@@ -635,7 +668,7 @@ impl CexDexProcessing {
 
     pub fn into_bundle(self, tx_info: &TxInfo) -> Option<(f64, BundleData)> {
         Some((
-            self.max_profit
+            self.global_vmam_cex_dex
                 .as_ref()?
                 .aggregate_pnl
                 .maker_taker_mid
@@ -1011,6 +1044,23 @@ mod tests {
             .with_dex_prices()
             .needs_token(WETH_ADDRESS)
             .with_gas_paid_usd(38.31)
+            .with_expected_profit_usd(148.430);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn text_cex_dex_markout_curve() {
+        // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .needs_token(WETH_ADDRESS)
+            .with_gas_paid_usd(16.34)
             .with_expected_profit_usd(148.430);
 
         inspector_util.run_inspector(config, None).await.unwrap();

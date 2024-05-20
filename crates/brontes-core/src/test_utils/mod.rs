@@ -457,7 +457,7 @@ pub async fn init_trace_parser(
     metrics_tx: UnboundedSender<PoirotMetricEvents>,
     libmdbx: &'static LibmdbxReadWriter,
     _max_tasks: u32,
-) -> TraceParser<'_, Box<dyn TracingProvider>, LibmdbxReadWriter> {
+) -> TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = format!("{db_endpoint}:{db_port}");

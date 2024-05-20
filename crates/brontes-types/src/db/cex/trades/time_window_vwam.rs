@@ -1,26 +1,36 @@
 use std::{f64::consts::E, ops::Mul};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
 
-use super::{utils::PairTradeWalker, CexTrades};
-use crate::{db::cex::CexExchange, pair::Pair, FastHashMap, FastHashSet};
+use super::{
+    utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker},
+    CexTrades,
+};
+use crate::{
+    constants::{USDC_ADDRESS, USDT_ADDRESS},
+    db::cex::CexExchange,
+    normalized_actions::NormalizedSwap,
+    pair::Pair,
+    FastHashMap, FastHashSet,
+};
 
 const PRE_DECAY: f64 = -0.0000005;
 const POST_DECAY: f64 = -0.0000002;
 
-const START_POST_TIME_US: u64 = 2_000_000;
-const START_PRE_TIME_US: u64 = 500_000;
+const START_POST_TIME_US: u64 = 50_000;
+const START_PRE_TIME_US: u64 = 50_000;
 
-const MAX_POST_TIME_US: u64 = 5_000_000;
-const MAX_PRE_TIME_US: u64 = 3_000_000;
+const MAX_POST_TIME_US: u64 = 8_000_000;
+const MAX_PRE_TIME_US: u64 = 5_000_000;
 
-const PRE_SCALING_DIFF: u64 = 3_000_000;
-const TIME_STEP: u64 = 100_000;
+const PRE_SCALING_DIFF: u64 = 300_000;
+
+const TIME_STEP: u64 = 10_000;
 
 pub type PriceWithVolume = (Rational, Rational);
 pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
@@ -119,6 +129,8 @@ impl<'a> TimeWindowTrades<'a> {
         volume: &Rational,
         timestamp: u64,
         bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
         if pair.0 == pair.1 {
             return Some((
@@ -128,10 +140,10 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         let res = self
-            .get_vwap_price(exchanges, pair, volume, timestamp, bypass_vol)
+            .get_vwap_price(exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash)
             .or_else(|| {
                 self.get_vwap_price_via_intermediary(
-                    exchanges, &pair, volume, timestamp, bypass_vol,
+                    exchanges, &pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
                 )
             });
 
@@ -149,15 +161,16 @@ impl<'a> TimeWindowTrades<'a> {
         volume: &Rational,
         block_timestamp: u64,
         bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
-                // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.0, intermediary);
-                // bnb / eth 0.1298price
+
                 let pair1 = Pair(intermediary, pair.1);
-                // check if we have a path
+
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
 
@@ -174,13 +187,36 @@ impl<'a> TimeWindowTrades<'a> {
                     return None
                 }
 
+                let mut bypass_intermediary_vol = false;
+                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS {
+                    bypass_intermediary_vol = true;
+                }
+
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
-                let res =
-                    self.get_vwap_price(exchanges, pair0, volume, block_timestamp, bypass_vol)?;
+                let res = self.get_vwap_price(
+                    exchanges,
+                    pair0,
+                    volume,
+                    block_timestamp,
+                    bypass_vol || bypass_intermediary_vol,
+                    dex_swap,
+                    tx_hash,
+                )?;
+
+                if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS {
+                    bypass_intermediary_vol = true;
+                }
 
                 let new_vol = volume * &res.0.global_exchange_price;
-                let pair1_v =
-                    self.get_vwap_price(exchanges, pair1, &new_vol, block_timestamp, bypass_vol)?;
+                let pair1_v = self.get_vwap_price(
+                    exchanges,
+                    pair1,
+                    &new_vol,
+                    block_timestamp,
+                    bypass_vol || bypass_intermediary_vol,
+                    dex_swap,
+                    tx_hash,
+                )?;
 
                 let maker = res.0 * pair1_v.0;
                 let taker = res.1 * pair1_v.1;
@@ -239,6 +275,8 @@ impl<'a> TimeWindowTrades<'a> {
         vol: &Rational,
         block_timestamp: u64,
         bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
         let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
             self.0
@@ -249,9 +287,10 @@ impl<'a> TimeWindowTrades<'a> {
                 .unzip();
 
         if trades.is_empty() {
-            tracing::debug!("no trades found");
+            log_missing_trade_data(dex_swap, &tx_hash);
             return None
         }
+
         let mut walker = PairTradeWalker::new(
             trades,
             ptrs,
@@ -295,6 +334,7 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if &trade_volume_global < vol && !bypass_vol {
+            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
             return None
         }
 
@@ -319,6 +359,7 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if trade_volume_global == Rational::ZERO {
+            log_insufficient_trade_volume(dex_swap, &tx_hash, trade_volume_global, vol.clone());
             return None
         }
 
