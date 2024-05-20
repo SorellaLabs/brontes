@@ -67,7 +67,7 @@ impl Div for WindowExchangePrice {
                 let other_vol = &other_vol * &other_price;
                 let vol = this_vol + other_vol;
 
-                let price = other_price / this_price.reciprocal();
+                let price = this_price / other_price.reciprocal() ;
 
                 Some((exchange, (price, vol)))
             })
