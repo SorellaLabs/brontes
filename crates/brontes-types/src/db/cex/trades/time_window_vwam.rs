@@ -322,6 +322,8 @@ impl<'a> TimeWindowTrades<'a> {
         if trades.is_empty() {
             log_missing_trade_data(dex_swap, &tx_hash);
             return None
+        } else {
+            trace!(?trades.len(), "have trades");
         }
 
         let mut walker = PairTradeWalker::new(
