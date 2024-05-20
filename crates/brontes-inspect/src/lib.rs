@@ -1,19 +1,12 @@
 //! The `brontes_inspect` crate is designed to efficiently detect and analyze
-//! MEV. Emphasizing modularity and ease of use, this crate provides a robust
-//! foundation for developing custom inspectors, streamlining the process of MEV
-//! strategy identification.
-//!
-//! By abstracting complex tasks such as decoding, normalization, metadata
-//! fetching, and price tracking, `brontes_inspect` allows developers to
-//! concentrate on the unique logic of their MEV detection strategies. This
-//! design philosophy ensures that users can easily integrate their own
-//! inspectors, tailored to specific MEV strategies, without delving
-//! into the underlying infrastructure details.
+//! a block. Emphasizing modularity and ease of use, this crate provides a
+//! robust foundation for developing custom inspectors, streamlining the process
+//! of complex transaction & block analysis.
 //!
 //! ## Inspector
 //!
-//! `Inspector` is a trait defining a method `process_tree`. This method takes a
-//! `BlockTree` and `Metadata` as input and returns a vector of tuples, each
+//! `Inspector` is a trait defining a method `inspect_block`. This method takes
+//! a `BlockTree` and `Metadata` as input and returns a vector of tuples, each
 //! containing a `BundleHeader` and a `BundleData`.
 //!
 //! ```ignore
@@ -21,20 +14,13 @@
 //! pub trait Inspector: Send + Sync {
 //!     type Result: Send + Sync;
 //!
-//!     async fn process_tree(
+//!     async fn inspect_block(
 //!         &self,
 //!         tree: Arc<BlockTree<Action>>,
 //!         metadata: Arc<Metadata>,
 //!     ) -> Self::Result;
 //! }
 //! ```
-//!
-//! The [`BlockTree`](../brontes-classifier/index.html) represents a block of
-//! classified & normalized Ethereum transactions & their traces, and the
-//! [`Metadata`](../brontes-database) contains price information & relevant off
-//! chain data such as mempool data & centralized exchange price data relevant
-//! to that block. The `process_tree` method analyzes the block and identifies
-//! instances of the MEV strategy that the inspector is designed to detect.
 //!
 //! ## Individual Inspectors
 //!
@@ -50,7 +36,7 @@
 //! - [`long_tail`](long_tail/index.html)
 //!
 //! Each inspector implements the `Inspector` trait and provides its own
-//! implementation of the `process_tree` method.
+//! implementation of the `inspect_block` method.
 //!
 //! ## Composer
 //!
@@ -104,7 +90,7 @@ pub trait Inspector: Send + Sync {
 
     /// Used for log span so we know which errors come from which inspector
     fn get_id(&self) -> &str;
-    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
+    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
     fn get_quote_token(&self) -> Address;
 }
 

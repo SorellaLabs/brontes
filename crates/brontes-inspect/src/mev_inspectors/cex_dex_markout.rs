@@ -70,7 +70,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         if metadata.cex_trades.is_none() {
             tracing::warn!("no cex trades for block");
             return vec![]
@@ -80,15 +80,15 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
             .get_metrics()
             .map(|m| {
                 m.run_inspector(MevType::CexDex, || {
-                    self.process_tree_inner(tree.clone(), metadata.clone())
+                    self.inspect_block_inner(tree.clone(), metadata.clone())
                 })
             })
-            .unwrap_or_else(|| self.process_tree_inner(tree.clone(), metadata.clone()))
+            .unwrap_or_else(|| self.inspect_block_inner(tree.clone(), metadata.clone()))
     }
 }
 
 impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
-    fn process_tree_inner(
+    fn inspect_block_inner(
         &self,
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
