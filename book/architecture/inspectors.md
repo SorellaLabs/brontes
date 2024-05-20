@@ -1,14 +1,10 @@
 # Inspectors
 
-The Brontes Inspector Framework epitomizes our aversion to the tediousness of data preparation. It seamlessly processes classified blocks and metadata, allowing developers to immerse themselves fully in analysis and methodology, free from the burdens of preprocessing.
-
-Our initial focus has been on MEV detection, particularly in Cefi-Defi arbitrage and Jit-Liquidity Sandwiching. However, the inspector framework’s versatile design lends itself to a wide array of analytics scenarios.
-
-The `brontes_inspect` crate efficiently detects and analyzes MEV, emphasizing modularity and ease of use. This crate provides a robust foundation for developing custom inspectors, streamlining the identification of MEV strategies. By abstracting complex tasks such as decoding, normalization, metadata fetching, and price tracking, `brontes_inspect` allows developers to concentrate on the unique logic of their MEV detection strategies. This design philosophy ensures seamless integration of custom inspectors tailored to specific MEV strategies, without delving into underlying infrastructure details.
+Inspectors are run at the final stage of the block pipeline. Each Inspector applies its own specialized logic to analyze a block, using the [`BlockTree`](./tree.md#block-tree) and [`Metadata`](./database/database.md#1-block-specific-data) provided during execution. Defined as a trait, `Inspectors` allow developers to build custom implementations tailored to their analytical needs.
 
 ## Inspector Trait
 
-An `Inspector` is a trait defining the `process_tree` method, which takes a `BlockTree` and `Metadata` as input, returning a vector of tuples, each containing a `BundleHeader` and a `BundleData`.
+An `Inspector` is a trait defining the `process_tree` method, which takes a `BlockTree` and `Metadata` as input. It returns a result specific to the inspector's implementation, which allows for any type of specialized analysis to be implemented.
 
 ```rust,ignore
 #[async_trait::async_trait]
@@ -22,8 +18,6 @@ pub trait Inspector: Send + Sync {
     ) -> Self::Result;
 }
 ```
-
-The `BlockTree` represents a block of classified and normalized Ethereum transactions and their traces. The `Metadata` contains price information and relevant off-chain data, such as mempool data and centralized exchange price data relevant to that block. The `process_tree` method analyzes the block, identifying instances of the MEV strategy that the inspector is designed to detect.
 
 <div style="text-align: center;">
  <img src="diagrams/composer.png" alt="brontes-flow" style="border-radius: 20px; width: 600px; height: auto;">

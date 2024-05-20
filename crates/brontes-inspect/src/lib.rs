@@ -1,14 +1,7 @@
 //! The `brontes_inspect` crate is designed to efficiently detect and analyze
-//! MEV. Emphasizing modularity and ease of use, this crate provides a robust
-//! foundation for developing custom inspectors, streamlining the process of MEV
-//! strategy identification.
-//!
-//! By abstracting complex tasks such as decoding, normalization, metadata
-//! fetching, and price tracking, `brontes_inspect` allows developers to
-//! concentrate on the unique logic of their MEV detection strategies. This
-//! design philosophy ensures that users can easily integrate their own
-//! inspectors, tailored to specific MEV strategies, without delving
-//! into the underlying infrastructure details.
+//! a block. Emphasizing modularity and ease of use, this crate provides a
+//! robust foundation for developing custom inspectors, streamlining the process
+//! of complex transaction & block analysis.
 //!
 //! ## Inspector
 //!
@@ -28,13 +21,6 @@
 //!     ) -> Self::Result;
 //! }
 //! ```
-//!
-//! The [`BlockTree`](../brontes-classifier/index.html) represents a block of
-//! classified & normalized Ethereum transactions & their traces, and the
-//! [`Metadata`](../brontes-database) contains price information & relevant off
-//! chain data such as mempool data & centralized exchange price data relevant
-//! to that block. The `process_tree` method analyzes the block and identifies
-//! instances of the MEV strategy that the inspector is designed to detect.
 //!
 //! ## Individual Inspectors
 //!
