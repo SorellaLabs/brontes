@@ -1127,6 +1127,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_wbtc_usdc() {
+        // try crypto missing
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
@@ -1139,6 +1140,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_pepe_usdc() {
+        // should be there if intermediary
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)

@@ -6,6 +6,7 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
+use tracing::trace;
 
 use super::{
     utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker},
@@ -167,6 +168,7 @@ impl<'a> TimeWindowTrades<'a> {
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
+                trace!(?intermediary, "trying inter");
                 let pair0 = Pair(pair.0, intermediary);
 
                 let pair1 = Pair(intermediary, pair.1);
