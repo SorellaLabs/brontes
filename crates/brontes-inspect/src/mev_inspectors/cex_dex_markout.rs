@@ -1124,4 +1124,52 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_wbtc_usdc() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(16.22);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_pepe_usdc() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(16.22);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_woo_usdc() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("157d7a1279b6eba0ce1491fe9cb8eb657036506888facd2e8ae420ce5aa19f2c").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(16.22);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_pundix_eth() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("feda4f8ca5add09aacea07303b1b87ede2522fc091393ab633ff046ffe85289c").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(4.80)
+            .with_gas_paid_usd(16.22);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }

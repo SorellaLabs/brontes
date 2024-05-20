@@ -1,5 +1,5 @@
 with (
-  select block_timestamp * 1000000 from ethereum.blocks where block_number = 18264690
+  select block_timestamp * 1000000 from ethereum.blocks where block_number = 18264692
 ) as h
 select count() from 
 cex.normalized_trades 
