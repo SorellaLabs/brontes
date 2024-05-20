@@ -185,6 +185,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     ) -> Option<CexDexProcessing> {
         let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex, tx_hash);
 
+
         // pricing window
         let pricing_window_vwam = pricing
             .iter()
@@ -284,6 +285,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(PossibleCexDex::from_exchange_legs)
             .collect_vec();
 
+            tracing::trace!("{:#?}", per_exchange_pnl);
         CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl)
     }
 
@@ -1041,8 +1043,6 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            // .with_dex_prices()
-            // .needs_token(WETH_ADDRESS)
             .with_gas_paid_usd(38.31)
             .with_expected_profit_usd(148.430);
 
@@ -1057,8 +1057,6 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            // .with_dex_prices()
-            // .needs_token(WETH_ADDRESS)
             .with_gas_paid_usd(16.34)
             .with_expected_profit_usd(148.430);
 
