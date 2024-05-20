@@ -201,7 +201,7 @@ impl<'a> TimeWindowTrades<'a> {
             .filter_map(|intermediary| {
                 trace!(?intermediary, "trying inter");
 
-                let pair0 = Pair(pair.1, intermediary);
+                let pair0 = Pair(intermediaries, pair.1);
                 let pair1 = Pair(pair.0, intermediary);
 
                 let mut has_pair0 = false;
