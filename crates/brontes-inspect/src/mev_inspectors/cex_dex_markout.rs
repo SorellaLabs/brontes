@@ -1080,26 +1080,24 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_curve() {
+        // missing trade
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("382b2ae940b7665b4b403bdd87f03dabfcc05bbe35ae82931ada06a8d60bb79a").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(-2790.18)
-            .with_gas_paid_usd(79748.18);
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_eth_dai() {
+        // no trades in db
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("60cbfc1b8b72479259c236e0ef17ffeade286f7c7821a03f6c180340b694f9c7").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(-2790.18)
-            .with_gas_paid_usd(79748.18);
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 
     #[brontes_macros::test]
@@ -1108,7 +1106,7 @@ mod tests {
         let tx = hex!("67ac84a6b6d6b0e0f85f6d6efe34e1889f8f7609049edc676b6624e1930c8867").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(-2790.18)
+            .with_expected_profit_usd(2.78)
             .with_gas_paid_usd(4.75);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -1116,12 +1114,13 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_sol_eth() {
+        // solana is misslabled
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("a63e94c3d4ec343cce7134c70c76899cbee18aab580f1eb294f08fdcf371d091").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(-2790.18)
-            .with_gas_paid_usd(79748.18);
+            .with_gas_paid_usd(4.36);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
