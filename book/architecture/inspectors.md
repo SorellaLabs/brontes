@@ -47,9 +47,9 @@ Once all inspectors have completed their analysis we attempt to compose MEV resu
 
 **1: Composition Phase**:
 
-The composition phase integrates results from various inspectors to identify more complex MEV strategies. Using the `MEV_COMPOSABILITY_FILTER`, we map multiple types of child MEV into a single, complex parent MEV. This filter defines specific combinations where child MEVs, such as Sandwich and JIT, are combined into a new parent MEV instance, JIT Sandwich, based on predefined rules.
+The composition phase integrates results from various inspectors to form complex MEV strategies using the [`MEV_COMPOSABILITY_FILTER`](https://github.com/SorellaLabs/brontes/blob/1448e90a30fb856a77e0d4a2cffc6048eef03056/crates/brontes-inspect/src/composer/composer_filters.rs#L21). This filter specifies combinations of child MEVs—such as Sandwich and JIT—that merge into a more complex parent MEV, like JIT Sandwich, through a designated `ComposeFunction`.
 
-The `try_compose_mev` function examines the sorted MEV data to identify and merge compatible MEV instances. It checks for matching transaction hashes among MEV types listed in the filter. When a complete set of required child MEVs is found, they are combined into a new parent MEV.
+The [`try_compose_mev`](https://github.com/SorellaLabs/brontes/blob/1448e90a30fb856a77e0d4a2cffc6048eef03056/crates/brontes-inspect/src/composer/mod.rs#L209) function applies these rules to the sorted MEV data, seeking out matching transaction hashes among the specified MEV types. When all required child MEV types for a combination are present, they are consolidated into a single, composite parent MEV instance.
 
 **2: Deduplication Phase**:
 
@@ -57,35 +57,21 @@ Inspectors, such as those identifying atomic arbitrages and sandwich attacks, ma
 
 **How Deduplication Works:**
 
-- The `MEV_DEDUPLICATION_FILTER` provides a structured way to prioritize MEV types in scenarios where the classification of a transaction overlap. This filter establishes a hierarchy among detected MEV types, specifying which type should take precedence in the final analysis. For example, in cases involving both atomic backrun and sandwich classifications, the filter dictates that the sandwich type, being more comprehensive, should take precedence over the simpler atomic arbitrage. Below you can see the complete set of precedence rules applied in our deduplication process:
-
-```rust,ignore
-define_mev_precedence!(
-    Unknown, SearcherTx => CexDex;
-    Unknown, SearcherTx, CexDex => AtomicArb;
-    Unknown, SearcherTx, AtomicArb, CexDex => Liquidation;
-    Unknown, SearcherTx, AtomicArb, CexDex => Sandwich;
-    Unknown, SearcherTx, AtomicArb, CexDex, Sandwich => Jit;
-    Unknown, SearcherTx, AtomicArb, CexDex, Jit, Sandwich => JitSandwich;
-);
-```
-
-### Why Deduplication is Necessary:
-
-### How Deduplication Works:
-
-The `MEV_DEDUPLICATION_FILTER` plays a crucial role by establishing a hierarchy among MEV types, ensuring that in cases of overlap, more comprehensive categories take precedence. For example, when both atomic backrun and sandwich detections occur for the same transaction, the filter specifies that the sandwich type, being more encompassing, should override the atomic arbitrage. This structured prioritization avoids the double counting of transactions under multiple labels and refines the analysis, presenting a clearer and more meaningful representation of economic activities within a block.
-
-By streamlining the deduplication process, we ensure that the data not only accurately reflects each unique MEV occurrence but also provides stakeholders with a reliable understanding of the frequency and impact of various MEV strategies, unclouded by overlapping detections. This clarity is vital for accurately gauging the blockchain's complex dynamics and the economic implications of MEV strategies.
+The [`MEV_DEDUPLICATION_FILTER`](https://github.com/SorellaLabs/brontes/blob/1448e90a30fb856a77e0d4a2cffc6048eef03056/crates/brontes-inspect/src/composer/mev_filters.rs#L32) provides a structured way to prioritize MEV types in scenarios where the classification of a transaction overlap. This filter establishes a hierarchy among detected MEV types, specifying which type should take precedence in the final analysis. For example, in cases involving both atomic backrun and sandwich classifications, the filter dictates that the sandwich type, being more comprehensive, should take precedence over the simpler atomic arbitrage.
 
 ### Step 3: Calculate Block Builder PnL
 
-The final output includes calculating the Profit and Loss (PnL) for the block builder, factoring in profits from vertically integrated searchers. This comprehensive accounting helps clarify the builder’s net position by including earnings from controlled MEV searchers, which might offset any apparent losses.
+After processing the inspector results, we [calculate the block builder’s PnL](https://github.com/SorellaLabs/brontes/blob/1448e90a30fb856a77e0d4a2cffc6048eef03056/crates/brontes-inspect/src/composer/utils.rs#L195), taking into account their revenues and costs:
 
-### Step 4: Record Results
+- **Revenues:**
 
-The resulting [`MevBlock`](./database/schema/mev_blocks.md#mevblock-fields) and [`Vec<Bundles>`](./database/schema/mev_blocks.md#bundle-fields) are written to the database in the `MevBlocks` table.
+  - **Builder Revenue:** Total of all priority fees and tips paid to the builder within the block.
+  - **MEV Revenue:** Profits or losses from MEV searchers operated by the builder.
 
-```
+- **Costs:**
+  - **Proposer Payments:** ETH paid by the builder to the block proposer.
+  - **Transaction Sponsorship:** ETH spent by the builder to [sponsor](https://titanbuilder.substack.com/p/titan-tech-teatime-1) transactions within the block.
 
-```
+### Step 4: Store Results
+
+Finally the resulting [`MevBlock`](./database/schema/mev_blocks.md#mevblock-fields) and [`Vec<Bundles>`](./database/schema/mev_blocks.md#bundle-fields) are written to the database in the `MevBlocks` table.

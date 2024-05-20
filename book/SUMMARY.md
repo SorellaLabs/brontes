@@ -18,7 +18,7 @@
 
   - [Inspectors](./architecture/inspectors.md)
 
-- [Mev Inspectors Deep Dive](./mev_inspectors/intro.md)
+- [Inspector Methodology](./mev_inspectors/intro.md)
 
   - [Cex-Dex Arbitrage](./mev_inspectors/cex_dex.md)
   - [Sandwich Attack](./mev_inspectors/sandwich.md)
