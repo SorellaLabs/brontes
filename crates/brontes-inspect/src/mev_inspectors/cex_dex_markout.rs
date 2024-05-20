@@ -320,7 +320,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             );
 
             return None
+        } else {
+            trace!("got valid prices");
         }
+
 
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
