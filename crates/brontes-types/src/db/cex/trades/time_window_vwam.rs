@@ -201,8 +201,8 @@ impl<'a> TimeWindowTrades<'a> {
             .filter_map(|intermediary| {
                 trace!(?intermediary, "trying inter");
 
-                let pair0 = Pair(intermediary, pair.1);
-                let pair1 = Pair(pair.0, intermediary);
+                let pair0 = Pair(pair.1, intermediary);
+                let pair1 = Pair(intermediary, pair.0);
 
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
@@ -251,8 +251,8 @@ impl<'a> TimeWindowTrades<'a> {
                     tx_hash,
                 )?;
 
-                let maker = pair1_v.0 * res.0;
-                let taker = pair1_v.1 * res.1;
+                let maker = pair1_v.0 / res.0;
+                let taker = pair1_v.1 / res.1;
 
                 Some((maker, taker))
             })
