@@ -251,8 +251,8 @@ impl<'a> TimeWindowTrades<'a> {
                     tx_hash,
                 )?;
 
-                let maker = pair1_v.0 / res.0;
-                let taker = pair1_v.1 / res.1;
+                let maker = res.0 / pair1_v.0;
+                let taker = res.1 / pair1_v.1;
 
                 Some((maker, taker))
             })
