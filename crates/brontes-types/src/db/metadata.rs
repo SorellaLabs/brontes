@@ -63,9 +63,9 @@ pub struct Metadata {
     #[as_ref]
     pub block_metadata: BlockMetadata,
     pub cex_quotes:     CexPriceMap,
-    // not a fan but only way todo without unsafe
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
+    // only 1 reader but could be multi reader in future
     pub cex_trades:     Option<Arc<Mutex<CexTradeMap>>>,
 }
 

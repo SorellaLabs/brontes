@@ -44,12 +44,16 @@ pub struct CexDex {
     // Arb details taking the most optimal route across all exchanges
     pub optimal_route_details: Vec<ArbDetails>,
     pub optimal_route_pnl:     ArbPnl,
+
+    // timestamp of each trade of each exchange that we coside,
+    // trade vol, price,
+
     // Arb details using quotes from each exchange for each leg
-    pub per_exchange_details:  Vec<Vec<ArbDetails>>,
+    pub per_exchange_details: Vec<Vec<ArbDetails>>,
     #[redefined(field((CexExchange, same)))]
-    pub per_exchange_pnl:      Vec<(CexExchange, ArbPnl)>,
+    pub per_exchange_pnl:     Vec<(CexExchange, ArbPnl)>,
     #[redefined(same_fields)]
-    pub gas_details:           GasDetails,
+    pub gas_details:          GasDetails,
 }
 
 impl Mev for CexDex {

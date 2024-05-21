@@ -649,8 +649,8 @@ compressed_table!(
             compressed_value: DexQuoteWithIndexRedefined
         },
         Init {
-            init_size: None,
-            init_method: Other,
+            init_size: Some(2000),
+            init_method: Clickhouse,
             http_endpoint: Some("dex-pricing")
         },
         CLI {
@@ -667,7 +667,7 @@ compressed_table!(
         compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(100),
+            init_size: Some(1000),
             init_method: Clickhouse,
             http_endpoint: Some("cex-price")
         },
@@ -685,7 +685,7 @@ compressed_table!(
         compressed_value: CexTradeMapRedefined
         },
         Init {
-            init_size: Some(100),
+            init_size: Some(1000),
             init_method: Clickhouse,
             http_endpoint: None
         },
