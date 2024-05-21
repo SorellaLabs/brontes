@@ -128,7 +128,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexInspector<'_, DB> {
     ///
     /// # Returns
     /// A vector of `Bundle` instances representing classified CEX-DEX arbitrage
-    fn process_tree(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,

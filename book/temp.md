@@ -57,7 +57,7 @@ The inspectors in Brontes are highly modular. By implementing the Inspector trai
 ```rust
 #[async_trait::async_trait]
 pub trait Inspector: Send + Sync {
-    async fn process_tree(
+    async fn inspect_block(
         &self,
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
