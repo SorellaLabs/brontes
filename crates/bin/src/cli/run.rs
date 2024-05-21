@@ -157,8 +157,8 @@ impl RunArgs {
         let trade_config = CexDexTradeConfig {
             time_window_after_us:  self.time_window_after as u64 * SECONDS_TO_US,
             time_window_before_us: self.time_window_before as u64 * SECONDS_TO_US,
-            optimistic_before_us:  self.time_window_before_optimistic * SECONDS_TO_US,
-            optimistic_after_us:   self.time_window_after_optimistic * SECONDS_TO_US,
+            optimistic_before_us:  self.time_window_before_optimistic as u64 * SECONDS_TO_US,
+            optimistic_after_us:   self.time_window_after_optimistic as u64 * SECONDS_TO_US,
         };
 
         let inspectors = init_inspectors(

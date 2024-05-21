@@ -142,7 +142,7 @@ impl Metadata {
                                 trade_map
                                     .lock()
                                     .get_optimistic_vmap(
-                                            CexDexTradeConfig::default(),
+                                        CexDexTradeConfig::default(),
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,
@@ -240,7 +240,7 @@ impl Metadata {
                                 trade_map
                                     .lock()
                                     .get_optimistic_vmap(
-                                            CexDexTradeConfig::default(),
+                                        CexDexTradeConfig::default(),
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,

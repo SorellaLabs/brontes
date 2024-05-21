@@ -26,7 +26,11 @@ use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsErr
 use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
-    db::{cex::CexExchange, dex::DexQuotes, metadata::Metadata},
+    db::{
+        cex::{config::CexDexTradeConfig, CexExchange},
+        dex::DexQuotes,
+        metadata::Metadata,
+    },
     mev::{Bundle, MevType},
     normalized_actions::Action,
     tree::BlockTree,
@@ -162,6 +166,7 @@ impl InspectorTestUtils {
                 CexExchange::BybitSpot,
                 CexExchange::Kucoin,
             ],
+            CexDexTradeConfig::default(),
             None,
         );
 
@@ -245,6 +250,7 @@ impl InspectorTestUtils {
                 CexExchange::Kucoin,
                 CexExchange::Upbit,
             ],
+            CexDexTradeConfig::default(),
             None,
         );
 
@@ -353,6 +359,7 @@ impl InspectorTestUtils {
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
+                    CexDexTradeConfig::default(),
                     None,
                 )
             })
