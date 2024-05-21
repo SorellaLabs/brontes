@@ -32,9 +32,9 @@ impl CexTradeMap {
     ) -> (Option<MakerTakerWindowVWAP>, Option<MakerTaker>) {
         let vwam = self.get_optimistic_vmap(
             exchanges,
-            block_timestamp,
             &pair,
             volume,
+            block_timestamp,
             quality,
             bypass_vol,
             dex_swap,
