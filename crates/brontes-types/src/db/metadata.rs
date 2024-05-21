@@ -96,6 +96,7 @@ impl Metadata {
                                         .lock()
                                         .get_price(
                                             &trades,
+                                            self.microseconds_block_timestamp(),
                                             &pair,
                                             &baseline_for_tokeprice,
                                             None,
@@ -143,6 +144,7 @@ impl Metadata {
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,
+                                        self.microseconds_block_timestamp(),
                                         None,
                                         true,
                                         &NormalizedSwap::default(),
@@ -190,6 +192,7 @@ impl Metadata {
                                         .lock()
                                         .get_price(
                                             &trades,
+                                            self.microseconds_block_timestamp(),
                                             &pair,
                                             &baseline_for_tokeprice,
                                             None,
@@ -237,6 +240,7 @@ impl Metadata {
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,
+                                        self.microseconds_block_timestamp(),
                                         None,
                                         true,
                                         &NormalizedSwap::default(),

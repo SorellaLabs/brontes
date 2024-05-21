@@ -22,8 +22,9 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-/// TODO: lets prob not set this to 100%
-const BASE_EXECUTION_QUALITY: usize = 45;
+const BASE_EXECUTION_QUALITY: usize = 80;
+const LOWER_LIMIT: u64 = 500_000;
+const UPPER_LIMIT: u64 = 2_000_000;
 
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
@@ -74,6 +75,7 @@ impl CexTradeMap {
     pub(crate) fn get_price(
         &mut self,
         exchanges: &[CexExchange],
+        block_timestamp: u64,
         pair: &Pair,
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
@@ -94,6 +96,7 @@ impl CexTradeMap {
         let res = self
             .get_vwam_no_intermediary(
                 exchanges,
+                block_timestamp,
                 pair,
                 volume,
                 quality.as_ref(),
@@ -104,6 +107,7 @@ impl CexTradeMap {
             .or_else(|| {
                 self.get_vwam_via_intermediary(
                     exchanges,
+                    block_timestamp,
                     pair,
                     volume,
                     quality.as_ref(),
@@ -165,6 +169,7 @@ impl CexTradeMap {
     fn get_vwam_via_intermediary(
         &self,
         exchanges: &[CexExchange],
+        block_timestamp: u64,
         pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
@@ -200,7 +205,13 @@ impl CexTradeMap {
                 let (i, res) = (
                     intermediary,
                     self.get_vwam_via_intermediary_spread(
-                        exchanges, &pair0, volume, quality, dex_swap, tx_hash,
+                        exchanges,
+                        block_timestamp,
+                        &pair0,
+                        volume,
+                        quality,
+                        dex_swap,
+                        tx_hash,
                     )?,
                 );
 
@@ -211,7 +222,13 @@ impl CexTradeMap {
                     (
                         intermediary,
                         self.get_vwam_via_intermediary_spread(
-                            exchanges, &pair1, &new_vol, quality, dex_swap, tx_hash,
+                            exchanges,
+                            block_timestamp,
+                            &pair1,
+                            &new_vol,
+                            quality,
+                            dex_swap,
+                            tx_hash,
                         )?,
                     ),
                 ))
@@ -232,6 +249,7 @@ impl CexTradeMap {
     pub fn get_vwam_via_intermediary_spread(
         &self,
         exchanges: &[CexExchange],
+        block_timestamp: u64,
         pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
@@ -264,7 +282,11 @@ impl CexTradeMap {
                 let result = trades.get(pair).map(|trades| {
                     trades
                         .iter()
-                        .filter(|f| f.amount.le(&max_vol_per_trade))
+                        .filter(|f| {
+                            f.amount.le(&max_vol_per_trade)
+                                && f.timestamp > block_timestamp - LOWER_LIMIT
+                                && f.timestamp < block_timestamp + UPPER_LIMIT
+                        })
                         .collect_vec()
                 });
 
@@ -289,6 +311,7 @@ impl CexTradeMap {
     fn get_vwam_no_intermediary(
         &self,
         exchanges: &[CexExchange],
+        block_timestamp: u64,
         pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
@@ -324,7 +347,11 @@ impl CexTradeMap {
                     trades.get(pair).map(|trades| {
                         trades
                             .iter()
-                            .filter(|f| f.amount.le(&max_vol_per_trade))
+                            .filter(|f| {
+                                f.amount.le(&max_vol_per_trade)
+                                    && f.timestamp > block_timestamp - LOWER_LIMIT
+                                    && f.timestamp < block_timestamp + UPPER_LIMIT
+                            })
                             .collect_vec()
                     })?,
                 ))
