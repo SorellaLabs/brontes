@@ -613,6 +613,10 @@ pub struct CexDexProcessing {
     pub global_vmam_cex_dex: Option<PossibleCexDex>,
     pub per_exchange_pnl:    Vec<Option<PossibleCexDex>>,
     pub max_profit:          Option<PossibleCexDex>,
+
+    pub optimistic_route_details: Vec<ArbDetails>,
+    pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
+    pub optimistic_route_pnl:     ArbPnl,
 }
 
 impl CexDexProcessing {
@@ -620,8 +624,19 @@ impl CexDexProcessing {
         dex_swaps: Vec<NormalizedSwap>,
         global_vmam_cex_dex: Option<PossibleCexDex>,
         per_exchange_pnl: Vec<Option<PossibleCexDex>>,
+        optimistic_route_details: Vec<ArbDetails>,
+        optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
+        optimistic_route_pnl: ArbPnl,
     ) -> Option<Self> {
-        let mut this = Self { per_exchange_pnl, dex_swaps, max_profit: None, global_vmam_cex_dex };
+        let mut this = Self {
+            per_exchange_pnl,
+            dex_swaps,
+            max_profit: None,
+            global_vmam_cex_dex,
+            optimistic_route_pnl,
+            optimistic_trade_details,
+            optimistic_route_details,
+        };
         this.construct_max_profit_route()?;
         Some(this)
     }
@@ -712,12 +727,12 @@ impl CexDexProcessing {
                     .global_vmam_cex_dex?
                     .generate_arb_details(&self.dex_swaps),
 
-                optimal_route_details: self
+                optimal_route_details:    self
                     .max_profit
                     .as_ref()?
                     .generate_arb_details(&self.dex_swaps),
-                optimal_route_pnl:     self.max_profit.as_ref().unwrap().aggregate_pnl.clone(),
-                per_exchange_pnl:      self
+                optimal_route_pnl:        self.max_profit.as_ref().unwrap().aggregate_pnl.clone(),
+                per_exchange_pnl:         self
                     .per_exchange_pnl
                     .iter()
                     .map(|p| p.as_ref().unwrap())
@@ -727,8 +742,10 @@ impl CexDexProcessing {
                     })
                     .map(|(leg, pnl)| (leg.unwrap().cex_quote.exchange, pnl))
                     .collect(),
-
-                per_exchange_details: self
+                optimistic_route_details: self.optimistic_route_details,
+                optimistic_trade_details: self.optimistic_trade_details,
+                optimistic_route_pnl:     self.optimistic_route_pnl,
+                per_exchange_details:     self
                     .per_exchange_pnl
                     .iter()
                     .filter_map(|p| p.as_ref().map(|p| p.generate_arb_details(&self.dex_swaps)))
@@ -1024,6 +1041,7 @@ impl Display for ExchangeLeg {
 #[derive(Clone, Debug)]
 pub struct ExchangeLeg {
     pub cex_quote: FeeAdjustedQuote,
+    pub pairs:     Vec<Pair>,
     pub pnl:       ArbPnl,
 }
 

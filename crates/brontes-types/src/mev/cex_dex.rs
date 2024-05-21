@@ -37,11 +37,11 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct OptimisticTrade {
     #[redefined(same_fields)]
-    exchange:  CexExchange,
-    pair:      Pair,
-    timestamp: u64,
-    price:     Rational,
-    volume:    Rational,
+    pub exchange:  CexExchange,
+    pub pair:      Pair,
+    pub timestamp: u64,
+    pub price:     Rational,
+    pub volume:    Rational,
 }
 
 #[serde_as]
@@ -441,8 +441,8 @@ impl DbRow for CexDex {
 )]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ArbDetails {
-    /// symbols that we traded through
-    pub symbols:        Vec<String>,
+    /// pairs that we traded through
+    pub pairs:          Vec<Pair>,
     #[redefined(same_fields)]
     pub cex_exchange:   CexExchange,
     pub best_bid_maker: Rational,

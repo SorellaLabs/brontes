@@ -1,7 +1,4 @@
-use std::{
-    f64::consts::E,
-    ops::{Div, Mul},
-};
+use std::{f64::consts::E, ops::Div};
 
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
@@ -43,8 +40,11 @@ pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
 pub struct WindowExchangePrice {
     /// the price for this exchange with the volume
     pub exchange_price_with_volume_direct: FastHashMap<CexExchange, PriceWithVolume>,
+    /// the pairs that were traded through in order to get this price.
+    /// in the case of a intermediary, this will be 2, otherwise, 1
+    pub pairs: Vec<Pair>,
     /// weighted combined price.
-    pub global_exchange_price:             Rational,
+    pub global_exchange_price: Rational,
 }
 
 impl Div for WindowExchangePrice {
@@ -70,36 +70,8 @@ impl Div for WindowExchangePrice {
             })
             .collect();
 
+        self.pairs.extend(rhs.pairs);
         self.global_exchange_price /= rhs.global_exchange_price;
-
-        self
-    }
-}
-// used for intermediary calcs
-impl Mul for WindowExchangePrice {
-    type Output = WindowExchangePrice;
-
-    #[allow(clippy::suspicious_arithmetic_impl)]
-    fn mul(mut self, mut rhs: Self) -> Self::Output {
-        // adjust the price with volume
-        self.exchange_price_with_volume_direct = self
-            .exchange_price_with_volume_direct
-            .into_iter()
-            .filter_map(|(exchange, (this_price, this_vol))| {
-                let (other_price, other_vol) =
-                    rhs.exchange_price_with_volume_direct.remove(&exchange)?;
-
-                let this_vol = &this_price * &this_vol;
-                let other_vol = &other_vol * &other_price;
-                let vol = this_vol + other_vol;
-
-                let price = this_price * other_price;
-
-                Some((exchange, (price, vol)))
-            })
-            .collect();
-
-        self.global_exchange_price *= rhs.global_exchange_price;
 
         self
     }
@@ -422,11 +394,13 @@ impl<'a> TimeWindowTrades<'a> {
 
         let maker_ret = WindowExchangePrice {
             exchange_price_with_volume_direct: maker,
-            global_exchange_price:             global_maker,
+            global_exchange_price: global_maker,
+            pairs: vec![pair],
         };
         let taker_ret = WindowExchangePrice {
             exchange_price_with_volume_direct: taker,
-            global_exchange_price:             global_taker,
+            pairs: vec![pair],
+            global_exchange_price: global_taker,
         };
 
         Some((maker_ret, taker_ret))
