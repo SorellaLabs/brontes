@@ -23,6 +23,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
+    pair::{Pair, PairRedefined},
     rational_to_u256_fraction, Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
@@ -31,6 +32,17 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
+
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct OptimisticTrade {
+    #[redefined(same_fields)]
+    exchange:  CexExchange,
+    pair:      Pair,
+    timestamp: u64,
+    price:     Rational,
+    volume:    Rational,
+}
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
@@ -45,8 +57,11 @@ pub struct CexDex {
     pub optimal_route_details: Vec<ArbDetails>,
     pub optimal_route_pnl:     ArbPnl,
 
+    pub optimistic_route_details: Vec<ArbDetails>,
     // timestamp of each trade of each exchange that we coside,
-    // trade vol, price,
+    // trade vol, price, per exchange hop
+    pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
+    pub optimistic_route_pnl:     ArbPnl,
 
     // Arb details using quotes from each exchange for each leg
     pub per_exchange_details: Vec<Vec<ArbDetails>>,
@@ -426,6 +441,8 @@ impl DbRow for CexDex {
 )]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ArbDetails {
+    /// symbols that we traded through
+    pub symbols:        Vec<String>,
     #[redefined(same_fields)]
     pub cex_exchange:   CexExchange,
     pub best_bid_maker: Rational,
