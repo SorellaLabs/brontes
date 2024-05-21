@@ -17,10 +17,12 @@ use brontes_types::{
     },
     display::utils::format_etherscan_url,
     mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
-    normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
+    normalized_actions::{
+        accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
+    },
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    ActionIter, FastHashMap, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    FastHashMap, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use colored::Colorize;
 use itertools::{multizip, Itertools};
@@ -128,10 +130,15 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 }
 
                 let deltas = swaps.clone().into_iter().account_for_actions();
-                let dex_swaps = self
+                let (mut dex_swaps, rem): (Vec<_>, _) = self
                     .utils
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
-                    .collect_action_vec(Action::try_swaps_merged);
+                    .split_return_rem(Action::try_swaps_merged);
+                let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
+
+                if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
+                    dex_swaps.push(extra);
+                }
 
                 if dex_swaps.is_empty() {
                     trace!("no dex swaps found");
@@ -179,6 +186,47 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 Some(Bundle { header, data: cex_dex })
             })
             .collect::<Vec<_>>()
+    }
+
+    fn try_convert_transfer_to_swap(
+        &self,
+        mut transfers: Vec<NormalizedTransfer>,
+        info: &TxInfo,
+    ) -> Option<NormalizedSwap> {
+        if !(transfers.len() != 2 || info.is_labelled_searcher_of_type(MevType::CexDex)) {
+            return None
+        }
+
+        let t0 = transfers.remove(0);
+        let t1 = transfers.remove(0);
+
+        if t0.to == t1.from && Some(t0.to) != info.mev_contract {
+            Some(NormalizedSwap {
+                trace_index: t0.trace_index,
+                amount_out: t1.amount,
+                token_out: t1.token,
+                amount_in: t0.amount,
+                token_in: t0.token,
+                from: t0.from,
+                pool: t0.to,
+                recipient: t0.from,
+                ..Default::default()
+            })
+        } else if t1.to == t0.from && Some(t1.to) != info.mev_contract {
+            Some(NormalizedSwap {
+                trace_index: t1.trace_index,
+                amount_out: t0.amount,
+                token_out: t0.token,
+                amount_in: t1.amount,
+                token_in: t1.token,
+                from: t1.from,
+                pool: t1.to,
+                recipient: t1.from,
+                ..Default::default()
+            })
+        } else {
+            None
+        }
     }
 
     pub fn detect_cex_dex(
