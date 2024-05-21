@@ -15,6 +15,7 @@ use malachite::{
 use tracing::trace;
 
 use super::{
+    config::CexDexTradeConfig,
     utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker},
     CexTrades,
 };
@@ -159,6 +160,7 @@ impl<'a> TimeWindowTrades<'a> {
 
     pub(crate) fn get_price(
         &self,
+        config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         pair: Pair,
         volume: &Rational,
@@ -175,10 +177,12 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         let res = self
-            .get_vwap_price(exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash)
+            .get_vwap_price(
+                config, exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
+            )
             .or_else(|| {
                 self.get_vwap_price_via_intermediary(
-                    exchanges, &pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
+                    config, exchanges, &pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
                 )
             });
 
@@ -191,6 +195,7 @@ impl<'a> TimeWindowTrades<'a> {
 
     fn get_vwap_price_via_intermediary(
         &self,
+        config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         pair: &Pair,
         volume: &Rational,
@@ -230,6 +235,7 @@ impl<'a> TimeWindowTrades<'a> {
 
                 tracing::debug!(?pair, ?intermediary, ?volume, "trying via intermediary");
                 let res = self.get_vwap_price(
+                    config,
                     exchanges,
                     pair0,
                     volume,
@@ -245,6 +251,7 @@ impl<'a> TimeWindowTrades<'a> {
 
                 let new_vol = volume / &res.0.global_exchange_price.clone().reciprocal();
                 let pair1_v = self.get_vwap_price(
+                    config,
                     exchanges,
                     pair1,
                     &new_vol,
@@ -306,6 +313,7 @@ impl<'a> TimeWindowTrades<'a> {
 
     fn get_vwap_price(
         &self,
+        config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         pair: Pair,
         vol: &Rational,
@@ -358,8 +366,8 @@ impl<'a> TimeWindowTrades<'a> {
                 trade_volume_global += &trade.amount;
             }
 
-            if walker.get_min_time_delta(block_timestamp) >= MAX_PRE_TIME_US
-                || walker.get_max_time_delta(block_timestamp) >= MAX_POST_TIME_US
+            if walker.get_min_time_delta(block_timestamp) >= config.time_window_before_us
+                || walker.get_max_time_delta(block_timestamp) >= config.time_window_after_us
             {
                 break
             }

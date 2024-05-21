@@ -5,7 +5,9 @@ use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
-    constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools, UnboundedYapperReceiver,
+    constants::USDT_ADDRESS_STRING,
+    db::cex::{config::CexDexTradeConfig, CexExchange},
+    init_threadpools, UnboundedYapperReceiver,
 };
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
@@ -17,6 +19,7 @@ use crate::{
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
 };
+const SECONDS_TO_US: u64 = 1_000_000;
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -151,12 +154,19 @@ impl RunArgs {
         if only_cex_dex {
             self.force_no_dex_pricing = true;
         }
+        let trade_config = CexDexTradeConfig {
+            time_window_after_us:  self.time_window_after as u64 * SECONDS_TO_US,
+            time_window_before_us: self.time_window_before as u64 * SECONDS_TO_US,
+            optimistic_before_us:  self.time_window_before_optimistic * SECONDS_TO_US,
+            optimistic_after_us:   self.time_window_after_optimistic * SECONDS_TO_US,
+        };
 
         let inspectors = init_inspectors(
             quote_asset,
             libmdbx,
             self.inspectors,
             self.cex_exchanges,
+            trade_config,
             self.with_metrics,
         );
         let tracer =

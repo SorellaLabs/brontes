@@ -18,7 +18,7 @@ use super::{
 use crate::db::cex::CexExchange;
 use crate::{
     constants::WETH_ADDRESS,
-    db::redefined_types::primitives::*,
+    db::{cex::config::CexDexTradeConfig, redefined_types::primitives::*},
     implement_table_value_codecs_with_zc,
     normalized_actions::NormalizedSwap,
     pair::Pair,
@@ -95,6 +95,7 @@ impl Metadata {
                                     trade_map
                                         .lock()
                                         .get_price(
+                                            CexDexTradeConfig::default(),
                                             &trades,
                                             self.microseconds_block_timestamp(),
                                             &pair,
@@ -141,6 +142,7 @@ impl Metadata {
                                 trade_map
                                     .lock()
                                     .get_optimistic_vmap(
+                                            CexDexTradeConfig::default(),
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,
@@ -191,6 +193,7 @@ impl Metadata {
                                     trade_map
                                         .lock()
                                         .get_price(
+                                            CexDexTradeConfig::default(),
                                             &trades,
                                             self.microseconds_block_timestamp(),
                                             &pair,
@@ -237,6 +240,7 @@ impl Metadata {
                                 trade_map
                                     .lock()
                                     .get_optimistic_vmap(
+                                            CexDexTradeConfig::default(),
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,

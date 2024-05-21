@@ -12,6 +12,7 @@ use malachite::{
 
 use super::{
     cex_trades::CexTradeMap,
+    config::CexDexTradeConfig,
     utils::{CexTradePtr, PairTradeQueue},
 };
 use crate::{
@@ -23,8 +24,6 @@ use crate::{
 };
 
 const BASE_EXECUTION_QUALITY: usize = 80;
-const LOWER_LIMIT: u64 = 500_000;
-const UPPER_LIMIT: u64 = 2_000_000;
 
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
@@ -74,6 +73,7 @@ impl CexTradeMap {
     // routes
     pub(crate) fn get_price(
         &mut self,
+        config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         block_timestamp: u64,
         pair: &Pair,
@@ -95,6 +95,7 @@ impl CexTradeMap {
 
         let res = self
             .get_vwam_no_intermediary(
+                config,
                 exchanges,
                 block_timestamp,
                 pair,
@@ -106,6 +107,7 @@ impl CexTradeMap {
             )
             .or_else(|| {
                 self.get_vwam_via_intermediary(
+                    config,
                     exchanges,
                     block_timestamp,
                     pair,
@@ -168,6 +170,7 @@ impl CexTradeMap {
 
     fn get_vwam_via_intermediary(
         &self,
+        config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         block_timestamp: u64,
         pair: &Pair,
@@ -205,6 +208,7 @@ impl CexTradeMap {
                 let (i, res) = (
                     intermediary,
                     self.get_vwam_via_intermediary_spread(
+                        config,
                         exchanges,
                         block_timestamp,
                         &pair0,
@@ -222,6 +226,7 @@ impl CexTradeMap {
                     (
                         intermediary,
                         self.get_vwam_via_intermediary_spread(
+                            config,
                             exchanges,
                             block_timestamp,
                             &pair1,
@@ -248,6 +253,7 @@ impl CexTradeMap {
 
     pub fn get_vwam_via_intermediary_spread(
         &self,
+        config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         block_timestamp: u64,
         pair: &Pair,
@@ -284,8 +290,8 @@ impl CexTradeMap {
                         .iter()
                         .filter(|f| {
                             f.amount.le(&max_vol_per_trade)
-                                && f.timestamp > block_timestamp - LOWER_LIMIT
-                                && f.timestamp < block_timestamp + UPPER_LIMIT
+                                && f.timestamp > block_timestamp - config.optimistic_before_us
+                                && f.timestamp < block_timestamp + config.optimistic_after_us
                         })
                         .collect_vec()
                 });
@@ -310,6 +316,7 @@ impl CexTradeMap {
 
     fn get_vwam_no_intermediary(
         &self,
+        config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         block_timestamp: u64,
         pair: &Pair,
@@ -349,8 +356,8 @@ impl CexTradeMap {
                             .iter()
                             .filter(|f| {
                                 f.amount.le(&max_vol_per_trade)
-                                    && f.timestamp > block_timestamp - LOWER_LIMIT
-                                    && f.timestamp < block_timestamp + UPPER_LIMIT
+                                    && f.timestamp < block_timestamp + config.optimistic_after_us
+                                    && f.timestamp > block_timestamp - config.optimistic_before_us
                             })
                             .collect_vec()
                     })?,
