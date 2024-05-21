@@ -69,6 +69,31 @@ impl CexTradeMap {
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
         TimeWindowTrades::new_from_cex_trade_map(&mut self.0, block_timestamp, exchanges, pair)
+            .get_price(
+                config,
+                exchanges,
+                pair,
+                volume,
+                block_timestamp,
+                bypass_vol,
+                dex_swap,
+                tx_hash,
+            )
+    }
+
+    pub fn get_optimistic_vmap(
+        &mut self,
+        config: CexDexTradeConfig,
+        exchanges: &[CexExchange],
+        pair: &Pair,
+        volume: &Rational,
+        block_timestamp: u64,
+        quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
+    ) -> Option<MakerTaker> {
+        self.get_price(
             config,
             exchanges,
             block_timestamp,
