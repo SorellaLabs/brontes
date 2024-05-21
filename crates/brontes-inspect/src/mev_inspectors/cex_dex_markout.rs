@@ -193,7 +193,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         mut transfers: Vec<NormalizedTransfer>,
         info: &TxInfo,
     ) -> Option<NormalizedSwap> {
-        if transfers.len() != 2 {
+        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDex)) {
             return None
         }
 
