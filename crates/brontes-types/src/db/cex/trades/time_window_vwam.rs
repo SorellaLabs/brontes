@@ -1,4 +1,8 @@
-use std::{f64::consts::E, ops::Div};
+use std::{
+    cmp::{max, min},
+    f64::consts::E,
+    ops::Div,
+};
 
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
@@ -37,9 +41,18 @@ pub type PriceWithVolume = (Rational, Rational);
 pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
 
 #[derive(Debug, Clone, Default)]
+pub struct ExchangePath {
+    pub price:            Rational,
+    pub volume:           Rational,
+    // window results
+    pub final_start_time: u64,
+    pub final_end_time:   u64,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct WindowExchangePrice {
     /// the price for this exchange with the volume
-    pub exchange_price_with_volume_direct: FastHashMap<CexExchange, PriceWithVolume>,
+    pub exchange_price_with_volume_direct: FastHashMap<CexExchange, ExchangePath>,
     /// the pairs that were traded through in order to get this price.
     /// in the case of a intermediary, this will be 2, otherwise, 1
     pub pairs: Vec<Pair>,
@@ -56,17 +69,19 @@ impl Div for WindowExchangePrice {
         self.exchange_price_with_volume_direct = self
             .exchange_price_with_volume_direct
             .into_iter()
-            .filter_map(|(exchange, (this_price, this_vol))| {
-                let (other_price, other_vol) =
-                    rhs.exchange_price_with_volume_direct.remove(&exchange)?;
+            .filter_map(|(exchange, mut this_path)| {
+                let other_path = rhs.exchange_price_with_volume_direct.remove(&exchange)?;
 
-                let this_vol = &this_price * &this_vol;
-                let other_vol = &other_vol * &other_price;
-                let vol = this_vol + other_vol;
+                let this_vol = &this_path.price * &this_path.volume;
+                let other_vol = &other_path.price * &other_path.volume;
+                this_path.volume = this_vol + other_vol;
+                this_path.price /= other_path.price;
 
-                let price = this_price / other_price;
+                this_path.final_start_time =
+                    min(this_path.final_start_time, other_path.final_start_time);
+                this_path.final_end_time = max(this_path.final_end_time, other_path.final_end_time);
 
-                Some((exchange, (price, vol)))
+                Some((exchange, this_path))
             })
             .collect();
 
@@ -322,16 +337,30 @@ impl<'a> TimeWindowTrades<'a> {
                 let (m_fee, t_fee) = trade.exchange.fees();
                 let weight = calculate_weight(block_timestamp, trade.timestamp);
 
-                let (vxp_maker, vxp_taker, trade_volume_weight, trade_volume_ex) = exchange_vxp
-                    .entry(trade.exchange)
-                    .or_insert((Rational::ZERO, Rational::ZERO, Rational::ZERO, Rational::ZERO));
+                let (
+                    vxp_maker,
+                    vxp_taker,
+                    trade_volume_weight,
+                    trade_volume_ex,
+                    start_time,
+                    end_time,
+                ) = exchange_vxp.entry(trade.exchange).or_insert((
+                    Rational::ZERO,
+                    Rational::ZERO,
+                    Rational::ZERO,
+                    Rational::ZERO,
+                    0u64,
+                    0u64,
+                ));
 
                 *vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
                 *vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;
                 *trade_volume_weight += &trade.amount * weight;
                 *trade_volume_ex += &trade.amount;
-
                 trade_volume_global += &trade.amount;
+
+                *start_time = walker.min_timestamp;
+                *end_time = walker.max_timestamp;
             }
 
             if walker.get_min_time_delta(block_timestamp) >= config.time_window_before_us
@@ -364,7 +393,9 @@ impl<'a> TimeWindowTrades<'a> {
         let mut global_maker = Rational::ZERO;
         let mut global_taker = Rational::ZERO;
 
-        for (ex, (vxp_maker, vxp_taker, trade_vol_weight, trade_vol)) in exchange_vxp {
+        for (ex, (vxp_maker, vxp_taker, trade_vol_weight, trade_vol, start_time, end_time)) in
+            exchange_vxp
+        {
             if trade_vol_weight == Rational::ZERO {
                 continue
             }
@@ -374,8 +405,21 @@ impl<'a> TimeWindowTrades<'a> {
             global_maker += &maker_price * &trade_vol;
             global_taker += &taker_price * &trade_vol;
 
-            maker.insert(ex, (maker_price, trade_vol.clone()));
-            taker.insert(ex, (taker_price, trade_vol));
+            let maker_path = ExchangePath {
+                volume:           trade_vol.clone(),
+                price:            maker_price,
+                final_end_time:   end_time,
+                final_start_time: start_time,
+            };
+            let taker_path = ExchangePath {
+                volume:           trade_vol.clone(),
+                price:            taker_price,
+                final_end_time:   end_time,
+                final_start_time: start_time,
+            };
+
+            maker.insert(ex, maker_path);
+            taker.insert(ex, taker_path);
         }
 
         if trade_volume_global == Rational::ZERO {

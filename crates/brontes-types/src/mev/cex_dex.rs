@@ -63,6 +63,12 @@ pub struct CexDex {
     pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
     pub optimistic_route_pnl:     ArbPnl,
 
+    /// total time window for both methods
+    pub global_time_window_start: u64,
+    pub global_time_window_end:   u64,
+    pub global_optimistic_start:  u64,
+    pub global_optimistic_end:    u64,
+
     // Arb details using quotes from each exchange for each leg
     pub per_exchange_details: Vec<Vec<ArbDetails>>,
     #[redefined(field((CexExchange, same)))]

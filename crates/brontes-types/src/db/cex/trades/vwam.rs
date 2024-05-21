@@ -228,19 +228,16 @@ impl CexTradeMap {
 
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
 
-                let (i, res) = (
-                    intermediary,
-                    self.get_vwam_via_intermediary_spread(
-                        config,
-                        exchanges,
-                        block_timestamp,
-                        &pair0,
-                        volume,
-                        quality,
-                        dex_swap,
-                        tx_hash,
-                    )?,
-                );
+                let res = self.get_vwam_via_intermediary_spread(
+                    config,
+                    exchanges,
+                    block_timestamp,
+                    &pair0,
+                    volume,
+                    quality,
+                    dex_swap,
+                    tx_hash,
+                )?;
 
                 let new_vol = volume / &res.prices.0.final_price.clone().reciprocal();
 
