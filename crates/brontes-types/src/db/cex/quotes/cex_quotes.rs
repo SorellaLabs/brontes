@@ -763,6 +763,7 @@ impl CexExchange {
             CexExchange::Unknown => "exchange = ''",
             CexExchange::Average => "exchange = ''",
             CexExchange::VWAP => "exchange = ''",
+            CexExchange::OptimisticVWAP => "exchange = ''",
         }
     }
 }
@@ -960,7 +961,9 @@ impl CexExchange {
                 unreachable!("Cannot get fees for cross exchange average quote")
             }
             CexExchange::Unknown => unreachable!("Unknown cex exchange"),
-            CexExchange::VWAP => unreachable!("Cannot get fees for VWAP"),
+            CexExchange::VWAP | CexExchange::OptimisticVWAP => {
+                unreachable!("Cannot get fees for VWAP")
+            }
         }
     }
 }

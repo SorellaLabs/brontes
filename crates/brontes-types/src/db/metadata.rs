@@ -106,7 +106,7 @@ impl Metadata {
                                             TxHash::default(),
                                         )?
                                         .0
-                                        .price,
+                                        .final_price,
                                 )
                             })
                             .unwrap_or(Rational::ZERO)
@@ -153,7 +153,7 @@ impl Metadata {
                                         TxHash::default(),
                                     )?
                                     .0
-                                    .price,
+                                    .final_price,
                             )
                         })
                         .unwrap_or(Rational::ZERO)
@@ -204,7 +204,7 @@ impl Metadata {
                                             TxHash::default(),
                                         )?
                                         .0
-                                        .price,
+                                        .final_price,
                                 )
                             })
                             .unwrap_or(Rational::ZERO)
@@ -251,7 +251,7 @@ impl Metadata {
                                         TxHash::default(),
                                     )?
                                     .0
-                                    .price,
+                                    .final_price,
                             )
                         })
                         .unwrap_or(Rational::ZERO)
