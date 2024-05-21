@@ -90,7 +90,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
-            let Ok((pricer, inner)) = handle else {
+            let Some((pricer, inner)) = handle else {
                 tracing::warn!("tokio task exited");
                 return Poll::Ready(None)
             };
