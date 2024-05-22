@@ -345,7 +345,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let mut trade_details = vec![];
         let possible = PossibleCexDex::from_exchange_legs(
             trades
-                .into_iter()
+                .iter()
                 .zip(window)
                 .map(|(dex_swap, trades)| {
                     let (maker, taker) = trades?;

@@ -897,6 +897,7 @@ mod tests {
         println!("ORDERED PAIR: {:?}", pair.ordered());
 
         cex_trade_map.get_vwam_via_intermediary_spread(
+            brontes_types::db::cex::config::CexDexTradeConfig::default(),
             &[CexExchange::Okex],
             &pair,
             &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
