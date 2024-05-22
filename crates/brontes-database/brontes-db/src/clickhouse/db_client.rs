@@ -245,7 +245,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+    pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
         Ok(())
     }
 }

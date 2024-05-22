@@ -5,7 +5,6 @@ use brontes_types::{
         searcher::JoinedSearcherInfo, token_info::TokenInfoWithAddress,
     },
     mev::*,
-    structured_trace::TxTrace,
 };
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
