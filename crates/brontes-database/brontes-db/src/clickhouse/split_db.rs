@@ -109,7 +109,6 @@ impl ClickhouseBuffered {
             (ClickhouseLiquidations, Liquidation),
             (ClickhouseSearcherInfo, JoinedSearcherInfo),
             (ClickhouseDexPriceMapping, DexQuotesWithBlockNumber),
-            (ClickhouseTxTraces, TxTrace),
             (ClickhouseTokenInfo, TokenInfoWithAddress),
             (ClickhousePools, ProtocolInfoClickhouse),
             (ClickhouseBuilderInfo, BuilderInfoWithAddress),

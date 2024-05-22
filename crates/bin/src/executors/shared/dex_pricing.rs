@@ -1,6 +1,7 @@
 use std::{
     pin::Pin,
     task::{Context, Poll},
+    time::Duration,
 };
 
 use brontes_core::decoding::TracingProvider;
@@ -52,12 +53,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         // we will keep trying to send util it is resolved;
         while let Err(e) = tx.try_send((pricer, res)) {
             let TrySendError::Full((f_pricer, f_res)) = e else {
+                // if channel is dropped, then we don't try again
                 tracing::error!(err=%e, "failed to send dex pricing result, channel closed");
                 return
             };
 
             pricer = f_pricer;
             res = f_res;
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
 
@@ -87,7 +90,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
-            let (pricer, inner) = handle.unwrap();
+            let Some((pricer, inner)) = handle else {
+                tracing::warn!("tokio task exited");
+                return Poll::Ready(None)
+            };
+
             self.reschedule(pricer);
             cx.waker().wake_by_ref();
 

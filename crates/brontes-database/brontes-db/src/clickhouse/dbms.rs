@@ -5,7 +5,6 @@ use brontes_types::{
         searcher::JoinedSearcherInfo, token_info::TokenInfoWithAddress,
     },
     mev::*,
-    structured_trace::TxTrace,
 };
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
@@ -23,7 +22,6 @@ clickhouse_dbms!(
         ClickhouseLiquidations,
         ClickhouseSearcherInfo,
         ClickhouseDexPriceMapping,
-        ClickhouseTxTraces,
         ClickhouseTokenInfo,
         ClickhousePools,
         ClickhouseBuilderInfo,
@@ -35,20 +33,11 @@ impl BrontesClickhouseTables {
     pub const fn is_big(&self) -> bool {
         matches!(
             self,
-            BrontesClickhouseTables::ClickhouseTxTraces
-                | BrontesClickhouseTables::ClickhouseDexPriceMapping
+            BrontesClickhouseTables::ClickhouseDexPriceMapping
                 | BrontesClickhouseTables::ClickhouseTree
         )
     }
 }
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "brontes",
-    ClickhouseTxTraces,
-    TxTrace,
-    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -220,7 +209,6 @@ macro_rules! db_types {
 }
 
 db_types!(
-    (TxTrace, TxTraces),
     (DexQuotesWithBlockNumber, DexPriceMapping),
     (MevBlock, MevBlocks),
     (BundleHeader, BundleHeader),

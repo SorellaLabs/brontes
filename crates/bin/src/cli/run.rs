@@ -5,7 +5,9 @@ use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
-    constants::USDT_ADDRESS_STRING, db::cex::CexExchange, init_threadpools, UnboundedYapperReceiver,
+    constants::USDT_ADDRESS_STRING,
+    db::cex::{config::CexDexTradeConfig, CexExchange},
+    init_threadpools, UnboundedYapperReceiver,
 };
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
@@ -17,37 +19,46 @@ use crate::{
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
 };
+const SECONDS_TO_US: u64 = 1_000_000;
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:          Option<u64>,
+    pub start_block: Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:            Option<u64>,
+    pub end_block: Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks:            Option<u64>,
+    pub max_tasks: Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size:       u64,
+    pub min_batch_size: u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset:          String,
+    pub quote_asset: String,
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors:           Option<Vec<Inspectors>>,
+    pub inspectors: Option<Vec<Inspectors>>,
     /// The sliding time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp
     #[arg(long = "tw-before", short = 'b', default_value = if cfg!(feature = "cex-dex-markout") { "5.0" } else { "0.5" })]
-    pub time_window_before:   f64,
+    pub time_window_before: f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
     #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-markout") { "8.0" } else { "2.0" })]
-    pub time_window_after:    f64,
+    pub time_window_after: f64,
+    /// The time window (BEFORE) for cex prices or trades relative to
+    /// the block timestamp for fully optimistic calculations
+    #[arg(long = "op-tw-before", default_value = "0.5")]
+    pub time_window_before_optimistic: f64,
+    /// The time window (AFTER) for cex prices or trades relative to
+    /// the block timestamp for fully optimistic calculations
+    #[arg(long = "op-tw-after", default_value = "2.0")]
+    pub time_window_after_optimistic: f64,
     /// CEX exchanges to consider for cex-dex analysis
     #[arg(
         long,
@@ -55,11 +66,11 @@ pub struct RunArgs {
         default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
         value_delimiter = ','
     )]
-    pub cex_exchanges:        Vec<CexExchange>,
+    pub cex_exchanges: Vec<CexExchange>,
     /// Ensures that dex prices are calculated at every block, even if the
     /// db already contains the price
     #[arg(long, short, default_value = "false")]
-    pub force_dex_pricing:    bool,
+    pub force_dex_pricing: bool,
     /// Turns off dex pricing entirely, inspectors requiring dex pricing won't
     /// calculate USD pnl if we don't have dex pricing in the db & will only
     /// calculate token pnl
@@ -67,16 +78,16 @@ pub struct RunArgs {
     pub force_no_dex_pricing: bool,
     /// How many blocks behind chain tip to run.
     #[arg(long, default_value = "10")]
-    pub behind_tip:           u64,
+    pub behind_tip: u64,
     /// Run in CLI only mode (no TUI) - will output progress bars to stdout
     #[arg(long, default_value = "false")]
-    pub cli_only:             bool,
+    pub cli_only: bool,
     /// Initialize full range database tables
     #[arg(long, default_value = "false")]
-    pub init_crit_tables:     bool,
+    pub init_crit_tables: bool,
     /// Metrics will be exported
     #[arg(long, default_value = "true")]
-    pub with_metrics:         bool,
+    pub with_metrics: bool,
 }
 
 impl RunArgs {
@@ -88,7 +99,7 @@ impl RunArgs {
         banner::print_banner();
 
         if self.start_block > self.end_block {
-            return Err(eyre::eyre!("start block must be less than end block"));
+            return Err(eyre::eyre!("start block must be less than end block"))
         }
 
         // Fetch required environment variables.
@@ -116,7 +127,13 @@ impl RunArgs {
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
         let cex_download_config = CexDownloadConfig::new(
-            (self.time_window_before, self.time_window_after),
+            // we want to load the biggest window so both can run and not run out of trades.
+            (
+                self.time_window_before
+                    .max(self.time_window_before_optimistic),
+                self.time_window_after
+                    .max(self.time_window_after_optimistic),
+            ),
             self.cex_exchanges.clone(),
         );
         let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
@@ -137,12 +154,19 @@ impl RunArgs {
         if only_cex_dex {
             self.force_no_dex_pricing = true;
         }
+        let trade_config = CexDexTradeConfig {
+            time_window_after_us:  self.time_window_after as u64 * SECONDS_TO_US,
+            time_window_before_us: self.time_window_before as u64 * SECONDS_TO_US,
+            optimistic_before_us:  self.time_window_before_optimistic as u64 * SECONDS_TO_US,
+            optimistic_after_us:   self.time_window_after_optimistic as u64 * SECONDS_TO_US,
+        };
 
         let inspectors = init_inspectors(
             quote_asset,
             libmdbx,
             self.inspectors,
             self.cex_exchanges,
+            trade_config,
             self.with_metrics,
         );
         let tracer =

@@ -12,7 +12,7 @@ use brontes_types::{
         cex::{CexPriceMap, CexPriceMapRedefined, CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{InitializedStateMeta, META_FLAG, TRACE_FLAG},
+        initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG},
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -250,7 +250,21 @@ impl Tables {
                     )
                     .await
             }
-            Tables::DexPrice => Ok(()),
+            Tables::DexPrice => {
+                initializer
+                    .initialize_table_from_clickhouse::<DexPrice, DexPriceData>(
+                        block_range,
+                        clear_table,
+                        Some(DEX_PRICE_FLAG),
+                        false,
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::DexPrice).then_some(b.clone()))
+                            .unwrap(),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                    )
+                    .await
+            }
             Tables::MevBlocks => Ok(()),
             Tables::TxTraces => {
                 initializer
@@ -350,7 +364,20 @@ impl Tables {
                     )
                     .await
             }
-            Tables::DexPrice => Ok(()),
+            Tables::DexPrice => {
+                initializer
+                    .initialize_table_from_clickhouse_arbitrary_state::<DexPrice, DexPriceData>(
+                        block_range,
+                        Some(DEX_PRICE_FLAG),
+                        false,
+                        progress_bar
+                            .iter()
+                            .find_map(|(t, b)| (*t == Tables::DexPrice).then_some(b.clone()))
+                            .unwrap(),
+                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                    )
+                    .await
+            }
             Tables::MevBlocks => Ok(()),
             Tables::TxTraces => {
                 initializer
@@ -649,8 +676,8 @@ compressed_table!(
             compressed_value: DexQuoteWithIndexRedefined
         },
         Init {
-            init_size: None,
-            init_method: Other,
+            init_size: Some(2000),
+            init_method: Clickhouse,
             http_endpoint: Some("dex-pricing")
         },
         CLI {
@@ -667,7 +694,7 @@ compressed_table!(
         compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(100),
+            init_size: Some(2000),
             init_method: Clickhouse,
             http_endpoint: Some("cex-price")
         },
@@ -685,7 +712,7 @@ compressed_table!(
         compressed_value: CexTradeMapRedefined
         },
         Init {
-            init_size: Some(100),
+            init_size: Some(2000),
             init_method: Clickhouse,
             http_endpoint: None
         },
@@ -704,7 +731,7 @@ compressed_table!(
             compressed_value: BlockMetadataInnerRedefined
         },
         Init {
-            init_size: Some(1000),
+            init_size: Some(2000),
             init_method: Clickhouse,
             http_endpoint: Some("block-info")
         },
@@ -724,7 +751,7 @@ compressed_table!(
             compressed_value: TxTracesInnerRedefined
         },
         Init {
-            init_size: Some(1000),
+            init_size: Some(2000),
             init_method: Clickhouse,
             http_endpoint: Some("tx-traces")
         },

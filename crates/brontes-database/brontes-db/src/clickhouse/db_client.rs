@@ -245,17 +245,7 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(
-                traces
-                    .into_iter()
-                    .zip(vec![self.tip].into_iter().cycle())
-                    .map(Into::into)
-                    .collect(),
-            )?
-        };
-
+    pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
         Ok(())
     }
 }
@@ -612,18 +602,6 @@ mod tests {
         classifier_utils.build_tree_tx(tx).await.unwrap().into()
     }
 
-    async fn tx_traces(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let libmdbx = get_db_handle(tokio::runtime::Handle::current()).await;
-        let (a, _b) = unbounded_channel();
-        let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
-
-        let binding = tracer.execute_block(17000010).await.unwrap();
-        let exec = binding.0.first().unwrap().clone();
-
-        let res = db.insert_one::<ClickhouseTxTraces>(&exec).await;
-        assert!(res.is_ok());
-    }
-
     #[allow(unused)]
     async fn searcher_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = JoinedSearcherInfo {
@@ -846,7 +824,6 @@ mod tests {
     }
 
     async fn run_all(database: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        tx_traces(database).await;
         builder_info(database).await;
         pools(database).await;
         atomic_arb(database).await;
@@ -871,7 +848,6 @@ mod tests {
         let test_db = ClickhouseTestingClient { client: Clickhouse::default().client };
 
         let tables = &BrontesClickhouseTables::all_tables();
-
         test_db
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
             .await;
@@ -897,7 +873,9 @@ mod tests {
         println!("ORDERED PAIR: {:?}", pair.ordered());
 
         cex_trade_map.get_vwam_via_intermediary_spread(
+            brontes_types::db::cex::config::CexDexTradeConfig::default(),
             &[CexExchange::Okex],
+            1701543803 * 1_000_000,
             &pair,
             &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
             None,

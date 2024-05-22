@@ -23,7 +23,10 @@ use brontes_metrics::inspectors::OutlierMetrics;
 #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
 use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
-    db::{cex::CexExchange, traits::LibmdbxReader},
+    db::{
+        cex::{config::CexDexTradeConfig, CexExchange},
+        traits::LibmdbxReader,
+    },
     mev::Bundle,
     BrontesTaskExecutor,
 };
@@ -170,6 +173,7 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     db: &'static DB,
     inspectors: Option<Vec<Inspectors>>,
     cex_exchanges: Vec<CexExchange>,
+    trade_config: CexDexTradeConfig,
     metrics: bool,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
     let mut res = Vec::new();
@@ -178,7 +182,13 @@ pub fn init_inspectors<DB: LibmdbxReader>(
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
     {
-        res.push(inspector.init_mev_inspector(quote_token, db, &cex_exchanges, metrics.clone()));
+        res.push(inspector.init_mev_inspector(
+            quote_token,
+            db,
+            &cex_exchanges,
+            trade_config,
+            metrics.clone(),
+        ));
     }
 
     &*Box::leak(res.into_boxed_slice())

@@ -11,16 +11,21 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::{
         cex::{
-            time_window_vwam::MakerTakerWindowVWAP, vwam::MakerTaker, CexExchange, FeeAdjustedQuote,
+            config::CexDexTradeConfig,
+            time_window_vwam::MakerTakerWindowVWAP,
+            vwam::{ExchangePrice, MakerTaker},
+            CexExchange, FeeAdjustedQuote,
         },
         dex::PriceAt,
     },
     display::utils::format_etherscan_url,
-    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
-    normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
+    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType, OptimisticTrade},
+    normalized_actions::{
+        accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
+    },
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    ActionIter, FastHashMap, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    FastHashMap, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use colored::Colorize;
 use itertools::{multizip, Itertools};
@@ -42,6 +47,7 @@ use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     utils:         SharedInspectorUtils<'db, DB>,
+    trade_config:  CexDexTradeConfig,
     cex_exchanges: Vec<CexExchange>,
 }
 
@@ -50,10 +56,12 @@ impl<'db, DB: LibmdbxReader> CexDexMarkoutInspector<'db, DB> {
         quote: Address,
         db: &'db DB,
         cex_exchanges: &[CexExchange],
+        trade_config: CexDexTradeConfig,
         metrics: Option<OutlierMetrics>,
     ) -> Self {
         Self {
-            utils:         SharedInspectorUtils::new(quote, db, metrics),
+            utils: SharedInspectorUtils::new(quote, db, metrics),
+            trade_config,
             cex_exchanges: cex_exchanges.to_owned(),
         }
     }
@@ -128,10 +136,18 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 }
 
                 let deltas = swaps.clone().into_iter().account_for_actions();
-                let dex_swaps = self
+                let (mut dex_swaps, rem): (Vec<_>, _) = self
                     .utils
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
-                    .collect_action_vec(Action::try_swaps_merged);
+                    .split_return_rem(Action::try_swaps_merged);
+
+                let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
+
+                if dex_swaps.is_empty() {
+                    if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
+                        dex_swaps.push(extra);
+                    }
+                }
 
                 if dex_swaps.is_empty() {
                     trace!("no dex swaps found");
@@ -162,7 +178,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
                 let (profit_usd, cex_dex) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info)?;
+                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -179,6 +195,47 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 Some(Bundle { header, data: cex_dex })
             })
             .collect::<Vec<_>>()
+    }
+
+    fn try_convert_transfer_to_swap(
+        &self,
+        mut transfers: Vec<NormalizedTransfer>,
+        info: &TxInfo,
+    ) -> Option<NormalizedSwap> {
+        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDex)) {
+            return None
+        }
+
+        let t0 = transfers.remove(0);
+        let t1 = transfers.remove(0);
+
+        if t0.to == t1.from && Some(t0.to) != info.mev_contract {
+            Some(NormalizedSwap {
+                trace_index: t0.trace_index,
+                amount_out: t1.amount,
+                token_out: t1.token,
+                amount_in: t0.amount,
+                token_in: t0.token,
+                from: t0.from,
+                pool: t0.to,
+                recipient: t0.from,
+                ..Default::default()
+            })
+        } else if t1.to == t0.from && Some(t1.to) != info.mev_contract {
+            Some(NormalizedSwap {
+                trace_index: t1.trace_index,
+                amount_out: t0.amount,
+                token_out: t0.token,
+                amount_in: t1.amount,
+                token_in: t1.token,
+                from: t1.from,
+                pool: t1.to,
+                recipient: t1.from,
+                ..Default::default()
+            })
+        } else {
+            None
+        }
     }
 
     pub fn detect_cex_dex(
@@ -198,16 +255,20 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 Some((
                     some_pricings.0.global_exchange_price.clone(),
                     some_pricings.1.global_exchange_price.clone(),
+                    some_pricings.0.pairs.clone(),
+                    some_pricings
+                        .0
+                        .exchange_price_with_volume_direct
+                        .values()
+                        .min_by(|a, b| a.final_start_time.cmp(&b.final_start_time))?
+                        .final_start_time,
+                    some_pricings
+                        .0
+                        .exchange_price_with_volume_direct
+                        .values()
+                        .max_by(|a, b| a.final_end_time.cmp(&b.final_end_time))?
+                        .final_end_time,
                 ))
-            })
-            .collect_vec();
-
-        // optimistic volume clearance
-        let pricing_vwam = pricing
-            .iter()
-            .map(|trade| {
-                let some_pricings = trade.1.as_ref()?;
-                Some((some_pricings.0.price.clone(), some_pricings.1.price.clone()))
             })
             .collect_vec();
 
@@ -219,57 +280,35 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 Some((
                     some_pricings.0.exchange_price_with_volume_direct.clone(),
                     some_pricings.1.exchange_price_with_volume_direct.clone(),
+                    some_pricings.0.pairs.clone(),
                 ))
             })
             .collect_vec();
-
-        // use the setup that has more hops. if they are equal,
-        // use the new version.
-        let calculation_vwam = if pricing_window_vwam.iter().flatten().count()
-            >= pricing_vwam.iter().flatten().count()
-        {
-            pricing_window_vwam
-        } else {
-            pricing_vwam
-        };
-
-        let vwam_result = PossibleCexDex::from_exchange_legs(
-            dex_swaps
-                .iter()
-                .zip(calculation_vwam)
-                .filter_map(|(swap, possible_pricing)| {
-                    Some(self.profit_classifier(
-                        swap,
-                        possible_pricing?,
-                        metadata,
-                        CexExchange::VWAP,
-                        tx_hash,
-                    ))
-                })
-                .collect_vec(),
-        );
 
         let per_exchange_pnl = pricing_window_vwam_per_ex
             .iter()
             .enumerate()
             .filter_map(|(i, stuff)| {
-                let (maker, taker) = stuff.as_ref()?;
+                let (maker, taker, pairs) = stuff.as_ref()?;
 
                 Some(
                     maker
                         .iter()
-                        .map(|(ex, (m_price, _))| {
+                        .map(|(ex, path)| {
                             (
                                 ex,
                                 self.profit_classifier(
                                     &dex_swaps[i],
+                                    pairs.clone(),
                                     (
-                                        m_price.clone(),
-                                        taker.get(ex).map(|p| p.0.clone()).unwrap().clone(),
+                                        path.price.clone(),
+                                        taker.get(ex).map(|p| p.price.clone()).unwrap().clone(),
                                     ),
                                     metadata,
                                     *ex,
                                     tx_hash,
+                                    path.final_start_time,
+                                    path.final_end_time,
                                 ),
                             )
                         })
@@ -289,7 +328,79 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(PossibleCexDex::from_exchange_legs)
             .collect_vec();
 
-        CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl)
+        let vwam_result = PossibleCexDex::from_exchange_legs(
+            dex_swaps
+                .iter()
+                .zip(pricing_window_vwam)
+                .filter_map(|(swap, possible_pricing)| {
+                    let (maker, taker, pairs, start_time, end_time) = possible_pricing?;
+                    Some(self.profit_classifier(
+                        swap,
+                        pairs,
+                        (maker, taker),
+                        metadata,
+                        CexExchange::VWAP,
+                        tx_hash,
+                        start_time,
+                        end_time,
+                    ))
+                })
+                .collect_vec(),
+        );
+        let vwam = pricing.into_iter().map(|trade| trade.1).collect_vec();
+        let optimstic_res = self.process_optimistic(&dex_swaps, metadata, tx_hash, vwam);
+
+        CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl, optimstic_res)
+    }
+
+    fn process_optimistic(
+        &self,
+        trades: &[NormalizedSwap],
+        metadata: &Metadata,
+        tx_hash: FixedBytes<32>,
+        window: Vec<Option<(ExchangePrice, ExchangePrice)>>,
+    ) -> Option<OptimisticDetails> {
+        let mut trade_details = vec![];
+        let possible = PossibleCexDex::from_exchange_legs(
+            trades
+                .iter()
+                .zip(window)
+                .map(|(dex_swap, trades)| {
+                    let (maker, taker) = trades?;
+                    let start_time = maker
+                        .trades_used
+                        .iter()
+                        .min_by(|a, b| a.timestamp.cmp(&b.timestamp))?
+                        .timestamp;
+                    let end_time = maker
+                        .trades_used
+                        .iter()
+                        .max_by(|a, b| a.timestamp.cmp(&b.timestamp))?
+                        .timestamp;
+
+                    let profit = self.profit_classifier(
+                        dex_swap,
+                        maker.pairs,
+                        (maker.final_price, taker.final_price),
+                        metadata,
+                        CexExchange::OptimisticVWAP,
+                        tx_hash,
+                        start_time,
+                        end_time,
+                    );
+
+                    if profit.is_some() {
+                        trade_details.push(maker.trades_used);
+                    }
+                    profit
+                })
+                .collect_vec(),
+        )?;
+
+        Some(OptimisticDetails {
+            optimistic_trade_details: trade_details,
+            optimistic_route_details: possible.generate_arb_details(trades),
+        })
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
@@ -297,10 +408,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
+        pairs: Vec<Pair>,
         cex_quote: (Rational, Rational),
         metadata: &Metadata,
         exchange: CexExchange,
         tx_hash: FixedBytes<32>,
+        start_time: u64,
+        end_time: u64,
     ) -> Option<ExchangeLeg> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
@@ -335,6 +449,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .unwrap()
             .lock()
             .calculate_time_window_vwam(
+                self.trade_config,
                 &self.cex_exchanges,
                 pair,
                 &vol,
@@ -353,6 +468,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let quote = FeeAdjustedQuote {
             timestamp: metadata.block_timestamp,
+            pairs: pairs.clone(),
             price_maker: (cex_quote.0.clone(), cex_quote.0.clone()),
             price_taker: (cex_quote.1.clone(), cex_quote.1.clone()),
             amount: (Rational::ONE, Rational::ONE),
@@ -362,7 +478,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         Some(ExchangeLeg {
             cex_quote: quote,
-            pnl:       ArbPnl { maker_taker_mid: pnl_mid.clone(), maker_taker_ask: pnl_mid },
+            pairs,
+            end_time,
+            start_time,
+            pnl: ArbPnl { maker_taker_mid: pnl_mid.clone(), maker_taker_ask: pnl_mid },
         })
     }
 
@@ -381,81 +500,54 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
+                let window_fn = || {
+                    metadata
+                        .cex_trades
+                        .as_ref()
+                        .unwrap()
+                        .lock()
+                        .calculate_time_window_vwam(
+                            self.trade_config,
+                            &self.cex_exchanges,
+                            pair,
+                            &swap.amount_out,
+                            metadata.microseconds_block_timestamp(),
+                            marked_cex_dex,
+                            swap,
+                            tx_hash,
+                        )
+                };
+
                 let window = self
                     .utils
                     .get_metrics()
-                    .map(|m| {
-                        m.run_cex_price_window(|| {
-                            metadata
-                                .cex_trades
-                                .as_ref()
-                                .unwrap()
-                                .lock()
-                                .calculate_time_window_vwam(
-                                    &self.cex_exchanges,
-                                    pair,
-                                    &swap.amount_out,
-                                    metadata.microseconds_block_timestamp(),
-                                    marked_cex_dex,
-                                    swap,
-                                    tx_hash,
-                                )
-                        })
-                    })
-                    .unwrap_or_else(|| {
-                        metadata
-                            .cex_trades
-                            .as_ref()
-                            .unwrap()
-                            .lock()
-                            .calculate_time_window_vwam(
-                                &self.cex_exchanges,
-                                pair,
-                                &swap.amount_out,
-                                metadata.microseconds_block_timestamp(),
-                                marked_cex_dex,
-                                swap,
-                                tx_hash,
-                            )
-                    });
+                    .map(|m| m.run_cex_price_window(window_fn))
+                    .unwrap_or_else(window_fn);
+
+                let optimistic = || {
+                    metadata
+                        .cex_trades
+                        .as_ref()
+                        .unwrap()
+                        .lock()
+                        .get_optimistic_vmap(
+                            self.trade_config,
+                            &self.cex_exchanges,
+                            &pair,
+                            &swap.amount_out,
+                            metadata.microseconds_block_timestamp(),
+                            None,
+                            marked_cex_dex,
+                            swap,
+                            tx_hash,
+                        )
+                };
 
                 let other = self
                     .utils
                     .get_metrics()
-                    .map(|m| {
-                        m.run_cex_price_vol(|| {
-                            metadata
-                                .cex_trades
-                                .as_ref()
-                                .unwrap()
-                                .lock()
-                                .get_optimistic_vmap(
-                                    &self.cex_exchanges,
-                                    &pair,
-                                    &swap.amount_out,
-                                    None,
-                                    marked_cex_dex,
-                                    swap,
-                                    tx_hash,
-                                )
-                        })
-                    })
-                    .unwrap_or_else(|| {
-                        metadata
-                            .cex_trades
-                            .as_ref()
-                            .unwrap()
-                            .lock()
-                            .get_optimistic_vmap(
-                                &self.cex_exchanges,
-                                &pair,
-                                &swap.amount_out,
-                                None,
-                                marked_cex_dex,
-                                swap,
-                                tx_hash,
-                            )
-                    });
+                    .map(|m| m.run_cex_price_vol(optimistic))
+                    .unwrap_or_else(optimistic);
 
                 if (window.is_none() || other.is_none()) && marked_cex_dex {
                     self.utils
@@ -519,6 +611,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
+        metadata: Arc<Metadata>,
     ) -> Option<(f64, BundleData)> {
         let sanity_check_arb = possible_cex_dex.arb_sanity_check();
         let is_profitable_outlier = sanity_check_arb.is_profitable_outlier();
@@ -558,7 +651,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             || is_profitable_one_exchange_but_not_stable_swaps
             || is_outlier_but_not_stable_swaps
         {
-            possible_cex_dex.into_bundle(info)
+            possible_cex_dex.into_bundle(info, &self.trade_config, metadata)
         } else {
             self.utils.get_metrics().inspect(|m| {
                 m.branch_filtering_trigger(MevType::CexDex, "filter_possible_cex_dex")
@@ -582,11 +675,38 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 }
 
 #[derive(Debug)]
+pub struct OptimisticDetails {
+    pub optimistic_route_details: Vec<ArbDetails>,
+    pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
+}
+impl OptimisticDetails {
+    pub fn route_pnl(&self) -> ArbPnl {
+        let mut total_mid_maker = Rational::ZERO;
+        let mut total_mid_taker = Rational::ZERO;
+        let mut total_ask_maker = Rational::ZERO;
+        let mut total_ask_taker = Rational::ZERO;
+
+        self.optimistic_route_details.iter().for_each(|leg| {
+            total_mid_maker += &leg.pnl_pre_gas.maker_taker_mid.0;
+            total_mid_taker += &leg.pnl_pre_gas.maker_taker_mid.1;
+            total_ask_maker += &leg.pnl_pre_gas.maker_taker_ask.0;
+            total_ask_taker += &leg.pnl_pre_gas.maker_taker_ask.1;
+        });
+
+        ArbPnl {
+            maker_taker_mid: (total_mid_maker, total_mid_taker),
+            maker_taker_ask: (total_ask_maker, total_ask_taker),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct CexDexProcessing {
     pub dex_swaps:           Vec<NormalizedSwap>,
     pub global_vmam_cex_dex: Option<PossibleCexDex>,
     pub per_exchange_pnl:    Vec<Option<PossibleCexDex>>,
     pub max_profit:          Option<PossibleCexDex>,
+    pub optimstic_details:   Option<OptimisticDetails>,
 }
 
 impl CexDexProcessing {
@@ -594,8 +714,15 @@ impl CexDexProcessing {
         dex_swaps: Vec<NormalizedSwap>,
         global_vmam_cex_dex: Option<PossibleCexDex>,
         per_exchange_pnl: Vec<Option<PossibleCexDex>>,
+        optimstic_details: Option<OptimisticDetails>,
     ) -> Option<Self> {
-        let mut this = Self { per_exchange_pnl, dex_swaps, max_profit: None, global_vmam_cex_dex };
+        let mut this = Self {
+            per_exchange_pnl,
+            dex_swaps,
+            max_profit: None,
+            global_vmam_cex_dex,
+            optimstic_details,
+        };
         this.construct_max_profit_route()?;
         Some(this)
     }
@@ -670,15 +797,25 @@ impl CexDexProcessing {
         }
     }
 
-    pub fn into_bundle(self, tx_info: &TxInfo) -> Option<(f64, BundleData)> {
+    pub fn into_bundle(
+        self,
+        tx_info: &TxInfo,
+        config: &CexDexTradeConfig,
+        meta: Arc<Metadata>,
+    ) -> Option<(f64, BundleData)> {
+        let optimistic = self
+            .optimstic_details
+            .as_ref()
+            .map(|o| o.route_pnl().maker_taker_mid.0);
+        let window = self
+            .global_vmam_cex_dex
+            .as_ref()?
+            .aggregate_pnl
+            .maker_taker_mid
+            .0
+            .clone();
         Some((
-            self.global_vmam_cex_dex
-                .as_ref()?
-                .aggregate_pnl
-                .maker_taker_mid
-                .0
-                .clone()
-                .to_float(),
+            optimistic.max(Some(window))?.to_float(),
             BundleData::CexDex(CexDex {
                 tx_hash:             tx_info.tx_hash,
                 global_vmap_pnl:     self.global_vmam_cex_dex.as_ref()?.aggregate_pnl.clone(),
@@ -686,12 +823,12 @@ impl CexDexProcessing {
                     .global_vmam_cex_dex?
                     .generate_arb_details(&self.dex_swaps),
 
-                optimal_route_details: self
+                optimal_route_details:    self
                     .max_profit
                     .as_ref()?
                     .generate_arb_details(&self.dex_swaps),
-                optimal_route_pnl:     self.max_profit.as_ref().unwrap().aggregate_pnl.clone(),
-                per_exchange_pnl:      self
+                optimal_route_pnl:        self.max_profit.as_ref().unwrap().aggregate_pnl.clone(),
+                per_exchange_pnl:         self
                     .per_exchange_pnl
                     .iter()
                     .map(|p| p.as_ref().unwrap())
@@ -701,15 +838,33 @@ impl CexDexProcessing {
                     })
                     .map(|(leg, pnl)| (leg.unwrap().cex_quote.exchange, pnl))
                     .collect(),
-
-                per_exchange_details: self
+                optimistic_route_details: self
+                    .optimstic_details
+                    .as_ref()
+                    .map(|r| r.optimistic_route_details.clone())
+                    .unwrap_or_default(),
+                optimistic_trade_details: self
+                    .optimstic_details
+                    .as_ref()
+                    .map(|r| r.optimistic_trade_details.clone())
+                    .unwrap_or_default(),
+                optimistic_route_pnl:     self.optimstic_details.map(|o| o.route_pnl()),
+                per_exchange_details:     self
                     .per_exchange_pnl
                     .iter()
                     .filter_map(|p| p.as_ref().map(|p| p.generate_arb_details(&self.dex_swaps)))
                     .collect(),
 
-                gas_details: tx_info.gas_details,
-                swaps:       self.dex_swaps,
+                gas_details:              tx_info.gas_details,
+                swaps:                    self.dex_swaps,
+                global_optimistic_end:    meta.microseconds_block_timestamp()
+                    + config.optimistic_after_us,
+                global_optimistic_start:  meta.microseconds_block_timestamp()
+                    - config.optimistic_before_us,
+                global_time_window_end:   meta.microseconds_block_timestamp()
+                    + config.time_window_after_us,
+                global_time_window_start: meta.microseconds_block_timestamp()
+                    - config.time_window_before_us,
             }),
         ))
     }
@@ -876,15 +1031,18 @@ impl PossibleCexDex {
             .filter_map(|(index, arb_leg)| {
                 arb_leg.as_ref().and_then(|leg| {
                     normalized_swaps.get(index).map(|swap| ArbDetails {
-                        cex_exchange:   leg.cex_quote.exchange,
-                        best_bid_maker: leg.cex_quote.price_maker.0.clone(),
-                        best_ask_maker: leg.cex_quote.price_maker.1.clone(),
-                        best_bid_taker: leg.cex_quote.price_taker.0.clone(),
-                        best_ask_taker: leg.cex_quote.price_taker.1.clone(),
-                        dex_exchange:   swap.protocol,
-                        dex_price:      swap.swap_rate(),
-                        dex_amount:     swap.amount_out.clone(),
-                        pnl_pre_gas:    leg.pnl.clone(),
+                        pairs:            leg.pairs.clone(),
+                        trade_end_time:   leg.end_time,
+                        trade_start_time: leg.start_time,
+                        cex_exchange:     leg.cex_quote.exchange,
+                        best_bid_maker:   leg.cex_quote.price_maker.0.clone(),
+                        best_ask_maker:   leg.cex_quote.price_maker.1.clone(),
+                        best_bid_taker:   leg.cex_quote.price_taker.0.clone(),
+                        best_ask_taker:   leg.cex_quote.price_taker.1.clone(),
+                        dex_exchange:     swap.protocol,
+                        dex_price:        swap.swap_rate(),
+                        dex_amount:       swap.amount_out.clone(),
+                        pnl_pre_gas:      leg.pnl.clone(),
                     })
                 })
             })
@@ -997,8 +1155,11 @@ impl Display for ExchangeLeg {
 
 #[derive(Clone, Debug)]
 pub struct ExchangeLeg {
-    pub cex_quote: FeeAdjustedQuote,
-    pub pnl:       ArbPnl,
+    pub cex_quote:  FeeAdjustedQuote,
+    pub start_time: u64,
+    pub end_time:   u64,
+    pub pairs:      Vec<Pair>,
+    pub pnl:        ArbPnl,
 }
 
 fn log_price_delta(
@@ -1169,6 +1330,19 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(45.88)
             .with_gas_paid_usd(4.60);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_markout_bad_price() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let tx = hex!("5ce797b5b3f58a99f170ee7a4ac1fc1ca37600ad92944730c19f13ef05f568c7").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(13.60)
+            .with_gas_paid_usd(0.0);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

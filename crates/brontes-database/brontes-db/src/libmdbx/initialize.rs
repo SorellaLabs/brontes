@@ -706,7 +706,7 @@ mod tests {
 
         initializer.initialize_full_range_tables().await.unwrap();
 
-        let tables = [Tables::TxTraces, Tables::BlockInfo];
+        let tables = [Tables::BlockInfo];
 
         let multi = MultiProgress::default();
         let tables_cnt = Arc::new(
@@ -750,11 +750,6 @@ mod tests {
 
         // AddressMeta
         AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
-
-        // TxTraces
-        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
     }

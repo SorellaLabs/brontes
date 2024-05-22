@@ -18,7 +18,7 @@ use super::{
 use crate::db::cex::CexExchange;
 use crate::{
     constants::WETH_ADDRESS,
-    db::redefined_types::primitives::*,
+    db::{cex::config::CexDexTradeConfig, redefined_types::primitives::*},
     implement_table_value_codecs_with_zc,
     normalized_actions::NormalizedSwap,
     pair::Pair,
@@ -63,9 +63,9 @@ pub struct Metadata {
     #[as_ref]
     pub block_metadata: BlockMetadata,
     pub cex_quotes:     CexPriceMap,
-    // not a fan but only way todo without unsafe
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
+    // only 1 reader but could be multi reader in future
     pub cex_trades:     Option<Arc<Mutex<CexTradeMap>>>,
 }
 
@@ -95,7 +95,9 @@ impl Metadata {
                                     trade_map
                                         .lock()
                                         .get_price(
+                                            CexDexTradeConfig::default(),
                                             &trades,
+                                            self.microseconds_block_timestamp(),
                                             &pair,
                                             &baseline_for_tokeprice,
                                             None,
@@ -104,7 +106,7 @@ impl Metadata {
                                             TxHash::default(),
                                         )?
                                         .0
-                                        .price,
+                                        .final_price,
                                 )
                             })
                             .unwrap_or(Rational::ZERO)
@@ -140,16 +142,18 @@ impl Metadata {
                                 trade_map
                                     .lock()
                                     .get_optimistic_vmap(
+                                        CexDexTradeConfig::default(),
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,
+                                        self.microseconds_block_timestamp(),
                                         None,
                                         true,
                                         &NormalizedSwap::default(),
                                         TxHash::default(),
                                     )?
                                     .0
-                                    .price,
+                                    .final_price,
                             )
                         })
                         .unwrap_or(Rational::ZERO)
@@ -189,7 +193,9 @@ impl Metadata {
                                     trade_map
                                         .lock()
                                         .get_price(
+                                            CexDexTradeConfig::default(),
                                             &trades,
+                                            self.microseconds_block_timestamp(),
                                             &pair,
                                             &baseline_for_tokeprice,
                                             None,
@@ -198,7 +204,7 @@ impl Metadata {
                                             TxHash::default(),
                                         )?
                                         .0
-                                        .price,
+                                        .final_price,
                                 )
                             })
                             .unwrap_or(Rational::ZERO)
@@ -234,16 +240,18 @@ impl Metadata {
                                 trade_map
                                     .lock()
                                     .get_optimistic_vmap(
+                                        CexDexTradeConfig::default(),
                                         &trades,
                                         &pair,
                                         &baseline_for_tokeprice,
+                                        self.microseconds_block_timestamp(),
                                         None,
                                         true,
                                         &NormalizedSwap::default(),
                                         TxHash::default(),
                                     )?
                                     .0
-                                    .price,
+                                    .final_price,
                             )
                         })
                         .unwrap_or(Rational::ZERO)
