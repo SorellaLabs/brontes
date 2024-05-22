@@ -454,10 +454,7 @@ impl CexTradeMap {
             final_price: vxp_taker / &trade_volume,
         };
 
-        Some(MakerTakerWithVolumeFilled {
-            volume_looked_at: cur_vol,
-            prices:           (maker, taker),
-        })
+        Some(MakerTakerWithVolumeFilled { prices: (maker, taker) })
     }
 
     fn get_most_accurate_basket(
@@ -557,6 +554,5 @@ fn _closest<'a>(
 
 #[derive(Debug)]
 pub struct MakerTakerWithVolumeFilled {
-    volume_looked_at: Rational,
-    prices:           MakerTaker,
+    prices: MakerTaker,
 }
