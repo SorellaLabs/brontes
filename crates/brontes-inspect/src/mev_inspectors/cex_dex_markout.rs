@@ -779,8 +779,7 @@ impl CexDexProcessing {
                         .maker_taker_mid
                         .0
                         .clone(),
-                ))
-                .unwrap()
+                ))?
                 .to_float(),
             BundleData::CexDex(CexDex {
                 tx_hash:             tx_info.tx_hash,
