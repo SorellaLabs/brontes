@@ -54,7 +54,7 @@ impl Serialize for OptimisticTrade {
         Serialize::serialize(
             &(
                 self.exchange.to_string(),
-                format!("{:#?}", self.pair),
+                (format!("{:?}", self.pair.0), format!("{:?}", self.pair.1)),
                 self.timestamp,
                 self.price.clone().to_float(),
                 self.volume.clone().to_float(),
@@ -156,7 +156,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|p| {
                     p.into_iter()
-                        .map(|p| format!("{:#?}", p))
+                        .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<Vec<_>>>(),
@@ -238,7 +238,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|p| {
                     p.into_iter()
-                        .map(|p| format!("{:#?}", p))
+                        .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<Vec<_>>>(),
@@ -320,7 +320,7 @@ impl Serialize for CexDex {
                 .iter()
                 .map(|p| {
                     p.into_iter()
-                        .map(|p| format!("{:#?}", p))
+                        .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
                         .collect::<Vec<_>>()
                 })
                 .collect::<Vec<Vec<_>>>(),
@@ -421,7 +421,17 @@ impl Serialize for CexDex {
                     .map(|e| (*e).to_string())
                     .collect::<Vec<_>>(),
             );
-            pairs.push(transposed.pairs);
+            pairs.push(
+                transposed
+                    .pairs
+                    .into_iter()
+                    .map(|p| {
+                        p.into_iter()
+                            .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            );
             best_bid_maker.push(transposed.best_bid_maker);
             best_ask_maker.push(transposed.best_ask_maker);
             best_bid_taker.push(transposed.best_bid_taker);
