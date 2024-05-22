@@ -23,7 +23,6 @@ clickhouse_dbms!(
         ClickhouseLiquidations,
         ClickhouseSearcherInfo,
         ClickhouseDexPriceMapping,
-        ClickhouseTxTraces,
         ClickhouseTokenInfo,
         ClickhousePools,
         ClickhouseBuilderInfo,
@@ -41,14 +40,6 @@ impl BrontesClickhouseTables {
         )
     }
 }
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    "brontes",
-    ClickhouseTxTraces,
-    TxTrace,
-    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -220,7 +211,6 @@ macro_rules! db_types {
 }
 
 db_types!(
-    (TxTrace, TxTraces),
     (DexQuotesWithBlockNumber, DexPriceMapping),
     (MevBlock, MevBlocks),
     (BundleHeader, BundleHeader),

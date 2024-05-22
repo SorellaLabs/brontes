@@ -246,16 +246,6 @@ impl Clickhouse {
     }
 
     pub async fn save_traces(&self, _block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(
-                traces
-                    .into_iter()
-                    .zip(vec![self.tip].into_iter().cycle())
-                    .map(Into::into)
-                    .collect(),
-            )?
-        };
-
         Ok(())
     }
 }
