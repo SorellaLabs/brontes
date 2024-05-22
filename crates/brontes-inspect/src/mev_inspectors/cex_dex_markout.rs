@@ -254,6 +254,18 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     some_pricings.0.global_exchange_price.clone(),
                     some_pricings.1.global_exchange_price.clone(),
                     some_pricings.0.pairs.clone(),
+                    some_pricings
+                        .0
+                        .exchange_price_with_volume_direct
+                        .values()
+                        .min_by(|a, b| a.final_start_time.cmp(&b.final_start_time))?
+                        .final_start_time,
+                    some_pricings
+                        .0
+                        .exchange_price_with_volume_direct
+                        .values()
+                        .max_by(|a, b| a.final_end_time.cmp(&b.final_end_time))?
+                        .final_end_time,
                 ))
             })
             .collect_vec();
@@ -293,6 +305,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     metadata,
                                     *ex,
                                     tx_hash,
+                                    path.final_start_time,
+                                    path.final_end_time,
                                 ),
                             )
                         })
@@ -317,7 +331,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .iter()
                 .zip(pricing_window_vwam)
                 .filter_map(|(swap, possible_pricing)| {
-                    let (maker, taker, pairs) = possible_pricing?;
+                    let (maker, taker, pairs, start_time, end_time) = possible_pricing?;
                     Some(self.profit_classifier(
                         swap,
                         pairs,
@@ -325,6 +339,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         metadata,
                         CexExchange::VWAP,
                         tx_hash,
+                        start_time,
+                        end_time,
                     ))
                 })
                 .collect_vec(),
@@ -349,6 +365,17 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .zip(window)
                 .map(|(dex_swap, trades)| {
                     let (maker, taker) = trades?;
+                    let start_time = maker
+                        .trades_used
+                        .iter()
+                        .min_by(|a, b| a.timestamp.cmp(&b.timestamp))?
+                        .timestamp;
+                    let end_time = maker
+                        .trades_used
+                        .iter()
+                        .max_by(|a, b| a.timestamp.cmp(&b.timestamp))?
+                        .timestamp;
+
                     let profit = self.profit_classifier(
                         dex_swap,
                         maker.pairs,
@@ -356,6 +383,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         metadata,
                         CexExchange::OptimisticVWAP,
                         tx_hash,
+                        start_time,
+                        end_time,
                     );
 
                     if profit.is_some() {
@@ -382,6 +411,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         metadata: &Metadata,
         exchange: CexExchange,
         tx_hash: FixedBytes<32>,
+        start_time: u64,
+        end_time: u64,
     ) -> Option<ExchangeLeg> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
@@ -446,6 +477,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         Some(ExchangeLeg {
             cex_quote: quote,
             pairs,
+            end_time,
+            start_time,
             pnl: ArbPnl { maker_taker_mid: pnl_mid.clone(), maker_taker_ask: pnl_mid },
         })
     }
@@ -996,16 +1029,18 @@ impl PossibleCexDex {
             .filter_map(|(index, arb_leg)| {
                 arb_leg.as_ref().and_then(|leg| {
                     normalized_swaps.get(index).map(|swap| ArbDetails {
-                        pairs:          leg.pairs.clone(),
-                        cex_exchange:   leg.cex_quote.exchange,
-                        best_bid_maker: leg.cex_quote.price_maker.0.clone(),
-                        best_ask_maker: leg.cex_quote.price_maker.1.clone(),
-                        best_bid_taker: leg.cex_quote.price_taker.0.clone(),
-                        best_ask_taker: leg.cex_quote.price_taker.1.clone(),
-                        dex_exchange:   swap.protocol,
-                        dex_price:      swap.swap_rate(),
-                        dex_amount:     swap.amount_out.clone(),
-                        pnl_pre_gas:    leg.pnl.clone(),
+                        pairs:            leg.pairs.clone(),
+                        trade_end_time:   leg.end_time,
+                        trade_start_time: leg.start_time,
+                        cex_exchange:     leg.cex_quote.exchange,
+                        best_bid_maker:   leg.cex_quote.price_maker.0.clone(),
+                        best_ask_maker:   leg.cex_quote.price_maker.1.clone(),
+                        best_bid_taker:   leg.cex_quote.price_taker.0.clone(),
+                        best_ask_taker:   leg.cex_quote.price_taker.1.clone(),
+                        dex_exchange:     swap.protocol,
+                        dex_price:        swap.swap_rate(),
+                        dex_amount:       swap.amount_out.clone(),
+                        pnl_pre_gas:      leg.pnl.clone(),
                     })
                 })
             })
@@ -1118,9 +1153,11 @@ impl Display for ExchangeLeg {
 
 #[derive(Clone, Debug)]
 pub struct ExchangeLeg {
-    pub cex_quote: FeeAdjustedQuote,
-    pub pairs:     Vec<Pair>,
-    pub pnl:       ArbPnl,
+    pub cex_quote:  FeeAdjustedQuote,
+    pub start_time: u64,
+    pub end_time:   u64,
+    pub pairs:      Vec<Pair>,
+    pub pnl:        ArbPnl,
 }
 
 fn log_price_delta(
