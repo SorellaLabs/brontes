@@ -358,7 +358,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
         window: Vec<Option<(ExchangePrice, ExchangePrice)>>,
     ) -> Option<OptimisticDetails> {
-        tracing::info!("optimsitic");
         let mut trade_details = vec![];
         let possible = PossibleCexDex::from_exchange_legs(
             trades
@@ -419,7 +418,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // quote is likely invalid
 
         let swap_rate = swap.swap_rate();
-        tracing::info!(?swap_rate, cex=?cex_quote.0);
         let smaller = min(&swap_rate, &cex_quote.0);
         let larger = max(&swap_rate, &cex_quote.0);
 
