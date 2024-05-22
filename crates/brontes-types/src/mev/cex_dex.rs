@@ -238,7 +238,7 @@ impl Serialize for CexDex {
 
         let transposed: ArbDetailsTransposed = self.optimal_route_details.clone().into();
         ser_struct.serialize_field(
-            "optimal_route_pnl.pairs",
+            "optimal_route_details.pairs",
             &transposed
                 .pairs
                 .iter()
@@ -250,11 +250,11 @@ impl Serialize for CexDex {
                 .collect::<Vec<Vec<_>>>(),
         )?;
         ser_struct
-            .serialize_field("optimal_route_pnl.trade_start_time", &transposed.trade_start_time)?;
+            .serialize_field("optimal_route_details.trade_start_time", &transposed.trade_start_time)?;
         ser_struct
-            .serialize_field("optimal_route_pnl.trade_end_time", &transposed.trade_end_time)?;
+            .serialize_field("optimal_route_details.trade_end_time", &transposed.trade_end_time)?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.cex_exchange",
+            "optimal_route_details.cex_exchange",
             &transposed
                 .cex_exchange
                 .iter()
@@ -262,7 +262,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_bid_maker",
+            "optimal_route_details.best_bid_maker",
             &transposed
                 .best_bid_maker
                 .iter()
@@ -270,7 +270,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_ask_maker",
+            "optimal_route_details.best_ask_maker",
             &transposed
                 .best_ask_maker
                 .iter()
@@ -278,7 +278,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_bid_taker",
+            "optimal_route_details.best_bid_taker",
             &transposed
                 .best_bid_maker
                 .iter()
@@ -286,7 +286,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_ask_taker",
+            "optimal_route_details.best_ask_taker",
             &transposed
                 .best_ask_maker
                 .iter()
@@ -295,7 +295,7 @@ impl Serialize for CexDex {
         )?;
 
         ser_struct.serialize_field(
-            "optimal_route_pnl.dex_exchange",
+            "optimal_route_details.dex_exchange",
             &transposed
                 .dex_exchange
                 .iter()
@@ -303,7 +303,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.dex_price",
+            "optimal_route_details.dex_price",
             &transposed
                 .dex_price
                 .iter()
@@ -312,14 +312,14 @@ impl Serialize for CexDex {
         )?;
 
         ser_struct.serialize_field(
-            "optimal_route_pnl.dex_amount",
+            "optimal_route_details.dex_amount",
             &transposed
                 .dex_amount
                 .iter()
                 .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
-        ser_struct.serialize_field("optimal_route_pnl.pnl_pre_gas", &transposed.pnl_pre_gas)?;
+        ser_struct.serialize_field("optimal_route_details.pnl_pre_gas", &transposed.pnl_pre_gas)?;
         ser_struct.serialize_field("optimal_route_pnl", &self.optimal_route_pnl)?;
 
         let transposed: ArbDetailsTransposed = self.optimistic_route_details.clone().into();
