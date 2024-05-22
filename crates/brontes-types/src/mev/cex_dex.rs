@@ -9,7 +9,7 @@ use ::clickhouse::DbRow;
 use ::serde::ser::Serializer;
 use ahash::HashSet;
 use colored::Colorize;
-use malachite::Rational;
+use malachite::{integer::conversion::serde, Rational};
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -42,6 +42,22 @@ pub struct OptimisticTrade {
     pub timestamp: u64,
     pub price:     Rational,
     pub volume:    Rational,
+}
+
+impl Serialize for OptimisticTrade {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (
+            self.exchange.to_string(),
+            format!("{:#?}", self.pair),
+            self.timestamp,
+            self.price.to_float(),
+            self.volume.to_float(),
+        )
+            .serialize(serializer)
+    }
 }
 
 #[serde_as]
@@ -407,6 +423,7 @@ impl DbRow for CexDex {
         "swaps.token_out",
         "swaps.amount_in",
         "swaps.amount_out",
+        "global_vmap_details.pairs",
         "global_vmap_details.cex_exchange",
         "global_vmap_details.best_bid_maker",
         "global_vmap_details.best_ask_maker",
@@ -417,6 +434,7 @@ impl DbRow for CexDex {
         "global_vmap_details.dex_amount",
         "global_vmap_details.pnl_pre_gas",
         "global_vmap_pnl",
+        "optimal_route_details.pairs",
         "optimal_route_details.cex_exchange",
         "optimal_route_details.best_bid_maker",
         "optimal_route_details.best_ask_maker",
@@ -427,6 +445,23 @@ impl DbRow for CexDex {
         "optimal_route_details.dex_amount",
         "optimal_route_details.pnl_pre_gas",
         "optimal_route_pnl",
+        "optimistic_route_details.pairs",
+        "optimistic_route_details.cex_exchange",
+        "optimistic_route_details.best_bid_maker",
+        "optimistic_route_details.best_ask_maker",
+        "optimistic_route_details.best_bid_taker",
+        "optimistic_route_details.best_ask_taker",
+        "optimistic_route_details.dex_exchange",
+        "optimistic_route_details.dex_price",
+        "optimistic_route_details.dex_amount",
+        "optimistic_route_details.pnl_pre_gas",
+        "optimistic_trade_details",
+        "optimistic_route_pnl",
+        "global_time_window_start",
+        "global_time_window_end",
+        "global_optimistic_start",
+        "global_optimistic_end",
+        "per_exchange_details.pairs",
         "per_exchange_details.cex_exchange",
         "per_exchange_details.best_bid_maker",
         "per_exchange_details.best_ask_maker",
