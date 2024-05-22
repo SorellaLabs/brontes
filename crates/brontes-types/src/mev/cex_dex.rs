@@ -339,8 +339,10 @@ impl Serialize for CexDex {
             "optimistic_route_details.trade_start_time",
             &transposed.trade_start_time,
         )?;
-        ser_struct
-            .serialize_field("optimistic_route_pnl.trade_end_time", &transposed.trade_end_time)?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.trade_end_time",
+            &transposed.trade_end_time,
+        )?;
         ser_struct.serialize_field(
             "optimistic_route_details.cex_exchange",
             &transposed
