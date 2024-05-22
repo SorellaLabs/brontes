@@ -645,13 +645,13 @@ pub struct OptimisticDetails {
     pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
 }
 impl OptimisticDetails {
-    pub fn route_pnl(self) -> ArbPnl {
+    pub fn route_pnl(&self) -> ArbPnl {
         let mut total_mid_maker = Rational::ZERO;
         let mut total_mid_taker = Rational::ZERO;
         let mut total_ask_maker = Rational::ZERO;
         let mut total_ask_taker = Rational::ZERO;
 
-        self.optimistic_route_details.into_iter().for_each(|leg| {
+        self.optimistic_route_details.iter().for_each(|leg| {
             total_mid_maker += &leg.best_bid_maker;
             total_mid_taker += &leg.best_bid_taker;
             total_ask_maker += &leg.best_bid_maker;
@@ -769,12 +769,18 @@ impl CexDexProcessing {
         meta: Arc<Metadata>,
     ) -> Option<(f64, BundleData)> {
         Some((
-            self.global_vmam_cex_dex
-                .as_ref()?
-                .aggregate_pnl
-                .maker_taker_mid
-                .0
-                .clone()
+            self.optimstic_details
+                .as_ref()
+                .map(|o| o.route_pnl().maker_taker_mid.0)
+                .max(Some(
+                    self.global_vmam_cex_dex
+                        .as_ref()?
+                        .aggregate_pnl
+                        .maker_taker_mid
+                        .0
+                        .clone(),
+                ))
+                .unwrap()
                 .to_float(),
             BundleData::CexDex(CexDex {
                 tx_hash:             tx_info.tx_hash,
