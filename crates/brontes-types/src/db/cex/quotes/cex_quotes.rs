@@ -580,7 +580,7 @@ pub struct FeeAdjustedQuote {
     #[redefined(same_fields)]
     pub exchange:    CexExchange,
     pub timestamp:   u64,
-    pairs:           Vec<Pair>,
+    pub pairs:           Vec<Pair>,
     /// Best fee adjusted Bid & Ask price (maker)
     pub price_maker: (Rational, Rational),
     /// Best fee adjusted Bid & Ask price (taker)
