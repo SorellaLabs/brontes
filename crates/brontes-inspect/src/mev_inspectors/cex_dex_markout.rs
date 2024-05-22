@@ -143,8 +143,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
 
-                if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
-                    dex_swaps.push(extra);
+                if dex_swaps.is_empty() {
+                    if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
+                        dex_swaps.push(extra);
+                    }
                 }
 
                 if dex_swaps.is_empty() {
