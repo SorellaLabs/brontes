@@ -1,5 +1,6 @@
 pub mod address_metadata;
 pub mod address_to_protocol_info;
+pub mod block_analysis;
 pub mod block_times;
 pub mod builder;
 pub mod cex;
