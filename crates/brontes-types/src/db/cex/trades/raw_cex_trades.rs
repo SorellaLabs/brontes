@@ -37,14 +37,13 @@ impl CexTradesConverter {
         trades: Vec<RawCexTrades>,
         time_window: (f64, f64),
     ) -> Self {
-        let symbols = symbols
-            .into_iter()
-            .fold(FastHashMap::default(), |mut acc, x| {
-                acc.entry(x.symbol_pair.clone())
-                    .or_default()
-                    .push(x);
+        let symbols = symbols.into_iter().fold(
+            FastHashMap::<String, Vec<CexSymbols>>::default(),
+            |mut acc, x| {
+                acc.entry(x.symbol_pair.clone()).or_default().push(x);
                 acc
-            });
+            },
+        );
 
         let trades = trades
             .into_iter()
