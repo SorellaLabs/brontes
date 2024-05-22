@@ -848,7 +848,6 @@ mod tests {
         let test_db = ClickhouseTestingClient { client: Clickhouse::default().client };
 
         let tables = &BrontesClickhouseTables::all_tables();
-
         test_db
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
             .await;
