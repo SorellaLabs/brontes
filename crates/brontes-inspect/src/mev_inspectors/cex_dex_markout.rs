@@ -691,17 +691,16 @@ pub struct OptimisticDetails {
 }
 impl OptimisticDetails {
     pub fn route_pnl(&self) -> ArbPnl {
-        tracing::info!("{:#?}", self.optimistic_route_details);
         let mut total_mid_maker = Rational::ZERO;
         let mut total_mid_taker = Rational::ZERO;
         let mut total_ask_maker = Rational::ZERO;
         let mut total_ask_taker = Rational::ZERO;
 
         self.optimistic_route_details.iter().for_each(|leg| {
-            total_mid_maker += &leg.best_bid_maker;
-            total_mid_taker += &leg.best_bid_taker;
-            total_ask_maker += &leg.best_ask_maker;
-            total_ask_taker += &leg.best_ask_taker;
+            total_mid_maker += &leg.pnl_pre_gas.maker_taker_mid.0;
+            total_mid_taker += &leg.pnl_pre_gas.maker_taker_mid.1;
+            total_ask_maker += &leg.pnl_pre_gas.maker_taker_ask.0;
+            total_ask_taker += &leg.pnl_pre_gas.maker_taker_ask.1;
         });
 
         ArbPnl {
