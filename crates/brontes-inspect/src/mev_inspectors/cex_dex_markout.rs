@@ -1336,7 +1336,7 @@ mod tests {
     async fn test_cex_dex_markout_bad_price() {
         // should be there if intermediary. however thats failing
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-        let tx = hex!("5ce797b5b3f58a99f170ee7a4ac1fc1ca37600ad92944730c19f13ef05f568c7").into();
+        let tx = hex!("069a06e82cf415612ae16dbea7d52f4c426addd9ef8530a2060a85d4ecc0b66b").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(45.88)
