@@ -18,7 +18,6 @@ use std::{
     fmt,
     fmt::{Display, Formatter},
     ops::MulAssign,
-    //str::FromStr,
 };
 
 use alloy_primitives::Address;
@@ -182,6 +181,7 @@ impl CexPriceMap {
                 FeeAdjustedQuote {
                     exchange:    *exchange,
                     timestamp:   quotes[0].timestamp,
+                    pairs:       vec![*pair],
                     price_maker: (fee_adjusted_maker.0, fee_adjusted_maker.1),
                     price_taker: (fee_adjusted_taker.0, fee_adjusted_taker.1),
                     token0:      pair.0,
@@ -235,6 +235,7 @@ impl CexPriceMap {
 
                     let combined_quote = FeeAdjustedQuote {
                         exchange:    *exchange,
+                        pairs:       vec![pair1, pair2],
                         timestamp:   std::cmp::max(quote1.timestamp, quote2.timestamp),
                         price_maker: combined_price_maker,
                         price_taker: combined_price_taker,
@@ -339,6 +340,7 @@ impl CexPriceMap {
         } else {
             Some(FeeAdjustedQuote {
                 exchange:    CexExchange::VWAP,
+                pairs:       exchange_quotes.first().unwrap().pairs.clone(),
                 timestamp:   avg_timestamp,
                 price_maker: (volume_weighted_bid_maker, volume_weighted_ask_maker),
                 price_taker: (volume_weighted_bid_taker, volume_weighted_ask_taker),
@@ -578,6 +580,7 @@ pub struct FeeAdjustedQuote {
     #[redefined(same_fields)]
     pub exchange:    CexExchange,
     pub timestamp:   u64,
+    pairs:           Vec<Pair>,
     /// Best fee adjusted Bid & Ask price (maker)
     pub price_maker: (Rational, Rational),
     /// Best fee adjusted Bid & Ask price (taker)
