@@ -41,7 +41,7 @@ impl CexTradesConverter {
             .into_iter()
             .fold(FastHashMap::default(), |mut acc, x| {
                 acc.entry(x.symbol_pair.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(x);
                 acc
             });

@@ -155,7 +155,7 @@ impl Serialize for CexDex {
                 .pairs
                 .iter()
                 .map(|p| {
-                    p.into_iter()
+                    p.iter()
                         .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
                         .collect::<Vec<_>>()
                 })
@@ -237,7 +237,7 @@ impl Serialize for CexDex {
                 .pairs
                 .iter()
                 .map(|p| {
-                    p.into_iter()
+                    p.iter()
                         .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
                         .collect::<Vec<_>>()
                 })
@@ -319,7 +319,7 @@ impl Serialize for CexDex {
                 .pairs
                 .iter()
                 .map(|p| {
-                    p.into_iter()
+                    p.iter()
                         .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
                         .collect::<Vec<_>>()
                 })
