@@ -602,18 +602,6 @@ mod tests {
         classifier_utils.build_tree_tx(tx).await.unwrap().into()
     }
 
-    async fn tx_traces(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let libmdbx = get_db_handle(tokio::runtime::Handle::current()).await;
-        let (a, _b) = unbounded_channel();
-        let tracer = init_trace_parser(tokio::runtime::Handle::current(), a, libmdbx, 10).await;
-
-        let binding = tracer.execute_block(17000010).await.unwrap();
-        let exec = binding.0.first().unwrap().clone();
-
-        let res = db.insert_one::<ClickhouseTxTraces>(&exec).await;
-        assert!(res.is_ok());
-    }
-
     #[allow(unused)]
     async fn searcher_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let case0 = JoinedSearcherInfo {
@@ -836,7 +824,6 @@ mod tests {
     }
 
     async fn run_all(database: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        tx_traces(database).await;
         builder_info(database).await;
         pools(database).await;
         atomic_arb(database).await;
