@@ -7,7 +7,7 @@ use crate::{
     serde_utils::{address_pair, cex_exchange},
 };
 
-#[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Row, Hash, PartialEq, Eq, Deserialize)]
 pub struct CexSymbols {
     #[serde(with = "cex_exchange")]
     pub exchange:     CexExchange,

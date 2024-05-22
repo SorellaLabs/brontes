@@ -6,14 +6,16 @@ use std::{
 };
 
 use ::clickhouse::DbRow;
-use ::serde::ser::Serializer;
+use ::serde::{
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Serialize,
+};
 use ahash::HashSet;
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::{Mev, MevType};
@@ -23,6 +25,7 @@ use crate::{
         redefined_types::{malachite::RationalRedefined, primitives::*},
     },
     normalized_actions::*,
+    pair::{Pair, PairRedefined},
     rational_to_u256_fraction, Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
@@ -31,6 +34,35 @@ use crate::{
     normalized_actions::{NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap},
     GasDetails,
 };
+
+#[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
+#[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
+pub struct OptimisticTrade {
+    #[redefined(same_fields)]
+    pub exchange:  CexExchange,
+    pub pair:      Pair,
+    pub timestamp: u64,
+    pub price:     Rational,
+    pub volume:    Rational,
+}
+
+impl Serialize for OptimisticTrade {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        Serialize::serialize(
+            &(
+                self.exchange.to_string(),
+                (format!("{:?}", self.pair.0), format!("{:?}", self.pair.1)),
+                self.timestamp,
+                self.price.clone().to_float(),
+                self.volume.clone().to_float(),
+            ),
+            serializer,
+        )
+    }
+}
 
 #[serde_as]
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
@@ -44,12 +76,26 @@ pub struct CexDex {
     // Arb details taking the most optimal route across all exchanges
     pub optimal_route_details: Vec<ArbDetails>,
     pub optimal_route_pnl:     ArbPnl,
+
+    pub optimistic_route_details: Vec<ArbDetails>,
+    // timestamp of each trade of each exchange that we coside,
+    // trade vol, price, per exchange hop
+    pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
+    // sometimes won't be there
+    pub optimistic_route_pnl:     Option<ArbPnl>,
+
+    /// total time window for both methods
+    pub global_time_window_start: u64,
+    pub global_time_window_end:   u64,
+    pub global_optimistic_start:  u64,
+    pub global_optimistic_end:    u64,
+
     // Arb details using quotes from each exchange for each leg
-    pub per_exchange_details:  Vec<Vec<ArbDetails>>,
+    pub per_exchange_details: Vec<Vec<ArbDetails>>,
     #[redefined(field((CexExchange, same)))]
-    pub per_exchange_pnl:      Vec<(CexExchange, ArbPnl)>,
+    pub per_exchange_pnl:     Vec<(CexExchange, ArbPnl)>,
     #[redefined(same_fields)]
-    pub gas_details:           GasDetails,
+    pub gas_details:          GasDetails,
 }
 
 impl Mev for CexDex {
@@ -83,7 +129,7 @@ impl Serialize for CexDex {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("CexDex", 40)?;
+        let mut ser_struct = serializer.serialize_struct("CexDex", 67)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
 
@@ -91,7 +137,7 @@ impl Serialize for CexDex {
             .swaps
             .clone()
             .try_into()
-            .map_err(serde::ser::Error::custom)?;
+            .map_err(::serde::ser::Error::custom)?;
 
         ser_struct.serialize_field("swaps.trace_idx", &swaps.trace_index)?;
         ser_struct.serialize_field("swaps.from", &swaps.from)?;
@@ -103,6 +149,24 @@ impl Serialize for CexDex {
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
 
         let transposed: ArbDetailsTransposed = self.global_vmap_details.clone().into();
+        ser_struct.serialize_field(
+            "global_vmap_details.pairs",
+            &transposed
+                .pairs
+                .iter()
+                .map(|p| {
+                    p.iter()
+                        .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<Vec<_>>>(),
+        )?;
+        ser_struct.serialize_field(
+            "global_vmap_details.trade_start_time",
+            &transposed.trade_start_time,
+        )?;
+        ser_struct
+            .serialize_field("global_vmap_details.trade_end_time", &transposed.trade_end_time)?;
         ser_struct.serialize_field(
             "global_vmap_details.cex_exchange",
             &transposed
@@ -174,7 +238,25 @@ impl Serialize for CexDex {
 
         let transposed: ArbDetailsTransposed = self.optimal_route_details.clone().into();
         ser_struct.serialize_field(
-            "optimal_route_pnl.cex_exchange",
+            "optimal_route_details.pairs",
+            &transposed
+                .pairs
+                .iter()
+                .map(|p| {
+                    p.iter()
+                        .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<Vec<_>>>(),
+        )?;
+        ser_struct.serialize_field(
+            "optimal_route_details.trade_start_time",
+            &transposed.trade_start_time,
+        )?;
+        ser_struct
+            .serialize_field("optimal_route_details.trade_end_time", &transposed.trade_end_time)?;
+        ser_struct.serialize_field(
+            "optimal_route_details.cex_exchange",
             &transposed
                 .cex_exchange
                 .iter()
@@ -182,7 +264,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_bid_maker",
+            "optimal_route_details.best_bid_maker",
             &transposed
                 .best_bid_maker
                 .iter()
@@ -190,7 +272,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_ask_maker",
+            "optimal_route_details.best_ask_maker",
             &transposed
                 .best_ask_maker
                 .iter()
@@ -198,7 +280,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_bid_taker",
+            "optimal_route_details.best_bid_taker",
             &transposed
                 .best_bid_maker
                 .iter()
@@ -206,7 +288,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.best_ask_taker",
+            "optimal_route_details.best_ask_taker",
             &transposed
                 .best_ask_maker
                 .iter()
@@ -215,7 +297,7 @@ impl Serialize for CexDex {
         )?;
 
         ser_struct.serialize_field(
-            "optimal_route_pnl.dex_exchange",
+            "optimal_route_details.dex_exchange",
             &transposed
                 .dex_exchange
                 .iter()
@@ -223,7 +305,7 @@ impl Serialize for CexDex {
                 .collect::<Vec<_>>(),
         )?;
         ser_struct.serialize_field(
-            "optimal_route_pnl.dex_price",
+            "optimal_route_details.dex_price",
             &transposed
                 .dex_price
                 .iter()
@@ -232,17 +314,126 @@ impl Serialize for CexDex {
         )?;
 
         ser_struct.serialize_field(
-            "optimal_route_pnl.dex_amount",
+            "optimal_route_details.dex_amount",
             &transposed
                 .dex_amount
                 .iter()
                 .flat_map(rational_to_u256_fraction)
                 .collect::<Vec<_>>(),
         )?;
-        ser_struct.serialize_field("optimal_route_pnl.pnl_pre_gas", &transposed.pnl_pre_gas)?;
+        ser_struct.serialize_field("optimal_route_details.pnl_pre_gas", &transposed.pnl_pre_gas)?;
         ser_struct.serialize_field("optimal_route_pnl", &self.optimal_route_pnl)?;
 
+        let transposed: ArbDetailsTransposed = self.optimistic_route_details.clone().into();
+        ser_struct.serialize_field(
+            "optimistic_route_details.pairs",
+            &transposed
+                .pairs
+                .iter()
+                .map(|p| {
+                    p.iter()
+                        .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<Vec<_>>>(),
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.trade_start_time",
+            &transposed.trade_start_time,
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.trade_end_time",
+            &transposed.trade_end_time,
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.cex_exchange",
+            &transposed
+                .cex_exchange
+                .iter()
+                .map(|e| (*e).to_string())
+                .collect::<Vec<_>>(),
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.best_bid_maker",
+            &transposed
+                .best_bid_maker
+                .iter()
+                .flat_map(rational_to_u256_fraction)
+                .collect::<Vec<_>>(),
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.best_ask_maker",
+            &transposed
+                .best_ask_maker
+                .iter()
+                .flat_map(rational_to_u256_fraction)
+                .collect::<Vec<_>>(),
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.best_bid_taker",
+            &transposed
+                .best_bid_maker
+                .iter()
+                .flat_map(rational_to_u256_fraction)
+                .collect::<Vec<_>>(),
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.best_ask_taker",
+            &transposed
+                .best_ask_maker
+                .iter()
+                .flat_map(rational_to_u256_fraction)
+                .collect::<Vec<_>>(),
+        )?;
+
+        ser_struct.serialize_field(
+            "optimistic_route_details.dex_exchange",
+            &transposed
+                .dex_exchange
+                .iter()
+                .map(|e| (*e).to_string())
+                .collect::<Vec<_>>(),
+        )?;
+        ser_struct.serialize_field(
+            "optimistic_route_details.dex_price",
+            &transposed
+                .dex_price
+                .iter()
+                .flat_map(rational_to_u256_fraction)
+                .collect::<Vec<_>>(),
+        )?;
+
+        ser_struct.serialize_field(
+            "optimistic_route_details.dex_amount",
+            &transposed
+                .dex_amount
+                .iter()
+                .flat_map(rational_to_u256_fraction)
+                .collect::<Vec<_>>(),
+        )?;
+        ser_struct
+            .serialize_field("optimistic_route_details.pnl_pre_gas", &transposed.pnl_pre_gas)?;
+        ser_struct.serialize_field("optimistic_trade_details", &self.optimistic_trade_details)?;
+        if let Some(pnl) = &self.optimistic_route_pnl {
+            ser_struct.serialize_field("optimistic_route_pnl", pnl)?;
+        } else {
+            ser_struct.serialize_field(
+                "optimistic_route_pnl",
+                &(
+                    ((None::<u8>, None::<u8>), (None::<u8>, None::<u8>)),
+                    ((None::<u8>, None::<u8>), (None::<u8>, None::<u8>)),
+                ),
+            )?;
+        }
+        ser_struct.serialize_field("global_time_window_start", &self.global_time_window_start)?;
+        ser_struct.serialize_field("global_time_window_end", &self.global_time_window_end)?;
+        ser_struct.serialize_field("global_optimistic_start", &self.global_optimistic_start)?;
+        ser_struct.serialize_field("global_optimistic_end", &self.global_optimistic_end)?;
+
         // per ex
+        let mut pairs = Vec::new();
+        let mut start_time = Vec::new();
+        let mut end_time = Vec::new();
         let mut cex_exchange = Vec::new();
         let mut best_bid_maker = Vec::new();
         let mut best_ask_maker = Vec::new();
@@ -262,6 +453,19 @@ impl Serialize for CexDex {
                     .map(|e| (*e).to_string())
                     .collect::<Vec<_>>(),
             );
+            pairs.push(
+                transposed
+                    .pairs
+                    .into_iter()
+                    .map(|p| {
+                        p.into_iter()
+                            .map(|p| (format!("{:?}", p.0), format!("{:?}", p.1)))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            start_time.push(transposed.trade_start_time);
+            end_time.push(transposed.trade_end_time);
             best_bid_maker.push(transposed.best_bid_maker);
             best_ask_maker.push(transposed.best_ask_maker);
             best_bid_taker.push(transposed.best_bid_taker);
@@ -277,6 +481,9 @@ impl Serialize for CexDex {
             dex_amount.push(transposed.dex_amount);
             pnl_pre_gas.push(transposed.pnl_pre_gas);
         }
+        ser_struct.serialize_field("per_exchange_details.pairs", &pairs)?;
+        ser_struct.serialize_field("per_exchange_details.trade_start_time", &start_time)?;
+        ser_struct.serialize_field("per_exchange_details.trade_end_time", &end_time)?;
         ser_struct.serialize_field("per_exchange_details.cex_exchange", &cex_exchange)?;
         ser_struct.serialize_field(
             "per_exchange_details.best_bid_maker",
@@ -381,6 +588,9 @@ impl DbRow for CexDex {
         "swaps.token_out",
         "swaps.amount_in",
         "swaps.amount_out",
+        "global_vmap_details.pairs",
+        "global_vmap_details.trade_start_time",
+        "global_vmap_details.trade_end_time",
         "global_vmap_details.cex_exchange",
         "global_vmap_details.best_bid_maker",
         "global_vmap_details.best_ask_maker",
@@ -391,6 +601,9 @@ impl DbRow for CexDex {
         "global_vmap_details.dex_amount",
         "global_vmap_details.pnl_pre_gas",
         "global_vmap_pnl",
+        "optimal_route_details.pairs",
+        "optimal_route_details.trade_start_time",
+        "optimal_route_details.trade_end_time",
         "optimal_route_details.cex_exchange",
         "optimal_route_details.best_bid_maker",
         "optimal_route_details.best_ask_maker",
@@ -401,6 +614,27 @@ impl DbRow for CexDex {
         "optimal_route_details.dex_amount",
         "optimal_route_details.pnl_pre_gas",
         "optimal_route_pnl",
+        "optimistic_route_details.pairs",
+        "optimistic_route_details.trade_start_time",
+        "optimistic_route_details.trade_end_time",
+        "optimistic_route_details.cex_exchange",
+        "optimistic_route_details.best_bid_maker",
+        "optimistic_route_details.best_ask_maker",
+        "optimistic_route_details.best_bid_taker",
+        "optimistic_route_details.best_ask_taker",
+        "optimistic_route_details.dex_exchange",
+        "optimistic_route_details.dex_price",
+        "optimistic_route_details.dex_amount",
+        "optimistic_route_details.pnl_pre_gas",
+        "optimistic_trade_details",
+        "optimistic_route_pnl",
+        "global_time_window_start",
+        "global_time_window_end",
+        "global_optimistic_start",
+        "global_optimistic_end",
+        "per_exchange_details.pairs",
+        "per_exchange_details.trade_start_time",
+        "per_exchange_details.trade_end_time",
         "per_exchange_details.cex_exchange",
         "per_exchange_details.best_bid_maker",
         "per_exchange_details.best_ask_maker",
@@ -422,18 +656,22 @@ impl DbRow for CexDex {
 )]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ArbDetails {
+    /// pairs that we traded through
+    pub pairs:            Vec<Pair>,
+    pub trade_start_time: u64,
+    pub trade_end_time:   u64,
     #[redefined(same_fields)]
-    pub cex_exchange:   CexExchange,
-    pub best_bid_maker: Rational,
-    pub best_ask_maker: Rational,
-    pub best_bid_taker: Rational,
-    pub best_ask_taker: Rational,
+    pub cex_exchange:     CexExchange,
+    pub best_bid_maker:   Rational,
+    pub best_ask_maker:   Rational,
+    pub best_bid_taker:   Rational,
+    pub best_ask_taker:   Rational,
     #[redefined(same_fields)]
-    pub dex_exchange:   Protocol,
-    pub dex_price:      Rational,
-    pub dex_amount:     Rational,
+    pub dex_exchange:     Protocol,
+    pub dex_price:        Rational,
+    pub dex_amount:       Rational,
     // Arbitrage profit considering both CEX and DEX swap fees, before applying gas fees
-    pub pnl_pre_gas:    ArbPnl,
+    pub pnl_pre_gas:      ArbPnl,
 }
 
 impl fmt::Display for ArbDetails {
@@ -524,7 +762,7 @@ impl Serialize for ArbPnl {
                 rational_to_u256_fraction(&self.maker_taker_ask.1).unwrap(),
             ),
         );
-        serde::Serialize::serialize(&t, serializer)
+        ::serde::Serialize::serialize(&t, serializer)
     }
 }
 
