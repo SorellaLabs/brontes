@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::traits::LibmdbxReader;
 use crate::{
     db::clickhouse_serde::pair::pair_ser,
-    mev::{Bundle, MevBlock},
+    mev::{Bundle, Mev, MevBlock, MevType},
     pair::Pair,
     Protocol,
 };
@@ -114,11 +114,12 @@ impl BlockAnalysis {
             all_top_fund:         bundles
                 .iter()
                 .filter(|b| {
-                    let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+                    let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else { return false };
                     if eoa.fund.is_none() {
-                        let contract = db
-                            .try_fetch_searcher_contract_info(b.header.mev_contract?)
-                            .unwrap()?;
+                        let Some(mev_contract) = b.header.mev_contract else { return false };
+                        let Some(contract) = db
+                            .try_fetch_searcher_contract_info(mev_contract)
+                            .unwrap() else { return false };
                         if contract.fund.is_none() {
                             false
                         } else {
@@ -139,6 +140,52 @@ impl BlockAnalysis {
             all_average_profit:   bundles.iter().map(|h| h.header.profit_usd).sum::<f64>()
                 / bundles.len() as f64,
 
+            arb_top_fund:         bundles
+                .iter()
+                .filter(|b| {
+                    if b.data.mev_type() != MevType::AtomicArb {
+                        return false
+                    }
+
+                    let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+                    if eoa.fund.is_none() {
+                        let contract = db
+                            .try_fetch_searcher_contract_info(b.header.mev_contract?)
+                            .unwrap()?;
+                        if contract.fund.is_none() {
+                            false
+                        } else {
+                            true
+                        }
+                    } else {
+                        true
+                    }
+                })
+                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
+                .map(|h| h.header.eoa)
+                .unwrap_or_default(),
+            arb_top_searcher:     bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
+                .map(|r| r.header.eoa)
+                .unwrap_or_default(),
+            arb_total_profit:     bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .map(|b| b.header.profit_usd)
+                .sum::<f64>(),
+            arb_total_revenue:    bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .map(|b| b.header.profit_usd + b.header.bribe_usd)
+                .sum::<f64>(),
+            arb_unique_searchers: bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .map(|b| b.header.eoa)
+                .unique()
+                .count(),
         }
     }
 }
