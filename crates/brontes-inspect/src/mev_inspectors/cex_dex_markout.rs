@@ -11,13 +11,15 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::{
         cex::{
-            config::CexDexTradeConfig, time_window_vwam::MakerTakerWindowVWAP, vwam::MakerTaker,
+            config::CexDexTradeConfig,
+            time_window_vwam::MakerTakerWindowVWAP,
+            vwam::{ExchangePrice, MakerTaker},
             CexExchange, FeeAdjustedQuote,
         },
         dex::PriceAt,
     },
     display::utils::format_etherscan_url,
-    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType},
+    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType, OptimisticTrade},
     normalized_actions::{
         accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
     },
@@ -251,13 +253,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 Some((
                     some_pricings.0.global_exchange_price.clone(),
                     some_pricings.1.global_exchange_price.clone(),
-                    some_pricings.0.pairs,
+                    some_pricings.0.pairs.clone(),
                 ))
             })
             .collect_vec();
-
-        let vwam = pricing.iter().map(|trade| trade.0).collect_vec();
-        let optimstic_res = self.process_optimistic(vwam);
 
         // per exchange volumes
         let pricing_window_vwam_per_ex = pricing
@@ -267,7 +266,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 Some((
                     some_pricings.0.exchange_price_with_volume_direct.clone(),
                     some_pricings.1.exchange_price_with_volume_direct.clone(),
-                    some_pricings.0.pairs,
+                    some_pricings.0.pairs.clone(),
                 ))
             })
             .collect_vec();
@@ -281,15 +280,15 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 Some(
                     maker
                         .iter()
-                        .map(|(ex, (m_price, _))| {
+                        .map(|(ex, path)| {
                             (
                                 ex,
                                 self.profit_classifier(
                                     &dex_swaps[i],
                                     pairs.clone(),
                                     (
-                                        m_price.clone(),
-                                        taker.get(ex).map(|p| p.0.clone()).unwrap().clone(),
+                                        path.price.clone(),
+                                        taker.get(ex).map(|p| p.price.clone()).unwrap().clone(),
                                     ),
                                     metadata,
                                     *ex,
@@ -324,21 +323,53 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         pairs,
                         (maker, taker),
                         metadata,
-                        CexExchange::OptimisticVWAP,
+                        CexExchange::VWAP,
                         tx_hash,
                     ))
                 })
                 .collect_vec(),
         );
+        let vwam = pricing.into_iter().map(|trade| trade.1).collect_vec();
+        let optimstic_res = self.process_optimistic(&dex_swaps, metadata, tx_hash, vwam);
 
         CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl, optimstic_res)
     }
 
     fn process_optimistic(
         &self,
-        window: Vec<Option<(WindowExchangePrice, WindowExchangePrice)>>,
+        trades: &[NormalizedSwap],
+        metadata: &Metadata,
+        tx_hash: FixedBytes<32>,
+        window: Vec<Option<(ExchangePrice, ExchangePrice)>>,
     ) -> Option<OptimisticDetails> {
-        None
+        let mut trade_details = vec![];
+        let possible = PossibleCexDex::from_exchange_legs(
+            trades
+                .into_iter()
+                .zip(window)
+                .map(|(dex_swap, trades)| {
+                    let (maker, taker) = trades?;
+                    let profit = self.profit_classifier(
+                        dex_swap,
+                        maker.pairs,
+                        (maker.final_price, taker.final_price),
+                        metadata,
+                        CexExchange::OptimisticVWAP,
+                        tx_hash,
+                    );
+
+                    if profit.is_some() {
+                        trade_details.push(maker.trades_used);
+                    }
+                    profit
+                })
+                .collect_vec(),
+        )?;
+
+        Some(OptimisticDetails {
+            optimistic_trade_details: trade_details,
+            optimistic_route_details: possible.generate_arb_details(trades),
+        })
     }
 
     /// For a given swap & CEX quote, calculates the potential profit from
@@ -607,10 +638,30 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     }
 }
 
+#[derive(Debug)]
 pub struct OptimisticDetails {
     pub optimistic_route_details: Vec<ArbDetails>,
     pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
-    pub optimistic_route_pnl:     ArbPnl,
+}
+impl OptimisticDetails {
+    pub fn route_pnl(self) -> ArbPnl {
+        let mut total_mid_maker = Rational::ZERO;
+        let mut total_mid_taker = Rational::ZERO;
+        let mut total_ask_maker = Rational::ZERO;
+        let mut total_ask_taker = Rational::ZERO;
+
+        self.optimistic_route_details.into_iter().for_each(|leg| {
+            total_mid_maker += &leg.best_bid_maker;
+            total_mid_taker += &leg.best_bid_taker;
+            total_ask_maker += &leg.best_bid_maker;
+            total_ask_taker += &leg.best_bid_taker;
+        });
+
+        ArbPnl {
+            maker_taker_mid: (total_mid_maker, total_mid_taker),
+            maker_taker_ask: (total_ask_maker, total_ask_taker),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -746,9 +797,17 @@ impl CexDexProcessing {
                     })
                     .map(|(leg, pnl)| (leg.unwrap().cex_quote.exchange, pnl))
                     .collect(),
-                optimistic_route_details: self.optimistic_route_details,
-                optimistic_trade_details: self.optimistic_trade_details,
-                optimistic_route_pnl:     self.optimistic_route_pnl,
+                optimistic_route_details: self
+                    .optimstic_details
+                    .as_ref()
+                    .map(|r| r.optimistic_route_details.clone())
+                    .unwrap_or_default(),
+                optimistic_trade_details: self
+                    .optimstic_details
+                    .as_ref()
+                    .map(|r| r.optimistic_trade_details.clone())
+                    .unwrap_or_default(),
+                optimistic_route_pnl:     self.optimstic_details.map(|o| o.route_pnl()),
                 per_exchange_details:     self
                     .per_exchange_pnl
                     .iter()

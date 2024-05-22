@@ -61,7 +61,8 @@ pub struct CexDex {
     // timestamp of each trade of each exchange that we coside,
     // trade vol, price, per exchange hop
     pub optimistic_trade_details: Vec<Vec<OptimisticTrade>>,
-    pub optimistic_route_pnl:     ArbPnl,
+    // sometimes won't be there
+    pub optimistic_route_pnl:     Option<ArbPnl>,
 
     /// total time window for both methods
     pub global_time_window_start: u64,
