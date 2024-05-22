@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
-use brontes_types::db::{cex::CexExchange, metadata::Metadata};
+use brontes_types::db::{
+    cex::{config::CexDexTradeConfig, CexExchange},
+    metadata::Metadata,
+};
 use criterion::{black_box, Criterion};
 
 use super::InspectorTestUtilsError;
@@ -41,6 +44,7 @@ impl InspectorBenchUtils {
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
+                    CexDexTradeConfig::default(),
                     None,
                 )
             })
@@ -88,6 +92,7 @@ impl InspectorBenchUtils {
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
+            CexDexTradeConfig::default(),
             None,
         );
 
@@ -152,6 +157,7 @@ impl InspectorBenchUtils {
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
+            CexDexTradeConfig::default(),
             None,
         );
 
@@ -207,6 +213,7 @@ impl InspectorBenchUtils {
             self.quote_address,
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
+            CexDexTradeConfig::default(),
             None,
         );
 
@@ -250,6 +257,7 @@ impl InspectorBenchUtils {
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
+                    CexDexTradeConfig::default(),
                     None,
                 )
             })
@@ -308,6 +316,7 @@ impl InspectorBenchUtils {
                     self.quote_address,
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
+                    CexDexTradeConfig::default(),
                     None,
                 )
             })

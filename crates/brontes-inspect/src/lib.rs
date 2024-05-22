@@ -72,7 +72,11 @@ use std::sync::Arc;
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
 use brontes_types::{
-    db::{cex::CexExchange, metadata::Metadata, traits::LibmdbxReader},
+    db::{
+        cex::{config::CexDexTradeConfig, CexExchange},
+        metadata::Metadata,
+        traits::LibmdbxReader,
+    },
     mev::{Bundle, BundleData},
     normalized_actions::Action,
     tree::BlockTree,
@@ -117,6 +121,7 @@ impl Inspectors {
         quote_token: Address,
         db: &'static DB,
         cex_exchanges: &[CexExchange],
+        trade_config: CexDexTradeConfig,
         metrics: Option<OutlierMetrics>,
     ) -> DynMevInspector {
         match &self {
@@ -142,10 +147,13 @@ impl Inspectors {
                 static_object(SearcherActivity::new(quote_token, db, metrics)) as DynMevInspector
             }
             #[cfg(feature = "cex-dex-markout")]
-            Self::CexDexMarkout => {
-                static_object(CexDexMarkoutInspector::new(quote_token, db, cex_exchanges, metrics))
-                    as DynMevInspector
-            }
+            Self::CexDexMarkout => static_object(CexDexMarkoutInspector::new(
+                quote_token,
+                db,
+                cex_exchanges,
+                trade_config,
+                metrics,
+            )) as DynMevInspector,
         }
     }
 }

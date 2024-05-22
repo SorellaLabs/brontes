@@ -26,7 +26,7 @@ pub struct RawCexTrades {
 
 pub struct CexTradesConverter {
     pub block_times: Vec<CexBlockTimes>,
-    pub symbols:     FastHashMap<String, CexSymbols>,
+    pub symbols:     FastHashMap<String, Vec<CexSymbols>>,
     pub trades:      Vec<RawCexTrades>,
 }
 
@@ -37,10 +37,13 @@ impl CexTradesConverter {
         trades: Vec<RawCexTrades>,
         time_window: (f64, f64),
     ) -> Self {
-        let symbols = symbols
-            .into_iter()
-            .map(|c| (c.symbol_pair.clone(), c))
-            .collect::<FastHashMap<_, _>>();
+        let symbols = symbols.into_iter().fold(
+            FastHashMap::<String, Vec<CexSymbols>>::default(),
+            |mut acc, x| {
+                acc.entry(x.symbol_pair.clone()).or_default().push(x);
+                acc
+            },
+        );
 
         let trades = trades
             .into_iter()
@@ -94,24 +97,35 @@ impl CexTradesConverter {
                         let mut exchange_symbol_map = FastHashMap::default();
 
                         trades.into_iter().for_each(|trade| {
-                            let mut symbol = self.symbols.get(&trade.symbol).unwrap().clone();
+                            let symbols = self.symbols.get(&trade.symbol).unwrap().clone();
 
-                            if symbol.address_pair.1
-                                == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
-                            {
-                                symbol.address_pair.1 = USDC_ADDRESS;
+                            // there is a case were we cant have multiple addresses for
+                            // same symbol so this covers it.
+                            let mut seen = vec![];
+                            for mut symbol in symbols {
+                                if seen.contains(&symbol.address_pair) {
+                                    continue
+                                } else {
+                                    seen.push(symbol.address_pair)
+                                }
+
+                                if symbol.address_pair.1
+                                    == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
+                                {
+                                    symbol.address_pair.1 = USDC_ADDRESS;
+                                }
+
+                                let pair = if &trade.side == "sell" {
+                                    symbol.address_pair.flip()
+                                } else {
+                                    symbol.address_pair
+                                };
+
+                                exchange_symbol_map
+                                    .entry(pair)
+                                    .or_insert(Vec::new())
+                                    .push(trade.clone().into());
                             }
-
-                            let pair = if &trade.side == "sell" {
-                                symbol.address_pair.flip()
-                            } else {
-                                symbol.address_pair
-                            };
-
-                            exchange_symbol_map
-                                .entry(pair)
-                                .or_insert(Vec::new())
-                                .push(trade.into());
                         });
 
                         (exch, exchange_symbol_map)
