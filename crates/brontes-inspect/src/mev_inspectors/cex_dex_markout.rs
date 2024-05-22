@@ -813,19 +813,20 @@ impl CexDexProcessing {
         config: &CexDexTradeConfig,
         meta: Arc<Metadata>,
     ) -> Option<(f64, BundleData)> {
+        let optimistic = self
+            .optimstic_details
+            .as_ref()
+            .map(|o| o.route_pnl().maker_taker_mid.0);
+        let window = self
+            .global_vmam_cex_dex
+            .as_ref()?
+            .aggregate_pnl
+            .maker_taker_mid
+            .0
+            .clone();
+        tracing::info!(?optimistic, ?window);
         Some((
-            self.optimstic_details
-                .as_ref()
-                .map(|o| o.route_pnl().maker_taker_mid.0)
-                .max(Some(
-                    self.global_vmam_cex_dex
-                        .as_ref()?
-                        .aggregate_pnl
-                        .maker_taker_mid
-                        .0
-                        .clone(),
-                ))?
-                .to_float(),
+            optimistic.max(Some(window))?.to_float(),
             BundleData::CexDex(CexDex {
                 tx_hash:             tx_info.tx_hash,
                 global_vmap_pnl:     self.global_vmam_cex_dex.as_ref()?.aggregate_pnl.clone(),
