@@ -51,8 +51,13 @@ pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
                             ::tracing::error!("{} failed to decode calldata", #discovery_name_str);
                             return Vec::new();
                     };
-                    (#address_call_function)(deployed_address, trace_idx, decoded_data, tracer)
-                        .await
+                    let res = (#address_call_function)(deployed_address, trace_idx, decoded_data, tracer)
+                        .await;
+                    if res.is_empty() {
+                            ::tracing::error!("discovery classifier returned nothing");
+                    }
+
+                    res
                 }
             }
         }
