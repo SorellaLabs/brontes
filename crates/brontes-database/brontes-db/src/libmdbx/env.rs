@@ -155,8 +155,8 @@ impl DatabaseEnv {
         debug_assert!(Tables::ALL.len() <= 256, "number of tables exceed max dbs");
         inner_env.set_max_dbs(256);
         inner_env.set_geometry(Geometry {
-            // Maximum database size of 750 gigabytes
-            size:             Some(0..(750 * GIGABYTE)),
+            // Maximum database size of 4 TB
+            size:             Some(0..(4000 * GIGABYTE)),
             // We grow the database in increments of a gigabyte
             growth_step:      Some(GIGABYTE as isize),
             shrink_threshold: Some(GIGABYTE as isize),

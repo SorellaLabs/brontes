@@ -30,10 +30,10 @@ use crate::{
 ///   its trade data.
 
 pub struct PairTradeWalker<'a> {
-    min_timestamp: u64,
-    max_timestamp: u64,
-    exchange_ptrs: FastHashMap<CexExchange, (usize, usize)>,
-    trades:        Vec<(CexExchange, &'a Vec<CexTrades>)>,
+    pub min_timestamp: u64,
+    pub max_timestamp: u64,
+    exchange_ptrs:     FastHashMap<CexExchange, (usize, usize)>,
+    trades:            Vec<(CexExchange, &'a Vec<CexTrades>)>,
 }
 
 impl<'a> PairTradeWalker<'a> {

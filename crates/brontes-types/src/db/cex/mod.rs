@@ -41,6 +41,7 @@ pub enum CexExchange {
     Gemini,
     Average,
     VWAP,
+    OptimisticVWAP,
     #[default]
     Unknown,
 }

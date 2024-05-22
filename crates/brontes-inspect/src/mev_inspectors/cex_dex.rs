@@ -648,8 +648,7 @@ impl CexDexProcessing {
                     })
                     .map(|(leg, pnl)| (leg.unwrap().cex_quote.exchange, pnl))
                     .collect(),
-
-                per_exchange_details: self
+                per_exchange_details:  self
                     .per_exchange_pnl
                     .iter()
                     .filter_map(|p| p.as_ref().map(|p| p.generate_arb_details(&self.dex_swaps)))
@@ -657,6 +656,14 @@ impl CexDexProcessing {
 
                 gas_details: tx_info.gas_details,
                 swaps:       self.dex_swaps,
+
+                optimistic_route_pnl:     None,
+                optimistic_route_details: vec![],
+                optimistic_trade_details: vec![],
+                global_optimistic_end:    0,
+                global_optimistic_start:  0,
+                global_time_window_end:   0,
+                global_time_window_start: 0,
             }),
         ))
     }
