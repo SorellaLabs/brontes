@@ -689,8 +689,8 @@ impl OptimisticDetails {
         self.optimistic_route_details.iter().for_each(|leg| {
             total_mid_maker += &leg.best_bid_maker;
             total_mid_taker += &leg.best_bid_taker;
-            total_ask_maker += &leg.best_bid_maker;
-            total_ask_taker += &leg.best_bid_taker;
+            total_ask_maker += &leg.best_ask_maker;
+            total_ask_taker += &leg.best_ask_taker;
         });
 
         ArbPnl {
