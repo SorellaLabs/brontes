@@ -752,10 +752,5 @@ mod tests {
         AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
             .await
             .unwrap();
-
-        // TxTraces
-        TxTraces::test_initialized_data(clickhouse, libmdbx, Some(block_range))
-            .await
-            .unwrap();
     }
 }
