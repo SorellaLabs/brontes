@@ -34,8 +34,7 @@ impl BrontesClickhouseTables {
     pub const fn is_big(&self) -> bool {
         matches!(
             self,
-            BrontesClickhouseTables::ClickhouseTxTraces
-                | BrontesClickhouseTables::ClickhouseDexPriceMapping
+            BrontesClickhouseTables::ClickhouseDexPriceMapping
                 | BrontesClickhouseTables::ClickhouseTree
         )
     }
