@@ -691,6 +691,7 @@ pub struct OptimisticDetails {
 }
 impl OptimisticDetails {
     pub fn route_pnl(&self) -> ArbPnl {
+        tracing::info!("{:#?}", self.optimistic_route_details);
         let mut total_mid_maker = Rational::ZERO;
         let mut total_mid_taker = Rational::ZERO;
         let mut total_ask_maker = Rational::ZERO;
