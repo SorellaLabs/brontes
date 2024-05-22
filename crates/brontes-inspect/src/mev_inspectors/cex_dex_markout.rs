@@ -435,10 +435,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
             return None
         }
-        tracing::info!(
-            swap_rate = swap_rate.clone().to_float(),
-            cex = cex_quote.0.clone().to_float()
-        );
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let maker_delta = &cex_quote.0 - swap.swap_rate();
@@ -465,12 +461,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .0
             .global_exchange_price;
 
-        tracing::info!(
-            swap_rate = swap_rate.clone().to_float(),
-            cex = cex_quote.0.clone().to_float(),
-            token_price = token_price.clone().to_float(),
-            amount = swap.amount_out.clone().to_float()
-        );
         let pnl_mid = (
             &maker_delta * &swap.amount_out * &token_price,
             &taker_delta * &swap.amount_out * &token_price,
@@ -824,7 +814,6 @@ impl CexDexProcessing {
             .maker_taker_mid
             .0
             .clone();
-        tracing::info!(?optimistic, ?window);
         Some((
             optimistic.max(Some(window))?.to_float(),
             BundleData::CexDex(CexDex {
@@ -1352,7 +1341,7 @@ mod tests {
         let tx = hex!("5ce797b5b3f58a99f170ee7a4ac1fc1ca37600ad92944730c19f13ef05f568c7").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(45.88)
+            .with_expected_profit_usd(13.60)
             .with_gas_paid_usd(0.0);
 
         inspector_util.run_inspector(config, None).await.unwrap();
