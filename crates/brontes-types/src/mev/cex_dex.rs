@@ -249,8 +249,10 @@ impl Serialize for CexDex {
                 })
                 .collect::<Vec<Vec<_>>>(),
         )?;
-        ser_struct
-            .serialize_field("optimal_route_details.trade_start_time", &transposed.trade_start_time)?;
+        ser_struct.serialize_field(
+            "optimal_route_details.trade_start_time",
+            &transposed.trade_start_time,
+        )?;
         ser_struct
             .serialize_field("optimal_route_details.trade_end_time", &transposed.trade_end_time)?;
         ser_struct.serialize_field(
@@ -412,7 +414,17 @@ impl Serialize for CexDex {
         ser_struct
             .serialize_field("optimistic_route_details.pnl_pre_gas", &transposed.pnl_pre_gas)?;
         ser_struct.serialize_field("optimistic_trade_details", &self.optimistic_trade_details)?;
-        ser_struct.serialize_field("optimistic_route_pnl", &self.optimistic_route_pnl)?;
+        if let Some(pnl) = &self.optimistic_route_pnl {
+            ser_struct.serialize_field("optimistic_route_pnl", pnl)?;
+        } else {
+            ser_struct.serialize_field(
+                "optimistic_route_pnl",
+                &(
+                    ((None::<u8>, None::<u8>), (None::<u8>, None::<u8>)),
+                    ((None::<u8>, None::<u8>), (None::<u8>, None::<u8>)),
+                ),
+            )?;
+        }
         ser_struct.serialize_field("global_time_window_start", &self.global_time_window_start)?;
         ser_struct.serialize_field("global_time_window_end", &self.global_time_window_end)?;
         ser_struct.serialize_field("global_optimistic_start", &self.global_optimistic_start)?;
