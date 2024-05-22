@@ -435,7 +435,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
             return None
         }
-        tracing::info!(?swap_rate, cex = cex_quote.0);
+        tracing::info!(swap_rate=swap_rate.clone().to_float(), cex = cex_quote.0.clone().to_float());
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let maker_delta = &cex_quote.0 - swap.swap_rate();
