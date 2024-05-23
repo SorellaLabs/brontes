@@ -162,7 +162,7 @@ impl BlockAnalysis {
                     }
                 })
                 .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|h| h.header.eoa)
+                .map(|h| h.header.mev_contract.unwrap_or(h.header.eoa))
                 .unwrap_or_default(),
             all_top_searcher:     bundles
                 .iter()
@@ -208,7 +208,7 @@ impl BlockAnalysis {
                     }
                 })
                 .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|h| h.header.eoa)
+                .map(|h| h.header.mev_contract.unwrap_or(h.header.eoa))
                 .unwrap_or_default(),
             arb_top_searcher: bundles
                 .iter()
@@ -501,7 +501,7 @@ impl BlockAnalysis {
                     }
                 })
                 .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|h| h.header.eoa)
+                .map(|h| h.header.mev_contract.unwrap_or(h.header.eoa))
                 .unwrap_or_default(),
             cex_dex_total_profit: bundles
                 .iter()
