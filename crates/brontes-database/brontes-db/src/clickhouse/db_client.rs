@@ -583,7 +583,6 @@ mod tests {
 
     use alloy_primitives::{hex, TxHash};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
         db::{cex::CexExchange, dex::DexPrices, searcher::SearcherEoaContract},
         init_threadpools,
