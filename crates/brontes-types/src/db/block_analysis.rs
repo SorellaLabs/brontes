@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::traits::LibmdbxReader;
 use crate::{
     db::clickhouse_serde::pair::pair_ser,
-    mev::{Bundle, Mev, MevBlock, MevType},
+    mev::{Bundle, BundleData, Mev, MevBlock, MevType},
     pair::Pair,
     Protocol,
 };
@@ -114,12 +114,16 @@ impl BlockAnalysis {
             all_top_fund:         bundles
                 .iter()
                 .filter(|b| {
-                    let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else { return false };
+                    let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
+                        return false
+                    };
                     if eoa.fund.is_none() {
                         let Some(mev_contract) = b.header.mev_contract else { return false };
-                        let Some(contract) = db
-                            .try_fetch_searcher_contract_info(mev_contract)
-                            .unwrap() else { return false };
+                        let Some(contract) =
+                            db.try_fetch_searcher_contract_info(mev_contract).unwrap()
+                        else {
+                            return false
+                        };
                         if contract.fund.is_none() {
                             false
                         } else {
@@ -140,18 +144,23 @@ impl BlockAnalysis {
             all_average_profit:   bundles.iter().map(|h| h.header.profit_usd).sum::<f64>()
                 / bundles.len() as f64,
 
-            arb_top_fund:         bundles
+            arb_top_fund:                    bundles
                 .iter()
                 .filter(|b| {
                     if b.data.mev_type() != MevType::AtomicArb {
                         return false
                     }
 
-                    let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+                    let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
+                        return false
+                    };
                     if eoa.fund.is_none() {
-                        let contract = db
-                            .try_fetch_searcher_contract_info(b.header.mev_contract?)
-                            .unwrap()?;
+                        let Some(mev_contract) = b.header.mev_contract else { return false };
+                        let Some(contract) =
+                            db.try_fetch_searcher_contract_info(mev_contract).unwrap()
+                        else {
+                            return false
+                        };
                         if contract.fund.is_none() {
                             false
                         } else {
@@ -164,28 +173,277 @@ impl BlockAnalysis {
                 .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
                 .map(|h| h.header.eoa)
                 .unwrap_or_default(),
-            arb_top_searcher:     bundles
+            arb_top_searcher:                bundles
                 .iter()
                 .filter(|f| f.data.mev_type() == MevType::AtomicArb)
                 .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
                 .map(|r| r.header.eoa)
                 .unwrap_or_default(),
-            arb_total_profit:     bundles
+            arb_total_profit:                bundles
                 .iter()
                 .filter(|f| f.data.mev_type() == MevType::AtomicArb)
                 .map(|b| b.header.profit_usd)
                 .sum::<f64>(),
-            arb_total_revenue:    bundles
+            arb_total_revenue:               bundles
                 .iter()
                 .filter(|f| f.data.mev_type() == MevType::AtomicArb)
                 .map(|b| b.header.profit_usd + b.header.bribe_usd)
                 .sum::<f64>(),
-            arb_unique_searchers: bundles
+            arb_unique_searchers:            bundles
                 .iter()
                 .filter(|f| f.data.mev_type() == MevType::AtomicArb)
                 .map(|b| b.header.eoa)
                 .unique()
-                .count(),
+                .count() as u64,
+            arb_unique_funds:                bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .filter_map(|b| {
+                    let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+                    if eoa.fund.is_none() {
+                        let contract = db
+                            .try_fetch_searcher_contract_info(b.header.mev_contract?)
+                            .unwrap()?;
+                        return (!contract.fund.is_none()).then_some(contract.fund)
+                    } else {
+                        return Some(eoa.fund)
+                    }
+                })
+                .unique()
+                .count() as u64,
+            most_arbed_pair:                 bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .flat_map(|b| {
+                    let BundleData::AtomicArb(arb) = &b.data else { unreachable!() };
+                    arb.swaps
+                        .iter()
+                        .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_arbed_pool:                 bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .flat_map(|b| {
+                    let BundleData::AtomicArb(arb) = &b.data else { unreachable!() };
+                    arb.swaps.iter().map(|s| s.pool)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_arbed_dex:                  bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
+                .flat_map(|b| {
+                    let BundleData::AtomicArb(arb) = &b.data else { unreachable!() };
+                    arb.swaps.iter().map(|s| s.protocol)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_sandwiched_pair:            bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .flat_map(|b| {
+                    let BundleData::Sandwich(sando) = &b.data else { unreachable!() };
+                    sando
+                        .victim_swaps
+                        .iter()
+                        .flatten()
+                        .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_sandwiched_pool:            bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .flat_map(|b| {
+                    let BundleData::Sandwich(sando) = &b.data else { unreachable!() };
+                    sando.victim_swaps.iter().flatten().map(|s| s.pool)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_sandwiched_dex:             bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .flat_map(|b| {
+                    let BundleData::Sandwich(sando) = &b.data else { unreachable!() };
+                    sando.victim_swaps.iter().flatten().map(|s| s.protocol)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            sandwich_top_searcher:           bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
+                .map(|r| r.header.eoa)
+                .unwrap_or_default(),
+            sandwich_unique_searchers:       bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .map(|b| b.header.eoa)
+                .unique()
+                .count() as u64,
+            sandwich_total_swapper_loss:     bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .map(|b| b.header.profit_usd + b.header.bribe_usd)
+                .sum::<f64>(),
+            sandwich_total_profit:           bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .map(|b| b.header.profit_usd)
+                .sum::<f64>(),
+            sandwich_total_revenue:          bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Sandwich)
+                .map(|b| b.header.profit_usd + b.header.bribe_usd)
+                .sum::<f64>(),
+            jit_sandwich_total_profit:       bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .map(|b| b.header.profit_usd)
+                .sum::<f64>(),
+            jit_sandwich_total_revenue:      bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .map(|b| b.header.profit_usd + b.header.bribe_usd)
+                .sum::<f64>(),
+            jit_sandwich_top_searcher:       bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
+                .map(|r| r.header.eoa)
+                .unwrap_or_default(),
+            jit_sandwich_total_swapper_loss: bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .map(|b| b.header.profit_usd + b.header.bribe_usd)
+                .sum::<f64>(),
+            jit_sandwich_unique_searchers:   bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .map(|f| f.header.eoa)
+                .unique()
+                .count() as u64,
+            most_jit_sandwiched_pair:        bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .flat_map(|b| {
+                    let BundleData::JitSandwich(jit_sand) = &b.data else { unreachable!() };
+                    jit_sand
+                        .victim_swaps
+                        .iter()
+                        .flatten()
+                        .map(|s| Pair(s.token_out.address, s.token_in.address).ordered())
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_jit_sandwiched_dex:         bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .flat_map(|b| {
+                    let BundleData::JitSandwich(jit_sand) = &b.data else { unreachable!() };
+                    jit_sand.victim_swaps.iter().flatten().map(|s| s.protocol)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_jit_sandwiched_pool:        bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
+                .flat_map(|b| {
+                    let BundleData::JitSandwich(jit_sand) = &b.data else { unreachable!() };
+                    jit_sand.victim_swaps.iter().flatten().map(|s| s.pool)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            jit_top_searcher:                bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Jit)
+                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
+                .map(|r| r.header.eoa)
+                .unwrap_or_default(),
+            jit_total_revenue:               bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Jit)
+                .map(|b| b.header.profit_usd + b.header.bribe_usd)
+                .sum::<f64>(),
+            jit_total_profit:                bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Jit)
+                .map(|b| b.header.profit_usd)
+                .sum::<f64>(),
+            most_jit_pool:                   bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Jit)
+                .flat_map(|b| {
+                    let BundleData::Jit(jit) = &b.data else { unreachable!() };
+                    jit.victim_swaps.iter().flatten().map(|s| s.pool)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_jit_pair:                   bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Jit)
+                .flat_map(|b| {
+                    let BundleData::Jit(jit) = &b.data else { unreachable!() };
+                    jit.victim_swaps
+                        .iter()
+                        .flatten()
+                        .map(|s| Pair(s.token_out.address, s.token_in.address).ordered())
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            most_jit_dex:                    bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Jit)
+                .flat_map(|b| {
+                    let BundleData::Jit(jit) = &b.data else { unreachable!() };
+                    jit.victim_swaps.iter().flatten().map(|s| s.protocol)
+                })
+                .counts()
+                .iter()
+                .max_by_key(|k| k.1)
+                .map(|r| *r.0)
+                .unwrap_or_default(),
+            jit_unique_searchers:            bundles
+                .iter()
+                .filter(|f| f.data.mev_type() == MevType::Jit)
+                .map(|b| b.header.eoa)
+                .unique()
+                .count() as u64,
         }
     }
 }
