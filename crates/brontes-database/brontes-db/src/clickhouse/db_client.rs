@@ -600,7 +600,6 @@ mod tests {
         clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestingClient},
         test_utils::TestDatabase,
     };
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
 
