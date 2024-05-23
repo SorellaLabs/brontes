@@ -11,6 +11,7 @@ use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
 clickhouse_dbms!(
     BrontesClickhouseTables,
+    "eth_cluster0",
     [
         ClickhouseBundleHeader,
         ClickhouseMevBlocks,
