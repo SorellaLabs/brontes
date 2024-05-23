@@ -144,7 +144,7 @@ impl BlockAnalysis {
                 .unwrap_or_default(),
             all_average_profit:   bundles.iter().map(|h| h.header.profit_usd).sum::<f64>()
                 / Some(bundles.len())
-                    .filter(|f| f != 0)
+                    .filter(|f| *f != 0)
                     .map(|f| f as f64)
                     .unwrap_or(1.0),
 
