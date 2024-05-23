@@ -99,6 +99,10 @@ pub fn rational_to_u256_fraction(rational: &Rational) -> eyre::Result<([u8; 32],
     }
 }
 
+pub fn wrap_option<A, B>(value: (A, B)) -> (Option<A>, Option<B>) {
+    (Some(value.0), Some(value.1))
+}
+
 #[cfg(test)]
 mod tests {
 
