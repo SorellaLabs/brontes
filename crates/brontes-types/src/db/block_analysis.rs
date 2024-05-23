@@ -122,6 +122,7 @@ impl BlockAnalysis {
             total_mev_profit:     block.total_mev_profit_usd,
             all_unique_funds:     bundles
                 .iter()
+                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
                 .filter_map(|b| {
                     let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
                     if eoa.fund.is_none() {
@@ -135,9 +136,15 @@ impl BlockAnalysis {
                 })
                 .unique()
                 .count() as u64,
-            all_unique_searchers: bundles.iter().map(|b| b.header.eoa).unique().count() as u64,
+            all_unique_searchers: bundles
+                .iter()
+                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
+                .map(|b| b.header.eoa)
+                .unique()
+                .count() as u64,
             all_top_fund:         bundles
                 .iter()
+                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
                 .filter(|b| {
                     let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
                         return false
@@ -159,11 +166,17 @@ impl BlockAnalysis {
                 .unwrap_or_default(),
             all_top_searcher:     bundles
                 .iter()
+                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
                 .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
                 .map(|r| r.header.eoa)
                 .unwrap_or_default(),
-            all_average_profit:   bundles.iter().map(|h| h.header.profit_usd).sum::<f64>()
+            all_average_profit:   bundles
+                .iter()
+                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
+                .map(|h| h.header.profit_usd)
+                .sum::<f64>()
                 / Some(bundles.len())
+                    .filter(|f| f.data.mev_type() != MevType::SearcherTx)
                     .filter(|f| *f != 0)
                     .map(|f| f as f64)
                     .unwrap_or(1.0),
