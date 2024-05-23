@@ -1,11 +1,6 @@
 pub mod pair_ser {
-    
 
-    
-    
-    use serde::{
-        Serialize, Serializer,
-    };
+    use serde::{Serialize, Serializer};
 
     use crate::pair::Pair;
 

@@ -27,7 +27,7 @@ impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
     async fn process_results<DB: DBWriter + LibmdbxReader>(
-        db: &DB,
+        db: &'static DB,
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
         tree: BlockTree<Action>,
         metadata: Metadata,
@@ -76,7 +76,7 @@ async fn insert_tree<DB: DBWriter + LibmdbxReader>(
 }
 
 async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
-    database: &DB,
+    database: &'static DB,
     block_details: MevBlock,
     mev_details: Vec<Bundle>,
     analysis: BlockAnalysis,
@@ -101,7 +101,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
             block_number
         );
     }
-    if let Err(e) = database.write_block_analysis(block_analysis).await {
+    if let Err(e) = database.write_block_analysis(analysis).await {
         tracing::error!(
             "Failed to insert block analysis data into db: {:?} at block: {}",
             e,

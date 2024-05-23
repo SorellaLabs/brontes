@@ -42,7 +42,7 @@ use crate::{
 
 pub struct ClassifierTestUtils {
     pub trace_loader: TraceLoader,
-    classifier:   Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
+    classifier:       Classifier<'static, Box<dyn TracingProvider>, LibmdbxReadWriter>,
 
     dex_pricing_receiver: UnboundedReceiver<DexPriceMsg>,
 }
