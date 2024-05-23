@@ -1,8 +1,9 @@
 use brontes_types::{
     db::{
-        address_to_protocol_info::ProtocolInfoClickhouse, builder::BuilderInfoWithAddress,
-        dex::DexQuotesWithBlockNumber, normalized_actions::TransactionRoot,
-        searcher::JoinedSearcherInfo, token_info::TokenInfoWithAddress,
+        address_to_protocol_info::ProtocolInfoClickhouse, block_analysis::BlockAnalysis,
+        builder::BuilderInfoWithAddress, dex::DexQuotesWithBlockNumber,
+        normalized_actions::TransactionRoot, searcher::JoinedSearcherInfo,
+        token_info::TokenInfoWithAddress,
     },
     mev::*,
 };
@@ -10,6 +11,7 @@ use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
 clickhouse_dbms!(
     BrontesClickhouseTables,
+    "eth_cluster0",
     [
         ClickhouseBundleHeader,
         ClickhouseMevBlocks,
@@ -25,7 +27,8 @@ clickhouse_dbms!(
         ClickhouseTokenInfo,
         ClickhousePools,
         ClickhouseBuilderInfo,
-        ClickhouseTree
+        ClickhouseTree,
+        ClickhouseBlockAnalysis
     ]
 );
 
@@ -44,6 +47,14 @@ remote_clickhouse_table!(
     "brontes",
     ClickhouseDexPriceMapping,
     DexQuotesWithBlockNumber,
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    "brontes",
+    ClickhouseBlockAnalysis,
+    BlockAnalysis,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
@@ -223,5 +234,6 @@ db_types!(
     (TokenInfoWithAddress, TokenInfo),
     (ProtocolInfoClickhouse, Pools),
     (BuilderInfoWithAddress, BuilderInfo),
-    (TransactionRoot, Tree)
+    (TransactionRoot, Tree),
+    (BlockAnalysis, BlockAnalysis)
 );

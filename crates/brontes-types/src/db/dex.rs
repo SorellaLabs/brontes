@@ -1,9 +1,10 @@
 use std::{
     cmp::{max, min},
     fmt::Display,
+    str::FromStr,
 };
 
-use alloy_primitives::{wrap_fixed_bytes, FixedBytes};
+use alloy_primitives::{wrap_fixed_bytes, Address, FixedBytes};
 use clickhouse::Row;
 use itertools::Itertools;
 use malachite::{
@@ -11,7 +12,7 @@ use malachite::{
         basic::traits::One,
         conversion::{string::options::ToSciOptions, traits::ToSci},
     },
-    Rational,
+    Natural, Rational,
 };
 use redefined::Redefined;
 use reth_db::DatabaseError;
@@ -292,7 +293,7 @@ impl From<DexQuoteWithIndex> for DexQuote {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Redefined)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, Redefined)]
 #[redefined_attr(derive(
     Debug,
     Clone,
@@ -306,6 +307,50 @@ impl From<DexQuoteWithIndex> for DexQuote {
 pub struct DexQuoteWithIndex {
     pub tx_idx: u16,
     pub quote:  Vec<(Pair, DexPrices)>,
+}
+
+type DexPriceQuotesVec = (
+    u64,
+    Vec<((String, String), ((Vec<u64>, Vec<u64>), (Vec<u64>, Vec<u64>), (String, String), bool))>,
+);
+
+impl<'de> Deserialize<'de> for DexQuoteWithIndex {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let des: DexPriceQuotesVec = Deserialize::deserialize(deserializer)?;
+
+        if des.1.is_empty() {
+            return Ok(DexQuoteWithIndex { tx_idx: des.0 as u16, quote: vec![] })
+        }
+
+        let val = des
+            .1
+            .into_iter()
+            .map(|((pair0, pair1), ((pre_num, pre_den), (post_num, post_den), (g0, g1), t))| {
+                (
+                    Pair(Address::from_str(&pair0).unwrap(), Address::from_str(&pair1).unwrap()),
+                    DexPrices {
+                        pre_state:    Rational::from_naturals(
+                            Natural::from_owned_limbs_asc(pre_num),
+                            Natural::from_owned_limbs_asc(pre_den),
+                        ),
+                        post_state:   Rational::from_naturals(
+                            Natural::from_owned_limbs_asc(post_num),
+                            Natural::from_owned_limbs_asc(post_den),
+                        ),
+                        goes_through: Pair(
+                            Address::from_str(&g0).unwrap(),
+                            Address::from_str(&g1).unwrap(),
+                        ),
+                        is_transfer:  t,
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
+        Ok(Self { tx_idx: des.0 as u16, quote: val })
+    }
 }
 
 impl From<DexQuote> for Vec<(Pair, DexPrices)> {
