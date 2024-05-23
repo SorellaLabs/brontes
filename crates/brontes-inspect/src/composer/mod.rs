@@ -30,7 +30,12 @@
 use std::sync::Arc;
 
 use alloy_primitives::Address;
-use brontes_types::{mev::Mev, FastHashMap};
+use brontes_core::LibmdbxReader;
+use brontes_types::{
+    db::block_analysis::{self, BlockAnalysis},
+    mev::Mev,
+    FastHashMap,
+};
 use itertools::Itertools;
 use tracing::{span, Level};
 
@@ -60,12 +65,14 @@ pub struct ComposerResults {
     pub mev_details:       Vec<Bundle>,
     /// all txes with coinbase.transfers that weren't classified
     pub possible_mev_txes: PossibleMevCollection,
+    pub block_analysis:    BlockAnalysis,
 }
 
-pub fn run_block_inspection(
+pub fn run_block_inspection<DB: LibmdbxReader>(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     tree: Arc<BlockTree<Action>>,
     metadata: Arc<Metadata>,
+    db: &'static DB,
 ) -> ComposerResults {
     let (possible_mev_txes, classified_mev) =
         run_inspectors(orchestra, tree.clone(), metadata.clone());
@@ -76,8 +83,9 @@ pub fn run_block_inspection(
 
     let (block_details, mev_details) =
         on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token);
+    let block_analysis = BlockAnalysis::new(&block_details, &mev_details, db);
 
-    ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs }
+    ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs, block_analysis }
 }
 
 fn run_inspectors(

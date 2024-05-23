@@ -13,6 +13,7 @@ use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
+        block_analysis::BlockAnalysis,
         builder::{BuilderInfo, BuilderInfoWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},

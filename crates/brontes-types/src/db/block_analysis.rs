@@ -143,7 +143,10 @@ impl BlockAnalysis {
                 .map(|r| r.header.eoa)
                 .unwrap_or_default(),
             all_average_profit:   bundles.iter().map(|h| h.header.profit_usd).sum::<f64>()
-                / bundles.len() as f64,
+                / Some(bundles.len())
+                    .filter(|f| f != 0)
+                    .map(|f| f as f64)
+                    .unwrap_or(1.0),
 
             arb_top_fund: bundles
                 .iter()

@@ -10,7 +10,7 @@ use brontes_types::frontend_prunes::{
     remove_burn_transfers, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
 use brontes_types::{
-    db::metadata::Metadata,
+    db::{block_analysis::BlockAnalysis, metadata::Metadata},
     execute_on,
     mev::{Bundle, MevBlock, MevType},
     normalized_actions::Action,
@@ -49,13 +49,13 @@ impl Processor for MevProcessor {
         let tree = Arc::new(tree);
         let metadata = Arc::new(metadata);
 
-        let ComposerResults { block_details, mev_details, possible_mev_txes: _ } =
+        let ComposerResults { block_details, mev_details, block_analysis, .. } =
             execute_on!(async_inspect, {
-                run_block_inspection(inspectors, tree.clone(), metadata.clone())
+                run_block_inspection(inspectors, tree.clone(), metadata.clone(), db)
             })
             .await;
 
-        insert_mev_results(db, block_details, mev_details).await;
+        insert_mev_results(db, block_details, mev_details, block_analysis).await;
     }
 }
 
@@ -79,6 +79,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     database: &DB,
     block_details: MevBlock,
     mev_details: Vec<Bundle>,
+    analysis: BlockAnalysis,
 ) {
     debug!(
         target: "brontes::results",
@@ -96,6 +97,13 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     {
         tracing::error!(
             "Failed to insert classified data into libmdbx: {:?} at block: {}",
+            e,
+            block_number
+        );
+    }
+    if let Err(e) = database.write_block_analysis(block_analysis).await {
+        tracing::error!(
+            "Failed to insert block analysis data into db: {:?} at block: {}",
             e,
             block_number
         );
