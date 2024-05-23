@@ -26,7 +26,7 @@ use crate::{
     },
     normalized_actions::*,
     pair::{Pair, PairRedefined},
-    rational_to_u256_fraction, Protocol, ToFloatNearest,
+    rational_to_u256_fraction, wrap_option, Protocol, ToFloatNearest,
 };
 #[allow(unused_imports)]
 use crate::{
@@ -415,15 +415,21 @@ impl Serialize for CexDex {
             .serialize_field("optimistic_route_details.pnl_pre_gas", &transposed.pnl_pre_gas)?;
         ser_struct.serialize_field("optimistic_trade_details", &self.optimistic_trade_details)?;
         if let Some(pnl) = &self.optimistic_route_pnl {
-            ser_struct.serialize_field("optimistic_route_pnl", pnl)?;
-        } else {
-            ser_struct.serialize_field(
-                "optimistic_route_pnl",
-                &(
-                    ((None::<u8>, None::<u8>), (None::<u8>, None::<u8>)),
-                    ((None::<u8>, None::<u8>), (None::<u8>, None::<u8>)),
+            let t = (
+                (
+                    wrap_option(rational_to_u256_fraction(&pnl.maker_taker_mid.0).unwrap()),
+                    wrap_option(rational_to_u256_fraction(&pnl.maker_taker_mid.1).unwrap()),
                 ),
-            )?;
+                (
+                    wrap_option(rational_to_u256_fraction(&pnl.maker_taker_ask.0).unwrap()),
+                    wrap_option(rational_to_u256_fraction(&pnl.maker_taker_ask.1).unwrap()),
+                ),
+            );
+            ser_struct.serialize_field("optimistic_route_pnl", &t)?;
+        } else {
+            let n: Option<[u8; 32]> = Some([0; 32]);
+            ser_struct
+                .serialize_field("optimistic_route_pnl", &(((n, n), (n, n)), ((n, n), (n, n))))?;
         }
         ser_struct.serialize_field("global_time_window_start", &self.global_time_window_start)?;
         ser_struct.serialize_field("global_time_window_end", &self.global_time_window_end)?;
