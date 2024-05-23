@@ -264,6 +264,7 @@ impl TollByType {
     Copy,
     AsRefStr,
     PartialOrd,
+    Hash,
 )]
 pub enum Fund {
     #[default]
@@ -277,6 +278,12 @@ pub enum Fund {
     TokkaLabs,
     EthBuilder,
     ICANHAZBLOCK,
+}
+
+impl Fund {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Fund::None)
+    }
 }
 
 impl From<String> for Fund {
