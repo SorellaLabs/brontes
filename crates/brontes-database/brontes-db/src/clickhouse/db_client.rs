@@ -13,6 +13,7 @@ use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
+        block_analysis::BlockAnalysis,
         builder::{BuilderInfo, BuilderInfoWithAddress},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
@@ -240,6 +241,14 @@ impl Clickhouse {
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
             tx.send(vec![(data, self.tip).into()])?
+        };
+
+        Ok(())
+    }
+
+    pub async fn block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
+        if let Some(tx) = self.buffered_insert_tx.as_ref() {
+            tx.send(vec![(block_analysis, self.tip).into()])?
         };
 
         Ok(())
@@ -574,7 +583,6 @@ mod tests {
 
     use alloy_primitives::{hex, TxHash};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_core::{get_db_handle, init_trace_parser};
     use brontes_types::{
         db::{cex::CexExchange, dex::DexPrices, searcher::SearcherEoaContract},
         init_threadpools,
@@ -592,7 +600,6 @@ mod tests {
         clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestingClient},
         test_utils::TestDatabase,
     };
-    use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
 
