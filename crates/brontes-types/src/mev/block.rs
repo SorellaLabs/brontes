@@ -450,14 +450,18 @@ impl Serialize for MevBlock {
             "possible_mev.gas_details.coinbase_transfer",
             &vec![possible_gas_coinbases],
         )?;
+        ser_struct.serialize_field(
+            "possible_mev.gas_details.priority_fee",
+            &vec![possible_priority_fees],
+        )?;
         ser_struct
-            .serialize_field("possible_mev.gas_details.priority_fee", &vec![possible_priority_fees])?;
-        ser_struct.serialize_field("possible_mev.gas_details.gas_used", &vec![possible_gas_useds])?;
+            .serialize_field("possible_mev.gas_details.gas_used", &vec![possible_gas_useds])?;
         ser_struct.serialize_field(
             "possible_mev.gas_details.effective_gas_price",
             &vec![possible_effective_gas_prices],
         )?;
-        ser_struct.serialize_field("possible_mev.triggers.is_private", &vec![possible_is_privates])?;
+        ser_struct
+            .serialize_field("possible_mev.triggers.is_private", &vec![possible_is_privates])?;
         ser_struct.serialize_field(
             "possible_mev.triggers.coinbase_transfer",
             &vec![possible_trigger_coinbases],
@@ -473,6 +477,8 @@ impl Serialize for MevBlock {
 
 impl DbRow for MevBlock {
     const COLUMN_NAMES: &'static [&'static str] = &[
+        "block_hash",
+        "block_number",
         "mev_count.mev_count",
         "mev_count.sandwich_count",
         "mev_count.cex_dex_count",
@@ -480,13 +486,10 @@ impl DbRow for MevBlock {
         "mev_count.jit_sandwich_count",
         "mev_count.atomic_backrun_count",
         "mev_count.liquidation_count",
-        "block_hash",
-        "block_number",
         "eth_price",
         "total_gas_used",
         "total_priority_fee",
         "total_bribe",
-        "total_mev_profit_usd",
         "total_mev_bribe",
         "total_mev_priority_fee_paid",
         "builder_address",
@@ -496,6 +499,7 @@ impl DbRow for MevBlock {
         "proposer_fee_recipient",
         "proposer_mev_reward",
         "proposer_profit_usd",
+        "total_mev_profit_usd",
         "possible_mev.tx_hash",
         "possible_mev.tx_idx",
         "possible_mev.gas_details.coinbase_transfer",
