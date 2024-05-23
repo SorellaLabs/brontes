@@ -3,22 +3,26 @@ use clickhouse::Row;
 use itertools::Itertools;
 use malachite::Rational;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 
 use super::traits::LibmdbxReader;
 use crate::{
-    db::clickhouse_serde::pair::pair_ser,
+    db::clickhouse_serde::pair::{addr_ser, pair_ser},
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
     pair::Pair,
     Protocol,
 };
 
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Row)]
 pub struct BlockAnalysis {
     pub block_number: u64,
 
     // all
     pub total_mev_profit:     f64,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub all_top_searcher:     Address,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub all_top_fund:         Address,
     pub all_average_profit:   f64,
     pub all_unique_searchers: u64,
@@ -27,11 +31,15 @@ pub struct BlockAnalysis {
     // atomic
     #[serde(serialize_with = "pair_ser::serialize")]
     pub most_arbed_pair:      Pair,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub most_arbed_pool:      Address,
+    #[serde_as(as = "DisplayFromStr")]
     pub most_arbed_dex:       Protocol,
     pub arb_total_revenue:    f64,
     pub arb_total_profit:     f64,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub arb_top_searcher:     Address,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub arb_top_fund:         Address,
     pub arb_unique_searchers: u64,
     pub arb_unique_funds:     u64,
@@ -39,53 +47,69 @@ pub struct BlockAnalysis {
     // sandwich
     #[serde(serialize_with = "pair_ser::serialize")]
     pub most_sandwiched_pair:        Pair,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub most_sandwiched_pool:        Address,
+    #[serde_as(as = "DisplayFromStr")]
     pub most_sandwiched_dex:         Protocol,
     pub sandwich_total_revenue:      f64,
     pub sandwich_total_profit:       f64,
     pub sandwich_total_swapper_loss: f64,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub sandwich_top_searcher:       Address,
     pub sandwich_unique_searchers:   u64,
 
     // jit
     #[serde(serialize_with = "pair_ser::serialize")]
     pub most_jit_pair:        Pair,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub most_jit_pool:        Address,
+    #[serde_as(as = "DisplayFromStr")]
     pub most_jit_dex:         Protocol,
     pub jit_total_revenue:    f64,
     pub jit_total_profit:     f64,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub jit_top_searcher:     Address,
     pub jit_unique_searchers: u64,
 
     // jit-sandwich
     #[serde(serialize_with = "pair_ser::serialize")]
     pub most_jit_sandwiched_pair:        Pair,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub most_jit_sandwiched_pool:        Address,
+    #[serde_as(as = "DisplayFromStr")]
     pub most_jit_sandwiched_dex:         Protocol,
     pub jit_sandwich_total_revenue:      f64,
     pub jit_sandwich_total_profit:       f64,
     pub jit_sandwich_total_swapper_loss: f64,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub jit_sandwich_top_searcher:       Address,
     pub jit_sandwich_unique_searchers:   u64,
 
     // cex dex
     #[serde(serialize_with = "pair_ser::serialize")]
     pub cex_dex_most_arb_pair_rev:    Pair,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub cex_dex_most_arb_pool_rev:    Address,
     #[serde(serialize_with = "pair_ser::serialize")]
     pub cex_dex_most_arb_pair_profit: Pair,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub cex_dex_most_arb_pool_profit: Address,
     pub cex_dex_total_rev:            f64,
     pub cex_dex_total_profit:         f64,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub cex_top_searcher:             Address,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub cex_top_fund:                 Address,
 
     // liquidation
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub most_liquidated_token:             Address,
+    #[serde_as(as = "DisplayFromStr")]
     pub most_liquidated_protocol:          Protocol,
     pub liquidation_total_revenue:         f64,
     pub liquidation_total_profit:          f64,
     pub liquidation_average_profit_margin: f64,
+    #[serde(serialize_with = "addr_ser::serialize")]
     pub liquidation_top_searcher:          Address,
     pub liquidation_unique_searchers:      u64,
     pub total_usd_liquidated:              f64,
