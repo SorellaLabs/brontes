@@ -343,7 +343,7 @@ impl Serialize for MevBlock {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("MevBlock", 35)?;
+        let mut ser_struct = serializer.serialize_struct("MevBlock", 32)?;
 
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
