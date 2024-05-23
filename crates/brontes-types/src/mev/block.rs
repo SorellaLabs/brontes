@@ -343,7 +343,7 @@ impl Serialize for MevBlock {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("MevBlock", 32)?;
+        let mut ser_struct = serializer.serialize_struct("MevBlock", 31)?;
 
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
@@ -485,13 +485,10 @@ impl DbRow for MevBlock {
         "eth_price",
         "total_gas_used",
         "total_priority_fee",
-        "cumulative_gas_used",
-        "cumulative_priority_fee",
         "total_bribe",
         "total_mev_profit_usd",
         "total_mev_bribe",
         "total_mev_priority_fee_paid",
-        "cumulative_mev_priority_fee_paid",
         "builder_address",
         "builder_eth_profit",
         "builder_profit_usd",
@@ -499,7 +496,6 @@ impl DbRow for MevBlock {
         "proposer_fee_recipient",
         "proposer_mev_reward",
         "proposer_profit_usd",
-        "cumulative_mev_profit_usd",
         "possible_mev.tx_hash",
         "possible_mev.tx_idx",
         "possible_mev.gas_details.coinbase_transfer",
