@@ -1,3 +1,24 @@
+pub mod dex_key {
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::db::dex::{decompose_key, make_key, DexKey};
+
+    pub fn serialize<S: Serializer>(u: &DexKey, serializer: S) -> Result<S::Ok, S::Error> {
+        decompose_key(*u).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DexKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (block, tx_idx): (u64, u64) = Deserialize::deserialize(deserializer)?;
+        Ok(make_key(block, tx_idx as u16))
+    }
+}
+
 pub mod address_string {
     use std::str::FromStr;
 

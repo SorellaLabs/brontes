@@ -1,5 +1,5 @@
 SELECT 
-    block_number,
+    (block_number, tx_idx),
     tx_idx,
     quote
 FROM brontes.dex_price_mapping

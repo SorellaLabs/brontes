@@ -671,6 +671,7 @@ macro_rules! compressed_table {
 compressed_table!(
     Table DexPrice {
         Data {
+            #[serde(with = "dex_key")]
             key: DexKey,
             value: DexQuoteWithIndex,
             compressed_value: DexQuoteWithIndexRedefined
