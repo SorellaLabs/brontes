@@ -5,6 +5,7 @@ use brontes_types::{
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
+        block_analysis::BlockAnalysis,
         builder::BuilderInfo,
         dex::DexQuotes,
         metadata::Metadata,
@@ -47,6 +48,10 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
 
     fn inner(&self) -> &Self::Inner {
         &self.inner
+    }
+
+    async fn write_block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
+        self.client.block_analysis(block_analysis).await
     }
 
     async fn write_dex_quotes(
@@ -358,6 +363,10 @@ impl<I: DBWriter + Send + Sync> DBWriter for ReadOnlyMiddleware<I> {
 
     fn inner(&self) -> &Self::Inner {
         self
+    }
+
+    async fn write_block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
+        self.client.block_analysis(block_analysis).await
     }
 
     async fn write_dex_quotes(

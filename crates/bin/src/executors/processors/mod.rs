@@ -10,7 +10,7 @@ pub trait Processor: Send + Sync + 'static + Unpin + Copy + Clone {
     type InspectType: Send + Sync + Unpin;
 
     fn process_results<DB: DBWriter + LibmdbxReader>(
-        db: &DB,
+        db: &'static DB,
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
         tree: BlockTree<Action>,
         metadata: Metadata,

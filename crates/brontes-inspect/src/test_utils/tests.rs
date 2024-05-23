@@ -43,9 +43,9 @@ type StateTests = Option<Box<dyn for<'a> Fn(&'a Bundle)>>;
 
 /// Inspector Specific testing functionality
 pub struct InspectorTestUtils {
-    classifier_inspector:  ClassifierTestUtils,
-    quote_address:         Address,
-    max_result_difference: f64,
+    pub classifier_inspector: ClassifierTestUtils,
+    quote_address:            Address,
+    max_result_difference:    f64,
 }
 
 impl InspectorTestUtils {
@@ -364,8 +364,9 @@ impl InspectorTestUtils {
                 )
             })
             .collect::<Vec<_>>();
+        let db = self.classifier_inspector.trace_loader.libmdbx;
 
-        let results = run_block_inspection(inspector.as_slice(), tree.into(), metadata.into());
+        let results = run_block_inspection(inspector.as_slice(), tree.into(), metadata.into(), db);
 
         let mut results = results
             .mev_details

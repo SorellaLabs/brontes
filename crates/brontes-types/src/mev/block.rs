@@ -343,7 +343,7 @@ impl Serialize for MevBlock {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("MevBlock", 15)?;
+        let mut ser_struct = serializer.serialize_struct("MevBlock", 31)?;
 
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
@@ -448,23 +448,27 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("possible_mev.tx_idx", &possible_tx_idxes)?;
         ser_struct.serialize_field(
             "possible_mev.gas_details.coinbase_transfer",
-            &possible_gas_coinbases,
+            &vec![possible_gas_coinbases],
+        )?;
+        ser_struct.serialize_field(
+            "possible_mev.gas_details.priority_fee",
+            &vec![possible_priority_fees],
         )?;
         ser_struct
-            .serialize_field("possible_mev.gas_details.priority_fee", &possible_priority_fees)?;
-        ser_struct.serialize_field("possible_mev.gas_details.gas_used", &possible_gas_useds)?;
+            .serialize_field("possible_mev.gas_details.gas_used", &vec![possible_gas_useds])?;
         ser_struct.serialize_field(
             "possible_mev.gas_details.effective_gas_price",
-            &possible_effective_gas_prices,
+            &vec![possible_effective_gas_prices],
         )?;
-        ser_struct.serialize_field("possible_mev.triggers.is_private", &possible_is_privates)?;
+        ser_struct
+            .serialize_field("possible_mev.triggers.is_private", &vec![possible_is_privates])?;
         ser_struct.serialize_field(
             "possible_mev.triggers.coinbase_transfer",
-            &possible_trigger_coinbases,
+            &vec![possible_trigger_coinbases],
         )?;
         ser_struct.serialize_field(
             "possible_mev.triggers.high_priority_fee",
-            &possible_high_priority_fee,
+            &vec![possible_high_priority_fee],
         )?;
 
         ser_struct.end()
@@ -507,35 +511,3 @@ impl DbRow for MevBlock {
         "possible_mev.triggers.high_priority_fee",
     ];
 }
-
-// `block_hash` String,
-// `block_number` UInt64,
-// `mev_count.mev_count` Array(UInt64),
-// `mev_count.sandwich_count` Array(UInt64),
-// `mev_count.cex_dex_count` Array(UInt64),
-// `mev_count.jit_count` Array(UInt64),
-// `mev_count.jit_sandwich_count` Array(UInt64),
-// `mev_count.atomic_backrun_count` Array(UInt64),
-// `mev_count.liquidation_count` Array(UInt64),
-// `eth_price` Float64,
-// `total_gas_used` UInt128,
-// `total_priority_fee` UInt128,
-// `total_bribe` UInt128,
-// `total_mev_priority_fee_paid` UInt128,
-// `builder_address` String,
-// `builder_eth_profit` Float64,
-// `builder_profit_usd` Float64,
-// `builder_mev_profit_usd` Float64,
-// `proposer_fee_recipient` Nullable(String),
-// `proposer_mev_reward` Nullable(UInt128),
-// `proposer_profit_usd` Nullable(Float64),
-// `total_mev_profit_usd` Float64,
-// `possible_mev.tx_hash` Array(String),
-// `possible_mev.tx_idx` Array(UInt64),
-// `possible_mev.gas_details.coinbase_transfer` Array(Nullable(UInt128)),
-// `possible_mev.gas_details.priority_fee` Array(UInt128),
-// `possible_mev.gas_details.gas_used` Array(UInt128),
-// `possible_mev.gas_details.effective_gas_price` Array(UInt128),
-// `possible_mev.triggers.is_private` Array(Bool),
-// `possible_mev.triggers.coinbase_transfer` Array(Bool),
-// `possible_mev.triggers.high_priority_fee` Array(Bool),
