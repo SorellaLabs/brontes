@@ -49,6 +49,10 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
         &self.inner
     }
 
+    async fn write_block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
+        self.client.block_analysis(block_analysis).await
+    }
+
     async fn write_dex_quotes(
         &self,
         block_number: u64,
@@ -358,6 +362,10 @@ impl<I: DBWriter + Send + Sync> DBWriter for ReadOnlyMiddleware<I> {
 
     fn inner(&self) -> &Self::Inner {
         self
+    }
+
+    async fn write_block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
+        self.client.block_analysis(block_analysis).await
     }
 
     async fn write_dex_quotes(
