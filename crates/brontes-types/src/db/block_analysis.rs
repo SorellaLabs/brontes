@@ -175,11 +175,15 @@ impl BlockAnalysis {
                 .filter(|f| f.data.mev_type() != MevType::SearcherTx)
                 .map(|h| h.header.profit_usd)
                 .sum::<f64>()
-                / Some(bundles.len())
-                    .filter(|f| f.data.mev_type() != MevType::SearcherTx)
-                    .filter(|f| *f != 0)
-                    .map(|f| f as f64)
-                    .unwrap_or(1.0),
+                / Some(
+                    bundles
+                        .iter()
+                        .filter(|f| f.data.mev_type() != MevType::SearcherTx)
+                        .count(),
+                )
+                .filter(|f| *f != 0)
+                .map(|f| f as f64)
+                .unwrap_or(1.0),
 
             arb_top_fund: bundles
                 .iter()
