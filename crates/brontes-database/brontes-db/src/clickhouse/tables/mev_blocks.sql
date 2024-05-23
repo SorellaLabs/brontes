@@ -1,6 +1,6 @@
 CREATE TABLE mev.mev_blocks ON CLUSTER eth_cluster0
 (
-  `block_hash` String,
+    `block_hash` String,
     `block_number` UInt64,
     `mev_count` Nested (
         `mev_count` UInt64,
