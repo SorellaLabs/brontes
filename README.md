@@ -6,7 +6,7 @@
 
 ![](assets/Brontes.png)
 
-## Brontes – The Dark Forest has never been this bright
+## Brontes – Illuminate to Eliminate
 
 **[Install](https://sorellalabs.github.io/brontes/installation/installation.html)**
 | [User Book](https://sorellalabs.github.io/brontes/intro.html)
