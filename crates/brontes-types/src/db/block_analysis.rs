@@ -489,7 +489,9 @@ impl BlockAnalysis {
                     cex.optimistic_route_details
                         .iter()
                         .zip(cex.swaps.iter())
-                        .map(|(route, pool)| (pool.pool, route.pnl_pre_gas.maker_taker_mid.0))
+                        .map(|(route, pool)| {
+                            (pool.pool, route.pnl_pre_gas.maker_taker_mid.0.clone())
+                        })
                 })
                 .into_group_map()
                 .iter()
@@ -507,7 +509,7 @@ impl BlockAnalysis {
                         .map(|(route, pool)| {
                             (
                                 pool.pool,
-                                route.pnl_pre_gas.maker_taker_mid.0
+                                &route.pnl_pre_gas.maker_taker_mid.0
                                     - Rational::try_from(b.header.bribe_usd).unwrap(),
                             )
                         })
@@ -528,7 +530,7 @@ impl BlockAnalysis {
                         .map(|(route, pool)| {
                             (
                                 Pair(pool.token_in.address, pool.token_out.address).ordered(),
-                                route.pnl_pre_gas.maker_taker_mid.0,
+                                route.pnl_pre_gas.maker_taker_mid.0.clone(),
                             )
                         })
                 })
@@ -548,7 +550,7 @@ impl BlockAnalysis {
                         .map(|(route, pool)| {
                             (
                                 Pair(pool.token_in.address, pool.token_out.address).ordered(),
-                                route.pnl_pre_gas.maker_taker_mid.0
+                                &route.pnl_pre_gas.maker_taker_mid.0
                                     - Rational::try_from(b.header.bribe_usd).unwrap(),
                             )
                         })
