@@ -31,11 +31,7 @@ use std::sync::Arc;
 
 use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
-use brontes_types::{
-    db::block_analysis::{self, BlockAnalysis},
-    mev::Mev,
-    FastHashMap,
-};
+use brontes_types::{db::block_analysis::BlockAnalysis, mev::Mev, FastHashMap};
 use itertools::Itertools;
 use tracing::{span, Level};
 

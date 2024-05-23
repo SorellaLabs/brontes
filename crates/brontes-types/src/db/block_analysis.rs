@@ -104,9 +104,9 @@ impl BlockAnalysis {
                         let contract = db
                             .try_fetch_searcher_contract_info(b.header.mev_contract?)
                             .unwrap()?;
-                        return (!contract.fund.is_none()).then_some(contract.fund)
+                        (!contract.fund.is_none()).then_some(contract.fund)
                     } else {
-                        return Some(eoa.fund)
+                        Some(eoa.fund)
                     }
                 })
                 .unique()
@@ -125,11 +125,7 @@ impl BlockAnalysis {
                         else {
                             return false
                         };
-                        if contract.fund.is_none() {
-                            false
-                        } else {
-                            true
-                        }
+                        !contract.fund.is_none()
                     } else {
                         true
                     }
@@ -165,11 +161,7 @@ impl BlockAnalysis {
                         else {
                             return false
                         };
-                        if contract.fund.is_none() {
-                            false
-                        } else {
-                            true
-                        }
+                        !contract.fund.is_none()
                     } else {
                         true
                     }
@@ -208,9 +200,9 @@ impl BlockAnalysis {
                         let contract = db
                             .try_fetch_searcher_contract_info(b.header.mev_contract?)
                             .unwrap()?;
-                        return (!contract.fund.is_none()).then_some(contract.fund)
+                        (!contract.fund.is_none()).then_some(contract.fund)
                     } else {
-                        return Some(eoa.fund)
+                        Some(eoa.fund)
                     }
                 })
                 .unique()
@@ -462,11 +454,7 @@ impl BlockAnalysis {
                         else {
                             return false
                         };
-                        if contract.fund.is_none() {
-                            false
-                        } else {
-                            true
-                        }
+                        !contract.fund.is_none()
                     } else {
                         true
                     }

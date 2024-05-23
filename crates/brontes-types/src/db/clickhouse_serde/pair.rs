@@ -1,10 +1,9 @@
 pub mod pair_ser {
-    use std::str::FromStr;
+    
 
-    use alloy_primitives::Address;
-    use itertools::Itertools;
+    
+    
     use serde::{
-        de::{Deserialize, Deserializer},
         Serialize, Serializer,
     };
 
