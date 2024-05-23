@@ -587,8 +587,9 @@ mod tests {
         db::{cex::CexExchange, dex::DexPrices, searcher::SearcherEoaContract},
         init_threadpools,
         mev::{
-            AtomicArb, BundleHeader, CexDex, JitLiquidity, JitLiquiditySandwich, Liquidation,
-            PossibleMev, PossibleMevCollection, Sandwich,
+            ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, JitLiquidity,
+            JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
+            Sandwich,
         },
         normalized_actions::{
             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
@@ -703,7 +704,23 @@ mod tests {
     }
 
     async fn cex_dex(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
-        let case0 = CexDex::default();
+        let swap = NormalizedSwap::default();
+        let arb_detail = ArbDetails::default();
+        let arb_pnl = ArbPnl::default();
+        let opt_trade = OptimisticTrade::default();
+        let cex_exchange = CexExchange::Binance;
+
+        let mut case0 = CexDex::default();
+        case0.swaps = vec![swap.clone()];
+        case0.global_vmap_details = vec![arb_detail.clone()];
+        case0.global_vmap_pnl = arb_pnl.clone();
+        case0.optimal_route_details = vec![arb_detail.clone()];
+        case0.optimal_route_pnl = arb_pnl.clone();
+        case0.optimistic_route_details = vec![arb_detail.clone()];
+        case0.optimistic_trade_details = vec![vec![opt_trade.clone()]];
+        case0.optimistic_route_pnl = Some(arb_pnl.clone());
+        case0.per_exchange_details = vec![vec![arb_detail.clone()]];
+        case0.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
 
         db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
     }
