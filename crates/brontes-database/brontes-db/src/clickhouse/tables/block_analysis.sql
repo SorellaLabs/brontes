@@ -1,4 +1,4 @@
-create table brontes.block_analysis on cluster eth_cluster0 
+CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0 
 (
     `block_number` UInt64,
 
