@@ -245,6 +245,14 @@ impl Clickhouse {
         Ok(())
     }
 
+    pub async fn block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
+        if let Some(tx) = self.buffered_insert_tx.as_ref() {
+            tx.send(vec![(block_analysis, self.tip).into()])?
+        };
+
+        Ok(())
+    }
+
     pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
         Ok(())
     }

@@ -56,11 +56,11 @@ create table brontes.block_analysis on cluster eth_cluster0
 
     `most_liquidated_token` String,
     `most_liquidated_protocol` String,
-    `total_revenue`            Float64,
-    `total_profit`            Float64,
-    `average_profit_margin`    Float64,
-    `top_searcher`             String,
-    `unique_searchers`         UInt64,
+    `liquidation_total_revenue`            Float64,
+    `liquidation_total_profit`            Float64,
+    `liquidation_average_profit_margin`    Float64,
+    `liquidation_top_searcher`             String,
+    `liquidation_unique_searchers`         UInt64,
     `total_usd_liquidated`     Float64,
 
     `last_updated` UInt64 DEFAULT now()

@@ -112,7 +112,8 @@ impl ClickhouseBuffered {
             (ClickhouseTokenInfo, TokenInfoWithAddress),
             (ClickhousePools, ProtocolInfoClickhouse),
             (ClickhouseBuilderInfo, BuilderInfoWithAddress),
-            (ClickhouseTree, TransactionRoot)
+            (ClickhouseTree, TransactionRoot),
+            (ClickhouseBlockAnalysis, BlockAnalysis)
         );
 
         Ok(())
