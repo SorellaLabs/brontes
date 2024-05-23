@@ -5,6 +5,7 @@ use brontes_types::{
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
+        block_analysis::BlockAnalysis,
         builder::BuilderInfo,
         dex::DexQuotes,
         metadata::Metadata,
