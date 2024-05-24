@@ -95,10 +95,10 @@ pub struct BlockAnalysis {
     pub sandwich_most_arbed_dex_address:   Option<Protocol>,
     pub sandwich_most_arbed_dex_profit:    Option<f64>,
     pub sandwich_most_arbed_dex_revenue:   Option<f64>,
-    pub sandwich_biggest_arb_profit_hash:  TxHash,
-    pub sandwich_biggest_arb_profit:       f64,
-    pub sandwich_biggest_arb_revenue_hash: TxHash,
-    pub sandwich_biggest_arb_revenue:      f64,
+    pub sandwich_biggest_arb_profit_hash:  Option<TxHash>,
+    pub sandwich_biggest_arb_profit:       Option<f64>,
+    pub sandwich_biggest_arb_revenue_hash: Option<TxHash>,
+    pub sandwich_biggest_arb_revenue:      Option<f64>,
 
     // jit
     pub jit_total_profit:             f64,
@@ -120,30 +120,27 @@ pub struct BlockAnalysis {
     pub jit_most_arbed_dex_revenue:   Option<f64>,
 
     // jit-sandwich
-    pub jit_sandwich_total_profit: f64,
-    pub jit_sandwich_total_revenue: f64,
-    pub jit_sandwich_average_profit_margin: f64,
-    pub jit_sandwich_top_searcher_rev: f64,
-    pub jit_sandwich_top_searcher_rev_addr: Address,
-    pub jit_sandwich_top_searcher_profit: f64,
-    pub jit_sandwich_top_searcher_profit_addr: Address,
-    pub jit_sandwich_searchers: u64,
-    pub jit_sandwich_most_arbed_pool_profit_address: Address,
-    pub jit_sandwich_most_arbed_pool_profit: f64,
-    pub jit_sandwich_most_arbed_pool_revenue_address: Address,
-    pub jit_sandwich_most_arbed_pool_revenue: f64,
-    pub jit_sandwich_most_arbed_pair_profit_address: Pair,
-    pub jit_sandwich_most_arbed_pair_profit: f64,
-    pub jit_sandwich_most_arbed_pair_revenue_address: Pair,
-    pub jit_sandwich_most_arbed_pair_revenue: f64,
-    pub jit_sandwich_most_arbed_dex_profit_address: Protocol,
-    pub jit_sandwich_most_arbed_dex_profit: f64,
-    pub jit_sandwich_most_arbed_dex_revenue_address: Protocol,
-    pub jit_sandwich_most_arbed_dex_revenue: f64,
-    pub jit_sandwich_biggest_arb_profit_hash: TxHash,
-    pub jit_sandwich_biggest_arb_profit: f64,
-    pub jit_sandwich_biggest_arb_revenue_hash: TxHash,
-    pub jit_sandwich_biggest_arb_revenue: f64,
+    pub jit_sandwich_total_profit:             f64,
+    pub jit_sandwich_total_revenue:            f64,
+    pub jit_sandwich_average_profit_margin:    f64,
+    pub jit_sandwich_top_searcher_rev:         Option<f64>,
+    pub jit_sandwich_top_searcher_rev_addr:    Option<Address>,
+    pub jit_sandwich_top_searcher_profit:      Option<f64>,
+    pub jit_sandwich_top_searcher_profit_addr: Option<Address>,
+    pub jit_sandwich_searchers:                u64,
+    pub jit_sandwich_most_arbed_pool_address:  Option<Address>,
+    pub jit_sandwich_most_arbed_pool_profit:   Option<f64>,
+    pub jit_sandwich_most_arbed_pool_revenue:  Option<f64>,
+    pub jit_sandwich_most_arbed_pair_address:  Option<Pair>,
+    pub jit_sandwich_most_arbed_pair_profit:   Option<f64>,
+    pub jit_sandwich_most_arbed_pair_revenue:  Option<f64>,
+    pub jit_sandwich_most_arbed_dex_address:   Option<Protocol>,
+    pub jit_sandwich_most_arbed_dex_profit:    Option<f64>,
+    pub jit_sandwich_most_arbed_dex_revenue:   Option<f64>,
+    pub jit_sandwich_biggest_arb_profit_hash:  Option<TxHash>,
+    pub jit_sandwich_biggest_arb_profit:       Option<f64>,
+    pub jit_sandwich_biggest_arb_revenue_hash: Option<TxHash>,
+    pub jit_sandwich_biggest_arb_revenue:      Option<f64>,
 
     // cex dex
     pub cex_dex_total_profit: f64,
@@ -238,6 +235,11 @@ impl BlockAnalysis {
                 .three_unzip();
 
         // Sandwich Fields
+        let (sandwich_biggest_tx_prof, sandwich_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::Sandwich, bundles).unzip();
+        let (sandwich_biggest_tx_rev, sandwich_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::Sandwich, bundles).unzip();
+
         let (sandwich_searcher_prof_addr, sandwich_searcher_prof) =
             Self::top_searcher_by_profit(|b| b == MevType::Sandwich, bundles).unzip();
         let (sandwich_searcher_rev_addr, sandwich_searcher_rev) =
@@ -251,6 +253,7 @@ impl BlockAnalysis {
         let (sandwich_dex_addr, sandwich_dex_prof, sandwich_dex_rev) =
             Self::most_transacted_dex(|b| b == MevType::Sandwich, bundles, Self::get_dex_fn)
                 .three_unzip();
+
         // Jit Fields
         let (jit_searcher_prof_addr, jit_searcher_prof) =
             Self::top_searcher_by_profit(|b| b == MevType::Jit, bundles).unzip();
@@ -264,6 +267,25 @@ impl BlockAnalysis {
                 .three_unzip();
         let (jit_dex_addr, jit_dex_prof, jit_dex_rev) =
             Self::most_transacted_dex(|b| b == MevType::Jit, bundles, Self::get_dex_fn)
+                .three_unzip();
+
+        // Jit Sando Fields
+        let (jit_sandwich_biggest_tx_prof, jit_sandwich_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_biggest_tx_rev, jit_sandwich_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_searcher_prof_addr, jit_sandwich_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_searcher_rev_addr, jit_sandwich_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_pool_addr, jit_sandwich_pool_prof, jit_sandwich_pool_rev) =
+            Self::most_transacted_pool(|b| b == MevType::JitSandwich, bundles, Self::get_pool_fn)
+                .three_unzip();
+        let (jit_sandwich_pair_addr, jit_sandwich_pair_prof, jit_sandwich_pair_rev) =
+            Self::most_transacted_pair(|b| b == MevType::JitSandwich, bundles, Self::get_pair_fn)
+                .three_unzip();
+        let (jit_sandwich_dex_addr, jit_sandwich_dex_prof, jit_sandwich_dex_rev) =
+            Self::most_transacted_dex(|b| b == MevType::JitSandwich, bundles, Self::get_dex_fn)
                 .three_unzip();
 
         Self {
@@ -349,6 +371,10 @@ impl BlockAnalysis {
                 |b| b == MevType::Sandwich,
                 bundles,
             ),
+            sandwich_biggest_arb_profit:       sandwich_biggest_prof,
+            sandwich_biggest_arb_profit_hash:  sandwich_biggest_tx_prof,
+            sandwich_biggest_arb_revenue:      sandwich_biggest_rev,
+            sandwich_biggest_arb_revenue_hash: sandwich_biggest_tx_rev,
             sandwich_top_searcher_profit_addr: sandwich_searcher_prof_addr,
             sandwich_top_searcher_rev_addr:    sandwich_searcher_rev_addr,
             sandwich_top_searcher_profit:      sandwich_searcher_prof,
@@ -369,6 +395,15 @@ impl BlockAnalysis {
             .unwrap_or_default(),
 
             // jit
+            jit_searchers:                Self::unique(|b| b == MevType::Jit, bundles),
+            jit_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::Jit,
+                bundles,
+            ),
+            jit_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::Jit,
+                bundles,
+            ),
             jit_top_searcher_profit_addr: jit_searcher_prof_addr,
             jit_top_searcher_rev_addr:    jit_searcher_rev_addr,
             jit_top_searcher_profit:      jit_searcher_prof,
@@ -387,6 +422,26 @@ impl BlockAnalysis {
                 bundles,
             )
             .unwrap_or_default(),
+
+            // jit sando
+            jit_sandwich_top_searcher_profit_addr: jit_sandwich_searcher_prof_addr,
+            jit_sandwich_top_searcher_rev_addr:    jit_sandwich_searcher_rev_addr,
+            jit_sandwich_top_searcher_profit:      jit_sandwich_searcher_prof,
+            jit_sandwich_top_searcher_rev:         jit_sandwich_searcher_rev,
+            jit_sandwich_most_arbed_dex_profit:    jit_sandwich_dex_prof,
+            jit_sandwich_most_arbed_dex_address:   jit_sandwich_dex_addr,
+            jit_sandwich_most_arbed_dex_revenue:   jit_sandwich_dex_rev,
+            jit_sandwich_most_arbed_pair_profit:   jit_sandwich_pair_prof,
+            jit_sandwich_most_arbed_pair_address:  jit_sandwich_pair_addr,
+            jit_sandwich_most_arbed_pair_revenue:  jit_sandwich_pair_rev,
+            jit_sandwich_most_arbed_pool_revenue:  jit_sandwich_pool_rev,
+            jit_sandwich_most_arbed_pool_profit:   jit_sandwich_pool_prof,
+            jit_sandwich_most_arbed_pool_address:  jit_sandwich_pool_addr,
+
+            jit_sandwich_biggest_arb_profit:       jit_sandwich_biggest_prof,
+            jit_sandwich_biggest_arb_profit_hash:  jit_sandwich_biggest_tx_prof,
+            jit_sandwich_biggest_arb_revenue:      jit_sandwich_biggest_rev,
+            jit_sandwich_biggest_arb_revenue_hash: jit_sandwich_biggest_tx_rev,
         }
     }
 
@@ -479,6 +534,28 @@ impl BlockAnalysis {
                 .collect::<Vec<_>>(),
             _ => unreachable!(),
         }
+    }
+
+    fn biggest_arb_profit(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Option<(TxHash, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .map(|s| (s.header.tx_hash, s.header.profit_usd))
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+    }
+
+    fn biggest_arb_revenue(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Option<(TxHash, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .map(|s| (s.header.tx_hash, s.header.profit_usd + s.header.bribe_usd))
+            .max_by(|a, b| a.1.total_cmp(&b.1))
     }
 
     fn total_revenue_by_type(mev_type: impl Fn(MevType) -> bool, bundles: &[Bundle]) -> f64 {
