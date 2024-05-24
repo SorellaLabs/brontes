@@ -176,11 +176,10 @@ pub struct BlockAnalysis {
     pub liquidation_top_searcher_profit_addr: Option<Address>,
     pub liquidation_searchers:                u64,
 
-    pub most_liquidated_token_rev_address:    Address,
-    pub most_liquidated_token_rev:            f64,
-    pub most_liquidated_token_profit_address: Address,
-    pub most_liquidated_token_profit:         f64,
-    pub total_usd_liquidated:                 f64,
+    pub most_liquidated_token_address: Option<Address>,
+    pub most_liquidated_token_rev:     Option<f64>,
+    pub most_liquidated_token_profit:  Option<f64>,
+    pub total_usd_liquidated:          f64,
 }
 
 impl BlockAnalysis {
@@ -310,6 +309,30 @@ impl BlockAnalysis {
             Self::top_searcher_by_profit(|b| b == MevType::Liquidation, bundles).unzip();
         let (liquidation_searcher_rev_addr, liquidation_searcher_rev) =
             Self::top_searcher_by_rev(|b| b == MevType::Liquidation, bundles).unzip();
+
+        let (liq_most_token, liq_most_prof, liq_most_rev) = bundles
+            .iter()
+            .filter(|b| b.mev_type() == MevType::Liquidation)
+            .flat_map(|b| {
+                let BundleData::Liquidation(l) = &b.data else { unreachable!() };
+                l.liquidations
+                    .iter()
+                    .map(|l| {
+                        (
+                            l.collateral_asset.address,
+                            (b.header.profit_usd, b.header.profit_usd + b.header.bribe_usd),
+                        )
+                    })
+                    .collect_vec()
+            })
+            .into_group_map()
+            .iter()
+            .max_by_key(|v| v.1.len())
+            .map(|t| {
+                let (p, r): (Vec<_>, Vec<_>) = t.1.iter().copied().unzip();
+                (*t.0, p.iter().sum::<f64>(), r.iter().sum::<f64>())
+            })
+            .three_unzip();
 
         Self {
             block_number:                    block.block_number,
@@ -529,7 +552,8 @@ impl BlockAnalysis {
             liquidation_average_profit_margin:    Self::average_profit_margin(
                 |b| b == MevType::Liquidation,
                 bundles,
-            ),
+            )
+            .unwrap_or_default(),
             liquidation_total_revenue:            Self::total_revenue_by_type(
                 |b| b == MevType::Liquidation,
                 bundles,
@@ -542,10 +566,13 @@ impl BlockAnalysis {
                 |b| b == MevType::Liquidation,
                 bundles,
             ),
-            most_liquidated_token_profit_address: bundles
-                .iter()
-                .filter(|b| b.mev_type() == MevType::Liquidation).map(|f| {
-                })
+            most_liquidated_token_rev:            liq_most_rev,
+            most_liquidated_token_profit:         liq_most_prof,
+            most_liquidated_token_address:        liq_most_token,
+            total_usd_liquidated:                 Self::total_revenue_by_type(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
         }
     }
 
