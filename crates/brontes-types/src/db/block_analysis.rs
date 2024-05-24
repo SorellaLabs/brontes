@@ -3,7 +3,6 @@ use std::hash::Hash;
 use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
-use malachite::Rational;
 use reth_primitives::TxHash;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
