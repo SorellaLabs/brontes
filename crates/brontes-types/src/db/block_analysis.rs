@@ -5,14 +5,14 @@ use clickhouse::Row;
 use itertools::Itertools;
 use reth_primitives::TxHash;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::serde_as;
 
 use super::traits::LibmdbxReader;
 use crate::{
     db::searcher::Fund,
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
     pair::Pair,
-    serde_utils::{option_address, option_fund, option_txhash, option_pair, option_protocol},
+    serde_utils::{option_address, option_fund, option_pair, option_protocol, option_txhash},
     Protocol,
 };
 
@@ -405,7 +405,7 @@ impl BlockAnalysis {
             all_most_arbed_pool_profit:      all_pool_prof,
             all_most_arbed_pool_revenue:     all_pool_rev,
             all_most_arbed_pair_revenue:     all_pair_rev,
-            all_most_arbed_pair_profit:      all_pool_prof,
+            all_most_arbed_pair_profit:      all_pair_prof,
             all_most_arbed_pair_address:     all_pair,
             // atomic
             atomic_searchers:                Self::unique(|b| b == MevType::AtomicArb, bundles),
