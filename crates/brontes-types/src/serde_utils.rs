@@ -461,7 +461,7 @@ pub mod vec_txhash {
 }
 pub mod option_txhash {
 
-    use std::{ str::FromStr};
+    use std::str::FromStr;
 
     use alloy_primitives::TxHash;
     use serde::{
@@ -812,7 +812,7 @@ pub mod option_protocol {
         D: Deserializer<'de>,
     {
         let d: Option<String> = Deserialize::deserialize(deserializer)?;
-        Ok(d.map(|d| Protocol::from_str(d).unwrap()))
+        Ok(d.map(|d| Protocol::from_str(&d).unwrap()))
     }
 }
 
