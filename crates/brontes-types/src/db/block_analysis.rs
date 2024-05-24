@@ -143,40 +143,37 @@ pub struct BlockAnalysis {
     pub jit_sandwich_biggest_arb_revenue:      Option<f64>,
 
     // cex dex
-    pub cex_dex_total_profit: f64,
-    pub cex_dex_total_revenue: f64,
-    pub cex_dex_average_profit_margin: f64,
-    pub cex_dex_top_searcher_rev: f64,
-    pub cex_dex_top_searcher_rev_addr: Address,
-    pub cex_dex_top_searcher_profit: f64,
-    pub cex_dex_top_searcher_profit_addr: Address,
-    pub cex_dex_searchers: u64,
-    pub cex_dex_top_fund_rev: f64,
-    pub cex_dex_top_fund_rev_id: Fund,
-    pub cex_dex_top_fund_profit: f64,
-    pub cex_dex_top_fund_profit_id: Fund,
-    pub cex_dex_fund_count: u64,
-    pub cex_dex_most_arbed_pool_profit_address: Address,
-    pub cex_dex_most_arbed_pool_profit: f64,
-    pub cex_dex_most_arbed_pool_revenue_address: Address,
-    pub cex_dex_most_arbed_pool_revenue: f64,
-    pub cex_dex_most_arbed_pair_profit_address: Pair,
-    pub cex_dex_most_arbed_pair_profit: f64,
-    pub cex_dex_most_arbed_pair_revenue_address: Pair,
-    pub cex_dex_most_arbed_pair_revenue: f64,
-    pub cex_dex_most_arbed_dex_profit_address: Protocol,
-    pub cex_dex_most_arbed_dex_profit: f64,
-    pub cex_dex_most_arbed_dex_revenue_address: Protocol,
-    pub cex_dex_most_arbed_dex_revenue: f64,
+    pub cex_dex_total_profit:             f64,
+    pub cex_dex_total_revenue:            f64,
+    pub cex_dex_average_profit_margin:    f64,
+    pub cex_dex_top_searcher_rev:         Option<f64>,
+    pub cex_dex_top_searcher_rev_addr:    Option<Address>,
+    pub cex_dex_top_searcher_profit:      Option<f64>,
+    pub cex_dex_top_searcher_profit_addr: Option<Address>,
+    pub cex_dex_searchers:                u64,
+    pub cex_dex_top_fund_rev:             Option<f64>,
+    pub cex_dex_top_fund_rev_id:          Option<Fund>,
+    pub cex_dex_top_fund_profit:          Option<f64>,
+    pub cex_dex_top_fund_profit_id:       Option<Fund>,
+    pub cex_dex_fund_count:               u64,
+    pub cex_dex_most_arbed_pool_address:  Option<Address>,
+    pub cex_dex_most_arbed_pool_profit:   Option<f64>,
+    pub cex_dex_most_arbed_pool_revenue:  Option<f64>,
+    pub cex_dex_most_arbed_pair_address:  Option<Pair>,
+    pub cex_dex_most_arbed_pair_profit:   Option<f64>,
+    pub cex_dex_most_arbed_pair_revenue:  Option<f64>,
+    pub cex_dex_most_arbed_dex_address:   Option<Protocol>,
+    pub cex_dex_most_arbed_dex_profit:    Option<f64>,
+    pub cex_dex_most_arbed_dex_revenue:   Option<f64>,
 
     // liquidation
     pub liquidation_total_profit:             f64,
     pub liquidation_total_revenue:            f64,
     pub liquidation_average_profit_margin:    f64,
-    pub liquidation_top_searcher_rev:         f64,
-    pub liquidation_top_searcher_rev_addr:    Address,
-    pub liquidation_top_searcher_profit:      f64,
-    pub liquidation_top_searcher_profit_addr: Address,
+    pub liquidation_top_searcher_rev:         Option<f64>,
+    pub liquidation_top_searcher_rev_addr:    Option<Address>,
+    pub liquidation_top_searcher_profit:      Option<f64>,
+    pub liquidation_top_searcher_profit_addr: Option<Address>,
     pub liquidation_searchers:                u64,
 
     pub most_liquidated_token_rev_address:    Address,
@@ -287,6 +284,32 @@ impl BlockAnalysis {
         let (jit_sandwich_dex_addr, jit_sandwich_dex_prof, jit_sandwich_dex_rev) =
             Self::most_transacted_dex(|b| b == MevType::JitSandwich, bundles, Self::get_dex_fn)
                 .three_unzip();
+        // Cex Dex
+        let (cex_dex_searcher_prof_addr, cex_dex_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::CexDex, bundles).unzip();
+        let (cex_dex_searcher_rev_addr, cex_dex_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::CexDex, bundles).unzip();
+
+        let (cex_dex_fund_rev_addr, cex_dex_fund_rev) =
+            Self::top_fund_by_type_rev(|b| b == MevType::CexDex, bundles, db).unzip();
+        let (cex_dex_fund_profit_addr, cex_dex_fund_profit) =
+            Self::top_fund_by_type_profit(|b| b == MevType::CexDex, bundles, db).unzip();
+
+        let (cex_dex_pool_addr, cex_dex_pool_prof, cex_dex_pool_rev) =
+            Self::most_transacted_pool(|b| b == MevType::CexDex, bundles, Self::get_pool_fn)
+                .three_unzip();
+        let (cex_dex_pair_addr, cex_dex_pair_prof, cex_dex_pair_rev) =
+            Self::most_transacted_pair(|b| b == MevType::CexDex, bundles, Self::get_pair_fn)
+                .three_unzip();
+        let (cex_dex_dex_addr, cex_dex_dex_prof, cex_dex_dex_rev) =
+            Self::most_transacted_dex(|b| b == MevType::CexDex, bundles, Self::get_dex_fn)
+                .three_unzip();
+
+        // liquidation
+        let (liquidation_searcher_prof_addr, liquidation_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::Liquidation, bundles).unzip();
+        let (liquidation_searcher_rev_addr, liquidation_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::Liquidation, bundles).unzip();
 
         Self {
             block_number:                    block.block_number,
@@ -424,6 +447,23 @@ impl BlockAnalysis {
             .unwrap_or_default(),
 
             // jit sando
+            jit_sandwich_searchers:                Self::unique(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
+            jit_sandwich_average_profit_margin:    Self::average_profit_margin(
+                |f| f == MevType::JitSandwich,
+                bundles,
+            )
+            .unwrap_or_default(),
+            jit_sandwich_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
+            jit_sandwich_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
             jit_sandwich_top_searcher_profit_addr: jit_sandwich_searcher_prof_addr,
             jit_sandwich_top_searcher_rev_addr:    jit_sandwich_searcher_rev_addr,
             jit_sandwich_top_searcher_profit:      jit_sandwich_searcher_prof,
@@ -442,6 +482,70 @@ impl BlockAnalysis {
             jit_sandwich_biggest_arb_profit_hash:  jit_sandwich_biggest_tx_prof,
             jit_sandwich_biggest_arb_revenue:      jit_sandwich_biggest_rev,
             jit_sandwich_biggest_arb_revenue_hash: jit_sandwich_biggest_tx_rev,
+
+            // cex dex
+            cex_dex_searchers:                Self::unique(|b| b == MevType::CexDex, bundles),
+            cex_dex_fund_count:               Self::unique_funds(
+                |b| b == MevType::CexDex,
+                bundles,
+                db,
+            ),
+            cex_dex_total_profit:             Self::total_profit_by_type(
+                |f| f == MevType::CexDex,
+                bundles,
+            ),
+            cex_dex_total_revenue:            Self::total_revenue_by_type(
+                |f| f == MevType::CexDex,
+                bundles,
+            ),
+            cex_dex_average_profit_margin:    Self::average_profit_margin(
+                |f| f == MevType::CexDex,
+                bundles,
+            )
+            .unwrap_or_default(),
+            cex_dex_top_searcher_profit_addr: cex_dex_searcher_prof_addr,
+            cex_dex_top_searcher_rev_addr:    cex_dex_searcher_rev_addr,
+            cex_dex_top_searcher_profit:      cex_dex_searcher_prof,
+            cex_dex_top_searcher_rev:         cex_dex_searcher_rev,
+            cex_dex_top_fund_profit:          cex_dex_fund_profit,
+            cex_dex_top_fund_profit_id:       cex_dex_fund_profit_addr,
+            cex_dex_top_fund_rev_id:          cex_dex_fund_rev_addr,
+            cex_dex_top_fund_rev:             cex_dex_fund_rev,
+            cex_dex_most_arbed_dex_profit:    cex_dex_dex_prof,
+            cex_dex_most_arbed_dex_address:   cex_dex_dex_addr,
+            cex_dex_most_arbed_dex_revenue:   cex_dex_dex_rev,
+            cex_dex_most_arbed_pair_profit:   cex_dex_pair_prof,
+            cex_dex_most_arbed_pair_address:  cex_dex_pair_addr,
+            cex_dex_most_arbed_pair_revenue:  cex_dex_pair_rev,
+            cex_dex_most_arbed_pool_revenue:  cex_dex_pool_rev,
+            cex_dex_most_arbed_pool_profit:   cex_dex_pool_prof,
+            cex_dex_most_arbed_pool_address:  cex_dex_pool_addr,
+
+            // liquidation
+            liquidation_top_searcher_profit_addr: liquidation_searcher_prof_addr,
+            liquidation_top_searcher_rev_addr:    liquidation_searcher_rev_addr,
+            liquidation_top_searcher_profit:      liquidation_searcher_prof,
+            liquidation_top_searcher_rev:         liquidation_searcher_rev,
+            liquidation_average_profit_margin:    Self::average_profit_margin(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            liquidation_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            liquidation_searchers:                Self::unique(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            liquidation_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            most_liquidated_token_profit_address: bundles
+                .iter()
+                .filter(|b| b.mev_type() == MevType::Liquidation).map(|f| {
+                })
         }
     }
 
