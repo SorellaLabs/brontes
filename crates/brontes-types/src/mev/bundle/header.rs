@@ -14,6 +14,7 @@ use super::MevType;
 use crate::{
     db::{
         redefined_types::primitives::*,
+        searcher::Fund,
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
     serde_utils::{addresss, option_addresss, txhash},
@@ -38,6 +39,9 @@ pub struct BundleHeader {
     pub eoa:                   Address,
     #[serde(with = "option_addresss")]
     pub mev_contract:          Option<Address>,
+    #[redefined(same_fields)]
+    #[serde(default)]
+    pub fund:                  Fund,
     pub profit_usd:            f64,
     // Total tx cost in USD
     pub bribe_usd:             f64,
