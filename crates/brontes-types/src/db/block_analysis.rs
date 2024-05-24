@@ -9,14 +9,10 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use super::traits::LibmdbxReader;
 use crate::{
-    db::{
-        clickhouse_serde::pair::{addr_ser, pair_ser},
-        searcher::Fund,
-    },
+    db::searcher::Fund,
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
     pair::Pair,
-    protocol,
-    serde_utils::{option_address, option_fund},
+    serde_utils::{option_address, option_fund, option_txhash, option_pair, option_protocol},
     Protocol,
 };
 
@@ -38,21 +34,20 @@ pub struct BlockAnalysis {
     pub all_top_searcher_profit_addr: Option<Address>,
     pub all_searchers:                u64,
 
-    #[serde(with = "option_address")]
-    pub all_top_searcher_profit_addr: Option<Address>,
-    pub all_top_fund_rev:             Option<f64>,
+    pub all_top_fund_rev:       Option<f64>,
     #[serde(with = "option_fund")]
-    pub all_top_fund_rev_id:          Option<Fund>,
-    pub all_top_fund_profit:          Option<f64>,
+    pub all_top_fund_rev_id:    Option<Fund>,
+    pub all_top_fund_profit:    Option<f64>,
     #[serde(with = "option_fund")]
-    pub all_top_fund_profit_id:       Option<Fund>,
-    pub all_fund_count:               u64,
+    pub all_top_fund_profit_id: Option<Fund>,
+    pub all_fund_count:         u64,
 
     #[serde(with = "option_address")]
     pub all_most_arbed_pool_address: Option<Address>,
     pub all_most_arbed_pool_profit:  Option<f64>,
     pub all_most_arbed_pool_revenue: Option<f64>,
 
+    #[serde(with = "option_pair")]
     pub all_most_arbed_pair_address: Option<Pair>,
     pub all_most_arbed_pair_profit:  Option<f64>,
     pub all_most_arbed_pair_revenue: Option<f64>,
@@ -81,10 +76,12 @@ pub struct BlockAnalysis {
     pub atomic_most_arbed_pool_profit:  Option<f64>,
     pub atomic_most_arbed_pool_revenue: Option<f64>,
 
+    #[serde(with = "option_pair")]
     pub atomic_most_arbed_pair_address: Option<Pair>,
     pub atomic_most_arbed_pair_profit:  Option<f64>,
     pub atomic_most_arbed_pair_revenue: Option<f64>,
 
+    #[serde(with = "option_protocol")]
     pub atomic_most_arbed_dex_address: Option<Protocol>,
     pub atomic_most_arbed_dex_profit:  Option<f64>,
     pub atomic_most_arbed_dex_revenue: Option<f64>,
@@ -105,14 +102,18 @@ pub struct BlockAnalysis {
     pub sandwich_most_arbed_pool_address:  Option<Address>,
     pub sandwich_most_arbed_pool_profit:   Option<f64>,
     pub sandwich_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
     pub sandwich_most_arbed_pair_address:  Option<Pair>,
     pub sandwich_most_arbed_pair_profit:   Option<f64>,
     pub sandwich_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
     pub sandwich_most_arbed_dex_address:   Option<Protocol>,
     pub sandwich_most_arbed_dex_profit:    Option<f64>,
     pub sandwich_most_arbed_dex_revenue:   Option<f64>,
+    #[serde(with = "option_txhash")]
     pub sandwich_biggest_arb_profit_hash:  Option<TxHash>,
     pub sandwich_biggest_arb_profit:       Option<f64>,
+    #[serde(with = "option_txhash")]
     pub sandwich_biggest_arb_revenue_hash: Option<TxHash>,
     pub sandwich_biggest_arb_revenue:      Option<f64>,
 
@@ -131,9 +132,11 @@ pub struct BlockAnalysis {
     pub jit_most_arbed_pool_address:  Option<Address>,
     pub jit_most_arbed_pool_profit:   Option<f64>,
     pub jit_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
     pub jit_most_arbed_pair_address:  Option<Pair>,
     pub jit_most_arbed_pair_profit:   Option<f64>,
     pub jit_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
     pub jit_most_arbed_dex_address:   Option<Protocol>,
     pub jit_most_arbed_dex_profit:    Option<f64>,
     pub jit_most_arbed_dex_revenue:   Option<f64>,
@@ -153,14 +156,18 @@ pub struct BlockAnalysis {
     pub jit_sandwich_most_arbed_pool_address:  Option<Address>,
     pub jit_sandwich_most_arbed_pool_profit:   Option<f64>,
     pub jit_sandwich_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
     pub jit_sandwich_most_arbed_pair_address:  Option<Pair>,
     pub jit_sandwich_most_arbed_pair_profit:   Option<f64>,
     pub jit_sandwich_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
     pub jit_sandwich_most_arbed_dex_address:   Option<Protocol>,
     pub jit_sandwich_most_arbed_dex_profit:    Option<f64>,
     pub jit_sandwich_most_arbed_dex_revenue:   Option<f64>,
+    #[serde(with = "option_txhash")]
     pub jit_sandwich_biggest_arb_profit_hash:  Option<TxHash>,
     pub jit_sandwich_biggest_arb_profit:       Option<f64>,
+    #[serde(with = "option_txhash")]
     pub jit_sandwich_biggest_arb_revenue_hash: Option<TxHash>,
     pub jit_sandwich_biggest_arb_revenue:      Option<f64>,
 
@@ -186,9 +193,11 @@ pub struct BlockAnalysis {
     pub cex_dex_most_arbed_pool_address:  Option<Address>,
     pub cex_dex_most_arbed_pool_profit:   Option<f64>,
     pub cex_dex_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
     pub cex_dex_most_arbed_pair_address:  Option<Pair>,
     pub cex_dex_most_arbed_pair_profit:   Option<f64>,
     pub cex_dex_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
     pub cex_dex_most_arbed_dex_address:   Option<Protocol>,
     pub cex_dex_most_arbed_dex_profit:    Option<f64>,
     pub cex_dex_most_arbed_dex_revenue:   Option<f64>,
