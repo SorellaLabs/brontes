@@ -41,7 +41,7 @@ pub struct MevBlock {
     pub total_bribe:                 u128,
     pub total_mev_bribe:             u128,
     pub total_mev_priority_fee_paid: u128,
-    pub builder_name:                Option<String>,
+    // pub builder_name:                Option<String>,
     pub builder_address:             Address,
     pub builder_eth_profit:          f64,
     pub builder_profit_usd:          f64,
