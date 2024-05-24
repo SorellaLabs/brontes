@@ -752,15 +752,10 @@ impl BlockAnalysis {
             .iter()
             .filter(|b| mev_type(b.mev_type()))
             .filter_map(|b| {
-                let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
-                    return None
-                };
+                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
                 if eoa.fund.is_none() {
-                    let Some(mev_contract) = b.header.mev_contract else { return None };
-                    let Some(contract) = db.try_fetch_searcher_contract_info(mev_contract).unwrap()
-                    else {
-                        return None
-                    };
+                    let mev_contract = b.header.mev_contract?;
+                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
                     Some((contract.fund, b.header.profit_usd))
                 } else {
                     Some((eoa.fund, b.header.profit_usd))
@@ -778,15 +773,11 @@ impl BlockAnalysis {
             .iter()
             .filter(|b| mev_type(b.mev_type()))
             .filter_map(|b| {
-                let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
-                    return None
-                };
+                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+
                 if eoa.fund.is_none() {
-                    let Some(mev_contract) = b.header.mev_contract else { return None };
-                    let Some(contract) = db.try_fetch_searcher_contract_info(mev_contract).unwrap()
-                    else {
-                        return None
-                    };
+                    let mev_contract = b.header.mev_contract?;
+                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
                     Some((contract.fund, b.header.profit_usd + b.header.bribe_usd))
                 } else {
                     Some((eoa.fund, b.header.profit_usd + b.header.bribe_usd))
@@ -883,15 +874,10 @@ impl BlockAnalysis {
             .iter()
             .filter(|b| mev_type(b.mev_type()))
             .filter_map(|b| {
-                let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
-                    return None
-                };
+                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
                 if eoa.fund.is_none() {
-                    let Some(mev_contract) = b.header.mev_contract else { return None };
-                    let Some(contract) = db.try_fetch_searcher_contract_info(mev_contract).unwrap()
-                    else {
-                        return None
-                    };
+                    let mev_contract = b.header.mev_contract?;
+                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
                     Some(contract.fund)
                 } else {
                     Some(eoa.fund)

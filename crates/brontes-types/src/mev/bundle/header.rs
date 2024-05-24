@@ -14,7 +14,6 @@ use super::MevType;
 use crate::{
     db::{
         redefined_types::primitives::*,
-        searcher::Fund,
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
     serde_utils::{addresss, option_addresss, txhash},
