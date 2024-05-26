@@ -9,166 +9,301 @@ use brontes_types::{
 };
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
-clickhouse_dbms!(
-    BrontesClickhouseTables,
-    "eth_cluster0",
-    [
-        ClickhouseBundleHeader,
-        ClickhouseMevBlocks,
-        ClickhouseCexDex,
-        ClickhouseSearcherTx,
-        ClickhouseJit,
-        ClickhouseJitSandwich,
-        ClickhouseSandwiches,
-        ClickhouseAtomicArbs,
-        ClickhouseLiquidations,
-        ClickhouseSearcherInfo,
-        ClickhouseDexPriceMapping,
-        ClickhouseTokenInfo,
-        ClickhousePools,
-        ClickhouseBuilderInfo,
-        ClickhouseTree,
-        ClickhouseBlockAnalysis
-    ]
-);
+// clickhouse_dbms!(
+//     BrontesClickhouseTables,
+//     "eth_cluster0",
+//     [
+//         ClickhouseBundleHeader,
+//         ClickhouseMevBlocks,
+//         ClickhouseCexDex,
+//         ClickhouseSearcherTx,
+//         ClickhouseJit,
+//         ClickhouseJitSandwich,
+//         ClickhouseSandwiches,
+//         ClickhouseAtomicArbs,
+//         ClickhouseLiquidations,
+//         ClickhouseSearcherInfo,
+//         ClickhouseDexPriceMapping,
+//         ClickhouseTokenInfo,
+//         ClickhousePools,
+//         ClickhouseBuilderInfo,
+//         ClickhouseTree,
+//         ClickhouseBlockAnalysis
+//     ]
+// );
 
 impl BrontesClickhouseTables {
     pub const fn is_big(&self) -> bool {
         matches!(
             self,
-            BrontesClickhouseTables::ClickhouseDexPriceMapping
-                | BrontesClickhouseTables::ClickhouseTree
+            BrontesClickhouseTables::BrontesDex_Price_Mapping
+                | BrontesClickhouseTables::BrontesTree
         )
     }
 }
 
+clickhouse_dbms!(
+    BrontesClickhouseTables,
+    "eth_cluster0",
+    [
+        BrontesDex_Price_Mapping,
+        BrontesBlock_Analysis,
+        MevMev_Blocks,
+        MevBundle_Header,
+        MevSearcher_Tx,
+        BrontesSearcher_Info,
+        MevCex_Dex,
+        MevLiquidations,
+        MevJit_Sandwich,
+        MevJit,
+        MevSandwiches,
+        MevAtomic_Arbs,
+        BrontesToken_Info,
+        EthereumPools,
+        BrontesBuilder_Info,
+        BrontesTree
+    ]
+);
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "brontes",
-    ClickhouseDexPriceMapping,
+    [Brontes, Dex_Price_Mapping],
     DexQuotesWithBlockNumber,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "brontes",
+//     ClickhouseDexPriceMapping,
+//     DexQuotesWithBlockNumber,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "brontes",
-    ClickhouseBlockAnalysis,
+    [Brontes, Block_Analysis],
     BlockAnalysis,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "brontes",
+//     ClickhouseBlockAnalysis,
+//     BlockAnalysis,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseMevBlocks,
+    [Mev, Mev_Blocks],
     MevBlock,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",ca
+//     ClickhouseMevBlocks,
+//     MevBlock,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseBundleHeader,
+    [Mev, Bundle_Header],
     BundleHeader,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseBundleHeader,
+//     BundleHeader,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseSearcherTx,
+    [Mev, Searcher_Tx],
     SearcherTx,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseSearcherTx,
+//     SearcherTx,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "brontes",
-    ClickhouseSearcherInfo,
+    [Brontes, Searcher_Info],
     JoinedSearcherInfo,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "brontes",
+//     ClickhouseSearcherInfo,
+//     JoinedSearcherInfo,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseCexDex,
+    [Mev, Cex_Dex],
     CexDex,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseCexDex,
+//     CexDex,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseLiquidations,
+    [Mev, Liquidations],
     Liquidation,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseLiquidations,
+//     Liquidation,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseJitSandwich,
+    [Mev, Jit_Sandwich],
     JitLiquiditySandwich,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseJitSandwich,
+//     JitLiquiditySandwich,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseJit,
+    [Mev, Jit],
     JitLiquidity,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseJit,
+//     JitLiquidity,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseSandwiches,
+    [Mev, Sandwiches],
     Sandwich,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseSandwiches,
+//     Sandwich,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "mev",
-    ClickhouseAtomicArbs,
+    [Mev, Atomic_Arbs],
     AtomicArb,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "mev",
+//     ClickhouseAtomicArbs,
+//     AtomicArb,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "brontes",
-    ClickhouseTokenInfo,
+    [Brontes, Token_Info],
     TokenInfoWithAddress,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "brontes",
+//     ClickhouseTokenInfo,
+//     TokenInfoWithAddress,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "ethereum",
-    ClickhousePools,
+    [Ethereum, Pools],
     ProtocolInfoClickhouse,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "ethereum",
+//     ClickhousePools,
+//     ProtocolInfoClickhouse,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "brontes",
-    ClickhouseBuilderInfo,
+    [Brontes, Builder_Info],
     BuilderInfoWithAddress,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "brontes",
+//     ClickhouseBuilderInfo,
+//     BuilderInfoWithAddress,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    "brontes",
-    ClickhouseTree,
+    [Brontes, Tree],
     TransactionRoot,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
+
+// remote_clickhouse_table!(
+//     BrontesClickhouseTables,
+//     "brontes",
+//     ClickhouseTree,
+//     TransactionRoot,
+//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+// );
 
 pub struct BrontesClickhouseData {
     pub data:         BrontesClickhouseTableDataTypes,
@@ -192,7 +327,7 @@ macro_rules! db_types {
                     match self {
                         $(
                             BrontesClickhouseTableDataTypes::$db_type(_) =>
-                                BrontesClickhouseTables::[<Clickhouse $db_table>],
+                                BrontesClickhouseTables::$db_table,
                         )*
                     }
                 }
@@ -220,20 +355,20 @@ macro_rules! db_types {
 }
 
 db_types!(
-    (DexQuotesWithBlockNumber, DexPriceMapping),
-    (MevBlock, MevBlocks),
-    (BundleHeader, BundleHeader),
-    (SearcherTx, SearcherTx),
-    (JoinedSearcherInfo, SearcherInfo),
-    (CexDex, CexDex),
-    (Liquidation, Liquidations),
-    (JitLiquiditySandwich, JitSandwich),
-    (JitLiquidity, Jit),
-    (Sandwich, Sandwiches),
-    (AtomicArb, AtomicArbs),
-    (TokenInfoWithAddress, TokenInfo),
-    (ProtocolInfoClickhouse, Pools),
-    (BuilderInfoWithAddress, BuilderInfo),
-    (TransactionRoot, Tree),
-    (BlockAnalysis, BlockAnalysis)
+    (DexQuotesWithBlockNumber, BrontesDex_Price_Mapping),
+    (MevBlock, MevMev_Blocks),
+    (BundleHeader, MevBundle_Header),
+    (SearcherTx, MevSearcher_Tx),
+    (JoinedSearcherInfo, BrontesSearcher_Info),
+    (CexDex, MevCex_Dex),
+    (Liquidation, MevLiquidations),
+    (JitLiquiditySandwich, MevJit_Sandwich),
+    (JitLiquidity, MevJit),
+    (Sandwich, MevSandwiches),
+    (AtomicArb, MevAtomic_Arbs),
+    (TokenInfoWithAddress, BrontesToken_Info),
+    (ProtocolInfoClickhouse, EthereumPools),
+    (BuilderInfoWithAddress, BrontesBuilder_Info),
+    (TransactionRoot, BrontesTree),
+    (BlockAnalysis, BrontesBlock_Analysis)
 );
