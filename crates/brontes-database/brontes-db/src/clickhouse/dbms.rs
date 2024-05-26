@@ -9,39 +9,6 @@ use brontes_types::{
 };
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
-// clickhouse_dbms!(
-//     BrontesClickhouseTables,
-//     "eth_cluster0",
-//     [
-//         ClickhouseBundleHeader,
-//         ClickhouseMevBlocks,
-//         ClickhouseCexDex,
-//         ClickhouseSearcherTx,
-//         ClickhouseJit,
-//         ClickhouseJitSandwich,
-//         ClickhouseSandwiches,
-//         ClickhouseAtomicArbs,
-//         ClickhouseLiquidations,
-//         ClickhouseSearcherInfo,
-//         ClickhouseDexPriceMapping,
-//         ClickhouseTokenInfo,
-//         ClickhousePools,
-//         ClickhouseBuilderInfo,
-//         ClickhouseTree,
-//         ClickhouseBlockAnalysis
-//     ]
-// );
-
-impl BrontesClickhouseTables {
-    pub const fn is_big(&self) -> bool {
-        matches!(
-            self,
-            BrontesClickhouseTables::BrontesDex_Price_Mapping
-                | BrontesClickhouseTables::BrontesTree
-        )
-    }
-}
-
 clickhouse_dbms!(
     BrontesClickhouseTables,
     "eth_cluster0",
@@ -65,20 +32,22 @@ clickhouse_dbms!(
     ]
 );
 
+impl BrontesClickhouseTables {
+    pub const fn is_big(&self) -> bool {
+        matches!(
+            self,
+            BrontesClickhouseTables::BrontesDex_Price_Mapping
+                | BrontesClickhouseTables::BrontesTree
+        )
+    }
+}
+
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Dex_Price_Mapping],
     DexQuotesWithBlockNumber,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "brontes",
-//     ClickhouseDexPriceMapping,
-//     DexQuotesWithBlockNumber,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -87,28 +56,12 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "brontes",
-//     ClickhouseBlockAnalysis,
-//     BlockAnalysis,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Mev_Blocks],
     MevBlock,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",ca
-//     ClickhouseMevBlocks,
-//     MevBlock,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -117,28 +70,12 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseBundleHeader,
-//     BundleHeader,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Searcher_Tx],
     SearcherTx,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseSearcherTx,
-//     SearcherTx,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -147,28 +84,12 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "brontes",
-//     ClickhouseSearcherInfo,
-//     JoinedSearcherInfo,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Cex_Dex],
     CexDex,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseCexDex,
-//     CexDex,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -177,28 +98,12 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseLiquidations,
-//     Liquidation,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Jit_Sandwich],
     JitLiquiditySandwich,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseJitSandwich,
-//     JitLiquiditySandwich,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -207,28 +112,12 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseJit,
-//     JitLiquidity,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Sandwiches],
     Sandwich,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseSandwiches,
-//     Sandwich,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -237,28 +126,12 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "mev",
-//     ClickhouseAtomicArbs,
-//     AtomicArb,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Token_Info],
     TokenInfoWithAddress,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "brontes",
-//     ClickhouseTokenInfo,
-//     TokenInfoWithAddress,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
@@ -267,14 +140,6 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "ethereum",
-//     ClickhousePools,
-//     ProtocolInfoClickhouse,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Builder_Info],
@@ -282,28 +147,12 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "brontes",
-//     ClickhouseBuilderInfo,
-//     BuilderInfoWithAddress,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
-
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Tree],
     TransactionRoot,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
-// remote_clickhouse_table!(
-//     BrontesClickhouseTables,
-//     "brontes",
-//     ClickhouseTree,
-//     TransactionRoot,
-//     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-// );
 
 pub struct BrontesClickhouseData {
     pub data:         BrontesClickhouseTableDataTypes,
