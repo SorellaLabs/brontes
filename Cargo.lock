@@ -2840,9 +2840,8 @@ dependencies = [
 [[package]]
 name = "db-interfaces"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#e417184607e05dd385012ec8fc45218c8afa7115"
+source = "git+https://github.com/SorellaLabs/db-interfaces#cb7d476b804dd833c5adbc02ec6a717a737c23ab"
 dependencies = [
- "async-trait",
  "chrono",
  "clickhouse",
  "db-interfaces-macros",
@@ -2867,7 +2866,7 @@ dependencies = [
 [[package]]
 name = "db-interfaces-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#e417184607e05dd385012ec8fc45218c8afa7115"
+source = "git+https://github.com/SorellaLabs/db-interfaces#cb7d476b804dd833c5adbc02ec6a717a737c23ab"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
