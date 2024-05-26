@@ -137,7 +137,7 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-default = ["cex-dex-markout", "sorella-server"]
+default = ["cex-dex-markout"]
 sorella-server = ["local-reth", "local-clickhouse"]
 cex-dex-markout = ["brontes-types/cex-dex-markout"]
 tests = ["brontes-pricing/tests"]
