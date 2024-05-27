@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+#[derive(Debug, Clone, Serialize, Deserialize, Row, Default)]
 pub struct BlockAnalysis {
     pub block_number: u64,
 

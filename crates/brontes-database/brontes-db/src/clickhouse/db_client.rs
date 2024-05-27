@@ -835,6 +835,14 @@ mod tests {
             .unwrap();
     }
 
+    async fn block_analysis(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+        let case0 = BlockAnalysis::default();
+
+        db.insert_one::<ClickhouseBlockAnalysis>(&case0)
+            .await
+            .unwrap();
+    }
+
     async fn tree(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let tree = load_tree().await;
 
