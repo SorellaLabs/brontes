@@ -470,7 +470,9 @@ pub mod option_txhash {
     };
     #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &Option<TxHash>, serializer: S) -> Result<S::Ok, S::Error> {
-        u.map(|t| format!("{:?}", t)).serialize(serializer)
+        u.map(|t| format!("{:?}", t))
+            .unwrap_or_default()
+            .serialize(serializer)
     }
     #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<TxHash>, D::Error>
@@ -770,7 +772,7 @@ pub mod option_pair {
             let st = (format!("{:?}", u.0), format!("{:?}", u.1));
             st.serialize(serializer)
         } else {
-            (Some(""), Some("")).serialize(serializer)
+            ("", "").serialize(serializer)
         }
     }
 
