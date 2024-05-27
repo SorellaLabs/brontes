@@ -41,7 +41,7 @@ The default inspector workflow is as follows:
 
 All specialized inspectors are run in parallel.
 
-### Step 2: MEV Filtering & Composition
+### Step 2: Compose & Filter MEV Results
 
 Once all inspectors have completed their analysis we attempt to compose MEV results & filter duplicates.
 
