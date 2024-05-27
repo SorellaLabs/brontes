@@ -9,7 +9,6 @@ use brontes_types::{
 };
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
-#[allow(clippy::manual_async_fn)]
 clickhouse_dbms!(
     BrontesClickhouseTables,
     "eth_cluster0",
