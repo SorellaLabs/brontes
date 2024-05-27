@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
+use brontes_core::LibmdbxReader;
 use brontes_types::{
     db::{builder::BuilderInfo, metadata::Metadata},
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
@@ -10,13 +11,14 @@ use brontes_types::{
 };
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
-pub(crate) fn build_mev_header(
+pub(crate) fn build_mev_header<DB: LibmdbxReader>(
     metadata: &Arc<Metadata>,
     tree: Arc<BlockTree<Action>>,
     possible_mev: PossibleMevCollection,
     mev_count: MevCount,
     orchestra_data: &[Bundle],
     quote_token: Address,
+    db: &'static DB,
 ) -> MevBlock {
     let (total_mev_priority_fee_paid, total_mev_profit_usd, total_mev_bribe) =
         calculate_block_mev_stats(
@@ -43,6 +45,10 @@ pub(crate) fn build_mev_header(
         f64::rounding_from(mev_reward.to_scaled_rational(18) * &eth_price, RoundingMode::Nearest).0
     });
     let proposer_fee_recipient = block_pnl.proposer_fee_recipient;
+    let builder_name = db
+        .try_fetch_builder_info(pre_processing.builder_address)
+        .unwrap()
+        .and_then(|b| b.name);
 
     MevBlock {
         block_hash: metadata.block_hash.into(),
@@ -55,6 +61,7 @@ pub(crate) fn build_mev_header(
         total_mev_bribe,
         total_mev_priority_fee_paid,
         builder_address: pre_processing.builder_address,
+        builder_name,
         builder_eth_profit: builder_eth_profit.clone().to_float(),
         builder_profit_usd: f64::rounding_from(
             &builder_eth_profit * &eth_price,
@@ -268,7 +275,7 @@ fn proposer_payment(
 
         if from_match || to_match {
             if let Action::EthTransfer(transfer) = root.get_root_action() {
-                return Some((transfer.value.to(), Some(transfer.to)));
+                return Some((transfer.value.to(), Some(transfer.to)))
             }
         }
         None
@@ -278,7 +285,7 @@ fn proposer_payment(
 /// Accounts for the profit made by the builders vertically integrated searchers
 fn calculate_mev_searching_profit(bundles: &[Bundle], builder_info: &BuilderInfo) -> (f64, u128) {
     if builder_info.searchers_eoas.is_empty() && builder_info.searchers_contracts.is_empty() {
-        return (0.0, 0);
+        return (0.0, 0)
     }
     bundles
         .iter()

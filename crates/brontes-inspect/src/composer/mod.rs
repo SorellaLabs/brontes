@@ -78,7 +78,7 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
     let quote_token = orchestra[0].get_quote_token();
 
     let (block_details, mev_details) =
-        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token);
+        on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token, db);
     let block_analysis = BlockAnalysis::new(&block_details, &mev_details, db);
 
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs, block_analysis }
@@ -120,12 +120,13 @@ fn run_inspectors(
     (possible_mev_collection, results)
 }
 
-fn on_orchestra_resolution(
+fn on_orchestra_resolution<DB: LibmdbxReader>(
     tree: Arc<BlockTree<Action>>,
     possible_mev_txes: PossibleMevCollection,
     metadata: Arc<Metadata>,
     orchestra_data: Vec<Bundle>,
     quote_token: Address,
+    db: &'static DB,
 ) -> (MevBlock, Vec<Bundle>) {
     let mut sorted_mev = sort_mev_by_type(orchestra_data);
 
@@ -150,6 +151,7 @@ fn on_orchestra_resolution(
         mev_count,
         &filtered_bundles,
         quote_token,
+        db,
     );
     // keep order
     filtered_bundles.sort_by(|a, b| a.header.tx_index.cmp(&b.header.tx_index));

@@ -720,7 +720,21 @@ mod tests {
         case0.per_exchange_details = vec![vec![arb_detail.clone()]];
         case0.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
 
-        db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
+        db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
+
+        let mut case1 = CexDex::default();
+        case1.swaps = vec![swap.clone()];
+        case1.global_vmap_details = vec![arb_detail.clone()];
+        case1.global_vmap_pnl = arb_pnl.clone();
+        case1.optimal_route_details = vec![arb_detail.clone()];
+        case1.optimal_route_pnl = arb_pnl.clone();
+        case1.optimistic_route_details = vec![arb_detail.clone()];
+        case1.optimistic_trade_details = vec![vec![opt_trade.clone()]];
+        case1.optimistic_route_pnl = None;
+        case1.per_exchange_details = vec![vec![arb_detail.clone()]];
+        case1.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
+
+        db.insert_one::<ClickhouseCexDex>(&case1).await.unwrap();
     }
 
     async fn jit(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -825,7 +839,15 @@ mod tests {
         db.insert_one::<BrontesBuilder_Info>(&case0).await.unwrap();
     }
 
-    async fn tree(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn block_analysis(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+        let case0 = BlockAnalysis::default();
+
+        db.insert_one::<ClickhouseBlockAnalysis>(&case0)
+            .await
+            .unwrap();
+    }
+
+    async fn tree(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
         let tree = load_tree().await;
 
         let roots: Vec<TransactionRoot> = tree
@@ -854,6 +876,7 @@ mod tests {
         token_info(database).await;
         // searcher_info(database).await;
         tree(database).await;
+        block_analysis(database).await;
     }
 
     #[brontes_macros::test]
