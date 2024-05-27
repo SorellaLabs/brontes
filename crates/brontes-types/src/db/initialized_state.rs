@@ -78,6 +78,13 @@ impl InitializedStateMeta {
     pub fn is_initialized(&self, flag: u8) -> bool {
         (self.0 & flag) == flag
     }
+
+    #[inline(always)]
+    pub fn apply_reset_key(&mut self, flag: u8) {
+        if self.is_initialized(flag) {
+            self.0 ^= flag;
+        }
+    }
 }
 
 self_convert_redefined!(InitializedStateMeta);
