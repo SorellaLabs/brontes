@@ -1,670 +1,930 @@
+use std::hash::Hash;
+
 use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
-use malachite::Rational;
+use reth_primitives::TxHash;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::serde_as;
 
 use super::traits::LibmdbxReader;
 use crate::{
-    db::clickhouse_serde::pair::{addr_ser, pair_ser},
+    db::searcher::Fund,
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
     pair::Pair,
+    serde_utils::{option_address, option_fund, option_pair, option_protocol, option_txhash},
     Protocol,
 };
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+#[derive(Debug, Clone, Serialize, Deserialize, Row, Default)]
 pub struct BlockAnalysis {
-    pub block_number: u64,
-
+    pub block_number:              u64,
     // all
-    pub total_mev_profit:     f64,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub all_top_searcher:     Address,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub all_top_fund:         Address,
-    pub all_average_profit:   f64,
-    pub all_unique_searchers: u64,
-    pub all_unique_funds:     u64,
+    pub all_total_profit:          f64,
+    pub all_total_revenue:         f64,
+    pub all_average_profit_margin: f64,
+
+    pub all_top_searcher_rev:         Option<f64>,
+    #[serde(with = "option_address")]
+    pub all_top_searcher_rev_addr:    Option<Address>,
+    pub all_top_searcher_profit:      Option<f64>,
+    #[serde(with = "option_address")]
+    pub all_top_searcher_profit_addr: Option<Address>,
+    pub all_searchers:                u64,
+
+    pub all_top_fund_rev:       Option<f64>,
+    #[serde(with = "option_fund")]
+    pub all_top_fund_rev_id:    Option<Fund>,
+    pub all_top_fund_profit:    Option<f64>,
+    #[serde(with = "option_fund")]
+    pub all_top_fund_profit_id: Option<Fund>,
+    pub all_fund_count:         u64,
+
+    #[serde(with = "option_address")]
+    pub all_most_arbed_pool_address: Option<Address>,
+    pub all_most_arbed_pool_profit:  Option<f64>,
+    pub all_most_arbed_pool_revenue: Option<f64>,
+
+    #[serde(with = "option_pair")]
+    pub all_most_arbed_pair_address: Option<Pair>,
+    pub all_most_arbed_pair_profit:  Option<f64>,
+    pub all_most_arbed_pair_revenue: Option<f64>,
 
     // atomic
-    #[serde(serialize_with = "pair_ser::serialize")]
-    pub most_arbed_pair:      Pair,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub most_arbed_pool:      Address,
-    #[serde_as(as = "DisplayFromStr")]
-    pub most_arbed_dex:       Protocol,
-    pub arb_total_revenue:    f64,
-    pub arb_total_profit:     f64,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub arb_top_searcher:     Address,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub arb_top_fund:         Address,
-    pub arb_unique_searchers: u64,
-    pub arb_unique_funds:     u64,
+    pub atomic_total_profit:             f64,
+    pub atomic_total_revenue:            f64,
+    pub atomic_average_profit_margin:    f64,
+    pub atomic_top_searcher_rev:         Option<f64>,
+    #[serde(with = "option_address")]
+    pub atomic_top_searcher_rev_addr:    Option<Address>,
+    pub atomic_top_searcher_profit:      Option<f64>,
+    #[serde(with = "option_address")]
+    pub atomic_top_searcher_profit_addr: Option<Address>,
+    pub atomic_searchers:                u64,
+    pub atomic_top_fund_rev:             Option<f64>,
+    #[serde(with = "option_fund")]
+    pub atomic_top_fund_rev_id:          Option<Fund>,
+    pub atomic_top_fund_profit:          Option<f64>,
+    #[serde(with = "option_fund")]
+    pub atomic_top_fund_profit_id:       Option<Fund>,
+    pub atomic_fund_count:               u64,
+
+    #[serde(with = "option_address")]
+    pub atomic_most_arbed_pool_address: Option<Address>,
+    pub atomic_most_arbed_pool_profit:  Option<f64>,
+    pub atomic_most_arbed_pool_revenue: Option<f64>,
+
+    #[serde(with = "option_pair")]
+    pub atomic_most_arbed_pair_address: Option<Pair>,
+    pub atomic_most_arbed_pair_profit:  Option<f64>,
+    pub atomic_most_arbed_pair_revenue: Option<f64>,
+
+    #[serde(with = "option_protocol")]
+    pub atomic_most_arbed_dex_address: Option<Protocol>,
+    pub atomic_most_arbed_dex_profit:  Option<f64>,
+    pub atomic_most_arbed_dex_revenue: Option<f64>,
 
     // sandwich
-    #[serde(serialize_with = "pair_ser::serialize")]
-    pub most_sandwiched_pair:        Pair,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub most_sandwiched_pool:        Address,
-    #[serde_as(as = "DisplayFromStr")]
-    pub most_sandwiched_dex:         Protocol,
-    pub sandwich_total_revenue:      f64,
-    pub sandwich_total_profit:       f64,
-    pub sandwich_total_swapper_loss: f64,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub sandwich_top_searcher:       Address,
-    pub sandwich_unique_searchers:   u64,
+    pub sandwich_total_profit:             f64,
+    pub sandwich_total_revenue:            f64,
+    pub sandwich_average_profit_margin:    f64,
+    pub sandwich_top_searcher_rev:         Option<f64>,
+    #[serde(with = "option_address")]
+    pub sandwich_top_searcher_rev_addr:    Option<Address>,
+    pub sandwich_top_searcher_profit:      Option<f64>,
+    #[serde(with = "option_address")]
+    pub sandwich_top_searcher_profit_addr: Option<Address>,
+    pub sandwich_searchers:                u64,
+
+    #[serde(with = "option_address")]
+    pub sandwich_most_arbed_pool_address:  Option<Address>,
+    pub sandwich_most_arbed_pool_profit:   Option<f64>,
+    pub sandwich_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
+    pub sandwich_most_arbed_pair_address:  Option<Pair>,
+    pub sandwich_most_arbed_pair_profit:   Option<f64>,
+    pub sandwich_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
+    pub sandwich_most_arbed_dex_address:   Option<Protocol>,
+    pub sandwich_most_arbed_dex_profit:    Option<f64>,
+    pub sandwich_most_arbed_dex_revenue:   Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub sandwich_biggest_arb_profit_hash:  Option<TxHash>,
+    pub sandwich_biggest_arb_profit:       Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub sandwich_biggest_arb_revenue_hash: Option<TxHash>,
+    pub sandwich_biggest_arb_revenue:      Option<f64>,
 
     // jit
-    #[serde(serialize_with = "pair_ser::serialize")]
-    pub most_jit_pair:        Pair,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub most_jit_pool:        Address,
-    #[serde_as(as = "DisplayFromStr")]
-    pub most_jit_dex:         Protocol,
-    pub jit_total_revenue:    f64,
-    pub jit_total_profit:     f64,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub jit_top_searcher:     Address,
-    pub jit_unique_searchers: u64,
+    pub jit_total_profit:             f64,
+    pub jit_total_revenue:            f64,
+    pub jit_average_profit_margin:    f64,
+    pub jit_top_searcher_rev:         Option<f64>,
+    #[serde(with = "option_address")]
+    pub jit_top_searcher_rev_addr:    Option<Address>,
+    pub jit_top_searcher_profit:      Option<f64>,
+    #[serde(with = "option_address")]
+    pub jit_top_searcher_profit_addr: Option<Address>,
+    pub jit_searchers:                u64,
+    #[serde(with = "option_address")]
+    pub jit_most_arbed_pool_address:  Option<Address>,
+    pub jit_most_arbed_pool_profit:   Option<f64>,
+    pub jit_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
+    pub jit_most_arbed_pair_address:  Option<Pair>,
+    pub jit_most_arbed_pair_profit:   Option<f64>,
+    pub jit_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
+    pub jit_most_arbed_dex_address:   Option<Protocol>,
+    pub jit_most_arbed_dex_profit:    Option<f64>,
+    pub jit_most_arbed_dex_revenue:   Option<f64>,
 
     // jit-sandwich
-    #[serde(serialize_with = "pair_ser::serialize")]
-    pub most_jit_sandwiched_pair:        Pair,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub most_jit_sandwiched_pool:        Address,
-    #[serde_as(as = "DisplayFromStr")]
-    pub most_jit_sandwiched_dex:         Protocol,
-    pub jit_sandwich_total_revenue:      f64,
-    pub jit_sandwich_total_profit:       f64,
-    pub jit_sandwich_total_swapper_loss: f64,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub jit_sandwich_top_searcher:       Address,
-    pub jit_sandwich_unique_searchers:   u64,
+    pub jit_sandwich_total_profit:             f64,
+    pub jit_sandwich_total_revenue:            f64,
+    pub jit_sandwich_average_profit_margin:    f64,
+    pub jit_sandwich_top_searcher_rev:         Option<f64>,
+    #[serde(with = "option_address")]
+    pub jit_sandwich_top_searcher_rev_addr:    Option<Address>,
+    pub jit_sandwich_top_searcher_profit:      Option<f64>,
+    #[serde(with = "option_address")]
+    pub jit_sandwich_top_searcher_profit_addr: Option<Address>,
+    pub jit_sandwich_searchers:                u64,
+    #[serde(with = "option_address")]
+    pub jit_sandwich_most_arbed_pool_address:  Option<Address>,
+    pub jit_sandwich_most_arbed_pool_profit:   Option<f64>,
+    pub jit_sandwich_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
+    pub jit_sandwich_most_arbed_pair_address:  Option<Pair>,
+    pub jit_sandwich_most_arbed_pair_profit:   Option<f64>,
+    pub jit_sandwich_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
+    pub jit_sandwich_most_arbed_dex_address:   Option<Protocol>,
+    pub jit_sandwich_most_arbed_dex_profit:    Option<f64>,
+    pub jit_sandwich_most_arbed_dex_revenue:   Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub jit_sandwich_biggest_arb_profit_hash:  Option<TxHash>,
+    pub jit_sandwich_biggest_arb_profit:       Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub jit_sandwich_biggest_arb_revenue_hash: Option<TxHash>,
+    pub jit_sandwich_biggest_arb_revenue:      Option<f64>,
 
     // cex dex
-    #[serde(serialize_with = "pair_ser::serialize")]
-    pub cex_dex_most_arb_pair_rev:    Pair,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub cex_dex_most_arb_pool_rev:    Address,
-    #[serde(serialize_with = "pair_ser::serialize")]
-    pub cex_dex_most_arb_pair_profit: Pair,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub cex_dex_most_arb_pool_profit: Address,
-    pub cex_dex_total_rev:            f64,
-    pub cex_dex_total_profit:         f64,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub cex_top_searcher:             Address,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub cex_top_fund:                 Address,
+    pub cex_dex_total_profit:             f64,
+    pub cex_dex_total_revenue:            f64,
+    pub cex_dex_average_profit_margin:    f64,
+    pub cex_dex_top_searcher_rev:         Option<f64>,
+    #[serde(with = "option_address")]
+    pub cex_dex_top_searcher_rev_addr:    Option<Address>,
+    pub cex_dex_top_searcher_profit:      Option<f64>,
+    #[serde(with = "option_address")]
+    pub cex_dex_top_searcher_profit_addr: Option<Address>,
+    pub cex_dex_searchers:                u64,
+    pub cex_dex_top_fund_rev:             Option<f64>,
+    #[serde(with = "option_fund")]
+    pub cex_dex_top_fund_rev_id:          Option<Fund>,
+    pub cex_dex_top_fund_profit:          Option<f64>,
+    #[serde(with = "option_fund")]
+    pub cex_dex_top_fund_profit_id:       Option<Fund>,
+    pub cex_dex_fund_count:               u64,
+    #[serde(with = "option_address")]
+    pub cex_dex_most_arbed_pool_address:  Option<Address>,
+    pub cex_dex_most_arbed_pool_profit:   Option<f64>,
+    pub cex_dex_most_arbed_pool_revenue:  Option<f64>,
+    #[serde(with = "option_pair")]
+    pub cex_dex_most_arbed_pair_address:  Option<Pair>,
+    pub cex_dex_most_arbed_pair_profit:   Option<f64>,
+    pub cex_dex_most_arbed_pair_revenue:  Option<f64>,
+    #[serde(with = "option_protocol")]
+    pub cex_dex_most_arbed_dex_address:   Option<Protocol>,
+    pub cex_dex_most_arbed_dex_profit:    Option<f64>,
+    pub cex_dex_most_arbed_dex_revenue:   Option<f64>,
 
     // liquidation
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub most_liquidated_token:             Address,
-    #[serde_as(as = "DisplayFromStr")]
-    pub most_liquidated_protocol:          Protocol,
-    pub liquidation_total_revenue:         f64,
-    pub liquidation_total_profit:          f64,
-    pub liquidation_average_profit_margin: f64,
-    #[serde(serialize_with = "addr_ser::serialize")]
-    pub liquidation_top_searcher:          Address,
-    pub liquidation_unique_searchers:      u64,
-    pub total_usd_liquidated:              f64,
+    pub liquidation_total_profit:             f64,
+    pub liquidation_total_revenue:            f64,
+    pub liquidation_average_profit_margin:    f64,
+    pub liquidation_top_searcher_rev:         Option<f64>,
+    #[serde(with = "option_address")]
+    pub liquidation_top_searcher_rev_addr:    Option<Address>,
+    pub liquidation_top_searcher_profit:      Option<f64>,
+    #[serde(with = "option_address")]
+    pub liquidation_top_searcher_profit_addr: Option<Address>,
+    pub liquidation_searchers:                u64,
+    #[serde(with = "option_address")]
+    pub most_liquidated_token_address:        Option<Address>,
+    pub most_liquidated_token_rev:            Option<f64>,
+    pub most_liquidated_token_profit:         Option<f64>,
+    pub total_usd_liquidated:                 f64,
 }
 
 impl BlockAnalysis {
-    pub fn new<DB: LibmdbxReader>(block: &MevBlock, bundles: &[Bundle], db: DB) -> Self {
+    pub fn new<DB: LibmdbxReader>(block: &MevBlock, bundles: &[Bundle], db: &DB) -> Self {
+        // All fields
+        let (all_profit_addr, all_profit_am) =
+            Self::top_searcher_by_profit(|b| b != MevType::SearcherTx, bundles).unzip();
+        let (all_rev_addr, all_rev_am) =
+            Self::top_searcher_by_rev(|b| b != MevType::SearcherTx, bundles).unzip();
+
+        let (fund_rev, fund_rev_am) =
+            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx, bundles, db).unzip();
+        let (fund_profit, fund_profit_am) =
+            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx, bundles, db).unzip();
+
+        let (all_pool, all_pool_prof, all_pool_rev) = Self::most_transacted_pool(
+            |b| b != MevType::SearcherTx && b != MevType::Liquidation,
+            bundles,
+            Self::get_pool_fn,
+        )
+        .three_unzip();
+
+        let (all_pair, all_pair_prof, all_pair_rev) = Self::most_transacted_pair(
+            |b| b != MevType::SearcherTx && b != MevType::Liquidation,
+            bundles,
+            Self::get_pair_fn,
+        )
+        .three_unzip();
+
+        // Atomic Fields
+        let (atomic_searcher_prof_addr, atomic_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::AtomicArb, bundles).unzip();
+        let (atomic_searcher_rev_addr, atomic_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::AtomicArb, bundles).unzip();
+
+        let (atomic_fund_rev_addr, atomic_fund_rev) =
+            Self::top_fund_by_type_rev(|b| b == MevType::AtomicArb, bundles, db).unzip();
+        let (atomic_fund_profit_addr, atomic_fund_profit) =
+            Self::top_fund_by_type_profit(|b| b == MevType::AtomicArb, bundles, db).unzip();
+
+        let (atomic_pool_addr, atomic_pool_prof, atomic_pool_rev) =
+            Self::most_transacted_pool(|b| b == MevType::AtomicArb, bundles, Self::get_pool_fn)
+                .three_unzip();
+        let (atomic_pair_addr, atomic_pair_prof, atomic_pair_rev) =
+            Self::most_transacted_pair(|b| b == MevType::AtomicArb, bundles, Self::get_pair_fn)
+                .three_unzip();
+        let (atomic_dex_addr, atomic_dex_prof, atomic_dex_rev) =
+            Self::most_transacted_dex(|b| b == MevType::AtomicArb, bundles, Self::get_dex_fn)
+                .three_unzip();
+
+        // Sandwich Fields
+        let (sandwich_biggest_tx_prof, sandwich_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::Sandwich, bundles).unzip();
+        let (sandwich_biggest_tx_rev, sandwich_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::Sandwich, bundles).unzip();
+
+        let (sandwich_searcher_prof_addr, sandwich_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::Sandwich, bundles).unzip();
+        let (sandwich_searcher_rev_addr, sandwich_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::Sandwich, bundles).unzip();
+        let (sandwich_pool_addr, sandwich_pool_prof, sandwich_pool_rev) =
+            Self::most_transacted_pool(|b| b == MevType::Sandwich, bundles, Self::get_pool_fn)
+                .three_unzip();
+        let (sandwich_pair_addr, sandwich_pair_prof, sandwich_pair_rev) =
+            Self::most_transacted_pair(|b| b == MevType::Sandwich, bundles, Self::get_pair_fn)
+                .three_unzip();
+        let (sandwich_dex_addr, sandwich_dex_prof, sandwich_dex_rev) =
+            Self::most_transacted_dex(|b| b == MevType::Sandwich, bundles, Self::get_dex_fn)
+                .three_unzip();
+
+        // Jit Fields
+        let (jit_searcher_prof_addr, jit_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::Jit, bundles).unzip();
+        let (jit_searcher_rev_addr, jit_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::Jit, bundles).unzip();
+        let (jit_pool_addr, jit_pool_prof, jit_pool_rev) =
+            Self::most_transacted_pool(|b| b == MevType::Jit, bundles, Self::get_pool_fn)
+                .three_unzip();
+        let (jit_pair_addr, jit_pair_prof, jit_pair_rev) =
+            Self::most_transacted_pair(|b| b == MevType::Jit, bundles, Self::get_pair_fn)
+                .three_unzip();
+        let (jit_dex_addr, jit_dex_prof, jit_dex_rev) =
+            Self::most_transacted_dex(|b| b == MevType::Jit, bundles, Self::get_dex_fn)
+                .three_unzip();
+
+        // Jit Sando Fields
+        let (jit_sandwich_biggest_tx_prof, jit_sandwich_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_biggest_tx_rev, jit_sandwich_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_searcher_prof_addr, jit_sandwich_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_searcher_rev_addr, jit_sandwich_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_pool_addr, jit_sandwich_pool_prof, jit_sandwich_pool_rev) =
+            Self::most_transacted_pool(|b| b == MevType::JitSandwich, bundles, Self::get_pool_fn)
+                .three_unzip();
+        let (jit_sandwich_pair_addr, jit_sandwich_pair_prof, jit_sandwich_pair_rev) =
+            Self::most_transacted_pair(|b| b == MevType::JitSandwich, bundles, Self::get_pair_fn)
+                .three_unzip();
+        let (jit_sandwich_dex_addr, jit_sandwich_dex_prof, jit_sandwich_dex_rev) =
+            Self::most_transacted_dex(|b| b == MevType::JitSandwich, bundles, Self::get_dex_fn)
+                .three_unzip();
+        // Cex Dex
+        let (cex_dex_searcher_prof_addr, cex_dex_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::CexDex, bundles).unzip();
+        let (cex_dex_searcher_rev_addr, cex_dex_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::CexDex, bundles).unzip();
+
+        let (cex_dex_fund_rev_addr, cex_dex_fund_rev) =
+            Self::top_fund_by_type_rev(|b| b == MevType::CexDex, bundles, db).unzip();
+        let (cex_dex_fund_profit_addr, cex_dex_fund_profit) =
+            Self::top_fund_by_type_profit(|b| b == MevType::CexDex, bundles, db).unzip();
+
+        let (cex_dex_pool_addr, cex_dex_pool_prof, cex_dex_pool_rev) =
+            Self::most_transacted_pool(|b| b == MevType::CexDex, bundles, Self::get_pool_fn)
+                .three_unzip();
+        let (cex_dex_pair_addr, cex_dex_pair_prof, cex_dex_pair_rev) =
+            Self::most_transacted_pair(|b| b == MevType::CexDex, bundles, Self::get_pair_fn)
+                .three_unzip();
+        let (cex_dex_dex_addr, cex_dex_dex_prof, cex_dex_dex_rev) =
+            Self::most_transacted_dex(|b| b == MevType::CexDex, bundles, Self::get_dex_fn)
+                .three_unzip();
+
+        // liquidation
+        let (liquidation_searcher_prof_addr, liquidation_searcher_prof) =
+            Self::top_searcher_by_profit(|b| b == MevType::Liquidation, bundles).unzip();
+        let (liquidation_searcher_rev_addr, liquidation_searcher_rev) =
+            Self::top_searcher_by_rev(|b| b == MevType::Liquidation, bundles).unzip();
+
+        let (liq_most_token, liq_most_prof, liq_most_rev) = bundles
+            .iter()
+            .filter(|b| b.mev_type() == MevType::Liquidation)
+            .flat_map(|b| {
+                let BundleData::Liquidation(l) = &b.data else { unreachable!() };
+                l.liquidations
+                    .iter()
+                    .map(|l| {
+                        (
+                            l.collateral_asset.address,
+                            (b.header.profit_usd, b.header.profit_usd + b.header.bribe_usd),
+                        )
+                    })
+                    .collect_vec()
+            })
+            .into_group_map()
+            .iter()
+            .max_by_key(|v| v.1.len())
+            .map(|t| {
+                let (p, r): (Vec<_>, Vec<_>) = t.1.iter().copied().unzip();
+                (*t.0, p.iter().sum::<f64>(), r.iter().sum::<f64>())
+            })
+            .three_unzip();
+
         Self {
-            block_number:         block.block_number,
-            total_mev_profit:     block.total_mev_profit_usd,
-            all_unique_funds:     bundles
-                .iter()
-                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
-                .filter_map(|b| {
-                    let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
-                    if eoa.fund.is_none() {
-                        let contract = db
-                            .try_fetch_searcher_contract_info(b.header.mev_contract?)
-                            .unwrap()?;
-                        (!contract.fund.is_none()).then_some(contract.fund)
-                    } else {
-                        Some(eoa.fund)
-                    }
-                })
-                .unique()
-                .count() as u64,
-            all_unique_searchers: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
-                .map(|b| b.header.eoa)
-                .unique()
-                .count() as u64,
-            all_top_fund:         bundles
-                .iter()
-                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
-                .filter(|b| {
-                    let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
-                        return false
-                    };
-                    if eoa.fund.is_none() {
-                        let Some(mev_contract) = b.header.mev_contract else { return false };
-                        let Some(contract) =
-                            db.try_fetch_searcher_contract_info(mev_contract).unwrap()
-                        else {
-                            return false
-                        };
-                        !contract.fund.is_none()
-                    } else {
-                        true
-                    }
-                })
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|h| h.header.mev_contract.unwrap_or(h.header.eoa))
-                .unwrap_or_default(),
-            all_top_searcher:     bundles
-                .iter()
-                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|r| r.header.eoa)
-                .unwrap_or_default(),
-            all_average_profit:   bundles
-                .iter()
-                .filter(|f| f.data.mev_type() != MevType::SearcherTx)
-                .map(|h| h.header.profit_usd)
-                .sum::<f64>()
-                / Some(
-                    bundles
-                        .iter()
-                        .filter(|f| f.data.mev_type() != MevType::SearcherTx)
-                        .count(),
-                )
-                .filter(|f| *f != 0)
-                .map(|f| f as f64)
-                .unwrap_or(1.0),
+            block_number:                    block.block_number,
+            all_total_profit:                Self::total_profit_by_type(
+                |f| f != MevType::SearcherTx,
+                bundles,
+            ),
+            all_total_revenue:               Self::total_revenue_by_type(
+                |f| f != MevType::SearcherTx,
+                bundles,
+            ),
+            all_average_profit_margin:       Self::average_profit_margin(
+                |f| f != MevType::SearcherTx,
+                bundles,
+            )
+            .unwrap_or_default(),
+            all_searchers:                   Self::unique(|b| b != MevType::SearcherTx, bundles),
+            all_top_searcher_rev:            all_rev_am,
+            all_top_searcher_rev_addr:       all_rev_addr,
+            all_top_searcher_profit_addr:    all_profit_addr,
+            all_top_searcher_profit:         all_profit_am,
+            all_top_fund_rev_id:             fund_rev,
+            all_top_fund_rev:                fund_rev_am,
+            all_top_fund_profit:             fund_profit_am,
+            all_top_fund_profit_id:          fund_profit,
+            all_fund_count:                  Self::unique_funds(
+                |b| b != MevType::SearcherTx,
+                bundles,
+                db,
+            ),
+            all_most_arbed_pool_address:     all_pool,
+            all_most_arbed_pool_profit:      all_pool_prof,
+            all_most_arbed_pool_revenue:     all_pool_rev,
+            all_most_arbed_pair_revenue:     all_pair_rev,
+            all_most_arbed_pair_profit:      all_pair_prof,
+            all_most_arbed_pair_address:     all_pair,
+            // atomic
+            atomic_searchers:                Self::unique(|b| b == MevType::AtomicArb, bundles),
+            atomic_fund_count:               Self::unique_funds(
+                |b| b == MevType::AtomicArb,
+                bundles,
+                db,
+            ),
+            atomic_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::AtomicArb,
+                bundles,
+            ),
+            atomic_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::AtomicArb,
+                bundles,
+            ),
+            atomic_top_searcher_profit_addr: atomic_searcher_prof_addr,
+            atomic_top_searcher_rev_addr:    atomic_searcher_rev_addr,
+            atomic_top_searcher_profit:      atomic_searcher_prof,
+            atomic_top_searcher_rev:         atomic_searcher_rev,
+            atomic_top_fund_profit:          atomic_fund_profit,
+            atomic_top_fund_profit_id:       atomic_fund_profit_addr,
+            atomic_top_fund_rev_id:          atomic_fund_rev_addr,
+            atomic_top_fund_rev:             atomic_fund_rev,
+            atomic_most_arbed_dex_profit:    atomic_dex_prof,
+            atomic_most_arbed_dex_address:   atomic_dex_addr,
+            atomic_most_arbed_dex_revenue:   atomic_dex_rev,
+            atomic_most_arbed_pair_profit:   atomic_pair_prof,
+            atomic_most_arbed_pair_address:  atomic_pair_addr,
+            atomic_most_arbed_pair_revenue:  atomic_pair_rev,
+            atomic_most_arbed_pool_revenue:  atomic_pool_rev,
+            atomic_most_arbed_pool_profit:   atomic_pool_prof,
+            atomic_most_arbed_pool_address:  atomic_pool_addr,
+            atomic_average_profit_margin:    Self::average_profit_margin(
+                |f| f == MevType::AtomicArb,
+                bundles,
+            )
+            .unwrap_or_default(),
 
-            arb_top_fund: bundles
-                .iter()
-                .filter(|b| {
-                    if b.data.mev_type() != MevType::AtomicArb {
-                        return false
-                    }
+            // sandwich
+            sandwich_searchers:                Self::unique(|b| b == MevType::Sandwich, bundles),
+            sandwich_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::Sandwich,
+                bundles,
+            ),
+            sandwich_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::Sandwich,
+                bundles,
+            ),
+            sandwich_biggest_arb_profit:       sandwich_biggest_prof,
+            sandwich_biggest_arb_profit_hash:  sandwich_biggest_tx_prof,
+            sandwich_biggest_arb_revenue:      sandwich_biggest_rev,
+            sandwich_biggest_arb_revenue_hash: sandwich_biggest_tx_rev,
+            sandwich_top_searcher_profit_addr: sandwich_searcher_prof_addr,
+            sandwich_top_searcher_rev_addr:    sandwich_searcher_rev_addr,
+            sandwich_top_searcher_profit:      sandwich_searcher_prof,
+            sandwich_top_searcher_rev:         sandwich_searcher_rev,
+            sandwich_most_arbed_dex_profit:    sandwich_dex_prof,
+            sandwich_most_arbed_dex_address:   sandwich_dex_addr,
+            sandwich_most_arbed_dex_revenue:   sandwich_dex_rev,
+            sandwich_most_arbed_pair_profit:   sandwich_pair_prof,
+            sandwich_most_arbed_pair_address:  sandwich_pair_addr,
+            sandwich_most_arbed_pair_revenue:  sandwich_pair_rev,
+            sandwich_most_arbed_pool_revenue:  sandwich_pool_rev,
+            sandwich_most_arbed_pool_profit:   sandwich_pool_prof,
+            sandwich_most_arbed_pool_address:  sandwich_pool_addr,
+            sandwich_average_profit_margin:    Self::average_profit_margin(
+                |f| f == MevType::Sandwich,
+                bundles,
+            )
+            .unwrap_or_default(),
 
-                    let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
-                        return false
-                    };
-                    if eoa.fund.is_none() {
-                        let Some(mev_contract) = b.header.mev_contract else { return false };
-                        let Some(contract) =
-                            db.try_fetch_searcher_contract_info(mev_contract).unwrap()
-                        else {
-                            return false
-                        };
-                        !contract.fund.is_none()
-                    } else {
-                        true
-                    }
-                })
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|h| h.header.mev_contract.unwrap_or(h.header.eoa))
-                .unwrap_or_default(),
-            arb_top_searcher: bundles
+            // jit
+            jit_searchers:                Self::unique(|b| b == MevType::Jit, bundles),
+            jit_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::Jit,
+                bundles,
+            ),
+            jit_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::Jit,
+                bundles,
+            ),
+            jit_top_searcher_profit_addr: jit_searcher_prof_addr,
+            jit_top_searcher_rev_addr:    jit_searcher_rev_addr,
+            jit_top_searcher_profit:      jit_searcher_prof,
+            jit_top_searcher_rev:         jit_searcher_rev,
+            jit_most_arbed_dex_profit:    jit_dex_prof,
+            jit_most_arbed_dex_address:   jit_dex_addr,
+            jit_most_arbed_dex_revenue:   jit_dex_rev,
+            jit_most_arbed_pair_profit:   jit_pair_prof,
+            jit_most_arbed_pair_address:  jit_pair_addr,
+            jit_most_arbed_pair_revenue:  jit_pair_rev,
+            jit_most_arbed_pool_revenue:  jit_pool_rev,
+            jit_most_arbed_pool_profit:   jit_pool_prof,
+            jit_most_arbed_pool_address:  jit_pool_addr,
+            jit_average_profit_margin:    Self::average_profit_margin(
+                |f| f == MevType::Jit,
+                bundles,
+            )
+            .unwrap_or_default(),
+
+            // jit sando
+            jit_sandwich_searchers:                Self::unique(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
+            jit_sandwich_average_profit_margin:    Self::average_profit_margin(
+                |f| f == MevType::JitSandwich,
+                bundles,
+            )
+            .unwrap_or_default(),
+            jit_sandwich_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
+            jit_sandwich_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
+            jit_sandwich_top_searcher_profit_addr: jit_sandwich_searcher_prof_addr,
+            jit_sandwich_top_searcher_rev_addr:    jit_sandwich_searcher_rev_addr,
+            jit_sandwich_top_searcher_profit:      jit_sandwich_searcher_prof,
+            jit_sandwich_top_searcher_rev:         jit_sandwich_searcher_rev,
+            jit_sandwich_most_arbed_dex_profit:    jit_sandwich_dex_prof,
+            jit_sandwich_most_arbed_dex_address:   jit_sandwich_dex_addr,
+            jit_sandwich_most_arbed_dex_revenue:   jit_sandwich_dex_rev,
+            jit_sandwich_most_arbed_pair_profit:   jit_sandwich_pair_prof,
+            jit_sandwich_most_arbed_pair_address:  jit_sandwich_pair_addr,
+            jit_sandwich_most_arbed_pair_revenue:  jit_sandwich_pair_rev,
+            jit_sandwich_most_arbed_pool_revenue:  jit_sandwich_pool_rev,
+            jit_sandwich_most_arbed_pool_profit:   jit_sandwich_pool_prof,
+            jit_sandwich_most_arbed_pool_address:  jit_sandwich_pool_addr,
+
+            jit_sandwich_biggest_arb_profit:       jit_sandwich_biggest_prof,
+            jit_sandwich_biggest_arb_profit_hash:  jit_sandwich_biggest_tx_prof,
+            jit_sandwich_biggest_arb_revenue:      jit_sandwich_biggest_rev,
+            jit_sandwich_biggest_arb_revenue_hash: jit_sandwich_biggest_tx_rev,
+
+            // cex dex
+            cex_dex_searchers:                Self::unique(|b| b == MevType::CexDex, bundles),
+            cex_dex_fund_count:               Self::unique_funds(
+                |b| b == MevType::CexDex,
+                bundles,
+                db,
+            ),
+            cex_dex_total_profit:             Self::total_profit_by_type(
+                |f| f == MevType::CexDex,
+                bundles,
+            ),
+            cex_dex_total_revenue:            Self::total_revenue_by_type(
+                |f| f == MevType::CexDex,
+                bundles,
+            ),
+            cex_dex_average_profit_margin:    Self::average_profit_margin(
+                |f| f == MevType::CexDex,
+                bundles,
+            )
+            .unwrap_or_default(),
+            cex_dex_top_searcher_profit_addr: cex_dex_searcher_prof_addr,
+            cex_dex_top_searcher_rev_addr:    cex_dex_searcher_rev_addr,
+            cex_dex_top_searcher_profit:      cex_dex_searcher_prof,
+            cex_dex_top_searcher_rev:         cex_dex_searcher_rev,
+            cex_dex_top_fund_profit:          cex_dex_fund_profit,
+            cex_dex_top_fund_profit_id:       cex_dex_fund_profit_addr,
+            cex_dex_top_fund_rev_id:          cex_dex_fund_rev_addr,
+            cex_dex_top_fund_rev:             cex_dex_fund_rev,
+            cex_dex_most_arbed_dex_profit:    cex_dex_dex_prof,
+            cex_dex_most_arbed_dex_address:   cex_dex_dex_addr,
+            cex_dex_most_arbed_dex_revenue:   cex_dex_dex_rev,
+            cex_dex_most_arbed_pair_profit:   cex_dex_pair_prof,
+            cex_dex_most_arbed_pair_address:  cex_dex_pair_addr,
+            cex_dex_most_arbed_pair_revenue:  cex_dex_pair_rev,
+            cex_dex_most_arbed_pool_revenue:  cex_dex_pool_rev,
+            cex_dex_most_arbed_pool_profit:   cex_dex_pool_prof,
+            cex_dex_most_arbed_pool_address:  cex_dex_pool_addr,
+
+            // liquidation
+            liquidation_top_searcher_profit_addr: liquidation_searcher_prof_addr,
+            liquidation_top_searcher_rev_addr:    liquidation_searcher_rev_addr,
+            liquidation_top_searcher_profit:      liquidation_searcher_prof,
+            liquidation_top_searcher_rev:         liquidation_searcher_rev,
+            liquidation_average_profit_margin:    Self::average_profit_margin(
+                |b| b == MevType::Liquidation,
+                bundles,
+            )
+            .unwrap_or_default(),
+            liquidation_total_revenue:            Self::total_revenue_by_type(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            liquidation_searchers:                Self::unique(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            liquidation_total_profit:             Self::total_profit_by_type(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            most_liquidated_token_rev:            liq_most_rev,
+            most_liquidated_token_profit:         liq_most_prof,
+            most_liquidated_token_address:        liq_most_token,
+            total_usd_liquidated:                 Self::total_revenue_by_type(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+        }
+    }
+
+    fn get_pool_fn(data: &BundleData) -> Vec<Address> {
+        match data {
+            BundleData::Jit(j) => j
+                .victim_swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|r| r.header.eoa)
-                .unwrap_or_default(),
-            arb_total_profit: bundles
+                .flatten()
+                .map(|s| s.pool)
+                .collect::<Vec<_>>(),
+            BundleData::JitSandwich(j) => j
+                .victim_swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .map(|b| b.header.profit_usd)
-                .sum::<f64>(),
-            arb_total_revenue: bundles
+                .flatten()
+                .map(|s| s.pool)
+                .collect::<Vec<_>>(),
+            BundleData::CexDex(c) => c.swaps.iter().map(|p| p.pool).collect::<Vec<_>>(),
+            BundleData::Sandwich(c) => c
+                .victim_swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .map(|b| b.header.profit_usd + b.header.bribe_usd)
-                .sum::<f64>(),
-            arb_unique_searchers: bundles
+                .flatten()
+                .map(|p| p.pool)
+                .collect::<Vec<_>>(),
+            BundleData::AtomicArb(a) => a.swaps.iter().map(|p| p.pool).collect::<Vec<_>>(),
+            _ => vec![],
+        }
+    }
+
+    fn get_dex_fn(data: &BundleData) -> Vec<Protocol> {
+        match data {
+            BundleData::Jit(j) => j
+                .victim_swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .map(|b| b.header.eoa)
-                .unique()
-                .count() as u64,
-            arb_unique_funds: bundles
+                .flatten()
+                .map(|s| s.protocol)
+                .collect::<Vec<_>>(),
+            BundleData::JitSandwich(j) => j
+                .victim_swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .filter_map(|b| {
-                    let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
-                    if eoa.fund.is_none() {
-                        let contract = db
-                            .try_fetch_searcher_contract_info(b.header.mev_contract?)
-                            .unwrap()?;
-                        (!contract.fund.is_none()).then_some(contract.fund)
-                    } else {
-                        Some(eoa.fund)
-                    }
-                })
-                .unique()
-                .count() as u64,
-            most_arbed_pair: bundles
+                .flatten()
+                .map(|s| s.protocol)
+                .collect::<Vec<_>>(),
+            BundleData::CexDex(c) => c.swaps.iter().map(|s| s.protocol).collect::<Vec<_>>(),
+            BundleData::Sandwich(c) => c
+                .victim_swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .flat_map(|b| {
-                    let BundleData::AtomicArb(arb) = &b.data else { unreachable!() };
-                    arb.swaps
-                        .iter()
-                        .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
-                })
-                .counts()
+                .flatten()
+                .map(|s| s.protocol)
+                .collect::<Vec<_>>(),
+            BundleData::AtomicArb(a) => a.swaps.iter().map(|s| s.protocol).collect::<Vec<_>>(),
+            BundleData::Liquidation(l) => l
+                .liquidations
                 .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_arbed_pool: bundles
+                .map(|l| l.protocol)
+                .collect::<Vec<_>>(),
+            _ => vec![],
+        }
+    }
+
+    fn get_pair_fn(data: &BundleData) -> Vec<Pair> {
+        match data {
+            BundleData::Jit(j) => j
+                .victim_swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .flat_map(|b| {
-                    let BundleData::AtomicArb(arb) = &b.data else { unreachable!() };
-                    arb.swaps.iter().map(|s| s.pool)
-                })
-                .counts()
+                .flatten()
+                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .collect::<Vec<_>>(),
+            BundleData::JitSandwich(j) => j
+                .victim_swaps
                 .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_arbed_dex: bundles
+                .flatten()
+                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .collect::<Vec<_>>(),
+            BundleData::CexDex(c) => c
+                .swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::AtomicArb)
-                .flat_map(|b| {
-                    let BundleData::AtomicArb(arb) = &b.data else { unreachable!() };
-                    arb.swaps.iter().map(|s| s.protocol)
-                })
-                .counts()
+                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .collect::<Vec<_>>(),
+            BundleData::Sandwich(c) => c
+                .victim_swaps
                 .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_sandwiched_pair: bundles
+                .flatten()
+                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .collect::<Vec<_>>(),
+            BundleData::AtomicArb(a) => a
+                .swaps
                 .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .flat_map(|b| {
-                    let BundleData::Sandwich(sando) = &b.data else { unreachable!() };
-                    sando
-                        .victim_swaps
-                        .iter()
-                        .flatten()
-                        .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
-                })
-                .counts()
+                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .collect::<Vec<_>>(),
+            _ => vec![],
+        }
+    }
+
+    fn biggest_arb_profit(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Option<(TxHash, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .map(|s| (s.header.tx_hash, s.header.profit_usd))
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+    }
+
+    fn biggest_arb_revenue(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Option<(TxHash, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .map(|s| (s.header.tx_hash, s.header.profit_usd + s.header.bribe_usd))
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+    }
+
+    fn total_revenue_by_type(mev_type: impl Fn(MevType) -> bool, bundles: &[Bundle]) -> f64 {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .map(|s| s.header.profit_usd + s.header.bribe_usd)
+            .sum::<f64>()
+    }
+
+    fn total_profit_by_type(mev_type: impl Fn(MevType) -> bool, bundles: &[Bundle]) -> f64 {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .map(|s| s.header.profit_usd)
+            .sum::<f64>()
+    }
+
+    fn top_fund_by_type_profit<DB: LibmdbxReader>(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        db: &DB,
+    ) -> Option<(Fund, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.mev_type()))
+            .filter_map(|b| {
+                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+                if eoa.fund.is_none() {
+                    let mev_contract = b.header.mev_contract?;
+                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
+                    Some((contract.fund, b.header.profit_usd))
+                } else {
+                    Some((eoa.fund, b.header.profit_usd))
+                }
+            })
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+    }
+
+    fn top_fund_by_type_rev<DB: LibmdbxReader>(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        db: &DB,
+    ) -> Option<(Fund, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.mev_type()))
+            .filter_map(|b| {
+                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+
+                if eoa.fund.is_none() {
+                    let mev_contract = b.header.mev_contract?;
+                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
+                    Some((contract.fund, b.header.profit_usd + b.header.bribe_usd))
+                } else {
+                    Some((eoa.fund, b.header.profit_usd + b.header.bribe_usd))
+                }
+            })
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+    }
+
+    fn top_searcher_by_profit(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Option<(Address, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
+            .map(|r| (r.header.eoa, r.header.profit_usd))
+    }
+
+    fn top_searcher_by_rev(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Option<(Address, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .max_by(|a, b| {
+                (a.header.profit_usd + a.header.bribe_usd)
+                    .total_cmp(&(b.header.profit_usd + b.header.bribe_usd))
+            })
+            .map(|r| (r.header.eoa, r.header.profit_usd + r.header.bribe_usd))
+    }
+
+    fn most_transacted_pool(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<Address>,
+    ) -> Option<(Address, f64, f64)> {
+        Self::most_transacted(mev_type, bundles, f)
+    }
+
+    fn most_transacted_pair(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<Pair>,
+    ) -> Option<(Pair, f64, f64)> {
+        Self::most_transacted(mev_type, bundles, f)
+    }
+
+    fn most_transacted_dex(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<Protocol>,
+    ) -> Option<(Protocol, f64, f64)> {
+        Self::most_transacted(mev_type, bundles, f)
+    }
+
+    fn average_profit_margin(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Option<f64> {
+        Some(
+            bundles
                 .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_sandwiched_pool: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .flat_map(|b| {
-                    let BundleData::Sandwich(sando) = &b.data else { unreachable!() };
-                    sando.victim_swaps.iter().flatten().map(|s| s.pool)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_sandwiched_dex: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .flat_map(|b| {
-                    let BundleData::Sandwich(sando) = &b.data else { unreachable!() };
-                    sando.victim_swaps.iter().flatten().map(|s| s.protocol)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            sandwich_top_searcher: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|r| r.header.eoa)
-                .unwrap_or_default(),
-            sandwich_unique_searchers: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .map(|b| b.header.eoa)
-                .unique()
-                .count() as u64,
-            sandwich_total_swapper_loss: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .map(|b| b.header.profit_usd + b.header.bribe_usd)
-                .sum::<f64>(),
-            sandwich_total_profit: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .map(|b| b.header.profit_usd)
-                .sum::<f64>(),
-            sandwich_total_revenue: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Sandwich)
-                .map(|b| b.header.profit_usd + b.header.bribe_usd)
-                .sum::<f64>(),
-            jit_sandwich_total_profit: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .map(|b| b.header.profit_usd)
-                .sum::<f64>(),
-            jit_sandwich_total_revenue: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .map(|b| b.header.profit_usd + b.header.bribe_usd)
-                .sum::<f64>(),
-            jit_sandwich_top_searcher: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|r| r.header.eoa)
-                .unwrap_or_default(),
-            jit_sandwich_total_swapper_loss: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .map(|b| b.header.profit_usd + b.header.bribe_usd)
-                .sum::<f64>(),
-            jit_sandwich_unique_searchers: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .map(|f| f.header.eoa)
-                .unique()
-                .count() as u64,
-            most_jit_sandwiched_pair: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .flat_map(|b| {
-                    let BundleData::JitSandwich(jit_sand) = &b.data else { unreachable!() };
-                    jit_sand
-                        .victim_swaps
-                        .iter()
-                        .flatten()
-                        .map(|s| Pair(s.token_out.address, s.token_in.address).ordered())
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_jit_sandwiched_dex: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .flat_map(|b| {
-                    let BundleData::JitSandwich(jit_sand) = &b.data else { unreachable!() };
-                    jit_sand.victim_swaps.iter().flatten().map(|s| s.protocol)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_jit_sandwiched_pool: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::JitSandwich)
-                .flat_map(|b| {
-                    let BundleData::JitSandwich(jit_sand) = &b.data else { unreachable!() };
-                    jit_sand.victim_swaps.iter().flatten().map(|s| s.pool)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            jit_top_searcher: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Jit)
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|r| r.header.eoa)
-                .unwrap_or_default(),
-            jit_total_revenue: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Jit)
-                .map(|b| b.header.profit_usd + b.header.bribe_usd)
-                .sum::<f64>(),
-            jit_total_profit: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Jit)
-                .map(|b| b.header.profit_usd)
-                .sum::<f64>(),
-            most_jit_pool: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Jit)
-                .flat_map(|b| {
-                    let BundleData::Jit(jit) = &b.data else { unreachable!() };
-                    jit.victim_swaps.iter().flatten().map(|s| s.pool)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_jit_pair: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Jit)
-                .flat_map(|b| {
-                    let BundleData::Jit(jit) = &b.data else { unreachable!() };
-                    jit.victim_swaps
-                        .iter()
-                        .flatten()
-                        .map(|s| Pair(s.token_out.address, s.token_in.address).ordered())
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_jit_dex: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Jit)
-                .flat_map(|b| {
-                    let BundleData::Jit(jit) = &b.data else { unreachable!() };
-                    jit.victim_swaps.iter().flatten().map(|s| s.protocol)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            jit_unique_searchers: bundles
-                .iter()
-                .filter(|f| f.data.mev_type() == MevType::Jit)
-                .map(|b| b.header.eoa)
-                .unique()
-                .count() as u64,
-            cex_top_fund: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .filter(|b| {
-                    let Some(eoa) = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap() else {
-                        return false
-                    };
-                    if eoa.fund.is_none() {
-                        let Some(mev_contract) = b.header.mev_contract else { return false };
-                        let Some(contract) =
-                            db.try_fetch_searcher_contract_info(mev_contract).unwrap()
-                        else {
-                            return false
-                        };
-                        !contract.fund.is_none()
-                    } else {
-                        true
-                    }
-                })
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|h| h.header.mev_contract.unwrap_or(h.header.eoa))
-                .unwrap_or_default(),
-            cex_dex_total_profit: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .map(|b| b.header.profit_usd)
-                .sum::<f64>(),
-            cex_dex_total_rev: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .map(|b| b.header.profit_usd + b.header.bribe_usd)
-                .sum::<f64>(),
-            cex_dex_most_arb_pool_rev: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .flat_map(|b| {
-                    let BundleData::CexDex(cex) = &b.data else { unreachable!() };
-                    cex.optimistic_route_details
-                        .iter()
-                        .zip(cex.swaps.iter())
-                        .map(|(route, pool)| {
-                            (pool.pool, route.pnl_pre_gas.maker_taker_mid.0.clone())
-                        })
-                })
-                .into_group_map()
-                .iter()
-                .max_by_key(|a| a.1.iter().sum::<Rational>())
-                .map(|a| *a.0)
-                .unwrap_or_default(),
-            cex_dex_most_arb_pool_profit: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .flat_map(|b| {
-                    let BundleData::CexDex(cex) = &b.data else { unreachable!() };
-                    cex.optimistic_route_details
-                        .iter()
-                        .zip(cex.swaps.iter())
-                        .map(|(route, pool)| {
-                            (
-                                pool.pool,
-                                &route.pnl_pre_gas.maker_taker_mid.0
-                                    - Rational::try_from(b.header.bribe_usd).unwrap(),
-                            )
-                        })
-                })
-                .into_group_map()
-                .iter()
-                .max_by_key(|a| a.1.iter().sum::<Rational>())
-                .map(|a| *a.0)
-                .unwrap_or_default(),
-            cex_dex_most_arb_pair_rev: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .flat_map(|b| {
-                    let BundleData::CexDex(cex) = &b.data else { unreachable!() };
-                    cex.optimistic_route_details
-                        .iter()
-                        .zip(cex.swaps.iter())
-                        .map(|(route, pool)| {
-                            (
-                                Pair(pool.token_in.address, pool.token_out.address).ordered(),
-                                route.pnl_pre_gas.maker_taker_mid.0.clone(),
-                            )
-                        })
-                })
-                .into_group_map()
-                .iter()
-                .max_by_key(|a| a.1.iter().sum::<Rational>())
-                .map(|a| *a.0)
-                .unwrap_or_default(),
-            cex_dex_most_arb_pair_profit: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .flat_map(|b| {
-                    let BundleData::CexDex(cex) = &b.data else { unreachable!() };
-                    cex.optimistic_route_details
-                        .iter()
-                        .zip(cex.swaps.iter())
-                        .map(|(route, pool)| {
-                            (
-                                Pair(pool.token_in.address, pool.token_out.address).ordered(),
-                                &route.pnl_pre_gas.maker_taker_mid.0
-                                    - Rational::try_from(b.header.bribe_usd).unwrap(),
-                            )
-                        })
-                })
-                .into_group_map()
-                .iter()
-                .max_by_key(|a| a.1.iter().sum::<Rational>())
-                .map(|a| *a.0)
-                .unwrap_or_default(),
-            cex_top_searcher: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::CexDex)
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|r| r.header.eoa)
-                .unwrap_or_default(),
-            liquidation_top_searcher: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation)
-                .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
-                .map(|r| r.header.eoa)
-                .unwrap_or_default(),
-            liquidation_average_profit_margin: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation && b.header.bribe_usd != 0.0)
+                .filter(|b| mev_type(b.data.mev_type()) && b.header.bribe_usd != 0.0)
                 .map(|s| s.header.profit_usd / s.header.bribe_usd)
                 .sum::<f64>()
                 / Some(
                     bundles
                         .iter()
-                        .filter(|b| {
-                            b.data.mev_type() == MevType::Liquidation && b.header.bribe_usd != 0.0
-                        })
+                        .filter(|b| mev_type(b.data.mev_type()) && b.header.bribe_usd != 0.0)
                         .count(),
                 )
                 .filter(|value| *value != 0)
-                .map(|f| f as f64)
-                .unwrap_or(1.0),
-            liquidation_total_revenue: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation)
-                .map(|s| s.header.profit_usd + s.header.bribe_usd)
-                .sum::<f64>(),
-            liquidation_total_profit: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation)
-                .map(|s| s.header.profit_usd)
-                .sum::<f64>(),
-            total_usd_liquidated: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation)
-                .map(|s| s.header.profit_usd + s.header.bribe_usd)
-                .sum::<f64>(),
-            most_liquidated_token: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation)
-                .flat_map(|b| {
-                    let BundleData::Liquidation(liq) = &b.data else { unreachable!() };
-                    liq.liquidations.iter().map(|l| l.collateral_asset.address)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            most_liquidated_protocol: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation)
-                .flat_map(|b| {
-                    let BundleData::Liquidation(liq) = &b.data else { unreachable!() };
-                    liq.liquidations.iter().map(|l| l.protocol)
-                })
-                .counts()
-                .iter()
-                .max_by_key(|k| k.1)
-                .map(|r| *r.0)
-                .unwrap_or_default(),
-            liquidation_unique_searchers: bundles
-                .iter()
-                .filter(|b| b.data.mev_type() == MevType::Liquidation)
-                .map(|b| b.header.eoa)
-                .unique()
-                .count() as u64,
-        }
+                .map(|f| f as f64)?,
+        )
+    }
+
+    fn unique(mev_type: fn(MevType) -> bool, bundles: &[Bundle]) -> u64 {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .map(|b| b.header.eoa)
+            .unique()
+            .count() as u64
+    }
+
+    fn unique_funds<DB: LibmdbxReader>(
+        mev_type: fn(MevType) -> bool,
+        bundles: &[Bundle],
+        db: &DB,
+    ) -> u64 {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.mev_type()))
+            .filter_map(|b| {
+                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
+                if eoa.fund.is_none() {
+                    let mev_contract = b.header.mev_contract?;
+                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
+                    Some(contract.fund)
+                } else {
+                    Some(eoa.fund)
+                }
+            })
+            .unique()
+            .count() as u64
+    }
+
+    fn most_transacted<Ty: Copy + Hash + Eq>(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<Ty>,
+    ) -> Option<(Ty, f64, f64)> {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .flat_map(|b| {
+                let res = f(&b.data);
+                let mut merged = Vec::with_capacity(res.len());
+                for r in res {
+                    merged
+                        .push((r, (b.header.profit_usd, b.header.profit_usd + b.header.bribe_usd)));
+                }
+                merged
+            })
+            .into_group_map()
+            .iter()
+            .max_by_key(|v| v.1.len())
+            .map(|t| {
+                let (p, r): (Vec<_>, Vec<_>) = t.1.iter().copied().unzip();
+                (*t.0, p.iter().sum::<f64>(), r.iter().sum::<f64>())
+            })
+    }
+}
+
+pub trait ThreeUnzip<A, B, C> {
+    fn three_unzip(self) -> (Option<A>, Option<B>, Option<C>)
+    where
+        Self: Sized;
+}
+
+impl<A, B, C> ThreeUnzip<A, B, C> for Option<(A, B, C)> {
+    fn three_unzip(self) -> (Option<A>, Option<B>, Option<C>)
+    where
+        Self: Sized,
+    {
+        self.map(|i| (Some(i.0), Some(i.1), Some(i.2)))
+            .unwrap_or_default()
     }
 }

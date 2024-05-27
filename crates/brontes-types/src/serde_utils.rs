@@ -459,6 +459,29 @@ pub mod vec_txhash {
             .collect())
     }
 }
+pub mod option_txhash {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::TxHash;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+    #[allow(dead_code)]
+    pub fn serialize<S: Serializer>(u: &Option<TxHash>, serializer: S) -> Result<S::Ok, S::Error> {
+        u.map(|t| format!("{:?}", t)).serialize(serializer)
+    }
+    #[allow(dead_code)]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<TxHash>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data: Option<String> = Deserialize::deserialize(deserializer)?;
+
+        Ok(data.map(|data| TxHash::from_str(&data).unwrap()))
+    }
+}
 
 pub mod txhash {
 
@@ -536,7 +559,7 @@ pub mod option_address {
     };
 
     pub fn serialize<S: Serializer>(u: &Option<Address>, serializer: S) -> Result<S::Ok, S::Error> {
-        let st: String = format!("{:?}", u.clone());
+        let st = u.as_ref().map(|u| format!("{:?}", u));
         st.serialize(serializer)
     }
 
@@ -682,9 +705,16 @@ pub mod socials {
 }
 
 pub mod option_fund {
-    use serde::de::{Deserialize, Deserializer};
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
 
     use crate::db::searcher::Fund;
+    pub fn serialize<S: Serializer>(u: &Option<Fund>, serializer: S) -> Result<S::Ok, S::Error> {
+        let st = u.map(|f| f.to_string());
+        st.serialize(serializer)
+    }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Fund>, D::Error>
     where
@@ -720,6 +750,69 @@ pub mod address_pair {
         let (data0, data1): (String, String) = Deserialize::deserialize(deserializer)?;
 
         Ok(Pair(Address::from_str(&data0).unwrap(), Address::from_str(&data1).unwrap()))
+    }
+}
+
+pub mod option_pair {
+
+    use std::str::FromStr;
+
+    use alloy_primitives::Address;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::pair::Pair;
+
+    pub fn serialize<S: Serializer>(u: &Option<Pair>, serializer: S) -> Result<S::Ok, S::Error> {
+        if let Some(u) = u {
+            let st = (Some(format!("{:?}", u.0)), Some(format!("{:?}", u.1)));
+            st.serialize(serializer)
+        } else {
+            (None::<String>, None::<String>).serialize(serializer)
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Pair>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let (data0, data1): (Option<String>, Option<String>) =
+            Deserialize::deserialize(deserializer)?;
+
+        if let (Some(data0), Some(data1)) = (data0, data1) {
+            Ok(Some(Pair(Address::from_str(&data0).unwrap(), Address::from_str(&data1).unwrap())))
+        } else {
+            Ok(None)
+        }
+    }
+}
+pub mod option_protocol {
+
+    use std::str::FromStr;
+
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::Protocol;
+
+    pub fn serialize<S: Serializer>(
+        u: &Option<Protocol>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let st = u.map(|u| u.to_string());
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Protocol>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let d: Option<String> = Deserialize::deserialize(deserializer)?;
+        Ok(d.map(|d| Protocol::from_str(&d).unwrap()))
     }
 }
 
