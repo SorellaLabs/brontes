@@ -559,7 +559,7 @@ pub mod option_address {
     };
 
     pub fn serialize<S: Serializer>(u: &Option<Address>, serializer: S) -> Result<S::Ok, S::Error> {
-        let st = u.map(|u| format!("{:?}", u.clone()));
+        let st = u.as_ref().map(|u| format!("{:?}", u));
         st.serialize(serializer)
     }
 
@@ -713,7 +713,7 @@ pub mod option_fund {
     use crate::db::searcher::Fund;
     pub fn serialize<S: Serializer>(u: &Option<Fund>, serializer: S) -> Result<S::Ok, S::Error> {
         let st = u.map(|f| f.to_string());
-        Some(st).serialize(serializer)
+        st.serialize(serializer)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Fund>, D::Error>
