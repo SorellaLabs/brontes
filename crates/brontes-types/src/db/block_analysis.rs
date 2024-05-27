@@ -19,8 +19,7 @@ use crate::{
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Row, Default)]
 pub struct BlockAnalysis {
-    pub block_number: u64,
-
+    pub block_number:              u64,
     // all
     pub all_total_profit:          f64,
     pub all_total_revenue:         f64,

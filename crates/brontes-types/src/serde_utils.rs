@@ -470,9 +470,7 @@ pub mod option_txhash {
     };
     #[allow(dead_code)]
     pub fn serialize<S: Serializer>(u: &Option<TxHash>, serializer: S) -> Result<S::Ok, S::Error> {
-        u.map(|t| format!("{:?}", t))
-            .unwrap_or_default()
-            .serialize(serializer)
+        u.map(|t| format!("{:?}", t)).serialize(serializer)
     }
     #[allow(dead_code)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<TxHash>, D::Error>
@@ -561,8 +559,8 @@ pub mod option_address {
     };
 
     pub fn serialize<S: Serializer>(u: &Option<Address>, serializer: S) -> Result<S::Ok, S::Error> {
-        let st = u.map(|u| format!("{:?}", u.clone())).unwrap_or_default();
-        Some(st).serialize(serializer)
+        let st = u.map(|u| format!("{:?}", u.clone()));
+        st.serialize(serializer)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Address>, D::Error>
@@ -714,7 +712,7 @@ pub mod option_fund {
 
     use crate::db::searcher::Fund;
     pub fn serialize<S: Serializer>(u: &Option<Fund>, serializer: S) -> Result<S::Ok, S::Error> {
-        let st = u.map(|f| f.to_string()).unwrap_or_default();
+        let st = u.map(|f| f.to_string());
         Some(st).serialize(serializer)
     }
 
@@ -769,10 +767,10 @@ pub mod option_pair {
 
     pub fn serialize<S: Serializer>(u: &Option<Pair>, serializer: S) -> Result<S::Ok, S::Error> {
         if let Some(u) = u {
-            let st = (format!("{:?}", u.0), format!("{:?}", u.1));
+            let st = (Some(format!("{:?}", u.0)), Some(format!("{:?}", u.1)));
             st.serialize(serializer)
         } else {
-            ("", "").serialize(serializer)
+            (None::<String>, None::<String>).serialize(serializer)
         }
     }
 
@@ -805,7 +803,7 @@ pub mod option_protocol {
         u: &Option<Protocol>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let st = u.map(|u| u.to_string()).unwrap_or_default();
+        let st = u.map(|u| u.to_string());
         st.serialize(serializer)
     }
 
