@@ -770,7 +770,7 @@ pub mod option_pair {
             let st = (format!("{:?}", u.0), format!("{:?}", u.1));
             st.serialize(serializer)
         } else {
-            (None::<String>, None::<String>).serialize(serializer)
+            (Some(""), Some("")).serialize(serializer)
         }
     }
 
