@@ -182,6 +182,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
         tx_index:              classified_sandwich.tx_index,
         tx_hash:               *sandwich.frontrun_tx_hash.first().unwrap_or_default(),
         mev_type:              MevType::JitSandwich,
+        fund:                  classified_sandwich.fund,
         block_number:          classified_sandwich.block_number,
         eoa:                   jit_classified.eoa,
         mev_contract:          classified_sandwich.mev_contract,

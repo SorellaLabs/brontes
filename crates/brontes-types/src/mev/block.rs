@@ -41,8 +41,8 @@ pub struct MevBlock {
     pub total_bribe:                 u128,
     pub total_mev_bribe:             u128,
     pub total_mev_priority_fee_paid: u128,
-    pub builder_name:                Option<String>,
     pub builder_address:             Address,
+    pub builder_name:                Option<String>,
     pub builder_eth_profit:          f64,
     pub builder_profit_usd:          f64,
     // Builder MEV profit from their vertically integrated searchers (in USD)
@@ -383,6 +383,7 @@ impl Serialize for MevBlock {
         ser_struct
             .serialize_field("total_mev_priority_fee_paid", &self.total_mev_priority_fee_paid)?;
         ser_struct.serialize_field("builder_address", &format!("{:?}", self.builder_address))?;
+        ser_struct.serialize_field("builder_name", &self.builder_name)?;
         ser_struct.serialize_field("builder_eth_profit", &self.builder_eth_profit)?;
         ser_struct.serialize_field("builder_profit_usd", &self.builder_profit_usd)?;
         ser_struct.serialize_field("builder_mev_profit_usd", &self.builder_mev_profit_usd)?;
@@ -490,6 +491,7 @@ impl DbRow for MevBlock {
         "total_mev_bribe",
         "total_mev_priority_fee_paid",
         "builder_address",
+        "builder_name",
         "builder_eth_profit",
         "builder_profit_usd",
         "builder_mev_profit_usd",
