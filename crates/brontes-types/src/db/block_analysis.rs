@@ -636,7 +636,7 @@ impl BlockAnalysis {
                 .map(|p| p.pool)
                 .collect::<Vec<_>>(),
             BundleData::AtomicArb(a) => a.swaps.iter().map(|p| p.pool).collect::<Vec<_>>(),
-            _ => unreachable!(),
+            _ => vec![],
         }
     }
 
@@ -667,7 +667,7 @@ impl BlockAnalysis {
                 .iter()
                 .map(|l| l.protocol)
                 .collect::<Vec<_>>(),
-            _ => unreachable!(),
+            _ => vec![],
         }
     }
 
@@ -701,7 +701,7 @@ impl BlockAnalysis {
                 .iter()
                 .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
                 .collect::<Vec<_>>(),
-            _ => unreachable!(),
+            _ => vec![],
         }
     }
 
