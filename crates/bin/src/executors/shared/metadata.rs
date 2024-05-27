@@ -103,6 +103,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 err
             }) else {
                 tracing::error!(?block, "failed to load full metadata from libmdbx");
+                self.dex_pricer_stream.add_failed_tree(block);
                 return;
             };
             meta.builder_info = libmdbx
