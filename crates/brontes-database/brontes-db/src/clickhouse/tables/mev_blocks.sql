@@ -18,6 +18,7 @@ CREATE TABLE mev.mev_blocks ON CLUSTER eth_cluster0
     `total_mev_bribe` UInt128, 
     `total_mev_priority_fee_paid` UInt128,
     `builder_address` String,
+    `builder_name` Nullable(String),
     `builder_eth_profit` Float64,
     `builder_profit_usd` Float64,
     `builder_mev_profit_usd` Float64,
