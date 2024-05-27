@@ -723,6 +723,20 @@ mod tests {
         case0.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
 
         db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
+
+        let mut case1 = CexDex::default();
+        case1.swaps = vec![swap.clone()];
+        case1.global_vmap_details = vec![arb_detail.clone()];
+        case1.global_vmap_pnl = arb_pnl.clone();
+        case1.optimal_route_details = vec![arb_detail.clone()];
+        case1.optimal_route_pnl = arb_pnl.clone();
+        case1.optimistic_route_details = vec![arb_detail.clone()];
+        case1.optimistic_trade_details = vec![vec![opt_trade.clone()]];
+        case1.optimistic_route_pnl = None;
+        case1.per_exchange_details = vec![vec![arb_detail.clone()]];
+        case1.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
+
+        db.insert_one::<ClickhouseCexDex>(&case1).await.unwrap();
     }
 
     async fn jit(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
