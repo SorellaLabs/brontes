@@ -598,7 +598,7 @@ mod tests {
         FastHashMap, GasDetails,
     };
     use db_interfaces::{
-        clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestingClient},
+        clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestClient},
         test_utils::TestDatabase,
     };
 
@@ -611,7 +611,7 @@ mod tests {
     }
 
     #[allow(unused)]
-    async fn searcher_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn searcher_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = JoinedSearcherInfo {
             address:         Default::default(),
             fund:            Default::default(),
@@ -623,9 +623,7 @@ mod tests {
             gas_bids:        Default::default(),
         };
 
-        db.insert_one::<ClickhouseSearcherInfo>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<BrontesSearcher_Info>(&case0).await.unwrap();
 
         let query = "SELECT * FROM brontes.searcher_info";
         let queried: JoinedSearcherInfo = db.query_one(query, &()).await.unwrap();
@@ -633,14 +631,14 @@ mod tests {
         assert_eq!(queried, case0);
     }
 
-    async fn token_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn token_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = TokenInfoWithAddress::default();
 
-        db.insert_one::<ClickhouseTokenInfo>(&case0).await.unwrap();
+        db.insert_one::<BrontesToken_Info>(&case0).await.unwrap();
     }
 
     // async fn searcher_stats(db:
-    // &ClickhouseTestingClient<BrontesClickhouseTables>) {     let case0 =
+    // &ClickhouseTestClient<BrontesClickhouseTables>) {     let case0 =
     // SearcherStatsWithAddress::default();
     //
     //     db.insert_one::<ClickhouseSearcherStats>(&case0)
@@ -655,7 +653,7 @@ mod tests {
     // }
 
     #[allow(unused)]
-    async fn builder_stats(_db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn builder_stats(_db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         todo!();
         /*
         let case0 = BuilderStatsWithAddress::default();
@@ -671,7 +669,7 @@ mod tests {
         */
     }
 
-    async fn dex_price_mapping(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn dex_price_mapping(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0_pair = Pair::default();
         let case0_dex_prices = DexPrices::default();
         let mut case0_map = FastHashMap::default();
@@ -683,7 +681,7 @@ mod tests {
             quote:        Some(case0_map),
         };
 
-        db.insert_one::<ClickhouseDexPriceMapping>(&case0)
+        db.insert_one::<BrontesDex_Price_Mapping>(&case0)
             .await
             .unwrap();
 
@@ -693,17 +691,17 @@ mod tests {
         assert_eq!(queried, case0);
     }
 
-    async fn mev_block(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn mev_block(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0_possible = PossibleMev::default();
         let case0 = MevBlock {
             possible_mev: PossibleMevCollection(vec![case0_possible]),
             ..Default::default()
         };
 
-        db.insert_one::<ClickhouseMevBlocks>(&case0).await.unwrap();
+        db.insert_one::<MevMev_Blocks>(&case0).await.unwrap();
     }
 
-    async fn cex_dex(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn cex_dex(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let swap = NormalizedSwap::default();
         let arb_detail = ArbDetails::default();
         let arb_pnl = ArbPnl::default();
@@ -739,7 +737,7 @@ mod tests {
         db.insert_one::<ClickhouseCexDex>(&case1).await.unwrap();
     }
 
-    async fn jit(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn jit(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let mut case0 = JitLiquidity::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
@@ -751,10 +749,10 @@ mod tests {
         case0.victim_swaps = vec![vec![swap]];
         case0.victim_swaps_gas_details = vec![gas_details];
 
-        db.insert_one::<ClickhouseJit>(&case0).await.unwrap();
+        db.insert_one::<MevJit>(&case0).await.unwrap();
     }
 
-    async fn jit_sandwich(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn jit_sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let mut case0 = JitLiquiditySandwich::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
@@ -766,12 +764,10 @@ mod tests {
         case0.victim_swaps = vec![vec![swap]];
         case0.victim_swaps_gas_details = vec![gas_details];
 
-        db.insert_one::<ClickhouseJitSandwich>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<MevJit_Sandwich>(&case0).await.unwrap();
     }
 
-    async fn liquidations(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn liquidations(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let mut case0 = Liquidation::default();
         let swap = NormalizedSwap::default();
         let liquidation = NormalizedLiquidation::default();
@@ -781,20 +777,16 @@ mod tests {
         case0.liquidations = vec![liquidation];
         case0.gas_details = gas_details;
 
-        db.insert_one::<ClickhouseLiquidations>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<MevLiquidations>(&case0).await.unwrap();
     }
 
-    async fn bundle_header(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn bundle_header(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BundleHeader::default();
 
-        db.insert_one::<ClickhouseBundleHeader>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<MevBundle_Header>(&case0).await.unwrap();
     }
 
-    async fn sandwich(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let mut case0 = Sandwich::default();
         let swap0 = NormalizedSwap::default();
         let swap1 = NormalizedSwap::default();
@@ -806,10 +798,10 @@ mod tests {
         case0.victim_swaps_gas_details = vec![gas_details];
         case0.backrun_swaps = vec![swap2];
 
-        db.insert_one::<ClickhouseSandwiches>(&case0).await.unwrap();
+        db.insert_one::<MevSandwiches>(&case0).await.unwrap();
     }
 
-    async fn atomic_arb(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn atomic_arb(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let mut case0 = AtomicArb::default();
         let swap = NormalizedSwap::default();
         let gas_details = GasDetails::default();
@@ -817,10 +809,10 @@ mod tests {
         case0.swaps = vec![swap];
         case0.gas_details = gas_details;
 
-        db.insert_one::<ClickhouseAtomicArbs>(&case0).await.unwrap();
+        db.insert_one::<MevAtomic_Arbs>(&case0).await.unwrap();
     }
 
-    async fn pools(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn pools(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = ProtocolInfoClickhouse {
             protocol:         "NONE".to_string(),
             protocol_subtype: "NONE".to_string(),
@@ -838,15 +830,13 @@ mod tests {
             init_block:       0,
         };
 
-        db.insert_one::<ClickhousePools>(&case0).await.unwrap();
+        db.insert_one::<EthereumPools>(&case0).await.unwrap();
     }
 
-    async fn builder_info(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn builder_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BuilderInfoWithAddress::default();
 
-        db.insert_one::<ClickhouseBuilderInfo>(&case0)
-            .await
-            .unwrap();
+        db.insert_one::<BrontesBuilder_Info>(&case0).await.unwrap();
     }
 
     async fn block_analysis(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
@@ -866,10 +856,10 @@ mod tests {
             .map(|root| (root, tree.header.number).into())
             .collect::<Vec<_>>();
 
-        db.insert_many::<ClickhouseTree>(&roots).await.unwrap();
+        db.insert_many::<BrontesTree>(&roots).await.unwrap();
     }
 
-    async fn run_all(database: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn run_all(database: &ClickhouseTestClient<BrontesClickhouseTables>) {
         builder_info(database).await;
         pools(database).await;
         atomic_arb(database).await;
@@ -892,7 +882,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_all_inserts() {
         init_threadpools(10);
-        let test_db = ClickhouseTestingClient { client: Clickhouse::default().client };
+        let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
 
         let tables = &BrontesClickhouseTables::all_tables();
         test_db

@@ -98,22 +98,22 @@ impl ClickhouseBuffered {
         }
 
         inserts!(
-            (ClickhouseBundleHeader, BundleHeader),
-            (ClickhouseMevBlocks, MevBlock),
-            (ClickhouseCexDex, CexDex),
-            (ClickhouseSearcherTx, SearcherTx),
-            (ClickhouseJit, JitLiquidity),
-            (ClickhouseJitSandwich, JitLiquiditySandwich),
-            (ClickhouseSandwiches, Sandwich),
-            (ClickhouseAtomicArbs, AtomicArb),
-            (ClickhouseLiquidations, Liquidation),
-            (ClickhouseSearcherInfo, JoinedSearcherInfo),
-            (ClickhouseDexPriceMapping, DexQuotesWithBlockNumber),
-            (ClickhouseTokenInfo, TokenInfoWithAddress),
-            (ClickhousePools, ProtocolInfoClickhouse),
-            (ClickhouseBuilderInfo, BuilderInfoWithAddress),
-            (ClickhouseTree, TransactionRoot),
-            (ClickhouseBlockAnalysis, BlockAnalysis)
+            (MevBundle_Header, BundleHeader),
+            (MevMev_Blocks, MevBlock),
+            (MevCex_Dex, CexDex),
+            (MevSearcher_Tx, SearcherTx),
+            (MevJit, JitLiquidity),
+            (MevJit_Sandwich, JitLiquiditySandwich),
+            (MevSandwiches, Sandwich),
+            (MevAtomic_Arbs, AtomicArb),
+            (MevLiquidations, Liquidation),
+            (BrontesSearcher_Info, JoinedSearcherInfo),
+            (BrontesDex_Price_Mapping, DexQuotesWithBlockNumber),
+            (BrontesToken_Info, TokenInfoWithAddress),
+            (EthereumPools, ProtocolInfoClickhouse),
+            (BrontesBuilder_Info, BuilderInfoWithAddress),
+            (BrontesTree, TransactionRoot),
+            (BrontesBlock_Analysis, BlockAnalysis)
         );
 
         Ok(())
