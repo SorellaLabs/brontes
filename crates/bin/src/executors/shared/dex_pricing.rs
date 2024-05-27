@@ -74,7 +74,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
     }
 
     pub fn pending_trees(&self) -> usize {
-        self.tmp_trees.len() + self.pending_trees().len()
+        self.tmp_trees.len() + self.pending_trees.len()
     }
 
     pub fn is_done(&self) -> bool {
