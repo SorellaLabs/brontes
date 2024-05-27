@@ -1,5 +1,7 @@
 # Cex-Dex Inspector
 
+The cex-dex inspector operates in
+
 ## Markout with trades
 
 We currently operate an extremely optimistic model to compute the centralized exchange price.

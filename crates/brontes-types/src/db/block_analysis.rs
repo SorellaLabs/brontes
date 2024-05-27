@@ -7,7 +7,6 @@ use reth_primitives::TxHash;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::traits::LibmdbxReader;
 use crate::{
     db::searcher::Fund,
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
@@ -220,7 +219,7 @@ pub struct BlockAnalysis {
 }
 
 impl BlockAnalysis {
-    pub fn new<DB: LibmdbxReader>(block: &MevBlock, bundles: &[Bundle], db: &DB) -> Self {
+    pub fn new(block: &MevBlock, bundles: &[Bundle]) -> Self {
         // All fields
         let (all_profit_addr, all_profit_am) =
             Self::top_searcher_by_profit(|b| b != MevType::SearcherTx, bundles).unzip();
@@ -228,9 +227,9 @@ impl BlockAnalysis {
             Self::top_searcher_by_rev(|b| b != MevType::SearcherTx, bundles).unzip();
 
         let (fund_rev, fund_rev_am) =
-            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx, bundles, db).unzip();
+            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx, bundles).unzip();
         let (fund_profit, fund_profit_am) =
-            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx, bundles, db).unzip();
+            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx, bundles).unzip();
 
         let (all_pool, all_pool_prof, all_pool_rev) = Self::most_transacted_pool(
             |b| b != MevType::SearcherTx && b != MevType::Liquidation,
@@ -253,9 +252,9 @@ impl BlockAnalysis {
             Self::top_searcher_by_rev(|b| b == MevType::AtomicArb, bundles).unzip();
 
         let (atomic_fund_rev_addr, atomic_fund_rev) =
-            Self::top_fund_by_type_rev(|b| b == MevType::AtomicArb, bundles, db).unzip();
+            Self::top_fund_by_type_rev(|b| b == MevType::AtomicArb, bundles).unzip();
         let (atomic_fund_profit_addr, atomic_fund_profit) =
-            Self::top_fund_by_type_profit(|b| b == MevType::AtomicArb, bundles, db).unzip();
+            Self::top_fund_by_type_profit(|b| b == MevType::AtomicArb, bundles).unzip();
 
         let (atomic_pool_addr, atomic_pool_prof, atomic_pool_rev) =
             Self::most_transacted_pool(|b| b == MevType::AtomicArb, bundles, Self::get_pool_fn)
@@ -327,9 +326,9 @@ impl BlockAnalysis {
             Self::top_searcher_by_rev(|b| b == MevType::CexDex, bundles).unzip();
 
         let (cex_dex_fund_rev_addr, cex_dex_fund_rev) =
-            Self::top_fund_by_type_rev(|b| b == MevType::CexDex, bundles, db).unzip();
+            Self::top_fund_by_type_rev(|b| b == MevType::CexDex, bundles).unzip();
         let (cex_dex_fund_profit_addr, cex_dex_fund_profit) =
-            Self::top_fund_by_type_profit(|b| b == MevType::CexDex, bundles, db).unzip();
+            Self::top_fund_by_type_profit(|b| b == MevType::CexDex, bundles).unzip();
 
         let (cex_dex_pool_addr, cex_dex_pool_prof, cex_dex_pool_rev) =
             Self::most_transacted_pool(|b| b == MevType::CexDex, bundles, Self::get_pool_fn)
@@ -398,7 +397,6 @@ impl BlockAnalysis {
             all_fund_count:                  Self::unique_funds(
                 |b| b != MevType::SearcherTx,
                 bundles,
-                db,
             ),
             all_most_arbed_pool_address:     all_pool,
             all_most_arbed_pool_profit:      all_pool_prof,
@@ -411,7 +409,6 @@ impl BlockAnalysis {
             atomic_fund_count:               Self::unique_funds(
                 |b| b == MevType::AtomicArb,
                 bundles,
-                db,
             ),
             atomic_total_profit:             Self::total_profit_by_type(
                 |b| b == MevType::AtomicArb,
@@ -545,11 +542,7 @@ impl BlockAnalysis {
 
             // cex dex
             cex_dex_searchers:                Self::unique(|b| b == MevType::CexDex, bundles),
-            cex_dex_fund_count:               Self::unique_funds(
-                |b| b == MevType::CexDex,
-                bundles,
-                db,
-            ),
+            cex_dex_fund_count:               Self::unique_funds(|b| b == MevType::CexDex, bundles),
             cex_dex_total_profit:             Self::total_profit_by_type(
                 |f| f == MevType::CexDex,
                 bundles,
@@ -742,44 +735,35 @@ impl BlockAnalysis {
             .sum::<f64>()
     }
 
-    fn top_fund_by_type_profit<DB: LibmdbxReader>(
+    fn top_fund_by_type_profit(
         mev_type: impl Fn(MevType) -> bool,
         bundles: &[Bundle],
-        db: &DB,
     ) -> Option<(Fund, f64)> {
         bundles
             .iter()
             .filter(|b| mev_type(b.mev_type()))
             .filter_map(|b| {
-                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
-                if eoa.fund.is_none() {
-                    let mev_contract = b.header.mev_contract?;
-                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
-                    Some((contract.fund, b.header.profit_usd))
+                if b.header.fund == Fund::None {
+                    None
                 } else {
-                    Some((eoa.fund, b.header.profit_usd))
+                    Some((b.header.fund, b.header.profit_usd))
                 }
             })
             .max_by(|a, b| a.1.total_cmp(&b.1))
     }
 
-    fn top_fund_by_type_rev<DB: LibmdbxReader>(
+    fn top_fund_by_type_rev(
         mev_type: impl Fn(MevType) -> bool,
         bundles: &[Bundle],
-        db: &DB,
     ) -> Option<(Fund, f64)> {
         bundles
             .iter()
             .filter(|b| mev_type(b.mev_type()))
             .filter_map(|b| {
-                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
-
-                if eoa.fund.is_none() {
-                    let mev_contract = b.header.mev_contract?;
-                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
-                    Some((contract.fund, b.header.profit_usd + b.header.bribe_usd))
+                if b.header.fund == Fund::None {
+                    None
                 } else {
-                    Some((eoa.fund, b.header.profit_usd + b.header.bribe_usd))
+                    Some((b.header.fund, b.header.profit_usd + b.header.bribe_usd))
                 }
             })
             .max_by(|a, b| a.1.total_cmp(&b.1))
@@ -864,24 +848,11 @@ impl BlockAnalysis {
             .count() as u64
     }
 
-    fn unique_funds<DB: LibmdbxReader>(
-        mev_type: fn(MevType) -> bool,
-        bundles: &[Bundle],
-        db: &DB,
-    ) -> u64 {
+    fn unique_funds(mev_type: fn(MevType) -> bool, bundles: &[Bundle]) -> u64 {
         bundles
             .iter()
             .filter(|b| mev_type(b.mev_type()))
-            .filter_map(|b| {
-                let eoa = db.try_fetch_searcher_eoa_info(b.header.eoa).unwrap()?;
-                if eoa.fund.is_none() {
-                    let mev_contract = b.header.mev_contract?;
-                    let contract = db.try_fetch_searcher_contract_info(mev_contract).unwrap()?;
-                    Some(contract.fund)
-                } else {
-                    Some(eoa.fund)
-                }
-            })
+            .filter_map(|b| if b.header.fund == Fund::None { None } else { Some(b.header.fund) })
             .unique()
             .count() as u64
     }
