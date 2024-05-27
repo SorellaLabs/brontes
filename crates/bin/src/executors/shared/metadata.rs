@@ -73,7 +73,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
 
     pub fn should_process_next_block(&self) -> bool {
         self.needs_more_data.load(Ordering::SeqCst)
-            && self.dex_pricer_stream.pending_trees.len() < MAX_PENDING_TREES
+            && self.dex_pricer_stream.pending_trees() < MAX_PENDING_TREES
             && self.result_buf.len() < MAX_PENDING_TREES
     }
 
@@ -131,6 +131,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 tracing::error!(%err);
                 err
             }) else {
+                self.dex_pricer_stream.add_failed_tree(block);
                 tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;
             };
@@ -145,6 +146,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
                 tracing::error!(%err);
                 err
             }) else {
+                self.dex_pricer_stream.add_failed_tree(block);
                 tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;
             };

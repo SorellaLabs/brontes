@@ -15,7 +15,7 @@ use brontes_types::{
     },
     normalized_actions::Action,
     tree::BlockTree,
-    BrontesTaskExecutor, FastHashMap,
+    BrontesTaskExecutor, FastHashMap, FastHashSet,
 };
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, error::TrySendError, Receiver, Sender};
@@ -29,6 +29,9 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     tx:       PricingSender<T, DB>,
 
     pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Action>, Metadata)>,
+    // if metadata fetching fails, we store the block for it here so that we know to not spam load
+    // trees and cause memory overflows
+    pub tmp_trees:            FastHashSet<u64>,
     task_executor:            BrontesTaskExecutor,
 }
 
@@ -39,7 +42,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         let fut = Box::pin(Self::pricing_thread(pricer, tx_clone));
 
         task_executor.spawn_critical("dex pricer", fut);
-        Self { pending_trees: FastHashMap::default(), task_executor, tx, receiver: rx }
+        Self {
+            pending_trees: FastHashMap::default(),
+            task_executor,
+            tx,
+            receiver: rx,
+            tmp_trees: FastHashSet::default(),
+        }
     }
 
     async fn pricing_thread(mut pricer: BrontesBatchPricer<T, DB>, tx: PricingSender<T, DB>) {
@@ -64,6 +73,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         }
     }
 
+    pub fn pending_trees(&self) -> usize {
+        self.tmp_trees.len() + self.pending_trees().len()
+    }
+
     pub fn is_done(&self) -> bool {
         self.pending_trees.is_empty()
     }
@@ -73,6 +86,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         let fut = Box::pin(Self::pricing_thread(pricer, tx));
 
         self.task_executor.spawn_critical("dex pricer", fut);
+    }
+
+    pub fn add_failed_tree(&mut self, block: u64) {
+        self.tmp_trees.insert(block);
     }
 
     pub fn add_pending_inspection(&mut self, block: u64, tree: BlockTree<Action>, meta: Metadata) {
@@ -102,6 +119,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
                 debug!(target:"brontes","Generated dex prices for block: {} ", block);
 
                 let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
+                    let _ = self.tmp_trees.remove(&block);
                     tracing::error!("no tree for price");
                     return Poll::Ready(None);
                 };
