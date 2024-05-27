@@ -427,7 +427,7 @@ impl Serialize for CexDex {
             );
             ser_struct.serialize_field("optimistic_route_pnl", &t)?;
         } else {
-            let n: Option<[u8; 32]> = Some([0; 32]);
+            let n: Option<[u8; 32]> = None;
             ser_struct
                 .serialize_field("optimistic_route_pnl", &(((n, n), (n, n)), ((n, n), (n, n))))?;
         }
