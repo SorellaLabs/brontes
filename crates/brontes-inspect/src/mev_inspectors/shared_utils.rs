@@ -287,11 +287,18 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             })
             .sum::<f64>();
 
+        let fund = info
+            .get_searcher_contract_info()
+            .map(|i| i.fund)
+            .or_else(|| info.get_searcher_eao_info().map(|f| f.fund))
+            .unwrap_or_default();
+
         BundleHeader {
             block_number: metadata.block_num,
             tx_index: info.tx_index,
             tx_hash: info.tx_hash,
             eoa: info.eoa,
+            fund,
             mev_contract: info.mev_contract,
             profit_usd,
             bribe_usd,
