@@ -1,6 +1,8 @@
-use brontes_database::{libmdbx::Libmdbx, Tables};
+use brontes_database::{libmdbx::Libmdbx, InitializedState, InitializedStateData, Tables};
+use brontes_types::db::initialized_state::{
+    CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG,
+};
 use clap::Parser;
-use eyre::Ok;
 
 #[derive(Debug, Parser)]
 pub struct Clear {
@@ -14,6 +16,15 @@ pub struct Clear {
                          AddressMeta,SearcherEOAs,SearcherContracts,SubGraphs,TxTraces"
     )]
     pub tables: Vec<Tables>,
+
+    #[arg(long, default_value = "false")]
+    pub clear_metadata_flags:    bool,
+    #[arg(long, default_value = "false")]
+    pub clear_cex_flags:         bool,
+    #[arg(long, default_value = "false")]
+    pub clear_tx_traces_flags:   bool,
+    #[arg(long, default_value = "false")]
+    pub clear_dex_pricing_flags: bool,
 }
 
 impl Clear {
@@ -53,22 +64,38 @@ impl Clear {
             )
         });
 
-        #[cfg(feature = "local-reth")]
-        if !self.tables.contains(&Tables::InitializedState)
-            && [Tables::CexPrice, Tables::BlockInfo, Tables::DexPrice]
-                .iter()
-                .any(|table| self.tables.contains(table))
+        if self.clear_cex_flags
+            || self.clear_tx_traces_flags
+            || self.clear_metadata_flags
+            || self.clear_dex_pricing_flags
         {
-            db.clear_table::<brontes_database::libmdbx::tables::InitializedState>()?;
-        }
+            db.view_db(|tx| {
+                let mut cur = tx.new_cursor::<InitializedState>()?;
+                let walker = cur.walk_range(..)?;
+                let mut updated_res = Vec::new();
 
-        #[cfg(not(feature = "local-reth"))]
-        if !self.tables.contains(&Tables::InitializedState)
-            && [Tables::CexPrice, Tables::BlockInfo, Tables::DexPrice, Tables::TxTraces]
-                .iter()
-                .any(|table| self.tables.contains(table))
-        {
-            db.clear_table::<brontes_database::libmdbx::tables::InitializedState>()?;
+                for item in walker {
+                    if let Ok(i) = item {
+                        let mut key = i.1;
+                        if self.clear_dex_pricing_flags {
+                            key.apply_reset_key(DEX_PRICE_FLAG);
+                        }
+                        if self.clear_metadata_flags {
+                            key.apply_reset_key(META_FLAG);
+                        }
+                        if self.clear_tx_traces_flags {
+                            key.apply_reset_key(TRACE_FLAG);
+                        }
+                        if self.clear_cex_flags {
+                            key.apply_reset_key(CEX_QUOTES_FLAG);
+                            key.apply_reset_key(CEX_TRADES_FLAG);
+                        }
+                        updated_res.push(InitializedStateData::new(i.0, i.1));
+                    }
+                }
+                db.write_table(&updated_res)?;
+                Ok(())
+            })?;
         }
 
         Ok(())
