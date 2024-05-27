@@ -79,7 +79,7 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
 
     let (block_details, mev_details) =
         on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token, db);
-    let block_analysis = BlockAnalysis::new(&block_details, &mev_details, db);
+    let block_analysis = BlockAnalysis::new(&block_details, &mev_details);
 
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs, block_analysis }
 }
