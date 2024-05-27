@@ -872,6 +872,7 @@ mod tests {
         token_info(database).await;
         // searcher_info(database).await;
         tree(database).await;
+        block_analysis(database).await;
     }
 
     #[brontes_macros::test]
