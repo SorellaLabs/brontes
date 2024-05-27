@@ -14,6 +14,7 @@ use super::MevType;
 use crate::{
     db::{
         redefined_types::primitives::*,
+        searcher::Fund,
         token_info::{TokenInfoWithAddress, TokenInfoWithAddressRedefined},
     },
     serde_utils::{addresss, option_addresss, txhash},
@@ -38,9 +39,9 @@ pub struct BundleHeader {
     pub eoa:                   Address,
     #[serde(with = "option_addresss")]
     pub mev_contract:          Option<Address>,
-    // #[redefined(same_fields)]
-    // #[serde(default)]
-    // pub fund:                  Fund,
+    #[redefined(same_fields)]
+    #[serde(default)]
+    pub fund:                  Fund,
     pub profit_usd:            f64,
     // Total tx cost in USD
     pub bribe_usd:             f64,
@@ -122,7 +123,7 @@ impl Serialize for BundleHeader {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("BundleHeader", 11)?;
+        let mut ser_struct = serializer.serialize_struct("BundleHeader", 12)?;
 
         ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("tx_index", &self.tx_index)?;
@@ -130,6 +131,7 @@ impl Serialize for BundleHeader {
         ser_struct.serialize_field("eoa", &format!("{:?}", &self.eoa))?;
         ser_struct
             .serialize_field("mev_contract", &self.mev_contract.map(|a| format!("{:?}", a)))?;
+        ser_struct.serialize_field("fund", &self.fund)?;
         ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
         ser_struct.serialize_field("bribe_usd", &self.bribe_usd)?;
         ser_struct.serialize_field("mev_type", &self.mev_type)?;
@@ -201,6 +203,7 @@ impl DbRow for BundleHeader {
         "tx_hash",
         "eoa",
         "mev_contract",
+        "fund",
         "profit_usd",
         "bribe_usd",
         "mev_type",

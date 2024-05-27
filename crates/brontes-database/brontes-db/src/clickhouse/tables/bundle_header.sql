@@ -5,6 +5,7 @@ CREATE TABLE mev.bundle_header ON CLUSTER eth_cluster0
     `tx_hash` String,
     `eoa` String,
     `mev_contract` Nullable(String),
+    `fund` String,
     `profit_usd` Float64,
     `bribe_usd` Float64,
     `mev_type` String,

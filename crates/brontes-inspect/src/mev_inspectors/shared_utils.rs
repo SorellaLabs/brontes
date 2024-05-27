@@ -342,10 +342,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 .inspect(|m| m.inspector_100x_profit(mev_type));
         }
 
+        let fund = info
+            .get_searcher_contract_info()
+            .map(|i| i.fund)
+            .or_else(|| info.get_searcher_eao_info().map(|f| f.fund))
+            .unwrap_or_default();
+
         BundleHeader {
             block_number: metadata.block_num,
             tx_index: info.tx_index,
             tx_hash: info.tx_hash,
+            fund,
             eoa: info.eoa,
             mev_contract: info.mev_contract,
             profit_usd,
