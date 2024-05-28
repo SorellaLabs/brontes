@@ -425,6 +425,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
+                &tx_hash,
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
                 swap.swap_rate().clone().to_float(),
@@ -1163,6 +1164,7 @@ pub struct ExchangeLeg {
 }
 
 fn log_price_delta(
+    tx_hash: &FixedBytes<32>,
     token_in_symbol: &str,
     token_out_symbol: &str,
     dex_swap_rate: f64,
@@ -1176,13 +1178,15 @@ fn log_price_delta(
          - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
          - Token Contracts:\n\
            * Token In: https://etherscan.io/address/{}\n\
-           * Token Out: https://etherscan.io/address/{}",
+           * Token Out: https://etherscan.io/address/{}\n
+           * Tx Hash: https://etherscan.io/tx/{:?}\n",
         token_in_symbol,
         token_out_symbol,
         dex_swap_rate,
         cex_price,
         token_in_address,
-        token_out_address
+        token_out_address,
+        tx_hash
     );
 }
 
