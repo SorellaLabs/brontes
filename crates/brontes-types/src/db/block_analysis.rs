@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Row)]
 pub struct BlockAnalysis {
     pub block_number: u64,
     pub eth_price: f64,

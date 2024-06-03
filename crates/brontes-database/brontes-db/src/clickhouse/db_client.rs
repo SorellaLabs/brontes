@@ -809,23 +809,18 @@ mod tests {
         let case0 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl_maker: Rational::ZERO,
-            global_vmap_pnl_taker: Rational::ZERO,
+            global_vmap_pnl: arb_pnl.clone(),
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl_maker: Rational::ZERO,
-            optimal_route_pnl_taker: Rational::ZERO,
+            optimal_route_pnl: arb_pnl.clone(),
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl_maker: Rational::ZERO,
-            optimistic_route_pnl_taker: Rational::ZERO,
+            optimistic_route_pnl: Some(arb_pnl.clone()),
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
+            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
             ..CexDex::default()
         };
 
-        db.insert_one::<MevCex_Dex>(&DbDataWithRunId::new_with_run_id(case0, 0))
-            .await
-            .unwrap();
+        db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
 
         let case1 = CexDex {
             swaps: vec![swap.clone()],
@@ -1002,6 +997,12 @@ mod tests {
         };
 
         db.insert_one::<EthereumPools>(&case0).await.unwrap();
+    }
+
+    async fn builder_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let case0 = BuilderInfoWithAddress::default();
+
+        db.insert_one::<BrontesBuilder_Info>(&case0).await.unwrap();
     }
 
     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
