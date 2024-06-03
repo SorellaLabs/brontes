@@ -81,33 +81,33 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     mev_details: Vec<Bundle>,
     analysis: BlockAnalysis,
 ) {
-    debug!(
-        target: "brontes::results",
-        "block details\n {}",
-        block_details.to_string()
-    );
+    // debug!(
+    //     target: "brontes::results",
+    //     "block details\n {}",
+    //     block_details.to_string()
+    // );
 
-    let block_number = block_details.block_number;
-    output_mev_and_update_searcher_info(database, &mev_details).await;
+    // let block_number = block_details.block_number;
+    // output_mev_and_update_searcher_info(database, &mev_details).await;
 
-    // Attempt to save the MEV block details
-    if let Err(e) = database
-        .save_mev_blocks(block_details.block_number, block_details, mev_details)
-        .await
-    {
-        tracing::error!(
-            "Failed to insert classified data into libmdbx: {:?} at block: {}",
-            e,
-            block_number
-        );
-    }
-    if let Err(e) = database.write_block_analysis(analysis).await {
-        tracing::error!(
-            "Failed to insert block analysis data into db: {:?} at block: {}",
-            e,
-            block_number
-        );
-    }
+    // // Attempt to save the MEV block details
+    // if let Err(e) = database
+    //     .save_mev_blocks(block_details.block_number, block_details, mev_details)
+    //     .await
+    // {
+    //     tracing::error!(
+    //         "Failed to insert classified data into libmdbx: {:?} at block: {}",
+    //         e,
+    //         block_number
+    //     );
+    // }
+    // if let Err(e) = database.write_block_analysis(analysis).await {
+    //     tracing::error!(
+    //         "Failed to insert block analysis data into db: {:?} at block: {}",
+    //         e,
+    //         block_number
+    //     );
+    //} 
 }
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
