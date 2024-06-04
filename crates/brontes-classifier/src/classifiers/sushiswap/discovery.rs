@@ -74,4 +74,36 @@ mod tests {
             .await
             .unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_sushiswap_v3_discovery() {
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!("16263375b987afb2e30c952a8681ce9546225cc4ede2051cbb3e8fcadf493903 "));
+
+        let eq_create = NormalizedNewPool {
+            trace_index:  1,
+            protocol:     Protocol::SushiSwapV3,
+            pool_address: Address::new(hex!("baceb8ec6b9355dfc0269c18bac9d6e2bdc29c4f")),
+            tokens:       vec![
+                hex!("189564397643D9e6173A002f1BA98da7d40a0FA6").into(),
+                hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").into(),
+            ],
+        };
+
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!("baceb8ec6b9355dfc0269c18bac9d6e2bdc29c4f")),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
+            .await
+            .unwrap();
+    }
 }
