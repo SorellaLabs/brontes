@@ -135,6 +135,38 @@ mod tests {
     use crate::test_utils::ClassifierTestUtils;
 
     #[brontes_macros::test]
+    async fn test_curve_v1_metapool_discovery() {
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!("49878ff3e5e0de4f45c875c94977c154a4f6bea22640f72e85a18434672e3bb2"));
+
+        let eq_create = NormalizedNewPool {
+            trace_index:  1,
+            protocol:     Protocol::CurveCryptoSwapPool,
+            pool_address: Address::new(hex!("5a6a4d54456819380173272a5e8e9b9904bdf41b")),
+            tokens:       vec![
+                hex!("99D8a9C45b2ecA8864373A26D1459e3Dff1e17F3").into(),
+                hex!("bEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7").into(),
+            ],
+        };
+
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!("97130cc28e99d13ce1ae41d022268b5cc7409cda")),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
     async fn test_curve_crypto_swap_discovery() {
         let utils = ClassifierTestUtils::new().await;
         let tx =
