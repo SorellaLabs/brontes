@@ -203,6 +203,40 @@ mod tests {
     }
 
     #[brontes_macros::test]
+    async fn test_curve_crvUSD_metapool_discovery() {
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!("01df49b92d7aa754862257bf2343ec44656a13ccf8f30bb6599d0dd267e477b8"));
+
+        let eq_create = NormalizedNewPool {
+            trace_index:  1,
+            protocol:     Protocol::CurvecrvUSDMetaPool,
+            pool_address: Address::new(hex!("768caA20Cf1921772B6F56950e23Bafd94aF5CFF")),
+            tokens:       vec![
+                hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
+                hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
+                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
+                hex!("8191DC3053Fe4564c17694cB203663d3C07B8960").into(),
+            ],
+        };
+
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!("768caA20Cf1921772B6F56950e23Bafd94aF5CFF")),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
     async fn test_curve_crypto_swap_discovery() {
         let utils = ClassifierTestUtils::new().await;
         let tx =
