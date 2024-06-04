@@ -55,7 +55,7 @@ discovery_impl!(
 
         vec![NormalizedNewPool {
             trace_index,
-            protocol: Protocol::CurveCryptoSwapPool,
+            protocol: Protocol::CurveTriCryptoFactory,
             pool_address: deployed_address,
             tokens: call_data._coins.to_vec(),
         }]
