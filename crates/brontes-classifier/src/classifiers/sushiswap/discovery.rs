@@ -51,7 +51,7 @@ mod tests {
 
         let eq_create = NormalizedNewPool {
             trace_index:  1,
-            protocol:     Protocol::BalancerV1,
+            protocol:     Protocol::SushiSwapV2,
             pool_address: Address::new(hex!("4c5be0fea74c33455f81c85561146bdaf09633da")),
             tokens:       vec![
                 hex!("189564397643D9e6173A002f1BA98da7d40a0FA6").into(),
