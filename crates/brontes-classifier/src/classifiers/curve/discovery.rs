@@ -165,4 +165,37 @@ mod tests {
             .await
             .unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_curve_tri_crypto_discovery() {
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!("28359dab5f78b92fb89f826f37296d86174ff6c62b0e14b44ad8b6abd0de92da"));
+
+        let eq_create = NormalizedNewPool {
+            trace_index:  1,
+            protocol:     Protocol::CurveTriCryptoPool,
+            pool_address: Address::new(hex!("84cecb5525c6b1c20070e742da870062e84da178")),
+            tokens:       vec![
+                hex!("a71d0588EAf47f12B13cF8eC750430d21DF04974").into(),
+                hex!("b53ecF1345caBeE6eA1a65100Ebb153cEbcac40f").into(),
+                hex!("f3b9569F82B18aEf890De263B84189bd33EBe452").into(),
+            ],
+        };
+
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!("84cecb5525c6b1c20070e742da870062e84da178")),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
+            .await
+            .unwrap();
+    }
 }
