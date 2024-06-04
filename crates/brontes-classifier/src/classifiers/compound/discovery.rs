@@ -7,9 +7,8 @@ action_impl!(
     crate::CErc20Delegate::initialize_0Call,
     NewPool,
     [],
-    call_data:true,
+    call_data: true,
     |info: CallInfo, _call_data: initialize_0Call, _| {
-
         Ok(NormalizedNewPool {
             trace_index: info.trace_idx,
             protocol: Protocol::CompoundV2,
