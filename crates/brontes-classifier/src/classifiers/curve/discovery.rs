@@ -210,7 +210,7 @@ mod tests {
 
         let eq_create = NormalizedNewPool {
             trace_index:  1,
-            protocol:     Protocol::CurvecrvUSDMetaPool,
+            protocol:     Protocol::CurvecrvUSDPlainPool,
             pool_address: Address::new(hex!("9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc")),
             tokens:       vec![
                 hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
