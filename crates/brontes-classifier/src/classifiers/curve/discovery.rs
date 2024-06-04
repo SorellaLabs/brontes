@@ -1,4 +1,4 @@
-use std::sync::Arc;
+7use std::sync::Arc;
 
 use alloy_primitives::{Address, U256};
 use brontes_macros::{curve_discovery_impl, discovery_impl};
@@ -145,8 +145,10 @@ mod tests {
             protocol:     Protocol::CurveV1MetaPool,
             pool_address: Address::new(hex!("5a6a4d54456819380173272a5e8e9b9904bdf41b")),
             tokens:       vec![
-                hex!("99D8a9C45b2ecA8864373A26D1459e3Dff1e17F3").into(),
-                hex!("bEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7").into(),
+                hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
+                hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
+                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
+                hex!("99d8a9c45b2eca8864373a26d1459e3dff1e17f3").into(),
             ],
         };
 
