@@ -179,7 +179,7 @@ mod tests {
         let search = TreeSearchBuilder::default().with_action(Action::is_new_pool);
 
         classifier_utils
-            .contains_action(curve_v1_discovery, 0, eq_action, search)
+            .contains_action(curve_crypto_swap_discovery, 0, eq_action, search)
             .await
             .unwrap();
     }
