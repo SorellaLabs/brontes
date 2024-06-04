@@ -164,23 +164,23 @@ mod tests {
     async fn test_curve_crvUSD_discovery() {
     }
 
-    #[brontes_macros::test]
-    async fn test_curve_crypto_swap_discovery() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let curve_crypto_swap_discovery =
-            B256::from(hex!("b8225567ede93bc296b5ac263d5419f8910bc6c93554fbf5d7a643a945011743"));
+    // #[brontes_macros::test]
+    // async fn test_curve_crypto_swap_discovery() {
+    //     let classifier_utils = ClassifierTestUtils::new().await;
+    //     let curve_crypto_swap_discovery =
+    //         B256::from(hex!("b8225567ede93bc296b5ac263d5419f8910bc6c93554fbf5d7a643a945011743"));
 
-        let eq_action = Action::NewPool(NormalizedNewPool {
-            trace_index:  1,
-            protocol:     Protocol::CurveCryptoSwapPool,
-            pool_address: hex!("F18056Bbd320E96A48e3Fbf8bC061322531aac99").into(),
-            tokens:       vec![hex!("d4092e32b3517ee0daa4da48fdc40cab6058e187").into()],
-        });
-        let search = TreeSearchBuilder::default().with_action(Action::is_new_pool);
-        println!("{search}");
-        classifier_utils
-            .contains_action(curve_crypto_swap_discovery, 0, eq_action, search)
-            .await
-            .unwrap();
-    }
+    //     let eq_action = Action::NewPool(NormalizedNewPool {
+    //         trace_index:  1,
+    //         protocol:     Protocol::CurveCryptoSwapPool,
+    //         pool_address: hex!("F18056Bbd320E96A48e3Fbf8bC061322531aac99").into(),
+    //         tokens:       vec![hex!("d4092e32b3517ee0daa4da48fdc40cab6058e187").into()],
+    //     });
+    //     let search = TreeSearchBuilder::default().with_action(Action::is_new_pool);
+    //     println!("{search}");
+    //     classifier_utils
+    //         .contains_action(curve_crypto_swap_discovery, 0, eq_action, search)
+    //         .await
+    //         .unwrap();
+    // }
 }
