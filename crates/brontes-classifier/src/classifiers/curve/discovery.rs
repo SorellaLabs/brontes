@@ -153,7 +153,7 @@ mod tests {
         utils
             .test_discovery_classification(
                 tx,
-                Address::new(hex!("97130cc28e99d13ce1ae41d022268b5cc7409cda")),
+                Address::new(hex!("5a6a4d54456819380173272a5e8e9b9904bdf41b")),
                 |mut pool| {
                     assert_eq!(pool.len(), 1);
                     let pool = pool.remove(0);
