@@ -177,7 +177,7 @@ mod tests {
             tokens:       vec![hex!("d4092e32b3517ee0daa4da48fdc40cab6058e187").into()],
         });
         let search = TreeSearchBuilder::default().with_action(Action::is_new_pool);
-
+        println!("{search}");
         classifier_utils
             .contains_action(curve_crypto_swap_discovery, 0, eq_action, search)
             .await
