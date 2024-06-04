@@ -1,4 +1,4 @@
-7use std::sync::Arc;
+use std::sync::Arc;
 
 use alloy_primitives::{Address, U256};
 use brontes_macros::{curve_discovery_impl, discovery_impl};
