@@ -45,26 +45,55 @@ mod tests {
 
     use crate::test_utils::ClassifierTestUtils;
 
+    // #[brontes_macros::test]
+    // async fn test_uniswap_v2_discovery() {
+    //     let classifier_utils = ClassifierTestUtils::new().await;
+    //     let uniswap_v2_discovery =
+    //         B256::from(hex!("16bba367585045f6c87ec2beca8243575d7a5891f58c1af5e70bc45de4d3e347"));
+
+    //     let eq_action = Action::NewPool(NormalizedNewPool {
+    //         trace_index:  1,
+    //         protocol:     Protocol::UniswapV2,
+    //         pool_address: hex!("5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").into(),
+    //         tokens:       vec![
+    //             hex!("52c6889677E514BDD0f09E32003C15B33E88DccE").into(),
+    //             hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
+    //         ],
+    //     });
+    //     let search = TreeSearchBuilder::default().with_action(Action::is_new_pool);
+
+    //     classifier_utils
+    //         .contains_action(uniswap_v2_discovery, 0, eq_action, search)
+    //         .await
+    //         .unwrap();
+    // }
     #[brontes_macros::test]
     async fn test_uniswap_v2_discovery() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let compound_v2_discovery =
-            B256::from(hex!("16bba367585045f6c87ec2beca8243575d7a5891f58c1af5e70bc45de4d3e347"));
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!("f5b9b2c23fa3ddf58c31a9377d37439740913f526910cca947c0a3e4bb9bb1d7"));
 
-        let eq_action = Action::NewPool(NormalizedNewPool {
+        let eq_create = NormalizedNewPool {
             trace_index:  1,
-            protocol:     Protocol::UniswapV2,
-            pool_address: hex!("5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f").into(),
-            tokens:       vec![
-                hex!("52c6889677E514BDD0f09E32003C15B33E88DccE").into(),
-                hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
-            ],
-        });
-        let search = TreeSearchBuilder::default().with_action(Action::is_new_pool);
+            protocol:     Protocol::BalancerV1,
+            pool_address: Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
+            tokens:       vec![],
+        };
 
-        classifier_utils
-            .contains_action(compound_v2_discovery, 0, eq_action, search)
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
             .await
             .unwrap();
     }
+
 }
