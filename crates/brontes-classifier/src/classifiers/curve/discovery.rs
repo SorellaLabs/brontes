@@ -211,19 +211,19 @@ mod tests {
         let eq_create = NormalizedNewPool {
             trace_index:  1,
             protocol:     Protocol::CurvecrvUSDMetaPool,
-            pool_address: Address::new(hex!("768caA20Cf1921772B6F56950e23Bafd94aF5CFF")),
+            pool_address: Address::new(hex!("9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc")),
             tokens:       vec![
-                hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
-                hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
-                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
-                hex!("8191DC3053Fe4564c17694cB203663d3C07B8960").into(),
+                hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
+                hex!("5E8422345238F34275888049021821E8E08CAa1f").into(),
+                hex!("0000000000000000000000000000000000000000").into(),
+                hex!("0000000000000000000000000000000000000000").into(),
             ],
         };
 
         utils
             .test_discovery_classification(
                 tx,
-                Address::new(hex!("768caA20Cf1921772B6F56950e23Bafd94aF5CFF")),
+                Address::new(hex!("9c3b46c0ceb5b9e304fcd6d88fc50f7dd24b31bc")),
                 |mut pool| {
                     assert_eq!(pool.len(), 1);
                     let pool = pool.remove(0);
