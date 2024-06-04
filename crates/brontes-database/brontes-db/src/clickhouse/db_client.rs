@@ -720,7 +720,6 @@ mod tests {
         case0.per_exchange_details = vec![vec![arb_detail.clone()]];
         case0.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
 
-        //db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
         db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
 
         let mut case1 = CexDex::default();
@@ -735,7 +734,6 @@ mod tests {
         case1.per_exchange_details = vec![vec![arb_detail.clone()]];
         case1.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
 
-        //db.insert_one::<ClickhouseCexDex>(&case1).await.unwrap();
         db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
     }
 
@@ -844,9 +842,6 @@ mod tests {
     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BlockAnalysis::default();
 
-        // db.insert_one::<ClickhouseBlockAnalysis>(&case0)
-        //     .await
-        //     .unwrap();
         db.insert_one::<BrontesBlock_Analysis>(&case0)
             .await
             .unwrap();
