@@ -142,7 +142,7 @@ mod tests {
 
         let eq_create = NormalizedNewPool {
             trace_index:  1,
-            protocol:     Protocol::CurveCryptoSwapPool,
+            protocol:     Protocol::CurveV1MetaPool,
             pool_address: Address::new(hex!("5a6a4d54456819380173272a5e8e9b9904bdf41b")),
             tokens:       vec![
                 hex!("99D8a9C45b2ecA8864373A26D1459e3Dff1e17F3").into(),
