@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_curve_v1_metapool_discovery() {
+    async fn test_curve_v2_metapool_discovery() {
         let utils = ClassifierTestUtils::new().await;
         let tx =
             B256::new(hex!("eb2401547e1318c4f643df05c0151908aca499d2e4f9488f0cdc4a94ac3fef6c"));
