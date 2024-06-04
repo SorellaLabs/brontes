@@ -37,11 +37,8 @@ discovery_impl!(
 
 #[cfg(test)]
 mod tests {
-    use alloy_primitives::{hex, B256};
-    use brontes_types::{
-        normalized_actions::{pool::NormalizedNewPool, Action},
-        Protocol, TreeSearchBuilder,
-    };
+    use alloy_primitives::{hex, Address, B256};
+    use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 
     use crate::test_utils::ClassifierTestUtils;
 
