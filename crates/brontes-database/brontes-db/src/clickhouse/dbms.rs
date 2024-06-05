@@ -9,6 +9,9 @@ use brontes_types::{
 };
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
+// TODO(timsnyder): Annotate and/or fix the `clickhouse_dbms` macro and remove
+// annotation here.
+#[allow(clippy::manual_async_fn)]
 clickhouse_dbms!(
     BrontesClickhouseTables,
     "eth_cluster0",
