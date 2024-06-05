@@ -708,74 +708,81 @@ mod tests {
         let opt_trade = OptimisticTrade::default();
         let cex_exchange = CexExchange::Binance;
 
-        let mut case0 = CexDex::default();
-        case0.swaps = vec![swap.clone()];
-        case0.global_vmap_details = vec![arb_detail.clone()];
-        case0.global_vmap_pnl = arb_pnl.clone();
-        case0.optimal_route_details = vec![arb_detail.clone()];
-        case0.optimal_route_pnl = arb_pnl.clone();
-        case0.optimistic_route_details = vec![arb_detail.clone()];
-        case0.optimistic_trade_details = vec![vec![opt_trade.clone()]];
-        case0.optimistic_route_pnl = Some(arb_pnl.clone());
-        case0.per_exchange_details = vec![vec![arb_detail.clone()]];
-        case0.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
+        let case0 = CexDex {
+            swaps: vec![swap.clone()],
+            global_vmap_details: vec![arb_detail.clone()],
+            global_vmap_pnl: arb_pnl.clone(),
+            optimal_route_details: vec![arb_detail.clone()],
+            optimal_route_pnl: arb_pnl.clone(),
+            optimistic_route_details: vec![arb_detail.clone()],
+            optimistic_trade_details: vec![vec![opt_trade.clone()]],
+            optimistic_route_pnl: Some(arb_pnl.clone()),
+            per_exchange_details: vec![vec![arb_detail.clone()]],
+            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            ..CexDex::default()
+        };
 
-        db.insert_one::<ClickhouseCexDex>(&case0).await.unwrap();
+        db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
 
-        let mut case1 = CexDex::default();
-        case1.swaps = vec![swap.clone()];
-        case1.global_vmap_details = vec![arb_detail.clone()];
-        case1.global_vmap_pnl = arb_pnl.clone();
-        case1.optimal_route_details = vec![arb_detail.clone()];
-        case1.optimal_route_pnl = arb_pnl.clone();
-        case1.optimistic_route_details = vec![arb_detail.clone()];
-        case1.optimistic_trade_details = vec![vec![opt_trade.clone()]];
-        case1.optimistic_route_pnl = None;
-        case1.per_exchange_details = vec![vec![arb_detail.clone()]];
-        case1.per_exchange_pnl = vec![(cex_exchange, arb_pnl.clone())];
+        let case1 = CexDex {
+            swaps: vec![swap.clone()],
+            global_vmap_details: vec![arb_detail.clone()],
+            global_vmap_pnl: arb_pnl.clone(),
+            optimal_route_details: vec![arb_detail.clone()],
+            optimal_route_pnl: arb_pnl.clone(),
+            optimistic_route_details: vec![arb_detail.clone()],
+            optimistic_trade_details: vec![vec![opt_trade.clone()]],
+            optimistic_route_pnl: None,
+            per_exchange_details: vec![vec![arb_detail.clone()]],
+            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            ..CexDex::default()
+        };
 
-        db.insert_one::<ClickhouseCexDex>(&case1).await.unwrap();
+        db.insert_one::<MevCex_Dex>(&case1).await.unwrap();
     }
 
     async fn jit(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let mut case0 = JitLiquidity::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
         let burn = NormalizedBurn::default();
         let gas_details = GasDetails::default();
-
-        case0.frontrun_mints = vec![mint];
-        case0.backrun_burns = vec![burn];
-        case0.victim_swaps = vec![vec![swap]];
-        case0.victim_swaps_gas_details = vec![gas_details];
+        let case0 = JitLiquidity {
+            frontrun_mints: vec![mint],
+            backrun_burns: vec![burn],
+            victim_swaps: vec![vec![swap]],
+            victim_swaps_gas_details: vec![gas_details],
+            ..JitLiquidity::default()
+        };
 
         db.insert_one::<MevJit>(&case0).await.unwrap();
     }
 
     async fn jit_sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let mut case0 = JitLiquiditySandwich::default();
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
         let burn = NormalizedBurn::default();
         let gas_details = GasDetails::default();
-
-        case0.frontrun_mints = vec![Some(vec![mint])];
-        case0.backrun_burns = vec![burn];
-        case0.victim_swaps = vec![vec![swap]];
-        case0.victim_swaps_gas_details = vec![gas_details];
+        let case0 = JitLiquiditySandwich {
+            frontrun_mints: vec![Some(vec![mint])],
+            backrun_burns: vec![burn],
+            victim_swaps: vec![vec![swap]],
+            victim_swaps_gas_details: vec![gas_details],
+            ..JitLiquiditySandwich::default()
+        };
 
         db.insert_one::<MevJit_Sandwich>(&case0).await.unwrap();
     }
 
     async fn liquidations(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let mut case0 = Liquidation::default();
         let swap = NormalizedSwap::default();
         let liquidation = NormalizedLiquidation::default();
         let gas_details = GasDetails::default();
-
-        case0.liquidation_swaps = vec![swap];
-        case0.liquidations = vec![liquidation];
-        case0.gas_details = gas_details;
+        let case0 = Liquidation {
+            liquidation_swaps: vec![swap],
+            liquidations: vec![liquidation],
+            gas_details,
+            ..Liquidation::default()
+        };
 
         db.insert_one::<MevLiquidations>(&case0).await.unwrap();
     }
@@ -787,27 +794,25 @@ mod tests {
     }
 
     async fn sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let mut case0 = Sandwich::default();
         let swap0 = NormalizedSwap::default();
         let swap1 = NormalizedSwap::default();
         let swap2 = NormalizedSwap::default();
         let gas_details = GasDetails::default();
-
-        case0.frontrun_swaps = vec![vec![swap0]];
-        case0.victim_swaps = vec![vec![swap1]];
-        case0.victim_swaps_gas_details = vec![gas_details];
-        case0.backrun_swaps = vec![swap2];
+        let case0 = Sandwich {
+            frontrun_swaps: vec![vec![swap0]],
+            victim_swaps: vec![vec![swap1]],
+            victim_swaps_gas_details: vec![gas_details],
+            backrun_swaps: vec![swap2],
+            ..Sandwich::default()
+        };
 
         db.insert_one::<MevSandwiches>(&case0).await.unwrap();
     }
 
     async fn atomic_arb(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let mut case0 = AtomicArb::default();
         let swap = NormalizedSwap::default();
         let gas_details = GasDetails::default();
-
-        case0.swaps = vec![swap];
-        case0.gas_details = gas_details;
+        let case0 = AtomicArb { swaps: vec![swap], gas_details, ..AtomicArb::default() };
 
         db.insert_one::<MevAtomic_Arbs>(&case0).await.unwrap();
     }
@@ -839,15 +844,15 @@ mod tests {
         db.insert_one::<BrontesBuilder_Info>(&case0).await.unwrap();
     }
 
-    async fn block_analysis(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BlockAnalysis::default();
 
-        db.insert_one::<ClickhouseBlockAnalysis>(&case0)
+        db.insert_one::<BrontesBlock_Analysis>(&case0)
             .await
             .unwrap();
     }
 
-    async fn tree(db: &ClickhouseTestingClient<BrontesClickhouseTables>) {
+    async fn tree(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let tree = load_tree().await;
 
         let roots: Vec<TransactionRoot> = tree
