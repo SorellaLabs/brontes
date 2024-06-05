@@ -746,7 +746,7 @@ mod tests {
         let mint = NormalizedMint::default();
         let burn = NormalizedBurn::default();
         let gas_details = GasDetails::default();
-        let mut case0 = JitLiquidity {
+        let case0 = JitLiquidity {
             frontrun_mints: vec![mint],
             backrun_burns: vec![burn],
             victim_swaps: vec![vec![swap]],
@@ -762,7 +762,7 @@ mod tests {
         let mint = NormalizedMint::default();
         let burn = NormalizedBurn::default();
         let gas_details = GasDetails::default();
-        let mut case0 = JitLiquiditySandwich {
+        let case0 = JitLiquiditySandwich {
             frontrun_mints: vec![Some(vec![mint])],
             backrun_burns: vec![burn],
             victim_swaps: vec![vec![swap]],
@@ -777,7 +777,7 @@ mod tests {
         let swap = NormalizedSwap::default();
         let liquidation = NormalizedLiquidation::default();
         let gas_details = GasDetails::default();
-        let mut case0 = Liquidation {
+        let case0 = Liquidation {
             liquidation_swaps: vec![swap],
             liquidations: vec![liquidation],
             gas_details,
@@ -798,7 +798,7 @@ mod tests {
         let swap1 = NormalizedSwap::default();
         let swap2 = NormalizedSwap::default();
         let gas_details = GasDetails::default();
-        let mut case0 = Sandwich {
+        let case0 = Sandwich {
             frontrun_swaps: vec![vec![swap0]],
             victim_swaps: vec![vec![swap1]],
             victim_swaps_gas_details: vec![gas_details],
