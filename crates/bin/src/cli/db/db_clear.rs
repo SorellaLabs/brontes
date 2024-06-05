@@ -74,24 +74,22 @@ impl Clear {
                 let walker = cur.walk_range(..)?;
                 let mut updated_res = Vec::new();
 
-                for item in walker {
-                    if let Ok(i) = item {
-                        let mut key = i.1;
-                        if self.clear_dex_pricing_flags {
-                            key.apply_reset_key(DEX_PRICE_FLAG);
-                        }
-                        if self.clear_metadata_flags {
-                            key.apply_reset_key(META_FLAG);
-                        }
-                        if self.clear_tx_traces_flags {
-                            key.apply_reset_key(TRACE_FLAG);
-                        }
-                        if self.clear_cex_flags {
-                            key.apply_reset_key(CEX_QUOTES_FLAG);
-                            key.apply_reset_key(CEX_TRADES_FLAG);
-                        }
-                        updated_res.push(InitializedStateData::new(i.0, i.1));
+                for item in walker.flatten() {
+                    let mut key = item.1;
+                    if self.clear_dex_pricing_flags {
+                        key.apply_reset_key(DEX_PRICE_FLAG);
                     }
+                    if self.clear_metadata_flags {
+                        key.apply_reset_key(META_FLAG);
+                    }
+                    if self.clear_tx_traces_flags {
+                        key.apply_reset_key(TRACE_FLAG);
+                    }
+                    if self.clear_cex_flags {
+                        key.apply_reset_key(CEX_QUOTES_FLAG);
+                        key.apply_reset_key(CEX_TRADES_FLAG);
+                    }
+                    updated_res.push(InitializedStateData::new(item.0, item.1));
                 }
                 db.write_table(&updated_res)?;
                 Ok(())
