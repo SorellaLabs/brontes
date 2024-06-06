@@ -131,8 +131,11 @@ async fn parse_meta_pool<T: TracingProvider>(
 mod tests {
     use alloy_primitives::{hex, Address, B256, FixedBytes};
     use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
+    use reth_rpc_types::trace::parity::TraceResults;
 
     use crate::test_utils::ClassifierTestUtils;
+
+    use super::query_base_pool;
 
     async fn verify_discovery(tx: FixedBytes<32>, protocol: Protocol, pool_address: Address, tokens: Vec<Address>) {
         let utils = ClassifierTestUtils::new().await;
@@ -235,12 +238,29 @@ mod tests {
     }
 
     #[brontes_macros::test]
+    async fn test_query_base_pool() {
+        let utils = ClassifierTestUtils::new().await;
+        let tracer = utils.get_tracing_provider();
+
+        let base_pool = Address::new(hex!("0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714"));
+        let is_meta = true;
+        let actual_tokens = query_base_pool(*tracer, &base_pool, is_meta).await;
+        assert_eq!(actual_tokens, vec![
+            hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D").into(),
+            hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599").into(),
+            hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6").into()]);
+    }
+
+    #[brontes_macros::test]
     async fn test_curve_v2_metapool_metapool1_discovery() {
         verify_discovery(
             hex!("11dfcfa281837030ac8c994828fe174fdd75cfa8a66971b4b84fb38a1bb08597").into(), 
             Protocol::CurveV2MetaPool, 
             hex!("6d0bd8365e2fcd0c2acf7d218f629a319b6c9d47").into(),
             vec![
+                hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D").into(),
+                hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599").into(),
+                hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6").into(),
                 hex!("fd8e70e83E399307db3978D3F34B060a06792c36").into(),
             ]
         ).await;
