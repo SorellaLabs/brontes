@@ -129,27 +129,25 @@ async fn parse_meta_pool<T: TracingProvider>(
 
 #[cfg(test)]
 mod tests {
-    use alloy_primitives::{hex, Address, B256};
+    use alloy_primitives::{hex, Address, B256, FixedBytes};
     use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 
     use crate::test_utils::ClassifierTestUtils;
 
-    fn verify_discovery(tx: String, protocol: Protocol, pool_address: String, tokens: &[&str]) {
+    async fn verify_discovery(tx: FixedBytes<32>, protocol: Protocol, pool_address: Address, tokens: Vec<Address>) {
         let utils = ClassifierTestUtils::new().await;
-        let tx =
-            B256::new(hex!(tx));
 
         let eq_create = NormalizedNewPool {
             trace_index:  1,
             protocol,
-            pool_address: Address::new(hex!(pool_address)),
-            tokens: tokens.map(|t| hex!(t).into()).collect(),
+            pool_address,
+            tokens,
         };
 
         utils
             .test_discovery_classification(
                 tx,
-                Address::new(hex!(pool_address)),
+                pool_address,
                 |mut pool| {
                     assert_eq!(pool.len(), 1);
                     let pool = pool.remove(0);
@@ -236,13 +234,13 @@ mod tests {
             hex!("6f9223d991fa3620d7295f5c7e96581bbbfcd6eb03054ebd85ed3b1d06472217").into(), 
             Protocol::CurveV2MetaPool, 
             hex!("d0e24cb3e766581952dbf258b78e89c63a37f5fb").into(),
-            [
+            vec![
                 hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
                 hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
                 hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
                 hex!("8191DC3053Fe4564c17694cB203663d3C07B8960").into(),
             ]
-        );
+        ).await;
     }
 
     #[brontes_macros::test]

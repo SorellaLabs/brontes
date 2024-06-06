@@ -101,13 +101,13 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
             block_number
         );
     }
-    // if let Err(e) = database.write_block_analysis(analysis).await {
-    //     tracing::error!(
-    //         "Failed to insert block analysis data into db: {:?} at block: {}",
-    //         e,
-    //         block_number
-    //     );
-    // }
+    if let Err(e) = database.write_block_analysis(analysis).await {
+        tracing::error!(
+            "Failed to insert block analysis data into db: {:?} at block: {}",
+            e,
+            block_number
+        );
+    }
 }
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
