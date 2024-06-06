@@ -319,7 +319,7 @@ pub mod tests {
             MevType::JitSandwich,
         )
         .with_dex_prices()
-        .with_gas_paid_usd(90.875025)
+        .with_gas_paid_usd(229.29)
         .with_expected_profit_usd(13.568977)
         .with_block(16951420)
         .needs_tokens(vec![
