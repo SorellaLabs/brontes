@@ -253,6 +253,8 @@ mod tests {
             Protocol::CurveV2MetaPool, 
             hex!("e60986759872393a8360a4a7abeab3a6e0ba7848").into(),
             vec![
+                hex!("853d955acef822db058eb8505911ed77f175b99e").into(),
+                hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
                 hex!("466a756E9A7401B5e2444a3fCB3c2C12FBEa0a54").into(),
             ]
         ).await;
