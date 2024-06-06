@@ -129,6 +129,8 @@ async fn parse_meta_pool<T: TracingProvider>(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use alloy_primitives::{hex, Address, B256, FixedBytes};
     use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
     use reth_rpc_types::trace::parity::TraceResults;
