@@ -248,9 +248,9 @@ mod tests {
         let is_meta = true;
         let actual_tokens = query_base_pool(&tracer, &base_pool, is_meta).await;
         assert_eq!(actual_tokens, vec![
-            hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D").into(),
-            hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599").into(),
-            hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6").into()]);
+            Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
+            Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
+            Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"))]);
     }
 
     #[brontes_macros::test]
