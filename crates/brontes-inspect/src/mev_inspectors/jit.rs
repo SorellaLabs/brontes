@@ -498,4 +498,17 @@ mod tests {
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_fat_jit() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(18884329)
+            .with_gas_paid_usd(40.7)
+            .with_expected_profit_usd(-10.61);
+
+        test_utils.run_inspector(config, None).await.unwrap();
+    }
 }
