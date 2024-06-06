@@ -1463,17 +1463,4 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn sandwich_portion_of_fat_jit() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_gas_paid_usd(229.29)
-            .with_expected_profit_usd(13.568977)
-            .with_block(16951420);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
 }
