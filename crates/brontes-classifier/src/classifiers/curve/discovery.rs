@@ -232,13 +232,62 @@ mod tests {
     async fn test_curve_v2_metapool_plainpool1_discovery() {
         verify_discovery(
             hex!("6f9223d991fa3620d7295f5c7e96581bbbfcd6eb03054ebd85ed3b1d06472217").into(), 
-            Protocol::CurveV2MetaPool, 
+            Protocol::CurveV2PlainPool, 
             hex!("d0e24cb3e766581952dbf258b78e89c63a37f5fb").into(),
             vec![
-                hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
-                hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
-                hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
-                hex!("8191DC3053Fe4564c17694cB203663d3C07B8960").into(),
+                hex!("1Ee4dE3CD1505Ddb2e60C20651A4aB7FfABDc8F6").into(),
+                hex!("246BE97fda42375c39E21377Ad80D8290AfdB994").into(),
+            ]
+        ).await;
+    }
+
+    #[brontes_macros::test]
+    async fn test_curve_v2_metapool_plainpool2_discovery() {
+        verify_discovery(
+            hex!("cf98501f3158251d2659c556f74e3429fbee4671d8b443269707550481f8d915").into(), 
+            Protocol::CurveV2PlainPool, 
+            hex!("0ad66fec8db84f8a3365ada04ab23ce607ac6e24").into(),
+            vec![
+                hex!("11EBe21e9d7BF541A18e1E3aC94939018Ce88F0b").into(),
+                hex!("3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0").into(),
+            ]
+        ).await;
+    }
+
+    #[brontes_macros::test]
+    async fn test_curve_v2_metapool_plainpool3_discovery() {
+        verify_discovery(
+            hex!("6d80735b4a78471669dd66301df030be9e71447d7c35a40331a3f55a8b74ec4e").into(), 
+            Protocol::CurveV2PlainPool, 
+            hex!("5ec58c7def28e0c2470cb8bd7ab9c4ebed0a86b7").into(),
+            vec![
+                hex!("57Ab1ec28D129707052df4dF418D58a2D46d5f51").into(),
+                hex!("b2F30A7C980f052f02563fb518dcc39e6bf38175").into(),
+                hex!("43833f0C2025dFA80b5556574FAA11CBf7F3f4eB").into(),
+            ]
+        ).await;
+    }
+
+    #[brontes_macros::test]
+    async fn test_curve_v2_metapool_metapool1_discovery() {
+        verify_discovery(
+            hex!("11dfcfa281837030ac8c994828fe174fdd75cfa8a66971b4b84fb38a1bb08597").into(), 
+            Protocol::CurveV2PlainPool, 
+            hex!("6d0bd8365e2fcd0c2acf7d218f629a319b6c9d47").into(),
+            vec![
+                hex!("fd8e70e83E399307db3978D3F34B060a06792c36").into(),
+            ]
+        ).await;
+    }
+
+    #[brontes_macros::test]
+    async fn test_curve_v2_metapool_metapool2_discovery() {
+        verify_discovery(
+            hex!("59814dc53b4d415b68662433f6eea167ae64370432283598b5314b81a4801abb").into(), 
+            Protocol::CurveV2PlainPool, 
+            hex!("e60986759872393a8360a4a7abeab3a6e0ba7848").into(),
+            vec![
+                hex!("466a756E9A7401B5e2444a3fCB3c2C12FBEa0a54").into(),
             ]
         ).await;
     }
