@@ -134,6 +134,34 @@ mod tests {
 
     use crate::test_utils::ClassifierTestUtils;
 
+    fn verify_discovery(tx: String, protocol: Protocol, pool_address: String, tokens: &[&str]) {
+        let utils = ClassifierTestUtils::new().await;
+        let tx =
+            B256::new(hex!(tx));
+
+        let eq_create = NormalizedNewPool {
+            trace_index:  1,
+            protocol,
+            pool_address: Address::new(hex!(pool_address)),
+            tokens: tokens.map(|t| hex!(t).into()).collect(),
+        };
+
+        utils
+            .test_discovery_classification(
+                tx,
+                Address::new(hex!(pool_address)),
+                |mut pool| {
+                    assert_eq!(pool.len(), 1);
+                    let pool = pool.remove(0);
+                    assert_eq!(pool.protocol, eq_create.protocol);
+                    assert_eq!(pool.pool_address, eq_create.pool_address);
+                    assert_eq!(pool.tokens, eq_create.tokens);
+                },
+            )
+            .await
+            .unwrap();
+    }
+
     #[brontes_macros::test]
     async fn test_curve_v1_metapool_discovery() {
         let utils = ClassifierTestUtils::new().await;
@@ -200,6 +228,21 @@ mod tests {
             )
             .await
             .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_curve_v2_metapool_plainpool1_discovery() {
+        verify_discovery(
+            "6f9223d991fa3620d7295f5c7e96581bbbfcd6eb03054ebd85ed3b1d06472217", 
+            Protocol::CurveV2MetaPool, 
+            "d0e24cb3e766581952dbf258b78e89c63a37f5fb",
+            [
+                "6b175474e89094c44da98b954eedeac495271d0f",
+                "a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                "dac17f958d2ee523a2206206994597c13d831ec7",
+                "8191DC3053Fe4564c17694cB203663d3C07B8960",
+            ]
+        );
     }
 
     #[brontes_macros::test]

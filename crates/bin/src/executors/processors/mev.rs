@@ -90,7 +90,7 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
     let block_number = block_details.block_number;
     output_mev_and_update_searcher_info(database, &mev_details).await;
 
-    // Attempt to save the MEV block details
+    // // Attempt to save the MEV block details
     if let Err(e) = database
         .save_mev_blocks(block_details.block_number, block_details, mev_details)
         .await
@@ -101,13 +101,13 @@ async fn insert_mev_results<DB: DBWriter + LibmdbxReader>(
             block_number
         );
     }
-    if let Err(e) = database.write_block_analysis(analysis).await {
-        tracing::error!(
-            "Failed to insert block analysis data into db: {:?} at block: {}",
-            e,
-            block_number
-        );
-    }
+    // if let Err(e) = database.write_block_analysis(analysis).await {
+    //     tracing::error!(
+    //         "Failed to insert block analysis data into db: {:?} at block: {}",
+    //         e,
+    //         block_number
+    //     );
+    // }
 }
 async fn output_mev_and_update_searcher_info<DB: DBWriter + LibmdbxReader>(
     database: &DB,
