@@ -67,7 +67,7 @@ alloy_sol_types::sol!(
     function coins(uint256 arg0) external view returns (address);
 );
 
-async fn query_base_pool<T: TracingProvider + ?Sized>(
+async fn query_base_pool<T: TracingProvider>(
     tracer: &Arc<T>,
     base_pool: &Address,
     is_meta: bool,
