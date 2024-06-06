@@ -245,7 +245,7 @@ mod tests {
         let tracer = utils.get_tracing_provider();
 
         let base_pool = Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714"));
-        let is_meta = true;
+        let is_meta = false;
         let actual_tokens = query_base_pool(&tracer, &base_pool, is_meta).await;
         assert_eq!(actual_tokens, vec![
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
