@@ -45,10 +45,10 @@ impl PossibleJitWithInfo {
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct PossibleJit {
     pub eoa:               Address,
-    pub frontrun_tx:       B256,
+    pub frontrun_txes:     Vec<B256>,
     pub backrun_tx:        B256,
     pub executor_contract: Address,
-    pub victims:           Vec<B256>,
+    pub victims:           Vec<Vec<B256>>,
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -295,9 +295,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return vec![]
         }
 
-        let mut set: FastHashSet<PossibleJit> = FastHashSet::default();
-        let mut duplicate_mev_contracts: FastHashMap<Address, Vec<B256>> = FastHashMap::default();
-        let mut duplicate_senders: FastHashMap<Address, Vec<B256>> = FastHashMap::default();
+        let mut set: FastHashMap<Address, PossibleJit> = FastHashMap::default();
+        let mut duplicate_mev_contracts: FastHashMap<Address, (B256, Address)> =
+            FastHashMap::default();
+        let mut duplicate_senders: FastHashMap<Address, B256> = FastHashMap::default();
 
         let mut possible_victims: FastHashMap<B256, Vec<B256>> = FastHashMap::default();
 
@@ -307,31 +308,37 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             }
 
             match duplicate_mev_contracts.entry(root.get_to_address()) {
-                // If we have not seen this sender before, we insert the tx hash into the map
-                Entry::Vacant(v) => {
-                    v.insert(vec![root.tx_hash]);
+                // If this contract has not been called within this block, we insert the tx hash
+                // into the map
+                Entry::Vacant(duplicate_mev_contract) => {
+                    duplicate_mev_contract.insert((root.tx_hash, root.head.address));
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    let prev_tx_hashes = o.get();
+                    // Get's prev tx hash &  for this sender & replaces it with the current tx hash
+                    let (prev_tx_hash, frontrun_eoa) = o.get_mut();
 
-                    for prev_tx_hash in prev_tx_hashes {
-                        // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if !victims.is_empty() {
-                                // Create
-                                set.insert(PossibleJit {
-                                    eoa:               root.head.address,
-                                    frontrun_tx:       *prev_tx_hash,
+                    if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
+                        match set.entry(root.get_to_address()) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleJit {
+                                    eoa:               *frontrun_eoa,
+                                    frontrun_txes:     vec![*prev_tx_hash],
                                     backrun_tx:        root.tx_hash,
                                     executor_contract: root.get_to_address(),
-                                    victims:           victims.clone(),
+                                    victims:           vec![frontrun_victims],
                                 });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.frontrun_txes.push(*prev_tx_hash);
+                                sandwich.backrun_tx = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
                             }
                         }
                     }
-                    // Add current transaction hash to the list of transactions for this sender
-                    o.get_mut().push(root.tx_hash);
+
+                    *prev_tx_hash = root.tx_hash;
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
@@ -339,29 +346,34 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             match duplicate_senders.entry(root.head.address) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
-                    v.insert(vec![root.tx_hash]);
+                    v.insert(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    let prev_tx_hashes = o.get();
-
-                    for prev_tx_hash in prev_tx_hashes {
-                        // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if !victims.is_empty() {
-                                // Create
-                                set.insert(PossibleJit {
+                    // Get's prev tx hash for this sender & replaces it with the current tx hash
+                    let prev_tx_hash = o.insert(root.tx_hash);
+                    if let Some(frontrun_victims) = possible_victims.remove(&prev_tx_hash) {
+                        match set.entry(root.head.address) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleJit {
                                     eoa:               root.head.address,
-                                    frontrun_tx:       *prev_tx_hash,
+                                    frontrun_txes:     vec![prev_tx_hash],
                                     backrun_tx:        root.tx_hash,
                                     executor_contract: root.get_to_address(),
-                                    victims:           victims.clone(),
+                                    victims:           vec![frontrun_victims],
                                 });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.frontrun_txes.push(prev_tx_hash);
+                                sandwich.backrun_tx = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
                             }
                         }
                     }
+
                     // Add current transaction hash to the list of transactions for this sender
-                    o.get_mut().push(root.tx_hash);
+                    o.insert(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
@@ -500,7 +512,7 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_fat_jit() {
+    async fn test_multihop_jit() {
         let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
