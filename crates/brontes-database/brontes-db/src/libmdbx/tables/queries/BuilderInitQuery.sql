@@ -6,4 +6,4 @@ SELECT
     searchers_eoas,
     searchers_contracts,
     ultrasound_relay_collateral_address
-FROM brontes_api.builder_info
+FROM brontes.builder_info
