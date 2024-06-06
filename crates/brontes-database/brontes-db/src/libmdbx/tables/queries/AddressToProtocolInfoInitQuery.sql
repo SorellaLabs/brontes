@@ -1,5 +1,5 @@
-SELECT DISTINCT 
-    address, 
-    tokens
-FROM brontes_api.address_to_protocol
+select DISTINCT
+  address,
+  tokens
+from ethereum.pools
 
