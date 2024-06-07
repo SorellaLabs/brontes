@@ -61,8 +61,8 @@ pub mod composer;
 pub mod discovery;
 pub mod mev_inspectors;
 use brontes_metrics::inspectors::OutlierMetrics;
-use mev_inspectors::searcher_activity::SearcherActivity;
 pub use mev_inspectors::*;
+use mev_inspectors::{jit_cex_dex::JitCexDex, searcher_activity::SearcherActivity};
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
@@ -111,6 +111,8 @@ pub enum Inspectors {
     SearcherActivity,
     #[cfg(feature = "cex-dex-markout")]
     CexDexMarkout,
+    #[cfg(feature = "cex-dex-markout")]
+    JitCexDex,
 }
 
 type DynMevInspector = &'static (dyn Inspector<Result = Vec<Bundle>> + 'static);
@@ -154,6 +156,17 @@ impl Inspectors {
                 trade_config,
                 metrics,
             )) as DynMevInspector,
+            #[cfg(feature = "cex-dex-markout")]
+            Self::JitCexDex => static_object(JitCexDex {
+                cex_dex: CexDexMarkoutInspector::new(
+                    quote_token,
+                    db,
+                    cex_exchanges,
+                    trade_config,
+                    metrics.clone(),
+                ),
+                jit:     JitInspector::new(quote_token, db, metrics),
+            }) as DynMevInspector,
         }
     }
 }

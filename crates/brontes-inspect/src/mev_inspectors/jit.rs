@@ -61,7 +61,7 @@ struct PossibleJit {
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
-    utils: SharedInspectorUtils<'db, DB>,
+    pub utils: SharedInspectorUtils<'db, DB>,
 }
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {
@@ -94,7 +94,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 }
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
-    fn inspect_block_inner(
+    pub fn inspect_block_inner(
         &self,
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
