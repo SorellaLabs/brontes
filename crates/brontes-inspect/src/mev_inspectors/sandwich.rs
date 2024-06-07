@@ -32,6 +32,7 @@ type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<Nor
 /// price, we put this so high due to the inner swap price manipulation
 /// effect that sandwich has
 const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
+const MAX_NON_SWAP_FRONTRUN: Rational = Rational::const_from_unsigned(5000);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
@@ -389,10 +390,17 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             Some(Rational::ZERO)
         };
 
-        let profit_usd = rev
+        let mut profit_usd = rev
             .map(|rev| rev - &gas_used)
             .filter(|_| has_dex_price)
             .unwrap_or_default();
+
+        // sus threshold
+        if front_run_swaps.iter().flatten().count() == 0 && profit_usd > MAX_NON_SWAP_FRONTRUN {
+            tracing::warn!("frontrun has no swaps");
+            profit_usd = Rational::ZERO;
+            has_dex_price = false;
+        }
 
         let gas_details: Vec<_> = possible_front_runs_info
             .iter()
@@ -1452,6 +1460,19 @@ mod tests {
             ])
             .with_gas_paid_usd(32.2)
             .with_expected_profit_usd(0.16);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn sandwich_part_of_jit_multi_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_block(18674873)
+            .with_gas_paid_usd(273.9)
+            .with_expected_profit_usd(18.1);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
