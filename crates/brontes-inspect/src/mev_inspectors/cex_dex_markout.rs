@@ -592,7 +592,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 let s1 = swaps.remove(0);
 
                 // if s0 is first hop
-                if s0.token_out == intermediary && s0.token_out == s1.token_in {
+                if s0.token_out == intermediary
+                    && s0.token_out == s1.token_in
+                    && s0.amount_out == s1.amount_in
+                {
                     voided.insert(s0.clone());
                     voided.insert(s1.clone());
                     Some(NormalizedSwap {
@@ -606,7 +609,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         pool: s0.pool,
                         ..Default::default()
                     })
-                } else if s0.token_in == s1.token_out {
+                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
                     voided.insert(s0.clone());
                     voided.insert(s1.clone());
                     Some(NormalizedSwap {
