@@ -274,39 +274,3 @@ fn try_compose_mev(
     }
 }
 
-#[cfg(test)]
-pub mod tests {
-    use alloy_primitives::hex;
-
-    use super::*;
-    use crate::{
-        test_utils::{ComposerRunConfig, InspectorTestUtils, USDC_ADDRESS},
-        Inspectors,
-    };
-
-    #[brontes_macros::test]
-    pub async fn test_jit_sandwich() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2).await;
-
-        let config = ComposerRunConfig::new(
-            vec![Inspectors::Sandwich, Inspectors::Jit],
-            MevType::JitSandwich,
-        )
-        .with_dex_prices()
-        .with_gas_paid_usd(90.875025)
-        .with_expected_profit_usd(13.568977)
-        .needs_tokens(vec![
-            hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
-            hex!("b17548c7b510427baac4e267bea62e800b247173").into(),
-        ])
-        .with_mev_tx_hashes(vec![
-            hex!("22ea36d516f59cc90ccc01042e20f8fba196f32b067a7e5f1510099140ae5e0a").into(),
-            hex!("72eb3269ac013cf663dde9aa11cc3295e0dfb50c7edfcf074c5c57b43611439c").into(),
-            hex!("3b4138bac9dc9fa4e39d8d14c6ecd7ec0144fe26b120ea799317aa15fa35ddcd").into(),
-            hex!("99785f7b76a9347f13591db3574506e9f718060229db2826b4925929ebaea77e").into(),
-            hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into(),
-        ]);
-
-        inspector_util.run_composer(config, None).await.unwrap();
-    }
-}

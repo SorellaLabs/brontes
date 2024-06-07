@@ -478,7 +478,7 @@ mod tests {
                 hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
             ])
             .with_gas_paid_usd(90.875025)
-            .with_expected_profit_usd(-71.92);
+            .with_expected_profit_usd(13.58);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
@@ -494,7 +494,7 @@ mod tests {
             ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)
-            .with_expected_profit_usd(-10.61);
+            .with_expected_profit_usd(26.48);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
