@@ -136,11 +136,11 @@ mod tests {
         tx: FixedBytes<32>,
         protocol: Protocol,
         pool_address: Address,
-        tokens: Vec<Address>
+        tokens: Vec<Address>,
     ) {
         let utils = ClassifierTestUtils::new().await;
 
-        let eq_create = NormalizedNewPool { trace_index: 1, protocol, pool_address, tokens  };
+        let eq_create = NormalizedNewPool { trace_index: 1, protocol, pool_address, tokens };
 
         utils
             .test_discovery_classification(tx, pool_address, |mut pool| {
@@ -165,7 +165,7 @@ mod tests {
                 hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
                 hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
                 hex!("99d8a9c45b2eca8864373a26d1459e3dff1e17f3").into(),
-            ]
+            ],
         )
         .await;
     }
@@ -179,7 +179,7 @@ mod tests {
             vec![
                 hex!("1Ee4dE3CD1505Ddb2e60C20651A4aB7FfABDc8F6").into(),
                 hex!("246BE97fda42375c39E21377Ad80D8290AfdB994").into(),
-            ]
+            ],
         )
         .await;
     }
@@ -193,7 +193,7 @@ mod tests {
             vec![
                 hex!("11EBe21e9d7BF541A18e1E3aC94939018Ce88F0b").into(),
                 hex!("3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0").into(),
-            ]
+            ],
         )
         .await;
     }
@@ -208,7 +208,7 @@ mod tests {
                 hex!("57Ab1ec28D129707052df4dF418D58a2D46d5f51").into(),
                 hex!("b2F30A7C980f052f02563fb518dcc39e6bf38175").into(),
                 hex!("43833f0C2025dFA80b5556574FAA11CBf7F3f4eB").into(),
-            ]
+            ],
         )
         .await;
     }
@@ -226,7 +226,7 @@ mod tests {
                 Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
                 Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
                 Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6"))
-            ]
+            ],
         );
     }
 
@@ -244,7 +244,7 @@ mod tests {
                 Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
                 Address::new(hex!("fE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6")),
                 Address::new(hex!("fd8e70e83E399307db3978D3F34B060a06792c36")),
-            ]
+            ],
         )
         .await;
     }
@@ -259,7 +259,7 @@ mod tests {
                 hex!("853d955acef822db058eb8505911ed77f175b99e").into(),
                 hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
                 hex!("466a756E9A7401B5e2444a3fCB3c2C12FBEa0a54").into(),
-            ]
+            ],
         )
         .await;
     }
@@ -273,7 +273,7 @@ mod tests {
             vec![
                 hex!("4591DBfF62656E7859Afe5e45f6f47D3669fBB28").into(),
                 hex!("f939E0A03FB07F59A73314E73794Be0E57ac1b4E").into(),
-            ]
+            ],
         )
         .await;
     }
