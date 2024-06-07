@@ -503,7 +503,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
             .iter()
             .filter(|swap| swap.amount_out != Rational::ZERO)
-            .filter_map(|swap| {
+            .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
                 let window_fn = || {
@@ -560,8 +560,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .get_metrics()
                         .inspect(|m| m.missing_cex_pair(pair));
                 }
-
-                Some((window, other))
+                (window, other)
             })
             .collect();
 
