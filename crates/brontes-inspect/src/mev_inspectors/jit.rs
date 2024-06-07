@@ -538,6 +538,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 let mut set = vec![jit.backrun_tx];
                 set.extend(jit.victims.iter().flatten().cloned());
                 set.extend(jit.frontrun_txes.clone());
+                if !(set
+                    .iter()
+                    .any(|tx| tree.tx_must_contain_action(*tx, |a| a.is_mint()).unwrap())
+                    && set
+                        .iter()
+                        .any(|tx| tree.tx_must_contain_action(*tx, |a| a.is_burn()).unwrap()))
+                {
+                    return None
+                }
                 Some(set)
             })
             .flatten()
