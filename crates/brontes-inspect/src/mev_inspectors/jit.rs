@@ -514,17 +514,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let tx_set = set
             .iter()
             .filter_map(|jit| {
-                let proper_frontruns = jit.frontrun_txes.iter().any(|tx| {
-                    tree.tx_must_contain_action(*tx, |action| action.is_mint())
-                        .unwrap()
-                });
-                if !(proper_frontruns
-                    && tree
-                        .tx_must_contain_action(jit.backrun_tx, |action| action.is_burn())
-                        .unwrap())
-                {
-                    return None
-                }
+                // let proper_frontruns = jit.frontrun_txes.iter().any(|tx| {
+                //     tree.tx_must_contain_action(*tx, |action| action.is_mint())
+                //         .unwrap()
+                // });
+                // if !(proper_frontruns
+                //     && tree
+                //         .tx_must_contain_action(jit.backrun_tx, |action| action.is_burn())
+                //         .unwrap())
+                // {
+                //     return None
+                // }
 
                 if jit.victims.len() > 20 {
                     return None
