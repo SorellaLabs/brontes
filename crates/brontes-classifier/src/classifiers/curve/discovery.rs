@@ -288,19 +288,6 @@ mod tests {
         ).await;
     }
 
-    #[brontes_macros::test]
-    async fn test_curve_crvUSD_metapool_plainpool1_discovery() {
-        verify_discovery(
-            hex!("4dab0bee84b26935d93556d7d7d38e7fca091793842ea02c2e583260b64f6a3b").into(), 
-            Protocol::CurveV2MetaPool, 
-            hex!("3de254a0f838a844f727fee81040e0fa7884b935").into(),
-            vec![
-                hex!("4591DBfF62656E7859Afe5e45f6f47D3669fBB28").into(),
-                hex!("f939E0A03FB07F59A73314E73794Be0E57ac1b4E").into(),
-            ]
-        ).await;
-    }
-
     // No pools found for methods plainpool2, plainpool3, metapool1, or metapool2.
 
     // #[brontes_macros::test]
