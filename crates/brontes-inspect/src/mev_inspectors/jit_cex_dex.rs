@@ -1,40 +1,17 @@
-use std::{
-    cmp::{max, min},
-    collections::HashMap,
-    fmt,
-    fmt::Display,
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
-use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
-    db::{
-        cex::{
-            config::CexDexTradeConfig,
-            time_window_vwam::MakerTakerWindowVWAP,
-            vwam::{ExchangePrice, MakerTaker},
-            CexExchange, FeeAdjustedQuote,
-        },
-        dex::PriceAt,
-        metadata::Metadata,
-        token_info::{TokenInfo, TokenInfoWithAddress},
-    },
+    db::{metadata::Metadata, token_info::TokenInfoWithAddress},
     display::utils::format_etherscan_url,
-    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, Mev, MevType, OptimisticTrade},
-    normalized_actions::{
-        accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
-    },
-    pair::Pair,
-    tree::{BlockTree, GasDetails},
-    FastHashMap, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
+    mev::{Bundle, BundleData, MevType},
+    normalized_actions::{Action, NormalizedSwap},
+    tree::BlockTree,
+    FastHashMap,
 };
 use itertools::multizip;
-use malachite::{
-    num::basic::traits::{One, Two, Zero},
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
 use crate::{
@@ -148,8 +125,8 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                             amount_in,
                             token_in,
                             token_out,
-                            from: jits.header.mev_contract.clone().unwrap_or(jits.header.eoa),
-                            recipient: jits.header.mev_contract.clone().unwrap_or(jits.header.eoa),
+                            from: jits.header.mev_contract.unwrap_or(jits.header.eoa),
+                            recipient: jits.header.mev_contract.unwrap_or(jits.header.eoa),
                             ..Default::default()
                         }
                     })

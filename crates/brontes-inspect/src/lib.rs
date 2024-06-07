@@ -163,7 +163,7 @@ impl Inspectors {
                     db,
                     cex_exchanges,
                     trade_config,
-                    metrics,
+                    metrics.clone(),
                 ),
                 jit:     JitInspector::new(quote_token, db, metrics),
             }) as DynMevInspector,

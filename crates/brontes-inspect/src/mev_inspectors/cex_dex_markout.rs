@@ -46,7 +46,7 @@ pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000)
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
-    pub utils:         SharedInspectorUtils<'db, DB>,
+    pub utils:     SharedInspectorUtils<'db, DB>,
     trade_config:  CexDexTradeConfig,
     cex_exchanges: Vec<CexExchange>,
 }
