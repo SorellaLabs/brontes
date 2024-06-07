@@ -69,6 +69,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
         jit_bundles
             .into_iter()
             .filter_map(|jits| {
+                tracing::trace!("trying jit to see if cexdex -{:#?}", jits);
                 let BundleData::Jit(jit) = jits.data else { return None };
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
                 let mut mint_burn_deltas: FastHashMap<
