@@ -556,7 +556,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .map(|m| m.run_cex_price_vol(optimistic))
                     .unwrap_or_else(optimistic);
 
-                // i
                 if window.is_none() && other.is_none() {
                     skipped_dex_swaps.push(swap)
                 } else {
@@ -630,7 +629,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .map(|m| m.run_cex_price_vol(optimistic))
                         .unwrap_or_else(optimistic);
 
-                    if !(window.is_none() && other.is_none()) {
+                    if window.is_some() || other.is_some() {
                         dex_swaps_res.push(swap);
                     }
 
