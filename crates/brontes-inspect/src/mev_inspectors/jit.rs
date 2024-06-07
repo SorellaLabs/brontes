@@ -10,8 +10,6 @@ use brontes_types::{
     normalized_actions::accounting::ActionAccounting,
     ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-#[allow(unused)]
-use clickhouse::{fixed_string::FixedString, row::*};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 
