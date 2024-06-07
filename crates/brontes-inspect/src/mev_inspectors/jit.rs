@@ -170,11 +170,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             })
                             .collect_vec();
 
-                        if victim_actions.iter().any(|inner| inner.is_empty()) {
-                            tracing::trace!("no victim actions found");
-                            return None
-                        }
-
                         if victims
                             .iter()
                             .flatten()
