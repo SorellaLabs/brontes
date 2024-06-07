@@ -4,6 +4,8 @@ pub mod cex_dex;
 #[cfg(feature = "cex-dex-markout")]
 pub mod cex_dex_markout;
 pub mod jit;
+#[cfg(feature = "cex-dex-markout")]
+pub mod jit_cex_dex;
 pub mod liquidations;
 pub mod sandwich;
 pub mod searcher_activity;
