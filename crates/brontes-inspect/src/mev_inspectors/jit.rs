@@ -6,7 +6,7 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
-    mev::{Bundle, JitLiquidity, MevType},
+    mev::{Bundle, JitLiquidity, Mev, MevType},
     normalized_actions::accounting::ActionAccounting,
     ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
@@ -99,196 +99,195 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        self.possible_jit_set(tree.clone())
-            .into_iter()
-            .map(|f| {
-                tracing::info!("{:#?}", f);
-                f
-            })
-            .filter_map(
-                |PossibleJitWithInfo {
-                     inner:
-                         PossibleJit { frontrun_txes, backrun_tx, executor_contract, victims, .. },
-                     victim_info,
-                     backrun,
-                     front_runs,
-                 }| {
-                    let searcher_actions = frontrun_txes
-                        .iter()
-                        .chain([backrun_tx].iter())
-                        .map(|tx| {
-                            self.utils
-                                .flatten_nested_actions(
-                                    tree.clone().collect(
-                                        tx,
-                                        TreeSearchBuilder::default().with_actions([
-                                            Action::is_mint,
-                                            Action::is_burn,
-                                            Action::is_transfer,
-                                            Action::is_eth_transfer,
-                                            Action::is_nested_action,
-                                        ]),
-                                    ),
-                                    &|actions| {
-                                        actions.is_mint()
-                                            || actions.is_burn()
-                                            || actions.is_collect()
-                                            || actions.is_transfer()
-                                            || actions.is_eth_transfer()
-                                    },
-                                )
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<Vec<Action>>>();
+        Self::dedup_bundles(
+            self.possible_jit_set(tree.clone())
+                .into_iter()
+                .map(|f| {
+                    tracing::info!("{:#?}", f);
+                    f
+                })
+                .filter_map(
+                    |PossibleJitWithInfo {
+                         inner:
+                             PossibleJit {
+                                 frontrun_txes, backrun_tx, executor_contract, victims, ..
+                             },
+                         victim_info,
+                         backrun,
+                         front_runs,
+                     }| {
+                        let searcher_actions = frontrun_txes
+                            .iter()
+                            .chain([backrun_tx].iter())
+                            .map(|tx| {
+                                self.utils
+                                    .flatten_nested_actions(
+                                        tree.clone().collect(
+                                            tx,
+                                            TreeSearchBuilder::default().with_actions([
+                                                Action::is_mint,
+                                                Action::is_burn,
+                                                Action::is_transfer,
+                                                Action::is_eth_transfer,
+                                                Action::is_nested_action,
+                                            ]),
+                                        ),
+                                        &|actions| {
+                                            actions.is_mint()
+                                                || actions.is_burn()
+                                                || actions.is_collect()
+                                                || actions.is_transfer()
+                                                || actions.is_eth_transfer()
+                                        },
+                                    )
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect::<Vec<Vec<Action>>>();
 
-                    tracing::trace!(?frontrun_txes, ?backrun_tx, "checking if jit");
+                        tracing::trace!(?frontrun_txes, ?backrun_tx, "checking if jit");
 
-                    if searcher_actions.is_empty() {
-                        tracing::trace!("no searcher actions found");
-                        return None
-                    }
+                        if searcher_actions.is_empty() {
+                            tracing::trace!("no searcher actions found");
+                            return None
+                        }
 
-                    let victim_actions = victims
-                        .iter()
-                        .flatten()
-                        .map(|victim| {
-                            self.utils
-                                .flatten_nested_actions(
-                                    tree.clone().collect(
-                                        victim,
-                                        TreeSearchBuilder::default().with_actions([
-                                            Action::is_swap,
-                                            Action::is_nested_action,
-                                        ]),
-                                    ),
-                                    &|actions| actions.is_swap(),
-                                )
-                                .collect::<Vec<_>>()
-                        })
-                        .collect_vec();
+                        let victim_actions = victims
+                            .iter()
+                            .flatten()
+                            .map(|victim| {
+                                self.utils
+                                    .flatten_nested_actions(
+                                        tree.clone().collect(
+                                            victim,
+                                            TreeSearchBuilder::default().with_actions([
+                                                Action::is_swap,
+                                                Action::is_nested_action,
+                                            ]),
+                                        ),
+                                        &|actions| actions.is_swap(),
+                                    )
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect_vec();
 
-                    if victim_actions.iter().any(|inner| inner.is_empty()) {
-                        tracing::trace!("no victim actions found");
-                        return None
-                    }
+                        if victim_actions.iter().any(|inner| inner.is_empty()) {
+                            tracing::trace!("no victim actions found");
+                            return None
+                        }
 
-                    if victims
-                        .iter()
-                        .flatten()
-                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                        .filter(|d| !d.is_revert())
-                        .any(|d| executor_contract == d.get_to_address())
-                    {
-                        tracing::trace!("victim address is same as mev executor contract");
-                        return None
-                    }
+                        if victims
+                            .iter()
+                            .flatten()
+                            .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                            .filter(|d| !d.is_revert())
+                            .any(|d| executor_contract == d.get_to_address())
+                        {
+                            tracing::trace!("victim address is same as mev executor contract");
+                            return None
+                        }
 
-                    self.calculate_jit(
-                        front_runs,
-                        backrun,
-                        metadata.clone(),
-                        searcher_actions,
-                        victim_actions,
-                        victim_info,
-                    )
-                },
-            )
-            .collect::<Vec<_>>()
+                        self.calculate_jit(
+                            front_runs,
+                            backrun,
+                            metadata.clone(),
+                            searcher_actions,
+                            victim_actions,
+                            victim_info,
+                            0,
+                        )
+                    },
+                )
+                .flatten()
+                .collect::<Vec<_>>(),
+        )
     }
 
-    // fn recursive_possible_jits(
-    //     &self,
-    //     frontrun_info: Vec<TxInfo>,
-    //     backrun_info: TxInfo,
-    //     metadata: Arc<Metadata>,
-    //     searcher_actions: Vec<Vec<Action>>,
-    //     // victim
-    //     victim_actions: Vec<Vec<Action>>,
-    //     victim_info: Vec<Vec<TxInfo>>,
-    //     mut recursive: u8,
-    // ) -> Option<Vec<Bundle>> {
-    //     let mut res = vec![];
-    //
-    //     if recursive >= 6 {
-    //         return None
-    //     }
-    //     if frontrun_info.len() > 1 {
-    //         recursive += 1;
-    //         // remove dropped sandwiches
-    //         if victim_info.is_empty() || victim_actions.is_empty() {
-    //             return None
-    //         }
-    //
-    //         let back_shrink = {
-    //             let mut victim_info = victim_info.to_vec();
-    //             let mut victim_actions = victim_actions.to_vec();
-    //             let mut front_run_info = frontrun_info.to_vec();
-    //             victim_info.pop()?;
-    //             victim_actions.pop()?;
-    //             let back_run_info = frontrun_info.pop()?;
-    //
-    //             if victim_actions.iter().flatten().count() == 0 {
-    //                 return None
-    //             }
-    //
-    //             self.calculate_jit(
-    //                 frontrun_info,
-    //                 backrun_info,
-    //                 metadata.clone(),
-    //                 searcher_actions,
-    //                 victim_actions,
-    //                 victim_info,
-    //                 recursive,
-    //             )
-    //         };
-    //
-    //         let front_shrink = {
-    //             let mut victim_info = victim_info.to_vec();
-    //             let mut victim_actions = victim_actions.to_vec();
-    //             let mut possible_front_runs_info = frontrun_info.to_vec();
-    //             let mut searcher_actions = searcher_actions.to_vec();
-    //             // ensure we don't loose the last tx
-    //             searcher_actions.push(back_run_actions.to_vec());
-    //
-    //             victim_info.remove(0);
-    //             victim_actions.remove(0);
-    //             possible_front_runs_info.remove(0);
-    //             searcher_actions.remove(0);
-    //
-    //             if victim_actions
-    //                 .iter()
-    //                 .flatten()
-    //                 .filter_map(
-    //                     |(s, t)| if s.is_empty() && t.is_empty() { None } else {
-    // Some(true) },                 )
-    //                 .count()
-    //                 == 0
-    //             {
-    //                 return None
-    //             }
-    //
-    //             self.calculate_sandwich(
-    //                 tree.clone(),
-    //                 metadata.clone(),
-    //                 possible_front_runs_info,
-    //                 backrun_info,
-    //                 searcher_actions,
-    //                 victim_info,
-    //                 victim_actions,
-    //                 recusive,
-    //             )
-    //         };
-    //         if let Some(front) = front_shrink {
-    //             res.extend(front);
-    //         }
-    //         if let Some(back) = back_shrink {
-    //             res.extend(back);
-    //         }
-    //         return Some(res)
-    //     }
-    //
-    //     None
-    // }
+    fn recursive_possible_jits(
+        &self,
+        frontrun_info: Vec<TxInfo>,
+        backrun_info: TxInfo,
+        metadata: Arc<Metadata>,
+        searcher_actions: Vec<Vec<Action>>,
+        // victim
+        victim_actions: Vec<Vec<Action>>,
+        victim_info: Vec<Vec<TxInfo>>,
+        mut recursive: u8,
+    ) -> Option<Vec<Bundle>> {
+        let mut res = vec![];
+
+        if recursive >= 6 {
+            return None
+        }
+        if frontrun_info.len() > 1 {
+            recursive += 1;
+            // remove dropped sandwiches
+            if victim_info.is_empty() || victim_actions.is_empty() {
+                return None
+            }
+
+            let back_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut front_run_info = frontrun_info.to_vec();
+                victim_info.pop()?;
+                victim_actions.pop()?;
+                // remove last searcher action
+                let mut searcher_actions = searcher_actions.clone();
+                searcher_actions.pop()?;
+                let backrun_info = front_run_info.pop()?;
+
+                if victim_actions.iter().flatten().count() == 0 {
+                    return None
+                }
+
+                self.calculate_jit(
+                    front_run_info,
+                    backrun_info,
+                    metadata.clone(),
+                    searcher_actions,
+                    victim_actions,
+                    victim_info,
+                    recursive,
+                )
+            };
+
+            let front_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut possible_front_runs_info = frontrun_info.to_vec();
+                let mut searcher_actions = searcher_actions.to_vec();
+                // ensure we don't loose the last tx
+
+                victim_info.remove(0);
+                victim_actions.remove(0);
+                possible_front_runs_info.remove(0);
+                searcher_actions.remove(0);
+
+                if victim_actions.iter().flatten().count() == 0 {
+                    return None
+                }
+
+                self.calculate_jit(
+                    possible_front_runs_info,
+                    backrun_info,
+                    metadata.clone(),
+                    searcher_actions,
+                    victim_actions,
+                    victim_info,
+                    recursive,
+                )
+            };
+            if let Some(front) = front_shrink {
+                res.extend(front);
+            }
+            if let Some(back) = back_shrink {
+                res.extend(back);
+            }
+            return Some(res)
+        }
+
+        None
+    }
 
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
@@ -300,7 +299,25 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         // victim
         victim_actions: Vec<Vec<Action>>,
         victim_info: Vec<Vec<TxInfo>>,
-    ) -> Option<Bundle> {
+        recursive: u8,
+    ) -> Option<Vec<Bundle>> {
+        if !(searcher_actions.last()?.iter().any(|h| h.is_burn())
+            || searcher_actions
+                .iter()
+                .take(searcher_actions.len() - 1)
+                .all(|h| h.iter().any(|a| a.is_mint())))
+        {
+            return self.recursive_possible_jits(
+                frontrun_info,
+                backrun_info,
+                metadata,
+                searcher_actions,
+                victim_actions,
+                victim_info,
+                recursive,
+            )
+        }
+
         // grab all mints and burns
         let ((mints, burns), rem): ((Vec<_>, Vec<_>), Vec<_>) = searcher_actions
             .clone()
@@ -403,7 +420,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             backrun_burns: burns,
         };
 
-        Some(Bundle { header, data: BundleData::Jit(jit_details) })
+        Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Action>>) -> Vec<PossibleJitWithInfo> {
@@ -514,18 +531,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let tx_set = set
             .iter()
             .filter_map(|jit| {
-                // let proper_frontruns = jit.frontrun_txes.iter().any(|tx| {
-                //     tree.tx_must_contain_action(*tx, |action| action.is_mint())
-                //         .unwrap()
-                // });
-                // if !(proper_frontruns
-                //     && tree
-                //         .tx_must_contain_action(jit.backrun_tx, |action| action.is_burn())
-                //         .unwrap())
-                // {
-                //     return None
-                // }
-
                 if jit.victims.len() > 20 {
                     return None
                 }
@@ -599,6 +604,55 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         }
 
         results
+    }
+
+    #[allow(clippy::comparison_chain)]
+    fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
+        let mut bundles = bundles
+            .into_iter()
+            .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
+            .collect_vec();
+
+        let len = bundles.len();
+        let mut removals = Vec::new();
+
+        for i in 0..len {
+            if removals.contains(&i) {
+                continue
+            }
+
+            for j in 0..len {
+                if i == j || removals.contains(&j) {
+                    continue
+                }
+
+                let i_hash = &bundles[i].0;
+                let j_hash = &bundles[j].0;
+                if i_hash.iter().any(|hash| j_hash.contains(hash)) {
+                    if i_hash.len() > j_hash.len() {
+                        removals.push(j);
+                    } else if i_hash.len() < j_hash.len() {
+                        removals.push(i);
+                    } else {
+                        // if same, take bundle with lower profit as it is most
+                        // likey, more correct
+                        if bundles[i].1.header.profit_usd > bundles[j].1.header.profit_usd {
+                            removals.push(i);
+                        } else {
+                            removals.push(j);
+                        }
+                    }
+                }
+            }
+        }
+        removals.sort_unstable_by(|a, b| b.cmp(a));
+        removals.dedup();
+
+        removals.into_iter().for_each(|idx| {
+            bundles.remove(idx);
+        });
+
+        bundles.into_iter().map(|res| res.1).collect_vec()
     }
 }
 
