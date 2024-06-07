@@ -197,6 +197,7 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::JitCexDex)
+            .with_dex_prices()
             .with_block(18305720)
             .with_gas_paid_usd(38.31)
             .with_expected_profit_usd(134.70);
