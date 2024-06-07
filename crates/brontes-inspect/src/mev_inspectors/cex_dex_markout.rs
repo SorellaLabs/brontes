@@ -504,7 +504,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let mut res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
             .into_iter()
             .filter(|swap| swap.amount_out != Rational::ZERO)
-            .map(|swap| {
+            .filter_map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
 
                 let window_fn = || {
@@ -557,7 +557,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .unwrap_or_else(optimistic);
 
                 if window.is_none() && other.is_none() {
-                    skipped_dex_swaps.push(swap)
+                    skipped_dex_swaps.push(swap);
+                    return None
                 } else {
                     dex_swaps_res.push(swap);
                 }
@@ -568,7 +569,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .inspect(|m| m.missing_cex_pair(pair));
                 }
 
-                (window, other)
+                Some((window, other))
             })
             .collect();
 
@@ -577,7 +578,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             intermediary_venues
                 .into_iter()
                 .filter(|swap| swap.amount_out != Rational::ZERO)
-                .map(|swap| {
+                .filter_map(|swap| {
                     let pair = Pair(swap.token_in.address, swap.token_out.address);
 
                     let window_fn = || {
@@ -631,6 +632,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                     if window.is_some() || other.is_some() {
                         dex_swaps_res.push(swap);
+                    } else {
+                        return None
                     }
 
                     if (window.is_none() || other.is_none()) && marked_cex_dex {
@@ -639,7 +642,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             .inspect(|m| m.missing_cex_pair(pair));
                     }
 
-                    (window, other)
+                    Some((window, other))
                 }),
         );
 
