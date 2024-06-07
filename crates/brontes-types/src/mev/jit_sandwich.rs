@@ -131,13 +131,6 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
         classified_sandwich.expect("Expected Classified MEV data for Sandwich");
     let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 
-    // because sandwich runs based off of transactions, if the profit is the
-    // same, we know that the sandwich is actually just a jit and we
-    // shouldn't compose.
-    if (jit_classified.profit_usd.abs() - classified_sandwich.profit_usd.abs()).abs() < 0.2 {
-        return None
-    }
-
     let mut frontrun_mints: Vec<Option<Vec<NormalizedMint>>> =
         vec![None; sandwich.frontrun_tx_hash.len()];
     frontrun_mints
