@@ -50,6 +50,6 @@ define_mev_precedence!(
     Unknown, SearcherTx, CexDex => AtomicArb;
     Unknown, SearcherTx, AtomicArb, CexDex => Liquidation;
     Unknown, SearcherTx, AtomicArb, CexDex => Sandwich;
-    Unknown, SearcherTx, AtomicArb, CexDex, Sandwich => Jit;
+    Unknown, SearcherTx, AtomicArb, CexDex => Jit;
     Unknown, SearcherTx, AtomicArb, CexDex, Jit, Sandwich => JitSandwich;
 );
