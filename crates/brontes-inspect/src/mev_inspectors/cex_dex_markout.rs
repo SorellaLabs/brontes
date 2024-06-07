@@ -498,6 +498,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     ) -> (Vec<NormalizedSwap>, Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)>) {
         let mut dex_swaps_res = Vec::new();
         let mut skipped_dex_swaps = Vec::new();
+
         let mut res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
             .into_iter()
             .filter(|swap| swap.amount_out != Rational::ZERO)
