@@ -163,7 +163,7 @@ mod tests {
     async fn test_curve_v1_metapool_discovery() {
         verify_discovery(
             hex!("49878ff3e5e0de4f45c875c94977c154a4f6bea22640f72e85a18434672e3bb2").into(), 
-            Protocol::CurveV2PlainPool, 
+            Protocol::CurveV1MetaPool, 
             hex!("5a6a4d54456819380173272a5e8e9b9904bdf41b").into(),
             vec![
                 hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
