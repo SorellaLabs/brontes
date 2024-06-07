@@ -61,7 +61,7 @@ struct PossibleJit {
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
-    utils: SharedInspectorUtils<'db, DB>,
+    pub utils: SharedInspectorUtils<'db, DB>,
 }
 
 impl<'db, DB: LibmdbxReader> JitInspector<'db, DB> {

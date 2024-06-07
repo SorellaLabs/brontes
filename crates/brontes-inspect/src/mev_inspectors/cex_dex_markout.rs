@@ -46,7 +46,7 @@ pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000)
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
-    utils:         SharedInspectorUtils<'db, DB>,
+    pub utils:         SharedInspectorUtils<'db, DB>,
     trade_config:  CexDexTradeConfig,
     cex_exchanges: Vec<CexExchange>,
 }
@@ -353,7 +353,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         CexDexProcessing::new(dex_swaps, vwam_result, per_exchange_pnl, optimstic_res)
     }
 
-    fn process_optimistic(
+    pub fn process_optimistic(
         &self,
         trades: &[NormalizedSwap],
         metadata: &Metadata,
@@ -577,7 +577,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     /// A `PossibleCexDex` instance representing the finalized arbitrage
     /// opportunity after accounting for gas costs.
 
-    fn gas_accounting(
+    pub fn gas_accounting(
         &self,
         cex_dex: &mut CexDexProcessing,
         gas_details: &GasDetails,
@@ -608,7 +608,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     /// # Returns
     /// An option containing `BundleData::CexDex` if a valid opportunity is
     /// identified, otherwise `None`.
-    fn filter_possible_cex_dex(
+    pub fn filter_possible_cex_dex(
         &self,
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,

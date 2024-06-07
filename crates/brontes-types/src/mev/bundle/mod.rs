@@ -87,6 +87,7 @@ pub enum MevType {
     CexDex,
     Sandwich,
     Jit,
+    JitCexDex,
     JitSandwich,
     Liquidation,
     AtomicArb,
