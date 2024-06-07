@@ -17,6 +17,7 @@ use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
 };
 
+#[derive(Debug)]
 struct PossibleJitWithInfo {
     pub front_runs:  Vec<TxInfo>,
     pub backrun:     TxInfo,
@@ -100,6 +101,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     ) -> Vec<Bundle> {
         self.possible_jit_set(tree.clone())
             .into_iter()
+            .map(|f| {
+                tracing::info!("{:#?}", f);
+                f
+            })
             .filter_map(
                 |PossibleJitWithInfo {
                      inner:
@@ -190,6 +195,100 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             )
             .collect::<Vec<_>>()
     }
+
+    // fn recursive_possible_jits(
+    //     &self,
+    //     frontrun_info: Vec<TxInfo>,
+    //     backrun_info: TxInfo,
+    //     metadata: Arc<Metadata>,
+    //     searcher_actions: Vec<Vec<Action>>,
+    //     // victim
+    //     victim_actions: Vec<Vec<Action>>,
+    //     victim_info: Vec<Vec<TxInfo>>,
+    //     mut recursive: u8,
+    // ) -> Option<Vec<Bundle>> {
+    //     let mut res = vec![];
+    //
+    //     if recursive >= 6 {
+    //         return None
+    //     }
+    //     if frontrun_info.len() > 1 {
+    //         recursive += 1;
+    //         // remove dropped sandwiches
+    //         if victim_info.is_empty() || victim_actions.is_empty() {
+    //             return None
+    //         }
+    //
+    //         let back_shrink = {
+    //             let mut victim_info = victim_info.to_vec();
+    //             let mut victim_actions = victim_actions.to_vec();
+    //             let mut front_run_info = frontrun_info.to_vec();
+    //             victim_info.pop()?;
+    //             victim_actions.pop()?;
+    //             let back_run_info = frontrun_info.pop()?;
+    //
+    //             if victim_actions.iter().flatten().count() == 0 {
+    //                 return None
+    //             }
+    //
+    //             self.calculate_jit(
+    //                 frontrun_info,
+    //                 backrun_info,
+    //                 metadata.clone(),
+    //                 searcher_actions,
+    //                 victim_actions,
+    //                 victim_info,
+    //                 recursive,
+    //             )
+    //         };
+    //
+    //         let front_shrink = {
+    //             let mut victim_info = victim_info.to_vec();
+    //             let mut victim_actions = victim_actions.to_vec();
+    //             let mut possible_front_runs_info = frontrun_info.to_vec();
+    //             let mut searcher_actions = searcher_actions.to_vec();
+    //             // ensure we don't loose the last tx
+    //             searcher_actions.push(back_run_actions.to_vec());
+    //
+    //             victim_info.remove(0);
+    //             victim_actions.remove(0);
+    //             possible_front_runs_info.remove(0);
+    //             searcher_actions.remove(0);
+    //
+    //             if victim_actions
+    //                 .iter()
+    //                 .flatten()
+    //                 .filter_map(
+    //                     |(s, t)| if s.is_empty() && t.is_empty() { None } else {
+    // Some(true) },                 )
+    //                 .count()
+    //                 == 0
+    //             {
+    //                 return None
+    //             }
+    //
+    //             self.calculate_sandwich(
+    //                 tree.clone(),
+    //                 metadata.clone(),
+    //                 possible_front_runs_info,
+    //                 backrun_info,
+    //                 searcher_actions,
+    //                 victim_info,
+    //                 victim_actions,
+    //                 recusive,
+    //             )
+    //         };
+    //         if let Some(front) = front_shrink {
+    //             res.extend(front);
+    //         }
+    //         if let Some(back) = back_shrink {
+    //             res.extend(back);
+    //         }
+    //         return Some(res)
+    //     }
+    //
+    //     None
+    // }
 
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
