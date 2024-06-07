@@ -44,6 +44,8 @@ pub const FILTER_THRESHOLD: u64 = 20;
 pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000);
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+type CexDexTradesForSwap =
+    (Vec<NormalizedSwap>, Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)>);
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     pub utils:     SharedInspectorUtils<'db, DB>,
@@ -495,7 +497,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         metadata: &Metadata,
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
-    ) -> (Vec<NormalizedSwap>, Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)>) {
+    ) -> CexDexTradesForSwap {
         let mut dex_swaps_res = Vec::new();
         let mut skipped_dex_swaps = Vec::new();
 
