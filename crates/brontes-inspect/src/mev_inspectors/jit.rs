@@ -514,7 +514,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let tx_set = set
             .iter()
             .filter_map(|jit| {
-                let proper_frontruns = jit.frontrun_txes.iter().all(|tx| {
+                let proper_frontruns = jit.frontrun_txes.iter().any(|tx| {
                     tree.tx_must_contain_action(*tx, |action| action.is_mint())
                         .unwrap()
                 });
