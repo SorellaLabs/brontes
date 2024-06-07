@@ -245,7 +245,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> Option<CexDexProcessing> {
-        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex, tx_hash);
+        let (dex_swaps, pricing) =
+            self.cex_trades_for_swap(dex_swaps, metadata, marked_cex_dex, tx_hash);
 
         // pricing window
         let pricing_window_vwam = pricing
@@ -490,13 +491,15 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     /// intermediary token pathways.
     fn cex_trades_for_swap(
         &self,
-        dex_swaps: &[NormalizedSwap],
+        dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
-    ) -> Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> {
-        dex_swaps
-            .iter()
+    ) -> (Vec<NormalizedSwap>, Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)>) {
+        let mut dex_swaps_res = Vec::new();
+        let mut skipped_dex_swaps = Vec::new();
+        let mut res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
+            .into_iter()
             .filter(|swap| swap.amount_out != Rational::ZERO)
             .map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
@@ -514,7 +517,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             &swap.amount_out,
                             metadata.microseconds_block_timestamp(),
                             marked_cex_dex,
-                            swap,
+                            &swap,
                             tx_hash,
                         )
                 };
@@ -539,7 +542,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             metadata.microseconds_block_timestamp(),
                             None,
                             marked_cex_dex,
-                            swap,
+                            &swap,
                             tx_hash,
                         )
                 };
@@ -550,6 +553,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .map(|m| m.run_cex_price_vol(optimistic))
                     .unwrap_or_else(optimistic);
 
+                // i
+                if window.is_none() && other.is_none() {
+                    skipped_dex_swaps.push(swap)
+                } else {
+                    dex_swaps_res.push(swap);
+                }
+
                 if (window.is_none() || other.is_none()) && marked_cex_dex {
                     self.utils
                         .get_metrics()
@@ -558,7 +568,144 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 (window, other)
             })
-            .collect()
+            .collect();
+
+        let intermediary_venues = self.create_possible_intermediary_swaps(skipped_dex_swaps);
+        res.extend(
+            intermediary_venues
+                .into_iter()
+                .filter(|swap| swap.amount_out != Rational::ZERO)
+                .map(|swap| {
+                    let pair = Pair(swap.token_in.address, swap.token_out.address);
+
+                    let window_fn = || {
+                        metadata
+                            .cex_trades
+                            .as_ref()
+                            .unwrap()
+                            .lock()
+                            .calculate_time_window_vwam(
+                                self.trade_config,
+                                &self.cex_exchanges,
+                                pair,
+                                &swap.amount_out,
+                                metadata.microseconds_block_timestamp(),
+                                marked_cex_dex,
+                                &swap,
+                                tx_hash,
+                            )
+                    };
+
+                    let window = self
+                        .utils
+                        .get_metrics()
+                        .map(|m| m.run_cex_price_window(window_fn))
+                        .unwrap_or_else(window_fn);
+
+                    let optimistic = || {
+                        metadata
+                            .cex_trades
+                            .as_ref()
+                            .unwrap()
+                            .lock()
+                            .get_optimistic_vmap(
+                                self.trade_config,
+                                &self.cex_exchanges,
+                                &pair,
+                                &swap.amount_out,
+                                metadata.microseconds_block_timestamp(),
+                                None,
+                                marked_cex_dex,
+                                &swap,
+                                tx_hash,
+                            )
+                    };
+
+                    let other = self
+                        .utils
+                        .get_metrics()
+                        .map(|m| m.run_cex_price_vol(optimistic))
+                        .unwrap_or_else(optimistic);
+
+                    if !(window.is_none() && other.is_none()) {
+                        dex_swaps_res.push(swap);
+                    }
+
+                    if (window.is_none() || other.is_none()) && marked_cex_dex {
+                        self.utils
+                            .get_metrics()
+                            .inspect(|m| m.missing_cex_pair(pair));
+                    }
+
+                    (window, other)
+                }),
+        );
+
+        (dex_swaps_res, res)
+    }
+
+    /// see's if we can form a intermediary path on dex swaps
+    fn create_possible_intermediary_swaps(
+        &self,
+        swaps: Vec<NormalizedSwap>,
+    ) -> Vec<NormalizedSwap> {
+        let mut matching: FastHashMap<_, Vec<_>> = FastHashMap::default();
+
+        for swap in &swaps {
+            matching
+                .entry(swap.token_in.clone())
+                .or_default()
+                .push(swap);
+            matching
+                .entry(swap.token_out.clone())
+                .or_default()
+                .push(swap);
+        }
+
+        let mut res = vec![];
+
+        for (intermediary, swaps) in matching {
+            res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
+                let s0 = swaps.remove(0);
+                let s1 = swaps.remove(0);
+
+                // if s0 is first hop
+                if s0.token_out == intermediary
+                    && s0.token_out == s1.token_in
+                    && s0.amount_out == s1.amount_in
+                {
+                    Some(NormalizedSwap {
+                        from: s0.from,
+                        recipient: s1.recipient,
+                        token_in: s0.token_in.clone(),
+                        token_out: s1.token_out.clone(),
+                        amount_in: s0.amount_in.clone(),
+                        amount_out: s1.amount_out.clone(),
+                        protocol: s0.protocol,
+                        pool: s0.pool,
+                        ..Default::default()
+                    })
+
+                // if s1 is first hop
+                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
+                    Some(NormalizedSwap {
+                        from: s1.from,
+                        recipient: s0.recipient,
+                        token_in: s1.token_in.clone(),
+                        token_out: s0.token_out.clone(),
+                        amount_in: s1.amount_in.clone(),
+                        amount_out: s0.amount_out.clone(),
+                        protocol: s1.protocol,
+                        pool: s1.pool,
+                        ..Default::default()
+                    })
+                } else {
+                    None
+                }
+            }));
+        }
+
+        res
     }
 
     /// Accounts for gas costs in the calculation of potential arbitrage
