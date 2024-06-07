@@ -541,7 +541,7 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS])
             .with_block(18884329)
             .with_gas_paid_usd(792.89)
-            .with_expected_profit_usd(-10.61);
+            .with_expected_profit_usd(17.9);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }

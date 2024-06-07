@@ -309,5 +309,4 @@ pub mod tests {
 
         inspector_util.run_composer(config, None).await.unwrap();
     }
-
 }
