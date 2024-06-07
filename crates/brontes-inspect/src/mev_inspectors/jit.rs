@@ -552,7 +552,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect::<FastHashMap<_, _>>();
 
         set.into_iter()
-            .filter(|jit| jit.victims.iter().flatten().count() <= 20)
+            .filter(|jit| {
+                jit.victims.iter().flatten().count() <= 20
+                    && !jit.frontrun_txes.is_empty()
+                    && !jit.victims.is_empty()
+            })
             .filter_map(|jit| PossibleJitWithInfo::from_jit(jit, &tx_info_map))
             .collect_vec()
     }
