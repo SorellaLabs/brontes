@@ -69,7 +69,7 @@ impl SearcherInfo {
             MevType::AtomicArb => self.mev_count.atomic_backrun_count,
             MevType::Liquidation => self.mev_count.liquidation_count,
             MevType::SearcherTx => self.mev_count.searcher_tx_count,
-            MevType::Unknown => None,
+            MevType::Unknown | MevType::JitCexDex => None,
         }
     }
 
