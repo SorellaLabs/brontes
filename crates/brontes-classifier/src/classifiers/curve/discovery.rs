@@ -73,28 +73,18 @@ alloy_sol_types::sol!(
 async fn query_base_pool<T: TracingProvider>(tracer: &Arc<T>, base_pool: &Address) -> Vec<Address> {
     let mut result = Vec::new();
     let mut i = 0i128;
-    loop {
-        match make_call_request(coins_0Call { arg0: i }, tracer, *base_pool, None).await {
-            Ok(call_return) => {
-                i += 1;
-                result.push(call_return._0);
-            }
-            Err(_) => break,
-        }
+    while let Ok(call_return) = make_call_request(coins_0Call { arg0: i }, tracer, *base_pool, None).await {
+        i += 1;
+        result.push(call_return._0);
     }
-    if result.len() > 0 {
+    if !result.is_empty() {
         return result;
     }
 
     let mut i = U256::from(0);
-    loop {
-        match make_call_request(coins_1Call { arg0: i }, tracer, *base_pool, None).await {
-            Ok(call_return) => {
-                i += U256::from(1);
-                result.push(call_return._0);
-            }
-            Err(_) => break,
-        }
+    while let Ok(call_return) = make_call_request(coins_1Call { arg0: i }, tracer, *base_pool, None).await {
+        i += U256::from(1);
+        result.push(call_return._0);
     }
     result
 }
