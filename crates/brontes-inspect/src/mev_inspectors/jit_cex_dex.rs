@@ -72,6 +72,11 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                 tracing::trace!("trying jit to see if cexdex -{:#?}", jits);
                 let BundleData::Jit(jit) = jits.data else { return None };
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
+                if !(tx_info.is_searcher_of_type(MevType::CexDex)
+                    || tx_info.is_labelled_searcher_of_type(MevType::CexDex))
+                {
+                    return None
+                }
                 let mut mint_burn_deltas: FastHashMap<
                     Address,
                     FastHashMap<TokenInfoWithAddress, Rational>,
