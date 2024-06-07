@@ -88,7 +88,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         // call inner to avoid metrics
-        let jit_bundles = self.jit.inspect_block_inner(tree, metadata);
+        let jit_bundles = self.jit.inspect_block_inner(tree.clone(), metadata.clone());
         jit_bundles
             .into_iter()
             .filter_map(|jits| {
