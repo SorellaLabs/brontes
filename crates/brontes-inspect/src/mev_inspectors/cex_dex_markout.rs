@@ -25,7 +25,7 @@ use brontes_types::{
     },
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    FastHashMap, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashMap, FastHashSet, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use colored::Colorize;
 use itertools::{multizip, Itertools};
@@ -498,11 +498,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> CexDexTradesForSwap {
-        let mut dex_swaps_res = Vec::new();
-        let mut skipped_dex_swaps = Vec::new();
+        let dex_swaps = self.merge_possible_swaps(dex_swaps);
 
-        let mut res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
-            .into_iter()
+        let res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
+            .iter()
             .filter(|swap| swap.amount_out != Rational::ZERO)
             .filter_map(|swap| {
                 let pair = Pair(swap.token_in.address, swap.token_out.address);
@@ -520,7 +519,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             &swap.amount_out,
                             metadata.microseconds_block_timestamp(),
                             marked_cex_dex,
-                            &swap,
+                            swap,
                             tx_hash,
                         )
                 };
@@ -545,7 +544,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             metadata.microseconds_block_timestamp(),
                             None,
                             marked_cex_dex,
-                            &swap,
+                            swap,
                             tx_hash,
                         )
                 };
@@ -555,13 +554,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .get_metrics()
                     .map(|m| m.run_cex_price_vol(optimistic))
                     .unwrap_or_else(optimistic);
-
-                if window.is_none() && other.is_none() {
-                    skipped_dex_swaps.push(swap);
-                    return None
-                } else {
-                    dex_swaps_res.push(swap);
-                }
 
                 if (window.is_none() || other.is_none()) && marked_cex_dex {
                     self.utils
@@ -573,87 +565,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             })
             .collect();
 
-        let intermediary_venues = self.create_possible_intermediary_swaps(skipped_dex_swaps);
-        res.extend(
-            intermediary_venues
-                .into_iter()
-                .filter(|swap| swap.amount_out != Rational::ZERO)
-                .filter_map(|swap| {
-                    let pair = Pair(swap.token_in.address, swap.token_out.address);
-
-                    let window_fn = || {
-                        metadata
-                            .cex_trades
-                            .as_ref()
-                            .unwrap()
-                            .lock()
-                            .calculate_time_window_vwam(
-                                self.trade_config,
-                                &self.cex_exchanges,
-                                pair,
-                                &swap.amount_out,
-                                metadata.microseconds_block_timestamp(),
-                                marked_cex_dex,
-                                &swap,
-                                tx_hash,
-                            )
-                    };
-
-                    let window = self
-                        .utils
-                        .get_metrics()
-                        .map(|m| m.run_cex_price_window(window_fn))
-                        .unwrap_or_else(window_fn);
-
-                    let optimistic = || {
-                        metadata
-                            .cex_trades
-                            .as_ref()
-                            .unwrap()
-                            .lock()
-                            .get_optimistic_vmap(
-                                self.trade_config,
-                                &self.cex_exchanges,
-                                &pair,
-                                &swap.amount_out,
-                                metadata.microseconds_block_timestamp(),
-                                None,
-                                marked_cex_dex,
-                                &swap,
-                                tx_hash,
-                            )
-                    };
-
-                    let other = self
-                        .utils
-                        .get_metrics()
-                        .map(|m| m.run_cex_price_vol(optimistic))
-                        .unwrap_or_else(optimistic);
-
-                    if window.is_some() || other.is_some() {
-                        dex_swaps_res.push(swap);
-                    } else {
-                        return None
-                    }
-
-                    if (window.is_none() || other.is_none()) && marked_cex_dex {
-                        self.utils
-                            .get_metrics()
-                            .inspect(|m| m.missing_cex_pair(pair));
-                    }
-
-                    Some((window, other))
-                }),
-        );
-
-        (dex_swaps_res, res)
+        (dex_swaps, res)
     }
 
     /// see's if we can form a intermediary path on dex swaps
-    fn create_possible_intermediary_swaps(
-        &self,
-        swaps: Vec<NormalizedSwap>,
-    ) -> Vec<NormalizedSwap> {
+    fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
         let mut matching: FastHashMap<_, Vec<_>> = FastHashMap::default();
 
         for swap in &swaps {
@@ -668,6 +584,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         }
 
         let mut res = vec![];
+        let mut voided = FastHashSet::default();
 
         for (intermediary, swaps) in matching {
             res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
@@ -675,10 +592,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 let s1 = swaps.remove(0);
 
                 // if s0 is first hop
-                if s0.token_out == intermediary
-                    && s0.token_out == s1.token_in
-                    && s0.amount_out == s1.amount_in
-                {
+                if s0.token_out == intermediary && s0.token_out == s1.token_in {
+                    voided.insert(s0.clone());
+                    voided.insert(s1.clone());
                     Some(NormalizedSwap {
                         from: s0.from,
                         recipient: s1.recipient,
@@ -690,9 +606,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         pool: s0.pool,
                         ..Default::default()
                     })
-
-                // if s1 is first hop
-                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
+                } else if s0.token_in == s1.token_out {
+                    voided.insert(s0.clone());
+                    voided.insert(s1.clone());
                     Some(NormalizedSwap {
                         from: s1.from,
                         recipient: s0.recipient,
@@ -710,7 +626,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             }));
         }
 
-        res
+        swaps
+            .into_iter()
+            .filter(|s| !voided.contains(s))
+            .chain(res)
+            .collect()
     }
 
     /// Accounts for gas costs in the calculation of potential arbitrage
