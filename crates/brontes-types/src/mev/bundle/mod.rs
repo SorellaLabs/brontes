@@ -54,7 +54,7 @@ impl fmt::Display for Bundle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.header.mev_type {
             MevType::Sandwich => display_sandwich(self, f)?,
-            MevType::CexDex => display_cex_dex(self, f)?,
+            MevType::CexDex | MevType::JitCexDex => display_cex_dex(self, f)?,
             MevType::Jit => display_jit_liquidity(self, f)?,
             MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
@@ -87,6 +87,7 @@ pub enum MevType {
     CexDex,
     Sandwich,
     Jit,
+    JitCexDex,
     JitSandwich,
     Liquidation,
     AtomicArb,
@@ -105,13 +106,13 @@ impl MevType {
             | MevType::Liquidation
             | MevType::Unknown => false,
             MevType::SearcherTx => false,
-            MevType::CexDex => true,
+            MevType::CexDex | MevType::JitCexDex => true,
         }
     }
 
     pub fn get_parquet_path(&self) -> &'static str {
         match self {
-            MevType::CexDex => "cex-dex",
+            MevType::CexDex | MevType::JitCexDex => "cex-dex",
             MevType::AtomicArb => "atomic-arb",
             MevType::Jit => "jit",
             MevType::Sandwich => "sandwich",
