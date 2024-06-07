@@ -82,7 +82,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                             .entry(mint.pool)
                             .or_default()
                             .entry(token)
-                            .or_default() += amount;
+                            .or_default() -= amount;
                     }
                 });
 
@@ -92,7 +92,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                             .entry(burn.pool)
                             .or_default()
                             .entry(token)
-                            .or_default() -= amount;
+                            .or_default() += amount;
                     }
                 });
 
@@ -184,7 +184,6 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
 #[cfg(test)]
 mod tests {
 
-    use alloy_primitives::hex;
     use brontes_types::constants::USDT_ADDRESS;
 
     use crate::{
@@ -193,14 +192,11 @@ mod tests {
     };
 
     #[brontes_macros::test]
-    async fn test_cex_dex_markout() {
-        // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
+    async fn test_jit_cex_dex() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
 
-        let tx = hex!("6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
+        let config = InspectorTxRunConfig::new(Inspectors::JitCexDex)
+            .with_block(18305720)
             .with_gas_paid_usd(38.31)
             .with_expected_profit_usd(134.70);
 
