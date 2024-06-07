@@ -386,7 +386,6 @@ impl InspectorTestUtils {
             "Got wrong number of mev bundles. Expected 1, got {}\n {:#?}",
             results.len(),
             results
-
         );
 
         let bundle = results.remove(0);
