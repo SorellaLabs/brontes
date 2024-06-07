@@ -383,8 +383,10 @@ impl InspectorTestUtils {
         assert_eq!(
             results.len(),
             1,
-            "Got wrong number of mev bundles. Expected 1, got {}",
-            results.len()
+            "Got wrong number of mev bundles. Expected 1, got {}\n {:#?}",
+            results.len(),
+            results
+
         );
 
         let bundle = results.remove(0);
