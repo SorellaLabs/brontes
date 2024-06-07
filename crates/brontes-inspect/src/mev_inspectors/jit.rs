@@ -6,12 +6,10 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
-    mev::{Bundle, JitLiquidity, MevType},
+    mev::{Bundle, JitLiquidity, Mev, MevType},
     normalized_actions::accounting::ActionAccounting,
     ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-#[allow(unused)]
-use clickhouse::{fixed_string::FixedString, row::*};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 
@@ -19,36 +17,47 @@ use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
 };
 
+#[derive(Debug)]
 struct PossibleJitWithInfo {
-    pub searcher_info: [TxInfo; 2],
-    pub victim_info:   Vec<TxInfo>,
-    pub inner:         PossibleJit,
+    pub front_runs:  Vec<TxInfo>,
+    pub backrun:     TxInfo,
+    pub victim_info: Vec<Vec<TxInfo>>,
+    pub inner:       PossibleJit,
 }
 impl PossibleJitWithInfo {
     pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
-        let searcher =
-            [info_set.get(&ps.frontrun_tx).cloned()?, info_set.get(&ps.backrun_tx).cloned()?];
+        let backrun = info_set.get(&ps.backrun_tx).cloned()?;
+        let mut frontruns = vec![];
 
-        let mut victims = Vec::with_capacity(ps.victims.len());
+        for fr in &ps.frontrun_txes {
+            frontruns.push(info_set.get(fr).cloned()?);
+        }
+
+        let mut victims = vec![];
         for victim in &ps.victims {
-            victims.push(info_set.get(victim).cloned()?);
+            let mut set = vec![];
+            for v in victim {
+                set.push(info_set.get(v).cloned()?);
+            }
+            victims.push(set);
         }
 
         Some(PossibleJitWithInfo {
-            searcher_info: searcher,
-            victim_info:   victims,
-            inner:         ps,
+            front_runs: frontruns,
+            backrun,
+            victim_info: victims,
+            inner: ps,
         })
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct PossibleJit {
     pub eoa:               Address,
-    pub frontrun_tx:       B256,
+    pub frontrun_txes:     Vec<B256>,
     pub backrun_tx:        B256,
     pub executor_contract: Address,
-    pub victims:           Vec<B256>,
+    pub victims:           Vec<Vec<B256>>,
 }
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -90,103 +99,216 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        self.possible_jit_set(tree.clone())
-            .into_iter()
-            .filter_map(
-                |PossibleJitWithInfo {
-                     inner: PossibleJit { frontrun_tx, backrun_tx, executor_contract, victims, .. },
-                     victim_info,
-                     searcher_info,
-                 }| {
-                    let searcher_actions = [frontrun_tx, backrun_tx]
-                        .iter()
-                        .map(|tx| {
-                            self.utils
-                                .flatten_nested_actions(
-                                    tree.clone().collect(
-                                        tx,
-                                        TreeSearchBuilder::default().with_actions([
-                                            Action::is_mint,
-                                            Action::is_burn,
-                                            Action::is_transfer,
-                                            Action::is_eth_transfer,
-                                            Action::is_nested_action,
-                                        ]),
-                                    ),
-                                    &|actions| {
-                                        actions.is_mint()
-                                            || actions.is_burn()
-                                            || actions.is_collect()
-                                            || actions.is_transfer()
-                                            || actions.is_eth_transfer()
-                                    },
-                                )
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<Vec<Action>>>();
+        Self::dedup_bundles(
+            self.possible_jit_set(tree.clone())
+                .into_iter()
+                .filter_map(
+                    |PossibleJitWithInfo {
+                         inner:
+                             PossibleJit {
+                                 frontrun_txes, backrun_tx, executor_contract, victims, ..
+                             },
+                         victim_info,
+                         backrun,
+                         front_runs,
+                     }| {
+                        let searcher_actions = frontrun_txes
+                            .iter()
+                            .chain([backrun_tx].iter())
+                            .map(|tx| {
+                                self.utils
+                                    .flatten_nested_actions(
+                                        tree.clone().collect(
+                                            tx,
+                                            TreeSearchBuilder::default().with_actions([
+                                                Action::is_mint,
+                                                Action::is_burn,
+                                                Action::is_transfer,
+                                                Action::is_eth_transfer,
+                                                Action::is_nested_action,
+                                            ]),
+                                        ),
+                                        &|actions| {
+                                            actions.is_mint()
+                                                || actions.is_burn()
+                                                || actions.is_collect()
+                                                || actions.is_transfer()
+                                                || actions.is_eth_transfer()
+                                        },
+                                    )
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect::<Vec<Vec<Action>>>();
 
-                    tracing::trace!(?frontrun_tx, ?backrun_tx, "checking if jit");
+                        tracing::trace!(?frontrun_txes, ?backrun_tx, "checking if jit");
 
-                    if searcher_actions.is_empty() {
-                        tracing::trace!("no searcher actions found");
-                        return None
-                    }
+                        if searcher_actions.is_empty() {
+                            tracing::trace!("no searcher actions found");
+                            return None
+                        }
 
-                    let victim_actions = victims
-                        .iter()
-                        .map(|victim| {
-                            self.utils
-                                .flatten_nested_actions(
-                                    tree.clone().collect(
-                                        victim,
-                                        TreeSearchBuilder::default().with_actions([
-                                            Action::is_swap,
-                                            Action::is_nested_action,
-                                        ]),
-                                    ),
-                                    &|actions| actions.is_swap(),
-                                )
-                                .collect::<Vec<_>>()
-                        })
-                        .collect_vec();
+                        let victim_actions = victims
+                            .iter()
+                            .flatten()
+                            .map(|victim| {
+                                self.utils
+                                    .flatten_nested_actions(
+                                        tree.clone().collect(
+                                            victim,
+                                            TreeSearchBuilder::default().with_actions([
+                                                Action::is_swap,
+                                                Action::is_nested_action,
+                                            ]),
+                                        ),
+                                        &|actions| actions.is_swap(),
+                                    )
+                                    .collect::<Vec<_>>()
+                            })
+                            .collect_vec();
 
-                    if victim_actions.iter().any(|inner| inner.is_empty()) {
-                        tracing::trace!("no victim actions found");
-                        return None
-                    }
+                        if victims
+                            .iter()
+                            .flatten()
+                            .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                            .filter(|d| !d.is_revert())
+                            .any(|d| executor_contract == d.get_to_address())
+                        {
+                            tracing::trace!("victim address is same as mev executor contract");
+                            return None
+                        }
 
-                    if victims
-                        .iter()
-                        .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                        .filter(|d| !d.is_revert())
-                        .any(|d| executor_contract == d.get_to_address())
-                    {
-                        tracing::trace!("victim address is same as mev executor contract");
-                        return None
-                    }
+                        self.calculate_jit(
+                            front_runs,
+                            backrun,
+                            metadata.clone(),
+                            searcher_actions,
+                            victim_actions,
+                            victim_info,
+                            0,
+                        )
+                    },
+                )
+                .flatten()
+                .collect::<Vec<_>>(),
+        )
+    }
 
-                    self.calculate_jit(
-                        searcher_info,
-                        metadata.clone(),
-                        searcher_actions,
-                        victim_actions,
-                        victim_info,
-                    )
-                },
-            )
-            .collect::<Vec<_>>()
+    fn recursive_possible_jits(
+        &self,
+        frontrun_info: Vec<TxInfo>,
+        backrun_info: TxInfo,
+        metadata: Arc<Metadata>,
+        searcher_actions: Vec<Vec<Action>>,
+        // victim
+        victim_actions: Vec<Vec<Action>>,
+        victim_info: Vec<Vec<TxInfo>>,
+        mut recursive: u8,
+    ) -> Option<Vec<Bundle>> {
+        let mut res = vec![];
+
+        if recursive >= 25 {
+            return None
+        }
+        if frontrun_info.len() > 1 {
+            recursive += 1;
+            // remove dropped sandwiches
+            if victim_info.is_empty() || victim_actions.is_empty() {
+                return None
+            }
+
+            let back_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut front_run_info = frontrun_info.to_vec();
+                victim_info.pop()?;
+                victim_actions.pop()?;
+                // remove last searcher action
+                let mut searcher_actions = searcher_actions.clone();
+                searcher_actions.pop()?;
+                let backrun_info = front_run_info.pop()?;
+
+                if victim_actions.iter().flatten().count() == 0 {
+                    return None
+                }
+
+                self.calculate_jit(
+                    front_run_info,
+                    backrun_info,
+                    metadata.clone(),
+                    searcher_actions,
+                    victim_actions,
+                    victim_info,
+                    recursive,
+                )
+            };
+
+            let front_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut possible_front_runs_info = frontrun_info.to_vec();
+                let mut searcher_actions = searcher_actions.to_vec();
+                // ensure we don't loose the last tx
+
+                victim_info.remove(0);
+                victim_actions.remove(0);
+                possible_front_runs_info.remove(0);
+                searcher_actions.remove(0);
+
+                if victim_actions.iter().flatten().count() == 0 {
+                    return None
+                }
+
+                self.calculate_jit(
+                    possible_front_runs_info,
+                    backrun_info,
+                    metadata.clone(),
+                    searcher_actions,
+                    victim_actions,
+                    victim_info,
+                    recursive,
+                )
+            };
+            if let Some(front) = front_shrink {
+                res.extend(front);
+            }
+            if let Some(back) = back_shrink {
+                res.extend(back);
+            }
+            return Some(res)
+        }
+
+        None
     }
 
     //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
-        info: [TxInfo; 2],
+        frontrun_info: Vec<TxInfo>,
+        backrun_info: TxInfo,
         metadata: Arc<Metadata>,
         searcher_actions: Vec<Vec<Action>>,
         // victim
         victim_actions: Vec<Vec<Action>>,
-        victim_info: Vec<TxInfo>,
-    ) -> Option<Bundle> {
+        victim_info: Vec<Vec<TxInfo>>,
+        recursive: u8,
+    ) -> Option<Vec<Bundle>> {
+        if !(searcher_actions.last()?.iter().any(|h| h.is_burn())
+            || searcher_actions
+                .iter()
+                .take(searcher_actions.len() - 1)
+                .all(|h| h.iter().any(|a| a.is_mint())))
+        {
+            return self.recursive_possible_jits(
+                frontrun_info,
+                backrun_info,
+                metadata,
+                searcher_actions,
+                victim_actions,
+                victim_info,
+                recursive,
+            )
+        }
+
         // grab all mints and burns
         let ((mints, burns), rem): ((Vec<_>, Vec<_>), Vec<_>) = searcher_actions
             .clone()
@@ -208,7 +330,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info);
+        let mut info_set = frontrun_info.clone();
+        info_set.push(backrun_info.clone());
+
+        let mev_addresses: FastHashSet<Address> = collect_address_set_for_accounting(&info_set);
 
         let deltas = rem
             .into_iter()
@@ -216,7 +341,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .account_for_actions();
 
         let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
-            info[1].tx_index,
+            info_set.last()?.tx_index,
             PriceAt::After,
             &mev_addresses,
             &deltas,
@@ -228,13 +353,14 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             (Some(Rational::ZERO), false)
         };
 
-        let (hashes, gas_details): (Vec<_>, Vec<_>) = info
+        let (mut hashes, mut gas_details): (Vec<_>, Vec<_>) = info_set
             .iter()
             .map(|info| info.clone().split_to_storage_info())
             .unzip();
 
         let (victim_hashes, victim_gas_details): (Vec<_>, Vec<_>) = victim_info
             .into_iter()
+            .flatten()
             .map(|info| info.split_to_storage_info())
             .unzip();
 
@@ -252,7 +378,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let header = self.utils.build_bundle_header(
             vec![deltas],
             bundle_hashes,
-            &info[1],
+            info_set.last()?,
             profit.to_float(),
             PriceAt::After,
             &gas_details,
@@ -280,12 +406,12 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             victim_swaps,
             victim_swaps_gas_details_tx_hashes: victim_hashes,
             victim_swaps_gas_details: victim_gas_details,
-            backrun_burn_tx_hash: hashes[1],
-            backrun_burn_gas_details: gas_details[1],
+            backrun_burn_tx_hash: hashes.pop()?,
+            backrun_burn_gas_details: gas_details.pop()?,
             backrun_burns: burns,
         };
 
-        Some(Bundle { header, data: BundleData::Jit(jit_details) })
+        Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Action>>) -> Vec<PossibleJitWithInfo> {
@@ -295,10 +421,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return vec![]
         }
 
-        let mut set: FastHashSet<PossibleJit> = FastHashSet::default();
-        let mut duplicate_mev_contracts: FastHashMap<Address, Vec<B256>> = FastHashMap::default();
-        let mut duplicate_senders: FastHashMap<Address, Vec<B256>> = FastHashMap::default();
+        let mut set: FastHashMap<Address, PossibleJit> = FastHashMap::default();
+        let mut duplicate_mev_contracts: FastHashMap<Address, (B256, Address)> =
+            FastHashMap::default();
 
+        let mut duplicate_senders: FastHashMap<Address, B256> = FastHashMap::default();
         let mut possible_victims: FastHashMap<B256, Vec<B256>> = FastHashMap::default();
 
         for root in iter {
@@ -307,31 +434,37 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             }
 
             match duplicate_mev_contracts.entry(root.get_to_address()) {
-                // If we have not seen this sender before, we insert the tx hash into the map
-                Entry::Vacant(v) => {
-                    v.insert(vec![root.tx_hash]);
+                // If this contract has not been called within this block, we insert the tx hash
+                // into the map
+                Entry::Vacant(duplicate_mev_contract) => {
+                    duplicate_mev_contract.insert((root.tx_hash, root.head.address));
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    let prev_tx_hashes = o.get();
+                    // Get's prev tx hash &  for this sender & replaces it with the current tx hash
+                    let (prev_tx_hash, frontrun_eoa) = o.get_mut();
 
-                    for prev_tx_hash in prev_tx_hashes {
-                        // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if !victims.is_empty() {
-                                // Create
-                                set.insert(PossibleJit {
-                                    eoa:               root.head.address,
-                                    frontrun_tx:       *prev_tx_hash,
+                    if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
+                        match set.entry(root.get_to_address()) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleJit {
+                                    eoa:               *frontrun_eoa,
+                                    frontrun_txes:     vec![*prev_tx_hash],
                                     backrun_tx:        root.tx_hash,
                                     executor_contract: root.get_to_address(),
-                                    victims:           victims.clone(),
+                                    victims:           vec![frontrun_victims],
                                 });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.frontrun_txes.push(*prev_tx_hash);
+                                sandwich.backrun_tx = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
                             }
                         }
                     }
-                    // Add current transaction hash to the list of transactions for this sender
-                    o.get_mut().push(root.tx_hash);
+
+                    *prev_tx_hash = root.tx_hash;
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
@@ -339,29 +472,34 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             match duplicate_senders.entry(root.head.address) {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
-                    v.insert(vec![root.tx_hash]);
+                    v.insert(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
-                    let prev_tx_hashes = o.get();
-
-                    for prev_tx_hash in prev_tx_hashes {
-                        // Find the victims between the previous and the current transaction
-                        if let Some(victims) = possible_victims.get(prev_tx_hash) {
-                            if !victims.is_empty() {
-                                // Create
-                                set.insert(PossibleJit {
+                    // Get's prev tx hash for this sender & replaces it with the current tx hash
+                    let prev_tx_hash = o.insert(root.tx_hash);
+                    if let Some(frontrun_victims) = possible_victims.remove(&prev_tx_hash) {
+                        match set.entry(root.head.address) {
+                            Entry::Vacant(e) => {
+                                e.insert(PossibleJit {
                                     eoa:               root.head.address,
-                                    frontrun_tx:       *prev_tx_hash,
+                                    frontrun_txes:     vec![prev_tx_hash],
                                     backrun_tx:        root.tx_hash,
                                     executor_contract: root.get_to_address(),
-                                    victims:           victims.clone(),
+                                    victims:           vec![frontrun_victims],
                                 });
+                            }
+                            Entry::Occupied(mut o) => {
+                                let sandwich = o.get_mut();
+                                sandwich.frontrun_txes.push(prev_tx_hash);
+                                sandwich.backrun_tx = root.tx_hash;
+                                sandwich.victims.push(frontrun_victims);
                             }
                         }
                     }
+
                     // Add current transaction hash to the list of transactions for this sender
-                    o.get_mut().push(root.tx_hash);
+                    o.insert(root.tx_hash);
                     possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
@@ -375,26 +513,31 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 }
             }
         }
+
+        let set = Itertools::unique(set.into_values())
+            .flat_map(Self::partition_into_gaps)
+            .collect::<Vec<_>>();
+
         // split out
         let tx_set = set
             .iter()
             .filter_map(|jit| {
-                if !(tree
-                    .tx_must_contain_action(jit.frontrun_tx, |action| action.is_mint())
-                    .unwrap()
-                    && tree
-                        .tx_must_contain_action(jit.backrun_tx, |action| action.is_burn())
-                        .unwrap())
-                {
-                    return None
-                }
-
                 if jit.victims.len() > 20 {
                     return None
                 }
 
-                let mut set = vec![jit.frontrun_tx, jit.backrun_tx];
-                set.extend(jit.victims.clone());
+                let mut set = vec![jit.backrun_tx];
+                set.extend(jit.victims.iter().flatten().cloned());
+                set.extend(jit.frontrun_txes.clone());
+                if !(set
+                    .iter()
+                    .any(|tx| tree.tx_must_contain_action(*tx, |a| a.is_mint()).unwrap())
+                    && set
+                        .iter()
+                        .any(|tx| tree.tx_must_contain_action(*tx, |a| a.is_burn()).unwrap()))
+                {
+                    return None
+                }
                 Some(set)
             })
             .flatten()
@@ -409,7 +552,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect::<FastHashMap<_, _>>();
 
         set.into_iter()
-            .filter(|jit| jit.victims.len() <= 20)
+            .filter(|jit| {
+                jit.victims.iter().flatten().count() <= 20
+                    && !jit.frontrun_txes.is_empty()
+                    && !jit.victims.is_empty()
+            })
             .filter_map(|jit| PossibleJitWithInfo::from_jit(jit, &tx_info_map))
             .collect_vec()
     }
@@ -418,6 +565,98 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe, self.utils.quote)
+    }
+
+    fn partition_into_gaps(ps: PossibleJit) -> Vec<PossibleJit> {
+        let PossibleJit { eoa, frontrun_txes, backrun_tx, executor_contract, victims } = ps;
+        let mut results = vec![];
+        let mut victim_sets = vec![];
+        let mut last_partition = 0;
+
+        victims.into_iter().enumerate().for_each(|(i, group_set)| {
+            if group_set.is_empty() {
+                results.push(PossibleJit {
+                    eoa,
+                    executor_contract,
+                    victims: std::mem::take(&mut victim_sets),
+                    frontrun_txes: frontrun_txes[last_partition..i].to_vec(),
+                    backrun_tx: frontrun_txes.get(i).copied().unwrap_or(backrun_tx),
+                });
+                last_partition = i + 1;
+            } else {
+                victim_sets.push(group_set);
+            }
+        });
+
+        if results.is_empty() {
+            results.push(PossibleJit {
+                eoa,
+                executor_contract,
+                victims: victim_sets,
+                frontrun_txes,
+                backrun_tx,
+            });
+        } else if !victim_sets.is_empty() {
+            // add remainder
+            results.push(PossibleJit {
+                eoa,
+                executor_contract,
+                victims: victim_sets,
+                frontrun_txes: frontrun_txes[last_partition..].to_vec(),
+                backrun_tx,
+            });
+        }
+
+        results
+    }
+
+    #[allow(clippy::comparison_chain)]
+    fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
+        let mut bundles = bundles
+            .into_iter()
+            .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
+            .collect_vec();
+
+        let len = bundles.len();
+        let mut removals = Vec::new();
+
+        for i in 0..len {
+            if removals.contains(&i) {
+                continue
+            }
+
+            for j in 0..len {
+                if i == j || removals.contains(&j) {
+                    continue
+                }
+
+                let i_hash = &bundles[i].0;
+                let j_hash = &bundles[j].0;
+                if i_hash.iter().any(|hash| j_hash.contains(hash)) {
+                    if i_hash.len() > j_hash.len() {
+                        removals.push(j);
+                    } else if i_hash.len() < j_hash.len() {
+                        removals.push(i);
+                    } else {
+                        // if same, take bundle with lower profit as it is most
+                        // likey, more correct
+                        if bundles[i].1.header.profit_usd > bundles[j].1.header.profit_usd {
+                            removals.push(i);
+                        } else {
+                            removals.push(j);
+                        }
+                    }
+                }
+            }
+        }
+        removals.sort_unstable_by(|a, b| b.cmp(a));
+        removals.dedup();
+
+        removals.into_iter().for_each(|idx| {
+            bundles.remove(idx);
+        });
+
+        bundles.into_iter().map(|res| res.1).collect_vec()
     }
 }
 
@@ -444,7 +683,7 @@ mod tests {
                 hex!("50d1c9771902476076ecfc8b2a83ad6b9355a4c9").into(),
             ])
             .with_gas_paid_usd(90.875025)
-            .with_expected_profit_usd(-71.92);
+            .with_expected_profit_usd(13.58);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
@@ -460,7 +699,7 @@ mod tests {
             ])
             .with_block(18521071)
             .with_gas_paid_usd(92.65)
-            .with_expected_profit_usd(-10.61);
+            .with_expected_profit_usd(26.48);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
@@ -494,7 +733,20 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS])
             .with_block(16862007)
             .with_gas_paid_usd(40.7)
-            .with_expected_profit_usd(-10.61);
+            .with_expected_profit_usd(-25.62);
+
+        test_utils.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_multihop_jit() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(18884329)
+            .with_gas_paid_usd(792.89)
+            .with_expected_profit_usd(17.9);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }

@@ -1,5 +1,5 @@
 select 
-  init_block as block_number,
-  groupArray(address) as pools
+  cast(init_block, 'UInt64') as block_number,
+  cast(groupArray(address), 'Array(String)') as pools
 from ethereum.pools
 group by block_number
