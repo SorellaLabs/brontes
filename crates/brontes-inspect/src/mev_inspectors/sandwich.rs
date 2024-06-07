@@ -1463,4 +1463,17 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn sandwich_part_of_jit_multi_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_block(18674873)
+            .with_gas_paid_usd(273.9)
+            .with_expected_profit_usd(18.1);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
