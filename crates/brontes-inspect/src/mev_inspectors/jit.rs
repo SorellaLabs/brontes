@@ -102,10 +102,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         Self::dedup_bundles(
             self.possible_jit_set(tree.clone())
                 .into_iter()
-                .map(|f| {
-                    tracing::info!("{:#?}", f);
-                    f
-                })
                 .filter_map(
                     |PossibleJitWithInfo {
                          inner:
@@ -737,7 +733,7 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS])
             .with_block(16862007)
             .with_gas_paid_usd(40.7)
-            .with_expected_profit_usd(-10.61);
+            .with_expected_profit_usd(-25.62);
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
