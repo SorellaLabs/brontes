@@ -215,7 +215,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
     ) -> Option<Vec<Bundle>> {
         let mut res = vec![];
 
-        if recursive >= 10 {
+        if recursive >= 25 {
             return None
         }
         if frontrun_info.len() > 1 {
