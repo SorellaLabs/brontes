@@ -1,17 +1,47 @@
-use std::collections::HashMap;
+use std::{
+    cmp::{max, min},
+    collections::HashMap,
+    fmt,
+    fmt::Display,
+    sync::Arc,
+};
 
-use alloy_sol_types::sol_data::Address;
+use alloy_primitives::{Address, FixedBytes};
 use brontes_core::LibmdbxReader;
+use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
-    db::token_info::{TokenInfo, TokenInfoWithAddress},
-    mev::{data::BundleData, Mev},
-    normalized_actions::NormalizedSwap,
-    FastHashMap,
+    db::{
+        cex::{
+            config::CexDexTradeConfig,
+            time_window_vwam::MakerTakerWindowVWAP,
+            vwam::{ExchangePrice, MakerTaker},
+            CexExchange, FeeAdjustedQuote,
+        },
+        dex::PriceAt,
+        metadata::Metadata,
+        token_info::{TokenInfo, TokenInfoWithAddress},
+    },
+    display::utils::format_etherscan_url,
+    mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, Mev, MevType, OptimisticTrade},
+    normalized_actions::{
+        accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
+    },
+    pair::Pair,
+    tree::{BlockTree, GasDetails},
+    FastHashMap, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::multizip;
-use malachite::Rational;
+use malachite::{
+    num::basic::traits::{One, Two, Zero},
+    Rational,
+};
+use tracing::trace;
 
-use crate::{cex_dex_markout::CexDexMarkoutInspector, jit::JitInspector, Inspector};
+use crate::{
+    cex_dex_markout::{CexDexMarkoutInspector, CexDexProcessing},
+    jit::JitInspector,
+    Inspector,
+};
 
 /// jit cex dex happens when two things are present.
 /// 1) a cex dex arb on a pool
@@ -63,8 +93,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
             .into_iter()
             .filter_map(|jits| {
                 let BundleData::Jit(jit) = jits.data else { return None };
-                let hashes = jit.mev_transaction_hashes();
-                let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);
+                let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
                 let mut mint_burn_deltas: FastHashMap<
                     Address,
                     FastHashMap<TokenInfoWithAddress, Rational>,
@@ -72,7 +101,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
 
                 jit.frontrun_mints.into_iter().for_each(|mint| {
                     for (token, amount) in multizip((mint.token, mint.amount)) {
-                        mint_burn_deltas
+                        *mint_burn_deltas
                             .entry(mint.pool)
                             .or_default()
                             .entry(token)
@@ -82,7 +111,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
 
                 jit.backrun_burns.into_iter().for_each(|burn| {
                     for (token, amount) in multizip((burn.token, burn.amount)) {
-                        mint_burn_deltas
+                        *mint_burn_deltas
                             .entry(burn.pool)
                             .or_default()
                             .entry(token)
@@ -96,10 +125,10 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                         // for each pool, there is some token delta that occurs, this will be amount
                         // in amount out based on which is negative and
                         // which is positive
-                        let mut amount_out;
-                        let mut amount_in;
-                        let mut token_in;
-                        let mut token_out;
+                        let mut amount_out = Default::default();
+                        let mut amount_in = Default::default();
+                        let mut token_in = Default::default();
+                        let mut token_out = Default::default();
 
                         for (token, delta) in tokens.into_iter().take(2) {
                             if delta > Rational::ZERO {
@@ -110,6 +139,8 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                                 token_in = token;
                             }
                         }
+                        // make sure positive val
+                        amount_in = -amount_in;
 
                         NormalizedSwap {
                             pool,
@@ -117,8 +148,8 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                             amount_in,
                             token_in,
                             token_out,
-                            from: jits.header.mev_contract.clone().unwrap_or(jits.eoa),
-                            recipient: jits.header.mev_contract.clone().unwrap_or(jits.eoa),
+                            from: jits.header.mev_contract.clone().unwrap_or(jits.header.eoa),
+                            recipient: jits.header.mev_contract.clone().unwrap_or(jits.header.eoa),
                             ..Default::default()
                         }
                     })
@@ -151,15 +182,16 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                     metadata.clone(),
                 );
 
-                let (profit_usd, cex_dex) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
+                let (profit_usd, cex_dex) = self.cex_dex.filter_possible_cex_dex(
+                    possible_cex_dex,
+                    &tx_info,
+                    metadata.clone(),
+                )?;
 
-                let header = self.utils.build_bundle_header(
-                    vec![deltas],
-                    vec![tx_info.tx_hash],
+                let header = self.jit.utils.build_bundle_header_jit_cex_dex(
+                    jits.header,
                     &tx_info,
                     profit_usd,
-                    PriceAt::After,
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::JitCexDex,

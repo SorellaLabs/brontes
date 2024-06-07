@@ -94,7 +94,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
 }
 
 impl<DB: LibmdbxReader> JitInspector<'_, DB> {
-    fn inspect_block_inner(
+    pub fn inspect_block_inner(
         &self,
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,

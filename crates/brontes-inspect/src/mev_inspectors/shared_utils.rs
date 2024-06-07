@@ -308,6 +308,58 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         }
     }
 
+    pub fn build_bundle_header_jit_cex_dex(
+        &self,
+        bundle: BundleHeader,
+        info: &TxInfo,
+        mut profit_usd: f64,
+        gas_details: &[GasDetails],
+        metadata: Arc<Metadata>,
+        mev_type: MevType,
+        no_pricing_calculated: bool,
+    ) -> BundleHeader {
+        if no_pricing_calculated {
+            profit_usd = 0.0;
+        }
+
+        let balance_deltas = bundle.balance_deltas;
+
+        let bribe_usd = gas_details
+            .iter()
+            .map(|details| {
+                metadata
+                    .get_gas_price_usd(details.gas_paid(), self.quote)
+                    .to_float()
+            })
+            .sum::<f64>();
+
+        if profit_usd > bribe_usd * 100.0 {
+            self.metrics
+                .as_ref()
+                .inspect(|m| m.inspector_100x_profit(mev_type));
+        }
+
+        let fund = info
+            .get_searcher_contract_info()
+            .map(|i| i.fund)
+            .or_else(|| info.get_searcher_eao_info().map(|f| f.fund))
+            .unwrap_or_default();
+
+        BundleHeader {
+            block_number: metadata.block_num,
+            tx_index: info.tx_index,
+            tx_hash: info.tx_hash,
+            fund,
+            eoa: info.eoa,
+            mev_contract: info.mev_contract,
+            profit_usd,
+            bribe_usd,
+            mev_type,
+            no_pricing_calculated,
+            balance_deltas,
+        }
+    }
+
     pub fn build_bundle_header(
         &self,
         bundle_deltas: Vec<AddressDeltas>,
