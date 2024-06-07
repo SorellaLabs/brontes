@@ -50,7 +50,7 @@ impl PossibleJitWithInfo {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct PossibleJit {
     pub eoa:               Address,
     pub frontrun_txes:     Vec<B256>,
@@ -406,10 +406,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 }
             }
         }
+
+        let set = Itertools::unique(set.into_values())
+            .flat_map(Self::partition_into_gaps)
+            .collect::<Vec<_>>();
+
         // split out
         let tx_set = set
             .iter()
-            .filter_map(|(_, jit)| {
+            .filter_map(|jit| {
                 let proper_frontruns = jit.frontrun_txes.iter().all(|tx| {
                     tree.tx_must_contain_action(*tx, |action| action.is_mint())
                         .unwrap()
@@ -442,7 +447,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .map(|info| (info.tx_hash, info))
             .collect::<FastHashMap<_, _>>();
 
-        set.into_values()
+        set.into_iter()
             .filter(|jit| jit.victims.iter().flatten().count() <= 20)
             .filter_map(|jit| PossibleJitWithInfo::from_jit(jit, &tx_info_map))
             .collect_vec()
@@ -452,6 +457,49 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let bribe = gas.iter().map(|gas| gas.gas_paid()).sum::<u128>();
 
         price.get_gas_price_usd(bribe, self.utils.quote)
+    }
+
+    fn partition_into_gaps(ps: PossibleJit) -> Vec<PossibleJit> {
+        let PossibleJit { eoa, frontrun_txes, backrun_tx, executor_contract, victims } = ps;
+        let mut results = vec![];
+        let mut victim_sets = vec![];
+        let mut last_partition = 0;
+
+        victims.into_iter().enumerate().for_each(|(i, group_set)| {
+            if group_set.is_empty() {
+                results.push(PossibleJit {
+                    eoa,
+                    executor_contract,
+                    victims: std::mem::take(&mut victim_sets),
+                    frontrun_txes: frontrun_txes[last_partition..i].to_vec(),
+                    backrun_tx: frontrun_txes.get(i).copied().unwrap_or(backrun_tx),
+                });
+                last_partition = i + 1;
+            } else {
+                victim_sets.push(group_set);
+            }
+        });
+
+        if results.is_empty() {
+            results.push(PossibleJit {
+                eoa,
+                executor_contract,
+                victims: victim_sets,
+                frontrun_txes,
+                backrun_tx,
+            });
+        } else if !victim_sets.is_empty() {
+            // add remainder
+            results.push(PossibleJit {
+                eoa,
+                executor_contract,
+                victims: victim_sets,
+                frontrun_txes: frontrun_txes[last_partition..].to_vec(),
+                backrun_tx,
+            });
+        }
+
+        results
     }
 }
 
