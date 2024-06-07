@@ -67,37 +67,34 @@ alloy_sol_types::sol!(
     function coins(uint256 arg0) external view returns (address);
 );
 
+/// query_base_pool returns a Vec<Address> of the tokens used by base_pool.
+/// It attempts to use the `coins` method with i128 and U256 argument, sequentially.
 async fn query_base_pool<T: TracingProvider>(
     tracer: &Arc<T>,
     base_pool: &Address,
-    is_meta: bool,
 ) -> Vec<Address> {
     let mut result = Vec::new();
-    let mut i = 0;
+    let mut i = 0i128;
     loop {
-        let addr = if is_meta {
-            let Ok(call) = make_call_request(
-                coins_1Call { arg0: U256::from(i as u64) },
-                tracer,
-                *base_pool,
-                None,
-            )
-            .await
-            else {
-                break;
-            };
-            call._0
-        } else {
-            let Ok(call) =
-                make_call_request(coins_0Call { arg0: i }, tracer, *base_pool, None).await
-            else {
-                break;
-            };
-            call._0
-        };
+        match make_call_request(coins_0Call { arg0: i }, tracer, *base_pool, None).await {
+            Ok(call_return) => {
+                i += 1;
+                result.push(call_return._0);
+            }
+            Err(_) => break,
+        }
+    }
+    if result.len() > 0 { return result; }
 
-        i += 1;
-        result.push(addr);
+    let mut i = U256::from(0);
+    loop {
+        match make_call_request(coins_1Call { arg0: i }, tracer, *base_pool, None).await {
+            Ok(call_return) => {
+                i += U256::from(1);
+                result.push(call_return._0);
+            }
+            Err(_) => break,
+        }
     }
     result
 }
@@ -121,7 +118,7 @@ async fn parse_meta_pool<T: TracingProvider>(
     trace_index: u64,
     tracer: Arc<T>,
 ) -> Vec<NormalizedNewPool> {
-    let mut tokens = query_base_pool(&tracer, &base_pool, true).await;
+    let mut tokens = query_base_pool(&tracer, &base_pool).await;
     tokens.push(meta_token);
 
     vec![NormalizedNewPool { pool_address: deployed_address, trace_index, protocol, tokens }]
@@ -246,7 +243,7 @@ mod tests {
 
         let base_pool = Address::new(hex!("7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714"));
         let is_meta = false;
-        let actual_tokens = query_base_pool(&tracer, &base_pool, is_meta).await;
+        let actual_tokens = query_base_pool(&tracer, &base_pool).await;
         assert_eq!(actual_tokens, vec![
             Address::new(hex!("EB4C2781e4ebA804CE9a9803C67d0893436bB27D")),
             Address::new(hex!("2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")),
