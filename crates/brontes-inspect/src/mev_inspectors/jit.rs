@@ -297,6 +297,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 .iter()
                 .take(searcher_actions.len() - 1)
                 .all(|h| h.iter().any(|a| a.is_mint())))
+            || frontrun_info.first()?.eoa != backrun_info.eoa
         {
             return self.recursive_possible_jits(
                 frontrun_info,
