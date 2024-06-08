@@ -193,91 +193,26 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         )
     }
 
-    fn recursive_possible_jits(
-        &self,
-        frontrun_info: Vec<TxInfo>,
-        backrun_info: TxInfo,
-        metadata: Arc<Metadata>,
-        searcher_actions: Vec<Vec<Action>>,
-        // victim
-        victim_actions: Vec<Vec<Action>>,
-        victim_info: Vec<Vec<TxInfo>>,
-        mut recursive: u8,
-    ) -> Option<Vec<Bundle>> {
-        let mut res = vec![];
+    fn calcuate_recursive(
+        frontrun_info: &[TxInfo],
+        backrun_info: &TxInfo,
+        searcher_actions: &[Vec<Action>],
+    ) -> Option<bool> {
+        let front_is_mint_back_is_burn = searcher_actions.last()?.iter().any(|h| h.is_burn())
+            || searcher_actions
+                .iter()
+                .take(searcher_actions.len() - 1)
+                .all(|h| h.iter().any(|a| a.is_mint()));
 
-        if recursive >= 25 {
-            return None
-        }
-        if frontrun_info.len() > 1 {
-            recursive += 1;
-            // remove dropped sandwiches
-            if victim_info.is_empty() || victim_actions.is_empty() {
-                return None
-            }
+        let matching_eoas = frontrun_info.first()?.eoa == backrun_info.eoa;
+        // ensure tokens match
+        let f = searcher_actions.first()?;
+        let Some(Action::Mint(mint)) = f.iter().find(|f| f.is_mint()) else { return Some(true) };
+        let l = searcher_actions.last()?;
+        let Some(Action::Burn(burn)) = l.iter().find(|f| f.is_burn()) else { return Some(true) };
+        let mint_burn_eq = mint.token.iter().all(|mt| burn.token.contains(mt));
 
-            let back_shrink = {
-                let mut victim_info = victim_info.to_vec();
-                let mut victim_actions = victim_actions.to_vec();
-                let mut front_run_info = frontrun_info.to_vec();
-                victim_info.pop()?;
-                victim_actions.pop()?;
-                // remove last searcher action
-                let mut searcher_actions = searcher_actions.clone();
-                searcher_actions.pop()?;
-                let backrun_info = front_run_info.pop()?;
-
-                if victim_actions.iter().flatten().count() == 0 {
-                    return None
-                }
-
-                self.calculate_jit(
-                    front_run_info,
-                    backrun_info,
-                    metadata.clone(),
-                    searcher_actions,
-                    victim_actions,
-                    victim_info,
-                    recursive,
-                )
-            };
-
-            let front_shrink = {
-                let mut victim_info = victim_info.to_vec();
-                let mut victim_actions = victim_actions.to_vec();
-                let mut possible_front_runs_info = frontrun_info.to_vec();
-                let mut searcher_actions = searcher_actions.to_vec();
-                // ensure we don't loose the last tx
-
-                victim_info.remove(0);
-                victim_actions.remove(0);
-                possible_front_runs_info.remove(0);
-                searcher_actions.remove(0);
-
-                if victim_actions.iter().flatten().count() == 0 {
-                    return None
-                }
-
-                self.calculate_jit(
-                    possible_front_runs_info,
-                    backrun_info,
-                    metadata.clone(),
-                    searcher_actions,
-                    victim_actions,
-                    victim_info,
-                    recursive,
-                )
-            };
-            if let Some(front) = front_shrink {
-                res.extend(front);
-            }
-            if let Some(back) = back_shrink {
-                res.extend(back);
-            }
-            return Some(res)
-        }
-
-        None
+        Some(!front_is_mint_back_is_burn || !matching_eoas || !mint_burn_eq)
     }
 
     //TODO: Clean up JIT inspectors
@@ -292,12 +227,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<Vec<TxInfo>>,
         recursive: u8,
     ) -> Option<Vec<Bundle>> {
-        if !(searcher_actions.last()?.iter().any(|h| h.is_burn())
-            || searcher_actions
-                .iter()
-                .take(searcher_actions.len() - 1)
-                .all(|h| h.iter().any(|a| a.is_mint())))
-        {
+        if Self::calcuate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
             return self.recursive_possible_jits(
                 frontrun_info,
                 backrun_info,
@@ -412,6 +342,93 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         };
 
         Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
+    }
+
+    fn recursive_possible_jits(
+        &self,
+        frontrun_info: Vec<TxInfo>,
+        backrun_info: TxInfo,
+        metadata: Arc<Metadata>,
+        searcher_actions: Vec<Vec<Action>>,
+        // victim
+        victim_actions: Vec<Vec<Action>>,
+        victim_info: Vec<Vec<TxInfo>>,
+        mut recursive: u8,
+    ) -> Option<Vec<Bundle>> {
+        let mut res = vec![];
+
+        if recursive >= 10 {
+            return None
+        }
+        if frontrun_info.len() > 1 {
+            recursive += 1;
+            // remove dropped sandwiches
+            if victim_info.is_empty() || victim_actions.is_empty() {
+                return None
+            }
+
+            let back_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut front_run_info = frontrun_info.to_vec();
+                victim_info.pop()?;
+                victim_actions.pop()?;
+                // remove last searcher action
+                let mut searcher_actions = searcher_actions.clone();
+                searcher_actions.pop()?;
+                let backrun_info = front_run_info.pop()?;
+
+                if victim_actions.iter().flatten().count() == 0 {
+                    return None
+                }
+
+                self.calculate_jit(
+                    front_run_info,
+                    backrun_info,
+                    metadata.clone(),
+                    searcher_actions,
+                    victim_actions,
+                    victim_info,
+                    recursive,
+                )
+            };
+
+            let front_shrink = {
+                let mut victim_info = victim_info.to_vec();
+                let mut victim_actions = victim_actions.to_vec();
+                let mut possible_front_runs_info = frontrun_info.to_vec();
+                let mut searcher_actions = searcher_actions.to_vec();
+                // ensure we don't loose the last tx
+
+                victim_info.remove(0);
+                victim_actions.remove(0);
+                possible_front_runs_info.remove(0);
+                searcher_actions.remove(0);
+
+                if victim_actions.iter().flatten().count() == 0 {
+                    return None
+                }
+
+                self.calculate_jit(
+                    possible_front_runs_info,
+                    backrun_info,
+                    metadata.clone(),
+                    searcher_actions,
+                    victim_actions,
+                    victim_info,
+                    recursive,
+                )
+            };
+            if let Some(front) = front_shrink {
+                res.extend(front);
+            }
+            if let Some(back) = back_shrink {
+                res.extend(back);
+            }
+            return Some(res)
+        }
+
+        None
     }
 
     fn possible_jit_set(&self, tree: Arc<BlockTree<Action>>) -> Vec<PossibleJitWithInfo> {
@@ -749,5 +766,26 @@ mod tests {
             .with_expected_profit_usd(17.9);
 
         test_utils.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_misclassified_jit() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(16637669);
+
+        test_utils.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_misclassified_jit2() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(19506666);
+        test_utils.assert_no_mev(config).await.unwrap();
     }
 }

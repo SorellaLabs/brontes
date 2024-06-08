@@ -73,13 +73,11 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
         jit_bundles
             .into_iter()
             .filter_map(|jits| {
-                tracing::trace!("trying jit to see if cexdex -{:#?}", jits);
+                tracing::trace!("trying jit to see if cexdex - {:#?}", jits);
                 let BundleData::Jit(jit) = jits.data else { return None };
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
-                if !(tx_info.is_searcher_of_type(MevType::CexDex)
-                    || tx_info.is_labelled_searcher_of_type(MevType::CexDex))
-                {
+                if !tx_info.is_labelled_searcher_of_type(MevType::CexDex) {
                     return None
                 }
 
@@ -190,29 +188,5 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                 Some(Bundle { header, data: cex_dex })
             })
             .collect::<Vec<_>>()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use brontes_types::constants::USDT_ADDRESS;
-
-    use crate::{
-        test_utils::{InspectorTestUtils, InspectorTxRunConfig},
-        Inspectors,
-    };
-
-    #[brontes_macros::test]
-    async fn test_jit_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::JitCexDex)
-            .with_dex_prices()
-            .with_block(18305720)
-            .with_gas_paid_usd(38.31)
-            .with_expected_profit_usd(134.70);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }

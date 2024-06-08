@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::normalized_actions::NormalizedAction;
 
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -16,7 +18,7 @@ impl<V: NormalizedAction, I: Iterator<Item = V>, W, T> FlattenSpecified<V, I, W,
 
 impl<
         V: NormalizedAction,
-        R: Clone,
+        R: Clone + Debug,
         I: Iterator<Item = V>,
         W: Fn(&V) -> Option<&R>,
         T: Fn(R) -> Vec<V>,
@@ -25,19 +27,20 @@ impl<
     type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(extra) = self.extra.pop() {
-            return Some(extra);
-        }
-
-        self.iter.next().and_then(|item| {
+        for item in self.iter.by_ref() {
             if let Some(wanted) = (self.wanted)(&item) {
                 let mut ret = (self.transform)(wanted.clone());
                 let now = ret.pop();
                 self.extra.extend(ret);
-                now
+                if now.is_none() {
+                    continue
+                }
+                return now
             } else {
-                Some(item)
+                return Some(item)
             }
-        })
+        }
+
+        self.extra.pop()
     }
 }
