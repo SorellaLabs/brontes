@@ -53,86 +53,50 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         meta_data: Arc<Metadata>,
     ) -> Self::Result {
+        let execution = || {
+            tree.clone()
+                .collect_all(TreeSearchBuilder::default().with_actions([
+                    Action::is_swap,
+                    Action::is_transfer,
+                    Action::is_eth_transfer,
+                    Action::is_nested_action,
+                ]))
+                .t_full_map(|(k, v)| {
+                    let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
+                    (
+                        k.get_tx_info_batch(&tx_hashes, self.utils.db),
+                        v.into_iter().map(|v| {
+                            self.utils
+                                .flatten_nested_actions_default(v.into_iter())
+                                .collect::<Vec<_>>()
+                        }),
+                    )
+                })
+                .into_zip_tree(tree.clone())
+                .filter_map(|(info, action)| {
+
+                    let info = info??;
+                    let actions = action?;
+
+                    self.process_swaps(
+                        info,
+                        meta_data.clone(),
+                        actions
+                            .into_iter()
+                            .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
+                                Action::try_swaps_merged,
+                                Action::try_transfer,
+                                Action::try_eth_transfer,
+                            )),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+
         self.utils
             .get_metrics()
-            .map(|m| {
-                m.run_inspector(MevType::AtomicArb, || {
-                    tree.clone()
-                        .collect_all(TreeSearchBuilder::default().with_actions([
-                            Action::is_swap,
-                            Action::is_transfer,
-                            Action::is_eth_transfer,
-                            Action::is_nested_action,
-                        ]))
-                        .t_full_map(|(k, v)| {
-                            let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
-                            (
-                                k.get_tx_info_batch(&tx_hashes, self.utils.db),
-                                v.into_iter().map(|v| {
-                                    self.utils
-                                        .flatten_nested_actions_default(v.into_iter())
-                                        .collect::<Vec<_>>()
-                                }),
-                            )
-                        })
-                        .into_zip_tree(tree.clone())
-                        .filter_map(|(info, action)| {
-                            let info = info??;
-                            let actions = action?;
-
-                            self.process_swaps(
-                                info,
-                                meta_data.clone(),
-                                actions
-                                    .into_iter()
-                                    .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
-                                        Action::try_swaps_merged,
-                                        Action::try_transfer,
-                                        Action::try_eth_transfer,
-                                    )),
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                })
-            })
-            .unwrap_or_else(|| {
-                tree.clone()
-                    .collect_all(TreeSearchBuilder::default().with_actions([
-                        Action::is_swap,
-                        Action::is_transfer,
-                        Action::is_eth_transfer,
-                        Action::is_nested_action,
-                    ]))
-                    .t_full_map(|(k, v)| {
-                        let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
-                        (
-                            k.get_tx_info_batch(&tx_hashes, self.utils.db),
-                            v.into_iter().map(|v| {
-                                self.utils
-                                    .flatten_nested_actions_default(v.into_iter())
-                                    .collect::<Vec<_>>()
-                            }),
-                        )
-                    })
-                    .into_zip_tree(tree.clone())
-                    .filter_map(|(info, action)| {
-                        let info = info??;
-                        let actions = action?;
-
-                        self.process_swaps(
-                            info,
-                            meta_data.clone(),
-                            actions
-                                .into_iter()
-                                .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
-                                    Action::try_swaps_merged,
-                                    Action::try_transfer,
-                                    Action::try_eth_transfer,
-                                )),
-                        )
-                    })
-                    .collect::<Vec<_>>()
-            })
+            .map(|m| m.run_inspector(MevType::AtomicArb, &execution))
+            .unwrap_or_else(&execution)
     }
 }
 
@@ -145,7 +109,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         let (swaps, transfers, eth_transfers) = data;
         let possible_arb_type = self.is_possible_arb(&swaps)?;
-        tracing::debug!("{:#?} {:#?}", swaps, transfers);
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
         let account_deltas = transfers
