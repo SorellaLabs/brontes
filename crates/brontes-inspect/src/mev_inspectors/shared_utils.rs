@@ -109,7 +109,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         F: for<'b> Fn(&'b Action) -> bool + 'a,
     {
         iter.flatten_specified(Action::try_aggregator_ref, move |actions: NormalizedAggregator| {
-            tracing::debug!("{:#?}", actions.child_actions);
             actions
                 .child_actions
                 .into_iter()

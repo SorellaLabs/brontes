@@ -29,7 +29,6 @@ impl<
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(item) = self.iter.next() {
             if let Some(wanted) = (self.wanted)(&item) {
-                tracing::debug!("{:#?}", wanted);
                 let mut ret = (self.transform)(wanted.clone());
                 let now = ret.pop();
                 self.extra.extend(ret);

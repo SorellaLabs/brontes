@@ -153,10 +153,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                     tree.clone()
                                         .collect_txes(&victim, search_args.clone())
                                         .t_map(|actions| {
-                                            tracing::debug!("victim actions {:#?}", actions);
                                             self.utils
                                                 .flatten_nested_actions_default(actions.into_iter())
-                                                .collect_vec()
                                         }),
                                     victim,
                                 )
