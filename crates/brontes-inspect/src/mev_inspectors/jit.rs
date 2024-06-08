@@ -750,4 +750,15 @@ mod tests {
 
         test_utils.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_misclassified_jit() {
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(16637669);
+
+        test_utils.assert_no_mev(config).await.unwrap();
+    }
 }
