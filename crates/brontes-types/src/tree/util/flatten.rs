@@ -27,20 +27,21 @@ impl<
     type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(extra) = self.extra.pop() {
-            return Some(extra)
-        }
-
-        self.iter.next().and_then(|item| {
+        while let Some(item) = self.iter.next() {
             if let Some(wanted) = (self.wanted)(&item) {
                 tracing::debug!("{:#?}", wanted);
                 let mut ret = (self.transform)(wanted.clone());
                 let now = ret.pop();
                 self.extra.extend(ret);
-                now.or(self.extra.pop())
+                if now.is_none() {
+                    continue
+                }
+                return now
             } else {
-                Some(item)
+                return Some(item)
             }
-        })
+        }
+
+        self.extra.pop()
     }
 }

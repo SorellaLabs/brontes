@@ -131,7 +131,6 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
         classified_sandwich.expect("Expected Classified MEV data for Sandwich");
     let jit_classified = jit_classified.expect("Expected Classified MEV data for JIT");
 
-
     let mut frontrun_mints: Vec<Option<Vec<NormalizedMint>>> =
         vec![None; sandwich.frontrun_tx_hash.len()];
     frontrun_mints

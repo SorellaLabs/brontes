@@ -207,9 +207,9 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let matching_eoas = frontrun_info.first()?.eoa == backrun_info.eoa;
         // ensure tokens match
         let f = searcher_actions.first()?;
-        let Some(Action::Mint(mint)) = f.iter().find(|f|f.is_mint()) else { return Some(true) };
+        let Some(Action::Mint(mint)) = f.iter().find(|f| f.is_mint()) else { return Some(true) };
         let l = searcher_actions.last()?;
-        let Some(Action::Burn(burn)) = l.iter().find(|f|f.is_burn()) else { return Some(true) };
+        let Some(Action::Burn(burn)) = l.iter().find(|f| f.is_burn()) else { return Some(true) };
         let mint_burn_eq = mint.token.iter().all(|mt| burn.token.contains(mt));
 
         Some(!front_is_mint_back_is_burn || !matching_eoas || !mint_burn_eq)

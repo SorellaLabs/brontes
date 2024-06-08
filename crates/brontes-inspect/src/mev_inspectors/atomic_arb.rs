@@ -74,7 +74,6 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                 })
                 .into_zip_tree(tree.clone())
                 .filter_map(|(info, action)| {
-
                     let info = info??;
                     let actions = action?;
 
