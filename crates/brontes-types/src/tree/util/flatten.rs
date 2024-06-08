@@ -26,7 +26,7 @@ impl<
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(extra) = self.extra.pop() {
-            return Some(extra);
+            return Some(extra)
         }
 
         self.iter.next().and_then(|item| {
@@ -34,7 +34,7 @@ impl<
                 let mut ret = (self.transform)(wanted.clone());
                 let now = ret.pop();
                 self.extra.extend(ret);
-                now
+                now.or(self.extra.pop())
             } else {
                 Some(item)
             }
