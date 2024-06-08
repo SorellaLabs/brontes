@@ -27,7 +27,7 @@ impl<
     type Item = V;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(item) = self.iter.next() {
+        for item in self.iter.by_ref() {
             if let Some(wanted) = (self.wanted)(&item) {
                 let mut ret = (self.transform)(wanted.clone());
                 let now = ret.pop();

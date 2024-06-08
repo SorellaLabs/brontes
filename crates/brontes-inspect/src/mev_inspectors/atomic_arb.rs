@@ -94,7 +94,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
 
         self.utils
             .get_metrics()
-            .map(|m| m.run_inspector(MevType::AtomicArb, &execution))
+            .map(|m| m.run_inspector(MevType::AtomicArb, execution))
             .unwrap_or_else(&execution)
     }
 }
