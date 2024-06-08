@@ -812,12 +812,15 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         back_run_pools: FastHashSet<Address>,
         back_run_tokens: FastHashSet<(Address, Address, bool)>,
     ) -> bool {
+
+        tracing::debug!(?grouped_victims, ?front_run_pools, ?back_run_pools);
         let amount = grouped_victims.len();
         if amount == 0 {
             tracing::debug!(" no grouped victims");
             return false
         }
         let mut has_sandwich = false;
+
 
         let was_victims: usize = grouped_victims
             .into_values()
@@ -1484,11 +1487,10 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
             .with_mev_tx_hashes(vec![
-                                hex!("ac0aa4de358348c21c489d2327510ec572c31b6189df1b187b1b443717847955").into(),
-                                hex!("337680b1aa08d90a013049eb87bd39375ca8ab074eeac8a09b23852eba147cc6").into(),
-                                hex!("ca1537a5f7b75634ce5bb58336d3fdd59c5d23a8f643a724abfe97d0b6a7c2ad").into()
+                hex!("ac0aa4de358348c21c489d2327510ec572c31b6189df1b187b1b443717847955").into(),
+                hex!("337680b1aa08d90a013049eb87bd39375ca8ab074eeac8a09b23852eba147cc6").into(),
+                hex!("ca1537a5f7b75634ce5bb58336d3fdd59c5d23a8f643a724abfe97d0b6a7c2ad").into(),
             ])
-
             .with_block(16659292)
             .with_gas_paid_usd(90.0)
             .with_expected_profit_usd(67.3);
