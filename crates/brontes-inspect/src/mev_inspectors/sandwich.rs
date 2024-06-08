@@ -156,6 +156,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                                             tracing::debug!("victim actions {:#?}", actions);
                                             self.utils
                                                 .flatten_nested_actions_default(actions.into_iter())
+                                                .collect_vec()
                                         }),
                                     victim,
                                 )
