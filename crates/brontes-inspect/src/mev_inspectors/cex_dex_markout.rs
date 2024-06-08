@@ -25,7 +25,7 @@ use brontes_types::{
     },
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    FastHashMap, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashMap, FastHashSet, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use colored::Colorize;
 use itertools::{multizip, Itertools};
@@ -44,6 +44,8 @@ pub const FILTER_THRESHOLD: u64 = 20;
 pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000);
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+type CexDexTradesForSwap =
+    (Vec<NormalizedSwap>, Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)>);
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     pub utils:     SharedInspectorUtils<'db, DB>,
@@ -245,7 +247,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> Option<CexDexProcessing> {
-        let pricing = self.cex_trades_for_swap(&dex_swaps, metadata, marked_cex_dex, tx_hash);
+        let (dex_swaps, pricing) =
+            self.cex_trades_for_swap(dex_swaps, metadata, marked_cex_dex, tx_hash);
 
         // pricing window
         let pricing_window_vwam = pricing
@@ -490,12 +493,14 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     /// intermediary token pathways.
     fn cex_trades_for_swap(
         &self,
-        dex_swaps: &[NormalizedSwap],
+        dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
-    ) -> Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> {
-        dex_swaps
+    ) -> CexDexTradesForSwap {
+        let dex_swaps = self.merge_possible_swaps(dex_swaps);
+
+        let res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
             .iter()
             .filter(|swap| swap.amount_out != Rational::ZERO)
             .map(|swap| {
@@ -555,9 +560,78 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .get_metrics()
                         .inspect(|m| m.missing_cex_pair(pair));
                 }
-
                 (window, other)
             })
+            .collect();
+
+        (dex_swaps, res)
+    }
+
+    /// see's if we can form a intermediary path on dex swaps
+    fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
+        let mut matching: FastHashMap<_, Vec<_>> = FastHashMap::default();
+
+        for swap in &swaps {
+            matching
+                .entry(swap.token_in.clone())
+                .or_default()
+                .push(swap);
+            matching
+                .entry(swap.token_out.clone())
+                .or_default()
+                .push(swap);
+        }
+
+        let mut res = vec![];
+        let mut voided = FastHashSet::default();
+
+        for (intermediary, swaps) in matching {
+            res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
+                let s0 = swaps.remove(0);
+                let s1 = swaps.remove(0);
+
+                // if s0 is first hop
+                if s0.token_out == intermediary
+                    && s0.token_out == s1.token_in
+                    && s0.amount_out == s1.amount_in
+                {
+                    voided.insert(s0.clone());
+                    voided.insert(s1.clone());
+                    Some(NormalizedSwap {
+                        from: s0.from,
+                        recipient: s1.recipient,
+                        token_in: s0.token_in.clone(),
+                        token_out: s1.token_out.clone(),
+                        amount_in: s0.amount_in.clone(),
+                        amount_out: s1.amount_out.clone(),
+                        protocol: s0.protocol,
+                        pool: s0.pool,
+                        ..Default::default()
+                    })
+                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
+                    voided.insert(s0.clone());
+                    voided.insert(s1.clone());
+                    Some(NormalizedSwap {
+                        from: s1.from,
+                        recipient: s0.recipient,
+                        token_in: s1.token_in.clone(),
+                        token_out: s0.token_out.clone(),
+                        amount_in: s1.amount_in.clone(),
+                        amount_out: s0.amount_out.clone(),
+                        protocol: s1.protocol,
+                        pool: s1.pool,
+                        ..Default::default()
+                    })
+                } else {
+                    None
+                }
+            }));
+        }
+
+        swaps
+            .into_iter()
+            .filter(|s| !voided.contains(s))
+            .chain(res)
             .collect()
     }
 

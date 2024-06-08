@@ -47,7 +47,7 @@ impl DerefMut for NormalizedSwapWithFee {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq, Redefined)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Row, PartialEq, Eq, Redefined, Hash)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct NormalizedSwap {
     #[redefined(same_fields)]
