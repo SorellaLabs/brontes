@@ -1497,4 +1497,17 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn sandwich_paraswap_victim() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_block(19668569)
+            .with_gas_paid_usd(273.17)
+            .with_expected_profit_usd(418.26);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
