@@ -18,8 +18,7 @@ impl MultiCallFrameClassifier for Cowswap {
     ) -> Option<MultiCallFrameClassification<Action>> {
         Some(MultiCallFrameClassification {
             trace_index:         request.trace_idx,
-            tree_search_builder: TreeSearchBuilder::new()
-                .with_actions([Action::is_swap, Action::is_nested_action]),
+            tree_search_builder: TreeSearchBuilder::new().with_actions([Action::is_swap]),
             parse_fn:            Box::new(|this_action, child_nodes| {
                 let this = this_action.try_batch_mut().unwrap();
                 let mut nodes_to_prune = Vec::new();
