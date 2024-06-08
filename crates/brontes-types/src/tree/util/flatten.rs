@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::normalized_actions::NormalizedAction;
 
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -16,7 +18,7 @@ impl<V: NormalizedAction, I: Iterator<Item = V>, W, T> FlattenSpecified<V, I, W,
 
 impl<
         V: NormalizedAction,
-        R: Clone,
+        R: Clone + Debug,
         I: Iterator<Item = V>,
         W: Fn(&V) -> Option<&R>,
         T: Fn(R) -> Vec<V>,
@@ -31,6 +33,7 @@ impl<
 
         self.iter.next().and_then(|item| {
             if let Some(wanted) = (self.wanted)(&item) {
+                tracing::debug!("{:#?}", wanted);
                 let mut ret = (self.transform)(wanted.clone());
                 let now = ret.pop();
                 self.extra.extend(ret);
