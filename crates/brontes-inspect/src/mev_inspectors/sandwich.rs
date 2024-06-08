@@ -260,6 +260,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .count()
                 == 1)
         {
+            tracing::debug!("all sandwiches don't have same eoa and arent all verified contracts");
             return None
         }
 
@@ -812,7 +813,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         back_run_pools: FastHashSet<Address>,
         back_run_tokens: FastHashSet<(Address, Address, bool)>,
     ) -> bool {
-
         tracing::debug!(?grouped_victims, ?front_run_pools, ?back_run_pools);
         let amount = grouped_victims.len();
         if amount == 0 {
@@ -820,7 +820,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             return false
         }
         let mut has_sandwich = false;
-
 
         let was_victims: usize = grouped_victims
             .into_values()
