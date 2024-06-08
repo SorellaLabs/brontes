@@ -204,7 +204,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 .take(searcher_actions.len() - 1)
                 .all(|h| h.iter().any(|a| a.is_mint()));
 
-        let matching_eoas = frontrun_info.first()?.eoa != backrun_info.eoa;
+        let matching_eoas = frontrun_info.first()?.eoa == backrun_info.eoa;
         // ensure tokens match
         let f = searcher_actions.first()?;
         let Some(Action::Mint(mint)) = f.iter().find(|f|f.is_mint()) else { return Some(true) };
