@@ -433,28 +433,15 @@ impl BlockAnalysis {
         let (liquidation_searcher_rev_addr, liquidation_searcher_rev) =
             Self::top_searcher_by_rev(|b| b == MevType::Liquidation, bundles).unzip();
 
-        let (liq_most_token_prof, liq_most_token_rev, liq_most_prof, liq_most_rev) = bundles
-            .iter()
-            .filter(|b| b.mev_type() == MevType::Liquidation)
-            .flat_map(|b| {
-                let BundleData::Liquidation(l) = &b.data else { unreachable!() };
-                l.liquidations
-                    .iter()
-                    .map(|l| {
-                        (
-                            l.collateral_asset.address,
-                            (b.header.profit_usd, b.header.profit_usd + b.header.bribe_usd),
-                        )
-                    })
-                    .collect_vec()
-            })
-            .into_group_map()
-            .iter()
-            .max_by_key(|v| v.1.len())
-            .map(|t| {
-                let (p, r): (Vec<_>, Vec<_>) = t.1.iter().copied().unzip();
-                (*t.0, p.iter().sum::<f64>(), r.iter().sum::<f64>())
-            })
+        let (liq_most_token_prof, liq_most_token_rev, liq_most_prof, liq_most_rev) =
+            Self::most_transacted(
+                |b| b == MevType::Liquidation,
+                bundles,
+                |data| {
+                    let BundleData::Liquidation(l) = data else { unreachable!() };
+                    vec![l.collateral_asset.address]
+                },
+            )
             .four_unzip();
 
         Self {
