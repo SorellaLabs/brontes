@@ -1,0 +1,21 @@
+
+    #[serde(with = "option_address")]
+    pub atomic_most_arbed_pool_address_profit:  Option<Address>,
+    pub atomic_most_arbed_pool_profit:          Option<f64>,
+    #[serde(with = "option_address")]
+    pub atomic_most_arbed_pool_address_revenue: Option<Address>,
+    pub atomic_most_arbed_pool_revenue:         Option<f64>,
+
+    #[serde(with = "option_pair")]
+    pub atomic_most_arbed_pair_address_profit:  Option<Pair>,
+    pub atomic_most_arbed_pair_profit:          Option<f64>,
+    #[serde(with = "option_pair")]
+    pub atomic_most_arbed_pair_address_revenue: Option<Pair>,
+    pub atomic_most_arbed_pair_revenue:         Option<f64>,
+
+    #[serde(with = "option_protocol")]
+    pub atomic_most_arbed_dex_address_profit:  Option<Protocol>,
+    pub atomic_most_arbed_dex_profit:          Option<f64>,
+    #[serde(with = "option_protocol")]
+    pub atomic_most_arbed_dex_address_revenue: Option<Protocol>,
+    pub atomic_most_arbed_dex_revenue:         Option<f64>,
