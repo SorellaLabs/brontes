@@ -523,7 +523,7 @@ impl ClickhouseHandle for Clickhouse {
                 let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
 
                 self.client
-                    .query_many(query, &(start_time, end_time))
+                    .query_many(query, &(start_time, end_time, start_time, end_time))
                     .await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
