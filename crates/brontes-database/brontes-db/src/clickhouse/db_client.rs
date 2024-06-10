@@ -523,10 +523,9 @@ impl ClickhouseHandle for Clickhouse {
                 let mut query = RAW_CEX_TRADES.to_string();
                 query = query.replace(
                     "timestamp >= ? AND timestamp < ?",
-                    format!(
+                    &format!(
                         "timestamp >= {start_time} AND timestamp < {end_time}
-                            and ({exchanges_str})
-                            "
+                            and ({exchanges_str})"
                     ),
                 );
 
