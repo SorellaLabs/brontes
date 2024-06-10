@@ -439,7 +439,10 @@ impl BlockAnalysis {
                 bundles,
                 |data| {
                     let BundleData::Liquidation(l) = data else { unreachable!() };
-                    vec![l.collateral_asset.address]
+                    l.liquidations
+                        .iter()
+                        .map(|l| l.collateral_asset.address)
+                        .collect::<Vec<_>>()
                 },
             )
             .four_unzip();
@@ -475,7 +478,8 @@ impl BlockAnalysis {
             all_most_arbed_pool_revenue: all_pool_rev,
             all_most_arbed_pair_revenue: all_pair_rev,
             all_most_arbed_pair_profit: all_pair_prof,
-            all_most_arbed_pair_address: all_pair,
+            all_most_arbed_pair_address_profit: all_pair_addr_prof,
+            all_most_arbed_pair_address_revenue: all_pair_addr_rev,
             // atomic
             atomic_searchers: Self::unique(|b| b == MevType::AtomicArb, bundles),
             atomic_fund_count: Self::unique_funds(|b| b == MevType::AtomicArb, bundles),
