@@ -841,6 +841,8 @@ pub mod cex_exchange {
 }
 pub mod trade_type {
 
+    use std::str::FromStr;
+
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
@@ -859,6 +861,10 @@ pub mod trade_type {
     {
         let d: String = Deserialize::deserialize(deserializer)?;
 
-        Ok(TradeType::from(d.as_str()))
+        Ok(match d.as_str() {
+            "Maker" => TradeType::Maker,
+            "Taker" => TradeType::Taker,
+            _ => panic!("not maker or taker");
+        })
     }
 }
