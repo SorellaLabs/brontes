@@ -841,8 +841,6 @@ pub mod cex_exchange {
 }
 pub mod trade_type {
 
-    use std::str::FromStr;
-
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},
