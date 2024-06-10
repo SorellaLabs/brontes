@@ -864,7 +864,7 @@ pub mod trade_type {
         Ok(match d.as_str() {
             "Maker" => TradeType::Maker,
             "Taker" => TradeType::Taker,
-            _ => panic!("not maker or taker");
+            _ => panic!("not maker or taker"),
         })
     }
 }
