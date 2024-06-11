@@ -839,3 +839,30 @@ pub mod cex_exchange {
         Ok(CexExchange::from(d.as_str()))
     }
 }
+pub mod trade_type {
+
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::db::cex::TradeType;
+
+    pub fn serialize<S: Serializer>(u: &TradeType, serializer: S) -> Result<S::Ok, S::Error> {
+        let st = u.to_string();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<TradeType, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let d: String = Deserialize::deserialize(deserializer)?;
+
+        Ok(match d.as_str() {
+            "Maker" => TradeType::Maker,
+            "Taker" => TradeType::Taker,
+            _ => panic!("not maker or taker"),
+        })
+    }
+}
