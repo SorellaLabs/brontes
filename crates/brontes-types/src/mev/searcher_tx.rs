@@ -30,7 +30,7 @@ pub struct SearcherTx {
 
 impl Mev for SearcherTx {
     fn mev_type(&self) -> MevType {
-        MevType::Unknown
+        MevType::SearcherTx
     }
 
     fn mev_transaction_hashes(&self) -> Vec<B256> {
