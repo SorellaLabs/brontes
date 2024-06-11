@@ -2,6 +2,7 @@ use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
 use serde::Deserialize;
+use strum::Display;
 
 use crate::{
     constants::USDC_ADDRESS,
@@ -9,19 +10,38 @@ use crate::{
         block_times::{BlockTimes, CexBlockTimes},
         cex::{cex_symbols::CexSymbols, cex_trades::CexTradeMap, CexExchange},
     },
-    serde_utils::cex_exchange,
+    serde_utils::{cex_exchange, trade_type},
     FastHashMap,
 };
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Deserialize)]
 pub struct RawCexTrades {
     #[serde(with = "cex_exchange")]
-    pub exchange:  CexExchange,
-    pub symbol:    String,
-    pub timestamp: u64,
-    pub side:      String,
-    pub price:     f64,
-    pub amount:    f64,
+    pub exchange:   CexExchange,
+    #[serde(with = "trade_type")]
+    pub trade_type: TradeType,
+    pub symbol:     String,
+    pub timestamp:  u64,
+    pub side:       String,
+    pub price:      f64,
+    pub amount:     f64,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Display,
+    PartialEq,
+    Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+    Default,
+)]
+pub enum TradeType {
+    Maker,
+    #[default]
+    Taker,
 }
 
 pub struct CexTradesConverter {

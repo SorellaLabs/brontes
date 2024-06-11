@@ -520,11 +520,16 @@ impl ClickhouseHandle for Clickhouse {
                     .unwrap() as f64
                     + (self.cex_download_config.time_window.1 * SECONDS_TO_US);
 
-                let query = format!("{RAW_CEX_TRADES} AND ({exchanges_str})");
+                let mut query = RAW_CEX_TRADES.to_string();
+                query = query.replace(
+                    "timestamp >= ? AND timestamp < ?",
+                    &format!(
+                        "timestamp >= {start_time} AND timestamp < {end_time}
+                            and ({exchanges_str})"
+                    ),
+                );
 
-                self.client
-                    .query_many(query, &(start_time, end_time))
-                    .await?
+                self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
                 let mut query = RAW_CEX_TRADES.to_string();
