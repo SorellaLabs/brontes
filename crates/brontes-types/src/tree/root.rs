@@ -292,13 +292,13 @@ impl<V: NormalizedAction> Root<V> {
         self.head
             .collect(&mut find_res, find, &|data| data.node.clone(), &self.data_store);
 
+        let mut bad_res: Vec<R> = Vec::new();
+        self.head
+            .collect(&mut bad_res, removal, info, &self.data_store);
+
         let indexes = find_res
             .into_iter()
-            .flat_map(|node| {
-                let mut bad_res = Vec::new();
-                node.collect(&mut bad_res, removal, info, &self.data_store);
-                classify(&bad_res, &node, &self.data_store)
-            })
+            .flat_map(|node| classify(&bad_res, &node, &self.data_store))
             .collect::<FastHashSet<_>>();
 
         indexes.into_iter().for_each(|index| {
