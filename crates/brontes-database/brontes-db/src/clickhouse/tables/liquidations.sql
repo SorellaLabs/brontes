@@ -6,8 +6,8 @@ CREATE TABLE mev.liquidations ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -16,8 +16,8 @@ CREATE TABLE mev.liquidations ON CLUSTER eth_cluster0
         `pool` String,
         `liquidator` String,
         `debtor` String,
-        `collateral_asset` String,
-        `debt_asset` String,
+        `collateral_asset` Tuple(String, String),
+        `debt_asset` Tuple(String, String),
         `covered_debt` Tuple(UInt256, UInt256),
         `liquidated_collateral` Tuple(UInt256, UInt256)
       ),

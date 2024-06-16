@@ -147,8 +147,8 @@ pub struct ClickhouseVecNormalizedLiquidation {
     pub pool:                  Vec<String>,
     pub liquidator:            Vec<String>,
     pub debtor:                Vec<String>,
-    pub collateral_asset:      Vec<String>,
-    pub debt_asset:            Vec<String>,
+    pub collateral_asset:      Vec<(String, String)>,
+    pub debt_asset:            Vec<(String, String)>,
     pub covered_debt:          Vec<([u8; 32], [u8; 32])>,
     pub liquidated_collateral: Vec<([u8; 32], [u8; 32])>,
 }
@@ -171,11 +171,11 @@ impl TryFrom<Vec<NormalizedLiquidation>> for ClickhouseVecNormalizedLiquidation 
 
             collateral_asset:      value
                 .iter()
-                .map(|val| format!("{:?}", val.collateral_asset))
+                .map(|val| val.collateral_asset.clickhouse_fmt())
                 .collect(),
             debt_asset:            value
                 .iter()
-                .map(|val| format!("{:?}", val.debt_asset))
+                .map(|val| val.debt_asset.clickhouse_fmt())
                 .collect(),
             covered_debt:          value
                 .iter()

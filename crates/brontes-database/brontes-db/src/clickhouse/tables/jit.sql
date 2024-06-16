@@ -6,7 +6,7 @@ CREATE TABLE mev.jit ON CLUSTER eth_cluster0
         `from` String,
         `pool` String,
         `recipient` String,
-        `tokens` Array(String),
+        `tokens` Array(Tuple(String, String)),
         `amounts` Array(Tuple(UInt256, UInt256))
     ),
     `frontrun_mint_gas_details` Tuple(
@@ -39,7 +39,7 @@ CREATE TABLE mev.jit ON CLUSTER eth_cluster0
         `from` String,
         `pool` String,
         `recipient` String,
-        `tokens` Array(String),
+        `tokens` Array(Tuple(String, String)),
         `amounts` Array(Tuple(UInt256, UInt256))
     ),
     `backrun_burn_gas_details` Tuple(
@@ -51,8 +51,5 @@ CREATE TABLE mev.jit ON CLUSTER eth_cluster0
     `last_updated` UInt64 DEFAULT now()
 ) 
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/jit', '{replica}', `last_updated`)
-PRIMARY KEY (`frontrun_mint_tx_hash`)
-ORDER BY (`frontrun_mint_tx_hash`)
-
-
-
+PRIMARY KEY (`backrun_burn_tx_hash`)
+ORDER BY (`backrun_burn_tx_hash`)
