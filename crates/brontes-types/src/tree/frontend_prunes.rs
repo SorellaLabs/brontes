@@ -120,8 +120,9 @@ pub fn remove_collect_transfers(tree: &mut BlockTree<Action>) {
 #[cfg(test)]
 pub mod test {
 
-    use alloy_primitives::hex;
     use std::sync::Arc;
+
+    use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         normalized_actions::Action,
@@ -141,7 +142,7 @@ pub mod test {
         let mut tree: BlockTree<Action> = utils.build_tree_tx(tx_hash).await.unwrap();
         let search_args = TreeSearchBuilder::default().with_action(Action::is_transfer);
         let transfers: Vec<Action> = Arc::new(tree.clone())
-            .collect(&tx_hash, search_args)
+            .collect(&tx_hash, search_args.clone())
             .collect::<Vec<_>>();
         assert_eq!(transfers.len(), 4);
 
