@@ -121,8 +121,8 @@ pub struct ClickhouseVecNormalizedSwap {
     pub from:        Vec<String>,
     pub recipient:   Vec<String>,
     pub pool:        Vec<String>,
-    pub token_in:    Vec<String>,
-    pub token_out:   Vec<String>,
+    pub token_in:    Vec<(String, String)>,
+    pub token_out:   Vec<(String, String)>,
     pub amount_in:   Vec<([u8; 32], [u8; 32])>,
     pub amount_out:  Vec<([u8; 32], [u8; 32])>,
 }
@@ -141,11 +141,11 @@ impl TryFrom<Vec<NormalizedSwap>> for ClickhouseVecNormalizedSwap {
             pool:        value.iter().map(|val| format!("{:?}", val.pool)).collect(),
             token_in:    value
                 .iter()
-                .map(|val| format!("{:?}", val.token_in))
+                .map(|val| val.token_in.clickhouse_fmt())
                 .collect(),
             token_out:   value
                 .iter()
-                .map(|val| format!("{:?}", val.token_out))
+                .map(|val| val.token_out.clickhouse_fmt())
                 .collect(),
             amount_in:   value
                 .iter()
@@ -166,8 +166,8 @@ pub struct ClickhouseDoubleVecNormalizedSwap {
     pub from:        Vec<String>,
     pub recipient:   Vec<String>,
     pub pool:        Vec<String>,
-    pub token_in:    Vec<String>,
-    pub token_out:   Vec<String>,
+    pub token_in:    Vec<(String, String)>,
+    pub token_out:   Vec<(String, String)>,
     pub amount_in:   Vec<([u8; 32], [u8; 32])>,
     pub amount_out:  Vec<([u8; 32], [u8; 32])>,
 }
