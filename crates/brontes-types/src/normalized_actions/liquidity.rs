@@ -93,7 +93,7 @@ pub struct ClickhouseVecNormalizedMintOrBurn {
     pub from:        Vec<String>,
     pub pool:        Vec<String>,
     pub recipient:   Vec<String>,
-    pub tokens:      Vec<Vec<String>>,
+    pub tokens:      Vec<Vec<(String, String)>>,
     pub amounts:     Vec<Vec<([u8; 32], [u8; 32])>>,
 }
 
@@ -166,7 +166,7 @@ impl TryFrom<Vec<NormalizedMint>> for ClickhouseVecNormalizedMintOrBurn {
 
             tokens:  value
                 .iter()
-                .map(|val| val.token.iter().map(|t| format!("{:?}", t)).collect_vec())
+                .map(|val| val.token.iter().map(|t| t.clickhouse_fmt()).collect_vec())
                 .collect(),
             amounts: value
                 .iter()
@@ -196,7 +196,7 @@ impl TryFrom<Vec<NormalizedBurn>> for ClickhouseVecNormalizedMintOrBurn {
 
             tokens:  value
                 .iter()
-                .map(|val| val.token.iter().map(|t| format!("{:?}", t)).collect_vec())
+                .map(|val| val.token.iter().map(|t| t.clickhouse_fmt()).collect_vec())
                 .collect(),
             amounts: value
                 .iter()
@@ -218,7 +218,7 @@ pub struct ClickhouseVecNormalizedMintOrBurnWithTxHash {
     pub from:        Vec<String>,
     pub pool:        Vec<String>,
     pub recipient:   Vec<String>,
-    pub tokens:      Vec<Vec<String>>,
+    pub tokens:      Vec<Vec<(String, String)>>,
     pub amounts:     Vec<Vec<([u8; 32], [u8; 32])>>,
 }
 
