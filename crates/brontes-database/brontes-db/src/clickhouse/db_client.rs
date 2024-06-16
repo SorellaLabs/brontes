@@ -899,7 +899,7 @@ mod tests {
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
             .await;
     }
-    //
+
     #[cfg(feature = "cex-dex-markout")]
     #[brontes_macros::test]
     async fn test_db_trades() {
