@@ -8,6 +8,7 @@ use tracing::{error, info, span, Level};
 use crate::{normalized_actions::MultiCallFrameClassification, tree::types::NodeWithDataRef};
 
 pub mod frontend_prunes;
+pub use frontend_prunes::*;
 use crate::db::traits::LibmdbxReader;
 pub mod node;
 mod types;
