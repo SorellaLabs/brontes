@@ -6,8 +6,8 @@ CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -41,7 +41,6 @@ CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
         `pnl_pre_gas` Tuple(`maker_taker_mid` Tuple(Tuple(UInt256, UInt256),Tuple(UInt256, UInt256)), `maker_taker_ask` Tuple(Tuple(UInt256, UInt256),Tuple(UInt256, UInt256)))
     ),
     `optimal_route_pnl` Tuple(`maker_taker_mid` Tuple(Tuple(UInt256, UInt256),Tuple(UInt256, UInt256)), `maker_taker_ask` Tuple(Tuple(UInt256, UInt256),Tuple(UInt256, UInt256))),
-
     `optimistic_route_details` Nested (
         `pairs` Array(Tuple(String, String)),
         `trade_start_time` UInt64,

@@ -7,8 +7,8 @@ CREATE TABLE mev.jit_sandwich ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -18,7 +18,7 @@ CREATE TABLE mev.jit_sandwich ON CLUSTER eth_cluster0
         `from` String,
         `pool` String,
         `recipient` String,
-        `tokens` Array(String),
+        `tokens` Array(Tuple(String, String)),
         `amounts` Array(Tuple(UInt256, UInt256))
     ),
     `frontrun_gas_details` Nested(
@@ -34,8 +34,8 @@ CREATE TABLE mev.jit_sandwich ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -53,8 +53,8 @@ CREATE TABLE mev.jit_sandwich ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -64,7 +64,7 @@ CREATE TABLE mev.jit_sandwich ON CLUSTER eth_cluster0
         `from` String,
         `pool` String,
         `recipient` String,
-        `tokens` Array(String),
+        `tokens` Array(Tuple(String, String)),
         `amounts` Array(Tuple(UInt256, UInt256))
     ),
     `backrun_gas_details` Nested(

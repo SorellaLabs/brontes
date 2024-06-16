@@ -7,8 +7,8 @@ CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -25,8 +25,8 @@ CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -44,8 +44,8 @@ CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
@@ -59,5 +59,5 @@ CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
     `last_updated` UInt64 DEFAULT now()
 ) 
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/sandwiches', '{replica}', `last_updated`)
-PRIMARY KEY (`frontrun_tx_hash`)
-ORDER BY (`frontrun_tx_hash`)
+PRIMARY KEY (`backrun_tx_hash`)
+ORDER BY (`backrun_tx_hash`)

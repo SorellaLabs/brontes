@@ -40,7 +40,7 @@ pub struct ClickhouseVecNormalizedTransfer {
     pub trace_index: Vec<u64>,
     pub from:        Vec<String>,
     pub to:          Vec<String>,
-    pub token:       Vec<String>,
+    pub token:       Vec<(String, String)>,
     pub amount:      Vec<([u8; 32], [u8; 32])>,
     pub fee:         Vec<([u8; 32], [u8; 32])>,
 }
@@ -53,7 +53,7 @@ impl TryFrom<Vec<NormalizedTransfer>> for ClickhouseVecNormalizedTransfer {
             trace_index: value.iter().map(|val| val.trace_index).collect(),
             from:        value.iter().map(|val| format!("{:?}", val.from)).collect(),
             to:          value.iter().map(|val| format!("{:?}", val.to)).collect(),
-            token:       value.iter().map(|val| format!("{:?}", val.token)).collect(),
+            token:       value.iter().map(|val| val.token.clickhouse_fmt()).collect(),
             amount:      value
                 .iter()
                 .map(|val| rational_to_u256_fraction(&val.amount))

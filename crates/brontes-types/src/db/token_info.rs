@@ -55,6 +55,10 @@ impl TokenInfoWithAddress {
             address: USDC_ADDRESS,
         }
     }
+
+    pub fn clickhouse_fmt(&self) -> (String, String) {
+        (format!("{:?}", self.address), self.inner.symbol.clone())
+    }
 }
 
 impl Display for TokenInfoWithAddress {
