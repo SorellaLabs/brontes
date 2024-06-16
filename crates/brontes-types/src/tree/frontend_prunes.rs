@@ -123,7 +123,9 @@ pub mod test {
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        normalized_actions::Action, tree::{BlockTree,remove_swap_transfers}, TreeSearchBuilder,
+        normalized_actions::Action,
+        tree::{remove_swap_transfers, BlockTree},
+        TreeSearchBuilder,
     };
 
     /// There was a problem with the tree not showing all orders for the
@@ -135,14 +137,18 @@ pub mod test {
             hex!("07a0580a713928d78caad0d09b20d23ae6fba47753b8007e6313f911fc9084be").into();
 
         let utils = ClassifierTestUtils::new().await;
-        let mut tree: BlockTree<Action>  = utils.build_tree_tx(tx_hash).await.unwrap();
+        let mut tree: BlockTree<Action> = utils.build_tree_tx(tx_hash).await.unwrap();
         let search_args = TreeSearchBuilder::default().with_action(Action::is_transfer);
-        let transfers: Vec<Action> = tree.collect(&tx_hash, search_args).collect::<Vec<_>>();
+        let transfers: Vec<Action> = Arc::new(tree.clone())
+            .collect(&tx_hash, search_args)
+            .collect::<Vec<_>>();
         assert_eq!(transfers.len(), 4);
 
         // dedup tree
         remove_swap_transfers(&mut tree);
-        let transfers: Vec<Action> = tree.collect(&tx_hash, search_args).collect::<Vec<_>>();
+        let transfers: Vec<Action> = Arc::new(tree.clone())
+            .collect(&tx_hash, search_args)
+            .collect::<Vec<_>>();
         assert_eq!(transfers.len(), 0);
     }
 }
