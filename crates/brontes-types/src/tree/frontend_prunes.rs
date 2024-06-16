@@ -122,9 +122,9 @@ pub mod test {
 
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
-
-    use super::remove_swap_transfers;
-    use crate::{normalized_actions::Action, TreeSearchBuilder};
+    use brontes_types::{
+        normalized_actions::Action, tree::remove_swap_transfers, TreeSearchBuilder,
+    };
 
     /// There was a problem with the tree not showing all orders for the
     /// de-duplication that would cause some to be missed. If it is fixed for
