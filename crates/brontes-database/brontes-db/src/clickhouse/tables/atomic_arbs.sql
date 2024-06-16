@@ -6,8 +6,8 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
         `from` String,
         `recipient` String,
         `pool` String,
-        `token_in` String,
-        `token_out` String,
+        `token_in` Tuple(String, String),
+        `token_out` Tuple(String, String),
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
