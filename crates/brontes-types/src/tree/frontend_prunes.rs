@@ -121,6 +121,7 @@ pub fn remove_collect_transfers(tree: &mut BlockTree<Action>) {
 pub mod test {
 
     use alloy_primitives::hex;
+    use std::sync::Arc;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         normalized_actions::Action,
