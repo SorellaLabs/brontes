@@ -3,8 +3,6 @@ use std::sync::Arc;
 use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
-#[cfg(not(feature = "pretty-print"))]
-use brontes_types::db::token_info::TokenInfoWithAddress;
 use brontes_types::{
     db::{
         cex::CexExchange,
@@ -514,26 +512,19 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                     .flatten()
                                     .unwrap_or(Rational::ZERO)
                                 };
-                                //TODO: Restructure code so I don't have to requery token deltas
                                 TokenBalanceDelta {
-                                    #[cfg(feature = "pretty-print")]
-                                    token: self
+                                    token:     self
                                         .db
                                         .try_fetch_token_info(token)
                                         .ok()
                                         .unwrap_or_default(),
-                                    #[cfg(not(feature = "pretty-print"))]
-                                    token: TokenInfoWithAddress::default(),
-                                    amount: amount.clone().to_float(),
+                                    amount:    amount.clone().to_float(),
                                     usd_value: usd_value.to_float(),
                                 }
                             })
                             .collect();
 
-                        #[cfg(feature = "pretty-print")]
                         let name = self.fetch_address_name(address);
-                        #[cfg(not(feature = "pretty-print"))]
-                        let name = None;
 
                         AddressBalanceDeltas { address, name, token_deltas: deltas }
                     })
@@ -549,7 +540,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .db
             .get_protocol_details(address)
             .ok()
-            .map(|protocol| protocol.protocol.to_string());
+            .map(|protocol| protocol.protocol.short().to_string());
 
         protocol_name.or_else(|| {
             self.db

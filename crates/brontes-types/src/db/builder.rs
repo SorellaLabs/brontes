@@ -85,14 +85,6 @@ impl BuilderInfo {
             description.push_str("Unknown Block Builder");
         }
 
-        // Add fund information if it exists and is not Fund::None
-        if let Some(fund) = &self.fund {
-            if *fund != Fund::None {
-                description.push_str(" operated by ");
-                description.push_str(fund.as_ref());
-            }
-        }
-
         description
     }
 }
