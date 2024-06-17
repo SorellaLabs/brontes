@@ -51,6 +51,8 @@ pub struct MevBlock {
     pub builder_searcher_bribes:     u128,
     // Bribes paid to the builder by their own searchers (in USD)
     pub builder_searcher_bribes_usd: f64,
+    pub builder_sponsorship_amount:  u128,
+    pub ultrasound_bid_adjusted:     bool,
     pub proposer_fee_recipient:      Option<Address>,
     pub proposer_mev_reward:         Option<u128>,
     pub proposer_profit_usd:         Option<f64>,

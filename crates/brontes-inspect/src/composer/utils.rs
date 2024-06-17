@@ -71,6 +71,8 @@ pub(crate) fn build_mev_header<DB: LibmdbxReader>(
         builder_mev_profit_usd: block_pnl.builder_mev_profit_usd,
         builder_searcher_bribes: block_pnl.builder_searcher_tip,
         builder_searcher_bribes_usd,
+        builder_sponsorship_amount: block_pnl.builder_sponsorship as u128,
+        ultrasound_bid_adjusted: block_pnl.ultrasound_bid_adjusted,
         proposer_fee_recipient,
         proposer_mev_reward,
         proposer_profit_usd,
@@ -165,32 +167,40 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 #[derive(Debug)]
 pub struct BlockPnL {
     // ETH profit made by the block builder (in wei)
-    pub builder_eth_profit:     i128,
+    pub builder_eth_profit:      i128,
+    // Amount of ETH paid by the builder to sponsor transactions in the block
+    pub builder_sponsorship:     i128,
     // USD profit of the builders searchers
-    pub builder_mev_profit_usd: f64,
+    pub builder_mev_profit_usd:  f64,
     // ETH reward paid to the proposer (in wei)
-    pub mev_reward:             Option<u128>,
+    pub mev_reward:              Option<u128>,
     // Address of the proposer fee recipient
-    pub proposer_fee_recipient: Option<Address>,
+    pub proposer_fee_recipient:  Option<Address>,
     // Gas & Tips paid to the builder by it's own vertically integrated
     // searchers
-    pub builder_searcher_tip:   u128,
+    pub builder_searcher_tip:    u128,
+    // If the block was bid adjusted using ultrasound's bid adjustment
+    pub ultrasound_bid_adjusted: bool,
 }
 
 impl BlockPnL {
     pub fn new(
         builder_eth_profit: i128,
+        builder_sponsorship: i128,
         builder_mev_profit_usd: f64,
         mev_reward: Option<u128>,
         proposer_fee_recipient: Option<Address>,
         builder_searcher_tip: u128,
+        ultrasound_bid_adjusted: bool,
     ) -> Self {
         Self {
             builder_eth_profit,
+            builder_sponsorship,
             builder_mev_profit_usd,
             mev_reward,
             proposer_fee_recipient,
             builder_searcher_tip,
+            ultrasound_bid_adjusted,
         }
     }
 }
@@ -211,6 +221,7 @@ pub fn calculate_builder_profit(
 
     let proposer_mev_reward;
     let proposer_fee_recipient;
+    let bid_adjusted;
     let mut mev_searching_profit = 0.0;
     let mut vertically_integrated_searcher_tip = 0;
 
@@ -218,7 +229,7 @@ pub fn calculate_builder_profit(
     // If this fails we fallback to the default values queried from the mev-boost
     // relay data api
     if let Some(builder_info) = metadata.builder_info.as_ref() {
-        (proposer_mev_reward, proposer_fee_recipient) = proposer_payment(
+        (proposer_mev_reward, proposer_fee_recipient, bid_adjusted) = proposer_payment(
             &tree,
             builder_address,
             builder_info.ultrasound_relay_collateral_address,
@@ -227,6 +238,7 @@ pub fn calculate_builder_profit(
         .unwrap_or((
             metadata.proposer_mev_reward.unwrap_or_default() as i128,
             metadata.proposer_fee_recipient,
+            false,
         ));
 
         // Calculate the builder's mev profit from it's associated vertically integrated
@@ -234,11 +246,12 @@ pub fn calculate_builder_profit(
         (mev_searching_profit, vertically_integrated_searcher_tip) =
             calculate_mev_searching_profit(bundles, builder_info);
     } else {
-        (proposer_mev_reward, proposer_fee_recipient) =
+        (proposer_mev_reward, proposer_fee_recipient, bid_adjusted) =
             proposer_payment(&tree, builder_address, None, metadata.proposer_fee_recipient)
                 .unwrap_or((
                     metadata.proposer_mev_reward.unwrap_or_default() as i128,
                     metadata.proposer_fee_recipient,
+                    false,
                 ));
     }
 
@@ -251,10 +264,12 @@ pub fn calculate_builder_profit(
 
     BlockPnL::new(
         builder_payments - builder_sponsorship_amount - proposer_mev_reward,
+        builder_sponsorship_amount,
         mev_searching_profit,
         Some(proposer_mev_reward as u128),
         proposer_fee_recipient,
         vertically_integrated_searcher_tip,
+        bid_adjusted,
     )
 }
 
@@ -263,7 +278,7 @@ fn proposer_payment(
     builder_address: Address,
     collateral_address: Option<Address>,
     proposer_fee_recipient: Option<Address>,
-) -> Option<(i128, Option<Address>)> {
+) -> Option<(i128, Option<Address>, bool)> {
     tree.tx_roots.last().and_then(|root| {
         let from_address = root.get_from_address();
         let to_address = root.get_to_address();
@@ -273,9 +288,11 @@ fn proposer_payment(
 
         let to_match = proposer_fee_recipient.map_or(false, |addr| to_address == addr);
 
+        let is_from_collateral = collateral_address.map_or(false, |addr| from_address == addr);
+
         if from_match || to_match {
             if let Action::EthTransfer(transfer) = root.get_root_action() {
-                return Some((transfer.value.to(), Some(transfer.to)))
+                return Some((transfer.value.to(), Some(transfer.to), is_from_collateral))
             }
         }
         None
