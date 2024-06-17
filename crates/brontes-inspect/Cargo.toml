@@ -90,13 +90,13 @@ statrs = "0.16"
 
 
 [features]
-default = ["pretty-print", "cex-dex-markout"]
+default = ["cex-dex-markout"]
 cex-dex-markout = [
   "brontes-types/cex-dex-markout",
   "brontes-database/cex-dex-markout",
 ]
 sorella-server = ["local-reth", "local-clickhouse"]
-pretty-print = []
+
 tests = [
   "brontes-classifier/tests",
   "brontes-core/tests",
