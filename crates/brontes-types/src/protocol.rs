@@ -170,6 +170,49 @@ impl Protocol {
             _ => Protocol::Unknown,
         }
     }
+
+    pub fn short(&self) -> &'static str {
+        match self {
+            Protocol::UniswapV2 => "Uni V2",
+            Protocol::SushiSwapV2 => "SushiSwap V2",
+            Protocol::PancakeSwapV2 => "PancakeSwap V2",
+            Protocol::UniswapV3 => "Uni V3",
+            Protocol::SushiSwapV3 => "SushiSwap V3",
+            Protocol::PancakeSwapV3 => "PancakeSwap V3",
+            Protocol::AaveV2 => "Aave V2",
+            Protocol::AaveV3 => "Aave V3",
+            Protocol::BalancerV1 => "Balancer V1",
+            Protocol::BalancerV2 => "Balancer V2",
+            Protocol::BalancerV1CRP => "Balancer V1",
+            Protocol::UniswapX => "Uni X",
+            Protocol::ZeroX => "0x",
+            Protocol::Cowswap => "CoW Swap",
+            Protocol::CurveBasePool2 => "Curve",
+            Protocol::CurveBasePool3 => "Curve",
+            Protocol::CurveBasePool4 => "Curve",
+            Protocol::CurveV1MetaPool => "Curve V1",
+            Protocol::CurveV1MetapoolImpl => "Curve V1",
+            Protocol::CurveV2MetaPool => "Curve V2",
+            Protocol::CurveV2MetapoolImpl => "Curve V2",
+            Protocol::CurveV2PlainPool => "Curve V2",
+            Protocol::CurveV2PlainPoolImpl => "Curve V2",
+            Protocol::CurvecrvUSDMetaPool => "Curve",
+            Protocol::CurvecrvUSDMetapoolImpl => "Curve",
+            Protocol::CurvecrvUSDPlainPool => "Curve",
+            Protocol::CurvecrvUSDPlainPoolImpl => "Curve",
+            Protocol::CurveCryptoSwapPool => "Curve",
+            Protocol::CurveTriCryptoPool => "Curve",
+            Protocol::CompoundV2 => "Compound V2",
+            Protocol::MakerPSM => "Maker PSM",
+            Protocol::MakerDssFlash => "Maker DSS",
+            Protocol::OneInchV5 => "1inch V5",
+            Protocol::OneInchFusion => "1inch Fusion",
+            Protocol::ClipperExchange => "Clipper",
+            Protocol::PropellerLabsSolver => "Propeller Labs",
+            Protocol::Dodo => "Dodo",
+            Protocol::Unknown => "Unknown",
+        }
+    }
 }
 
 self_convert_redefined!(Protocol);

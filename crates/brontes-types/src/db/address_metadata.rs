@@ -36,9 +36,9 @@ impl AddressMetadata {
     }
 
     pub fn describe(&self) -> Option<String> {
-        self.entity_name
+        self.nametag
             .clone()
-            .or_else(|| self.nametag.clone())
+            .or_else(|| self.entity_name.clone())
             .or_else(|| self.address_type.clone())
             .or_else(|| self.ens.clone())
             .or_else(|| self.social_metadata.twitter.clone())
