@@ -21,7 +21,7 @@ use malachite::{
 };
 use reth_primitives::Address;
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata, MAX_PROFIT};
 
 /// the price difference was more than 3x between dex pricing and effective
 /// price
@@ -147,10 +147,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let gas_used = info.gas_details.gas_paid();
         let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
-        let profit = rev
+        let mut profit = rev
             .map(|rev| rev - &gas_used_usd)
             .filter(|_| has_dex_price)
             .unwrap_or_default();
+
+        if profit >= MAX_PROFIT {
+            has_dex_price = false;
+            profit = Rational::ZERO;
+        }
 
         let is_profitable = profit > Rational::ZERO;
 

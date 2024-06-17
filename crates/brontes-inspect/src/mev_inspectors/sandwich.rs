@@ -24,6 +24,7 @@ use malachite::{
 };
 use reth_primitives::{Address, B256};
 
+use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
@@ -395,6 +396,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|rev| rev - &gas_used)
             .filter(|_| has_dex_price)
             .unwrap_or_default();
+
+        if profit_usd >= MAX_PROFIT {
+            has_dex_price = false;
+            profit_usd = Rational::ZERO;
+        }
 
         // sus threshold
         if front_run_swaps.iter().flatten().count() == 0 && profit_usd > MAX_NON_SWAP_FRONTRUN {
