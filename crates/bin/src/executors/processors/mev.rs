@@ -31,7 +31,7 @@ impl Processor for MevProcessor {
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
         tree: BlockTree<Action>,
         metadata: Metadata,
-    ) -> impl Future<Output = ()> + Send {
+    ) -> impl std::future::Future<Output = ()> + Send {
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
