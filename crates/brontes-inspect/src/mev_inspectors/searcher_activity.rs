@@ -13,6 +13,7 @@ use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
+use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct SearcherActivity<'db, DB: LibmdbxReader> {
@@ -76,7 +77,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                             searcher_address.insert(mev_contract);
                         }
 
-                        let (rev_usd, has_dex_price) = if let Some(rev) =
+                        let (rev_usd, mut has_dex_price) = if let Some(rev) =
                             self.utils.get_full_block_price(
                                 BlockPrice::Lowest,
                                 searcher_address,
@@ -91,10 +92,15 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                         let gas_paid = metadata
                             .get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
 
-                        let profit = rev_usd
+                        let mut profit = rev_usd
                             .map(|rev| rev - gas_paid)
                             .filter(|_| has_dex_price)
                             .unwrap_or_default();
+
+                        if profit >= MAX_PROFIT {
+                            has_dex_price = false;
+                            profit = Rational::ZERO;
+                        }
 
                         let header = self.utils.build_bundle_header_searcher_activity(
                             vec![deltas],
