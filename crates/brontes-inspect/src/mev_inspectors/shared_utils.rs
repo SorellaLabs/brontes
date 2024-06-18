@@ -5,7 +5,6 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::{
-        cex::CexExchange,
         dex::{BlockPrice, PriceAt},
         metadata::Metadata,
     },
@@ -234,22 +233,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata.dex_quotes.as_ref()?.price_for_block(pair, block)
     }
 
-    fn get_token_value_cex(
-        &self,
-        token: Address,
-        amount: Rational,
-        metadata: &Metadata,
-    ) -> Option<Rational> {
-        Some(
-            metadata
-                .cex_quotes
-                .get_quote(&Pair(token, self.quote), &CexExchange::Binance)?
-                .price_maker
-                .1
-                * amount,
-        )
-    }
-
     pub fn build_bundle_header_searcher_activity(
         &self,
         bundle_deltas: Vec<AddressDeltas>,
@@ -266,15 +249,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             profit_usd = 0.0;
         }
 
-        let balance_deltas = self.get_bundle_accounting(
-            bundle_txes,
-            bundle_deltas,
-            info.tx_index,
-            None,
-            Some(price_type),
-            metadata.clone(),
-            mev_type.use_cex_pricing_for_deltas(),
-        );
+        let balance_deltas =
+            self.get_bundle_accounting(bundle_txes, bundle_deltas, |this, token, amount| {
+                this.get_token_value_dex_block(price_type, token, &amount, &metadata)
+            });
 
         let bribe_usd = gas_details
             .iter()
@@ -297,58 +275,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             tx_hash: info.tx_hash,
             eoa: info.eoa,
             fund,
-            mev_contract: info.mev_contract,
-            profit_usd,
-            bribe_usd,
-            mev_type,
-            no_pricing_calculated,
-            balance_deltas,
-        }
-    }
-
-    pub fn build_bundle_header_jit_cex_dex(
-        &self,
-        bundle: BundleHeader,
-        info: &TxInfo,
-        mut profit_usd: f64,
-        gas_details: &[GasDetails],
-        metadata: Arc<Metadata>,
-        mev_type: MevType,
-        no_pricing_calculated: bool,
-    ) -> BundleHeader {
-        if no_pricing_calculated {
-            profit_usd = 0.0;
-        }
-
-        let balance_deltas = bundle.balance_deltas;
-
-        let bribe_usd = gas_details
-            .iter()
-            .map(|details| {
-                metadata
-                    .get_gas_price_usd(details.gas_paid(), self.quote)
-                    .to_float()
-            })
-            .sum::<f64>();
-
-        if profit_usd > bribe_usd * 100.0 {
-            self.metrics
-                .as_ref()
-                .inspect(|m| m.inspector_100x_profit(mev_type));
-        }
-
-        let fund = info
-            .get_searcher_contract_info()
-            .map(|i| i.fund)
-            .or_else(|| info.get_searcher_eao_info().map(|f| f.fund))
-            .unwrap_or_default();
-
-        BundleHeader {
-            block_number: metadata.block_num,
-            tx_index: info.tx_index,
-            tx_hash: info.tx_hash,
-            fund,
-            eoa: info.eoa,
             mev_contract: info.mev_contract,
             profit_usd,
             bribe_usd,
@@ -364,25 +290,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_txes: Vec<TxHash>,
         info: &TxInfo,
         mut profit_usd: f64,
-        at: PriceAt,
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
         no_pricing_calculated: bool,
+        price_f: impl Fn(&Self, Address, Rational) -> Option<Rational>,
     ) -> BundleHeader {
         if no_pricing_calculated {
             profit_usd = 0.0;
         }
 
-        let balance_deltas = self.get_bundle_accounting(
-            bundle_txes,
-            bundle_deltas,
-            info.tx_index,
-            Some(at),
-            None,
-            metadata.clone(),
-            mev_type.use_cex_pricing_for_deltas(),
-        );
+        let balance_deltas = self.get_bundle_accounting(bundle_txes, bundle_deltas, price_f);
 
         let bribe_usd = gas_details
             .iter()
@@ -474,11 +392,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         bundle_txes: Vec<FixedBytes<32>>,
         bundle_deltas: Vec<AddressDeltas>,
-        tx_index_for_pricing: u64,
-        at: Option<PriceAt>,
-        block_price: Option<BlockPrice>,
-        metadata: Arc<Metadata>,
-        pricing: bool,
+        price_f: impl Fn(&Self, Address, Rational) -> Option<Rational>,
     ) -> Vec<TransactionAccounting> {
         bundle_txes
             .into_iter()
@@ -490,35 +404,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         let deltas: Vec<TokenBalanceDelta> = token_deltas
                             .into_iter()
                             .map(|(token, amount)| {
-                                let usd_value = if pricing {
-                                    self.get_token_value_cex(token, amount.clone(), &metadata)
-                                        .unwrap_or(Rational::ZERO)
-                                } else {
-                                    at.map(|at| {
-                                        self.get_token_value_dex(
-                                            tx_index_for_pricing as usize,
-                                            at,
-                                            token,
-                                            &amount,
-                                            &metadata,
-                                        )
-                                    })
-                                    .or_else(|| {
-                                        let block = block_price.unwrap();
-                                        Some(self.get_token_value_dex_block(
-                                            block, token, &amount, &metadata,
-                                        ))
-                                    })
-                                    .flatten()
-                                    .unwrap_or(Rational::ZERO)
-                                };
+                                let usd_value =
+                                    price_f(self, token, amount.clone()).unwrap_or(Rational::ZERO);
                                 TokenBalanceDelta {
                                     token:     self
                                         .db
                                         .try_fetch_token_info(token)
                                         .ok()
                                         .unwrap_or_default(),
-                                    amount:    amount.clone().to_float(),
+                                    amount:    amount.to_float(),
                                     usd_value: usd_value.to_float(),
                                 }
                             })

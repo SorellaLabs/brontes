@@ -7,7 +7,7 @@ use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, Mev, MevType},
-    normalized_actions::accounting::ActionAccounting,
+    normalized_actions::{accounting::ActionAccounting, NormalizedBurn},
     ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
@@ -241,13 +241,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         }
 
         // grab all mints and burns
-        let ((mints, burns), rem): ((Vec<_>, Vec<_>), Vec<_>) = searcher_actions
+        let ((mints, burns, collect), rem): ((Vec<_>, Vec<_>, Vec<_>), Vec<_>) = searcher_actions
             .clone()
             .into_iter()
             .flatten()
-            .action_split_out((Action::try_mint, Action::try_burn));
+            .action_split_out((Action::try_mint, Action::try_burn, Action::try_collect));
 
-        if mints.is_empty() || burns.is_empty() {
+        if mints.is_empty() || (burns.is_empty() && collect.is_empty()) {
             tracing::trace!("missing mints & burns");
             return None
         }
@@ -316,11 +316,19 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             bundle_hashes,
             info_set.last()?,
             profit.to_float(),
-            PriceAt::After,
             &gas_details,
-            metadata,
+            metadata.clone(),
             MevType::Jit,
             !has_dex_price,
+            |this, token, amount| {
+                this.get_token_value_dex(
+                    info_set.last()?.tx_index as usize,
+                    PriceAt::Average,
+                    token,
+                    &amount,
+                    &metadata,
+                )
+            },
         );
 
         let victim_swaps = victim_actions
@@ -344,7 +352,23 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             victim_swaps_gas_details: victim_gas_details,
             backrun_burn_tx_hash: hashes.pop()?,
             backrun_burn_gas_details: gas_details.pop()?,
-            backrun_burns: burns,
+            backrun_burns: Some(collect)
+                .filter(|f| !f.is_empty())
+                .map(|collect| {
+                    collect
+                        .into_iter()
+                        .map(|c| NormalizedBurn {
+                            recipient:   c.recipient,
+                            trace_index: c.trace_index,
+                            protocol:    c.protocol,
+                            amount:      c.amount,
+                            token:       c.token,
+                            pool:        c.pool,
+                            from:        c.from,
+                        })
+                        .collect_vec()
+                })
+                .unwrap_or(burns),
         };
 
         Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
