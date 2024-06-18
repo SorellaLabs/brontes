@@ -207,7 +207,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_mev_tx_hashes(vec![hex!(
-                "0x8e195de12309bc84f4db192243dc2184605de16d97435e9f973a7579ec02e755"
+                "8e195de12309bc84f4db192243dc2184605de16d97435e9f973a7579ec02e755"
             )
             .into()])
             .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
