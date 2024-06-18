@@ -827,7 +827,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 }
 
 impl DBWriter for LibmdbxReadWriter {
-    type Inner = Self;
+    type Inner = LibmdbxReadWriter;
 
     fn inner(&self) -> &Self::Inner {
         unreachable!()
