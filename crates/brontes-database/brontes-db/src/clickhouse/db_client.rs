@@ -866,7 +866,7 @@ mod tests {
             .map(|root| (root, tree.header.number).into())
             .collect::<Vec<_>>();
 
-        db.insert_many::<BrontesTree>(&roots).await.unwrap();
+        db.insert_many::<BrontesTree2>(&roots).await.unwrap();
     }
 
     async fn run_all(database: &ClickhouseTestClient<BrontesClickhouseTables>) {
