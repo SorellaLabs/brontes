@@ -32,7 +32,7 @@ impl Processor for MevProcessor {
         tree: BlockTree<Action>,
         metadata: Metadata,
     ) -> impl std::future::Future<Output = ()> + Send {
-        async {
+        async move {
             if let Err(e) = db
                 .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
                 .await
