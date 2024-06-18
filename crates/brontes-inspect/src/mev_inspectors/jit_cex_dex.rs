@@ -6,7 +6,7 @@ use brontes_types::{
     db::{metadata::Metadata, token_info::TokenInfoWithAddress},
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType},
-    normalized_actions::{Action, NormalizedSwap},
+    normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     tree::BlockTree,
     FastHashMap,
 };
@@ -156,7 +156,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                 }
 
                 let mut possible_cex_dex: CexDexProcessing = self.cex_dex.detect_cex_dex(
-                    dex_swaps,
+                    dex_swaps.clone(),
                     &metadata,
                     tx_info.is_searcher_of_type(MevType::JitCexDex)
                         || tx_info.is_labelled_searcher_of_type(MevType::JitCexDex),
@@ -169,20 +169,36 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                     metadata.clone(),
                 );
 
-                let (profit_usd, cex_dex) = self.cex_dex.filter_possible_cex_dex(
+                let (profit_usd, cex_dex, trade_prices) = self.cex_dex.filter_possible_cex_dex(
                     possible_cex_dex,
                     &tx_info,
                     metadata.clone(),
                 )?;
 
-                let header = self.jit.utils.build_bundle_header_jit_cex_dex(
-                    jits.header,
+                let price_map =
+                    trade_prices
+                        .into_iter()
+                        .fold(FastHashMap::default(), |mut acc, x| {
+                            acc.insert(x.token0, x.price0);
+                            acc.insert(x.token1, x.price1);
+                            acc
+                        });
+
+                let deltas = dex_swaps
+                    .into_iter()
+                    .map(Action::from)
+                    .account_for_actions();
+
+                let header = self.jit.utils.build_bundle_header(
+                    vec![deltas],
+                    vec![tx_info.tx_hash],
                     &tx_info,
                     profit_usd,
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::JitCexDex,
                     false,
+                    |_, token, amount| Some(price_map.get(&token)? * amount),
                 );
 
                 Some(Bundle { header, data: cex_dex })

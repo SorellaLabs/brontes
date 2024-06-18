@@ -191,11 +191,19 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             vec![info.tx_hash],
             &info,
             profit.to_float(),
-            PriceAt::Average,
             &[info.gas_details],
             metadata.clone(),
             MevType::AtomicArb,
             !has_dex_price,
+            |this, token, amount| {
+                this.get_token_value_dex(
+                    info.tx_index as usize,
+                    PriceAt::Average,
+                    token,
+                    &amount,
+                    &metadata,
+                )
+            },
         );
         tracing::debug!("{:#?}\n\n {:#?}", header, data);
 

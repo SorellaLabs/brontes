@@ -127,11 +127,19 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             vec![info.tx_hash],
             &info,
             profit_usd.to_float(),
-            PriceAt::After,
             &[info.gas_details],
-            metadata,
+            metadata.clone(),
             MevType::Liquidation,
             !has_dex_price,
+            |this, token, amount| {
+                this.get_token_value_dex(
+                    info.tx_index as usize,
+                    PriceAt::Average,
+                    token,
+                    &amount,
+                    &metadata,
+                )
+            },
         );
 
         let new_liquidation = Liquidation {
