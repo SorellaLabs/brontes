@@ -364,25 +364,17 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         bundle_txes: Vec<TxHash>,
         info: &TxInfo,
         mut profit_usd: f64,
-        at: PriceAt,
         gas_details: &[GasDetails],
         metadata: Arc<Metadata>,
         mev_type: MevType,
         no_pricing_calculated: bool,
+        price_f: impl Fn(&Self, Address, Rational) -> Option<Rational>,
     ) -> BundleHeader {
         if no_pricing_calculated {
             profit_usd = 0.0;
         }
 
-        let balance_deltas = self.get_bundle_accounting(
-            bundle_txes,
-            bundle_deltas,
-            info.tx_index,
-            Some(at),
-            None,
-            metadata.clone(),
-            mev_type.use_cex_pricing_for_deltas(),
-        );
+        let balance_deltas = self.get_bundle_accounting(bundle_txes, bundle_deltas, price_f);
 
         let bribe_usd = gas_details
             .iter()
@@ -474,11 +466,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         bundle_txes: Vec<FixedBytes<32>>,
         bundle_deltas: Vec<AddressDeltas>,
-        tx_index_for_pricing: u64,
-        at: Option<PriceAt>,
-        block_price: Option<BlockPrice>,
-        metadata: Arc<Metadata>,
-        pricing: bool,
+        price_f: impl Fn(&Self, Address, Rational) -> Option<Rational>,
     ) -> Vec<TransactionAccounting> {
         bundle_txes
             .into_iter()
@@ -490,35 +478,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         let deltas: Vec<TokenBalanceDelta> = token_deltas
                             .into_iter()
                             .map(|(token, amount)| {
-                                let usd_value = if pricing {
-                                    self.get_token_value_cex(token, amount.clone(), &metadata)
-                                        .unwrap_or(Rational::ZERO)
-                                } else {
-                                    at.map(|at| {
-                                        self.get_token_value_dex(
-                                            tx_index_for_pricing as usize,
-                                            at,
-                                            token,
-                                            &amount,
-                                            &metadata,
-                                        )
-                                    })
-                                    .or_else(|| {
-                                        let block = block_price.unwrap();
-                                        Some(self.get_token_value_dex_block(
-                                            block, token, &amount, &metadata,
-                                        ))
-                                    })
-                                    .flatten()
-                                    .unwrap_or(Rational::ZERO)
-                                };
+                                let usd_value =
+                                    price_f(self, token, amount.clone()).unwrap_or(Rational::ZERO);
                                 TokenBalanceDelta {
                                     token:     self
                                         .db
                                         .try_fetch_token_info(token)
                                         .ok()
                                         .unwrap_or_default(),
-                                    amount:    amount.clone().to_float(),
+                                    amount:    amount.to_float(),
                                     usd_value: usd_value.to_float(),
                                 }
                             })
