@@ -25,6 +25,6 @@ The function does the following:
 
 For that `duplicate_sender` or `duplicate_contract` address, it checks the `possible_sandwiches` set.
 
-- If the address doesn't have a possible sandwich entry, it adds the first tx as to the array of possible frontruns and adds the current tx as a possible backrun and adds the set of `possible_victims` to the victims array.
+- If the address doesn't have a possible sandwich entry, it creates a [`PossibleSandwich`](the first tx as to the array of possible frontruns and adds the current tx as a possible backrun and adds the set of `possible_victims` to the victims array.
 
 -

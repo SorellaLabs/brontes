@@ -3,6 +3,17 @@ use std::hash::Hash;
 use brontes_types::{FastHashMap, TxInfo};
 use reth_primitives::{Address, B256};
 
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct PossibleSandwich {
+    pub eoa:                   Address,
+    pub possible_frontruns:    Vec<B256>,
+    pub possible_backrun:      B256,
+    pub mev_executor_contract: Address,
+    // Mapping of possible frontruns to the set of possible victims.
+    // By definition the victims of latter transactions can also be victims of the former
+    pub victims:               Vec<Vec<B256>>,
+}
+
 pub struct PossibleSandwichWithTxInfo {
     pub inner:                   PossibleSandwich,
     pub possible_frontruns_info: Vec<TxInfo>,
@@ -35,15 +46,4 @@ impl PossibleSandwichWithTxInfo {
             inner:                   ps,
         })
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct PossibleSandwich {
-    pub eoa:                   Address,
-    pub possible_frontruns:    Vec<B256>,
-    pub possible_backrun:      B256,
-    pub mev_executor_contract: Address,
-    // Mapping of possible frontruns to the set of possible victims.
-    // By definition the victims of latter transactions can also be victims of the former
-    pub victims:               Vec<Vec<B256>>,
 }
