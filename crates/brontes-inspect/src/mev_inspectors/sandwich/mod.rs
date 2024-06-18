@@ -603,7 +603,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     /// will call the main function recursively with two different revisions.
     /// 1) front shrink.
     /// 2) back shrink,
-    ///This is done as it recuserses as this will generate
+    ///This is done recursively as this will generate
     /// all possible sets of sandwiches that can occur.
     fn recursive_possible_sandwiches(
         &self,
@@ -615,16 +615,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         searcher_actions: &[Vec<Action>],
         victim_info: &[Vec<TxInfo>],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
-        mut recusive: u8,
+        mut recursive: u8,
     ) -> Option<Vec<Bundle>> {
         let mut res = vec![];
 
-        if recusive >= 6 {
+        if recursive >= 6 {
             return None
         }
 
         if possible_front_runs_info.len() > 1 {
-            recusive += 1;
+            recursive += 1;
             // remove dropped sandwiches
             if victim_info.is_empty() || victim_actions.is_empty() {
                 return None
@@ -658,7 +658,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions.to_vec(),
                     victim_info,
                     victim_actions,
-                    recusive,
+                    recursive,
                 )
             };
 
@@ -695,7 +695,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions,
                     victim_info,
                     victim_actions,
-                    recusive,
+                    recursive,
                 )
             };
             if let Some(front) = front_shrink {
@@ -767,7 +767,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     // for each victim eoa, ensure they are a victim of a frontrun and a backrun
-    // either through a pool or overlapping tokens. However, we also ensure that
+    // either through a pool or overlapping tokens. We also ensure that
     // there exists at-least one sandwich
     fn is_victim(
         grouped_victims: GroupedVictims<'_>,
@@ -1016,7 +1016,6 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Action>>) -> Vec<
             // If we have not seen this sender before, we insert the tx hash into the map
             Entry::Vacant(v) => {
                 v.insert(root.tx_hash);
-                possible_victims.insert(root.tx_hash, vec![]);
             }
             Entry::Occupied(mut o) => {
                 // Get's prev tx hash for this sender & replaces it with the current tx hash
@@ -1043,18 +1042,17 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Action>>) -> Vec<
 
                 // Add current transaction hash to the list of transactions for this sender
                 o.insert(root.tx_hash);
-                possible_victims.insert(root.tx_hash, vec![]);
             }
         }
 
         // Now, for each existing entry in possible_victims, we add the current
         // transaction hash as a potential victim, if it is not the same as
         // the key (which represents another transaction hash)
-        for (k, v) in possible_victims.iter_mut() {
-            if k != &root.tx_hash {
-                v.push(root.tx_hash);
-            }
+        for (_, v) in possible_victims.iter_mut() {
+            v.push(root.tx_hash);
         }
+
+        possible_victims.insert(root.tx_hash, vec![]);
     }
 
     possible_sandwiches.into_values().collect()
@@ -1084,7 +1082,6 @@ fn get_possible_sandwich_duplicate_contracts(
             // into the map
             Entry::Vacant(duplicate_mev_contract) => {
                 duplicate_mev_contract.insert((root.tx_hash, root.head.address));
-                possible_victims.insert(root.tx_hash, vec![]);
             }
             Entry::Occupied(mut duplicate_mev_contract) => {
                 // Get's prev tx hash &  for this sender & replaces it with the current tx hash
@@ -1109,20 +1106,20 @@ fn get_possible_sandwich_duplicate_contracts(
                         }
                     }
                 }
-
+                // Sets the previous tx hash in the duplicate_mev_contract map to the current tx
+                // hash
                 *prev_tx_hash = root.tx_hash;
-                possible_victims.insert(root.tx_hash, vec![]);
             }
         }
 
         // Now, for each existing entry in possible_victims, we add the current
         // transaction hash as a potential victim, if it is not the same as
         // the key (which represents another transaction hash)
-        for (k, v) in possible_victims.iter_mut() {
-            if k != &root.tx_hash {
-                v.push(root.tx_hash);
-            }
+        for (_, v) in possible_victims.iter_mut() {
+            v.push(root.tx_hash);
         }
+
+        possible_victims.insert(root.tx_hash, vec![]);
     }
 
     possible_sandwiches.into_values().collect()
