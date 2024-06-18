@@ -430,11 +430,19 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             bundle_hashes,
             &backrun_info,
             profit_usd.to_float(),
-            PriceAt::After,
             &gas_details,
-            metadata,
+            metadata.clone(),
             MevType::Sandwich,
             !has_dex_price,
+            |this, token, amount| {
+                this.get_token_value_dex(
+                    backrun_info.tx_index as usize,
+                    PriceAt::Average,
+                    token,
+                    &amount,
+                    &metadata,
+                )
+            },
         );
 
         let victim_swaps = victim_swaps.into_iter().map(|(s, _)| s).collect_vec();
@@ -580,6 +588,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 }
             }
         }
+
         removals.sort_unstable_by(|a, b| b.cmp(a));
         removals.dedup();
 
