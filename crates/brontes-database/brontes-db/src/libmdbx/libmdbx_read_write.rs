@@ -826,7 +826,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 }
 
-
 impl DBWriter for LibmdbxReadWriter {
     type Inner = Self;
 
@@ -996,7 +995,7 @@ impl DBWriter for LibmdbxReadWriter {
     /// only for internal functionality (i.e. clickhouse)
     async fn write_block_analysis(
         &self,
-        block_analysis: brontes_types::db::block_analysis::BlockAnalysis,
+        _: brontes_types::db::block_analysis::BlockAnalysis,
     ) -> eyre::Result<()> {
         Ok(())
     }
