@@ -99,7 +99,7 @@ impl SearcherInfo {
 
         if let Fund::None = self.fund {
         } else {
-            parts.push(format!("{}", self.fund.short()));
+            parts.push(self.fund.short().to_string());
         }
 
         let mev_type: Option<String> = vec![
