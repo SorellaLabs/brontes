@@ -9,14 +9,11 @@ use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
-    db::{
-        cex::{
-            config::CexDexTradeConfig,
-            time_window_vwam::MakerTakerWindowVWAP,
-            vwam::{ExchangePrice, MakerTaker},
-            CexExchange, FeeAdjustedQuote,
-        },
-        dex::PriceAt,
+    db::cex::{
+        config::CexDexTradeConfig,
+        time_window_vwam::MakerTakerWindowVWAP,
+        vwam::{ExchangePrice, MakerTaker},
+        CexExchange, FeeAdjustedQuote,
     },
     display::utils::format_etherscan_url,
     mev::{ArbDetails, ArbPnl, Bundle, BundleData, CexDex, MevType, OptimisticTrade},
@@ -30,10 +27,7 @@ use brontes_types::{
 use colored::Colorize;
 use itertools::{multizip, Itertools};
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{One, Two, Zero},
-    },
+    num::basic::traits::{One, Two, Zero},
     Rational,
 };
 use reth_primitives::Address;
@@ -187,16 +181,25 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 let (profit_usd, cex_dex, trade_prices) =
                     self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
 
+                let price_map =
+                    trade_prices
+                        .into_iter()
+                        .fold(FastHashMap::default(), |mut acc, x| {
+                            acc.insert(x.token0, x.price0);
+                            acc.insert(x.token1, x.price1);
+                            acc
+                        });
+
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
                     vec![tx_info.tx_hash],
                     &tx_info,
                     profit_usd,
-                    PriceAt::After,
                     &[tx_info.gas_details],
                     metadata.clone(),
                     MevType::CexDex,
                     false,
+                    |_, token, amount| Some(price_map.get(&token)? * amount),
                 );
 
                 Some(Bundle { header, data: cex_dex })
@@ -467,9 +470,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .global_exchange_price;
 
         let pairs_price = ExchangeLegCexPrice {
-            token0:  swap.token_in.address,
+            token0: swap.token_in.address,
             price0: token_price.clone(),
-            token1:   swap.token_out.address,
+            token1: swap.token_out.address,
             price1: &cex_quote.0 * &token_price.clone(),
         };
 
@@ -1260,9 +1263,9 @@ impl Display for ExchangeLeg {
 
 #[derive(Clone, Debug)]
 pub struct ExchangeLegCexPrice {
-    pub token0:  Address,
+    pub token0: Address,
     pub price0: Rational,
-    pub token1:  Address,
+    pub token1: Address,
     pub price1: Rational,
 }
 

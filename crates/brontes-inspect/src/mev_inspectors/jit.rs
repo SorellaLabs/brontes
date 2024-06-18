@@ -316,11 +316,19 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             bundle_hashes,
             info_set.last()?,
             profit.to_float(),
-            PriceAt::After,
             &gas_details,
-            metadata,
+            metadata.clone(),
             MevType::Jit,
             !has_dex_price,
+            |this, token, amount| {
+                this.get_token_value_dex(
+                    info_set.last()?.tx_index as usize,
+                    PriceAt::Average,
+                    token,
+                    &amount,
+                    &metadata,
+                )
+            },
         );
 
         let victim_swaps = victim_actions
