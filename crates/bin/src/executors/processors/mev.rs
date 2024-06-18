@@ -32,30 +32,32 @@ impl Processor for MevProcessor {
         tree: BlockTree<Action>,
         metadata: Metadata,
     ) -> impl std::future::Future<Output = ()> + Send {
-        if let Err(e) = db
-            .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
-            .await
-        {
-            tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
+        async {
+            if let Err(e) = db
+                .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
+                .await
+            {
+                tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
+            }
+
+            #[cfg(feature = "local-clickhouse")]
+            insert_tree(db, tree.clone(), metadata.block_num).await;
+
+            if tree.tx_roots.is_empty() {
+                return
+            }
+
+            let tree = Arc::new(tree);
+            let metadata = Arc::new(metadata);
+
+            let ComposerResults { block_details, mev_details, block_analysis, .. } =
+                execute_on!(async_inspect, {
+                    run_block_inspection(inspectors, tree.clone(), metadata.clone(), db)
+                })
+                .await;
+
+            insert_mev_results(db, block_details, mev_details, block_analysis).await;
         }
-
-        #[cfg(feature = "local-clickhouse")]
-        insert_tree(db, tree.clone(), metadata.block_num).await;
-
-        if tree.tx_roots.is_empty() {
-            return
-        }
-
-        let tree = Arc::new(tree);
-        let metadata = Arc::new(metadata);
-
-        let ComposerResults { block_details, mev_details, block_analysis, .. } =
-            execute_on!(async_inspect, {
-                run_block_inspection(inspectors, tree.clone(), metadata.clone(), db)
-            })
-            .await;
-
-        insert_mev_results(db, block_details, mev_details, block_analysis).await;
     }
 }
 
