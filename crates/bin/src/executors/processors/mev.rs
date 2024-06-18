@@ -26,12 +26,12 @@ pub struct MevProcessor;
 impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
-    async fn process_results<DB: DBWriter + LibmdbxReader>(
+    fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &'static DB,
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
         tree: BlockTree<Action>,
         metadata: Metadata,
-    ) {
+    ) -> impl Future<Output = ()> + Send {
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
