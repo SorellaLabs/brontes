@@ -4,8 +4,8 @@
       upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) AS symbol,
       c.timestamp as timestamp,
       c.side as side,
-      if (side == 'buy', c.price, divide(1, c.price)) AS price,
-      if (side == 'buy', c.amount, multiply(divide(1, c.price), c.amount)) AS amount
+      if (side == 'sell', c.price, divide(1, c.price)) AS price,
+      if (side == 'sell', c.amount, multiply(divide(1, c.price), c.amount)) AS amount
   FROM cex.normalized_trades as c 
   where c.timestamp >= ? AND c.timestamp < ?
 
@@ -16,8 +16,8 @@
       'Maker' as trade_type,
       upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) AS symbol,
       c.timestamp as timestamp,
-      if(c.side == 'buy', 'sell', 'buy') as side,
-      if (side == 'buy', c.price, divide(1, c.price)) AS price,
-      if (side == 'buy', c.amount, multiply(divide(1, c.price), c.amount)) AS amount
+      if(c.side == 'sell', 'buy', 'sell') as side,
+      if (side == 'sell', c.price, divide(1, c.price)) AS price,
+      if (side == 'sell', c.amount, multiply(divide(1, c.price), c.amount)) AS amount
   FROM cex.normalized_trades as c
   where c.timestamp >= ? AND c.timestamp < ?
