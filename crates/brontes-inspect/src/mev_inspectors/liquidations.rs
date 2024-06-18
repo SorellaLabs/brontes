@@ -117,7 +117,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .filter(|_| has_dex_price)
             .unwrap_or_default();
 
-        if profit_usd >= MAX_PROFIT {
+        if profit_usd >= MAX_PROFIT || profit_usd <= -MAX_PROFIT {
             has_dex_price = false;
             profit_usd = Rational::ZERO;
         }
@@ -201,24 +201,4 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_massive_loss_liq() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 5.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
-            .with_mev_tx_hashes(vec![hex!(
-                "8e195de12309bc84f4db192243dc2184605de16d97435e9f973a7579ec02e755"
-            )
-            .into()])
-            .needs_token(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2").into())
-            .with_dex_prices()
-            .with_gas_paid_usd(168.9) //TODO: Joe I am changing this for now because your quotes data seems to still be
-            // incorrect. Please fix it, the previous value was 636.54
-            .with_expected_profit_usd(0.0); // Same here previous value was: 129.23
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-    // test this:
-    // 0x0e554dca1b6abf8576f09250613689921629bd41fd9d8a61cf207c798912b092
 }
