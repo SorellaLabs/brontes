@@ -41,4 +41,29 @@ It then adds the current tx hash to the `possible_sandwiches` set with an empty 
 
 Once it has finished iterating through all transactions, it returns the `possible_sandwiches` set which contains all possible sandwich attacks.
 
-Now that we have the possible sandwich set for both the duplicate contracts & duplicate EOAs, we can deduplicate the results and return the final set of possible sandwich attacks.
+#### Possible Sandwich deduplication
+
+Now that we have the possible sandwich set by duplicate contracts & duplicate EOAs, the results need to be deduplicated. This is done by:
+
+##### Partitioning Sandwiches
+
+1. Iterates over the victims sets.
+
+- For each victim set if the victim set isn't empty push it to the `victim_set` array.
+- If it is empty, there are no victims between the previous attacker tx and the current attacker tx, which implies that these are probably two separate sandwich attacks so we break it up by creating a `PossibleSandwich` that takes as possible frontruns all possible frontruns up to the current tx index & as possible backrun the current tx.
+
+Take the example where we have the following transactions:
+
+Possible Frontruns: [A, B, C]
+Possible Backrun: D
+Victims: [[1,2], [], [3,4]]
+
+This would get partitioned into two sandwiches:
+
+1. Possible Frontruns: A
+   Possible Backrun: B
+   Victims: [1, 2]
+
+2. Possible Frontruns: C
+   Possible Backrun: D
+   Victims: [3, 4]
