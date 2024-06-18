@@ -474,11 +474,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let pairs_price = ExchangeLegCexPrice {
             pair0:  pair,
-            price0: token_price.clone(),
+            price0: token_price.clone().reciprocal(),
             pair1:  Pair(self.utils.quote, swap.token_out.address),
             price1: &cex_quote.0 * &token_price.clone().reciprocal(),
         };
-        tracing::info!(?pairs_price, cex_quote=?cex_quote.0,?pairs);
+        tracing::info!(?pairs_price, cex_quote=?cex_quote.0, ?pairs);
 
         let pnl_mid = (
             &maker_delta * &swap.amount_out * &token_price,
