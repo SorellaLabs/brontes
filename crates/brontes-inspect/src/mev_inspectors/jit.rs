@@ -13,6 +13,7 @@ use brontes_types::{
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 
+use super::MAX_PROFIT;
 use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
 };
@@ -270,7 +271,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
             .account_for_actions();
 
-        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+        let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info_set.last()?.tx_index,
             PriceAt::After,
             &mev_addresses,
@@ -295,10 +296,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .unzip();
 
         let bribe = self.get_bribes(metadata.clone(), &gas_details);
-        let profit = rev
+        let mut profit = rev
             .map(|rev| rev - &bribe)
             .filter(|_| has_dex_price)
             .unwrap_or_default();
+
+        if profit >= MAX_PROFIT {
+            has_dex_price = false;
+            profit = Rational::ZERO;
+        }
 
         let mut bundle_hashes = Vec::new();
         bundle_hashes.push(hashes[0]);

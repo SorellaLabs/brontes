@@ -13,6 +13,7 @@ use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{b256, Address};
 
+use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
@@ -95,7 +96,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let deltas = actions.into_iter().account_for_actions();
 
-        let (rev, has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
+        let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::After,
             &mev_addresses,
@@ -111,10 +112,15 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let gas_finalized =
             metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
 
-        let profit_usd = rev
+        let mut profit_usd = rev
             .map(|rev| rev - &gas_finalized)
             .filter(|_| has_dex_price)
             .unwrap_or_default();
+
+        if profit_usd >= MAX_PROFIT {
+            has_dex_price = false;
+            profit_usd = Rational::ZERO;
+        }
 
         let header = self.utils.build_bundle_header(
             vec![deltas],
