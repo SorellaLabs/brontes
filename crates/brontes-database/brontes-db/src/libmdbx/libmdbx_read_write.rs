@@ -991,6 +991,14 @@ impl DBWriter for LibmdbxReadWriter {
     async fn insert_tree(&self, _tree: BlockTree<Action>) -> eyre::Result<()> {
         Ok(())
     }
+
+    /// only for internal functionality (i.e. clickhouse)
+    async fn write_block_analysis(
+        &self,
+        _: brontes_types::db::block_analysis::BlockAnalysis,
+    ) -> eyre::Result<()> {
+        Ok(())
+    }
 }
 
 impl LibmdbxReadWriter {
