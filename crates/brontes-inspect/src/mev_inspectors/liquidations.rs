@@ -202,6 +202,7 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
+    #[brontes_macros::test]
     async fn test_massive_loss_liq() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 5.0).await;
 
