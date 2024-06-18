@@ -1,9 +1,9 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    hash::Hash,
     sync::Arc,
 };
 
+mod types;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -23,6 +23,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::{Address, B256};
+use types::{PossibleSandwich, PossibleSandwichWithTxInfo};
 
 use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -35,6 +36,7 @@ type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<Nor
 const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
 const MAX_NON_SWAP_FRONTRUN: Rational = Rational::const_from_unsigned(5000);
 
+//TODO: Add support for this type of flashloan sandwich
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
 }
@@ -43,51 +45,6 @@ impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
         Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
-}
-
-pub struct PossibleSandwichWithTxInfo {
-    inner:                   PossibleSandwich,
-    possible_frontruns_info: Vec<TxInfo>,
-    possible_backrun_info:   TxInfo,
-    victims_info:            Vec<Vec<TxInfo>>,
-}
-
-impl PossibleSandwichWithTxInfo {
-    pub fn from_ps(ps: PossibleSandwich, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
-        let backrun = info_set.get(&ps.possible_backrun).cloned()?;
-        let mut frontruns = vec![];
-
-        for fr in &ps.possible_frontruns {
-            frontruns.push(info_set.get(fr).cloned()?);
-        }
-
-        let mut victims = vec![];
-        for victim in &ps.victims {
-            let mut set = vec![];
-            for v in victim {
-                set.push(info_set.get(v).cloned()?);
-            }
-            victims.push(set);
-        }
-
-        Some(PossibleSandwichWithTxInfo {
-            possible_backrun_info:   backrun,
-            possible_frontruns_info: frontruns,
-            victims_info:            victims,
-            inner:                   ps,
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct PossibleSandwich {
-    eoa:                   Address,
-    possible_frontruns:    Vec<B256>,
-    possible_backrun:      B256,
-    mev_executor_contract: Address,
-    // mapping of possible frontruns to set of possible victims
-    // By definition the victims of latter txes are victims of the former
-    victims:               Vec<Vec<B256>>,
 }
 
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
@@ -535,7 +492,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .is_some()
     }
 
-    /// Because of the recusive split nature of the search,
+    /// Because of the recursive split nature of the search,
     /// we can sometimes get overlap which leads to double counting and
     /// false positives that are unwanted. to combat this
     /// we check all hashes and will check for duplicates.
@@ -1129,9 +1086,9 @@ fn get_possible_sandwich_duplicate_contracts(
                 duplicate_mev_contract.insert((root.tx_hash, root.head.address));
                 possible_victims.insert(root.tx_hash, vec![]);
             }
-            Entry::Occupied(mut o) => {
+            Entry::Occupied(mut duplicate_mev_contract) => {
                 // Get's prev tx hash &  for this sender & replaces it with the current tx hash
-                let (prev_tx_hash, frontrun_eoa) = o.get_mut();
+                let (prev_tx_hash, frontrun_eoa) = duplicate_mev_contract.get_mut();
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
                     match possible_sandwiches.entry(root.get_to_address()) {
@@ -1170,8 +1127,6 @@ fn get_possible_sandwich_duplicate_contracts(
 
     possible_sandwiches.into_values().collect()
 }
-
-//TODO: Add support for this type of flashloan sandwich
 
 #[cfg(test)]
 mod tests {
