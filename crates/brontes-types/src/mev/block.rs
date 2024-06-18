@@ -390,6 +390,13 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("builder_profit_usd", &self.builder_profit_usd)?;
         ser_struct.serialize_field("builder_mev_profit_usd", &self.builder_mev_profit_usd)?;
 
+        ser_struct.serialize_field("builder_searcher_bribes", &self.builder_searcher_bribes)?;
+        ser_struct
+            .serialize_field("builder_searcher_bribes_usd", &self.builder_searcher_bribes_usd)?;
+        ser_struct
+            .serialize_field("builder_sponsorship_amount", &self.builder_sponsorship_amount)?;
+        ser_struct.serialize_field("ultrasound_bid_adjusted", &self.ultrasound_bid_adjusted)?;
+
         ser_struct.serialize_field(
             "proposer_fee_recipient",
             &self
@@ -497,6 +504,10 @@ impl DbRow for MevBlock {
         "builder_eth_profit",
         "builder_profit_usd",
         "builder_mev_profit_usd",
+        "builder_searcher_bribes",
+        "builder_searcher_bribes_usd",
+        "builder_sponsorship_amount",
+        "ultrasound_bid_adjusted",
         "proposer_fee_recipient",
         "proposer_mev_reward",
         "proposer_profit_usd",
