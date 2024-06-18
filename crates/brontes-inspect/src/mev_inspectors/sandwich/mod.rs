@@ -547,58 +547,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         bundles.into_iter().map(|res| res.1).collect_vec()
     }
 
-    fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
-        let PossibleSandwich {
-            eoa,
-            possible_frontruns,
-            possible_backrun,
-            mev_executor_contract,
-            victims,
-        } = ps;
-        let mut results = vec![];
-        let mut victim_sets = vec![];
-        let mut last_partition = 0;
-
-        victims.into_iter().enumerate().for_each(|(i, group_set)| {
-            if group_set.is_empty() {
-                results.push(PossibleSandwich {
-                    eoa,
-                    mev_executor_contract,
-                    victims: std::mem::take(&mut victim_sets),
-                    possible_frontruns: possible_frontruns[last_partition..i].to_vec(),
-                    possible_backrun: possible_frontruns
-                        .get(i)
-                        .copied()
-                        .unwrap_or(possible_backrun),
-                });
-                last_partition = i + 1;
-            } else {
-                victim_sets.push(group_set);
-            }
-        });
-
-        if results.is_empty() {
-            results.push(PossibleSandwich {
-                eoa,
-                mev_executor_contract,
-                victims: victim_sets,
-                possible_frontruns,
-                possible_backrun,
-            });
-        } else if !victim_sets.is_empty() {
-            // add remainder
-            results.push(PossibleSandwich {
-                eoa,
-                mev_executor_contract,
-                victims: victim_sets,
-                possible_frontruns: possible_frontruns[last_partition..].to_vec(),
-                possible_backrun,
-            });
-        }
-
-        results
-    }
-
     /// for the given set of possible sandwich data.
     /// will call the main function recursively with two different revisions.
     /// 1) front shrink.
@@ -975,12 +923,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter_map(|ps| {
                 let mut set = ps.possible_frontruns.clone();
                 set.push(ps.possible_backrun);
-                // max multihop of 10 or max total victim of 30
+                // max multi-hop of 10 or max total victim of 30
                 if ps.victims.len() > 10 || ps.victims.iter().flatten().count() > 30 {
                     return None
                 }
-
                 set.extend(ps.victims.iter().flatten().copied());
+
                 Some(set)
             })
             .flatten()
@@ -1000,6 +948,58 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .filter_map(|ps| PossibleSandwichWithTxInfo::from_ps(ps, &tx_info_map))
             .collect_vec()
+    }
+
+    fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
+        let PossibleSandwich {
+            eoa,
+            possible_frontruns,
+            possible_backrun,
+            mev_executor_contract,
+            victims,
+        } = ps;
+        let mut results = vec![];
+        let mut victim_sets = vec![];
+        let mut last_partition = 0;
+
+        victims.into_iter().enumerate().for_each(|(i, group_set)| {
+            if group_set.is_empty() {
+                results.push(PossibleSandwich {
+                    eoa,
+                    mev_executor_contract,
+                    victims: std::mem::take(&mut victim_sets),
+                    possible_frontruns: possible_frontruns[last_partition..i].to_vec(),
+                    possible_backrun: possible_frontruns
+                        .get(i)
+                        .copied()
+                        .unwrap_or(possible_backrun),
+                });
+                last_partition = i + 1;
+            } else {
+                victim_sets.push(group_set);
+            }
+        });
+
+        if results.is_empty() {
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns,
+                possible_backrun,
+            });
+        } else if !victim_sets.is_empty() {
+            // add remainder
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns: possible_frontruns[last_partition..].to_vec(),
+                possible_backrun,
+            });
+        }
+
+        results
     }
 }
 

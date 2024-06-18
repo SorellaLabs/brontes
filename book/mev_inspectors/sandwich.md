@@ -43,7 +43,7 @@ Once it has finished iterating through all transactions, it returns the `possibl
 
 #### Possible Sandwich deduplication
 
-Now that we have the possible sandwich set by duplicate contracts & duplicate EOAs, the results need to be deduplicated. This is done by:
+Now that we have the possible sandwich set by duplicate contracts & duplicate EOAs, the results need to be deduplicated. The results are chained into a single iterator & deduplicated. Upon deduplication each `PossibleSandwich` is then partitioned.
 
 ##### Partitioning Sandwiches
 
@@ -67,3 +67,24 @@ This would get partitioned into two sandwiches:
 2. Possible Frontruns: C
    Possible Backrun: D
    Victims: [3, 4]
+
+The caveat to this methodology is that if for some reason the attacker has multiple transactions in a row, the partitioning will not work as expected. For example let's take the same example as above:
+
+Possible Frontruns: [A, B, C]
+Possible Backrun: D
+Victims: [[1,2], [], [3,4]]
+
+The actual sandwich could actually be:
+
+1. First Frontrun: A
+   Victims: [1, 2]
+   Unrelated or misc attacker transaction: B
+   Third Frontrun: C
+   Victims: [3, 4]
+   Backrun: D
+
+However we are operating under the assumption that attackers are maximally efficient & have no reason to endure the gas overhead, jared would simply steal their lunch...
+
+Now that the sandwiches have been partitioned, we fetch the `TxInfo` for all transactions in the sandwiches. If their are more than 10 victim sets for a possible sandwich or more than 30 victims we discard the sandwich for performance reasons. If anyone can find an example of a sandwich attack that breaks these parameters please let us know, we'll give you a bounty.
+
+### 2) **Calculating The Sandwich**
