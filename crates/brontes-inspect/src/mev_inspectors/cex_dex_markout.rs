@@ -30,7 +30,10 @@ use brontes_types::{
 use colored::Colorize;
 use itertools::{multizip, Itertools};
 use malachite::{
-    num::basic::traits::{One, Two, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Two, Zero},
+    },
     Rational,
 };
 use reth_primitives::Address;
@@ -473,7 +476,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             pair0:  pair,
             price0: token_price.clone(),
             pair1:  Pair(self.utils.quote, swap.token_out.address),
-            price1: &cex_quote.0 * &token_price,
+            price1: &cex_quote.0 * &token_price.clone().reciprocal(),
         };
         tracing::info!(?pairs_price, cex_quote=?cex_quote.0,?pairs);
 
