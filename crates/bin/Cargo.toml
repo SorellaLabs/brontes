@@ -96,7 +96,6 @@ default = [
   "brontes-database/default",
   "brontes-classifier/default",
   "brontes-inspect/default",
-  "pretty-print",
   "jemalloc",
   "local-reth",
   "cex-dex-markout"
@@ -114,7 +113,6 @@ cex-dex-markout = [
   "brontes-inspect/cex-dex-markout",
 ]
 
-pretty-print = ["brontes-inspect/pretty-print"]
 
 local-no-inserts = []
 

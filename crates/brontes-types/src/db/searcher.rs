@@ -97,16 +97,12 @@ impl SearcherInfo {
     pub fn describe(&self) -> String {
         let mut parts: Vec<String> = Vec::new();
 
-        if self.builder.is_some() {
-            parts.push("Vertically Integrated".to_string());
-        }
-
         if let Fund::None = self.fund {
         } else {
-            parts.push(format!("{}", self.fund));
+            parts.push(format!("{}", self.fund.short()));
         }
 
-        let mev_types: Vec<String> = vec![
+        let mev_type: Option<String> = vec![
             ("Sandwich", self.mev_count.sandwich_count, self.pnl.sandwich, self.gas_bids.sandwich),
             ("CexDex", self.mev_count.cex_dex_count, self.pnl.cex_dex, self.gas_bids.cex_dex),
             ("Jit", self.mev_count.jit_count, self.pnl.jit, self.gas_bids.jit),
@@ -133,7 +129,7 @@ impl SearcherInfo {
         .filter_map(|(mev_type, count, pnl, gas_bid)| {
             if let (Some(count), Some(pnl), Some(gas_paid)) = (count, pnl, gas_bid) {
                 if count > 10 && pnl > 0.0 && gas_paid > 10.0 {
-                    Some(mev_type.to_string())
+                    Some((mev_type, count))
                 } else {
                     None
                 }
@@ -141,14 +137,12 @@ impl SearcherInfo {
                 None
             }
         })
-        .collect();
+        .max_by_key(|(_, count)| *count)
+        .map(|(mev_type, _)| mev_type.to_string());
 
-        if !mev_types.is_empty() {
-            parts.push(format!("{} MEV bot", mev_types.join(" & ")));
-        } else {
-            parts.push("MEV bot".to_string());
+        if mev_type.is_some() {
+            parts.push(format!("{} bot", mev_type.unwrap()));
         }
-
         parts.join(" ")
     }
 
@@ -283,6 +277,21 @@ pub enum Fund {
 impl Fund {
     pub fn is_none(&self) -> bool {
         matches!(self, Fund::None)
+    }
+
+    pub fn short(&self) -> &'static str {
+        match self {
+            Fund::None => "None",
+            Fund::SymbolicCapitalPartners => "SCP",
+            Fund::Wintermute => "Wintermute",
+            Fund::JaneStreet => "Jane Street",
+            Fund::JumpTrading => "Jump Trading",
+            Fund::Kronos => "Kronos",
+            Fund::FlowTraders => "Flow Traders",
+            Fund::TokkaLabs => "Tokka Labs",
+            Fund::EthBuilder => "Eth Builder",
+            Fund::ICANHAZBLOCK => "I CAN HAZ BLOCK",
+        }
     }
 }
 
