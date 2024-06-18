@@ -51,6 +51,8 @@ pub struct MevBlock {
     pub builder_searcher_bribes:     u128,
     // Bribes paid to the builder by their own searchers (in USD)
     pub builder_searcher_bribes_usd: f64,
+    pub builder_sponsorship_amount:  u128,
+    pub ultrasound_bid_adjusted:     bool,
     pub proposer_fee_recipient:      Option<Address>,
     pub proposer_mev_reward:         Option<u128>,
     pub proposer_profit_usd:         Option<f64>,
@@ -388,6 +390,13 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("builder_profit_usd", &self.builder_profit_usd)?;
         ser_struct.serialize_field("builder_mev_profit_usd", &self.builder_mev_profit_usd)?;
 
+        ser_struct.serialize_field("builder_searcher_bribes", &self.builder_searcher_bribes)?;
+        ser_struct
+            .serialize_field("builder_searcher_bribes_usd", &self.builder_searcher_bribes_usd)?;
+        ser_struct
+            .serialize_field("builder_sponsorship_amount", &self.builder_sponsorship_amount)?;
+        ser_struct.serialize_field("ultrasound_bid_adjusted", &self.ultrasound_bid_adjusted)?;
+
         ser_struct.serialize_field(
             "proposer_fee_recipient",
             &self
@@ -495,6 +504,10 @@ impl DbRow for MevBlock {
         "builder_eth_profit",
         "builder_profit_usd",
         "builder_mev_profit_usd",
+        "builder_searcher_bribes",
+        "builder_searcher_bribes_usd",
+        "builder_sponsorship_amount",
+        "ultrasound_bid_adjusted",
         "proposer_fee_recipient",
         "proposer_mev_reward",
         "proposer_profit_usd",
