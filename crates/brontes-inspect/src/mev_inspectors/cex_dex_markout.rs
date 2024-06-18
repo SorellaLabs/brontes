@@ -44,6 +44,7 @@ pub const FILTER_THRESHOLD: u64 = 20;
 pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000);
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
+
 type CexDexTradesForSwap =
     (Vec<NormalizedSwap>, Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)>);
 
@@ -293,7 +294,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .enumerate()
             .filter_map(|(i, stuff)| {
                 let (maker, taker, pairs) = stuff.as_ref()?;
-
                 Some(
                     maker
                         .iter()
@@ -312,7 +312,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     tx_hash,
                                     path.final_start_time,
                                     path.final_end_time,
-                                ),
+                                )
+                                .map(|f| f.0),
                             )
                         })
                         .collect_vec(),
@@ -337,16 +338,19 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .zip(pricing_window_vwam)
                 .filter_map(|(swap, possible_pricing)| {
                     let (maker, taker, pairs, start_time, end_time) = possible_pricing?;
-                    Some(self.profit_classifier(
-                        swap,
-                        pairs,
-                        (maker, taker),
-                        metadata,
-                        CexExchange::VWAP,
-                        tx_hash,
-                        start_time,
-                        end_time,
-                    ))
+                    Some(
+                        self.profit_classifier(
+                            swap,
+                            pairs,
+                            (maker, taker),
+                            metadata,
+                            CexExchange::VWAP,
+                            tx_hash,
+                            start_time,
+                            end_time,
+                        )
+                        .map(|f| f.0),
+                    )
                 })
                 .collect_vec(),
         );
@@ -395,7 +399,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     if profit.is_some() {
                         trade_details.push(maker.trades_used);
                     }
-                    profit
+                    profit.map(|p| p.0)
                 })
                 .collect_vec(),
         )?;
@@ -418,7 +422,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
         start_time: u64,
         end_time: u64,
-    ) -> Option<ExchangeLeg> {
+    ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
@@ -465,6 +469,14 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .0
             .global_exchange_price;
 
+        let pairs_price = ExchangeLegCexPrice {
+            pair0:  pair,
+            price0: token_price.clone(),
+            pair1:  Pair(self.utils.quote, swap.token_out.address),
+            price1: &cex_quote.0 * &token_price,
+        };
+        tracing::info!(?pairs_price, ?cex_quote=cex_quote.0,?pairs);
+
         let pnl_mid = (
             &maker_delta * &swap.amount_out * &token_price,
             &taker_delta * &swap.amount_out * &token_price,
@@ -480,13 +492,16 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             exchange,
         };
 
-        Some(ExchangeLeg {
-            cex_quote: quote,
-            pairs,
-            end_time,
-            start_time,
-            pnl: ArbPnl { maker_taker_mid: pnl_mid.clone(), maker_taker_ask: pnl_mid },
-        })
+        Some((
+            ExchangeLeg {
+                cex_quote: quote,
+                pairs,
+                end_time,
+                start_time,
+                pnl: ArbPnl { maker_taker_mid: pnl_mid.clone(), maker_taker_ask: pnl_mid },
+            },
+            pairs_price,
+        ))
     }
 
     /// Retrieves CEX quotes for a DEX swap, analyzing both direct and
@@ -1226,6 +1241,14 @@ impl Display for ExchangeLeg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Cex Quote: {}, PnL: {}", self.cex_quote, self.pnl)
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct ExchangeLegCexPrice {
+    pub pair0:  Pair,
+    pub price0: Rational,
+    pub pair1:  Pair,
+    pub price1: Rational,
 }
 
 #[derive(Clone, Debug)]
