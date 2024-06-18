@@ -826,8 +826,18 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 }
 
+pub struct Dummy;
+
+impl DBWriter for Dummy {
+    type Inner = Self;
+
+    fn inner(&self) -> &Self::Inner {
+        unreachable!()
+    }
+}
+
 impl DBWriter for LibmdbxReadWriter {
-    type Inner = LibmdbxReadWriter;
+    type Inner = Dummy;
 
     fn inner(&self) -> &Self::Inner {
         unreachable!()
