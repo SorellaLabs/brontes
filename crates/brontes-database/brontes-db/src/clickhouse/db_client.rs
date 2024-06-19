@@ -296,7 +296,7 @@ impl ClickhouseHandle for Clickhouse {
         {
             tracing::info!("markout");
             let cex_trades = self
-                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num))
+                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
                 .await
                 .unwrap()
                 .remove(0)
@@ -506,6 +506,7 @@ impl ClickhouseHandle for Clickhouse {
 
         let data: Vec<RawCexTrades> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
+                tracing::info!(?block_times, "blocktimes");
                 let start_time = block_times
                     .iter()
                     .min_by_key(|b| b.timestamp)
@@ -532,6 +533,7 @@ impl ClickhouseHandle for Clickhouse {
                 self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
+                tracing::info!(?block_times, "blocktimes");
                 let mut query = RAW_CEX_TRADES.to_string();
 
                 let query_mod = block_times

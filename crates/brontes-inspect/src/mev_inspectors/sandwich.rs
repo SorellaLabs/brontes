@@ -1027,8 +1027,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter_map(|ps| {
                 let mut set = ps.possible_frontruns.clone();
                 set.push(ps.possible_backrun);
-                // max multihop of 10 or max total victim of 30
-                if ps.victims.len() > 10 || ps.victims.iter().flatten().count() > 30 {
+                // max multihop of 10 or max total victim of 50
+                if ps.victims.len() > 10 || ps.victims.iter().flatten().count() > 50 {
                     return None
                 }
 
