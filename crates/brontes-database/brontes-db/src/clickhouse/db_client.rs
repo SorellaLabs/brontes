@@ -488,6 +488,7 @@ impl ClickhouseHandle for Clickhouse {
                 self.client.query_many(query, &()).await?
             }
         };
+        tracing::info!(?block_times, "got blocktimes");
 
         if block_times.is_empty() {
             return Ok(vec![])
