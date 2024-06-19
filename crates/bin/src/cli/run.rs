@@ -98,7 +98,7 @@ impl RunArgs {
     ) -> eyre::Result<()> {
         banner::print_banner();
 
-        if (Some(start), Some(end)) = (self.start_block, self.end_block) {
+        if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
             if start > end {
                 return Err(eyre::eyre!("start block must be less than end block"))
             }

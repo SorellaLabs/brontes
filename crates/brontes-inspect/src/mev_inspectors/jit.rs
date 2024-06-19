@@ -569,7 +569,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let tx_set = set
             .iter()
             .filter_map(|jit| {
-                if jit.victims.len() > 20 {
+                if jit.victims.len() > 10 {
                     return None
                 }
 
