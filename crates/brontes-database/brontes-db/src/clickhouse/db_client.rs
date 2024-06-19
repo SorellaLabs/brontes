@@ -296,7 +296,7 @@ impl ClickhouseHandle for Clickhouse {
         {
             tracing::info!("markout");
             let cex_trades = self
-                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num))
+                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
                 .await
                 .unwrap()
                 .remove(0)
@@ -475,7 +475,6 @@ impl ClickhouseHandle for Clickhouse {
     ) -> eyre::Result<Vec<crate::CexTradesData>> {
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(s, e) => {
-                tracing::info!(?s,?e);
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
@@ -489,7 +488,6 @@ impl ClickhouseHandle for Clickhouse {
                 self.client.query_many(query, &()).await?
             }
         };
-        tracing::info!(?block_times, "got blocktimes");
 
         if block_times.is_empty() {
             return Ok(vec![])
