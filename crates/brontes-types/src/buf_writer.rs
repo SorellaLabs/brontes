@@ -97,7 +97,9 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>> + Unpin> Future
                 Poll::Ready(None) if !this.buffer.is_empty() && this.file.can_write() => {
                     let bytes_to_write = this.buffer.drain(..).collect::<Vec<u8>>();
                     this.file.write(bytes_to_write);
+                    // reschedule to start polling write
                     cx.waker().wake_by_ref();
+                    return Poll::Pending
                 }
                 // waiting for a prev batch to finish writing
                 Poll::Ready(None) if !this.buffer.is_empty() && !this.file.can_write() => {

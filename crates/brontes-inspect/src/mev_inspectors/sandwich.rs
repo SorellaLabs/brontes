@@ -22,7 +22,7 @@ use malachite::{
     num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
-use reth_primitives::{Address, B256};
+use reth_primitives::{Address, TxHash, B256};
 
 use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -147,59 +147,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                             return None
                         };
 
-                        let victim_swaps_transfers: Vec<_> = victims
-                            .into_iter()
-                            .map(|victim| {
-                                (
-                                    tree.clone()
-                                        .collect_txes(&victim, search_args.clone())
-                                        .t_map(|actions| {
-                                            self.utils
-                                                .flatten_nested_actions_default(actions.into_iter())
-                                        }),
-                                    victim,
-                                )
-                            })
-                            .try_fold(vec![], |mut acc, (victim_set, hashes)| {
-                                let tree = victim_set.tree();
-                                let actions = victim_set
-                                    .map(|s| {
-                                        s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
-                                            Action::try_swaps_merged,
-                                            Action::try_transfer,
-                                        ))
-                                    })
-                                    .into_zip_tree(tree)
-                                    .tree_zip_with(hashes.into_iter())
-                                    .t_full_filter_map(|(tree, rest)| {
-                                        let (swap, hashes): (Vec<_>, Vec<_>) =
-                                            UnzipPadded::unzip_padded(rest);
-
-                                        if !hashes
-                                            .iter()
-                                            .map(|v| {
-                                                let tree = &(*tree.clone());
-                                                let d =
-                                                    tree.get_root(*v).unwrap().get_root_action();
-
-                                                d.is_revert()
-                                                    || mev_executor_contract == d.get_to_address()
-                                            })
-                                            .any(|d| d)
-                                        {
-                                            Some(swap)
-                                        } else {
-                                            None
-                                        }
-                                    })?;
-
-                                if actions.is_empty() {
-                                    None
-                                } else {
-                                    acc.push(actions);
-                                    Some(acc)
-                                }
-                            })?;
+                        let victim_swaps_transfers: Vec<_> = self.get_victim_swap_transfer(
+                            victims,
+                            tree.clone(),
+                            search_args.clone(),
+                            mev_executor_contract,
+                        )?;
 
                         let searcher_actions: Vec<Vec<Action>> = tree
                             .clone()
@@ -1052,6 +1005,65 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .filter_map(|ps| PossibleSandwichWithTxInfo::from_ps(ps, &tx_info_map))
             .collect_vec()
+    }
+
+    fn get_victim_swap_transfer(
+        &self,
+        victims: Vec<Vec<TxHash>>,
+        tree: Arc<BlockTree<Action>>,
+        search_args: TreeSearchBuilder<Action>,
+        mev_executor_contract: Address,
+    ) -> Option<Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>> {
+        victims
+            .into_iter()
+            .map(|victim| {
+                (
+                    tree.clone()
+                        .collect_txes(&victim, search_args.clone())
+                        .t_map(|actions| {
+                            self.utils
+                                .flatten_nested_actions_default(actions.into_iter())
+                        }),
+                    victim,
+                )
+            })
+            .try_fold(vec![], |mut acc, (victim_set, hashes)| {
+                let tree = victim_set.tree();
+                let actions = victim_set
+                    .map(|s| {
+                        s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
+                            Action::try_swaps_merged,
+                            Action::try_transfer,
+                        ))
+                    })
+                    .into_zip_tree(tree)
+                    .tree_zip_with(hashes.into_iter())
+                    .t_full_filter_map(|(tree, rest)| {
+                        let (swap, hashes): (Vec<_>, Vec<_>) = UnzipPadded::unzip_padded(rest);
+
+                        if !hashes
+                            .iter()
+                            .map(|v| {
+                                let tree = &(*tree.clone());
+                                let d = tree.get_root(*v).unwrap().get_root_action();
+
+                                d.is_revert() || mev_executor_contract == d.get_to_address()
+                            })
+                            .any(|d| d)
+                        {
+                            Some(swap)
+                        } else {
+                            None
+                        }
+                    })?;
+
+                if actions.is_empty() {
+                    None
+                } else {
+                    acc.push(actions);
+                    Some(acc)
+                }
+            })
     }
 }
 
