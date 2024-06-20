@@ -232,7 +232,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                let new_vol = volume / &res.0.global_exchange_price.clone().reciprocal();
+                let new_vol = volume / &res.0.global_exchange_price.clone();
                 let pair1_v = self.get_vwap_price(
                     config,
                     exchanges,
@@ -312,11 +312,11 @@ impl<'a> TimeWindowTrades<'a> {
                 .filter(|(e, _)| exchanges.contains(e))
                 .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
                 .map(|(ex, (idx, trades))| {
-                    if trades.len() < 20 {
-                        //println!("{}: {:#?}", idx, trades);
-                    } else {
-                        //println!("{}: too long", idx);
-                    }
+                    // if trades.len() < 20 {
+                    //     //println!("{}: {:#?}", idx, trades);
+                    // } else {
+                    //     //println!("{}: too long", idx);
+                    // }
                     ((ex, (*idx, *idx)), (ex, *trades))
                 })
                 .unzip();
