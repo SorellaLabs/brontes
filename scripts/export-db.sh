@@ -1,8 +1,6 @@
 #!/bin/bash
 
 # Generate Tarball of database
-cd $1
-cd ..
 tar -czvf ~/brontes-db-latest.tar.gz $1
 # get byte size and write to folder
 wc -c ~/brontes-db-latest.tar.gz  | awk '{print $1}' | tr -d '\n' > ~/db-size.txt
