@@ -4,7 +4,7 @@ mkdir ~/brontes-db-latest
 # copy to db-latest folder
 cp -r $1/* ~/brontes-db-latest
 # Generate Tarball of database
-tar -czvf ~/brontes-db-latest.tar.gz -C ~/ /brontes-db-latest
+tar -czvf ~/brontes-db-latest.tar.gz -C ~/ brontes-db-latest
 # get byte size and write to folder
 wc -c ~/brontes-db-latest.tar.gz  | awk '{print $1}' | tr -d '\n' > ~/db-size.txt
 
