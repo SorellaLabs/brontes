@@ -51,8 +51,6 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
 
     fn init_progress_bar(total_download_size: Option<u64>) -> Option<ProgressBar> {
         total_download_size.map(|bytes| {
-            // Assuming `had_end_block` and `end_block` should be defined or passed
-            // elsewhere
             let progress_bar =
                 ProgressBar::with_draw_target(Some(bytes), ProgressDrawTarget::stderr_with_hz(30));
             let style = ProgressStyle::default_bar()
