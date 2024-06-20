@@ -141,8 +141,6 @@ impl Snapshot {
         let tar = GzDecoder::new(tar_gz);
         let mut archive = Archive::new(tar);
         let mut unpack = tarball_location.clone();
-
-        unpack.pop();
         archive.unpack(&unpack)?;
 
         fs_extra::dir::move_dir(unpack, write_location, &CopyOptions::new())?;
