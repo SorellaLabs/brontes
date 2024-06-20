@@ -97,10 +97,10 @@ impl<'a> PairTradeWalker<'a> {
 
             // Gets trades after the block timestamp that are within the current post block
             // time window
-            let max = trades.len() - 1;
+            let max = trades.len();
             if *upper_idx < max {
                 loop {
-                    let next_trade = &trades[*upper_idx + 1];
+                    let next_trade = &trades[*upper_idx];
                     if next_trade.timestamp <= self.max_timestamp {
                         trade_res.push(CexTradePtr::new(next_trade));
                         *upper_idx += 1;
@@ -119,7 +119,7 @@ impl<'a> PairTradeWalker<'a> {
     }
 }
 
-/// Its ok that we create 2 of these for pair price and intermediary price
+/// It's ok that we create 2 of these for pair price and intermediary price
 /// as it runs off of borrowed data so there is no overhead we occur
 pub struct PairTradeQueue<'a> {
     exchange_depth: FastHashMap<CexExchange, usize>,
