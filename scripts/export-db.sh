@@ -2,7 +2,7 @@
 
 mkdir ~/brontes-db-latest
 # copy to db-latest folder
-cp -r $1/ ~/brontes-db-latest
+cp -r $1/* ~/brontes-db-latest
 # Generate Tarball of database
 tar -czvf ~/brontes-db-latest.tar.gz ~/brontes-db-latest
 # get byte size and write to folder
