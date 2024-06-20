@@ -204,8 +204,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
         recusive: u8,
     ) -> Option<Vec<Bundle>> {
-        // if all of the sandwichers have the same eoa or are all verified contracts.
-        // then we can continue. otherwise false positive
+        // if all of the sandwichers have the same eoa or the to address is an mev
+        // contract then we can continue. otherwise false positive
         if !(possible_front_runs_info
             .iter()
             .chain(vec![&backrun_info])
@@ -771,7 +771,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // wiggle room is to deal with unknowns
         if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
             let victim_pct = (was_victims as f64) / (amount as f64);
-            tracing::debug!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich, "sandiwch no vicitm\n\n\n\n\n\n\n");
+            tracing::debug!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich, "sandwich no victims\n\n\n\n\n\n\n");
             return false
         }
 

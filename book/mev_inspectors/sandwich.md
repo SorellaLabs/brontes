@@ -85,6 +85,57 @@ The actual sandwich could actually be:
 
 However we are operating under the assumption that attackers are maximally efficient & have no reason to endure the gas overhead. If you find an example of a sandwich attack that breaks this assumption please let us know, we'll give you a bounty.
 
-Now that the sandwiches have been partitioned, we fetch the `TxInfo` for all transactions in the sandwiches. If their are more than 10 victim sets for a possible sandwich or more than 30 victims we discard the sandwich for performance reasons. If anyone can find an example of a sandwich attack that breaks these parameters please let us know, we'll give you a bounty.
+Now that the sandwiches have been partitioned, we fetch the `TxInfo` for all transactions in the sandwiches. If their are more than 10 victim sets for a possible sandwich we discard the sandwich for performance reasons. If anyone can find an example of a sandwich attack that breaks these parameters please let us know, we'll give you a bounty.
 
 ### 3 **Calculating The Sandwich**
+
+To prepare for the calculation the inspector:
+
+- collects all swaps and transfers for the victim transactions in the possible sandwich
+- collects all swap and transfer actions by the searcher in the possible sandwich
+
+Now that this data is collected we start evaluating if the `PossibleSandwich` is an actual sandwich.
+
+First we check check that the suspected sandwicher is using the same EOA for all its transaction or is using an `mev_contract` that is to say a contract that is not verified or classified. This filters out false positives.
+
+<div style="text-align: center;">
+ <img src="sandwich/overlap-check.png" alt="Sandwich Pool Overlap Check" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
+
+###### Checking for pool overlap
+
+1. Identifies the pools and tokens involved in the frontrun transactions for the possible sandwich, using the classified swaps & transfers to ensure we don't miss sandwiches for DEXs that are not yet supported.
+2. Identifies the pools and tokens involved in the backrun transaction in the same way.
+3. Checks that the front run & back run swaps intersect on at least one pool.
+4. For each victim (grouped by EOA), check the victim swaps or transfers overlap with pools or tokens from the frontrun and backrun transactions. If 50% of the victim swaps or transfers overlap with the frontrun and backrun transactions, the sandwich is confirmed. Otherwise, we return to the calculate sandwich function & will remove transactions.
+
+<div style="text-align: center;">
+ <img src="sandwich/victim-trade-overlap.png" alt="Victim Trade Overlap Check" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
+
+**Recursive Sandwich Verification**
+
+For a sandwich that does not contain the necessary overlap we will recursively remove transactions from both the start & end of the possible sandwich to evaluate all possible combinations of transactions until we find a match.
+
+Note:
+
+- Recursive search will stop after 6 iterations.
+
+**Back Shrink**:
+
+- Remove the last victim set
+- Remove the backrun tx
+- Calculate Sandwich
+
+**Front Shrink**:
+
+- Remove the first victim set
+- Remove the first frontrun tx
+
+<div style="text-align: center;">
+ <img src="sandwich/recursive-check.png" alt="Recursive Sandwich Split" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
+
+### 4 **Calculating The Profit**
+
+Now that we have identified a sandwich, we can easily calculate the PnL by calculating the balance deltas of the searcher addresses. This is the searcher revenue. We then calculate the searcher cost by summing the gas costs of all attacker transactions in the sandwich. The profit is the revenue minus the cost.
