@@ -232,7 +232,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                let new_vol = volume / &res.0.global_exchange_price.clone();
+                let new_vol = volume / &res.0.global_exchange_price.clone().reciprocal();
                 let pair1_v = self.get_vwap_price(
                     config,
                     exchanges,
