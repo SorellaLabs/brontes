@@ -11,8 +11,8 @@ use tar::Archive;
 use crate::runner::CliContext;
 
 /// endpoint to check size of db snapshot
-const SIZE_PATH: &str = "/size";
-const DOWNLOAD_PATH: &str = "/latest";
+const SIZE_PATH: &str = "/db-size.txt";
+const DOWNLOAD_PATH: &str = "/brontes-db-latest.tar.gz";
 const BYTES_TO_MB: u64 = 1_000_000;
 
 /// the 3 files of libmdbx
@@ -21,7 +21,7 @@ const LIBMDBX_FILES: [&str; 3] = ["database.version", "mdbx.dat", "mdbx.lck"];
 #[derive(Debug, Parser)]
 pub struct Snapshot {
     /// endpoint url
-    #[arg(long, short, default_value = "https://brontesdownload.sorellalabs.xyz")]
+    #[arg(long, short, default_value = "https://pub-e19b2b40b9c14ec3836e65c2c04590ec.r2.dev")]
     pub endpoint:       Url,
     /// where to write the database
     #[arg(long, short)]
