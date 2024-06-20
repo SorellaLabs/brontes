@@ -11,8 +11,8 @@ use tar::Archive;
 use crate::runner::CliContext;
 
 /// endpoint to check size of db snapshot
-const SIZE_PATH: &str = "/db-size.txt";
-const DOWNLOAD_PATH: &str = "/brontes-db-latest.tar.gz";
+const SIZE_PATH: &str = "db-size.txt";
+const DOWNLOAD_PATH: &str = "brontes-db-latest.tar.gz";
 const BYTES_TO_MB: u64 = 1_000_000;
 
 /// the 3 files of libmdbx
