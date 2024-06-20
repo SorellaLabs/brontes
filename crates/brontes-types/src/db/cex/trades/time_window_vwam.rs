@@ -306,7 +306,7 @@ impl<'a> TimeWindowTrades<'a> {
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
         println!("{block_timestamp} - {pair:?}");
-        let (ptrs, trades): (FastHashMap<CexExchange, (i64, i64)>, Vec<(CexExchange, _)>) =
+        let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
             self.0
                 .iter()
                 .filter(|(e, _)| exchanges.contains(e))
