@@ -161,10 +161,10 @@ impl<'a> PairTradeQueue<'a> {
 
         for (exchange, trades) in &self.trades {
             let exchange_depth = *self.exchange_depth.entry(*exchange).or_insert(0);
-            let len = trades.len() - 1;
+            let len = trades.len();
 
             // hit max depth
-            if exchange_depth > len {
+            if exchange_depth >= len {
                 continue
             }
 
