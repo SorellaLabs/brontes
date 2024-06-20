@@ -305,7 +305,7 @@ impl<'a> TimeWindowTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
-        println!("{block_timestamp} - {pair:?}");
+        //println!("{block_timestamp} - {pair:?}");
         let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
             self.0
                 .iter()
@@ -313,9 +313,9 @@ impl<'a> TimeWindowTrades<'a> {
                 .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
                 .map(|(ex, (idx, trades))| {
                     if trades.len() < 20 {
-                        println!("{}: {:#?}", idx, trades);
+                        //println!("{}: {:#?}", idx, trades);
                     } else {
-                        println!("{}: too long", idx);
+                        //println!("{}: too long", idx);
                     }
                     ((ex, (*idx, *idx)), (ex, *trades))
                 })
