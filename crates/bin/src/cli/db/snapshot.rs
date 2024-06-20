@@ -65,7 +65,9 @@ impl Snapshot {
     async fn meets_space_requirement(&self, client: &reqwest::Client) -> eyre::Result<u64> {
         let url = format!("{}{}", self.endpoint, SIZE_PATH);
         tracing::info!("trying url  {url}");
-        let new_db_size: String = client.get(url).send().await?.text().await?;
+        let new_db_size = client.get(url).send().await?.text().await?;
+        let new_db_size = new_db_size.strip_suffix("\n").unwrap();
+
         tracing::info!(?new_db_size);
         let new_db_size = u64::from_str(&new_db_size)?;
 
