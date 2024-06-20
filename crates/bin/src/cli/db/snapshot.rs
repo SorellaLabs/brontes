@@ -56,6 +56,7 @@ impl Snapshot {
         let stream = client.get(url).send().await?.bytes_stream();
 
         DownloadBufWriterWithProgress::new(Some(db_size), stream, file, 100 * 1024 * 1024).await?;
+        tracing::info!("finished downloading db");
         self.handle_downloaded_file(&download_dir, &self.write_location)?;
 
         // delete downloaded file
