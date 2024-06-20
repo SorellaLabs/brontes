@@ -56,7 +56,12 @@ impl Snapshot {
         let stream = client.get(url).send().await?.bytes_stream();
 
         DownloadBufWriterWithProgress::new(Some(db_size), stream, file, 100 * 1024 * 1024).await?;
-        self.handle_downloaded_file(&download_dir, &self.write_location)
+        self.handle_downloaded_file(&download_dir, &self.write_location)?;
+
+        // delete downloaded file
+        fs_extra::file::remove(download_dir)?;
+
+        Ok(())
     }
 
     /// returns a error if there is not enough space remaining. If the overwrite
@@ -138,7 +143,6 @@ impl Snapshot {
         let mut unpack = tarball_location.clone();
 
         unpack.pop();
-        unpack.push("brontes-snapshot-db");
         archive.unpack(&unpack)?;
 
         fs_extra::dir::move_dir(unpack, write_location, &CopyOptions::new())?;
