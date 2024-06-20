@@ -1,5 +1,6 @@
 use std::{env::current_dir, path::PathBuf, str::FromStr};
 
+use brontes_classifier::BalancerV1CorePoolFactory::newBPoolCall;
 use brontes_types::buf_writer::DownloadBufWriterWithProgress;
 use clap::Parser;
 use filesize::file_real_size;
@@ -63,14 +64,14 @@ impl Snapshot {
     /// db flag is enabled. Will delete the current db if that frees enough
     /// space
     async fn meets_space_requirement(&self, client: &reqwest::Client) -> eyre::Result<u64> {
-        let new_db_size: u64 = u64::from_str(
-            &client
-                .get(format!("{}{}", self.endpoint, SIZE_PATH))
-                .send()
-                .await?
-                .text()
-                .await?,
-        )?;
+        let new_db_size: String = client
+            .get(format!("{}{}", self.endpoint, SIZE_PATH))
+            .send()
+            .await?
+            .text()
+            .await?;
+        tracing::info!(?new_db_size);
+        let new_db_size = u64::from_str(&new_db_size)?;
 
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
 
