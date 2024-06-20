@@ -5,6 +5,7 @@ use clap::Parser;
 use filesize::file_real_size;
 use flate2::read::GzDecoder;
 use fs_extra::dir::CopyOptions;
+use itertools::Itertools;
 use reqwest::Url;
 use tar::Archive;
 
@@ -144,9 +145,17 @@ impl Snapshot {
         unpack.pop();
         archive.unpack(&unpack)?;
         // tmp
-        unpack.push("ludwig-brontes-main");
+        unpack.push("brontes-db-latest");
+        let from_paths = LIBMDBX_FILES
+            .iter()
+            .map(|file| {
+                let mut tmp = unpack.clone();
+                tmp.push(file);
+                tmp
+            })
+            .collect_vec();
 
-        fs_extra::dir::move_dir(unpack, write_location, &CopyOptions::new())?;
+        fs_extra::move_items(&from_paths, write_location, &CopyOptions::new())?;
 
         Ok(())
     }
