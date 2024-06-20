@@ -25,6 +25,8 @@ indicatif.workspace = true
 fs2 = "0.4.3"
 fs_extra = "1.3.0"
 filesize = "0.2.0"
+tar = "0.4.41"
+flate2 = "1.0.30"
 
 # Async
 tokio = { workspace = true }

@@ -3,7 +3,10 @@ use std::{env::current_dir, path::PathBuf};
 use brontes_types::buf_writer::DownloadBufWriterWithProgress;
 use clap::Parser;
 use filesize::file_real_size;
+use flate2::read::GzDecoder;
+use fs_extra::dir::CopyOptions;
 use reqwest::Url;
+use tar::Archive;
 
 use crate::runner::CliContext;
 
@@ -23,9 +26,6 @@ pub struct Snapshot {
     /// where to write the database
     #[arg(long, short)]
     pub write_location: PathBuf,
-    /// will set the .env to point to the database
-    #[arg(long, default_value = "false")]
-    pub update_env:     bool,
     /// overwrite the database if it already exists
     /// in the write location
     #[arg(long, default_value = "false")]
@@ -56,9 +56,8 @@ impl Snapshot {
         let stream = client.get(url).send().await?.bytes_stream();
 
         DownloadBufWriterWithProgress::new(Some(db_size), stream, file, 100 * 1024 * 1024).await?;
-        self.handle_decompression(&download_dir);
 
-        Ok(())
+        self.handle_downloaded_file(&download_dir, &self.write_location)
     }
 
     /// returns a error if there is not enough space remaining. If the overwrite
@@ -126,5 +125,22 @@ impl Snapshot {
             .sum::<u64>()
     }
 
-    fn handle_decompression(&self, tarball_location: &PathBuf) {}
+    fn handle_downloaded_file(
+        &self,
+        tarball_location: &PathBuf,
+        write_location: &PathBuf,
+    ) -> eyre::Result<()> {
+        let tar_gz = std::fs::File::open(tarball_location)?;
+        let tar = GzDecoder::new(tar_gz);
+        let mut archive = Archive::new(tar);
+        let mut unpack = tarball_location.clone();
+
+        unpack.pop();
+        unpack.push("brontes-snapshot-db");
+        archive.unpack(&unpack)?;
+
+        fs_extra::dir::move_dir(unpack, write_location, &CopyOptions::new())?;
+
+        Ok(())
+    }
 }
