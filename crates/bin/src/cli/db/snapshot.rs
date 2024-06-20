@@ -71,7 +71,6 @@ impl Snapshot {
         let url = format!("{}{}", self.endpoint, SIZE_PATH);
         tracing::info!("trying url  {url}");
         let new_db_size = client.get(url).send().await?.text().await?;
-        let new_db_size = new_db_size.strip_suffix("\n").unwrap();
 
         tracing::info!(?new_db_size);
         let new_db_size = u64::from_str(&new_db_size)?;
