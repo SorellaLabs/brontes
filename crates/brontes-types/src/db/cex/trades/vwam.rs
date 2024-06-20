@@ -3,10 +3,7 @@ use std::{fmt::Display, ops::Div};
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{One, Zero},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 
@@ -239,7 +236,7 @@ impl CexTradeMap {
                     tx_hash,
                 )?;
 
-                let new_vol = volume / &res.prices.0.final_price.clone().reciprocal();
+                let new_vol = volume / &res.prices.0.final_price.clone();
 
                 let pair1 = self.get_vwam_via_intermediary_spread(
                     config,
