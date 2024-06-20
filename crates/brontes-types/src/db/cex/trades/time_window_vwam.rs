@@ -306,7 +306,7 @@ impl<'a> TimeWindowTrades<'a> {
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
         println!("{block_timestamp} - {pair:?}");
-        println!("{:?}", self.0);
+        println!("{:#?}", self.0);
         let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
             self.0
                 .iter()
