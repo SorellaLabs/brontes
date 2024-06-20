@@ -10,11 +10,11 @@ A Sandwich attacks is a type of MEV strategy where an attacker manipulates the m
 
 The Sandwich Inspector identifies Sandwich attacks by analyzing the following:
 
-### 1) **Retrieves Relevant Transactions**
+### 1 **Retrieves Relevant Transactions**
 
 The inspector retrieves all transactions containing `swap`, `transfer`, `eth_transfer`, `FlashLoan`, `batch_swap` or `aggregator_swap` actions.
 
-### 2) **Identifies Potential Sandwiches**
+### 2 **Identifies Potential Sandwiches**
 
 Runs `get_possible_sandwich` which runs `get_possible_sandwich_duplicate_senders` and `get_possible_sandwich_duplicate_contracts` in parallel. Both functions iterate through the block to identify transactions with identical senders (from address, i.e the EOA) or contracts (to address, i.e mev attacker contract).
 
@@ -83,8 +83,8 @@ The actual sandwich could actually be:
    Victims: [3, 4]
    Backrun: D
 
-However we are operating under the assumption that attackers are maximally efficient & have no reason to endure the gas overhead, jared would simply steal their lunch...
+However we are operating under the assumption that attackers are maximally efficient & have no reason to endure the gas overhead. If you find an example of a sandwich attack that breaks this assumption please let us know, we'll give you a bounty.
 
 Now that the sandwiches have been partitioned, we fetch the `TxInfo` for all transactions in the sandwiches. If their are more than 10 victim sets for a possible sandwich or more than 30 victims we discard the sandwich for performance reasons. If anyone can find an example of a sandwich attack that breaks these parameters please let us know, we'll give you a bounty.
 
-### 2) **Calculating The Sandwich**
+### 3 **Calculating The Sandwich**
