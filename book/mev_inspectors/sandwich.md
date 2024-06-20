@@ -1,14 +1,14 @@
 # Sandwich Inspector
 
-A Sandwich attacks is a type of MEV strategy where an attacker manipulates the market price of assets on AMMs to extract value from a victim's trade. It involves three steps:
+A Sandwich attacks is a type of MEV strategy where an attacker manipulates the market price of assets on AMMs to extract value from a victim's trade. It can be boiled down to three steps:
 
-1. **Front-run:** The attacker purchases an asset before the victim's transaction, artificially raising its market price right up to the victim's limit price.
-2. **Victim Transaction:** The victim unknowingly buys the asset at this inflated price.
+1. **Front-run:** The attacker purchases an asset before the victim's transaction, artificially raising its market price up to the victim's limit price.
+2. **Victim Transaction:** The victim unknowingly buys the asset at the inflated price.
 3. **Back-run:** The attacker sells the asset immediately after, correcting the price and securing a profit.
 
 ## Sandwich Inspector Methodology
 
-The Sandwich Inspector identifies Sandwich attacks by analyzing the following:
+The Sandwich Inspector identifies Sandwich attacks by:
 
 ### 1 **Retrieves Relevant Transactions**
 
@@ -16,7 +16,7 @@ The inspector retrieves all transactions containing `swap`, `transfer`, `eth_tra
 
 ### 2 **Identifies Potential Sandwiches**
 
-Runs `get_possible_sandwich` which runs `get_possible_sandwich_duplicate_senders` and `get_possible_sandwich_duplicate_contracts` in parallel. Both functions iterate through the block to identify transactions with identical senders (from address, i.e the EOA) or contracts (to address, i.e mev attacker contract).
+Executes `get_possible_sandwich` which runs `get_possible_sandwich_duplicate_senders` and `get_possible_sandwich_duplicate_contracts` in parallel. Both functions iterate through the block to identify transactions with identical senders (from address, i.e the EOA) or contracts (to address, i.e mev attacker contract).
 
 Both functions operate in the same way, let's take the `get_possible_sandwich_duplicate_contracts` as an example:
 
