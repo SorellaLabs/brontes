@@ -29,6 +29,8 @@ use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
 
+type VictimSetActions = Option<Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>>;
+
 /// the price difference was more than 90% between dex pricing and effective
 /// price, we put this so high due to the inner swap price manipulation
 /// effect that sandwich has
@@ -1013,7 +1015,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         search_args: TreeSearchBuilder<Action>,
         mev_executor_contract: Address,
-    ) -> Option<Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>> {
+    ) -> VictimSetActions {
         victims
             .into_iter()
             .map(|victim| {

@@ -254,8 +254,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             })
             .collect::<FastHashMap<_, _>>();
 
-        let pair_graph =
-            GraphManager::init_from_db_state(pairs, self.libmdbx, pricing_metrics.clone());
+        let pair_graph = GraphManager::init_from_db_state(pairs, pricing_metrics.clone());
 
         let data_req = Arc::new(AtomicBool::new(true));
 

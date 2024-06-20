@@ -8,11 +8,7 @@ use brontes_core::decoding::TracingProvider;
 use brontes_pricing::BrontesBatchPricer;
 use brontes_types::{
     constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
-    db::{
-        dex::DexQuotes,
-        metadata::Metadata,
-        traits::{DBWriter, LibmdbxReader},
-    },
+    db::{dex::DexQuotes, metadata::Metadata},
     normalized_actions::Action,
     tree::BlockTree,
     BrontesTaskExecutor, FastHashMap, FastHashSet,
@@ -21,12 +17,12 @@ use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, error::TrySendError, Receiver, Sender};
 use tracing::{debug, span, Instrument, Level};
 
-pub type PricingReceiver<T, DB> = Receiver<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
-pub type PricingSender<T, DB> = Sender<(BrontesBatchPricer<T, DB>, Option<(u64, DexQuotes)>)>;
+pub type PricingReceiver<T> = Receiver<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>;
+pub type PricingSender<T> = Sender<(BrontesBatchPricer<T>, Option<(u64, DexQuotes)>)>;
 
-pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
-    receiver: PricingReceiver<T, DB>,
-    tx:       PricingSender<T, DB>,
+pub struct WaitingForPricerFuture<T: TracingProvider> {
+    receiver: PricingReceiver<T>,
+    tx:       PricingSender<T>,
 
     pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Action>, Metadata)>,
     // if metadata fetching fails, we store the block for it here so that we know to not spam load
@@ -35,8 +31,8 @@ pub struct WaitingForPricerFuture<T: TracingProvider, DB: DBWriter + LibmdbxRead
     task_executor:            BrontesTaskExecutor,
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerFuture<T, DB> {
-    pub fn new(pricer: BrontesBatchPricer<T, DB>, task_executor: BrontesTaskExecutor) -> Self {
+impl<T: TracingProvider> WaitingForPricerFuture<T> {
+    pub fn new(pricer: BrontesBatchPricer<T>, task_executor: BrontesTaskExecutor) -> Self {
         let (tx, rx) = channel(100);
         let tx_clone = tx.clone();
         let fut = Box::pin(Self::pricing_thread(pricer, tx_clone));
@@ -51,7 +47,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         }
     }
 
-    async fn pricing_thread(mut pricer: BrontesBatchPricer<T, DB>, tx: PricingSender<T, DB>) {
+    async fn pricing_thread(mut pricer: BrontesBatchPricer<T>, tx: PricingSender<T>) {
         let block = pricer.current_block_processing();
         let mut res = pricer
             .next()
@@ -81,7 +77,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
         self.pending_trees.is_empty()
     }
 
-    fn reschedule(&mut self, pricer: BrontesBatchPricer<T, DB>) {
+    fn reschedule(&mut self, pricer: BrontesBatchPricer<T>) {
         let tx = self.tx.clone();
         let fut = Box::pin(Self::pricing_thread(pricer, tx));
 
@@ -100,9 +96,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> WaitingForPricerF
     }
 }
 
-impl<T: TracingProvider, DB: DBWriter + LibmdbxReader + Unpin> Stream
-    for WaitingForPricerFuture<T, DB>
-{
+impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     type Item = (BlockTree<Action>, Metadata);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
