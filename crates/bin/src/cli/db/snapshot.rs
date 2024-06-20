@@ -71,12 +71,8 @@ impl Snapshot {
     /// space
     async fn meets_space_requirement(&self, client: &reqwest::Client) -> eyre::Result<u64> {
         let url = format!("{}{}", self.endpoint, SIZE_PATH);
-        tracing::info!("trying url  {url}");
         let new_db_size = client.get(url).send().await?.text().await?;
-
-        tracing::info!(?new_db_size);
         let new_db_size = u64::from_str(&new_db_size)?;
-
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
 
         let mut storage_available = fs2::free_space(&self.write_location)?;
