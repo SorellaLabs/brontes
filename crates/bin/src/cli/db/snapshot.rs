@@ -1,4 +1,4 @@
-use std::{env::current_dir, path::PathBuf};
+use std::{env::current_dir, path::PathBuf, str::FromStr};
 
 use brontes_types::buf_writer::DownloadBufWriterWithProgress;
 use clap::Parser;
@@ -63,12 +63,16 @@ impl Snapshot {
     /// db flag is enabled. Will delete the current db if that frees enough
     /// space
     async fn meets_space_requirement(&self, client: &reqwest::Client) -> eyre::Result<u64> {
-        let new_db_size: u64 = client
-            .get(format!("{}{}", self.endpoint, SIZE_PATH))
-            .send()
-            .await?
-            .json()
-            .await?;
+        let new_db_size: u64 = u64::from_str(
+            &client
+                .get(format!("{}{}", self.endpoint, SIZE_PATH))
+                .send()
+                .await?
+                .text()
+                .await?,
+        )?;
+
+        tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
 
         let mut storage_available = fs2::free_space(&self.write_location)?;
         if self.overwrite_db {
