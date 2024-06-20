@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Generate Tarball of database
-tar -czvf ~/brontes-db-latest.tar.gz -C $1
+tar -czvf ~/brontes-db-latest.tar.gz -C $1 $2
 # get byte size and write to folder
 wc -c ~/brontes-db-latest.tar.gz  | awk '{print $1}' | tr -d '\n' > ~/db-size.txt
 # upload db to r2
