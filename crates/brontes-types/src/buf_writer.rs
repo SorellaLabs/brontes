@@ -105,8 +105,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>> + Unpin> Future
                 Poll::Ready(None) if !this.buffer.is_empty() && !this.file.can_write() => {
                     return Poll::Pending
                 }
-                Poll::Ready(None) => unreachable!(),
-                Poll::Pending => return Poll::Pending,
+                Poll::Ready(None) | Poll::Pending => return Poll::Pending,
             }
         }
     }
