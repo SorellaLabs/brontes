@@ -387,11 +387,19 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             bundle_hashes,
             &backrun_info,
             profit_usd.to_float(),
-            PriceAt::After,
             &gas_details,
-            metadata,
+            metadata.clone(),
             MevType::Sandwich,
             !has_dex_price,
+            |this, token, amount| {
+                this.get_token_value_dex(
+                    backrun_info.tx_index as usize,
+                    PriceAt::Average,
+                    token,
+                    &amount,
+                    &metadata,
+                )
+            },
         );
 
         let victim_swaps = victim_swaps.into_iter().map(|(s, _)| s).collect_vec();
@@ -537,6 +545,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 }
             }
         }
+
         removals.sort_unstable_by(|a, b| b.cmp(a));
         removals.dedup();
 
@@ -923,8 +932,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .filter_map(|ps| {
                 let mut set = ps.possible_frontruns.clone();
                 set.push(ps.possible_backrun);
-                // max multi-hop of 10 or max total victim of 30
-                if ps.victims.len() > 10 || ps.victims.iter().flatten().count() > 30 {
+                // max multihop of 10 or max total victim of 50
+                if ps.victims.len() > 10 {
                     return None
                 }
                 set.extend(ps.victims.iter().flatten().copied());

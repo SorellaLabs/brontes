@@ -117,7 +117,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .filter(|_| has_dex_price)
             .unwrap_or_default();
 
-        if profit_usd >= MAX_PROFIT {
+        if profit_usd >= MAX_PROFIT || profit_usd <= -MAX_PROFIT {
             has_dex_price = false;
             profit_usd = Rational::ZERO;
         }
@@ -127,11 +127,19 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             vec![info.tx_hash],
             &info,
             profit_usd.to_float(),
-            PriceAt::After,
             &[info.gas_details],
-            metadata,
+            metadata.clone(),
             MevType::Liquidation,
             !has_dex_price,
+            |this, token, amount| {
+                this.get_token_value_dex(
+                    info.tx_index as usize,
+                    PriceAt::Average,
+                    token,
+                    &amount,
+                    &metadata,
+                )
+            },
         );
 
         let new_liquidation = Liquidation {
@@ -193,6 +201,4 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-    // test this:
-    // 0x0e554dca1b6abf8576f09250613689921629bd41fd9d8a61cf207c798912b092
 }
