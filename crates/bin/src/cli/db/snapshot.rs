@@ -58,9 +58,9 @@ impl Snapshot {
         DownloadBufWriterWithProgress::new(Some(db_size), stream, file, 100 * 1024 * 1024).await?;
         tracing::info!("finished downloading db");
         self.handle_downloaded_file(&download_dir, &self.write_location)?;
-
-        // delete downloaded file
+        tracing::info!("moved results to proper location");
         fs_extra::file::remove(download_dir)?;
+        tracing::info!("deleted tarball");
 
         Ok(())
     }
