@@ -17,10 +17,14 @@ brontes-pricing.workspace = true
 brontes-tracing.workspace = true
 brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
 
-
 malachite.workspace = true
 toml = "0.8.2"
 indicatif.workspace = true
+
+# filesystem
+fs2 = "0.4.3"
+fs_extra = "1.3.0"
+filesize = "0.2.0"
 
 # Async
 tokio = { workspace = true }
@@ -98,7 +102,7 @@ default = [
   "brontes-inspect/default",
   "jemalloc",
   "local-reth",
-  "cex-dex-markout"
+  "cex-dex-markout",
 ]
 
 jemalloc = ["brontes-metrics/jemalloc"]
