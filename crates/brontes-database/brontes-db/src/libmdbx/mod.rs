@@ -10,6 +10,7 @@ mod env;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 pub mod cache_middleware;
 pub use cache_middleware::*;
+pub mod libmdbx_partitioning;
 
 pub mod cex_utils;
 pub mod libmdbx_writer;

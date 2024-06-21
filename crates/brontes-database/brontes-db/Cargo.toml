@@ -37,6 +37,12 @@ reth-db.workspace = true
 reth-rpc.workspace = true
 reth-rpc-types.workspace = true
 
+# filesystem
+fs2.workspace = true
+fs_extra.workspace = true
+filesize.workspace = true
+tar.workspace = true
+flate2.workspcae = true
 
 # libmdbx deps
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
