@@ -7,6 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 mod env;
+pub mod libmdbx_merger;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
 pub mod cache_middleware;
 pub use cache_middleware::*;

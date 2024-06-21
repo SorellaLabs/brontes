@@ -1,11 +1,11 @@
 use std::{
     path::PathBuf,
-    str::{pattern::Searcher, FromStr},
+    str::{ FromStr},
 };
+use rayon::iter::*;
 
 use brontes_types::{
     db::dex::{make_filter_key_range, DexKey, DexQuoteWithIndex},
-    normalized_actions::accounting::TokenDeltas,
     BrontesTaskExecutor,
 };
 use fs_extra::dir::get_dir_content;
@@ -14,6 +14,8 @@ use super::{types::LibmdbxData, LibmdbxReadWriter};
 use crate::{libmdbx::LibmdbxInit, CompressedTable, DexPrice, *};
 
 const PARTITION_FILE_NAME: &str = "brontes-db-partition";
+/// 1 week / 12 seconds
+const DEFAULT_PARTITION_SIZE: u64 = 50_400;
 
 pub struct LibmdbxPartitioner {
     // db with all the data
@@ -63,11 +65,17 @@ impl LibmdbxPartitioner {
             }
         }
 
+        let mut ranges = vec![];
         while start_block + self.partition_size_blocks < end_block {
+            ranges.push((start_block, start_block + self.partition_size_blocks));
+            start_block += self.partition_size_blocks
+        }
+
+        // because we are just doing read operations. we can do all this in parallel
+        ranges.into_par_iter().try_for_each(|(start_block, end_block)| {
             let mut path = self.partition_db_folder.clone();
             path.push(format!(
-                "{PARTITION_FILE_NAME}-{start_block}-{}/",
-                start_block + self.partition_size_blocks
+                "{PARTITION_FILE_NAME}-{start_block}-{end_block}/"
             ));
             fs_extra::dir::create_all(&path, false)?;
             let db = LibmdbxReadWriter::init_db(path, None, &self.executor)?;
@@ -85,14 +93,13 @@ impl LibmdbxPartitioner {
                 PoolCreationBlocks,
                 TxTraces
             );
-
             // manually dex pricing
             let value = self
                 .parent_db
                 .fetch_dex_price_range(start_block, end_block)?;
-            db.write_partitioned_range_data::<DexPrice, DexPriceData>(value)?;
-            start_block += self.partition_size_blocks;
-        }
+            db.write_partitioned_range_data::<DexPrice, DexPriceData>(value)
+
+        })?;
 
         // move over full range tables
         let mut path = self.partition_db_folder.clone();
