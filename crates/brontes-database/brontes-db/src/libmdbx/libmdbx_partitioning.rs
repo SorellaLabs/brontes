@@ -1,21 +1,38 @@
-use std::{
-    path::PathBuf,
-    str::{ FromStr},
-};
-use rayon::iter::*;
+use std::{path::PathBuf, str::FromStr};
 
 use brontes_types::{
     db::dex::{make_filter_key_range, DexKey, DexQuoteWithIndex},
     BrontesTaskExecutor,
 };
 use fs_extra::dir::get_dir_content;
+use rayon::iter::*;
 
 use super::{types::LibmdbxData, LibmdbxReadWriter};
 use crate::{libmdbx::LibmdbxInit, CompressedTable, DexPrice, *};
 
-const PARTITION_FILE_NAME: &str = "brontes-db-partition";
+pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
 /// 1 week / 12 seconds
 const DEFAULT_PARTITION_SIZE: u64 = 50_400;
+
+#[macro_export]
+macro_rules! move_tables_to_partition {
+    (BLOCK_RANGE $parent_db:expr, $db:expr, $start_block:expr,$end_block:expr,$($table_name:ident),*) => {
+        $(
+            let value = $parent_db.fetch_partition_range_data::<$table_name>($start_block, $end_block)?;
+            ::paste::paste!(
+                $db.write_partitioned_range_data::<$table_name, [<$table_name Data>]>(value)?;
+            );
+        )*
+    };
+    (FULL_RANGE $parent_db:expr, $db:expr, $($table_name:ident),*) => {
+        $(
+            let value = $parent_db.fetch_critical_data::<$table_name>()?;
+            ::paste::paste!(
+                $db.write_partitioned_range_data::<$table_name, [<$table_name Data>]>(value)?;
+            );
+        )*
+    }
+}
 
 pub struct LibmdbxPartitioner {
     // db with all the data
@@ -45,26 +62,6 @@ impl LibmdbxPartitioner {
 
         let end_block = self.parent_db.get_db_range()?.1;
 
-        macro_rules! move_tables_to_partition {
-            (BLOCK_RANGE $db:ident, $start_block:expr,$end_block:expr,$($table_name:ident),*) => {
-                $(
-                    let value = self.parent_db.fetch_partition_range_data::<$table_name>($start_block, $end_block)?;
-                    ::paste::paste!(
-                        $db.write_partitioned_range_data::<$table_name, [<$table_name Data>]>(value)?;
-                    );
-                )*
-            };
-            (FULL_RANGE $db:ident, $($table_name:ident),*) => {
-                $(
-                    let value = self.parent_db.fetch_critical_data::<$table_name>()?;
-                    ::paste::paste!(
-                        $db.write_partitioned_range_data::<$table_name, [<$table_name Data>]>(value)?;
-                    );
-                )*
-
-            }
-        }
-
         let mut ranges = vec![];
         while start_block + self.partition_size_blocks < end_block {
             ranges.push((start_block, start_block + self.partition_size_blocks));
@@ -72,34 +69,34 @@ impl LibmdbxPartitioner {
         }
 
         // because we are just doing read operations. we can do all this in parallel
-        ranges.into_par_iter().try_for_each(|(start_block, end_block)| {
-            let mut path = self.partition_db_folder.clone();
-            path.push(format!(
-                "{PARTITION_FILE_NAME}-{start_block}-{end_block}/"
-            ));
-            fs_extra::dir::create_all(&path, false)?;
-            let db = LibmdbxReadWriter::init_db(path, None, &self.executor)?;
+        ranges
+            .into_par_iter()
+            .try_for_each(|(start_block, end_block)| {
+                let mut path = self.partition_db_folder.clone();
+                path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
+                fs_extra::dir::create_all(&path, false)?;
+                let db = LibmdbxReadWriter::init_db(path, None, &self.executor)?;
 
-            move_tables_to_partition!(
-                BLOCK_RANGE
-                db,
-                start_block,
-                end_block,
-                CexPrice,
-                CexTrades,
-                BlockInfo,
-                MevBlocks,
-                InitializedState,
-                PoolCreationBlocks,
-                TxTraces
-            );
-            // manually dex pricing
-            let value = self
-                .parent_db
-                .fetch_dex_price_range(start_block, end_block)?;
-            db.write_partitioned_range_data::<DexPrice, DexPriceData>(value)
-
-        })?;
+                move_tables_to_partition!(
+                    BLOCK_RANGE
+                    self.parent_db,
+                    db,
+                    start_block,
+                    end_block,
+                    CexPrice,
+                    CexTrades,
+                    BlockInfo,
+                    MevBlocks,
+                    InitializedState,
+                    PoolCreationBlocks,
+                    TxTraces
+                );
+                // manually dex pricing
+                let value = self
+                    .parent_db
+                    .fetch_dex_price_range(start_block, end_block)?;
+                db.write_partitioned_range_data::<DexPrice, DexPriceData>(value)
+            })?;
 
         // move over full range tables
         let mut path = self.partition_db_folder.clone();
@@ -107,13 +104,16 @@ impl LibmdbxPartitioner {
         fs_extra::dir::create_all(&path, false)?;
         let db = LibmdbxReadWriter::init_db(path, None, &self.executor)?;
 
-        move_tables_to_partition!(FULL_RANGE db,
-        AddressMeta,
-        SearcherEOAs,
-        SearcherContracts,
-        Builder,
-        AddressToProtocolInfo,
-        TokenDecimals
+        move_tables_to_partition!(
+            FULL_RANGE
+            self.parent_db,
+            db,
+            AddressMeta,
+            SearcherEOAs,
+            SearcherContracts,
+            Builder,
+            AddressToProtocolInfo,
+            TokenDecimals
         );
 
         Ok(())
@@ -141,7 +141,7 @@ impl LibmdbxReadWriter {
         D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
     {
         let mapped = data.into_iter().map(D::from).collect::<Vec<_>>();
-        self.db.write_table(&mapped);
+        self.db.write_table(&mapped)?;
 
         Ok(())
     }
