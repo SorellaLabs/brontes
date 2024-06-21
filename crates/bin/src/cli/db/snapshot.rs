@@ -17,7 +17,7 @@ const DOWNLOAD_PATH: &str = "brontes-db-latest.tar.gz";
 const BYTES_TO_MB: u64 = 1_000_000;
 
 /// the 3 files of libmdbx
-const LIBMDBX_FILES: [&str; 3] = ["database.version", "mdbx.dat", "mdbx.lck"];
+const LIBMDBX_FILES: [&str; 3] = ["mdbx.dat", "mdbx.lck"];
 
 #[derive(Debug, Parser)]
 pub struct Snapshot {
