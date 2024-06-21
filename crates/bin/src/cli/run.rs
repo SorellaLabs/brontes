@@ -80,7 +80,7 @@ pub struct RunArgs {
     #[arg(long, default_value = "10")]
     pub behind_tip: u64,
     /// Run in CLI only mode (no TUI) - will output progress bars to stdout
-    #[arg(long, default_value = "false")]
+    #[arg(long, default_value = "true")]
     pub cli_only: bool,
     /// Initialize full range database tables
     #[arg(long, default_value = "false")]
@@ -103,6 +103,9 @@ impl RunArgs {
                 return Err(eyre::eyre!("start block must be less than end block"))
             }
         }
+
+        let snapshot_mode = !cfg!(feature = "local-clickhouse");
+        tracing::info!(%snapshot_mode);
 
         // Fetch required environment variables.
         let reth_db_path = get_env_vars()?;
@@ -197,6 +200,7 @@ impl RunArgs {
                     self.cli_only,
                     self.init_crit_tables,
                     self.with_metrics,
+                    snapshot_mode,
                 )
                 .build(task_executor, shutdown)
                 .await
