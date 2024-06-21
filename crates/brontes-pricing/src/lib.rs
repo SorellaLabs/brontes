@@ -47,10 +47,7 @@ pub use brontes_types::price_graph_types::{
     PoolPairInfoDirection, PoolPairInformation, SubGraphEdge, SubGraphsEntry,
 };
 use brontes_types::{
-    db::{
-        dex::{DexPrices, DexQuotes},
-        traits::{DBWriter, LibmdbxReader},
-    },
+    db::dex::{DexPrices, DexQuotes},
     pair::Pair,
     traits::TracingProvider,
     FastHashMap, FastHashSet,
@@ -98,7 +95,7 @@ const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
 ///
 /// 5) Processes and returns formatted data from the applied state transitions
 /// before proceeding to the next block.
-pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
+pub struct BrontesBatchPricer<T: TracingProvider> {
     range_id:        usize,
     quote_asset:     Address,
     current_block:   u64,
@@ -121,7 +118,7 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     /// only pass though valid created pools.
     new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager:   GraphManager<DB>,
+    graph_manager:   GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
     dex_quotes:      FastHashMap<u64, DexQuotes>,
@@ -137,12 +134,12 @@ pub struct BrontesBatchPricer<T: TracingProvider, DB: DBWriter + LibmdbxReader> 
     metrics:         Option<DexPricingMetrics>,
 }
 
-impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB> {
+impl<T: TracingProvider> BrontesBatchPricer<T> {
     pub fn new(
         range_id: usize,
         finished: Arc<AtomicBool>,
         quote_asset: Address,
-        graph_manager: GraphManager<DB>,
+        graph_manager: GraphManager,
         update_rx: UnboundedYapperReceiver<DexPriceMsg>,
         provider: Arc<T>,
         current_block: u64,
@@ -1219,9 +1216,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader> BrontesBatchPricer<T, DB>
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter + Unpin> Stream
-    for BrontesBatchPricer<T, DB>
-{
+impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     type Item = (u64, DexQuotes);
 
     #[brontes_macros::metrics_call(ptr=metrics, poll_rate, self.range_id)]

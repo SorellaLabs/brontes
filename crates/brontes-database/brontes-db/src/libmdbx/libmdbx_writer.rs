@@ -1,4 +1,8 @@
-use std::{sync::Arc, task::Poll};
+use std::{
+    sync::Arc,
+    task::Poll,
+    time::{Duration, Instant},
+};
 
 use alloy_primitives::Address;
 use brontes_types::{
@@ -481,13 +485,21 @@ impl LibmdbxWriter {
             },
         }
 
-        while !inserts.rx.is_closed() {
+        // if we go 1s without a message, we assume shutdown was complete
+        let mut last_message = Instant::now();
+        while last_message.elapsed() < Duration::from_secs(1) {
+            let mut message = false;
             while let Ok(msg) = inserts.rx.try_recv() {
+                message = true;
                 if let Err(e) = inserts.handle_msg(msg) {
                     tracing::error!(error=%e, "libmdbx write error on shutdown");
                 }
             }
             inserts.insert_remaining();
+            // inserts take some time so we update last message here
+            if message {
+                last_message = Instant::now();
+            }
         }
         // we do this so doesn't get instant dropped by compiler
         tracing::trace!(was_shutdown = graceful_guard.is_some());

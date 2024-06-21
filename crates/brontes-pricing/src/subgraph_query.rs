@@ -2,10 +2,7 @@
 use std::time::Duration;
 
 use alloy_primitives::Address;
-use brontes_types::{
-    db::traits::{DBWriter, LibmdbxReader},
-    FastHashSet, SubGraphEdge,
-};
+use brontes_types::{FastHashSet, SubGraphEdge};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -16,8 +13,8 @@ use crate::{
 
 type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
 
-pub fn graph_search_par<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
+pub fn graph_search_par(
+    graph: &GraphManager,
     quote: Address,
     updates: Vec<PoolUpdate>,
 ) -> GraphSeachParRes {
@@ -73,10 +70,7 @@ pub struct StateQueryRes {
 }
 
 // already generated subgraph but need to fill in gaps
-pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
-    pairs: Vec<RequeryPairs>,
-) -> ParStateQueryRes {
+pub fn par_state_query(graph: &GraphManager, pairs: Vec<RequeryPairs>) -> ParStateQueryRes {
     pairs
         .into_par_iter()
         .map(|RequeryPairs { pair, block, ignore_state, frayed_ends, extends_pair }| {
@@ -137,8 +131,8 @@ pub fn par_state_query<DB: DBWriter + LibmdbxReader>(
 
 type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<NewGraphDetails>);
 
-fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
+fn on_new_pool_pair(
+    graph: &GraphManager,
     msg: PoolUpdate,
     main_pair: Pair,
     pair0: Option<Pair>,
@@ -171,8 +165,8 @@ fn on_new_pool_pair<DB: DBWriter + LibmdbxReader>(
     (buf_pending, path_pending)
 }
 
-fn queue_loading_returns<DB: DBWriter + LibmdbxReader>(
-    graph: &GraphManager<DB>,
+fn queue_loading_returns(
+    graph: &GraphManager,
     block: u64,
     must_include: Pair,
     pair: Pair,

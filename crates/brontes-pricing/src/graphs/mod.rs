@@ -12,7 +12,6 @@ mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{
-    db::traits::{DBWriter, LibmdbxReader},
     pair::Pair,
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };
@@ -57,23 +56,19 @@ use crate::{
 ///   integrity of associated subgraphs.
 /// - **Finalizing Blocks**: Concludes the processing of a block, finalizing the
 ///   state for the generated subgraphs.
-pub struct GraphManager<DB: LibmdbxReader + DBWriter> {
-    all_pair_graph: AllPairGraph,
+pub struct GraphManager {
+    all_pair_graph:               AllPairGraph,
     /// registry of all finalized subgraphs
-    sub_graph_registry: SubGraphRegistry,
+    sub_graph_registry:           SubGraphRegistry,
     /// deals with the verification process of our subgraphs
     pub(crate) subgraph_verifier: SubgraphVerifier,
     /// tracks all state needed for our subgraphs
-    graph_state: StateTracker,
-    #[allow(dead_code)] // we don't db on tests which causes dead code
-    /// allows us to save a load subgraphs.
-    db: &'static DB,
+    graph_state:                  StateTracker,
 }
 
-impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
+impl GraphManager {
     pub fn init_from_db_state(
         all_pool_data: FastHashMap<(Address, Protocol), Pair>,
-        db: &'static DB,
         metrics: Option<DexPricingMetrics>,
     ) -> Self {
         let graph = AllPairGraph::init_from_hash_map(all_pool_data);
@@ -84,7 +79,6 @@ impl<DB: DBWriter + LibmdbxReader> GraphManager<DB> {
             graph_state: StateTracker::new(metrics),
             all_pair_graph: graph,
             sub_graph_registry: registry,
-            db,
             subgraph_verifier,
         }
     }

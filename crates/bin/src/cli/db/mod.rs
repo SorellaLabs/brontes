@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod libmdbx_mem;
+mod snapshot;
 use crate::runner::CliContext;
 mod db_clear;
 mod db_insert;
@@ -46,6 +47,9 @@ pub enum DatabaseCommands {
     /// Export libmbdx data to parquet
     #[command(name = "export")]
     Export(export::Export),
+    /// downloads a db snapshot from the remote endpoint
+    #[command(name = "download-snapshot")]
+    DownloadSnapshot(snapshot::Snapshot),
     #[cfg(feature = "local-clickhouse")]
     /// Traces all blocks needed for testing and inserts them into
     /// clickhouse
@@ -72,6 +76,7 @@ impl Database {
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(ctx).await,
             #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
             DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
