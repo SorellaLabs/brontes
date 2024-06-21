@@ -2,17 +2,15 @@
 
 ## Overview
 
-The Sandwich Inspector is designed to detect and analyze the profitability of Sandwich attacks on Ethereum.
+The Sandwich Inspector is designed to detect and analyze the profitability of Sandwich attacks.
 
 ### What is a Sandwich Attack?
 
-A Sandwich attack unfolds in three key steps:
+A Sandwich attack unfolds in three steps:
 
 1. **Front-run:** An attacker buys an asset just before a victim's transaction, raising its market price.
 2. **Victim Transaction:** The victim purchases the asset at the inflated price.
 3. **Back-run:** The attacker sells the asset post-victim transaction, profiting from the price difference.
-
----
 
 ## Methodology
 
@@ -22,12 +20,12 @@ The inspector retrieves transactions in the block that involve `swap`, `transfer
 
 ### Step 2: Identify Potential Sandwiches
 
-The Sandwich Inspector runs two parallel functions:
+The Sandwich Inspector runs two functions in parallel:
 
 1. `get_possible_sandwich_duplicate_senders`: Finds duplicate EOAs (`from` addresses)
 2. `get_possible_sandwich_duplicate_contracts`: Finds duplicate contract addresses (`to` addresses)
 
-Both functions use the same logic to detect sandwich attacks, differing only in their focus. This approach catches attacks executed through repeated contract calls or by the same EOA.
+Both functions use the same logic to detect possible sandwich attacks, differing only in their focus. This approach catches attacks executed through repeated contract calls or by the same EOA.
 
 **Here's how these functions work:**
 
@@ -51,14 +49,13 @@ fn get_possible_sandwich_duplicate_contracts(
          Entry::Vacant(duplicate_mev_contract) => {
                duplicate_mev_contract.insert((root.tx_hash, root.head.address));
          }
-         // Else get's prev tx hash &  for this sender & replaces it
+         // Else get the previous tx hash for this contract & replaces it
          // with the current tx hash
          Entry::Occupied(mut duplicate_mev_contract) => {
                let (prev_tx_hash, frontrun_eoa) = duplicate_mev_contract.get_mut();
 
-               // If the previous transaction from this contract had possible victims
-               // check if we already have a possible sandwich for it. This handles
-               // the big mac sandwich case
+               // If the previous transaction calling this contract had possible victims
+               // check if we already have a possible sandwich for it.
                if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
                   // If we don't have a possible sandwich for this contract then
                   // create one
@@ -88,13 +85,14 @@ fn get_possible_sandwich_duplicate_contracts(
          }
       }
 
-      // Now, for each existing entry in possible_victims, we add the current
-      // transaction hash as a potential victim, if it is not the same as
-      // the key (which represents another transaction hash)
+      // For each transaction we've inspected, add the current
+      // transaction hash as a potential victim
       for (_, v) in possible_victims.iter_mut() {
          v.push(root.tx_hash);
       }
 
+      // Insert the current transaction hash into the possible_victims map
+      // to be used in the next iteration
       possible_victims.insert(root.tx_hash, vec![]);
    }
 
@@ -102,14 +100,20 @@ fn get_possible_sandwich_duplicate_contracts(
 }
 ```
 
-This function iterates through the transaction tree, identifying transactions with identical contract addresses (`to` addresses) within the block. It collects the transactions sandwiched between and creates a [`PossibleSandwich`](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-inspect/src/mev_inspectors/sandwich/types.rs#L7) struct for each potential sandwich attack scenario detected. The `PossibleSandwich` results, identified by duplicate sender & contract, are deduplicated before proceeding to the next step.
+This function scans the transaction tree for repeated contract (`to`) addresses. It builds [`PossibleSandwich`](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-inspect/src/mev_inspectors/sandwich/types.rs#L7) structs for each potential attack scenario. Here's how:
+
+1. It tracks duplicate contracts.
+2. It identifies transactions between duplicates as potential victims.
+3. It creates or updates `PossibleSandwich` structs for each scenario.
+
+The `PossibleSandwich` results, identified by duplicate sender & contract, are deduplicated before proceeding to the next step.
 
 ### Step 3: Partitioning Possible Sandwiches
 
 Here's how partitioning works:
 
 - We iterate through victim sets in each sandwich.
-- Empty victim sets signal a break between attacks.
+- Empty victim sets signal a break in the sandwich.
 - We create new `PossibleSandwich` structs at these breaks.
 
 <div style="text-align: center;">
@@ -120,46 +124,67 @@ Here's how partitioning works:
 
 ### Step 4: Analyze Possible Sandwich Attacks
 
-#### Checking for pool overlap
+#### Pool Overlap Check
+
+Front-run and back-run transactions must swap on at least one common liquidity pool.
 
 <div style="text-align: center;">
  <img src="sandwich/overlap-check.png" alt="Sandwich Pool Overlap Check" style="border-radius: 20px; width: 600px; height: auto;">
 </div>
 
-1. Checks that the front run & back run transaction swap on at least one common liquidity pool.
-2. For each victim transaction (grouped by EOA), check the victim swaps overlap with pools or tokens from the frontrun and backrun transactions. If 50% of the victim swaps or transfers overlap with the frontrun and backrun transactions, the sandwich is confirmed. Otherwise, we return to the calculate sandwich function & will remove transactions.
+#### Victim Verification
+
+After confirming pool overlap, we validate interleaved transactions as victims:
+
+1. Group victim transactions by EOA to account for multi-step victim operations (e.g., approval and swap).
+2. An EOA is a victim if it:
+   - Swaps on the same pool and direction as the front-run
+   - Swaps on the same pool and opposite direction as the back-run
 
 <div style="text-align: center;">
  <img src="sandwich/victim-trade-overlap.png" alt="Victim Trade Overlap Check" style="border-radius: 20px; width: 600px; height: auto;">
 </div>
 
+A `PossibleSandwich` is confirmed if:
+
+- At least 50% of EOAs are considered victims
+- At least one complete sandwich is detected (e.g a victim swap overlaps with both front-run and back-run in pool & direction)
+
+If confirmed, we proceed to Step 5. Otherwise, we initiate recursive verification.
+
 #### Recursive Sandwich Verification
 
-For a sandwich that does not contain the necessary overlap we will recursively remove transactions from both the start & end of the possible sandwich to evaluate all possible combinations of transactions until we find a match.
+For unconfirmed sandwiches, we employ a recursive strategy to explore all possible transaction combinations:
 
 <div style="text-align: center;">
  <img src="sandwich/recursive-check.png" alt="Recursive Sandwich Split" style="border-radius: 20px; width: 600px; height: auto;">
 </div>
 
-Note:
+1. The process stops after 6 recursive iterations.
+2. We apply two types of "shrinking":
 
-- Recursive search will stop after 6 iterations.
+   **Back Shrink**:
 
-**Back Shrink**:
+   - Remove the last victim set
+   - Use the last front-run as the new back-run
+   - Recalculate the sandwich (run step 4 on the new sandwich)
 
-- Remove the last victim set
-- Remove the backrun tx
-- Calculate Sandwich
+   **Front Shrink**:
 
-**Front Shrink**:
+   - Remove the first victim set
+   - Remove the first front-run transaction
+   - Retain the original back-run
+   - Recalculate the sandwich (run step 4 on the new sandwich)
 
-- Remove the first victim set
-- Remove the first frontrun tx
+3. We continue this process as long as:
+   - There's more than one front-run transaction
+   - Victim sets aren't empty
+   - At least one victim has non-empty swaps or transfers
 
-- **Transaction Collection**: Collects all relevant swap and transfer actions related to both attackers and victims.
-- **Overlap Verification**: Ensures that there is a significant overlap between the actions of attackers and the transactions of victims, confirming the presence of a Sandwich attack.
-- **Recursive Verification**: If initial checks are inconclusive, a recursive method removes transactions from consideration, re-evaluating potential sandwiches to find valid attack patterns.
+### Step 5: Calculate Sandwich PnL
 
-### Step 5: Calculating the Sandwich PnL
+For confirmed sandwiches:
 
-Now that we have identified a sandwich, we can easily calculate the PnL by calculating the balance deltas of the searcher addresses. This is the searcher revenue. We then calculate the searcher cost by summing the gas costs of all attacker transactions in the sandwich. The profit is the revenue minus the cost.
+1. Calculate searcher revenue: Balance deltas of searcher addresses & sibling address (e.g piggy bank address) if applicable
+2. Calculate searcher cost: Sum of gas costs for all attacker transactions
+3. Profit = Revenue - Cost
