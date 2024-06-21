@@ -6,12 +6,12 @@ use std::{
     path::Path,
     time::{Duration, Instant},
 };
+pub mod db_utils;
 mod env;
-pub mod libmdbx_merger;
 pub use brontes_types::db::traits::{DBWriter, LibmdbxReader};
+pub use db_utils::*;
 pub mod cache_middleware;
 pub use cache_middleware::*;
-pub mod libmdbx_partitioning;
 
 pub mod cex_utils;
 pub mod libmdbx_writer;

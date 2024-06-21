@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use brontes_types::BrontesTaskExecutor;
 use fs_extra::dir::get_dir_content;
 
-use super::LibmdbxReadWriter;
 use crate::{
-    libmdbx::libmdbx_partitioning::PARTITION_FILE_NAME, move_tables_to_partition, DexPrice, *,
+    libmdbx::{libmdbx_partitioning::PARTITION_FILE_NAME, LibmdbxReadWriter},
+    move_tables_to_partition, DexPrice, *,
 };
 
 pub fn merge_libmdbx_dbs(

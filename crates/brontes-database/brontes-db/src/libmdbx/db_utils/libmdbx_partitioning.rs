@@ -7,8 +7,10 @@ use brontes_types::{
 use fs_extra::dir::get_dir_content;
 use rayon::iter::*;
 
-use super::{types::LibmdbxData, LibmdbxReadWriter};
-use crate::{libmdbx::LibmdbxInit, CompressedTable, DexPrice, *};
+use crate::{
+    libmdbx::{types::LibmdbxData, LibmdbxInit, LibmdbxReadWriter},
+    CompressedTable, DexPrice, *,
+};
 
 pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
 /// 1 week / 12 seconds
@@ -16,9 +18,11 @@ const DEFAULT_PARTITION_SIZE: u64 = 50_400;
 
 #[macro_export]
 macro_rules! move_tables_to_partition {
-    (BLOCK_RANGE $parent_db:expr, $db:expr, $start_block:expr,$end_block:expr,$($table_name:ident),*) => {
+    (BLOCK_RANGE $parent_db:expr, $db:expr, $start_block:expr,$end_block:expr,
+     $($table_name:ident),*) => {
         $(
-            let value = $parent_db.fetch_partition_range_data::<$table_name>($start_block, $end_block)?;
+            let value = $parent_db.fetch_partition_range_data::<$table_name>
+            ($start_block, $end_block)?;
             ::paste::paste!(
                 $db.write_partitioned_range_data::<$table_name, [<$table_name Data>]>(value)?;
             );
@@ -28,7 +32,8 @@ macro_rules! move_tables_to_partition {
         $(
             let value = $parent_db.fetch_critical_data::<$table_name>()?;
             ::paste::paste!(
-                $db.write_partitioned_range_data::<$table_name, [<$table_name Data>]>(value)?;
+                $db.write_partitioned_range_data::
+                <$table_name, [<$table_name Data>]>(value)?;
             );
         )*
     }
