@@ -326,6 +326,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
                         // we reciprocal amount out because we won't have pricing for quote <> token
                         // out but we will have flipped
+                        let am_out_price_log = am_out_price.clone().get_price(PriceAt::Average);
+                        let am_in_price_log = am_in_price.clone().get_price(PriceAt::Average);
+
                         let dex_pricing_rate =
                             (am_out_price.get_price(PriceAt::Average).reciprocal()
                                 * am_in_price.get_price(PriceAt::Average))
@@ -354,6 +357,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                 ?effective_price,
                                 ?dex_pricing_rate,
                                 ?swap,
+                                ?am_in_price_log,
+                                ?am_out_price_log,
                                 "to big of a delta for pricing on atomic arbs"
                             );
                         }
