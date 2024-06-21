@@ -77,6 +77,10 @@ impl Pair {
         }
     }
 
+    pub fn is_ordered(&self) -> bool {
+        self.0 > self.1
+    }
+
     /// returns ordered version as well as if the order changed
     pub fn ordered_changed(&self) -> (bool, Self) {
         if self.0 <= self.1 {

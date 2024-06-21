@@ -726,6 +726,28 @@ pub mod option_fund {
     }
 }
 
+pub mod vec_fund {
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::db::searcher::Fund;
+    pub fn serialize<S: Serializer>(u: &Vec<Fund>, serializer: S) -> Result<S::Ok, S::Error> {
+        let st = u.into_iter().map(|f| f.to_string()).collect::<Vec<_>>();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Fund>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let fund: Vec<String> = Deserialize::deserialize(deserializer)?;
+
+        Ok(fund.into_iter().map(Into::into).collect::<Vec<_>>())
+    }
+}
+
 pub mod address_pair {
 
     use std::str::FromStr;
@@ -813,6 +835,33 @@ pub mod option_protocol {
     {
         let d: Option<String> = Deserialize::deserialize(deserializer)?;
         Ok(d.map(|d| Protocol::from_str(&d).unwrap()))
+    }
+}
+
+pub mod vec_protocol {
+    use std::str::FromStr;
+
+    use itertools::Itertools;
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::Protocol;
+
+    pub fn serialize<S: Serializer>(u: &Vec<Protocol>, serializer: S) -> Result<S::Ok, S::Error> {
+        let st = u.into_iter().map(|u| u.to_string()).collect::<Vec<_>>();
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Protocol>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let d: Vec<String> = Deserialize::deserialize(deserializer)?;
+        Ok(d.into_iter()
+            .map(|d| Protocol::from_str(&d).unwrap())
+            .collect_vec())
     }
 }
 
