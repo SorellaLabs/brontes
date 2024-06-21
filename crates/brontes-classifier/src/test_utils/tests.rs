@@ -69,7 +69,7 @@ impl ClassifierTestUtils {
         quote_asset: Address,
         rx: UnboundedReceiver<DexPriceMsg>,
     ) -> Result<
-        (Arc<AtomicBool>, BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>),
+        (Arc<AtomicBool>, BrontesBatchPricer<Box<dyn TracingProvider>>),
         ClassifierTestUtilsError,
     > {
         let pairs = self
@@ -77,7 +77,7 @@ impl ClassifierTestUtils {
             .protocols_created_before(block)
             .map_err(|_| ClassifierTestUtilsError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, self.libmdbx, None);
+        let pair_graph = GraphManager::init_from_db_state(pairs, None);
 
         let created_pools = if let Some(end_block) = end_block {
             self.libmdbx
@@ -182,10 +182,7 @@ impl ClassifierTestUtils {
         quote_asset: Address,
         needs_tokens: Vec<Address>,
     ) -> Result<
-        (
-            BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
-            UnboundedSender<DexPriceMsg>,
-        ),
+        (BrontesBatchPricer<Box<dyn TracingProvider>>, UnboundedSender<DexPriceMsg>),
         ClassifierTestUtilsError,
     > {
         let BlockTracesWithHeaderAnd { traces, header, block, .. } = self
@@ -237,7 +234,7 @@ impl ClassifierTestUtils {
         needs_tokens: Vec<Address>,
     ) -> Result<
         (
-            BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
+            BrontesBatchPricer<Box<dyn TracingProvider>>,
             UnboundedSender<DexPriceMsg>,
             Arc<AtomicBool>,
         ),

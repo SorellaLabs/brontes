@@ -22,12 +22,14 @@ use malachite::{
     num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
-use reth_primitives::{Address, B256};
+use reth_primitives::{Address, TxHash, B256};
 
 use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
+
+type VictimSetActions = Option<Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>>;
 
 /// the price difference was more than 90% between dex pricing and effective
 /// price, we put this so high due to the inner swap price manipulation
@@ -129,110 +131,78 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         Self::dedup_bundles(
             self.get_possible_sandwich(tree.clone())
                 .into_iter()
-                .filter_map(
-                    |PossibleSandwichWithTxInfo {
-                         inner:
-                             PossibleSandwich {
-                                 possible_frontruns,
-                                 possible_backrun,
-                                 mev_executor_contract,
-                                 victims,
-                                 ..
-                             },
-                         victims_info,
-                         possible_frontruns_info,
-                         possible_backrun_info,
-                     }| {
-                        if victims.iter().flatten().count() == 0 {
-                            return None
-                        };
-
-                        let victim_swaps_transfers: Vec<_> = victims
-                            .into_iter()
-                            .map(|victim| {
-                                (
-                                    tree.clone()
-                                        .collect_txes(&victim, search_args.clone())
-                                        .t_map(|actions| {
-                                            self.utils
-                                                .flatten_nested_actions_default(actions.into_iter())
-                                        }),
-                                    victim,
-                                )
-                            })
-                            .try_fold(vec![], |mut acc, (victim_set, hashes)| {
-                                let tree = victim_set.tree();
-                                let actions = victim_set
-                                    .map(|s| {
-                                        s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
-                                            Action::try_swaps_merged,
-                                            Action::try_transfer,
-                                        ))
-                                    })
-                                    .into_zip_tree(tree)
-                                    .tree_zip_with(hashes.into_iter())
-                                    .t_full_filter_map(|(tree, rest)| {
-                                        let (swap, hashes): (Vec<_>, Vec<_>) =
-                                            UnzipPadded::unzip_padded(rest);
-
-                                        if !hashes
-                                            .iter()
-                                            .map(|v| {
-                                                let tree = &(*tree.clone());
-                                                let d =
-                                                    tree.get_root(*v).unwrap().get_root_action();
-
-                                                d.is_revert()
-                                                    || mev_executor_contract == d.get_to_address()
-                                            })
-                                            .any(|d| d)
-                                        {
-                                            Some(swap)
-                                        } else {
-                                            None
-                                        }
-                                    })?;
-
-                                if actions.is_empty() {
-                                    None
-                                } else {
-                                    acc.push(actions);
-                                    Some(acc)
-                                }
-                            })?;
-
-                        let searcher_actions: Vec<Vec<Action>> = tree
-                            .clone()
-                            .collect_txes(
-                                possible_frontruns
-                                    .iter()
-                                    .copied()
-                                    .chain(std::iter::once(possible_backrun))
-                                    .collect::<Vec<_>>()
-                                    .as_slice(),
-                                search_args.clone(),
-                            )
-                            .map(|actions| {
-                                self.utils
-                                    .flatten_nested_actions_default(actions.into_iter())
-                                    .collect_vec()
-                            })
-                            .collect::<Vec<_>>();
-
-                        self.calculate_sandwich(
-                            tree.clone(),
-                            metadata.clone(),
-                            possible_frontruns_info,
-                            possible_backrun_info,
-                            searcher_actions,
-                            victims_info,
-                            victim_swaps_transfers,
-                            0,
-                        )
-                    },
-                )
+                .filter_map(|ps| {
+                    self.collect_baseline_sandwich_data(
+                        tree.clone(),
+                        search_args.clone(),
+                        ps,
+                        metadata.clone(),
+                    )
+                })
                 .flatten()
                 .collect::<Vec<_>>(),
+        )
+    }
+
+    fn collect_baseline_sandwich_data(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        search_args: TreeSearchBuilder<Action>,
+        ps: PossibleSandwichWithTxInfo,
+        metadata: Arc<Metadata>,
+    ) -> Option<Vec<Bundle>> {
+        let PossibleSandwichWithTxInfo {
+            inner:
+                PossibleSandwich {
+                    possible_frontruns,
+                    possible_backrun,
+                    mev_executor_contract,
+                    victims,
+                    ..
+                },
+            victims_info,
+            possible_frontruns_info,
+            possible_backrun_info,
+        } = ps;
+
+        if victims.iter().flatten().count() == 0 {
+            return None
+        };
+
+        let victim_swaps_transfers: Vec<_> = self.get_victim_swap_transfer(
+            victims,
+            tree.clone(),
+            search_args.clone(),
+            mev_executor_contract,
+        )?;
+
+        let searcher_actions: Vec<Vec<Action>> = tree
+            .clone()
+            .collect_txes(
+                possible_frontruns
+                    .iter()
+                    .copied()
+                    .chain(std::iter::once(possible_backrun))
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+                search_args.clone(),
+            )
+            .map(|actions| {
+                self.utils
+                    .flatten_nested_actions_default(actions.into_iter())
+                    .collect_vec()
+            })
+            .collect::<Vec<_>>();
+
+        self.calculate_sandwich(
+            tree.clone(),
+            metadata.clone(),
+            possible_frontruns_info,
+            possible_backrun_info,
+            searcher_actions,
+            victims_info,
+            victim_swaps_transfers,
+            0,
         )
     }
 
@@ -1052,6 +1022,65 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .filter_map(|ps| PossibleSandwichWithTxInfo::from_ps(ps, &tx_info_map))
             .collect_vec()
+    }
+
+    fn get_victim_swap_transfer(
+        &self,
+        victims: Vec<Vec<TxHash>>,
+        tree: Arc<BlockTree<Action>>,
+        search_args: TreeSearchBuilder<Action>,
+        mev_executor_contract: Address,
+    ) -> VictimSetActions {
+        victims
+            .into_iter()
+            .map(|victim| {
+                (
+                    tree.clone()
+                        .collect_txes(&victim, search_args.clone())
+                        .t_map(|actions| {
+                            self.utils
+                                .flatten_nested_actions_default(actions.into_iter())
+                        }),
+                    victim,
+                )
+            })
+            .try_fold(vec![], |mut acc, (victim_set, hashes)| {
+                let tree = victim_set.tree();
+                let actions = victim_set
+                    .map(|s| {
+                        s.into_iter().split_actions::<(Vec<_>, Vec<_>), _>((
+                            Action::try_swaps_merged,
+                            Action::try_transfer,
+                        ))
+                    })
+                    .into_zip_tree(tree)
+                    .tree_zip_with(hashes.into_iter())
+                    .t_full_filter_map(|(tree, rest)| {
+                        let (swap, hashes): (Vec<_>, Vec<_>) = UnzipPadded::unzip_padded(rest);
+
+                        if !hashes
+                            .iter()
+                            .map(|v| {
+                                let tree = &(*tree.clone());
+                                let d = tree.get_root(*v).unwrap().get_root_action();
+
+                                d.is_revert() || mev_executor_contract == d.get_to_address()
+                            })
+                            .any(|d| d)
+                        {
+                            Some(swap)
+                        } else {
+                            None
+                        }
+                    })?;
+
+                if actions.is_empty() {
+                    None
+                } else {
+                    acc.push(actions);
+                    Some(acc)
+                }
+            })
     }
 }
 

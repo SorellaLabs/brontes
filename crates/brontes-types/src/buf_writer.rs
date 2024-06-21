@@ -12,6 +12,7 @@ use tokio::{fs::File, io::AsyncWriteExt};
 pub struct DownloadBufWriterWithProgress<S: Stream<Item = Result<Bytes, reqwest::Error>>> {
     progress_bar:    Option<ProgressBar>,
     buffer:          Vec<u8>,
+    buffer_cap:      usize,
     download_stream: S,
     file:            WriteProgress,
 }
@@ -29,18 +30,23 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
             progress_bar,
             file: WriteProgress::Idle(file),
             buffer: Vec::with_capacity(buffer_cap),
+            buffer_cap,
         }
     }
 
     fn handle_bytes(&mut self, bytes: Bytes) {
-        let rem = self.buffer.remaining_mut();
+        let mut rem = self.buffer.remaining_mut();
+        if self.buffer.len() > self.buffer_cap {
+            rem = 0;
+        }
+
         let has = bytes.length();
 
         self.progress_bar
             .as_ref()
             .inspect(|bar| bar.inc(has as u64));
 
-        if has > rem && self.file.can_write() {
+        if has >= rem && self.file.can_write() {
             let bytes_to_write = self.buffer.drain(..).chain(bytes).collect::<Vec<u8>>();
             self.file.write(bytes_to_write);
             return
@@ -55,7 +61,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
                 ProgressBar::with_draw_target(Some(bytes), ProgressDrawTarget::stderr_with_hz(30));
             let style = ProgressStyle::default_bar()
                 .template(
-                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} mb \
+                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} bytes \
                      ({percent}%) | ETA: {eta}",
                 )
                 .expect("Invalid progress bar template")
@@ -83,10 +89,12 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>> + Unpin> Future
         let this = self.get_mut();
         this.file.progress(cx);
 
+        let mut work = 8;
         loop {
             match this.download_stream.poll_next_unpin(cx) {
                 Poll::Ready(Some(bytes)) => match bytes {
                     Ok(bytes) => this.handle_bytes(bytes),
+
                     Err(e) => return Poll::Ready(Err(e.into())),
                 },
                 // finished
@@ -97,13 +105,21 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>> + Unpin> Future
                 Poll::Ready(None) if !this.buffer.is_empty() && this.file.can_write() => {
                     let bytes_to_write = this.buffer.drain(..).collect::<Vec<u8>>();
                     this.file.write(bytes_to_write);
+                    // reschedule to start polling write
                     cx.waker().wake_by_ref();
+                    return Poll::Pending
                 }
                 // waiting for a prev batch to finish writing
                 Poll::Ready(None) if !this.buffer.is_empty() && !this.file.can_write() => {
                     return Poll::Pending
                 }
                 Poll::Ready(None) | Poll::Pending => return Poll::Pending,
+            }
+
+            work -= 1;
+            if work == 0 {
+                cx.waker().wake_by_ref();
+                return Poll::Pending
             }
         }
     }

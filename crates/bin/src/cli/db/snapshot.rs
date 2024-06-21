@@ -17,7 +17,7 @@ const DOWNLOAD_PATH: &str = "brontes-db-latest.tar.gz";
 const BYTES_TO_MB: u64 = 1_000_000;
 
 /// the 3 files of libmdbx
-const LIBMDBX_FILES: [&str; 3] = ["database.version", "mdbx.dat", "mdbx.lck"];
+const LIBMDBX_FILES: [&str; 2] = ["mdbx.dat", "mdbx.lck"];
 
 #[derive(Debug, Parser)]
 pub struct Snapshot {
@@ -57,7 +57,9 @@ impl Snapshot {
         let stream = client.get(url).send().await?.bytes_stream();
 
         DownloadBufWriterWithProgress::new(Some(db_size), stream, file, 100 * 1024 * 1024).await?;
-        tracing::info!("finished downloading db");
+        tracing::info!(
+            "finished downloading db. decompressing tar.gz and moving to final destination"
+        );
         self.handle_downloaded_file(&download_dir, &self.write_location)?;
         tracing::info!("moved results to proper location");
         fs_extra::file::remove(download_dir)?;
