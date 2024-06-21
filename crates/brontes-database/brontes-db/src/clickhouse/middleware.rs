@@ -183,6 +183,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
             .await
     }
 
+    fn get_db_range(&self) -> eyre::Result<(u64, u64)> {
+        self.inner.get_db_range()
+    }
+
     async fn initialize_tables_arbitrary<
         T: brontes_types::traits::TracingProvider,
         CH: ClickhouseHandle,
@@ -468,6 +472,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         self.inner
             .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
             .await
+    }
+
+    fn get_db_range(&self) -> eyre::Result<(u64, u64)> {
+        self.inner.get_db_range()
     }
 
     async fn initialize_tables_arbitrary<
