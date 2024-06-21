@@ -113,8 +113,7 @@ impl ClickhouseBuffered {
             (EthereumPools, ProtocolInfoClickhouse),
             (BrontesBuilder_Info, BuilderInfoWithAddress),
             (BrontesTree2, TransactionRoot),
-            (BrontesBlock_Analysis, BlockAnalysis),
-            (BrontesBlock_Analysis2, BlockAnalysis)
+            (BrontesBlock_Analysis, BlockAnalysis)
         );
 
         Ok(())

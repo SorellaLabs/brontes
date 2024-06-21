@@ -15,7 +15,6 @@ clickhouse_dbms!(
     [
         BrontesDex_Price_Mapping,
         BrontesBlock_Analysis,
-        BrontesBlock_Analysis2,
         MevMev_Blocks,
         MevBundle_Header,
         MevSearcher_Tx,
@@ -53,13 +52,6 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Block_Analysis],
-    BlockAnalysis,
-    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-);
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    [Brontes, Block_Analysis2],
     BlockAnalysis,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
