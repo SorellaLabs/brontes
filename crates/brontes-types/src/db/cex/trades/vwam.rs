@@ -206,7 +206,7 @@ impl CexTradeMap {
                 // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.1, intermediary);
                 // bnb / eth 0.1298price
-                let pair1 = Pair(intermediary, pair.0);
+                let pair1 = Pair(pair.0, intermediary);
                 // check if we have a path
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;

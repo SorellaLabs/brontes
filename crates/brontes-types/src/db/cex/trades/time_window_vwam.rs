@@ -190,7 +190,7 @@ impl<'a> TimeWindowTrades<'a> {
                 trace!(?intermediary, "trying inter");
 
                 let pair0 = Pair(pair.1, intermediary);
-                let pair1 = Pair(intermediary, pair.0);
+                let pair1 = Pair(pair.0, intermediary);
 
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
