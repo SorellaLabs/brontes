@@ -514,6 +514,18 @@ pub struct BlockAnalysis {
     pub liquidated_biggest_arb_revenue:       Option<TxHash>,
     pub liquidated_biggest_arb_revenue_amt:   Option<f64>,
     pub total_usd_liquidated:                 f64,
+
+    // builder
+    pub builder_profit_usd:     f64,
+    pub builder_profit_eth:     f64,
+    pub builder_revenue_usd:    f64,
+    pub builder_revenue_eth:    f64,
+    pub builder_mev_profit_usd: f64,
+    pub builder_mev_profit_eth: f64,
+    pub builder_name:           Option<String>,
+    pub builder_address:        Address,
+    pub proposer_profit_usd:    Option<f64>,
+    pub proposer_profit_eth:    Option<f64>,
 }
 
 impl BlockAnalysis {
@@ -1409,6 +1421,19 @@ impl BlockAnalysis {
             liquidated_biggest_arb_profit_amt:    liquidation_biggest_prof,
             liquidated_biggest_arb_revenue:       liquidation_biggest_tx_rev,
             liquidated_biggest_arb_revenue_amt:   liquidation_biggest_rev,
+
+            builder_profit_usd:     block.builder_profit_usd,
+            builder_profit_eth:     block.builder_eth_profit,
+            builder_revenue_usd:    block.builder_profit_usd
+                + block.proposer_profit_usd.unwrap_or(0.0),
+            builder_revenue_eth:    block.builder_eth_profit
+                + (block.proposer_profit_usd.unwrap_or(0.0) / block.eth_price),
+            builder_mev_profit_usd: block.builder_mev_profit_usd,
+            builder_mev_profit_eth: block.builder_mev_profit_usd / block.eth_price,
+            builder_name:           block.builder_name.clone(),
+            builder_address:        block.builder_address,
+            proposer_profit_usd:    block.proposer_profit_usd,
+            proposer_profit_eth:    block.proposer_profit_usd.map(|p| p / block.eth_price),
         }
     }
 
@@ -2312,6 +2337,17 @@ impl Default for BlockAnalysis {
             liquidated_biggest_arb_revenue:       Default::default(),
             liquidated_biggest_arb_revenue_amt:   Default::default(),
             total_usd_liquidated:                 Default::default(),
+
+            builder_address:        Default::default(),
+            builder_mev_profit_eth: Default::default(),
+            builder_mev_profit_usd: Default::default(),
+            builder_name:           Default::default(),
+            builder_profit_eth:     Default::default(),
+            builder_profit_usd:     Default::default(),
+            builder_revenue_eth:    Default::default(),
+            builder_revenue_usd:    Default::default(),
+            proposer_profit_eth:    Default::default(),
+            proposer_profit_usd:    Default::default(),
         }
     }
 }

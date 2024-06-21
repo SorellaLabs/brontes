@@ -378,6 +378,17 @@ CREATE TABLE brontes.block_analysis2 ON CLUSTER eth_cluster0  (
     `liquidated_biggest_arb_revenue`       Nullable(String),
     `liquidated_biggest_arb_revenue_amt`   Nullable(Float64),
     `total_usd_liquidated` Float64,
+
+    `builder_profit_usd`:     Float64,
+    `builder_profit_eth`:     Float64,
+    `builder_revenue_usd`:    Float64,
+    `builder_revenue_eth`:    Float64,
+    `builder_mev_profit_usd`: Float64,
+    `builder_mev_profit_eth`: Float64,
+    `builder_name`:           Nullable(String),
+    `builder_address`:        String,
+    `proposer_profit_usd`:    Nullable(Float64),
+    `proposer_profit_eth`:    Nullable(Float64),
     
     `last_updated` UInt64 DEFAULT now()
 ) 
