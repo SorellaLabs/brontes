@@ -307,11 +307,24 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
         let start_block = cur
             .first()?
-            .ok_or_else(|| eyre::eyre!("no start block found. database most likely empty"))?
+            .ok_or_else(|| {
+                eyre::eyre!(
+                    "no start block found. database most likely empty.\n run `brontes db \
+                     download-snapshot <place-to-write-db>` in order to download the most recent \
+                     db"
+                )
+            })?
             .0;
+
         let end_block = cur
             .last()?
-            .ok_or_else(|| eyre::eyre!("no start block found. database most likely empty"))?
+            .ok_or_else(|| {
+                eyre::eyre!(
+                    "no end block found. database most likely empty.\n run `brontes db \
+                     download-snapshot <place-to-write-db>` in order to download the most recent \
+                     db"
+                )
+            })?
             .0;
 
         Ok((start_block, end_block))

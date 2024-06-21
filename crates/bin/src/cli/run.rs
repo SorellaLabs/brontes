@@ -103,6 +103,7 @@ impl RunArgs {
                 return Err(eyre::eyre!("start block must be less than end block"))
             }
         }
+
         let snapshot_mode = !cfg!(feature = "local-clickhouse");
         tracing::info!(%snapshot_mode);
 
