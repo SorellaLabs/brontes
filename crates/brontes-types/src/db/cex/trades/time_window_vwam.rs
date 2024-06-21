@@ -7,10 +7,7 @@ use std::{
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{One, Zero},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 use tracing::trace;
@@ -232,7 +229,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                let new_vol = volume / &res.0.global_exchange_price.clone().reciprocal();
+                let new_vol = volume / &res.0.global_exchange_price.clone();
                 let pair1_v = self.get_vwap_price(
                     config,
                     exchanges,
