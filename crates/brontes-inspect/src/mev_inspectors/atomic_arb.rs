@@ -12,8 +12,7 @@ use brontes_types::{
     },
     pair::Pair,
     tree::BlockTree,
-    FastHashSet, IntoZip, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder,
-    TxInfo,
+    FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{

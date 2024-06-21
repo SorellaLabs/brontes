@@ -13,5 +13,7 @@ rclone copy ~/brontes-db-latest.tar.gz r2:brontes-db-latest/ --s3-upload-cutoff=
 # upload byte-count to r2
 rclone copy ~/db-size.txt r2:brontes-db-latest/
 
-# cleanup tmp folder
+# cleanup 
 rm -rf ~/brontes-db-latest
+rm -rf ~/db-size.txt
+rm -rf ~/brontes-db-latest.tar.gz
