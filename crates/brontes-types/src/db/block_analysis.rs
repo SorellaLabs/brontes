@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
 use reth_primitives::TxHash;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{
@@ -1814,42 +1814,49 @@ impl BlockAnalysis {
         bundles: &[Bundle],
         f: impl Fn(&BundleData) -> Vec<Ty>,
     ) -> (Vec<(Ty, f64)>, Vec<(Ty, f64)>) {
-        let mut profit_map = HashMap::new();
-        bundles
+        let profit = bundles
             .iter()
             .filter(|b| mev_type(b.data.mev_type()))
-            .for_each(|b| {
+            .flat_map(|b| {
                 let res = f(&b.data);
+                let mut merged = Vec::with_capacity(res.len());
 
-                res.into_iter().for_each(|r| {
-                    *profit_map.entry(r).or_insert(0.0) += b.header.profit_usd;
-                })
-            });
+                res.into_iter()
+                    .for_each(|r| merged.push((r, b.header.profit_usd)));
+                merged
+            })
+            .into_group_map()
+            .into_iter()
+            .map(|(k, v)| (k, v.iter().sum::<f64>()))
+            .collect_vec();
 
-        let mut revenue_map = HashMap::new();
-        bundles
+        let revenue = bundles
             .iter()
             .filter(|b| mev_type(b.data.mev_type()))
-            .for_each(|b| {
+            .flat_map(|b| {
                 let res = f(&b.data);
+                let mut merged = Vec::with_capacity(res.len());
 
-                res.into_iter().for_each(|r| {
-                    *revenue_map.entry(r).or_insert(0.0) +=
-                        b.header.profit_usd + b.header.bribe_usd;
-                })
-            });
+                res.into_iter()
+                    .for_each(|r| merged.push((r, b.header.profit_usd + b.header.bribe_usd)));
+                merged
+            })
+            .into_group_map()
+            .into_iter()
+            .map(|(k, v)| (k, v.iter().sum::<f64>()))
+            .collect_vec();
 
-        (profit_map.into_iter().collect(), revenue_map.into_iter().collect())
+        (profit, revenue)
     }
 }
 
-pub trait FourUnzip<A, B, C, D> {
+pub trait FourOptionUnzip<A, B, C, D> {
     fn four_unzip(self) -> (Option<A>, Option<B>, Option<C>, Option<D>)
     where
         Self: Sized;
 }
 
-impl<A, B, C, D> FourUnzip<A, B, C, D> for Option<(A, B, C, D)> {
+impl<A, B, C, D> FourOptionUnzip<A, B, C, D> for Option<(A, B, C, D)> {
     fn four_unzip(self) -> (Option<A>, Option<B>, Option<C>, Option<D>)
     where
         Self: Sized,
@@ -1859,13 +1866,13 @@ impl<A, B, C, D> FourUnzip<A, B, C, D> for Option<(A, B, C, D)> {
     }
 }
 
-pub trait TwoTwoVecUnzip<A, B, C, D> {
+pub trait TupleTwoVecUnzip<A, B, C, D> {
     fn four_unzip(self) -> (Vec<A>, Vec<B>, Vec<C>, Vec<D>)
     where
         Self: Sized;
 }
 
-impl<A, B, C, D> TwoTwoVecUnzip<A, B, C, D> for (Vec<(A, B)>, Vec<(C, D)>) {
+impl<A, B, C, D> TupleTwoVecUnzip<A, B, C, D> for (Vec<(A, B)>, Vec<(C, D)>) {
     fn four_unzip(self) -> (Vec<A>, Vec<B>, Vec<C>, Vec<D>)
     where
         Self: Sized,

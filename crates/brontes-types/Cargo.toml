@@ -89,7 +89,7 @@ reth-tracing-ext.workspace = true
 
 
 [features]
-default = ["cex-dex-markout"]
+default = ["cex-dex-markout", "local-clickhouse"]
 tests = []
 cex-dex-markout = []
 test_pricing = []
