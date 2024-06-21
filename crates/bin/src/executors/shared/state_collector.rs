@@ -29,12 +29,11 @@ use tracing::{span, trace, Instrument, Level};
 use super::metadata::MetadataFetcher;
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Action>>> + Send + 'a>>;
-
 type ExecutionFut<'a> = Pin<Box<dyn Future<Output = Option<(Vec<TxTrace>, Header)>> + Send + 'a>>;
 
 pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
-    metadata_fetcher: MetadataFetcher<T, DB, CH>,
+    metadata_fetcher: MetadataFetcher<T, CH>,
     classifier:       &'static Classifier<'static, T, DB>,
     parser:           &'static Parser<T, DB>,
     db:               &'static DB,
@@ -47,7 +46,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 {
     pub fn new(
         mark_as_finished: Arc<AtomicBool>,
-        metadata_fetcher: MetadataFetcher<T, DB, CH>,
+        metadata_fetcher: MetadataFetcher<T, CH>,
         classifier: &'static Classifier<'static, T, DB>,
         parser: &'static Parser<T, DB>,
         db: &'static DB,

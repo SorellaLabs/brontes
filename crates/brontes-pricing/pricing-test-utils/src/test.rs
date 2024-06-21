@@ -29,15 +29,14 @@ impl PricingTestUtils {
         block: u64,
         end_block: Option<u64>,
         rx: UnboundedReceiver<DexPriceMsg>,
-    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>, PricingTestError>
-    {
+    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>>, PricingTestError> {
         let pairs = self
             .tracer
             .libmdbx
             .protocols_created_before(block)
             .map_err(|_| PricingTestError::LibmdbxError)?;
 
-        let pair_graph = GraphManager::init_from_db_state(pairs, self.tracer.libmdbx, None);
+        let pair_graph = GraphManager::init_from_db_state(pairs, None);
 
         let created_pools = if let Some(end_block) = end_block {
             self.tracer
@@ -76,10 +75,7 @@ impl PricingTestUtils {
     pub async fn setup_dex_pricer_for_block(
         &self,
         block: u64,
-    ) -> PricingResult<(
-        BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>,
-        BlockTree<Action>,
-    )> {
+    ) -> PricingResult<(BrontesBatchPricer<Box<dyn TracingProvider>>, BlockTree<Action>)> {
         let BlockTracesWithHeaderAnd { traces, header, .. } =
             self.tracer.get_block_traces_with_header(block).await?;
 
@@ -94,8 +90,7 @@ impl PricingTestUtils {
     pub async fn setup_dex_pricer_for_tx(
         &self,
         tx_hash: TxHash,
-    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>, LibmdbxReadWriter>, PricingTestError>
-    {
+    ) -> Result<BrontesBatchPricer<Box<dyn TracingProvider>>, PricingTestError> {
         let TxTracesWithHeaderAnd { trace, header, block, .. } =
             self.tracer.get_tx_trace_with_header(tx_hash).await?;
         let (tx, rx) = unbounded_channel();
