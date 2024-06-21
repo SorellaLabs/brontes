@@ -1,18 +1,10 @@
 # Sandwich Inspector
 
-A Sandwich attacks is a type of MEV strategy where an attacker manipulates the market price of assets on AMMs to extract value from a victim's trade. It can be boiled down to three steps:
-
-1. **Front-run:** The attacker purchases an asset before the victim's transaction, artificially raising its market price up to the victim's limit price.
-2. **Victim Transaction:** The victim unknowingly buys the asset at the inflated price.
-3. **Back-run:** The attacker sells the asset immediately after, correcting the price and securing a profit.
-
 ## Sandwich Inspector Methodology
 
 The Sandwich Inspector identifies Sandwich attacks by:
 
 ### 1 **Retrieves Relevant Transactions**
-
-The inspector retrieves all transactions containing `swap`, `transfer`, `eth_transfer`, `FlashLoan`, `batch_swap` or `aggregator_swap` actions.
 
 ### 2 **Identifies Potential Sandwiches**
 
@@ -51,39 +43,6 @@ Now that we have the possible sandwich set by duplicate contracts & duplicate EO
 
 - For each victim set if the victim set isn't empty push it to the `victim_set` array.
 - If it is empty, there are no victims between the previous attacker tx and the current attacker tx, which implies that these are probably two separate sandwich attacks so we break it up by creating a `PossibleSandwich` that takes as possible frontruns all possible frontruns up to the current tx index & as possible backrun the current tx.
-
-Take the example where we have the following transactions:
-
-Possible Frontruns: [A, B, C]
-Possible Backrun: D
-Victims: [[1,2], [], [3,4]]
-
-This would get partitioned into two sandwiches:
-
-1. Possible Frontruns: A
-   Possible Backrun: B
-   Victims: [1, 2]
-
-2. Possible Frontruns: C
-   Possible Backrun: D
-   Victims: [3, 4]
-
-The caveat to this methodology is that if for some reason the attacker has multiple transactions in a row, the partitioning will not work as expected. For example let's take the same example as above:
-
-Possible Frontruns: [A, B, C]
-Possible Backrun: D
-Victims: [[1,2], [], [3,4]]
-
-The actual sandwich could actually be:
-
-1. First Frontrun: A
-   Victims: [1, 2]
-   Unrelated or misc attacker transaction: B
-   Third Frontrun: C
-   Victims: [3, 4]
-   Backrun: D
-
-However we are operating under the assumption that attackers are maximally efficient & have no reason to endure the gas overhead. If you find an example of a sandwich attack that breaks this assumption please let us know, we'll give you a bounty.
 
 Now that the sandwiches have been partitioned, we fetch the `TxInfo` for all transactions in the sandwiches. If their are more than 10 victim sets for a possible sandwich we discard the sandwich for performance reasons. If anyone can find an example of a sandwich attack that breaks these parameters please let us know, we'll give you a bounty.
 
@@ -139,3 +98,175 @@ Note:
 ### 4 **Calculating The Profit**
 
 Now that we have identified a sandwich, we can easily calculate the PnL by calculating the balance deltas of the searcher addresses. This is the searcher revenue. We then calculate the searcher cost by summing the gas costs of all attacker transactions in the sandwich. The profit is the revenue minus the cost.
+
+To refine and streamline the documentation for the Sandwich Inspector in the style of William Zinsser—emphasizing clarity, brevity, and the removal of unnecessary detail—here is a suggested rewrite of the documentation:
+
+---
+
+# Sandwich Inspector
+
+## Overview
+
+The Sandwich Inspector is a tool designed to detect and analyze Sandwich attacks on Ethereum, where attackers manipulate asset prices on Automated Market Makers (AMMs) to extract value from unsuspecting victims.
+
+### What is a Sandwich Attack?
+
+A Sandwich attack unfolds in three key steps:
+
+1. **Front-run:** An attacker buys an asset just before a victim's transaction, raising its market price.
+2. **Victim Transaction:** The victim purchases the asset at the inflated price.
+3. **Back-run:** The attacker sells the asset post-victim transaction, profiting from the price difference.
+
+## Methodology
+
+### Step 1: Retrieve Relevant Transactions
+
+The inspector retrieves transactions in the block that involve `swap`, `transfer`, `eth_transfer`, `FlashLoan`, `batch_swap` or `aggregator_swap` actions.
+
+### Step 2: Identify Potential Sandwiches
+
+The Sandwich Inspector searches for potential sandwich attacks by running `get_possible_sandwich_duplicate_senders` and `get_possible_sandwich_duplicate_contracts` in parallel
+
+```rust,ignore
+fn get_possible_sandwich_duplicate_contracts(
+    tree: Arc<BlockTree<Action>>,
+) -> Vec<PossibleSandwich> {
+   let mut duplicate_contracts: HashMap<Address, (B256, Address)> = HashMap::dfault();
+   let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::default();
+   let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::dfault();
+
+   for root in tree.tx_roots.iter() {
+      // Skip if the tx reverted
+      if root.get_root_action().is_revert() {
+         continue
+      }
+
+      match duplicate_mev_contracts.entry(root.get_to_address()) {
+         // If this contract has not been called within this block,
+         // insert the tx hash into the map
+         Entry::Vacant(duplicate_mev_contract) => {
+               duplicate_mev_contract.insert((root.tx_hash, root.head.address));
+         }
+         // Get's prev tx hash &  for this sender & replaces it
+         // with the current tx hash
+         Entry::Occupied(mut duplicate_mev_contract) => {
+               let (prev_tx_hash, frontrun_eoa) = duplicate_mev_contract.get_mut();
+
+               // If the previous transaction from this contract had possible victims
+               // check if we already have a possible sandwich for it. This handles
+               // the big mac sandwich case
+               if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
+                  // If we don't have a possible sandwich for this contract then
+                  // create one
+                  match possible_sandwiches.entry(root.get_to_address()) {
+                     Entry::Vacant(e) => {
+                           e.insert(PossibleSandwich {
+                              eoa:                   *frontrun_eoa,
+                              possible_frontruns:    vec![*prev_tx_hash],
+                              possible_backrun:      root.tx_hash,
+                              mev_executor_contract: root.get_to_address(),
+                              victims:               vec![frontrun_victims],
+                           });
+                     }
+                     // If we do, extend the sandwich
+                     Entry::Occupied(mut o) => {
+                           let sandwich = o.get_mut();
+                           sandwich.possible_frontruns.push(*prev_tx_hash);
+                           sandwich.possible_backrun = root.tx_hash;
+                           sandwich.victims.push(frontrun_victims);
+                     }
+                  }
+               }
+               // Sets the previous tx hash in the duplicate_mev_contract map to
+               // the current tx hash
+               *prev_tx_hash = root.tx_hash;
+         }
+      }
+
+      // Now, for each existing entry in possible_victims, we add the current
+      // transaction hash as a potential victim, if it is not the same as
+      // the key (which represents another transaction hash)
+      for (_, v) in possible_victims.iter_mut() {
+         v.push(root.tx_hash);
+      }
+
+      possible_victims.insert(root.tx_hash, vec![]);
+   }
+
+   possible_sandwiches.into_values().collect()
+}
+```
+
+**Activity Logging**:
+
+- **New Entries**: Transactions involving addresses not previously recorded are logged with their details into `duplicate_mev_contracts`.
+- **Repeated Activity**: For addresses seen before, the system retrieves the most recent transaction associated with that address. This helps in identifying potential victims—transactions executed between the current and previous activities of that address.
+
+**Constructing Sandwich Scenarios**:
+
+- **Fresh Cases**: If an address is implicated in a possible attack for the first time, a new `PossibleSandwich` entry is created. This logs the transaction as an initial front-run attempt, with subsequent transactions potentially serving as back-runs.
+- **Ongoing Cases**: For addresses with existing records, the latest transaction is added to the documented list of potential front-runs and considered for back-running, updating the victim list as necessary.
+
+**Continuous Updates**:
+
+- Following the evaluation of each transaction, updates are necessary to maintain the accuracy of ongoing analyses:
+  - **Transaction Hash Update**: The system updates its record with the latest transaction hash for each involved address.
+  - **Victim Tracking**: It marks the current transaction as a potential victim in the analyses of all preceding transactions.
+  - **Sandwich Record Update**: Entries in `possible_sandwiches` are refreshed, setting the stage for the final assessment.
+
+#### Deduplication and Refined Analysis
+
+- After processing, potential sandwiches are deduplicated to ensure that each analyzed scenario is unique, enhancing the clarity and precision of the findings.
+- The inspector then segments identified sandwiches based on their transaction flows and victim interactions, allowing for an accurate depiction of distinct attack strategies.
+
+### Deduplication and Partitioning
+
+Once potential sandwiches are identified from both senders and contracts, the results are deduplicated and partitioned to ensure that distinct attacks are separated from continuous transaction flows:
+
+- **Deduplication**: Merges results and removes duplicates to clean up data for accurate analysis.
+- **Partitioning**: Segments the identified sandwiches based on gaps in victim transactions to delineate separate attack incidents.
+
+Take the example where we have the following transactions:
+
+Possible Frontruns: [A, B, C]
+Possible Backrun: D
+Victims: [[1,2], [], [3,4]]
+
+This would get partitioned into two sandwiches:
+
+1. Possible Frontruns: A
+   Possible Backrun: B
+   Victims: [1, 2]
+
+2. Possible Frontruns: C
+   Possible Backrun: D
+   Victims: [3, 4]
+
+The caveat to this methodology is that if for some reason the attacker has multiple transactions in a row, the partitioning will not work as expected. For example let's take the same example as above:
+
+Possible Frontruns: [A, B, C]
+Possible Backrun: D
+Victims: [[1,2], [], [3,4]]
+
+The actual sandwich could actually be:
+
+1. First Frontrun: A
+   Victims: [1, 2]
+   Unrelated or misc attacker transaction: B
+   Third Frontrun: C
+   Victims: [3, 4]
+   Backrun: D
+
+However we are operating under the assumption that attackers are maximally efficient & have no reason to endure the gas overhead. If you find an example of a sandwich attack that breaks this assumption please let us know, we'll give you a bounty.
+
+### Step 3: Analyze Sandwich Structures
+
+For each delineated Sandwich structure, a deeper analysis is conducted:
+
+- **Transaction Collection**: Collects all relevant swap and transfer actions related to both attackers and victims.
+- **Overlap Verification**: Ensures that there is a significant overlap between the actions of attackers and the transactions of victims, confirming the presence of a Sandwich attack.
+- **Recursive Verification**: If initial checks are inconclusive, a recursive method removes transactions from consideration, re-evaluating potential sandwiches to find valid attack patterns.
+
+### Step 4: Calculate Profit
+
+Finally, the profit from identified Sandwich attacks is calculated by assessing the financial impact on the victims versus the gains of the attackers, factoring in transaction costs and market movements.
