@@ -1,274 +1,513 @@
-use std::hash::Hash;
+use std::{collections::HashMap, hash::Hash, str::FromStr};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
 use reth_primitives::TxHash;
-use serde::{Deserialize, Serialize};
+use serde::{de::Visitor, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{
-    db::searcher::Fund,
+    db::{searcher::Fund, token_info::TokenInfoWithAddress},
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
     pair::Pair,
-    serde_utils::{option_address, option_fund, option_pair, option_protocol, option_txhash},
+    serde_utils::{option_fund, option_protocol, option_txhash, vec_fund, vec_protocol},
     Protocol,
 };
 
 #[serde_as]
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Row)]
 pub struct BlockAnalysis {
-    pub block_number:              u64,
+    pub block_number:                    u64,
     // all
-    pub all_total_profit:          f64,
-    pub all_total_revenue:         f64,
-    pub all_average_profit_margin: f64,
-
-    pub all_top_searcher_rev:         Option<f64>,
-    #[serde(with = "option_address")]
-    pub all_top_searcher_rev_addr:    Option<Address>,
-    pub all_top_searcher_profit:      Option<f64>,
-    #[serde(with = "option_address")]
-    pub all_top_searcher_profit_addr: Option<Address>,
-    pub all_searchers:                u64,
-
-    pub all_top_fund_rev:       Option<f64>,
+    pub all_total_profit:                f64,
+    pub all_total_revenue:               f64,
+    pub all_average_profit_margin:       f64,
+    pub all_top_searcher_profit:         Option<Address>,
+    pub all_top_searcher_profit_amt:     Option<f64>,
+    pub all_top_searcher_revenue:        Option<Address>,
+    pub all_top_searcher_revenue_amt:    Option<f64>,
+    pub all_searcher_count:              u64,
     #[serde(with = "option_fund")]
-    pub all_top_fund_rev_id:    Option<Fund>,
-    pub all_top_fund_profit:    Option<f64>,
+    pub all_top_fund_profit:             Option<Fund>,
+    pub all_top_fund_profit_amt:         Option<f64>,
     #[serde(with = "option_fund")]
-    pub all_top_fund_profit_id: Option<Fund>,
-    pub all_fund_count:         u64,
-
-    #[serde(with = "option_address")]
-    pub all_most_arbed_pool_address_profit:  Option<Address>,
-    pub all_most_arbed_pool_profit:          Option<f64>,
-    #[serde(with = "option_address")]
-    pub all_most_arbed_pool_address_revenue: Option<Address>,
-    pub all_most_arbed_pool_revenue:         Option<f64>,
-
-    #[serde(with = "option_pair")]
-    pub all_most_arbed_pair_address_profit:  Option<Pair>,
-    pub all_most_arbed_pair_profit:          Option<f64>,
-    #[serde(with = "option_pair")]
-    pub all_most_arbed_pair_address_revenue: Option<Pair>,
-    pub all_most_arbed_pair_revenue:         Option<f64>,
-
+    pub all_top_fund_revenue:            Option<Fund>,
+    pub all_top_fund_revenue_amt:        Option<f64>,
+    pub all_fund_count:                  u64,
+    pub all_most_arbed_pool_profit:      Option<Address>,
+    pub all_most_arbed_pool_profit_amt:  Option<f64>,
+    pub all_most_arbed_pool_revenue:     Option<Address>,
+    pub all_most_arbed_pool_revenue_amt: Option<f64>,
+    pub all_most_arbed_pair_profit:      TokenPairDetails,
+    pub all_most_arbed_pair_profit_amt:  Option<f64>,
+    pub all_most_arbed_pair_revenue:     TokenPairDetails,
+    pub all_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub all_most_arbed_dex_address_profit:  Option<Protocol>,
-    pub all_most_arbed_dex_profit:          Option<f64>,
+    pub all_most_arbed_dex_profit:       Option<Protocol>,
+    pub all_most_arbed_dex_profit_amt:   Option<f64>,
     #[serde(with = "option_protocol")]
-    pub all_most_arbed_dex_address_revenue: Option<Protocol>,
-    pub all_most_arbed_dex_revenue:         Option<f64>,
+    pub all_most_arbed_dex_revenue:      Option<Protocol>,
+    pub all_most_arbed_dex_revenue_amt:  Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub all_biggest_arb_profit:          Option<TxHash>,
+    pub all_biggest_arb_profit_amt:      Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub all_biggest_arb_revenue:         Option<TxHash>,
+    pub all_biggest_arb_revenue_amt:     Option<f64>,
 
     // atomic
-    pub atomic_total_profit:          f64,
-    pub atomic_total_revenue:         f64,
-    pub atomic_average_profit_margin: f64,
-    pub atomic_top_searcher_rev:      Option<f64>,
-
-    #[serde(with = "option_address")]
-    pub atomic_top_searcher_rev_addr:    Option<Address>,
-    pub atomic_top_searcher_profit:      Option<f64>,
-    #[serde(with = "option_address")]
-    pub atomic_top_searcher_profit_addr: Option<Address>,
-    pub atomic_searchers:                u64,
-    pub atomic_top_fund_rev:             Option<f64>,
+    pub atomic_total_profit:                f64,
+    pub atomic_total_revenue:               f64,
+    pub atomic_average_profit_margin:       f64,
+    pub atomic_top_searcher_profit:         Option<Address>,
+    pub atomic_top_searcher_profit_amt:     Option<f64>,
+    pub atomic_top_searcher_revenue:        Option<Address>,
+    pub atomic_top_searcher_revenue_amt:    Option<f64>,
+    #[serde(rename = "atomic_searcher_all.profit")]
+    pub atomic_searcher_all_profit:         Vec<Address>,
+    #[serde(rename = "atomic_searcher_all.profit_amt")]
+    pub atomic_searcher_all_profit_amt:     Vec<f64>,
+    #[serde(rename = "atomic_searcher_all.revenue")]
+    pub atomic_searcher_all_revenue:        Vec<Address>,
+    #[serde(rename = "atomic_searcher_all.revenue_amt")]
+    pub atomic_searcher_all_revenue_amt:    Vec<f64>,
+    pub atomic_searcher_count:              u64,
     #[serde(with = "option_fund")]
-    pub atomic_top_fund_rev_id:          Option<Fund>,
-    pub atomic_top_fund_profit:          Option<f64>,
+    pub atomic_top_fund_profit:             Option<Fund>,
+    pub atomic_top_fund_profit_amt:         Option<f64>,
     #[serde(with = "option_fund")]
-    pub atomic_top_fund_profit_id:       Option<Fund>,
-    pub atomic_fund_count:               u64,
-
-    #[serde(with = "option_address")]
-    pub atomic_most_arbed_pool_address_profit:  Option<Address>,
-    pub atomic_most_arbed_pool_profit:          Option<f64>,
-    #[serde(with = "option_address")]
-    pub atomic_most_arbed_pool_address_revenue: Option<Address>,
-    pub atomic_most_arbed_pool_revenue:         Option<f64>,
-
-    #[serde(with = "option_pair")]
-    pub atomic_most_arbed_pair_address_profit:  Option<Pair>,
-    pub atomic_most_arbed_pair_profit:          Option<f64>,
-    #[serde(with = "option_pair")]
-    pub atomic_most_arbed_pair_address_revenue: Option<Pair>,
-    pub atomic_most_arbed_pair_revenue:         Option<f64>,
-
+    pub atomic_top_fund_revenue:            Option<Fund>,
+    pub atomic_top_fund_revenue_amt:        Option<f64>,
+    #[serde(rename = "atomic_fund_all.profit")]
+    #[serde(with = "vec_fund")]
+    pub atomic_fund_all_profit:             Vec<Fund>,
+    #[serde(rename = "atomic_fund_all.profit_amt")]
+    pub atomic_fund_all_profit_amt:         Vec<f64>,
+    #[serde(rename = "atomic_fund_all.revenue")]
+    #[serde(with = "vec_fund")]
+    pub atomic_fund_all_revenue:            Vec<Fund>,
+    #[serde(rename = "atomic_fund_all.revenue_amt")]
+    pub atomic_fund_all_revenue_amt:        Vec<f64>,
+    pub atomic_fund_count:                  u64,
+    pub atomic_most_arbed_pool_profit:      Option<Address>,
+    pub atomic_most_arbed_pool_profit_amt:  Option<f64>,
+    pub atomic_most_arbed_pool_revenue:     Option<Address>,
+    pub atomic_most_arbed_pool_revenue_amt: Option<f64>,
+    pub atomic_most_arbed_pair_profit:      TokenPairDetails,
+    pub atomic_most_arbed_pair_profit_amt:  Option<f64>,
+    pub atomic_most_arbed_pair_revenue:     TokenPairDetails,
+    pub atomic_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub atomic_most_arbed_dex_address_profit:  Option<Protocol>,
-    pub atomic_most_arbed_dex_profit:          Option<f64>,
+    pub atomic_most_arbed_dex_profit:       Option<Protocol>,
+    pub atomic_most_arbed_dex_profit_amt:   Option<f64>,
     #[serde(with = "option_protocol")]
-    pub atomic_most_arbed_dex_address_revenue: Option<Protocol>,
-    pub atomic_most_arbed_dex_revenue:         Option<f64>,
+    pub atomic_most_arbed_dex_revenue:      Option<Protocol>,
+    pub atomic_most_arbed_dex_revenue_amt:  Option<f64>,
+    #[serde(rename = "atomic_arbed_pool_all.profit")]
+    pub atomic_arbed_pool_all_profit:       Vec<Address>,
+    #[serde(rename = "atomic_arbed_pool_all.profit_amt")]
+    pub atomic_arbed_pool_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "atomic_arbed_pool_all.revenue")]
+    pub atomic_arbed_pool_all_revenue:      Vec<Address>,
+    #[serde(rename = "atomic_arbed_pool_all.revenue_amt")]
+    pub atomic_arbed_pool_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "atomic_arbed_pair_all.profit")]
+    pub atomic_arbed_pair_all_profit:       Vec<TokenPairDetails>,
+    #[serde(rename = "atomic_arbed_pair_all.profit_amt")]
+    pub atomic_arbed_pair_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "atomic_arbed_pair_all.revenue")]
+    pub atomic_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
+    #[serde(rename = "atomic_arbed_pair_all.revenue_amt")]
+    pub atomic_arbed_pair_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "atomic_arbed_pair_all.profit")]
+    #[serde(with = "vec_protocol")]
+    pub atomic_arbed_dex_all_profit:        Vec<Protocol>,
+    #[serde(rename = "atomic_arbed_dex_all.profit_amt")]
+    pub atomic_arbed_dex_all_profit_amt:    Vec<f64>,
+    #[serde(rename = "atomic_arbed_dex_all.revenue")]
+    #[serde(with = "vec_protocol")]
+    pub atomic_arbed_dex_all_revenue:       Vec<Protocol>,
+    #[serde(rename = "atomic_arbed_dex_all.revenue_amt")]
+    pub atomic_arbed_dex_all_revenue_amt:   Vec<f64>,
+    #[serde(with = "option_txhash")]
+    pub atomic_biggest_arb_profit:          Option<TxHash>,
+    pub atomic_biggest_arb_profit_amt:      Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub atomic_biggest_arb_revenue:         Option<TxHash>,
+    pub atomic_biggest_arb_revenue_amt:     Option<f64>,
 
     // sandwich
-    pub sandwich_total_profit:             f64,
-    pub sandwich_total_revenue:            f64,
-    pub sandwich_average_profit_margin:    f64,
-    pub sandwich_top_searcher_rev:         Option<f64>,
-    #[serde(with = "option_address")]
-    pub sandwich_top_searcher_rev_addr:    Option<Address>,
-    pub sandwich_top_searcher_profit:      Option<f64>,
-    #[serde(with = "option_address")]
-    pub sandwich_top_searcher_profit_addr: Option<Address>,
-    pub sandwich_searchers:                u64,
-
-    #[serde(with = "option_address")]
-    pub sandwich_most_arbed_pool_address_profit:  Option<Address>,
-    pub sandwich_most_arbed_pool_profit:          Option<f64>,
-    #[serde(with = "option_address")]
-    pub sandwich_most_arbed_pool_address_revenue: Option<Address>,
-    pub sandwich_most_arbed_pool_revenue:         Option<f64>,
-
-    #[serde(with = "option_pair")]
-    pub sandwich_most_arbed_pair_address_profit:  Option<Pair>,
-    pub sandwich_most_arbed_pair_profit:          Option<f64>,
-    #[serde(with = "option_pair")]
-    pub sandwich_most_arbed_pair_address_revenue: Option<Pair>,
-    pub sandwich_most_arbed_pair_revenue:         Option<f64>,
-
+    pub sandwich_total_profit:                f64,
+    pub sandwich_total_revenue:               f64,
+    pub sandwich_average_profit_margin:       f64,
+    pub sandwich_top_searcher_profit:         Option<Address>,
+    pub sandwich_top_searcher_profit_amt:     Option<f64>,
+    pub sandwich_top_searcher_revenue:        Option<Address>,
+    pub sandwich_top_searcher_revenue_amt:    Option<f64>,
+    #[serde(rename = "sandwich_searcher_all.profit")]
+    pub sandwich_searcher_all_profit:         Vec<Address>,
+    #[serde(rename = "sandwich_searcher_all.profit_amt")]
+    pub sandwich_searcher_all_profit_amt:     Vec<f64>,
+    #[serde(rename = "sandwich_searcher_all.revenue")]
+    pub sandwich_searcher_all_revenue:        Vec<Address>,
+    #[serde(rename = "sandwich_searcher_all.revenue_amt")]
+    pub sandwich_searcher_all_revenue_amt:    Vec<f64>,
+    pub sandwich_searcher_count:              u64,
+    #[serde(with = "option_fund")]
+    pub sandwich_top_fund_profit:             Option<Fund>,
+    pub sandwich_top_fund_profit_amt:         Option<f64>,
+    #[serde(with = "option_fund")]
+    pub sandwich_top_fund_revenue:            Option<Fund>,
+    pub sandwich_top_fund_revenue_amt:        Option<f64>,
+    #[serde(rename = "sandwich_fund_all.profit")]
+    #[serde(with = "vec_fund")]
+    pub sandwich_fund_all_profit:             Vec<Fund>,
+    #[serde(rename = "sandwich_fund_all.profit_amt")]
+    pub sandwich_fund_all_profit_amt:         Vec<f64>,
+    #[serde(rename = "sandwich_fund_all.revenue")]
+    #[serde(with = "vec_fund")]
+    pub sandwich_fund_all_revenue:            Vec<Fund>,
+    #[serde(rename = "sandwich_fund_all.revenue_amt")]
+    pub sandwich_fund_all_revenue_amt:        Vec<f64>,
+    pub sandwich_fund_count:                  u64,
+    pub sandwich_most_arbed_pool_profit:      Option<Address>,
+    pub sandwich_most_arbed_pool_profit_amt:  Option<f64>,
+    pub sandwich_most_arbed_pool_revenue:     Option<Address>,
+    pub sandwich_most_arbed_pool_revenue_amt: Option<f64>,
+    pub sandwich_most_arbed_pair_profit:      TokenPairDetails,
+    pub sandwich_most_arbed_pair_profit_amt:  Option<f64>,
+    pub sandwich_most_arbed_pair_revenue:     TokenPairDetails,
+    pub sandwich_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub sandwich_most_arbed_dex_address_profit:  Option<Protocol>,
-    pub sandwich_most_arbed_dex_profit:          Option<f64>,
+    pub sandwich_most_arbed_dex_profit:       Option<Protocol>,
+    pub sandwich_most_arbed_dex_profit_amt:   Option<f64>,
     #[serde(with = "option_protocol")]
-    pub sandwich_most_arbed_dex_address_revenue: Option<Protocol>,
-    pub sandwich_most_arbed_dex_revenue:         Option<f64>,
+    pub sandwich_most_arbed_dex_revenue:      Option<Protocol>,
+    pub sandwich_most_arbed_dex_revenue_amt:  Option<f64>,
+    #[serde(rename = "sandwich_arbed_pool_all.profit")]
+    pub sandwich_arbed_pool_all_profit:       Vec<Address>,
+    #[serde(rename = "sandwich_arbed_pool_all.profit_amt")]
+    pub sandwich_arbed_pool_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "sandwich_arbed_pool_all.revenue")]
+    pub sandwich_arbed_pool_all_revenue:      Vec<Address>,
+    #[serde(rename = "sandwich_arbed_pool_all.revenue_amt")]
+    pub sandwich_arbed_pool_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "sandwich_arbed_pair_all.profit")]
+    pub sandwich_arbed_pair_all_profit:       Vec<TokenPairDetails>,
+    #[serde(rename = "sandwich_arbed_pair_all.profit_amt")]
+    pub sandwich_arbed_pair_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "sandwich_arbed_pair_all.revenue")]
+    pub sandwich_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
+    #[serde(rename = "sandwich_arbed_pair_all.revenue_amt")]
+    pub sandwich_arbed_pair_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "sandwich_arbed_pair_all.profit")]
+    #[serde(with = "vec_protocol")]
+    pub sandwich_arbed_dex_all_profit:        Vec<Protocol>,
+    #[serde(rename = "sandwich_arbed_dex_all.profit_amt")]
+    pub sandwich_arbed_dex_all_profit_amt:    Vec<f64>,
+    #[serde(rename = "sandwich_arbed_dex_all.revenue")]
+    #[serde(with = "vec_protocol")]
+    pub sandwich_arbed_dex_all_revenue:       Vec<Protocol>,
+    #[serde(rename = "sandwich_arbed_dex_all.revenue_amt")]
+    pub sandwich_arbed_dex_all_revenue_amt:   Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub sandwich_biggest_arb_profit_hash:        Option<TxHash>,
-    pub sandwich_biggest_arb_profit:             Option<f64>,
+    pub sandwich_biggest_arb_profit:          Option<TxHash>,
+    pub sandwich_biggest_arb_profit_amt:      Option<f64>,
     #[serde(with = "option_txhash")]
-    pub sandwich_biggest_arb_revenue_hash:       Option<TxHash>,
-    pub sandwich_biggest_arb_revenue:            Option<f64>,
+    pub sandwich_biggest_arb_revenue:         Option<TxHash>,
+    pub sandwich_biggest_arb_revenue_amt:     Option<f64>,
 
     // jit
-    pub jit_total_profit: f64,
-    pub jit_total_revenue: f64,
-    pub jit_average_profit_margin: f64,
-    pub jit_top_searcher_rev: Option<f64>,
-    #[serde(with = "option_address")]
-    pub jit_top_searcher_rev_addr: Option<Address>,
-    pub jit_top_searcher_profit: Option<f64>,
-    #[serde(with = "option_address")]
-    pub jit_top_searcher_profit_addr: Option<Address>,
-    pub jit_searchers: u64,
-    #[serde(with = "option_address")]
-    pub jit_most_arbed_pool_address_profit: Option<Address>,
-    pub jit_most_arbed_pool_profit: Option<f64>,
-    #[serde(with = "option_address")]
-    pub jit_most_arbed_pool_address_revenue: Option<Address>,
-    pub jit_most_arbed_pool_revenue: Option<f64>,
-
-    #[serde(with = "option_pair")]
-    pub jit_most_arbed_pair_address_profit:  Option<Pair>,
-    pub jit_most_arbed_pair_profit:          Option<f64>,
-    #[serde(with = "option_pair")]
-    pub jit_most_arbed_pair_address_revenue: Option<Pair>,
-    pub jit_most_arbed_pair_revenue:         Option<f64>,
-
+    pub jit_total_profit:                f64,
+    pub jit_total_revenue:               f64,
+    pub jit_average_profit_margin:       f64,
+    pub jit_top_searcher_profit:         Option<Address>,
+    pub jit_top_searcher_profit_amt:     Option<f64>,
+    pub jit_top_searcher_revenue:        Option<Address>,
+    pub jit_top_searcher_revenue_amt:    Option<f64>,
+    #[serde(rename = "jit_searcher_all.profit")]
+    pub jit_searcher_all_profit:         Vec<Address>,
+    #[serde(rename = "jit_searcher_all.profit_amt")]
+    pub jit_searcher_all_profit_amt:     Vec<f64>,
+    #[serde(rename = "jit_searcher_all.revenue")]
+    pub jit_searcher_all_revenue:        Vec<Address>,
+    #[serde(rename = "jit_searcher_all.revenue_amt")]
+    pub jit_searcher_all_revenue_amt:    Vec<f64>,
+    pub jit_searcher_count:              u64,
+    #[serde(with = "option_fund")]
+    pub jit_top_fund_profit:             Option<Fund>,
+    pub jit_top_fund_profit_amt:         Option<f64>,
+    #[serde(with = "option_fund")]
+    pub jit_top_fund_revenue:            Option<Fund>,
+    pub jit_top_fund_revenue_amt:        Option<f64>,
+    #[serde(rename = "jit_fund_all.profit")]
+    #[serde(with = "vec_fund")]
+    pub jit_fund_all_profit:             Vec<Fund>,
+    #[serde(rename = "jit_fund_all.profit_amt")]
+    pub jit_fund_all_profit_amt:         Vec<f64>,
+    #[serde(rename = "jit_fund_all.revenue")]
+    #[serde(with = "vec_fund")]
+    pub jit_fund_all_revenue:            Vec<Fund>,
+    #[serde(rename = "jit_fund_all.revenue_amt")]
+    pub jit_fund_all_revenue_amt:        Vec<f64>,
+    pub jit_fund_count:                  u64,
+    pub jit_most_arbed_pool_profit:      Option<Address>,
+    pub jit_most_arbed_pool_profit_amt:  Option<f64>,
+    pub jit_most_arbed_pool_revenue:     Option<Address>,
+    pub jit_most_arbed_pool_revenue_amt: Option<f64>,
+    pub jit_most_arbed_pair_profit:      TokenPairDetails,
+    pub jit_most_arbed_pair_profit_amt:  Option<f64>,
+    pub jit_most_arbed_pair_revenue:     TokenPairDetails,
+    pub jit_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_most_arbed_dex_address_profit:  Option<Protocol>,
-    pub jit_most_arbed_dex_profit:          Option<f64>,
+    pub jit_most_arbed_dex_profit:       Option<Protocol>,
+    pub jit_most_arbed_dex_profit_amt:   Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_most_arbed_dex_address_revenue: Option<Protocol>,
-    pub jit_most_arbed_dex_revenue:         Option<f64>,
+    pub jit_most_arbed_dex_revenue:      Option<Protocol>,
+    pub jit_most_arbed_dex_revenue_amt:  Option<f64>,
+    #[serde(rename = "jit_arbed_pool_all.profit")]
+    pub jit_arbed_pool_all_profit:       Vec<Address>,
+    #[serde(rename = "jit_arbed_pool_all.profit_amt")]
+    pub jit_arbed_pool_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "jit_arbed_pool_all.revenue")]
+    pub jit_arbed_pool_all_revenue:      Vec<Address>,
+    #[serde(rename = "jit_arbed_pool_all.revenue_amt")]
+    pub jit_arbed_pool_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "jit_arbed_pair_all.profit")]
+    pub jit_arbed_pair_all_profit:       Vec<TokenPairDetails>,
+    #[serde(rename = "jit_arbed_pair_all.profit_amt")]
+    pub jit_arbed_pair_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "jit_arbed_pair_all.revenue")]
+    pub jit_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
+    #[serde(rename = "jit_arbed_pair_all.revenue_amt")]
+    pub jit_arbed_pair_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "jit_arbed_pair_all.profit")]
+    #[serde(with = "vec_protocol")]
+    pub jit_arbed_dex_all_profit:        Vec<Protocol>,
+    #[serde(rename = "jit_arbed_dex_all.profit_amt")]
+    pub jit_arbed_dex_all_profit_amt:    Vec<f64>,
+    #[serde(rename = "jit_arbed_dex_all.revenue")]
+    #[serde(with = "vec_protocol")]
+    pub jit_arbed_dex_all_revenue:       Vec<Protocol>,
+    #[serde(rename = "jit_arbed_dex_all.revenue_amt")]
+    pub jit_arbed_dex_all_revenue_amt:   Vec<f64>,
+    #[serde(with = "option_txhash")]
+    pub jit_biggest_arb_profit:          Option<TxHash>,
+    pub jit_biggest_arb_profit_amt:      Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub jit_biggest_arb_revenue:         Option<TxHash>,
+    pub jit_biggest_arb_revenue_amt:     Option<f64>,
 
     // jit-sandwich
-    pub jit_sandwich_total_profit:             f64,
-    pub jit_sandwich_total_revenue:            f64,
-    pub jit_sandwich_average_profit_margin:    f64,
-    pub jit_sandwich_top_searcher_rev:         Option<f64>,
-    #[serde(with = "option_address")]
-    pub jit_sandwich_top_searcher_rev_addr:    Option<Address>,
-    pub jit_sandwich_top_searcher_profit:      Option<f64>,
-    #[serde(with = "option_address")]
-    pub jit_sandwich_top_searcher_profit_addr: Option<Address>,
-    pub jit_sandwich_searchers:                u64,
-
-    #[serde(with = "option_address")]
-    pub jit_sandwich_most_arbed_pool_address_profit:  Option<Address>,
-    pub jit_sandwich_most_arbed_pool_profit:          Option<f64>,
-    #[serde(with = "option_address")]
-    pub jit_sandwich_most_arbed_pool_address_revenue: Option<Address>,
-    pub jit_sandwich_most_arbed_pool_revenue:         Option<f64>,
-
-    #[serde(with = "option_pair")]
-    pub jit_sandwich_most_arbed_pair_address_profit:  Option<Pair>,
-    pub jit_sandwich_most_arbed_pair_profit:          Option<f64>,
-    #[serde(with = "option_pair")]
-    pub jit_sandwich_most_arbed_pair_address_revenue: Option<Pair>,
-    pub jit_sandwich_most_arbed_pair_revenue:         Option<f64>,
-
+    pub jit_sandwich_total_profit:                f64,
+    pub jit_sandwich_total_revenue:               f64,
+    pub jit_sandwich_average_profit_margin:       f64,
+    pub jit_sandwich_top_searcher_profit:         Option<Address>,
+    pub jit_sandwich_top_searcher_profit_amt:     Option<f64>,
+    pub jit_sandwich_top_searcher_revenue:        Option<Address>,
+    pub jit_sandwich_top_searcher_revenue_amt:    Option<f64>,
+    #[serde(rename = "jit_sandwich_searcher_all.profit")]
+    pub jit_sandwich_searcher_all_profit:         Vec<Address>,
+    #[serde(rename = "jit_sandwich_searcher_all.profit_amt")]
+    pub jit_sandwich_searcher_all_profit_amt:     Vec<f64>,
+    #[serde(rename = "jit_sandwich_searcher_all.revenue")]
+    pub jit_sandwich_searcher_all_revenue:        Vec<Address>,
+    #[serde(rename = "jit_sandwich_searcher_all.revenue_amt")]
+    pub jit_sandwich_searcher_all_revenue_amt:    Vec<f64>,
+    pub jit_sandwich_searcher_count:              u64,
+    #[serde(with = "option_fund")]
+    pub jit_sandwich_top_fund_profit:             Option<Fund>,
+    pub jit_sandwich_top_fund_profit_amt:         Option<f64>,
+    #[serde(with = "option_fund")]
+    pub jit_sandwich_top_fund_revenue:            Option<Fund>,
+    pub jit_sandwich_top_fund_revenue_amt:        Option<f64>,
+    #[serde(rename = "jit_sandwich_fund_all.profit")]
+    #[serde(with = "vec_fund")]
+    pub jit_sandwich_fund_all_profit:             Vec<Fund>,
+    #[serde(rename = "jit_sandwich_fund_all.profit_amt")]
+    pub jit_sandwich_fund_all_profit_amt:         Vec<f64>,
+    #[serde(rename = "jit_sandwich_fund_all.revenue")]
+    #[serde(with = "vec_fund")]
+    pub jit_sandwich_fund_all_revenue:            Vec<Fund>,
+    #[serde(rename = "jit_sandwich_fund_all.revenue_amt")]
+    pub jit_sandwich_fund_all_revenue_amt:        Vec<f64>,
+    pub jit_sandwich_fund_count:                  u64,
+    pub jit_sandwich_most_arbed_pool_profit:      Option<Address>,
+    pub jit_sandwich_most_arbed_pool_profit_amt:  Option<f64>,
+    pub jit_sandwich_most_arbed_pool_revenue:     Option<Address>,
+    pub jit_sandwich_most_arbed_pool_revenue_amt: Option<f64>,
+    pub jit_sandwich_most_arbed_pair_profit:      TokenPairDetails,
+    pub jit_sandwich_most_arbed_pair_profit_amt:  Option<f64>,
+    pub jit_sandwich_most_arbed_pair_revenue:     TokenPairDetails,
+    pub jit_sandwich_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_sandwich_most_arbed_dex_address_profit:  Option<Protocol>,
-    pub jit_sandwich_most_arbed_dex_profit:          Option<f64>,
+    pub jit_sandwich_most_arbed_dex_profit:       Option<Protocol>,
+    pub jit_sandwich_most_arbed_dex_profit_amt:   Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_sandwich_most_arbed_dex_address_revenue: Option<Protocol>,
-    pub jit_sandwich_most_arbed_dex_revenue:         Option<f64>,
-
+    pub jit_sandwich_most_arbed_dex_revenue:      Option<Protocol>,
+    pub jit_sandwich_most_arbed_dex_revenue_amt:  Option<f64>,
+    #[serde(rename = "jit_sandwich_arbed_pool_all.profit")]
+    pub jit_sandwich_arbed_pool_all_profit:       Vec<Address>,
+    #[serde(rename = "jit_sandwich_arbed_pool_all.profit_amt")]
+    pub jit_sandwich_arbed_pool_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "jit_sandwich_arbed_pool_all.revenue")]
+    pub jit_sandwich_arbed_pool_all_revenue:      Vec<Address>,
+    #[serde(rename = "jit_sandwich_arbed_pool_all.revenue_amt")]
+    pub jit_sandwich_arbed_pool_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "jit_sandwich_arbed_pair_all.profit")]
+    pub jit_sandwich_arbed_pair_all_profit:       Vec<TokenPairDetails>,
+    #[serde(rename = "jit_sandwich_arbed_pair_all.profit_amt")]
+    pub jit_sandwich_arbed_pair_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "jit_sandwich_arbed_pair_all.revenue")]
+    pub jit_sandwich_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
+    #[serde(rename = "jit_sandwich_arbed_pair_all.revenue_amt")]
+    pub jit_sandwich_arbed_pair_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "jit_sandwich_arbed_pair_all.profit")]
+    #[serde(with = "vec_protocol")]
+    pub jit_sandwich_arbed_dex_all_profit:        Vec<Protocol>,
+    #[serde(rename = "jit_sandwich_arbed_dex_all.profit_amt")]
+    pub jit_sandwich_arbed_dex_all_profit_amt:    Vec<f64>,
+    #[serde(rename = "jit_sandwich_arbed_dex_all.revenue")]
+    #[serde(with = "vec_protocol")]
+    pub jit_sandwich_arbed_dex_all_revenue:       Vec<Protocol>,
+    #[serde(rename = "jit_sandwich_arbed_dex_all.revenue_amt")]
+    pub jit_sandwich_arbed_dex_all_revenue_amt:   Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub jit_sandwich_biggest_arb_profit_hash:  Option<TxHash>,
-    pub jit_sandwich_biggest_arb_profit:       Option<f64>,
+    pub jit_sandwich_biggest_arb_profit:          Option<TxHash>,
+    pub jit_sandwich_biggest_arb_profit_amt:      Option<f64>,
     #[serde(with = "option_txhash")]
-    pub jit_sandwich_biggest_arb_revenue_hash: Option<TxHash>,
-    pub jit_sandwich_biggest_arb_revenue:      Option<f64>,
+    pub jit_sandwich_biggest_arb_revenue:         Option<TxHash>,
+    pub jit_sandwich_biggest_arb_revenue_amt:     Option<f64>,
 
     // cex dex
-    pub cex_dex_total_profit: f64,
-    pub cex_dex_total_revenue: f64,
-    pub cex_dex_average_profit_margin: f64,
-    pub cex_dex_top_searcher_rev: Option<f64>,
-    #[serde(with = "option_address")]
-    pub cex_dex_top_searcher_rev_addr: Option<Address>,
-    pub cex_dex_top_searcher_profit: Option<f64>,
-    #[serde(with = "option_address")]
-    pub cex_dex_top_searcher_profit_addr: Option<Address>,
-    pub cex_dex_searchers: u64,
-    pub cex_dex_top_fund_rev: Option<f64>,
+    pub cex_dex_total_profit:                f64,
+    pub cex_dex_total_revenue:               f64,
+    pub cex_dex_average_profit_margin:       f64,
+    pub cex_dex_top_searcher_profit:         Option<Address>,
+    pub cex_dex_top_searcher_profit_amt:     Option<f64>,
+    pub cex_dex_top_searcher_revenue:        Option<Address>,
+    pub cex_dex_top_searcher_revenue_amt:    Option<f64>,
+    #[serde(rename = "cex_dex_searcher_all.profit")]
+    pub cex_dex_searcher_all_profit:         Vec<Address>,
+    #[serde(rename = "cex_dex_searcher_all.profit_amt")]
+    pub cex_dex_searcher_all_profit_amt:     Vec<f64>,
+    #[serde(rename = "cex_dex_searcher_all.revenue")]
+    pub cex_dex_searcher_all_revenue:        Vec<Address>,
+    #[serde(rename = "cex_dex_searcher_all.revenue_amt")]
+    pub cex_dex_searcher_all_revenue_amt:    Vec<f64>,
+    pub cex_dex_searcher_count:              u64,
     #[serde(with = "option_fund")]
-    pub cex_dex_top_fund_rev_id: Option<Fund>,
-    pub cex_dex_top_fund_profit: Option<f64>,
+    pub cex_dex_top_fund_profit:             Option<Fund>,
+    pub cex_dex_top_fund_profit_amt:         Option<f64>,
     #[serde(with = "option_fund")]
-    pub cex_dex_top_fund_profit_id: Option<Fund>,
-    pub cex_dex_fund_count: u64,
-    #[serde(with = "option_address")]
-    pub cex_dex_most_arbed_pool_address_profit: Option<Address>,
-    pub cex_dex_most_arbed_pool_profit: Option<f64>,
-    #[serde(with = "option_address")]
-    pub cex_dex_most_arbed_pool_address_revenue: Option<Address>,
-    pub cex_dex_most_arbed_pool_revenue: Option<f64>,
-
-    #[serde(with = "option_pair")]
-    pub cex_dex_most_arbed_pair_address_profit:  Option<Pair>,
-    pub cex_dex_most_arbed_pair_profit:          Option<f64>,
-    #[serde(with = "option_pair")]
-    pub cex_dex_most_arbed_pair_address_revenue: Option<Pair>,
-    pub cex_dex_most_arbed_pair_revenue:         Option<f64>,
-
+    pub cex_dex_top_fund_revenue:            Option<Fund>,
+    pub cex_dex_top_fund_revenue_amt:        Option<f64>,
+    #[serde(rename = "cex_dex_fund_all.profit")]
+    #[serde(with = "vec_fund")]
+    pub cex_dex_fund_all_profit:             Vec<Fund>,
+    #[serde(rename = "cex_dex_fund_all.profit_amt")]
+    pub cex_dex_fund_all_profit_amt:         Vec<f64>,
+    #[serde(rename = "cex_dex_fund_all.revenue")]
+    #[serde(with = "vec_fund")]
+    pub cex_dex_fund_all_revenue:            Vec<Fund>,
+    #[serde(rename = "cex_dex_fund_all.revenue_amt")]
+    pub cex_dex_fund_all_revenue_amt:        Vec<f64>,
+    pub cex_dex_fund_count:                  u64,
+    pub cex_dex_most_arbed_pool_profit:      Option<Address>,
+    pub cex_dex_most_arbed_pool_profit_amt:  Option<f64>,
+    pub cex_dex_most_arbed_pool_revenue:     Option<Address>,
+    pub cex_dex_most_arbed_pool_revenue_amt: Option<f64>,
+    pub cex_dex_most_arbed_pair_profit:      TokenPairDetails,
+    pub cex_dex_most_arbed_pair_profit_amt:  Option<f64>,
+    pub cex_dex_most_arbed_pair_revenue:     TokenPairDetails,
+    pub cex_dex_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub cex_dex_most_arbed_dex_address_profit:  Option<Protocol>,
-    pub cex_dex_most_arbed_dex_profit:          Option<f64>,
+    pub cex_dex_most_arbed_dex_profit:       Option<Protocol>,
+    pub cex_dex_most_arbed_dex_profit_amt:   Option<f64>,
     #[serde(with = "option_protocol")]
-    pub cex_dex_most_arbed_dex_address_revenue: Option<Protocol>,
-    pub cex_dex_most_arbed_dex_revenue:         Option<f64>,
+    pub cex_dex_most_arbed_dex_revenue:      Option<Protocol>,
+    pub cex_dex_most_arbed_dex_revenue_amt:  Option<f64>,
+    #[serde(rename = "cex_dex_arbed_pool_all.profit")]
+    pub cex_dex_arbed_pool_all_profit:       Vec<Address>,
+    #[serde(rename = "cex_dex_arbed_pool_all.profit_amt")]
+    pub cex_dex_arbed_pool_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "cex_dex_arbed_pool_all.revenue")]
+    pub cex_dex_arbed_pool_all_revenue:      Vec<Address>,
+    #[serde(rename = "cex_dex_arbed_pool_all.revenue_amt")]
+    pub cex_dex_arbed_pool_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "cex_dex_arbed_pair_all.profit")]
+    pub cex_dex_arbed_pair_all_profit:       Vec<TokenPairDetails>,
+    #[serde(rename = "cex_dex_arbed_pair_all.profit_amt")]
+    pub cex_dex_arbed_pair_all_profit_amt:   Vec<f64>,
+    #[serde(rename = "cex_dex_arbed_pair_all.revenue")]
+    pub cex_dex_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
+    #[serde(rename = "cex_dex_arbed_pair_all.revenue_amt")]
+    pub cex_dex_arbed_pair_all_revenue_amt:  Vec<f64>,
+    #[serde(rename = "cex_dex_arbed_pair_all.profit")]
+    #[serde(with = "vec_protocol")]
+    pub cex_dex_arbed_dex_all_profit:        Vec<Protocol>,
+    #[serde(rename = "cex_dex_arbed_dex_all.profit_amt")]
+    pub cex_dex_arbed_dex_all_profit_amt:    Vec<f64>,
+    #[serde(rename = "cex_dex_arbed_dex_all.revenue")]
+    #[serde(with = "vec_protocol")]
+    pub cex_dex_arbed_dex_all_revenue:       Vec<Protocol>,
+    #[serde(rename = "cex_dex_arbed_dex_all.revenue_amt")]
+    pub cex_dex_arbed_dex_all_revenue_amt:   Vec<f64>,
+    #[serde(with = "option_txhash")]
+    pub cex_dex_biggest_arb_profit:          Option<TxHash>,
+    pub cex_dex_biggest_arb_profit_amt:      Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub cex_dex_biggest_arb_revenue:         Option<TxHash>,
+    pub cex_dex_biggest_arb_revenue_amt:     Option<f64>,
 
     // liquidation
     pub liquidation_total_profit:             f64,
     pub liquidation_total_revenue:            f64,
     pub liquidation_average_profit_margin:    f64,
-    pub liquidation_top_searcher_rev:         Option<f64>,
-    #[serde(with = "option_address")]
-    pub liquidation_top_searcher_rev_addr:    Option<Address>,
-    pub liquidation_top_searcher_profit:      Option<f64>,
-    #[serde(with = "option_address")]
-    pub liquidation_top_searcher_profit_addr: Option<Address>,
-    pub liquidation_searchers:                u64,
-    #[serde(with = "option_address")]
-    pub most_liquidated_token_address_rev:    Option<Address>,
-    pub most_liquidated_token_rev:            Option<f64>,
-    #[serde(with = "option_address")]
-    pub most_liquidated_token_address_profit: Option<Address>,
-    pub most_liquidated_token_profit:         Option<f64>,
+    pub liquidation_top_searcher_profit:      Option<Address>,
+    pub liquidation_top_searcher_profit_amt:  Option<f64>,
+    pub liquidation_top_searcher_revenue:     Option<Address>,
+    pub liquidation_top_searcher_revenue_amt: Option<f64>,
+    #[serde(rename = "liquidation_searcher_all.profit")]
+    pub liquidation_searcher_all_profit:      Vec<Address>,
+    #[serde(rename = "liquidation_searcher_all.profit_amt")]
+    pub liquidation_searcher_all_profit_amt:  Vec<f64>,
+    #[serde(rename = "liquidation_searcher_all.revenue")]
+    pub liquidation_searcher_all_revenue:     Vec<Address>,
+    #[serde(rename = "liquidation_searcher_all.revenue_amt")]
+    pub liquidation_searcher_all_revenue_amt: Vec<f64>,
+    pub liquidation_searcher_count:           u64,
+    #[serde(with = "option_fund")]
+    pub liquidation_top_fund_profit:          Option<Fund>,
+    pub liquidation_top_fund_profit_amt:      Option<f64>,
+    #[serde(with = "option_fund")]
+    pub liquidation_top_fund_revenue:         Option<Fund>,
+    pub liquidation_top_fund_revenue_amt:     Option<f64>,
+    #[serde(rename = "liquidation_fund_all.profit")]
+    #[serde(with = "vec_fund")]
+    pub liquidation_fund_all_profit:          Vec<Fund>,
+    #[serde(rename = "liquidation_fund_all.profit_amt")]
+    pub liquidation_fund_all_profit_amt:      Vec<f64>,
+    #[serde(rename = "liquidation_fund_all.revenue")]
+    #[serde(with = "vec_fund")]
+    pub liquidation_fund_all_revenue:         Vec<Fund>,
+    #[serde(rename = "liquidation_fund_all.revenue_amt")]
+    pub liquidation_fund_all_revenue_amt:     Vec<f64>,
+    pub liquidation_fund_count:               u64,
+    pub most_liquidated_token_revenue:        SingleTokenDetails,
+    pub most_liquidated_token_revenue_amt:    Option<f64>,
+    pub most_liquidated_token_profit:         SingleTokenDetails,
+    pub most_liquidated_token_profit_amt:     Option<f64>,
+
+    #[serde(rename = "liquidated_tokens.revenue")]
+    pub liquidated_tokens_revenue:     Vec<SingleTokenDetails>,
+    #[serde(rename = "liquidated_tokens.revenue_amt")]
+    pub liquidated_tokens_revenue_amt: Vec<f64>,
+    #[serde(rename = "liquidated_tokens.profit")]
+    pub liquidated_tokens_profit:      Vec<SingleTokenDetails>,
+    #[serde(rename = "liquidated_tokens.profit_amt")]
+    pub liquidated_tokens_profit_amt:  Vec<f64>,
 
     pub total_usd_liquidated: f64,
 }
@@ -280,6 +519,12 @@ impl BlockAnalysis {
             Self::top_searcher_by_profit(|b| b != MevType::SearcherTx, bundles).unzip();
         let (all_rev_addr, all_rev_am) =
             Self::top_searcher_by_rev(|b| b != MevType::SearcherTx, bundles).unzip();
+
+        let (all_biggest_tx_prof, all_biggest_prof) =
+            Self::biggest_arb_profit(|b| b != MevType::SearcherTx, bundles).unzip();
+
+        let (all_biggest_tx_rev, all_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b != MevType::SearcherTx, bundles).unzip();
 
         let (fund_rev, fund_rev_am) =
             Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx, bundles).unzip();
@@ -316,17 +561,66 @@ impl BlockAnalysis {
         let (atomic_searcher_rev_addr, atomic_searcher_rev) =
             Self::top_searcher_by_rev(|b| b == MevType::AtomicArb, bundles).unzip();
 
+        let (atomic_all_searcher_prof_addr, atomic_all_searcher_prof) =
+            Self::all_searchers_by_profit(|b| b == MevType::AtomicArb, bundles)
+                .into_iter()
+                .unzip();
+        let (atomic_all_searcher_rev_addr, atomic_all_searcher_rev) =
+            Self::all_searchers_by_rev(|b| b == MevType::AtomicArb, bundles)
+                .into_iter()
+                .unzip();
+
+        let (atomic_biggest_tx_prof, atomic_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::AtomicArb, bundles).unzip();
+
+        let (atomic_biggest_tx_rev, atomic_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::AtomicArb, bundles).unzip();
+
         let (atomic_fund_rev_addr, atomic_fund_rev) =
             Self::top_fund_by_type_rev(|b| b == MevType::AtomicArb, bundles).unzip();
         let (atomic_fund_profit_addr, atomic_fund_profit) =
             Self::top_fund_by_type_profit(|b| b == MevType::AtomicArb, bundles).unzip();
 
+        let (atomic_all_funds_rev_addr, atomic_all_funds_rev) =
+            Self::all_funds_by_type_rev(|b| b == MevType::AtomicArb, bundles)
+                .into_iter()
+                .unzip();
+        let (atomic_all_funds_profit_addr, atomic_all_funds_profit) =
+            Self::all_funds_by_type_profit(|b| b == MevType::AtomicArb, bundles)
+                .into_iter()
+                .unzip();
+
         let (atomic_pool_addr_prof, atomic_pool_addr_rev, atomic_pool_prof, atomic_pool_rev) =
             Self::most_transacted_pool(|b| b == MevType::AtomicArb, bundles, Self::get_pool_fn)
                 .four_unzip();
+
+        let (
+            atomic_all_pools_addr_prof,
+            atomic_all_pools_prof,
+            atomic_all_pools_addr_rev,
+            atomic_all_pools_rev,
+        ) = Self::all_transacted_pools(|b| b == MevType::AtomicArb, bundles, Self::get_pool_fn)
+            .four_unzip();
+
+        let (
+            atomic_all_pairs_addr_prof,
+            atomic_all_pairs_prof,
+            atomic_all_pairs_addr_rev,
+            atomic_all_pairs_rev,
+        ) = Self::all_transacted_pairs(|b| b == MevType::AtomicArb, bundles, Self::get_pair_fn)
+            .four_unzip();
+
+        let (
+            atomic_all_dexes_addr_prof,
+            atomic_all_dexes_prof,
+            atomic_all_dexes_addr_rev,
+            atomic_all_dexes_rev,
+        ) = Self::all_transacted_dexes(|b| b == MevType::AtomicArb, bundles, Self::get_dex_fn)
+            .four_unzip();
+
         let (atomic_pair_addr_prof, atomic_pair_addr_rev, atomic_pair_prof, atomic_pair_rev) =
             Self::most_transacted_pair(|b| b == MevType::AtomicArb, bundles, Self::get_pair_fn)
-                .four_unzip();
+                .unwrap_or_default();
         let (atomic_dex_addr_prof, atomic_dex_addr_rev, atomic_dex_prof, atomic_dex_rev) =
             Self::most_transacted_dex(|b| b == MevType::AtomicArb, bundles, Self::get_dex_fn)
                 .four_unzip();
@@ -334,6 +628,7 @@ impl BlockAnalysis {
         // Sandwich Fields
         let (sandwich_biggest_tx_prof, sandwich_biggest_prof) =
             Self::biggest_arb_profit(|b| b == MevType::Sandwich, bundles).unzip();
+
         let (sandwich_biggest_tx_rev, sandwich_biggest_rev) =
             Self::biggest_arb_revenue(|b| b == MevType::Sandwich, bundles).unzip();
 
@@ -341,6 +636,25 @@ impl BlockAnalysis {
             Self::top_searcher_by_profit(|b| b == MevType::Sandwich, bundles).unzip();
         let (sandwich_searcher_rev_addr, sandwich_searcher_rev) =
             Self::top_searcher_by_rev(|b| b == MevType::Sandwich, bundles).unzip();
+
+        let (sandwich_all_funds_rev_addr, sandwich_all_funds_rev) =
+            Self::all_funds_by_type_rev(|b| b == MevType::Sandwich, bundles)
+                .into_iter()
+                .unzip();
+        let (sandwich_all_funds_profit_addr, sandwich_all_funds_profit) =
+            Self::all_funds_by_type_profit(|b| b == MevType::Sandwich, bundles)
+                .into_iter()
+                .unzip();
+
+        let (sandwich_all_searcher_prof_addr, sandwich_all_searcher_prof) =
+            Self::all_searchers_by_profit(|b| b == MevType::Sandwich, bundles)
+                .into_iter()
+                .unzip();
+
+        let (sandwich_all_searcher_rev_addr, sandwich_all_searcher_rev) =
+            Self::all_searchers_by_rev(|b| b == MevType::Sandwich, bundles)
+                .into_iter()
+                .unzip();
         let (
             sandwich_pool_addr_prof,
             sandwich_pool_addr_rev,
@@ -354,10 +668,39 @@ impl BlockAnalysis {
             sandwich_pair_prof,
             sandwich_pair_rev,
         ) = Self::most_transacted_pair(|b| b == MevType::Sandwich, bundles, Self::get_pair_fn)
-            .four_unzip();
+            .unwrap_or_default();
         let (sandwich_dex_addr_prof, sandwich_dex_addr_rev, sandwich_dex_prof, sandwich_dex_rev) =
             Self::most_transacted_dex(|b| b == MevType::Sandwich, bundles, Self::get_dex_fn)
                 .four_unzip();
+
+        let (sandwich_fund_rev_addr, sandwich_fund_rev) =
+            Self::top_fund_by_type_rev(|b| b == MevType::Sandwich, bundles).unzip();
+        let (sandwich_fund_profit_addr, sandwich_fund_profit) =
+            Self::top_fund_by_type_profit(|b| b == MevType::Sandwich, bundles).unzip();
+
+        let (
+            sandwich_all_pools_addr_prof,
+            sandwich_all_pools_prof,
+            sandwich_all_pools_addr_rev,
+            sandwich_all_pools_rev,
+        ) = Self::all_transacted_pools(|b| b == MevType::Sandwich, bundles, Self::get_pool_fn)
+            .four_unzip();
+
+        let (
+            sandwich_all_pairs_addr_prof,
+            sandwich_all_pairs_prof,
+            sandwich_all_pairs_addr_rev,
+            sandwich_all_pairs_rev,
+        ) = Self::all_transacted_pairs(|b| b == MevType::Sandwich, bundles, Self::get_pair_fn)
+            .four_unzip();
+
+        let (
+            sandwich_all_dexes_addr_prof,
+            sandwich_all_dexes_prof,
+            sandwich_all_dexes_addr_rev,
+            sandwich_all_dexes_rev,
+        ) = Self::all_transacted_dexes(|b| b == MevType::Sandwich, bundles, Self::get_dex_fn)
+            .four_unzip();
 
         // Jit Fields
         let (jit_searcher_prof_addr, jit_searcher_prof) =
@@ -365,15 +708,69 @@ impl BlockAnalysis {
         let (jit_searcher_rev_addr, jit_searcher_rev) =
             Self::top_searcher_by_rev(|b| b == MevType::Jit, bundles).unzip();
 
+        let (jit_all_searcher_prof_addr, jit_all_searcher_prof) =
+            Self::all_searchers_by_profit(|b| b == MevType::Jit, bundles)
+                .into_iter()
+                .unzip();
+
+        let (jit_all_searcher_rev_addr, jit_all_searcher_rev) =
+            Self::all_searchers_by_rev(|b| b == MevType::Jit, bundles)
+                .into_iter()
+                .unzip();
+
+        let (jit_biggest_tx_prof, jit_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::Jit, bundles).unzip();
+
+        let (jit_biggest_tx_rev, jit_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::Jit, bundles).unzip();
+
         let (jit_pool_addr_prof, jit_pool_addr_rev, jit_pool_prof, jit_pool_rev) =
             Self::most_transacted_pool(|b| b == MevType::Jit, bundles, Self::get_pool_fn)
                 .four_unzip();
         let (jit_pair_addr_prof, jit_pair_addr_rev, jit_pair_prof, jit_pair_rev) =
             Self::most_transacted_pair(|b| b == MevType::Jit, bundles, Self::get_pair_fn)
-                .four_unzip();
+                .unwrap_or_default();
         let (jit_dex_addr_prof, jit_dex_addr_rev, jit_dex_prof, jit_dex_rev) =
             Self::most_transacted_dex(|b| b == MevType::Jit, bundles, Self::get_dex_fn)
                 .four_unzip();
+
+        let (jit_fund_rev_addr, jit_fund_rev) =
+            Self::top_fund_by_type_rev(|b| b == MevType::Jit, bundles).unzip();
+        let (jit_fund_profit_addr, jit_fund_profit) =
+            Self::top_fund_by_type_profit(|b| b == MevType::Jit, bundles).unzip();
+
+        let (jit_all_funds_rev_addr, jit_all_funds_rev) =
+            Self::all_funds_by_type_rev(|b| b == MevType::Jit, bundles)
+                .into_iter()
+                .unzip();
+        let (jit_all_funds_profit_addr, jit_all_funds_profit) =
+            Self::all_funds_by_type_profit(|b| b == MevType::Jit, bundles)
+                .into_iter()
+                .unzip();
+
+        let (
+            jit_all_pools_addr_prof,
+            jit_all_pools_prof,
+            jit_all_pools_addr_rev,
+            jit_all_pools_rev,
+        ) = Self::all_transacted_pools(|b| b == MevType::Jit, bundles, Self::get_pool_fn)
+            .four_unzip();
+
+        let (
+            jit_all_pairs_addr_prof,
+            jit_all_pairs_prof,
+            jit_all_pairs_addr_rev,
+            jit_all_pairs_rev,
+        ) = Self::all_transacted_pairs(|b| b == MevType::Jit, bundles, Self::get_pair_fn)
+            .four_unzip();
+
+        let (
+            jit_all_dexes_addr_prof,
+            jit_all_dexes_prof,
+            jit_all_dexes_addr_rev,
+            jit_all_dexes_rev,
+        ) = Self::all_transacted_dexes(|b| b == MevType::Jit, bundles, Self::get_dex_fn)
+            .four_unzip();
 
         // Jit Sando Fields
         let (jit_sandwich_biggest_tx_prof, jit_sandwich_biggest_prof) =
@@ -384,6 +781,25 @@ impl BlockAnalysis {
             Self::top_searcher_by_profit(|b| b == MevType::JitSandwich, bundles).unzip();
         let (jit_sandwich_searcher_rev_addr, jit_sandwich_searcher_rev) =
             Self::top_searcher_by_rev(|b| b == MevType::JitSandwich, bundles).unzip();
+
+        let (jit_sandwich_all_searcher_prof_addr, jit_sandwich_all_searcher_prof) =
+            Self::all_searchers_by_profit(|b| b == MevType::JitSandwich, bundles)
+                .into_iter()
+                .unzip();
+
+        let (jit_sandwich_all_searcher_rev_addr, jit_sandwich_all_searcher_rev) =
+            Self::all_searchers_by_rev(|b| b == MevType::JitSandwich, bundles)
+                .into_iter()
+                .unzip();
+
+        let (jit_sandwich_all_funds_rev_addr, jit_sandwich_all_funds_rev) =
+            Self::all_funds_by_type_rev(|b| b == MevType::JitSandwich, bundles)
+                .into_iter()
+                .unzip();
+        let (jit_sandwich_all_funds_profit_addr, jit_sandwich_all_funds_profit) =
+            Self::all_funds_by_type_profit(|b| b == MevType::JitSandwich, bundles)
+                .into_iter()
+                .unzip();
 
         let (
             jit_sandwich_pool_addr_prof,
@@ -398,7 +814,7 @@ impl BlockAnalysis {
             jit_sandwich_pair_prof,
             jit_sandwich_pair_rev,
         ) = Self::most_transacted_pair(|b| b == MevType::JitSandwich, bundles, Self::get_pair_fn)
-            .four_unzip();
+            .unwrap_or_default();
         let (
             jit_sandwich_dex_addr_prof,
             jit_sandwich_dex_addr_rev,
@@ -406,11 +822,66 @@ impl BlockAnalysis {
             jit_sandwich_dex_rev,
         ) = Self::most_transacted_dex(|b| b == MevType::JitSandwich, bundles, Self::get_dex_fn)
             .four_unzip();
+
+        let (jit_sandwich_fund_rev_addr, jit_sandwich_fund_rev) =
+            Self::top_fund_by_type_rev(|b| b == MevType::JitSandwich, bundles).unzip();
+        let (jit_sandwich_fund_profit_addr, jit_sandwich_fund_profit) =
+            Self::top_fund_by_type_profit(|b| b == MevType::JitSandwich, bundles).unzip();
+
+        let (
+            jit_sandwich_all_pools_addr_prof,
+            jit_sandwich_all_pools_prof,
+            jit_sandwich_all_pools_addr_rev,
+            jit_sandwich_all_pools_rev,
+        ) = Self::all_transacted_pools(|b| b == MevType::JitSandwich, bundles, Self::get_pool_fn)
+            .four_unzip();
+
+        let (
+            jit_sandwich_all_pairs_addr_prof,
+            jit_sandwich_all_pairs_prof,
+            jit_sandwich_all_pairs_addr_rev,
+            jit_sandwich_all_pairs_rev,
+        ) = Self::all_transacted_pairs(|b| b == MevType::JitSandwich, bundles, Self::get_pair_fn)
+            .four_unzip();
+
+        let (
+            jit_sandwich_all_dexes_addr_prof,
+            jit_sandwich_all_dexes_prof,
+            jit_sandwich_all_dexes_addr_rev,
+            jit_sandwich_all_dexes_rev,
+        ) = Self::all_transacted_dexes(|b| b == MevType::JitSandwich, bundles, Self::get_dex_fn)
+            .four_unzip();
+
         // Cex Dex
         let (cex_dex_searcher_prof_addr, cex_dex_searcher_prof) =
             Self::top_searcher_by_profit(|b| b == MevType::CexDex, bundles).unzip();
         let (cex_dex_searcher_rev_addr, cex_dex_searcher_rev) =
             Self::top_searcher_by_rev(|b| b == MevType::CexDex, bundles).unzip();
+
+        let (cex_dex_biggest_tx_prof, cex_dex_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::CexDex, bundles).unzip();
+
+        let (cex_dex_biggest_tx_rev, cex_dex_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::CexDex, bundles).unzip();
+
+        let (cex_dex_all_searcher_prof_addr, cex_dex_all_searcher_prof) =
+            Self::all_searchers_by_profit(|b| b == MevType::CexDex, bundles)
+                .into_iter()
+                .unzip();
+
+        let (cex_dex_all_funds_rev_addr, cex_dex_all_funds_rev) =
+            Self::all_funds_by_type_rev(|b| b == MevType::CexDex, bundles)
+                .into_iter()
+                .unzip();
+        let (cex_dex_all_funds_profit_addr, cex_dex_all_funds_profit) =
+            Self::all_funds_by_type_profit(|b| b == MevType::CexDex, bundles)
+                .into_iter()
+                .unzip();
+
+        let (cex_dex_all_searcher_rev_addr, cex_dex_all_searcher_rev) =
+            Self::all_searchers_by_rev(|b| b == MevType::CexDex, bundles)
+                .into_iter()
+                .unzip();
 
         let (cex_dex_fund_rev_addr, cex_dex_fund_rev) =
             Self::top_fund_by_type_rev(|b| b == MevType::CexDex, bundles).unzip();
@@ -422,10 +893,34 @@ impl BlockAnalysis {
                 .four_unzip();
         let (cex_dex_pair_addr_prof, cex_dex_pair_addr_rev, cex_dex_pair_prof, cex_dex_pair_rev) =
             Self::most_transacted_pair(|b| b == MevType::CexDex, bundles, Self::get_pair_fn)
-                .four_unzip();
+                .unwrap_or_default();
         let (cex_dex_dex_addr_prof, cex_dex_dex_addr_rev, cex_dex_dex_prof, cex_dex_dex_rev) =
             Self::most_transacted_dex(|b| b == MevType::CexDex, bundles, Self::get_dex_fn)
                 .four_unzip();
+
+        let (
+            cex_dex_all_pools_addr_prof,
+            cex_dex_all_pools_prof,
+            cex_dex_all_pools_addr_rev,
+            cex_dex_all_pools_rev,
+        ) = Self::all_transacted_pools(|b| b == MevType::CexDex, bundles, Self::get_pool_fn)
+            .four_unzip();
+
+        let (
+            cex_dex_all_pairs_addr_prof,
+            cex_dex_all_pairs_prof,
+            cex_dex_all_pairs_addr_rev,
+            cex_dex_all_pairs_rev,
+        ) = Self::all_transacted_pairs(|b| b == MevType::CexDex, bundles, Self::get_pair_fn)
+            .four_unzip();
+
+        let (
+            cex_dex_all_dexes_addr_prof,
+            cex_dex_all_dexes_prof,
+            cex_dex_all_dexes_addr_rev,
+            cex_dex_all_dexes_rev,
+        ) = Self::all_transacted_dexes(|b| b == MevType::CexDex, bundles, Self::get_dex_fn)
+            .four_unzip();
 
         // liquidation
         let (liquidation_searcher_prof_addr, liquidation_searcher_prof) =
@@ -441,203 +936,420 @@ impl BlockAnalysis {
                     let BundleData::Liquidation(l) = data else { unreachable!() };
                     l.liquidations
                         .iter()
-                        .map(|l| l.collateral_asset.address)
+                        .map(|l| l.collateral_asset.clone().into())
                         .collect::<Vec<_>>()
                 },
             )
             .four_unzip();
 
+        let (liq_all_token_prof, liq_all_prof, liq_all_token_rev, liq_all_rev) =
+            Self::all_transacted(
+                |b| b == MevType::Liquidation,
+                bundles,
+                |data| {
+                    let BundleData::Liquidation(l) = data else { unreachable!() };
+                    l.liquidations
+                        .iter()
+                        .map(|l| l.collateral_asset.clone().into())
+                        .collect::<Vec<_>>()
+                },
+            )
+            .four_unzip();
+
+        let (liquidation_fund_rev_addr, liquidation_fund_rev) =
+            Self::top_fund_by_type_rev(|b| b == MevType::Liquidation, bundles).unzip();
+        let (liquidation_fund_profit_addr, liquidation_fund_profit) =
+            Self::top_fund_by_type_profit(|b| b == MevType::Liquidation, bundles).unzip();
+
+        let (liquidation_all_searcher_prof_addr, liquidation_all_searcher_prof) =
+            Self::all_searchers_by_profit(|b| b == MevType::Liquidation, bundles)
+                .into_iter()
+                .unzip();
+
+        let (liquidation_all_searcher_rev_addr, liquidation_all_searcher_rev) =
+            Self::all_searchers_by_rev(|b| b == MevType::Liquidation, bundles)
+                .into_iter()
+                .unzip();
+
+        let (liquidation_all_funds_rev_addr, liquidation_all_funds_rev) =
+            Self::all_funds_by_type_rev(|b| b == MevType::Liquidation, bundles)
+                .into_iter()
+                .unzip();
+        let (liquidation_all_funds_profit_addr, liquidation_all_funds_profit) =
+            Self::all_funds_by_type_profit(|b| b == MevType::Liquidation, bundles)
+                .into_iter()
+                .unzip();
+
         Self {
-            block_number: block.block_number,
-            all_total_profit: Self::total_profit_by_type(|f| f != MevType::SearcherTx, bundles),
-            all_total_revenue: Self::total_revenue_by_type(|f| f != MevType::SearcherTx, bundles),
-            all_average_profit_margin: Self::average_profit_margin(
+            block_number:                    block.block_number,
+            all_total_profit:                Self::total_profit_by_type(
+                |f| f != MevType::SearcherTx,
+                bundles,
+            ),
+            all_total_revenue:               Self::total_revenue_by_type(
+                |f| f != MevType::SearcherTx,
+                bundles,
+            ),
+            all_average_profit_margin:       Self::average_profit_margin(
                 |f| f != MevType::SearcherTx,
                 bundles,
             )
             .unwrap_or_default(),
-            all_searchers: Self::unique(|b| b != MevType::SearcherTx, bundles),
-            all_top_searcher_rev: all_rev_am,
-            all_top_searcher_rev_addr: all_rev_addr,
-            all_top_searcher_profit_addr: all_profit_addr,
-            all_top_searcher_profit: all_profit_am,
-            all_top_fund_rev_id: fund_rev,
-            all_top_fund_rev: fund_rev_am,
-            all_top_fund_profit: fund_profit_am,
-            all_top_fund_profit_id: fund_profit,
-            all_fund_count: Self::unique_funds(|b| b != MevType::SearcherTx, bundles),
-            all_most_arbed_pool_address_profit: all_pool_addr_prof,
-            all_most_arbed_pool_profit: all_pool_prof,
-            all_most_arbed_dex_address_revenue: all_dex_addr_rev,
-            all_most_arbed_pair_address_revenue: all_pair_addr_rev,
-            all_most_arbed_pair_address_profit: all_pair_addr_prof,
-            all_most_arbed_dex_profit: all_dex_prof,
-            all_most_arbed_dex_address_profit: all_dex_addr_prof,
-            all_most_arbed_dex_revenue: all_dex_rev,
-            all_most_arbed_pool_address_revenue: all_pool_addr_rev,
-            all_most_arbed_pool_revenue: all_pool_rev,
-            all_most_arbed_pair_revenue: all_pair_rev,
-            all_most_arbed_pair_profit: all_pair_prof,
+            all_searcher_count:              Self::unique(|b| b != MevType::SearcherTx, bundles),
+            all_top_searcher_revenue:        all_rev_addr,
+            all_top_searcher_revenue_amt:    all_rev_am,
+            all_top_searcher_profit:         all_profit_addr,
+            all_top_searcher_profit_amt:     all_profit_am,
+            all_top_fund_revenue:            fund_rev,
+            all_top_fund_revenue_amt:        fund_rev_am,
+            all_top_fund_profit_amt:         fund_profit_am,
+            all_top_fund_profit:             fund_profit,
+            all_fund_count:                  Self::unique_funds(
+                |b| b != MevType::SearcherTx,
+                bundles,
+            ),
+            all_most_arbed_pool_profit:      all_pool_addr_prof,
+            all_most_arbed_pool_profit_amt:  all_pool_prof,
+            all_most_arbed_dex_revenue:      all_dex_addr_rev,
+            all_most_arbed_pair_revenue:     all_pair_addr_rev.unwrap_or_default(),
+            all_most_arbed_pair_profit:      all_pair_addr_prof.unwrap_or_default(),
+            all_most_arbed_dex_profit_amt:   all_dex_prof,
+            all_most_arbed_dex_profit:       all_dex_addr_prof,
+            all_most_arbed_dex_revenue_amt:  all_dex_rev,
+            all_most_arbed_pool_revenue:     all_pool_addr_rev,
+            all_most_arbed_pool_revenue_amt: all_pool_rev,
+            all_most_arbed_pair_revenue_amt: all_pair_rev,
+            all_most_arbed_pair_profit_amt:  all_pair_prof,
+            all_biggest_arb_profit:          all_biggest_tx_prof,
+            all_biggest_arb_profit_amt:      all_biggest_prof,
+            all_biggest_arb_revenue:         all_biggest_tx_rev,
+            all_biggest_arb_revenue_amt:     all_biggest_rev,
+
             // atomic
-            atomic_searchers: Self::unique(|b| b == MevType::AtomicArb, bundles),
-            atomic_fund_count: Self::unique_funds(|b| b == MevType::AtomicArb, bundles),
-            atomic_total_profit: Self::total_profit_by_type(|b| b == MevType::AtomicArb, bundles),
-            atomic_total_revenue: Self::total_revenue_by_type(|b| b == MevType::AtomicArb, bundles),
-            atomic_top_searcher_profit_addr: atomic_searcher_prof_addr,
-            atomic_top_searcher_rev_addr: atomic_searcher_rev_addr,
-            atomic_top_searcher_profit: atomic_searcher_prof,
-            atomic_top_searcher_rev: atomic_searcher_rev,
-            atomic_top_fund_profit: atomic_fund_profit,
-            atomic_top_fund_profit_id: atomic_fund_profit_addr,
-            atomic_top_fund_rev_id: atomic_fund_rev_addr,
-            atomic_top_fund_rev: atomic_fund_rev,
-            atomic_most_arbed_dex_profit: atomic_dex_prof,
-            atomic_most_arbed_dex_address_profit: atomic_dex_addr_prof,
-            atomic_most_arbed_dex_address_revenue: atomic_dex_addr_rev,
-            atomic_most_arbed_dex_revenue: atomic_dex_rev,
-            atomic_most_arbed_pair_profit: atomic_pair_prof,
-            atomic_most_arbed_pair_address_profit: atomic_pair_addr_prof,
-            atomic_most_arbed_pair_address_revenue: atomic_pair_addr_rev,
-            atomic_most_arbed_pair_revenue: atomic_pair_rev,
-            atomic_most_arbed_pool_revenue: atomic_pool_rev,
-            atomic_most_arbed_pool_profit: atomic_pool_prof,
-            atomic_most_arbed_pool_address_revenue: atomic_pool_addr_rev,
-            atomic_most_arbed_pool_address_profit: atomic_pool_addr_prof,
-            atomic_average_profit_margin: Self::average_profit_margin(
+            atomic_searcher_count:              Self::unique(|b| b == MevType::AtomicArb, bundles),
+            atomic_fund_count:                  Self::unique_funds(
+                |b| b == MevType::AtomicArb,
+                bundles,
+            ),
+            atomic_total_profit:                Self::total_profit_by_type(
+                |b| b == MevType::AtomicArb,
+                bundles,
+            ),
+            atomic_total_revenue:               Self::total_revenue_by_type(
+                |b| b == MevType::AtomicArb,
+                bundles,
+            ),
+            atomic_top_searcher_profit:         atomic_searcher_prof_addr,
+            atomic_top_searcher_revenue:        atomic_searcher_rev_addr,
+            atomic_top_searcher_profit_amt:     atomic_searcher_prof,
+            atomic_top_searcher_revenue_amt:    atomic_searcher_rev,
+            atomic_top_fund_profit_amt:         atomic_fund_profit,
+            atomic_top_fund_profit:             atomic_fund_profit_addr,
+            atomic_top_fund_revenue:            atomic_fund_rev_addr,
+            atomic_top_fund_revenue_amt:        atomic_fund_rev,
+            atomic_most_arbed_dex_profit_amt:   atomic_dex_prof,
+            atomic_most_arbed_dex_profit:       atomic_dex_addr_prof,
+            atomic_most_arbed_dex_revenue:      atomic_dex_addr_rev,
+            atomic_most_arbed_dex_revenue_amt:  atomic_dex_rev,
+            atomic_most_arbed_pair_profit_amt:  Some(atomic_pair_prof),
+            atomic_most_arbed_pair_profit:      atomic_pair_addr_prof,
+            atomic_most_arbed_pair_revenue:     atomic_pair_addr_rev,
+            atomic_most_arbed_pair_revenue_amt: Some(atomic_pair_rev),
+            atomic_most_arbed_pool_revenue_amt: atomic_pool_rev,
+            atomic_most_arbed_pool_profit_amt:  atomic_pool_prof,
+            atomic_most_arbed_pool_revenue:     atomic_pool_addr_rev,
+            atomic_most_arbed_pool_profit:      atomic_pool_addr_prof,
+            atomic_average_profit_margin:       Self::average_profit_margin(
                 |f| f == MevType::AtomicArb,
                 bundles,
             )
             .unwrap_or_default(),
+            atomic_biggest_arb_profit:          atomic_biggest_tx_prof,
+            atomic_biggest_arb_profit_amt:      atomic_biggest_prof,
+            atomic_biggest_arb_revenue:         atomic_biggest_tx_rev,
+            atomic_biggest_arb_revenue_amt:     atomic_biggest_rev,
+            atomic_searcher_all_profit:         atomic_all_searcher_prof_addr,
+            atomic_searcher_all_profit_amt:     atomic_all_searcher_prof,
+            atomic_searcher_all_revenue:        atomic_all_searcher_rev_addr,
+            atomic_searcher_all_revenue_amt:    atomic_all_searcher_rev,
+            atomic_fund_all_profit:             atomic_all_funds_profit_addr,
+            atomic_fund_all_profit_amt:         atomic_all_funds_profit,
+            atomic_fund_all_revenue:            atomic_all_funds_rev_addr,
+            atomic_fund_all_revenue_amt:        atomic_all_funds_rev,
+            atomic_arbed_dex_all_profit:        atomic_all_dexes_addr_prof,
+            atomic_arbed_dex_all_profit_amt:    atomic_all_dexes_prof,
+            atomic_arbed_dex_all_revenue:       atomic_all_dexes_addr_rev,
+            atomic_arbed_dex_all_revenue_amt:   atomic_all_dexes_rev,
+            atomic_arbed_pair_all_profit:       atomic_all_pairs_addr_prof,
+            atomic_arbed_pair_all_profit_amt:   atomic_all_pairs_prof,
+            atomic_arbed_pair_all_revenue:      atomic_all_pairs_addr_rev,
+            atomic_arbed_pair_all_revenue_amt:  atomic_all_pairs_rev,
+            atomic_arbed_pool_all_profit:       atomic_all_pools_addr_prof,
+            atomic_arbed_pool_all_profit_amt:   atomic_all_pools_prof,
+            atomic_arbed_pool_all_revenue:      atomic_all_pools_addr_rev,
+            atomic_arbed_pool_all_revenue_amt:  atomic_all_pools_rev,
 
             // sandwich
-            sandwich_searchers: Self::unique(|b| b == MevType::Sandwich, bundles),
-            sandwich_total_profit: Self::total_profit_by_type(|b| b == MevType::Sandwich, bundles),
-            sandwich_total_revenue: Self::total_revenue_by_type(
+            sandwich_searcher_count:              Self::unique(|b| b == MevType::Sandwich, bundles),
+            sandwich_total_profit:                Self::total_profit_by_type(
                 |b| b == MevType::Sandwich,
                 bundles,
             ),
-            sandwich_biggest_arb_profit: sandwich_biggest_prof,
-            sandwich_biggest_arb_profit_hash: sandwich_biggest_tx_prof,
-            sandwich_biggest_arb_revenue: sandwich_biggest_rev,
-            sandwich_biggest_arb_revenue_hash: sandwich_biggest_tx_rev,
-            sandwich_top_searcher_profit_addr: sandwich_searcher_prof_addr,
-            sandwich_top_searcher_rev_addr: sandwich_searcher_rev_addr,
-            sandwich_top_searcher_profit: sandwich_searcher_prof,
-            sandwich_top_searcher_rev: sandwich_searcher_rev,
-            sandwich_most_arbed_dex_profit: sandwich_dex_prof,
-            sandwich_most_arbed_dex_address_profit: sandwich_dex_addr_prof,
-            sandwich_most_arbed_dex_address_revenue: sandwich_dex_addr_rev,
-            sandwich_most_arbed_dex_revenue: sandwich_dex_rev,
-            sandwich_most_arbed_pair_profit: sandwich_pair_prof,
-            sandwich_most_arbed_pair_address_profit: sandwich_pair_addr_prof,
-            sandwich_most_arbed_pair_address_revenue: sandwich_pair_addr_rev,
-            sandwich_most_arbed_pair_revenue: sandwich_pair_rev,
-            sandwich_most_arbed_pool_revenue: sandwich_pool_rev,
-            sandwich_most_arbed_pool_profit: sandwich_pool_prof,
-            sandwich_most_arbed_pool_address_profit: sandwich_pool_addr_prof,
-            sandwich_most_arbed_pool_address_revenue: sandwich_pool_addr_rev,
-            sandwich_average_profit_margin: Self::average_profit_margin(
+            sandwich_total_revenue:               Self::total_revenue_by_type(
+                |b| b == MevType::Sandwich,
+                bundles,
+            ),
+            sandwich_biggest_arb_profit_amt:      sandwich_biggest_prof,
+            sandwich_biggest_arb_profit:          sandwich_biggest_tx_prof,
+            sandwich_biggest_arb_revenue_amt:     sandwich_biggest_rev,
+            sandwich_biggest_arb_revenue:         sandwich_biggest_tx_rev,
+            sandwich_top_searcher_profit:         sandwich_searcher_prof_addr,
+            sandwich_top_searcher_revenue:        sandwich_searcher_rev_addr,
+            sandwich_top_searcher_profit_amt:     sandwich_searcher_prof,
+            sandwich_top_searcher_revenue_amt:    sandwich_searcher_rev,
+            sandwich_most_arbed_dex_profit_amt:   sandwich_dex_prof,
+            sandwich_most_arbed_dex_profit:       sandwich_dex_addr_prof,
+            sandwich_most_arbed_dex_revenue:      sandwich_dex_addr_rev,
+            sandwich_most_arbed_dex_revenue_amt:  sandwich_dex_rev,
+            sandwich_most_arbed_pair_profit_amt:  Some(sandwich_pair_prof),
+            sandwich_most_arbed_pair_profit:      sandwich_pair_addr_prof,
+            sandwich_most_arbed_pair_revenue:     sandwich_pair_addr_rev,
+            sandwich_most_arbed_pair_revenue_amt: Some(sandwich_pair_rev),
+            sandwich_most_arbed_pool_revenue_amt: sandwich_pool_rev,
+            sandwich_most_arbed_pool_profit_amt:  sandwich_pool_prof,
+            sandwich_most_arbed_pool_profit:      sandwich_pool_addr_prof,
+            sandwich_most_arbed_pool_revenue:     sandwich_pool_addr_rev,
+            sandwich_average_profit_margin:       Self::average_profit_margin(
                 |f| f == MevType::Sandwich,
                 bundles,
             )
             .unwrap_or_default(),
+            sandwich_fund_count:                  Self::unique_funds(
+                |b| b == MevType::Sandwich,
+                bundles,
+            ),
+            sandwich_top_fund_profit_amt:         sandwich_fund_profit,
+            sandwich_top_fund_profit:             sandwich_fund_profit_addr,
+            sandwich_top_fund_revenue:            sandwich_fund_rev_addr,
+            sandwich_top_fund_revenue_amt:        sandwich_fund_rev,
+            sandwich_searcher_all_profit:         sandwich_all_searcher_prof_addr,
+            sandwich_searcher_all_profit_amt:     sandwich_all_searcher_prof,
+            sandwich_searcher_all_revenue:        sandwich_all_searcher_rev_addr,
+            sandwich_searcher_all_revenue_amt:    sandwich_all_searcher_rev,
+            sandwich_fund_all_profit:             sandwich_all_funds_profit_addr,
+            sandwich_fund_all_profit_amt:         sandwich_all_funds_profit,
+            sandwich_fund_all_revenue:            sandwich_all_funds_rev_addr,
+            sandwich_fund_all_revenue_amt:        sandwich_all_funds_rev,
+            sandwich_arbed_dex_all_profit:        sandwich_all_dexes_addr_prof,
+            sandwich_arbed_dex_all_profit_amt:    sandwich_all_dexes_prof,
+            sandwich_arbed_dex_all_revenue:       sandwich_all_dexes_addr_rev,
+            sandwich_arbed_dex_all_revenue_amt:   sandwich_all_dexes_rev,
+            sandwich_arbed_pair_all_profit:       sandwich_all_pairs_addr_prof,
+            sandwich_arbed_pair_all_profit_amt:   sandwich_all_pairs_prof,
+            sandwich_arbed_pair_all_revenue:      sandwich_all_pairs_addr_rev,
+            sandwich_arbed_pair_all_revenue_amt:  sandwich_all_pairs_rev,
+            sandwich_arbed_pool_all_profit:       sandwich_all_pools_addr_prof,
+            sandwich_arbed_pool_all_profit_amt:   sandwich_all_pools_prof,
+            sandwich_arbed_pool_all_revenue:      sandwich_all_pools_addr_rev,
+            sandwich_arbed_pool_all_revenue_amt:  sandwich_all_pools_rev,
 
             // jit
-            jit_searchers: Self::unique(|b| b == MevType::Jit, bundles),
-            jit_total_profit: Self::total_profit_by_type(|b| b == MevType::Jit, bundles),
-            jit_total_revenue: Self::total_revenue_by_type(|b| b == MevType::Jit, bundles),
-            jit_top_searcher_profit_addr: jit_searcher_prof_addr,
-            jit_top_searcher_rev_addr: jit_searcher_rev_addr,
-            jit_top_searcher_profit: jit_searcher_prof,
-            jit_top_searcher_rev: jit_searcher_rev,
-            jit_most_arbed_dex_profit: jit_dex_prof,
-            jit_most_arbed_dex_address_profit: jit_dex_addr_prof,
-            jit_most_arbed_dex_address_revenue: jit_dex_addr_rev,
-            jit_most_arbed_dex_revenue: jit_dex_rev,
-            jit_most_arbed_pair_profit: jit_pair_prof,
-            jit_most_arbed_pair_address_profit: jit_pair_addr_prof,
-            jit_most_arbed_pair_address_revenue: jit_pair_addr_rev,
-            jit_most_arbed_pair_revenue: jit_pair_rev,
-            jit_most_arbed_pool_revenue: jit_pool_rev,
-            jit_most_arbed_pool_profit: jit_pool_prof,
-            jit_most_arbed_pool_address_profit: jit_pool_addr_prof,
-            jit_most_arbed_pool_address_revenue: jit_pool_addr_rev,
-            jit_average_profit_margin: Self::average_profit_margin(|f| f == MevType::Jit, bundles)
-                .unwrap_or_default(),
+            jit_searcher_count:              Self::unique(|b| b == MevType::Jit, bundles),
+            jit_total_profit:                Self::total_profit_by_type(
+                |b| b == MevType::Jit,
+                bundles,
+            ),
+            jit_total_revenue:               Self::total_revenue_by_type(
+                |b| b == MevType::Jit,
+                bundles,
+            ),
+            jit_top_searcher_profit:         jit_searcher_prof_addr,
+            jit_top_searcher_revenue:        jit_searcher_rev_addr,
+            jit_top_searcher_profit_amt:     jit_searcher_prof,
+            jit_top_searcher_revenue_amt:    jit_searcher_rev,
+            jit_most_arbed_dex_profit_amt:   jit_dex_prof,
+            jit_most_arbed_dex_profit:       jit_dex_addr_prof,
+            jit_most_arbed_dex_revenue:      jit_dex_addr_rev,
+            jit_most_arbed_dex_revenue_amt:  jit_dex_rev,
+            jit_most_arbed_pair_profit_amt:  Some(jit_pair_prof),
+            jit_most_arbed_pair_profit:      jit_pair_addr_prof,
+            jit_most_arbed_pair_revenue:     jit_pair_addr_rev,
+            jit_most_arbed_pair_revenue_amt: Some(jit_pair_rev),
+            jit_most_arbed_pool_revenue_amt: jit_pool_rev,
+            jit_most_arbed_pool_profit_amt:  jit_pool_prof,
+            jit_most_arbed_pool_profit:      jit_pool_addr_prof,
+            jit_most_arbed_pool_revenue:     jit_pool_addr_rev,
+            jit_average_profit_margin:       Self::average_profit_margin(
+                |f| f == MevType::Jit,
+                bundles,
+            )
+            .unwrap_or_default(),
+            jit_biggest_arb_profit:          jit_biggest_tx_prof,
+            jit_biggest_arb_profit_amt:      jit_biggest_prof,
+            jit_biggest_arb_revenue:         jit_biggest_tx_rev,
+            jit_biggest_arb_revenue_amt:     jit_biggest_rev,
+            jit_fund_count:                  Self::unique_funds(|b| b == MevType::Jit, bundles),
+            jit_top_fund_profit_amt:         jit_fund_profit,
+            jit_top_fund_profit:             jit_fund_profit_addr,
+            jit_top_fund_revenue:            jit_fund_rev_addr,
+            jit_top_fund_revenue_amt:        jit_fund_rev,
+            jit_searcher_all_profit:         jit_all_searcher_prof_addr,
+            jit_searcher_all_profit_amt:     jit_all_searcher_prof,
+            jit_searcher_all_revenue:        jit_all_searcher_rev_addr,
+            jit_searcher_all_revenue_amt:    jit_all_searcher_rev,
+            jit_fund_all_profit:             jit_all_funds_profit_addr,
+            jit_fund_all_profit_amt:         jit_all_funds_profit,
+            jit_fund_all_revenue:            jit_all_funds_rev_addr,
+            jit_fund_all_revenue_amt:        jit_all_funds_rev,
+            jit_arbed_dex_all_profit:        jit_all_dexes_addr_prof,
+            jit_arbed_dex_all_profit_amt:    jit_all_dexes_prof,
+            jit_arbed_dex_all_revenue:       jit_all_dexes_addr_rev,
+            jit_arbed_dex_all_revenue_amt:   jit_all_dexes_rev,
+            jit_arbed_pair_all_profit:       jit_all_pairs_addr_prof,
+            jit_arbed_pair_all_profit_amt:   jit_all_pairs_prof,
+            jit_arbed_pair_all_revenue:      jit_all_pairs_addr_rev,
+            jit_arbed_pair_all_revenue_amt:  jit_all_pairs_rev,
+            jit_arbed_pool_all_profit:       jit_all_pools_addr_prof,
+            jit_arbed_pool_all_profit_amt:   jit_all_pools_prof,
+            jit_arbed_pool_all_revenue:      jit_all_pools_addr_rev,
+            jit_arbed_pool_all_revenue_amt:  jit_all_pools_rev,
 
             // jit sando
-            jit_sandwich_searchers: Self::unique(|b| b == MevType::JitSandwich, bundles),
-            jit_sandwich_average_profit_margin: Self::average_profit_margin(
+            jit_sandwich_searcher_count:              Self::unique(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
+            jit_sandwich_average_profit_margin:       Self::average_profit_margin(
                 |f| f == MevType::JitSandwich,
                 bundles,
             )
             .unwrap_or_default(),
-            jit_sandwich_total_profit: Self::total_profit_by_type(
+            jit_sandwich_total_profit:                Self::total_profit_by_type(
                 |b| b == MevType::JitSandwich,
                 bundles,
             ),
-            jit_sandwich_total_revenue: Self::total_revenue_by_type(
+            jit_sandwich_total_revenue:               Self::total_revenue_by_type(
                 |b| b == MevType::JitSandwich,
                 bundles,
             ),
-            jit_sandwich_top_searcher_profit_addr: jit_sandwich_searcher_prof_addr,
-            jit_sandwich_top_searcher_rev_addr: jit_sandwich_searcher_rev_addr,
-            jit_sandwich_top_searcher_profit: jit_sandwich_searcher_prof,
-            jit_sandwich_top_searcher_rev: jit_sandwich_searcher_rev,
-            jit_sandwich_most_arbed_dex_profit: jit_sandwich_dex_prof,
-            jit_sandwich_most_arbed_dex_address_profit: jit_sandwich_dex_addr_prof,
-            jit_sandwich_most_arbed_dex_address_revenue: jit_sandwich_dex_addr_rev,
-            jit_sandwich_most_arbed_dex_revenue: jit_sandwich_dex_rev,
-            jit_sandwich_most_arbed_pair_profit: jit_sandwich_pair_prof,
-            jit_sandwich_most_arbed_pair_address_profit: jit_sandwich_pair_addr_prof,
-            jit_sandwich_most_arbed_pair_address_revenue: jit_sandwich_pair_addr_rev,
-            jit_sandwich_most_arbed_pair_revenue: jit_sandwich_pair_rev,
-            jit_sandwich_most_arbed_pool_revenue: jit_sandwich_pool_rev,
-            jit_sandwich_most_arbed_pool_profit: jit_sandwich_pool_prof,
-            jit_sandwich_most_arbed_pool_address_profit: jit_sandwich_pool_addr_prof,
-            jit_sandwich_most_arbed_pool_address_revenue: jit_sandwich_pool_addr_rev,
-
-            jit_sandwich_biggest_arb_profit:       jit_sandwich_biggest_prof,
-            jit_sandwich_biggest_arb_profit_hash:  jit_sandwich_biggest_tx_prof,
-            jit_sandwich_biggest_arb_revenue:      jit_sandwich_biggest_rev,
-            jit_sandwich_biggest_arb_revenue_hash: jit_sandwich_biggest_tx_rev,
+            jit_sandwich_top_searcher_profit:         jit_sandwich_searcher_prof_addr,
+            jit_sandwich_top_searcher_revenue:        jit_sandwich_searcher_rev_addr,
+            jit_sandwich_top_searcher_profit_amt:     jit_sandwich_searcher_prof,
+            jit_sandwich_top_searcher_revenue_amt:    jit_sandwich_searcher_rev,
+            jit_sandwich_most_arbed_dex_profit_amt:   jit_sandwich_dex_prof,
+            jit_sandwich_most_arbed_dex_profit:       jit_sandwich_dex_addr_prof,
+            jit_sandwich_most_arbed_dex_revenue:      jit_sandwich_dex_addr_rev,
+            jit_sandwich_most_arbed_dex_revenue_amt:  jit_sandwich_dex_rev,
+            jit_sandwich_most_arbed_pair_profit_amt:  Some(jit_sandwich_pair_prof),
+            jit_sandwich_most_arbed_pair_profit:      jit_sandwich_pair_addr_prof,
+            jit_sandwich_most_arbed_pair_revenue:     jit_sandwich_pair_addr_rev,
+            jit_sandwich_most_arbed_pair_revenue_amt: Some(jit_sandwich_pair_rev),
+            jit_sandwich_most_arbed_pool_revenue_amt: jit_sandwich_pool_rev,
+            jit_sandwich_most_arbed_pool_profit_amt:  jit_sandwich_pool_prof,
+            jit_sandwich_most_arbed_pool_profit:      jit_sandwich_pool_addr_prof,
+            jit_sandwich_most_arbed_pool_revenue:     jit_sandwich_pool_addr_rev,
+            jit_sandwich_biggest_arb_profit_amt:      jit_sandwich_biggest_prof,
+            jit_sandwich_biggest_arb_profit:          jit_sandwich_biggest_tx_prof,
+            jit_sandwich_biggest_arb_revenue_amt:     jit_sandwich_biggest_rev,
+            jit_sandwich_biggest_arb_revenue:         jit_sandwich_biggest_tx_rev,
+            jit_sandwich_fund_count:                  Self::unique_funds(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
+            jit_sandwich_top_fund_profit_amt:         jit_sandwich_fund_profit,
+            jit_sandwich_top_fund_profit:             jit_sandwich_fund_profit_addr,
+            jit_sandwich_top_fund_revenue:            jit_sandwich_fund_rev_addr,
+            jit_sandwich_top_fund_revenue_amt:        jit_sandwich_fund_rev,
+            jit_sandwich_searcher_all_profit:         jit_sandwich_all_searcher_prof_addr,
+            jit_sandwich_searcher_all_profit_amt:     jit_sandwich_all_searcher_prof,
+            jit_sandwich_searcher_all_revenue:        jit_sandwich_all_searcher_rev_addr,
+            jit_sandwich_searcher_all_revenue_amt:    jit_sandwich_all_searcher_rev,
+            jit_sandwich_fund_all_profit:             jit_sandwich_all_funds_profit_addr,
+            jit_sandwich_fund_all_profit_amt:         jit_sandwich_all_funds_profit,
+            jit_sandwich_fund_all_revenue:            jit_sandwich_all_funds_rev_addr,
+            jit_sandwich_fund_all_revenue_amt:        jit_sandwich_all_funds_rev,
+            jit_sandwich_arbed_dex_all_profit:        jit_sandwich_all_dexes_addr_prof,
+            jit_sandwich_arbed_dex_all_profit_amt:    jit_sandwich_all_dexes_prof,
+            jit_sandwich_arbed_dex_all_revenue:       jit_sandwich_all_dexes_addr_rev,
+            jit_sandwich_arbed_dex_all_revenue_amt:   jit_sandwich_all_dexes_rev,
+            jit_sandwich_arbed_pair_all_profit:       jit_sandwich_all_pairs_addr_prof,
+            jit_sandwich_arbed_pair_all_profit_amt:   jit_sandwich_all_pairs_prof,
+            jit_sandwich_arbed_pair_all_revenue:      jit_sandwich_all_pairs_addr_rev,
+            jit_sandwich_arbed_pair_all_revenue_amt:  jit_sandwich_all_pairs_rev,
+            jit_sandwich_arbed_pool_all_profit:       jit_sandwich_all_pools_addr_prof,
+            jit_sandwich_arbed_pool_all_profit_amt:   jit_sandwich_all_pools_prof,
+            jit_sandwich_arbed_pool_all_revenue:      jit_sandwich_all_pools_addr_rev,
+            jit_sandwich_arbed_pool_all_revenue_amt:  jit_sandwich_all_pools_rev,
 
             // cex dex
-            cex_dex_searchers: Self::unique(|b| b == MevType::CexDex, bundles),
-            cex_dex_fund_count: Self::unique_funds(|b| b == MevType::CexDex, bundles),
-            cex_dex_total_profit: Self::total_profit_by_type(|f| f == MevType::CexDex, bundles),
-            cex_dex_total_revenue: Self::total_revenue_by_type(|f| f == MevType::CexDex, bundles),
-            cex_dex_average_profit_margin: Self::average_profit_margin(
+            cex_dex_searcher_count:              Self::unique(|b| b == MevType::CexDex, bundles),
+            cex_dex_fund_count:                  Self::unique_funds(
+                |b| b == MevType::CexDex,
+                bundles,
+            ),
+            cex_dex_total_profit:                Self::total_profit_by_type(
+                |f| f == MevType::CexDex,
+                bundles,
+            ),
+            cex_dex_total_revenue:               Self::total_revenue_by_type(
+                |f| f == MevType::CexDex,
+                bundles,
+            ),
+            cex_dex_average_profit_margin:       Self::average_profit_margin(
                 |f| f == MevType::CexDex,
                 bundles,
             )
             .unwrap_or_default(),
-            cex_dex_top_searcher_profit_addr: cex_dex_searcher_prof_addr,
-            cex_dex_top_searcher_rev_addr: cex_dex_searcher_rev_addr,
-            cex_dex_top_searcher_profit: cex_dex_searcher_prof,
-            cex_dex_top_searcher_rev: cex_dex_searcher_rev,
-            cex_dex_top_fund_profit: cex_dex_fund_profit,
-            cex_dex_top_fund_profit_id: cex_dex_fund_profit_addr,
-            cex_dex_top_fund_rev_id: cex_dex_fund_rev_addr,
-            cex_dex_top_fund_rev: cex_dex_fund_rev,
-            cex_dex_most_arbed_dex_profit: cex_dex_dex_prof,
-            cex_dex_most_arbed_dex_address_profit: cex_dex_dex_addr_prof,
-            cex_dex_most_arbed_dex_address_revenue: cex_dex_dex_addr_rev,
-            cex_dex_most_arbed_dex_revenue: cex_dex_dex_rev,
-            cex_dex_most_arbed_pair_profit: cex_dex_pair_prof,
-            cex_dex_most_arbed_pair_address_profit: cex_dex_pair_addr_prof,
-            cex_dex_most_arbed_pair_address_revenue: cex_dex_pair_addr_rev,
-            cex_dex_most_arbed_pair_revenue: cex_dex_pair_rev,
-            cex_dex_most_arbed_pool_revenue: cex_dex_pool_rev,
-            cex_dex_most_arbed_pool_profit: cex_dex_pool_prof,
-            cex_dex_most_arbed_pool_address_profit: cex_dex_pool_addr_prof,
-            cex_dex_most_arbed_pool_address_revenue: cex_dex_pool_addr_rev,
+            cex_dex_top_searcher_profit:         cex_dex_searcher_prof_addr,
+            cex_dex_top_searcher_revenue:        cex_dex_searcher_rev_addr,
+            cex_dex_top_searcher_profit_amt:     cex_dex_searcher_prof,
+            cex_dex_top_searcher_revenue_amt:    cex_dex_searcher_rev,
+            cex_dex_top_fund_profit_amt:         cex_dex_fund_profit,
+            cex_dex_top_fund_profit:             cex_dex_fund_profit_addr,
+            cex_dex_top_fund_revenue:            cex_dex_fund_rev_addr,
+            cex_dex_top_fund_revenue_amt:        cex_dex_fund_rev,
+            cex_dex_most_arbed_dex_profit_amt:   cex_dex_dex_prof,
+            cex_dex_most_arbed_dex_profit:       cex_dex_dex_addr_prof,
+            cex_dex_most_arbed_dex_revenue:      cex_dex_dex_addr_rev,
+            cex_dex_most_arbed_dex_revenue_amt:  cex_dex_dex_rev,
+            cex_dex_most_arbed_pair_profit_amt:  Some(cex_dex_pair_prof),
+            cex_dex_most_arbed_pair_profit:      cex_dex_pair_addr_prof,
+            cex_dex_most_arbed_pair_revenue:     cex_dex_pair_addr_rev,
+            cex_dex_most_arbed_pair_revenue_amt: Some(cex_dex_pair_rev),
+            cex_dex_most_arbed_pool_revenue_amt: cex_dex_pool_rev,
+            cex_dex_most_arbed_pool_profit_amt:  cex_dex_pool_prof,
+            cex_dex_most_arbed_pool_profit:      cex_dex_pool_addr_prof,
+            cex_dex_most_arbed_pool_revenue:     cex_dex_pool_addr_rev,
+            cex_dex_biggest_arb_profit:          cex_dex_biggest_tx_prof,
+            cex_dex_biggest_arb_profit_amt:      cex_dex_biggest_prof,
+            cex_dex_biggest_arb_revenue:         cex_dex_biggest_tx_rev,
+            cex_dex_biggest_arb_revenue_amt:     cex_dex_biggest_rev,
+            cex_dex_searcher_all_profit:         cex_dex_all_searcher_prof_addr,
+            cex_dex_searcher_all_profit_amt:     cex_dex_all_searcher_prof,
+            cex_dex_searcher_all_revenue:        cex_dex_all_searcher_rev_addr,
+            cex_dex_searcher_all_revenue_amt:    cex_dex_all_searcher_rev,
+            cex_dex_fund_all_profit:             cex_dex_all_funds_profit_addr,
+            cex_dex_fund_all_profit_amt:         cex_dex_all_funds_profit,
+            cex_dex_fund_all_revenue:            cex_dex_all_funds_rev_addr,
+            cex_dex_fund_all_revenue_amt:        cex_dex_all_funds_rev,
+            cex_dex_arbed_dex_all_profit:        cex_dex_all_dexes_addr_prof,
+            cex_dex_arbed_dex_all_profit_amt:    cex_dex_all_dexes_prof,
+            cex_dex_arbed_dex_all_revenue:       cex_dex_all_dexes_addr_rev,
+            cex_dex_arbed_dex_all_revenue_amt:   cex_dex_all_dexes_rev,
+            cex_dex_arbed_pair_all_profit:       cex_dex_all_pairs_addr_prof,
+            cex_dex_arbed_pair_all_profit_amt:   cex_dex_all_pairs_prof,
+            cex_dex_arbed_pair_all_revenue:      cex_dex_all_pairs_addr_rev,
+            cex_dex_arbed_pair_all_revenue_amt:  cex_dex_all_pairs_rev,
+            cex_dex_arbed_pool_all_profit:       cex_dex_all_pools_addr_prof,
+            cex_dex_arbed_pool_all_profit_amt:   cex_dex_all_pools_prof,
+            cex_dex_arbed_pool_all_revenue:      cex_dex_all_pools_addr_rev,
+            cex_dex_arbed_pool_all_revenue_amt:  cex_dex_all_pools_rev,
 
             // liquidation
-            liquidation_top_searcher_profit_addr: liquidation_searcher_prof_addr,
-            liquidation_top_searcher_rev_addr:    liquidation_searcher_rev_addr,
-            liquidation_top_searcher_profit:      liquidation_searcher_prof,
-            liquidation_top_searcher_rev:         liquidation_searcher_rev,
+            liquidation_top_searcher_profit:      liquidation_searcher_prof_addr,
+            liquidation_top_searcher_revenue:     liquidation_searcher_rev_addr,
+            liquidation_top_searcher_profit_amt:  liquidation_searcher_prof,
+            liquidation_top_searcher_revenue_amt: liquidation_searcher_rev,
             liquidation_average_profit_margin:    Self::average_profit_margin(
                 |b| b == MevType::Liquidation,
                 bundles,
@@ -647,7 +1359,7 @@ impl BlockAnalysis {
                 |b| b == MevType::Liquidation,
                 bundles,
             ),
-            liquidation_searchers:                Self::unique(
+            liquidation_searcher_count:           Self::unique(
                 |b| b == MevType::Liquidation,
                 bundles,
             ),
@@ -655,14 +1367,34 @@ impl BlockAnalysis {
                 |b| b == MevType::Liquidation,
                 bundles,
             ),
-            most_liquidated_token_rev:            liq_most_rev,
-            most_liquidated_token_profit:         liq_most_prof,
-            most_liquidated_token_address_rev:    liq_most_token_rev,
-            most_liquidated_token_address_profit: liq_most_token_prof,
+            most_liquidated_token_revenue_amt:    liq_most_rev,
+            most_liquidated_token_profit_amt:     liq_most_prof,
+            most_liquidated_token_revenue:        liq_most_token_rev.unwrap_or_default(),
+            most_liquidated_token_profit:         liq_most_token_prof.unwrap_or_default(),
             total_usd_liquidated:                 Self::total_revenue_by_type(
                 |b| b == MevType::Liquidation,
                 bundles,
             ),
+            liquidation_fund_count:               Self::unique_funds(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
+            liquidation_top_fund_profit_amt:      liquidation_fund_profit,
+            liquidation_top_fund_profit:          liquidation_fund_profit_addr,
+            liquidation_top_fund_revenue:         liquidation_fund_rev_addr,
+            liquidation_top_fund_revenue_amt:     liquidation_fund_rev,
+            liquidation_searcher_all_profit:      liquidation_all_searcher_prof_addr,
+            liquidation_searcher_all_profit_amt:  liquidation_all_searcher_prof,
+            liquidation_searcher_all_revenue:     liquidation_all_searcher_rev_addr,
+            liquidation_searcher_all_revenue_amt: liquidation_all_searcher_rev,
+            liquidation_fund_all_profit:          liquidation_all_funds_profit_addr,
+            liquidation_fund_all_profit_amt:      liquidation_all_funds_profit,
+            liquidation_fund_all_revenue:         liquidation_all_funds_rev_addr,
+            liquidation_fund_all_revenue_amt:     liquidation_all_funds_rev,
+            liquidated_tokens_profit:             liq_all_token_prof,
+            liquidated_tokens_profit_amt:         liq_all_prof,
+            liquidated_tokens_revenue:            liq_all_token_rev,
+            liquidated_tokens_revenue_amt:        liq_all_rev,
         }
     }
 
@@ -723,35 +1455,35 @@ impl BlockAnalysis {
         }
     }
 
-    fn get_pair_fn(data: &BundleData) -> Vec<Pair> {
+    fn get_pair_fn(data: &BundleData) -> Vec<TokenPairDetails> {
         match data {
             BundleData::Jit(j) => j
                 .victim_swaps
                 .iter()
                 .flatten()
-                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
                 .collect::<Vec<_>>(),
             BundleData::JitSandwich(j) => j
                 .victim_swaps
                 .iter()
                 .flatten()
-                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
                 .collect::<Vec<_>>(),
             BundleData::CexDex(c) => c
                 .swaps
                 .iter()
-                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
                 .collect::<Vec<_>>(),
             BundleData::Sandwich(c) => c
                 .victim_swaps
                 .iter()
                 .flatten()
-                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
                 .collect::<Vec<_>>(),
             BundleData::AtomicArb(a) => a
                 .swaps
                 .iter()
-                .map(|s| Pair(s.token_in.address, s.token_out.address).ordered())
+                .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
                 .collect::<Vec<_>>(),
             _ => vec![],
         }
@@ -812,6 +1544,28 @@ impl BlockAnalysis {
             .max_by(|a, b| a.1.total_cmp(&b.1))
     }
 
+    fn all_funds_by_type_profit(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Vec<(Fund, f64)> {
+        let mut map = HashMap::new();
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.mev_type()))
+            .filter_map(|b| {
+                if b.header.fund == Fund::None {
+                    None
+                } else {
+                    Some((b.header.fund, b.header.profit_usd))
+                }
+            })
+            .for_each(|(f, amt)| {
+                *map.entry(f).or_insert(0.0) += amt;
+            });
+
+        map.into_iter().collect_vec()
+    }
+
     fn top_fund_by_type_rev(
         mev_type: impl Fn(MevType) -> bool,
         bundles: &[Bundle],
@@ -829,6 +1583,28 @@ impl BlockAnalysis {
             .max_by(|a, b| a.1.total_cmp(&b.1))
     }
 
+    fn all_funds_by_type_rev(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Vec<(Fund, f64)> {
+        let mut map = HashMap::new();
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.mev_type()))
+            .filter_map(|b| {
+                if b.header.fund == Fund::None {
+                    None
+                } else {
+                    Some((b.header.fund, b.header.profit_usd + b.header.bribe_usd))
+                }
+            })
+            .for_each(|(f, amt)| {
+                *map.entry(f).or_insert(0.0) += amt;
+            });
+
+        map.into_iter().collect_vec()
+    }
+
     fn top_searcher_by_profit(
         mev_type: impl Fn(MevType) -> bool,
         bundles: &[Bundle],
@@ -838,6 +1614,25 @@ impl BlockAnalysis {
             .filter(|b| mev_type(b.data.mev_type()))
             .max_by(|a, b| a.header.profit_usd.total_cmp(&b.header.profit_usd))
             .map(|r| (r.header.eoa, r.header.profit_usd))
+    }
+
+    fn all_searchers_by_profit(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Vec<(Address, f64)> {
+        let mut map = HashMap::new();
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .for_each(|r| {
+                *map.entry(r.header.eoa).or_insert(0.0) += r.header.profit_usd;
+
+                if let Some(contract) = r.header.mev_contract {
+                    *map.entry(contract).or_insert(0.0) += r.header.profit_usd;
+                }
+            });
+
+        map.into_iter().collect_vec()
     }
 
     fn top_searcher_by_rev(
@@ -854,6 +1649,25 @@ impl BlockAnalysis {
             .map(|r| (r.header.eoa, r.header.profit_usd + r.header.bribe_usd))
     }
 
+    fn all_searchers_by_rev(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+    ) -> Vec<(Address, f64)> {
+        let mut map = HashMap::new();
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .for_each(|r| {
+                *map.entry(r.header.eoa).or_insert(0.0) += r.header.profit_usd + r.header.bribe_usd;
+
+                if let Some(contract) = r.header.mev_contract {
+                    *map.entry(contract).or_insert(0.0) += r.header.profit_usd + r.header.bribe_usd;
+                }
+            });
+
+        map.into_iter().collect_vec()
+    }
+
     fn most_transacted_pool(
         mev_type: impl Fn(MevType) -> bool,
         bundles: &[Bundle],
@@ -862,12 +1676,28 @@ impl BlockAnalysis {
         Self::most_transacted(mev_type, bundles, f)
     }
 
+    fn all_transacted_pools(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<Address>,
+    ) -> (Vec<(Address, f64)>, Vec<(Address, f64)>) {
+        Self::all_transacted(mev_type, bundles, f)
+    }
+
     fn most_transacted_pair(
         mev_type: impl Fn(MevType) -> bool,
         bundles: &[Bundle],
-        f: impl Fn(&BundleData) -> Vec<Pair>,
-    ) -> Option<(Pair, Pair, f64, f64)> {
+        f: impl Fn(&BundleData) -> Vec<TokenPairDetails>,
+    ) -> Option<(TokenPairDetails, TokenPairDetails, f64, f64)> {
         Self::most_transacted(mev_type, bundles, f)
+    }
+
+    fn all_transacted_pairs(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<TokenPairDetails>,
+    ) -> (Vec<(TokenPairDetails, f64)>, Vec<(TokenPairDetails, f64)>) {
+        Self::all_transacted(mev_type, bundles, f)
     }
 
     fn most_transacted_dex(
@@ -876,6 +1706,14 @@ impl BlockAnalysis {
         f: impl Fn(&BundleData) -> Vec<Protocol>,
     ) -> Option<(Protocol, Protocol, f64, f64)> {
         Self::most_transacted(mev_type, bundles, f)
+    }
+
+    fn all_transacted_dexes(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<Protocol>,
+    ) -> (Vec<(Protocol, f64)>, Vec<(Protocol, f64)>) {
+        Self::all_transacted(mev_type, bundles, f)
     }
 
     fn average_profit_margin(
@@ -917,7 +1755,7 @@ impl BlockAnalysis {
             .count() as u64
     }
 
-    fn most_transacted<Ty: Copy + Hash + Eq>(
+    fn most_transacted<Ty: Hash + Eq + Clone>(
         mev_type: impl Fn(MevType) -> bool,
         bundles: &[Bundle],
         f: impl Fn(&BundleData) -> Vec<Ty>,
@@ -936,7 +1774,7 @@ impl BlockAnalysis {
             .into_group_map()
             .iter()
             .max_by(|a, b| a.1.iter().sum::<f64>().total_cmp(&b.1.iter().sum::<f64>()))
-            .map(|t| (*t.0, t.1.iter().sum::<f64>()))?;
+            .map(|t| (t.0.clone(), t.1.iter().sum::<f64>()))?;
 
         let (rev_ty, rev_usd) = bundles
             .iter()
@@ -952,9 +1790,42 @@ impl BlockAnalysis {
             .into_group_map()
             .iter()
             .max_by(|a, b| a.1.iter().sum::<f64>().total_cmp(&b.1.iter().sum::<f64>()))
-            .map(|t| (*t.0, t.1.iter().sum::<f64>()))?;
+            .map(|t| (t.0.clone(), t.1.iter().sum::<f64>()))?;
 
-        Some((profit_ty, rev_ty, profit_usd, rev_usd))
+        Some((profit_ty.clone(), rev_ty.clone(), profit_usd, rev_usd))
+    }
+
+    fn all_transacted<Ty: Hash + Eq + Clone>(
+        mev_type: impl Fn(MevType) -> bool,
+        bundles: &[Bundle],
+        f: impl Fn(&BundleData) -> Vec<Ty>,
+    ) -> (Vec<(Ty, f64)>, Vec<(Ty, f64)>) {
+        let mut profit_map = HashMap::new();
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .for_each(|b| {
+                let res = f(&b.data);
+
+                res.into_iter().for_each(|r| {
+                    *profit_map.entry(r).or_insert(0.0) += b.header.profit_usd;
+                })
+            });
+
+        let mut revenue_map = HashMap::new();
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .for_each(|b| {
+                let res = f(&b.data);
+
+                res.into_iter().for_each(|r| {
+                    *revenue_map.entry(r).or_insert(0.0) +=
+                        b.header.profit_usd + b.header.bribe_usd;
+                })
+            });
+
+        (profit_map.into_iter().collect(), revenue_map.into_iter().collect())
     }
 }
 
@@ -971,5 +1842,111 @@ impl<A, B, C, D> FourUnzip<A, B, C, D> for Option<(A, B, C, D)> {
     {
         self.map(|i| (Some(i.0), Some(i.1), Some(i.2), Some(i.3)))
             .unwrap_or_default()
+    }
+}
+
+pub trait TwoTwoVecUnzip<A, B, C, D> {
+    fn four_unzip(self) -> (Vec<A>, Vec<B>, Vec<C>, Vec<D>)
+    where
+        Self: Sized;
+}
+
+impl<A, B, C, D> TwoTwoVecUnzip<A, B, C, D> for (Vec<(A, B)>, Vec<(C, D)>) {
+    fn four_unzip(self) -> (Vec<A>, Vec<B>, Vec<C>, Vec<D>)
+    where
+        Self: Sized,
+    {
+        let (a, b) = self.0.into_iter().unzip();
+        let (c, d) = self.1.into_iter().unzip();
+        (a, b, c, d)
+    }
+}
+
+#[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
+pub struct TokenPairDetails {
+    pub address0: Address,
+    pub symbol0:  String,
+    pub address1: Address,
+    pub symbol1:  String,
+}
+
+impl Serialize for TokenPairDetails {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        (
+            (format!("{:?}", self.address0), self.symbol0.clone()),
+            (format!("{:?}", self.address1), self.symbol1.clone()),
+        )
+            .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for TokenPairDetails {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: ::serde::Deserializer<'de>,
+    {
+        let ((token0_address, token0_symbol), (token1_address, token1_symbol)): (
+            (String, String),
+            (String, String),
+        ) = serde::Deserialize::deserialize(deserializer)?;
+
+        Ok(Self {
+            address0: Address::from_str(&token0_address).unwrap_or_default(),
+            symbol0:  token0_symbol,
+            address1: Address::from_str(&token1_address).unwrap_or_default(),
+            symbol1:  token1_symbol,
+        })
+    }
+}
+
+impl From<(TokenInfoWithAddress, TokenInfoWithAddress)> for TokenPairDetails {
+    fn from(value: (TokenInfoWithAddress, TokenInfoWithAddress)) -> Self {
+        let (token0, token1) = if Pair(value.0.address, value.1.address).is_ordered() {
+            value
+        } else {
+            (value.1, value.0)
+        };
+
+        Self {
+            address0: token0.address,
+            symbol0:  token0.symbol.clone(),
+            address1: token1.address,
+            symbol1:  token1.symbol.clone(),
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
+pub struct SingleTokenDetails {
+    pub address: Address,
+    pub symbol:  String,
+}
+
+impl Serialize for SingleTokenDetails {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        (format!("{:?}", self.address), self.symbol.clone()).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for SingleTokenDetails {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: ::serde::Deserializer<'de>,
+    {
+        let (address, symbol): (String, String) = serde::Deserialize::deserialize(deserializer)?;
+
+        Ok(Self { address: Address::from_str(&address).unwrap_or_default(), symbol })
+    }
+}
+
+impl From<TokenInfoWithAddress> for SingleTokenDetails {
+    fn from(value: TokenInfoWithAddress) -> Self {
+        Self { address: value.address, symbol: value.inner.symbol }
     }
 }
