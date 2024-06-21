@@ -11,7 +11,9 @@ use crate::{
     db::{searcher::Fund, token_info::TokenInfoWithAddress},
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
     pair::Pair,
-    serde_utils::{option_fund, option_protocol, option_txhash, vec_fund, vec_protocol},
+    serde_utils::{
+        option_address, option_fund, option_protocol, option_txhash, vec_fund, vec_protocol,
+    },
     Protocol,
 };
 
@@ -23,8 +25,10 @@ pub struct BlockAnalysis {
     pub all_total_profit:                f64,
     pub all_total_revenue:               f64,
     pub all_average_profit_margin:       f64,
+    #[serde(with = "option_address")]
     pub all_top_searcher_profit:         Option<Address>,
     pub all_top_searcher_profit_amt:     Option<f64>,
+    #[serde(with = "option_address")]
     pub all_top_searcher_revenue:        Option<Address>,
     pub all_top_searcher_revenue_amt:    Option<f64>,
     pub all_searcher_count:              u64,
@@ -35,8 +39,10 @@ pub struct BlockAnalysis {
     pub all_top_fund_revenue:            Option<Fund>,
     pub all_top_fund_revenue_amt:        Option<f64>,
     pub all_fund_count:                  u64,
+    #[serde(with = "option_address")]
     pub all_most_arbed_pool_profit:      Option<Address>,
     pub all_most_arbed_pool_profit_amt:  Option<f64>,
+    #[serde(with = "option_address")]
     pub all_most_arbed_pool_revenue:     Option<Address>,
     pub all_most_arbed_pool_revenue_amt: Option<f64>,
     pub all_most_arbed_pair_profit:      TokenPairDetails,
@@ -60,8 +66,10 @@ pub struct BlockAnalysis {
     pub atomic_total_profit:                f64,
     pub atomic_total_revenue:               f64,
     pub atomic_average_profit_margin:       f64,
+    #[serde(with = "option_address")]
     pub atomic_top_searcher_profit:         Option<Address>,
     pub atomic_top_searcher_profit_amt:     Option<f64>,
+    #[serde(with = "option_address")]
     pub atomic_top_searcher_revenue:        Option<Address>,
     pub atomic_top_searcher_revenue_amt:    Option<f64>,
     #[serde(rename = "atomic_searcher_all.profit")]
@@ -90,8 +98,10 @@ pub struct BlockAnalysis {
     #[serde(rename = "atomic_fund_all.revenue_amt")]
     pub atomic_fund_all_revenue_amt:        Vec<f64>,
     pub atomic_fund_count:                  u64,
+    #[serde(with = "option_address")]
     pub atomic_most_arbed_pool_profit:      Option<Address>,
     pub atomic_most_arbed_pool_profit_amt:  Option<f64>,
+    #[serde(with = "option_address")]
     pub atomic_most_arbed_pool_revenue:     Option<Address>,
     pub atomic_most_arbed_pool_revenue_amt: Option<f64>,
     pub atomic_most_arbed_pair_profit:      TokenPairDetails,
@@ -141,8 +151,10 @@ pub struct BlockAnalysis {
     pub sandwich_total_profit:                f64,
     pub sandwich_total_revenue:               f64,
     pub sandwich_average_profit_margin:       f64,
+    #[serde(with = "option_address")]
     pub sandwich_top_searcher_profit:         Option<Address>,
     pub sandwich_top_searcher_profit_amt:     Option<f64>,
+    #[serde(with = "option_address")]
     pub sandwich_top_searcher_revenue:        Option<Address>,
     pub sandwich_top_searcher_revenue_amt:    Option<f64>,
     #[serde(rename = "sandwich_searcher_all.profit")]
@@ -171,8 +183,10 @@ pub struct BlockAnalysis {
     #[serde(rename = "sandwich_fund_all.revenue_amt")]
     pub sandwich_fund_all_revenue_amt:        Vec<f64>,
     pub sandwich_fund_count:                  u64,
+    #[serde(with = "option_address")]
     pub sandwich_most_arbed_pool_profit:      Option<Address>,
     pub sandwich_most_arbed_pool_profit_amt:  Option<f64>,
+    #[serde(with = "option_address")]
     pub sandwich_most_arbed_pool_revenue:     Option<Address>,
     pub sandwich_most_arbed_pool_revenue_amt: Option<f64>,
     pub sandwich_most_arbed_pair_profit:      TokenPairDetails,
@@ -222,8 +236,10 @@ pub struct BlockAnalysis {
     pub jit_total_profit:                f64,
     pub jit_total_revenue:               f64,
     pub jit_average_profit_margin:       f64,
+    #[serde(with = "option_address")]
     pub jit_top_searcher_profit:         Option<Address>,
     pub jit_top_searcher_profit_amt:     Option<f64>,
+    #[serde(with = "option_address")]
     pub jit_top_searcher_revenue:        Option<Address>,
     pub jit_top_searcher_revenue_amt:    Option<f64>,
     #[serde(rename = "jit_searcher_all.profit")]
@@ -252,8 +268,10 @@ pub struct BlockAnalysis {
     #[serde(rename = "jit_fund_all.revenue_amt")]
     pub jit_fund_all_revenue_amt:        Vec<f64>,
     pub jit_fund_count:                  u64,
+    #[serde(with = "option_address")]
     pub jit_most_arbed_pool_profit:      Option<Address>,
     pub jit_most_arbed_pool_profit_amt:  Option<f64>,
+    #[serde(with = "option_address")]
     pub jit_most_arbed_pool_revenue:     Option<Address>,
     pub jit_most_arbed_pool_revenue_amt: Option<f64>,
     pub jit_most_arbed_pair_profit:      TokenPairDetails,
@@ -303,8 +321,10 @@ pub struct BlockAnalysis {
     pub jit_sandwich_total_profit:                f64,
     pub jit_sandwich_total_revenue:               f64,
     pub jit_sandwich_average_profit_margin:       f64,
+    #[serde(with = "option_address")]
     pub jit_sandwich_top_searcher_profit:         Option<Address>,
     pub jit_sandwich_top_searcher_profit_amt:     Option<f64>,
+    #[serde(with = "option_address")]
     pub jit_sandwich_top_searcher_revenue:        Option<Address>,
     pub jit_sandwich_top_searcher_revenue_amt:    Option<f64>,
     #[serde(rename = "jit_sandwich_searcher_all.profit")]
@@ -333,8 +353,10 @@ pub struct BlockAnalysis {
     #[serde(rename = "jit_sandwich_fund_all.revenue_amt")]
     pub jit_sandwich_fund_all_revenue_amt:        Vec<f64>,
     pub jit_sandwich_fund_count:                  u64,
+    #[serde(with = "option_address")]
     pub jit_sandwich_most_arbed_pool_profit:      Option<Address>,
     pub jit_sandwich_most_arbed_pool_profit_amt:  Option<f64>,
+    #[serde(with = "option_address")]
     pub jit_sandwich_most_arbed_pool_revenue:     Option<Address>,
     pub jit_sandwich_most_arbed_pool_revenue_amt: Option<f64>,
     pub jit_sandwich_most_arbed_pair_profit:      TokenPairDetails,
@@ -384,8 +406,10 @@ pub struct BlockAnalysis {
     pub cex_dex_total_profit:                f64,
     pub cex_dex_total_revenue:               f64,
     pub cex_dex_average_profit_margin:       f64,
+    #[serde(with = "option_address")]
     pub cex_dex_top_searcher_profit:         Option<Address>,
     pub cex_dex_top_searcher_profit_amt:     Option<f64>,
+    #[serde(with = "option_address")]
     pub cex_dex_top_searcher_revenue:        Option<Address>,
     pub cex_dex_top_searcher_revenue_amt:    Option<f64>,
     #[serde(rename = "cex_dex_searcher_all.profit")]
@@ -414,8 +438,10 @@ pub struct BlockAnalysis {
     #[serde(rename = "cex_dex_fund_all.revenue_amt")]
     pub cex_dex_fund_all_revenue_amt:        Vec<f64>,
     pub cex_dex_fund_count:                  u64,
+    #[serde(with = "option_address")]
     pub cex_dex_most_arbed_pool_profit:      Option<Address>,
     pub cex_dex_most_arbed_pool_profit_amt:  Option<f64>,
+    #[serde(with = "option_address")]
     pub cex_dex_most_arbed_pool_revenue:     Option<Address>,
     pub cex_dex_most_arbed_pool_revenue_amt: Option<f64>,
     pub cex_dex_most_arbed_pair_profit:      TokenPairDetails,
@@ -465,8 +491,10 @@ pub struct BlockAnalysis {
     pub liquidation_total_profit:             f64,
     pub liquidation_total_revenue:            f64,
     pub liquidation_average_profit_margin:    f64,
+    #[serde(with = "option_address")]
     pub liquidation_top_searcher_profit:      Option<Address>,
     pub liquidation_top_searcher_profit_amt:  Option<f64>,
+    #[serde(with = "option_address")]
     pub liquidation_top_searcher_revenue:     Option<Address>,
     pub liquidation_top_searcher_revenue_amt: Option<f64>,
     #[serde(rename = "liquidation_searcher_all.profit")]
