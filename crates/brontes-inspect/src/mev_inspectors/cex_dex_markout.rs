@@ -1289,7 +1289,7 @@ fn log_price_delta(
     token_in_address: &Address,
     token_out_address: &Address,
     swap_rate: Rational,
-    cex_price: Rational,
+    cex_price2: Rational,
 ) {
     warn!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
@@ -1308,7 +1308,7 @@ fn log_price_delta(
         tx_hash
     );
     warn!(
-        "swap_rate: {}, cex_price: {}", swap_rate.to_float(), cex_price.to_float()
+        "swap_rate: {}, cex_price: {}", swap_rate.to_float(), cex_price2.to_float()
     );
 }
 

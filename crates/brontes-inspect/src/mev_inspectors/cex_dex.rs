@@ -301,6 +301,8 @@ impl<DB: LibmdbxReader> CexDexInspector<'_, DB> {
                 cex_quote.price_maker.1.clone().to_float(),
                 &dex_swap.token_in.address,
                 &dex_swap.token_out.address,
+                swap_rate.clone(),
+                cex_quote.0.clone()
             );
 
             return None
@@ -831,6 +833,8 @@ fn log_price_delta(
     cex_price: f64,
     token_in_address: &Address,
     token_out_address: &Address,
+    swap_rate: Rational,
+    cex_price2: Rational,
 ) {
     error!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
@@ -846,6 +850,9 @@ fn log_price_delta(
         cex_price,
         token_in_address,
         token_out_address
+    );
+    warn!(
+        "swap_rate: {}, cex_price: {}", swap_rate.to_float(), cex_price2.to_float()
     );
 }
 
