@@ -11,11 +11,7 @@ use std::{
 
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
-    db::{
-        dex::DexQuotes,
-        metadata::Metadata,
-        traits::{DBWriter, LibmdbxReader},
-    },
+    db::{dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::Action,
     traits::TracingProvider,
     BlockTree,
@@ -32,9 +28,9 @@ pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
 
 /// deals with all cases on how we get and finalize our metadata
-pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> {
+pub struct MetadataFetcher<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse:            Option<&'static CH>,
-    dex_pricer_stream:     WaitingForPricerFuture<T, DB>,
+    dex_pricer_stream:     WaitingForPricerFuture<T>,
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<(BlockTree<Action>, Metadata)>,
     needs_more_data:       Arc<AtomicBool>,
@@ -42,20 +38,16 @@ pub struct MetadataFetcher<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH:
     force_no_dex_pricing:  bool,
 }
 
-impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle> Drop
-    for MetadataFetcher<T, DB, CH>
-{
+impl<T: TracingProvider, CH: ClickhouseHandle> Drop for MetadataFetcher<T, CH> {
     fn drop(&mut self) {
         tracing::debug!(buf = self.result_buf.len(), "result buffer metadata fetcher");
     }
 }
 
-impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
-    MetadataFetcher<T, DB, CH>
-{
+impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
     pub fn new(
         clickhouse: Option<&'static CH>,
-        dex_pricer_stream: WaitingForPricerFuture<T, DB>,
+        dex_pricer_stream: WaitingForPricerFuture<T>,
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
@@ -83,7 +75,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             && self.clickhouse_futures.is_empty()
     }
 
-    pub fn generate_dex_pricing(&self, block: u64, libmdbx: &'static DB) -> bool {
+    pub fn generate_dex_pricing<DB: LibmdbxReader>(
+        &self,
+        block: u64,
+        libmdbx: &'static DB,
+    ) -> bool {
         (self.always_generate_price
             || libmdbx
                 .get_dex_quotes(block)
@@ -92,7 +88,11 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
             && !self.force_no_dex_pricing
     }
 
-    pub fn load_metadata_for_tree(&mut self, tree: BlockTree<Action>, libmdbx: &'static DB) {
+    pub fn load_metadata_for_tree<DB: LibmdbxReader>(
+        &mut self,
+        tree: BlockTree<Action>,
+        libmdbx: &'static DB,
+    ) {
         let block = tree.header.number;
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
@@ -163,9 +163,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle>
     }
 }
 
-impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
-    for MetadataFetcher<T, DB, CH>
-{
+impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataFetcher<T, CH> {
     type Item = (BlockTree<Action>, Metadata);
 
     fn poll_next(
