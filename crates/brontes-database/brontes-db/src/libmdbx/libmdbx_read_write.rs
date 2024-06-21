@@ -87,6 +87,8 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         start_block: u64,
         end_block: u64,
     ) -> eyre::Result<StateToInitialize>;
+
+    fn get_db_range(&self) -> eyre::Result<(u64, u64)>;
 }
 
 #[derive(Clone)]
@@ -297,6 +299,22 @@ impl LibmdbxInit for LibmdbxReadWriter {
             .collect::<FastHashMap<_, _>>();
 
         Ok(StateToInitialize { ranges_to_init: table_ranges })
+    }
+
+    fn get_db_range(&self) -> eyre::Result<(u64, u64)> {
+        let tx = self.db.ro_tx()?;
+        let mut cur = tx.cursor_read::<BlockInfo>()?;
+
+        let start_block = cur
+            .first()?
+            .ok_or_else(|| eyre::eyre!("no start block found. database most likely empty"))?
+            .0;
+        let end_block = cur
+            .last()?
+            .ok_or_else(|| eyre::eyre!("no start block found. database most likely empty"))?
+            .0;
+
+        Ok((start_block, end_block))
     }
 }
 

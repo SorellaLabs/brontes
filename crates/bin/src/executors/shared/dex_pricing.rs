@@ -55,13 +55,9 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             block_number=%block))
             .await;
 
-        // we will keep trying to send util it is resolved;
+        // we will keep trying to send util it is resolved or the channel is dropped
         while let Err(e) = tx.try_send((pricer, res)) {
-            let TrySendError::Full((f_pricer, f_res)) = e else {
-                // if channel is dropped, then we don't try again
-                tracing::error!(err=%e, "failed to send dex pricing result, channel closed");
-                return
-            };
+            let TrySendError::Full((f_pricer, f_res)) = e else { return };
 
             pricer = f_pricer;
             res = f_res;

@@ -61,6 +61,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub cli_only: bool,
     pub init_crit_tables: bool,
     pub metrics: bool,
+    pub is_snapshot: bool,
     _p: PhantomData<P>,
 }
 
@@ -85,6 +86,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         cli_only: bool,
         init_crit_tables: bool,
         metrics: bool,
+        is_snapshot: bool,
     ) -> Self {
         Self {
             clickhouse,
@@ -103,6 +105,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             init_crit_tables,
             metrics,
             tip_db,
+            is_snapshot,
             _p: PhantomData,
         }
     }
@@ -154,6 +157,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .collect_vec(),
         );
+
         let range_metrics = self.metrics.then(|| {
             GlobalRangeMetrics::new(chunks.iter().map(|(start, end)| end - start).collect_vec())
         });
@@ -171,9 +175,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 #[allow(clippy::async_yields_async)]
                 async move {
                     tracing::info!(batch_id, start_block, end_block, "Starting batch");
-                    self.init_block_range_tables(ranges, tables_pb.clone())
-                        .await
-                        .unwrap();
+
+                    if !self.is_snapshot {
+                        self.init_block_range_tables(ranges, tables_pb.clone())
+                            .await
+                            .unwrap();
+                    }
 
                     #[allow(clippy::async_yields_async)]
                     RangeExecutorWithPricing::new(
@@ -366,6 +373,22 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         let futures = FuturesUnordered::new();
 
         let pricing_metrics = self.metrics.then(DexPricingMetrics::default);
+
+        if self.is_snapshot {
+            let (start_block, db_end_block) = self.libmdbx.get_db_range()?;
+            if self.start_block.is_none()
+                || !had_end_block
+                || self.start_block < Some(start_block)
+                || end_block > db_end_block
+            {
+                eyre::bail!(
+                    "the current db snapshot block range is {}-{}, please make sure that your set \
+                     range falls within these bounds",
+                    start_block,
+                    db_end_block
+                );
+            }
+        }
 
         if had_end_block && self.start_block.is_some() {
             self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
