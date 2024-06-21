@@ -151,11 +151,17 @@ impl ClickhouseBuffered {
 
     pub async fn shutdown(&mut self) {
         tracing::info!("starting shutdown process clickhouse writer");
-        while !self.rx.is_closed() {
+
+        let mut last_message = Instant::now();
+        // if we go 1s without a message, we assume shutdown was complete
+        while last_message.elapsed() < Duration::from_secs(1) {
+            let mut message = false;
             while let Ok(value) = self.rx.try_recv() {
                 if value.is_empty() {
                     continue
                 }
+
+                message = true;
 
                 let enum_kind = value.first().as_ref().unwrap().data.get_db_enum();
                 let entry = self.value_map.entry(enum_kind.clone()).or_default();
@@ -173,9 +179,13 @@ impl ClickhouseBuffered {
                     enum_kind.clone(),
                 ))));
             }
-
-            while (self.futs.next().await).is_some() {}
+            // inserts take some time so we update last message here
+            if message {
+                last_message = Instant::now();
+            }
         }
+
+        while (self.futs.next().await).is_some() {}
     }
 }
 

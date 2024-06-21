@@ -61,7 +61,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
                 ProgressBar::with_draw_target(Some(bytes), ProgressDrawTarget::stderr_with_hz(30));
             let style = ProgressStyle::default_bar()
                 .template(
-                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} mb \
+                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} bytes \
                      ({percent}%) | ETA: {eta}",
                 )
                 .expect("Invalid progress bar template")
