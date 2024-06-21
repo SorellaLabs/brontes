@@ -353,9 +353,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                     Pair(swap.token_in.address, swap.token_out.address),
                                 )
                             });
+                            let a = effective_price.clone().to_float();
+                            let b = dex_pricing_rate.clone().to_float();
                             tracing::warn!(
-                                ?effective_price.to_float(),
-                                ?dex_pricing_rate.to_float(),
+                                ?a,
+                                ?b,
                                 ?swap,
                                 ?am_in_price_log,
                                 ?am_out_price_log,
