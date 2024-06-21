@@ -13,6 +13,8 @@ brontes-macros.workspace = true
 brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
 moka = { version = "0.12.7", features = ["sync"] }
 
+regex = "1"
+
 reth-tracing-ext.workspace = true
 # alloy
 alloy-primitives = { workspace = true, features = [

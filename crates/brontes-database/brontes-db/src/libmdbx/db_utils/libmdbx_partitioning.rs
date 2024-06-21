@@ -14,7 +14,7 @@ use crate::{
 
 pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
 /// 1 week / 12 seconds
-const DEFAULT_PARTITION_SIZE: u64 = 50_400;
+pub const DEFAULT_PARTITION_SIZE: u64 = 50_400;
 
 #[macro_export]
 macro_rules! move_tables_to_partition {
@@ -41,22 +41,20 @@ macro_rules! move_tables_to_partition {
 
 pub struct LibmdbxPartitioner {
     // db with all the data
-    parent_db:             LibmdbxReadWriter,
-    partition_db_folder:   PathBuf,
-    partition_size_blocks: u64,
-    start_block:           Option<u64>,
-    executor:              BrontesTaskExecutor,
+    parent_db:           LibmdbxReadWriter,
+    partition_db_folder: PathBuf,
+    start_block:         Option<u64>,
+    executor:            BrontesTaskExecutor,
 }
 
 impl LibmdbxPartitioner {
     pub fn new(
         parent_db: LibmdbxReadWriter,
         partition_db_folder: PathBuf,
-        partition_size_blocks: u64,
         start_block: Option<u64>,
         executor: BrontesTaskExecutor,
     ) -> Self {
-        Self { parent_db, partition_size_blocks, start_block, partition_db_folder, executor }
+        Self { parent_db, start_block, partition_db_folder, executor }
     }
 
     pub fn execute(self) -> eyre::Result<()> {
@@ -68,9 +66,9 @@ impl LibmdbxPartitioner {
         let end_block = self.parent_db.get_db_range()?.1;
 
         let mut ranges = vec![];
-        while start_block + self.partition_size_blocks < end_block {
-            ranges.push((start_block, start_block + self.partition_size_blocks));
-            start_block += self.partition_size_blocks
+        while start_block + DEFAULT_PARTITION_SIZE < end_block {
+            ranges.push((start_block, start_block + DEFAULT_PARTITION_SIZE));
+            start_block += DEFAULT_PARTITION_SIZE
         }
 
         // because we are just doing read operations. we can do all this in parallel

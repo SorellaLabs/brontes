@@ -1686,6 +1686,7 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "redefined",
+ "regex",
  "reqwest",
  "reth-codecs",
  "reth-codecs-derive",
