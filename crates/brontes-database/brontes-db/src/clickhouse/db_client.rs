@@ -854,7 +854,7 @@ mod tests {
     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BlockAnalysis::default();
 
-        db.insert_one::<BrontesBlock_Analysis>(&case0)
+        db.insert_one::<BrontesBlock_Analysis2>(&case0)
             .await
             .unwrap();
     }
@@ -872,22 +872,22 @@ mod tests {
     }
 
     async fn run_all(database: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        builder_info(database).await;
-        pools(database).await;
-        atomic_arb(database).await;
-        sandwich(database).await;
-        bundle_header(database).await;
-        liquidations(database).await;
-        jit_sandwich(database).await;
-        jit(database).await;
-        cex_dex(database).await;
-        mev_block(database).await;
-        dex_price_mapping(database).await;
-        // builder_stats(database).await;
-        // searcher_stats(database).await;
-        token_info(database).await;
-        // searcher_info(database).await;
-        tree(database).await;
+        // builder_info(database).await;
+        // pools(database).await;
+        // atomic_arb(database).await;
+        // sandwich(database).await;
+        // bundle_header(database).await;
+        // liquidations(database).await;
+        // jit_sandwich(database).await;
+        // jit(database).await;
+        // cex_dex(database).await;
+        // mev_block(database).await;
+        // dex_price_mapping(database).await;
+        // // builder_stats(database).await;
+        // // searcher_stats(database).await;
+        // token_info(database).await;
+        // // searcher_info(database).await;
+        // tree(database).await;
         block_analysis(database).await;
     }
 

@@ -16,7 +16,7 @@ use crate::{
 };
 
 #[serde_as]
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Row)]
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
 pub struct BlockAnalysis {
     pub block_number:                    u64,
     // all
@@ -120,7 +120,7 @@ pub struct BlockAnalysis {
     pub atomic_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
     #[serde(rename = "atomic_arbed_pair_all.revenue_amt")]
     pub atomic_arbed_pair_all_revenue_amt:  Vec<f64>,
-    #[serde(rename = "atomic_arbed_pair_all.profit")]
+    #[serde(rename = "atomic_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
     pub atomic_arbed_dex_all_profit:        Vec<Protocol>,
     #[serde(rename = "atomic_arbed_dex_all.profit_amt")]
@@ -201,7 +201,7 @@ pub struct BlockAnalysis {
     pub sandwich_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
     #[serde(rename = "sandwich_arbed_pair_all.revenue_amt")]
     pub sandwich_arbed_pair_all_revenue_amt:  Vec<f64>,
-    #[serde(rename = "sandwich_arbed_pair_all.profit")]
+    #[serde(rename = "sandwich_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
     pub sandwich_arbed_dex_all_profit:        Vec<Protocol>,
     #[serde(rename = "sandwich_arbed_dex_all.profit_amt")]
@@ -282,7 +282,7 @@ pub struct BlockAnalysis {
     pub jit_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
     #[serde(rename = "jit_arbed_pair_all.revenue_amt")]
     pub jit_arbed_pair_all_revenue_amt:  Vec<f64>,
-    #[serde(rename = "jit_arbed_pair_all.profit")]
+    #[serde(rename = "jit_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
     pub jit_arbed_dex_all_profit:        Vec<Protocol>,
     #[serde(rename = "jit_arbed_dex_all.profit_amt")]
@@ -363,7 +363,7 @@ pub struct BlockAnalysis {
     pub jit_sandwich_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
     #[serde(rename = "jit_sandwich_arbed_pair_all.revenue_amt")]
     pub jit_sandwich_arbed_pair_all_revenue_amt:  Vec<f64>,
-    #[serde(rename = "jit_sandwich_arbed_pair_all.profit")]
+    #[serde(rename = "jit_sandwich_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
     pub jit_sandwich_arbed_dex_all_profit:        Vec<Protocol>,
     #[serde(rename = "jit_sandwich_arbed_dex_all.profit_amt")]
@@ -444,7 +444,7 @@ pub struct BlockAnalysis {
     pub cex_dex_arbed_pair_all_revenue:      Vec<TokenPairDetails>,
     #[serde(rename = "cex_dex_arbed_pair_all.revenue_amt")]
     pub cex_dex_arbed_pair_all_revenue_amt:  Vec<f64>,
-    #[serde(rename = "cex_dex_arbed_pair_all.profit")]
+    #[serde(rename = "cex_dex_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
     pub cex_dex_arbed_dex_all_profit:        Vec<Protocol>,
     #[serde(rename = "cex_dex_arbed_dex_all.profit_amt")]
@@ -499,17 +499,21 @@ pub struct BlockAnalysis {
     pub most_liquidated_token_revenue_amt:    Option<f64>,
     pub most_liquidated_token_profit:         SingleTokenDetails,
     pub most_liquidated_token_profit_amt:     Option<f64>,
-
     #[serde(rename = "liquidated_tokens.revenue")]
-    pub liquidated_tokens_revenue:     Vec<SingleTokenDetails>,
+    pub liquidated_tokens_revenue:            Vec<SingleTokenDetails>,
     #[serde(rename = "liquidated_tokens.revenue_amt")]
-    pub liquidated_tokens_revenue_amt: Vec<f64>,
+    pub liquidated_tokens_revenue_amt:        Vec<f64>,
     #[serde(rename = "liquidated_tokens.profit")]
-    pub liquidated_tokens_profit:      Vec<SingleTokenDetails>,
+    pub liquidated_tokens_profit:             Vec<SingleTokenDetails>,
     #[serde(rename = "liquidated_tokens.profit_amt")]
-    pub liquidated_tokens_profit_amt:  Vec<f64>,
-
-    pub total_usd_liquidated: f64,
+    pub liquidated_tokens_profit_amt:         Vec<f64>,
+    #[serde(with = "option_txhash")]
+    pub liquidated_biggest_arb_profit:        Option<TxHash>,
+    pub liquidated_biggest_arb_profit_amt:    Option<f64>,
+    #[serde(with = "option_txhash")]
+    pub liquidated_biggest_arb_revenue:       Option<TxHash>,
+    pub liquidated_biggest_arb_revenue_amt:   Option<f64>,
+    pub total_usd_liquidated:                 f64,
 }
 
 impl BlockAnalysis {
@@ -980,6 +984,12 @@ impl BlockAnalysis {
                 .into_iter()
                 .unzip();
 
+        let (liquidation_biggest_tx_prof, liquidation_biggest_prof) =
+            Self::biggest_arb_profit(|b| b == MevType::Liquidation, bundles).unzip();
+
+        let (liquidation_biggest_tx_rev, liquidation_biggest_rev) =
+            Self::biggest_arb_revenue(|b| b == MevType::Liquidation, bundles).unzip();
+
         Self {
             block_number:                    block.block_number,
             all_total_profit:                Self::total_profit_by_type(
@@ -1395,6 +1405,10 @@ impl BlockAnalysis {
             liquidated_tokens_profit_amt:         liq_all_prof,
             liquidated_tokens_revenue:            liq_all_token_rev,
             liquidated_tokens_revenue_amt:        liq_all_rev,
+            liquidated_biggest_arb_profit:        liquidation_biggest_tx_prof,
+            liquidated_biggest_arb_profit_amt:    liquidation_biggest_prof,
+            liquidated_biggest_arb_revenue:       liquidation_biggest_tx_rev,
+            liquidated_biggest_arb_revenue_amt:   liquidation_biggest_rev,
         }
     }
 
@@ -1948,5 +1962,349 @@ impl<'de> Deserialize<'de> for SingleTokenDetails {
 impl From<TokenInfoWithAddress> for SingleTokenDetails {
     fn from(value: TokenInfoWithAddress) -> Self {
         Self { address: value.address, symbol: value.inner.symbol }
+    }
+}
+
+impl Default for BlockAnalysis {
+    fn default() -> Self {
+        BlockAnalysis {
+            atomic_searcher_all_profit:      vec![Default::default()],
+            atomic_searcher_all_profit_amt:  vec![0.0],
+            atomic_searcher_all_revenue:     vec![Default::default()],
+            atomic_searcher_all_revenue_amt: vec![0.0],
+
+            atomic_fund_all_profit:      vec![Fund::JaneStreet],
+            atomic_fund_all_profit_amt:  vec![0.0],
+            atomic_fund_all_revenue:     vec![Fund::JaneStreet],
+            atomic_fund_all_revenue_amt: vec![0.0],
+
+            atomic_arbed_pool_all_profit:      vec![Default::default()],
+            atomic_arbed_pool_all_profit_amt:  vec![0.0],
+            atomic_arbed_pool_all_revenue:     vec![Default::default()],
+            atomic_arbed_pool_all_revenue_amt: vec![0.0],
+
+            atomic_arbed_pair_all_profit:      vec![Default::default()],
+            atomic_arbed_pair_all_profit_amt:  vec![0.0],
+            atomic_arbed_pair_all_revenue:     vec![Default::default()],
+            atomic_arbed_pair_all_revenue_amt: vec![0.0],
+
+            atomic_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
+            atomic_arbed_dex_all_profit_amt:  vec![0.0],
+            atomic_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            atomic_arbed_dex_all_revenue_amt: vec![0.0],
+
+            sandwich_searcher_all_profit:      vec![Default::default()],
+            sandwich_searcher_all_profit_amt:  vec![0.0],
+            sandwich_searcher_all_revenue:     vec![Default::default()],
+            sandwich_searcher_all_revenue_amt: vec![0.0],
+
+            sandwich_fund_all_profit:      vec![Fund::JaneStreet],
+            sandwich_fund_all_profit_amt:  vec![0.0],
+            sandwich_fund_all_revenue:     vec![Fund::JaneStreet],
+            sandwich_fund_all_revenue_amt: vec![0.0],
+
+            sandwich_arbed_pool_all_profit:      vec![Default::default()],
+            sandwich_arbed_pool_all_profit_amt:  vec![0.0],
+            sandwich_arbed_pool_all_revenue:     vec![Default::default()],
+            sandwich_arbed_pool_all_revenue_amt: vec![0.0],
+
+            sandwich_arbed_pair_all_profit:      vec![Default::default()],
+            sandwich_arbed_pair_all_profit_amt:  vec![0.0],
+            sandwich_arbed_pair_all_revenue:     vec![Default::default()],
+            sandwich_arbed_pair_all_revenue_amt: vec![0.0],
+
+            sandwich_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
+            sandwich_arbed_dex_all_profit_amt:  vec![0.0],
+            sandwich_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            sandwich_arbed_dex_all_revenue_amt: vec![0.0],
+
+            jit_searcher_all_profit:      vec![Default::default()],
+            jit_searcher_all_profit_amt:  vec![0.0],
+            jit_searcher_all_revenue:     vec![Default::default()],
+            jit_searcher_all_revenue_amt: vec![0.0],
+
+            jit_fund_all_profit:      vec![Fund::JaneStreet],
+            jit_fund_all_profit_amt:  vec![0.0],
+            jit_fund_all_revenue:     vec![Fund::JaneStreet],
+            jit_fund_all_revenue_amt: vec![0.0],
+
+            jit_arbed_pool_all_profit:      vec![Default::default()],
+            jit_arbed_pool_all_profit_amt:  vec![0.0],
+            jit_arbed_pool_all_revenue:     vec![Default::default()],
+            jit_arbed_pool_all_revenue_amt: vec![0.0],
+
+            jit_arbed_pair_all_profit:      vec![Default::default()],
+            jit_arbed_pair_all_profit_amt:  vec![0.0],
+            jit_arbed_pair_all_revenue:     vec![Default::default()],
+            jit_arbed_pair_all_revenue_amt: vec![0.0],
+
+            jit_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
+            jit_arbed_dex_all_profit_amt:  vec![0.0],
+            jit_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            jit_arbed_dex_all_revenue_amt: vec![0.0],
+
+            jit_sandwich_searcher_all_profit:      vec![Default::default()],
+            jit_sandwich_searcher_all_profit_amt:  vec![0.0],
+            jit_sandwich_searcher_all_revenue:     vec![Default::default()],
+            jit_sandwich_searcher_all_revenue_amt: vec![0.0],
+
+            jit_sandwich_fund_all_profit:      vec![Fund::JaneStreet],
+            jit_sandwich_fund_all_profit_amt:  vec![0.0],
+            jit_sandwich_fund_all_revenue:     vec![Fund::JaneStreet],
+            jit_sandwich_fund_all_revenue_amt: vec![0.0],
+
+            jit_sandwich_arbed_pool_all_profit:      vec![Default::default()],
+            jit_sandwich_arbed_pool_all_profit_amt:  vec![0.0],
+            jit_sandwich_arbed_pool_all_revenue:     vec![Default::default()],
+            jit_sandwich_arbed_pool_all_revenue_amt: vec![0.0],
+
+            jit_sandwich_arbed_pair_all_profit:      vec![Default::default()],
+            jit_sandwich_arbed_pair_all_profit_amt:  vec![0.0],
+            jit_sandwich_arbed_pair_all_revenue:     vec![Default::default()],
+            jit_sandwich_arbed_pair_all_revenue_amt: vec![0.0],
+
+            jit_sandwich_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
+            jit_sandwich_arbed_dex_all_profit_amt:  vec![0.0],
+            jit_sandwich_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            jit_sandwich_arbed_dex_all_revenue_amt: vec![0.0],
+
+            cex_dex_searcher_all_profit:      vec![Default::default()],
+            cex_dex_searcher_all_profit_amt:  vec![0.0],
+            cex_dex_searcher_all_revenue:     vec![Default::default()],
+            cex_dex_searcher_all_revenue_amt: vec![0.0],
+
+            cex_dex_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
+            cex_dex_arbed_dex_all_profit_amt:  vec![Default::default()],
+            cex_dex_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            cex_dex_arbed_dex_all_revenue_amt: vec![Default::default()],
+
+            cex_dex_fund_all_profit:      vec![Fund::JaneStreet],
+            cex_dex_fund_all_profit_amt:  vec![0.0],
+            cex_dex_fund_all_revenue:     vec![Fund::JaneStreet],
+            cex_dex_fund_all_revenue_amt: vec![0.0],
+
+            cex_dex_arbed_pool_all_profit:      vec![Default::default()],
+            cex_dex_arbed_pool_all_profit_amt:  vec![0.0],
+            cex_dex_arbed_pool_all_revenue:     vec![Default::default()],
+            cex_dex_arbed_pool_all_revenue_amt: vec![0.0],
+
+            cex_dex_arbed_pair_all_profit:      vec![Default::default()],
+            cex_dex_arbed_pair_all_profit_amt:  vec![0.0],
+            cex_dex_arbed_pair_all_revenue:     vec![Default::default()],
+            cex_dex_arbed_pair_all_revenue_amt: vec![0.0],
+
+            liquidation_searcher_all_profit:      vec![Default::default()],
+            liquidation_searcher_all_profit_amt:  vec![0.0],
+            liquidation_searcher_all_revenue:     vec![Default::default()],
+            liquidation_searcher_all_revenue_amt: vec![0.0],
+
+            liquidation_fund_all_profit:      vec![Fund::JaneStreet],
+            liquidation_fund_all_profit_amt:  vec![0.0],
+            liquidation_fund_all_revenue:     vec![Fund::JaneStreet],
+            liquidation_fund_all_revenue_amt: vec![0.0],
+
+            liquidated_tokens_profit: vec![Default::default()],
+            liquidated_tokens_profit_amt: vec![0.0],
+            liquidated_tokens_revenue: vec![Default::default()],
+            liquidated_tokens_revenue_amt: vec![0.0],
+            block_number: Default::default(),
+            all_total_profit: Default::default(),
+            all_total_revenue: Default::default(),
+            all_average_profit_margin: Default::default(),
+            all_top_searcher_profit: Default::default(),
+            all_top_searcher_profit_amt: Default::default(),
+            all_top_searcher_revenue: Default::default(),
+            all_top_searcher_revenue_amt: Default::default(),
+            all_searcher_count: Default::default(),
+            all_top_fund_profit: Default::default(),
+            all_top_fund_profit_amt: Default::default(),
+            all_top_fund_revenue: Default::default(),
+            all_top_fund_revenue_amt: Default::default(),
+            all_fund_count: Default::default(),
+            all_most_arbed_pool_profit: Default::default(),
+            all_most_arbed_pool_profit_amt: Default::default(),
+            all_most_arbed_pool_revenue: Default::default(),
+            all_most_arbed_pool_revenue_amt: Default::default(),
+            all_most_arbed_pair_profit: Default::default(),
+            all_most_arbed_pair_profit_amt: Default::default(),
+            all_most_arbed_pair_revenue: Default::default(),
+            all_most_arbed_pair_revenue_amt: Default::default(),
+            all_most_arbed_dex_profit: Default::default(),
+            all_most_arbed_dex_profit_amt: Default::default(),
+            all_most_arbed_dex_revenue: Default::default(),
+            all_most_arbed_dex_revenue_amt: Default::default(),
+            all_biggest_arb_profit: Default::default(),
+            all_biggest_arb_profit_amt: Default::default(),
+            all_biggest_arb_revenue: Default::default(),
+            all_biggest_arb_revenue_amt: Default::default(),
+            atomic_total_profit: Default::default(),
+            atomic_total_revenue: Default::default(),
+            atomic_average_profit_margin: Default::default(),
+            atomic_top_searcher_profit: Default::default(),
+            atomic_top_searcher_profit_amt: Default::default(),
+            atomic_top_searcher_revenue: Default::default(),
+            atomic_top_searcher_revenue_amt: Default::default(),
+            atomic_searcher_count: Default::default(),
+            atomic_top_fund_profit: Default::default(),
+            atomic_top_fund_profit_amt: Default::default(),
+            atomic_top_fund_revenue: Default::default(),
+            atomic_top_fund_revenue_amt: Default::default(),
+            atomic_fund_count: Default::default(),
+            atomic_most_arbed_pool_profit: Default::default(),
+            atomic_most_arbed_pool_profit_amt: Default::default(),
+            atomic_most_arbed_pool_revenue: Default::default(),
+            atomic_most_arbed_pool_revenue_amt: Default::default(),
+            atomic_most_arbed_pair_profit: Default::default(),
+            atomic_most_arbed_pair_profit_amt: Default::default(),
+            atomic_most_arbed_pair_revenue: Default::default(),
+            atomic_most_arbed_pair_revenue_amt: Default::default(),
+            atomic_most_arbed_dex_profit: Default::default(),
+            atomic_most_arbed_dex_profit_amt: Default::default(),
+            atomic_most_arbed_dex_revenue: Default::default(),
+            atomic_most_arbed_dex_revenue_amt: Default::default(),
+            atomic_biggest_arb_profit: Default::default(),
+            atomic_biggest_arb_profit_amt: Default::default(),
+            atomic_biggest_arb_revenue: Default::default(),
+            atomic_biggest_arb_revenue_amt: Default::default(),
+            sandwich_total_profit: Default::default(),
+            sandwich_total_revenue: Default::default(),
+            sandwich_average_profit_margin: Default::default(),
+            sandwich_top_searcher_profit: Default::default(),
+            sandwich_top_searcher_profit_amt: Default::default(),
+            sandwich_top_searcher_revenue: Default::default(),
+            sandwich_top_searcher_revenue_amt: Default::default(),
+            sandwich_searcher_count: Default::default(),
+            sandwich_top_fund_profit: Default::default(),
+            sandwich_top_fund_profit_amt: Default::default(),
+            sandwich_top_fund_revenue: Default::default(),
+            sandwich_top_fund_revenue_amt: Default::default(),
+            sandwich_fund_count: Default::default(),
+            sandwich_most_arbed_pool_profit: Default::default(),
+            sandwich_most_arbed_pool_profit_amt: Default::default(),
+            sandwich_most_arbed_pool_revenue: Default::default(),
+            sandwich_most_arbed_pool_revenue_amt: Default::default(),
+            sandwich_most_arbed_pair_profit: Default::default(),
+            sandwich_most_arbed_pair_profit_amt: Default::default(),
+            sandwich_most_arbed_pair_revenue: Default::default(),
+            sandwich_most_arbed_pair_revenue_amt: Default::default(),
+            sandwich_most_arbed_dex_profit: Default::default(),
+            sandwich_most_arbed_dex_profit_amt: Default::default(),
+            sandwich_most_arbed_dex_revenue: Default::default(),
+            sandwich_most_arbed_dex_revenue_amt: Default::default(),
+            sandwich_biggest_arb_profit: Default::default(),
+            sandwich_biggest_arb_profit_amt: Default::default(),
+            sandwich_biggest_arb_revenue: Default::default(),
+            sandwich_biggest_arb_revenue_amt: Default::default(),
+            jit_total_profit: Default::default(),
+            jit_total_revenue: Default::default(),
+            jit_average_profit_margin: Default::default(),
+            jit_top_searcher_profit: Default::default(),
+            jit_top_searcher_profit_amt: Default::default(),
+            jit_top_searcher_revenue: Default::default(),
+            jit_top_searcher_revenue_amt: Default::default(),
+            jit_searcher_count: Default::default(),
+            jit_top_fund_profit: Default::default(),
+            jit_top_fund_profit_amt: Default::default(),
+            jit_top_fund_revenue: Default::default(),
+            jit_top_fund_revenue_amt: Default::default(),
+            jit_fund_count: Default::default(),
+            jit_most_arbed_pool_profit: Default::default(),
+            jit_most_arbed_pool_profit_amt: Default::default(),
+            jit_most_arbed_pool_revenue: Default::default(),
+            jit_most_arbed_pool_revenue_amt: Default::default(),
+            jit_most_arbed_pair_profit: Default::default(),
+            jit_most_arbed_pair_profit_amt: Default::default(),
+            jit_most_arbed_pair_revenue: Default::default(),
+            jit_most_arbed_pair_revenue_amt: Default::default(),
+            jit_most_arbed_dex_profit: Default::default(),
+            jit_most_arbed_dex_profit_amt: Default::default(),
+            jit_most_arbed_dex_revenue: Default::default(),
+            jit_most_arbed_dex_revenue_amt: Default::default(),
+            jit_biggest_arb_profit: Default::default(),
+            jit_biggest_arb_profit_amt: Default::default(),
+            jit_biggest_arb_revenue: Default::default(),
+            jit_biggest_arb_revenue_amt: Default::default(),
+            jit_sandwich_total_profit: Default::default(),
+            jit_sandwich_total_revenue: Default::default(),
+            jit_sandwich_average_profit_margin: Default::default(),
+            jit_sandwich_top_searcher_profit: Default::default(),
+            jit_sandwich_top_searcher_profit_amt: Default::default(),
+            jit_sandwich_top_searcher_revenue: Default::default(),
+            jit_sandwich_top_searcher_revenue_amt: Default::default(),
+            jit_sandwich_searcher_count: Default::default(),
+            jit_sandwich_top_fund_profit: Default::default(),
+            jit_sandwich_top_fund_profit_amt: Default::default(),
+            jit_sandwich_top_fund_revenue: Default::default(),
+            jit_sandwich_top_fund_revenue_amt: Default::default(),
+            jit_sandwich_fund_count: Default::default(),
+            jit_sandwich_most_arbed_pool_profit: Default::default(),
+            jit_sandwich_most_arbed_pool_profit_amt: Default::default(),
+            jit_sandwich_most_arbed_pool_revenue: Default::default(),
+            jit_sandwich_most_arbed_pool_revenue_amt: Default::default(),
+            jit_sandwich_most_arbed_pair_profit: Default::default(),
+            jit_sandwich_most_arbed_pair_profit_amt: Default::default(),
+            jit_sandwich_most_arbed_pair_revenue: Default::default(),
+            jit_sandwich_most_arbed_pair_revenue_amt: Default::default(),
+            jit_sandwich_most_arbed_dex_profit: Default::default(),
+            jit_sandwich_most_arbed_dex_profit_amt: Default::default(),
+            jit_sandwich_most_arbed_dex_revenue: Default::default(),
+            jit_sandwich_most_arbed_dex_revenue_amt: Default::default(),
+            jit_sandwich_biggest_arb_profit: Default::default(),
+            jit_sandwich_biggest_arb_profit_amt: Default::default(),
+            jit_sandwich_biggest_arb_revenue: Default::default(),
+            jit_sandwich_biggest_arb_revenue_amt: Default::default(),
+            cex_dex_total_profit: Default::default(),
+            cex_dex_total_revenue: Default::default(),
+            cex_dex_average_profit_margin: Default::default(),
+            cex_dex_top_searcher_profit: Default::default(),
+            cex_dex_top_searcher_profit_amt: Default::default(),
+            cex_dex_top_searcher_revenue: Default::default(),
+            cex_dex_top_searcher_revenue_amt: Default::default(),
+            cex_dex_searcher_count: Default::default(),
+            cex_dex_top_fund_profit: Default::default(),
+            cex_dex_top_fund_profit_amt: Default::default(),
+            cex_dex_top_fund_revenue: Default::default(),
+            cex_dex_top_fund_revenue_amt: Default::default(),
+            cex_dex_fund_count: Default::default(),
+            cex_dex_most_arbed_pool_profit: Default::default(),
+            cex_dex_most_arbed_pool_profit_amt: Default::default(),
+            cex_dex_most_arbed_pool_revenue: Default::default(),
+            cex_dex_most_arbed_pool_revenue_amt: Default::default(),
+            cex_dex_most_arbed_pair_profit: Default::default(),
+            cex_dex_most_arbed_pair_profit_amt: Default::default(),
+            cex_dex_most_arbed_pair_revenue: Default::default(),
+            cex_dex_most_arbed_pair_revenue_amt: Default::default(),
+            cex_dex_most_arbed_dex_profit: Default::default(),
+            cex_dex_most_arbed_dex_profit_amt: Default::default(),
+            cex_dex_most_arbed_dex_revenue: Default::default(),
+            cex_dex_most_arbed_dex_revenue_amt: Default::default(),
+
+            cex_dex_biggest_arb_profit:           Default::default(),
+            cex_dex_biggest_arb_profit_amt:       Default::default(),
+            cex_dex_biggest_arb_revenue:          Default::default(),
+            cex_dex_biggest_arb_revenue_amt:      Default::default(),
+            liquidation_total_profit:             Default::default(),
+            liquidation_total_revenue:            Default::default(),
+            liquidation_average_profit_margin:    Default::default(),
+            liquidation_top_searcher_profit:      Default::default(),
+            liquidation_top_searcher_profit_amt:  Default::default(),
+            liquidation_top_searcher_revenue:     Default::default(),
+            liquidation_top_searcher_revenue_amt: Default::default(),
+            liquidation_searcher_count:           Default::default(),
+            liquidation_top_fund_profit:          Default::default(),
+            liquidation_top_fund_profit_amt:      Default::default(),
+            liquidation_top_fund_revenue:         Default::default(),
+            liquidation_top_fund_revenue_amt:     Default::default(),
+            liquidation_fund_count:               Default::default(),
+            most_liquidated_token_revenue:        Default::default(),
+            most_liquidated_token_revenue_amt:    Default::default(),
+            most_liquidated_token_profit:         Default::default(),
+            most_liquidated_token_profit_amt:     Default::default(),
+            liquidated_biggest_arb_profit:        Default::default(),
+            liquidated_biggest_arb_profit_amt:    Default::default(),
+            liquidated_biggest_arb_revenue:       Default::default(),
+            liquidated_biggest_arb_revenue_amt:   Default::default(),
+            total_usd_liquidated:                 Default::default(),
+        }
     }
 }

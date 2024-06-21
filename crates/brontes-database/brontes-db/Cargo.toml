@@ -61,7 +61,7 @@ malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
 db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", optional = true, features = [
-  "test-utils",
+  "test-utils", "alloy-types"
 ] }
 clickhouse = { workspace = true, features = ["tls"] }
 
@@ -137,7 +137,7 @@ brontes-types.workspace = true
 alloy-primitives.workspace = true
 
 [features]
-default = ["cex-dex-markout"]
+default = ["cex-dex-markout", "sorella-server"]
 sorella-server = ["local-reth", "local-clickhouse"]
 cex-dex-markout = ["brontes-types/cex-dex-markout"]
 tests = ["brontes-pricing/tests"]
