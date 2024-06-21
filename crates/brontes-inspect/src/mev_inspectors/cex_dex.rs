@@ -836,8 +836,6 @@ fn log_price_delta(
     swap_rate: Rational,
     cex_price2: Rational,
 ) {
-    assert!(false, "2");
-
     error!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
@@ -853,9 +851,9 @@ fn log_price_delta(
         token_in_address,
         token_out_address
     );
-    warn!(
-        "swap_rate: {}, cex_price: {}", swap_rate.to_float(), cex_price2.to_float()
-    );
+    // warn!(
+    //     "swap_rate: {}, cex_price: {}", swap_rate.to_float(), cex_price2.to_float()
+    // );
 }
 
 #[cfg(test)]
