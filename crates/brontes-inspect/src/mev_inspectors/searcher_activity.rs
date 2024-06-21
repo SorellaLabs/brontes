@@ -97,7 +97,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                             .filter(|_| has_dex_price)
                             .unwrap_or_default();
 
-                        if profit >= MAX_PROFIT {
+                        if profit >= MAX_PROFIT || profit <= -MAX_PROFIT {
                             has_dex_price = false;
                             profit = Rational::ZERO;
                         }
