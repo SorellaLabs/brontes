@@ -226,36 +226,34 @@ Once potential sandwiches are identified from both senders and contracts, the re
 - **Deduplication**: Merges results and removes duplicates to clean up data for accurate analysis.
 - **Partitioning**: Segments the identified sandwiches based on gaps in victim transactions to delineate separate attack incidents.
 
-Take the example where we have the following transactions:
+<div style="text-align: center;">
+ <img src="sandwich/partition-sandwich.png" alt="Possible Sandwich Partitioning" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
 
-Possible Frontruns: [A, B, C]
-Possible Backrun: D
-Victims: [[1,2], [], [3,4]]
+> **Note:**
+>
+> If for some reason the attacker has multiple transactions with no victims in between, the partitioning
+> will not work as expected. See example below.
 
-This would get partitioned into two sandwiches:
-
-1. Possible Frontruns: A
-   Possible Backrun: B
-   Victims: [1, 2]
-
-2. Possible Frontruns: C
-   Possible Backrun: D
-   Victims: [3, 4]
-
-The caveat to this methodology is that if for some reason the attacker has multiple transactions in a row, the partitioning will not work as expected. For example let's take the same example as above:
-
-Possible Frontruns: [A, B, C]
-Possible Backrun: D
-Victims: [[1,2], [], [3,4]]
+- Possible Frontrun A
+- Victim 1
+- Victim 2
+- Possible Frontrun B
+- Possible Frontrun C
+- Victim 3
+- Victim 4
+- Possible Backrun D
 
 The actual sandwich could actually be:
 
-1. First Frontrun: A
-   Victims: [1, 2]
-   Unrelated or misc attacker transaction: B
-   Third Frontrun: C
-   Victims: [3, 4]
-   Backrun: D
+- First Frontrun A
+- Victim 1
+- Victim 2
+- Unrelated or misc attacker transaction: B
+- Third Frontrun: C
+- Victim 3
+- Victim 4
+- Backrun: D
 
 However we are operating under the assumption that attackers are maximally efficient & have no reason to endure the gas overhead. If you find an example of a sandwich attack that breaks this assumption please let us know, we'll give you a bounty.
 
