@@ -131,63 +131,78 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         Self::dedup_bundles(
             self.get_possible_sandwich(tree.clone())
                 .into_iter()
-                .filter_map(
-                    |PossibleSandwichWithTxInfo {
-                         inner:
-                             PossibleSandwich {
-                                 possible_frontruns,
-                                 possible_backrun,
-                                 mev_executor_contract,
-                                 victims,
-                                 ..
-                             },
-                         victims_info,
-                         possible_frontruns_info,
-                         possible_backrun_info,
-                     }| {
-                        if victims.iter().flatten().count() == 0 {
-                            return None
-                        };
-
-                        let victim_swaps_transfers: Vec<_> = self.get_victim_swap_transfer(
-                            victims,
-                            tree.clone(),
-                            search_args.clone(),
-                            mev_executor_contract,
-                        )?;
-
-                        let searcher_actions: Vec<Vec<Action>> = tree
-                            .clone()
-                            .collect_txes(
-                                possible_frontruns
-                                    .iter()
-                                    .copied()
-                                    .chain(std::iter::once(possible_backrun))
-                                    .collect::<Vec<_>>()
-                                    .as_slice(),
-                                search_args.clone(),
-                            )
-                            .map(|actions| {
-                                self.utils
-                                    .flatten_nested_actions_default(actions.into_iter())
-                                    .collect_vec()
-                            })
-                            .collect::<Vec<_>>();
-
-                        self.calculate_sandwich(
-                            tree.clone(),
-                            metadata.clone(),
-                            possible_frontruns_info,
-                            possible_backrun_info,
-                            searcher_actions,
-                            victims_info,
-                            victim_swaps_transfers,
-                            0,
-                        )
-                    },
-                )
+                .filter_map(|ps| {
+                    self.collect_baseline_sandwich_data(
+                        tree.clone(),
+                        search_args.clone(),
+                        ps,
+                        metadata.clone(),
+                    )
+                })
                 .flatten()
                 .collect::<Vec<_>>(),
+        )
+    }
+
+    fn collect_baseline_sandwich_data(
+        &self,
+        tree: Arc<BlockTree<Action>>,
+        search_args: TreeSearchBuilder<Action>,
+        ps: PossibleSandwichWithTxInfo,
+        metadata: Arc<Metadata>,
+    ) -> Option<Vec<Bundle>> {
+        let PossibleSandwichWithTxInfo {
+            inner:
+                PossibleSandwich {
+                    possible_frontruns,
+                    possible_backrun,
+                    mev_executor_contract,
+                    victims,
+                    ..
+                },
+            victims_info,
+            possible_frontruns_info,
+            possible_backrun_info,
+        } = ps;
+
+        if victims.iter().flatten().count() == 0 {
+            return None
+        };
+
+        let victim_swaps_transfers: Vec<_> = self.get_victim_swap_transfer(
+            victims,
+            tree.clone(),
+            search_args.clone(),
+            mev_executor_contract,
+        )?;
+
+        let searcher_actions: Vec<Vec<Action>> = tree
+            .clone()
+            .collect_txes(
+                possible_frontruns
+                    .iter()
+                    .copied()
+                    .chain(std::iter::once(possible_backrun))
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+                search_args.clone(),
+            )
+            .map(|actions| {
+                self.utils
+                    .flatten_nested_actions_default(actions.into_iter())
+                    .collect_vec()
+            })
+            .collect::<Vec<_>>();
+
+        self.calculate_sandwich(
+            tree.clone(),
+            metadata.clone(),
+            possible_frontruns_info,
+            possible_backrun_info,
+            searcher_actions,
+            victims_info,
+            victim_swaps_transfers,
+            0,
         )
     }
 

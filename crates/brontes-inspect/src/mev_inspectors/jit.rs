@@ -12,6 +12,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
+use reth_primitives::TxHash;
 
 use super::MAX_PROFIT;
 use crate::{
@@ -148,35 +149,8 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                             return None
                         }
 
-                        let victim_actions = victims
-                            .iter()
-                            .flatten()
-                            .map(|victim| {
-                                self.utils
-                                    .flatten_nested_actions(
-                                        tree.clone().collect(
-                                            victim,
-                                            TreeSearchBuilder::default().with_actions([
-                                                Action::is_swap,
-                                                Action::is_nested_action,
-                                            ]),
-                                        ),
-                                        &|actions| actions.is_swap(),
-                                    )
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect_vec();
-
-                        if victims
-                            .iter()
-                            .flatten()
-                            .map(|v| tree.get_root(*v).unwrap().get_root_action())
-                            .filter(|d| !d.is_revert())
-                            .any(|d| executor_contract == d.get_to_address())
-                        {
-                            tracing::trace!("victim address is same as mev executor contract");
-                            return None
-                        }
+                        let victim_actions =
+                            self.get_victim_actions(victims, tree.clone(), executor_contract)?;
 
                         self.calculate_jit(
                             front_runs,
@@ -704,6 +678,39 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         });
 
         bundles.into_iter().map(|res| res.1).collect_vec()
+    }
+
+    fn get_victim_actions(
+        &self,
+        victims: Vec<Vec<TxHash>>,
+        tree: Arc<BlockTree<Action>>,
+        executor_contract: Address,
+    ) -> Option<Vec<Vec<Action>>> {
+        let victim_actions = victims
+            .iter()
+            .flatten()
+            .map(|victim| {
+                self.utils
+                    .flatten_nested_actions(
+                        tree.clone().collect(
+                            victim,
+                            TreeSearchBuilder::default()
+                                .with_actions([Action::is_swap, Action::is_nested_action]),
+                        ),
+                        &|actions| actions.is_swap(),
+                    )
+                    .collect::<Vec<_>>()
+            })
+            .collect_vec();
+
+        Some(victim_actions).filter(|_| {
+            !victims
+                .iter()
+                .flatten()
+                .map(|v| tree.get_root(*v).unwrap().get_root_action())
+                .filter(|d| !d.is_revert())
+                .any(|d| executor_contract == d.get_to_address())
+        })
     }
 }
 

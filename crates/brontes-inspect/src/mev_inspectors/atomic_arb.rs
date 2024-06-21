@@ -12,7 +12,8 @@ use brontes_types::{
     },
     pair::Pair,
     tree::BlockTree,
-    FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashSet, IntoZip, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder,
+    TxInfo,
 };
 use itertools::Itertools;
 use malachite::{
@@ -61,10 +62,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                     Action::is_eth_transfer,
                     Action::is_nested_action,
                 ]))
-                .t_full_map(|(k, v)| {
+                .t_full_map(|(tree, v)| {
                     let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();
                     (
-                        k.get_tx_info_batch(&tx_hashes, self.utils.db),
+                        tree.get_tx_info_batch(&tx_hashes, self.utils.db),
                         v.into_iter().map(|v| {
                             self.utils
                                 .flatten_nested_actions_default(v.into_iter())
@@ -72,7 +73,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                         }),
                     )
                 })
-                .into_zip_tree(tree.clone())
+                .into_zip()
                 .filter_map(|(info, action)| {
                     let info = info??;
                     let actions = action?;
