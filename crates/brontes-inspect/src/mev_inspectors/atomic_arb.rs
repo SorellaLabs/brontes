@@ -354,8 +354,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                 )
                             });
                             tracing::warn!(
-                                ?effective_price,
-                                ?dex_pricing_rate,
+                                ?effective_price.to_float(),
+                                ?dex_pricing_rate.to_float(),
                                 ?swap,
                                 ?am_in_price_log,
                                 ?am_out_price_log,
