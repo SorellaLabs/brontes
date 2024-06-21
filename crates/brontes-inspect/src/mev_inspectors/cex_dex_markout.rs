@@ -1291,6 +1291,7 @@ fn log_price_delta(
     swap_rate: Rational,
     cex_price2: Rational,
 ) {
+    assert!(false, "1");
     warn!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
