@@ -854,7 +854,7 @@ mod tests {
     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BlockAnalysis::default();
 
-        db.insert_one::<BrontesBlock_Analysis2>(&case0)
+        db.insert_one::<BrontesBlock_Analysis>(&case0)
             .await
             .unwrap();
     }
