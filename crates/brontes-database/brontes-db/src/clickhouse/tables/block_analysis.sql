@@ -1,5 +1,6 @@
 CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `block_number` UInt64,
+    `eth_price` Float64, 
 
     -- all
     `all_total_profit`                Float64,
