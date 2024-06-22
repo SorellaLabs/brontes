@@ -25,6 +25,7 @@ pub struct BlockAnalysis {
     // all
     pub all_total_profit: f64,
     pub all_total_revenue: f64,
+    pub all_bundle_count: u64,
     pub all_average_profit_margin: f64,
     #[serde(with = "option_address")]
     pub all_top_searcher_profit: Option<Address>,
@@ -64,6 +65,7 @@ pub struct BlockAnalysis {
     pub all_biggest_arb_revenue_amt: Option<f64>,
 
     // atomic
+    pub atomic_bundle_count:                u64,
     pub atomic_total_profit:                f64,
     pub atomic_total_revenue:               f64,
     pub atomic_average_profit_margin:       f64,
@@ -149,6 +151,7 @@ pub struct BlockAnalysis {
     pub atomic_biggest_arb_revenue_amt:     Option<f64>,
 
     // sandwich
+    pub sandwich_bundle_count:                u64,
     pub sandwich_total_profit:                f64,
     pub sandwich_total_revenue:               f64,
     pub sandwich_average_profit_margin:       f64,
@@ -234,6 +237,7 @@ pub struct BlockAnalysis {
     pub sandwich_biggest_arb_revenue_amt:     Option<f64>,
 
     // jit
+    pub jit_bundle_count:                u64,
     pub jit_total_profit:                f64,
     pub jit_total_revenue:               f64,
     pub jit_average_profit_margin:       f64,
@@ -319,6 +323,7 @@ pub struct BlockAnalysis {
     pub jit_biggest_arb_revenue_amt:     Option<f64>,
 
     // jit-sandwich
+    pub jit_sandwich_bundle_count:                u64,
     pub jit_sandwich_total_profit:                f64,
     pub jit_sandwich_total_revenue:               f64,
     pub jit_sandwich_average_profit_margin:       f64,
@@ -404,6 +409,7 @@ pub struct BlockAnalysis {
     pub jit_sandwich_biggest_arb_revenue_amt:     Option<f64>,
 
     // cex dex
+    pub cex_dex_bundle_count:                u64,
     pub cex_dex_total_profit:                f64,
     pub cex_dex_total_revenue:               f64,
     pub cex_dex_average_profit_margin:       f64,
@@ -489,6 +495,7 @@ pub struct BlockAnalysis {
     pub cex_dex_biggest_arb_revenue_amt:     Option<f64>,
 
     // liquidation
+    pub liquidation_bundle_count:             u64,
     pub liquidation_total_profit:             f64,
     pub liquidation_total_revenue:            f64,
     pub liquidation_average_profit_margin:    f64,
@@ -1034,6 +1041,7 @@ impl BlockAnalysis {
         Self {
             block_number: block.block_number,
             eth_price: block.eth_price,
+            all_bundle_count: Self::total_count_by_type(|f| f != MevType::SearcherTx, bundles),
             all_total_profit: Self::total_profit_by_type(|f| f != MevType::SearcherTx, bundles),
             all_total_revenue: Self::total_revenue_by_type(|f| f != MevType::SearcherTx, bundles),
             all_average_profit_margin: Self::average_profit_margin(
@@ -1069,6 +1077,10 @@ impl BlockAnalysis {
             all_biggest_arb_revenue_amt: all_biggest_rev,
 
             // atomic
+            atomic_bundle_count:                Self::total_count_by_type(
+                |b| b == MevType::AtomicArb,
+                bundles,
+            ),
             atomic_searcher_count:              Self::unique(|b| b == MevType::AtomicArb, bundles),
             atomic_fund_count:                  Self::unique_funds(
                 |b| b == MevType::AtomicArb,
@@ -1133,6 +1145,10 @@ impl BlockAnalysis {
             atomic_arbed_pool_all_revenue_amt:  atomic_all_pools_rev,
 
             // sandwich
+            sandwich_bundle_count:                Self::total_count_by_type(
+                |b| b == MevType::Sandwich,
+                bundles,
+            ),
             sandwich_searcher_count:              Self::unique(|b| b == MevType::Sandwich, bundles),
             sandwich_total_profit:                Self::total_profit_by_type(
                 |b| b == MevType::Sandwich,
@@ -1197,6 +1213,10 @@ impl BlockAnalysis {
             sandwich_arbed_pool_all_revenue_amt:  sandwich_all_pools_rev,
 
             // jit
+            jit_bundle_count:                Self::total_count_by_type(
+                |b| b == MevType::Jit,
+                bundles,
+            ),
             jit_searcher_count:              Self::unique(|b| b == MevType::Jit, bundles),
             jit_total_profit:                Self::total_profit_by_type(
                 |b| b == MevType::Jit,
@@ -1258,6 +1278,10 @@ impl BlockAnalysis {
             jit_arbed_pool_all_revenue_amt:  jit_all_pools_rev,
 
             // jit sando
+            jit_sandwich_bundle_count:                Self::total_count_by_type(
+                |b| b == MevType::JitSandwich,
+                bundles,
+            ),
             jit_sandwich_searcher_count:              Self::unique(
                 |b| b == MevType::JitSandwich,
                 bundles,
@@ -1325,6 +1349,10 @@ impl BlockAnalysis {
             jit_sandwich_arbed_pool_all_revenue_amt:  jit_sandwich_all_pools_rev,
 
             // cex dex
+            cex_dex_bundle_count:                Self::total_count_by_type(
+                |b| b == MevType::CexDex,
+                bundles,
+            ),
             cex_dex_searcher_count:              Self::unique(|b| b == MevType::CexDex, bundles),
             cex_dex_fund_count:                  Self::unique_funds(
                 |b| b == MevType::CexDex,
@@ -1389,6 +1417,10 @@ impl BlockAnalysis {
             cex_dex_arbed_pool_all_revenue_amt:  cex_dex_all_pools_rev,
 
             // liquidation
+            liquidation_bundle_count:             Self::total_count_by_type(
+                |b| b == MevType::Liquidation,
+                bundles,
+            ),
             liquidation_top_searcher_profit:      liquidation_searcher_prof_addr,
             liquidation_top_searcher_revenue:     liquidation_searcher_rev_addr,
             liquidation_top_searcher_profit_amt:  liquidation_searcher_prof,
@@ -1585,6 +1617,13 @@ impl BlockAnalysis {
             .filter(|b| mev_type(b.data.mev_type()))
             .map(|s| s.header.profit_usd)
             .sum::<f64>()
+    }
+
+    fn total_count_by_type(mev_type: impl Fn(MevType) -> bool, bundles: &[Bundle]) -> u64 {
+        bundles
+            .iter()
+            .filter(|b| mev_type(b.data.mev_type()))
+            .count() as u64
     }
 
     fn top_fund_by_type_profit(
@@ -2331,6 +2370,13 @@ impl Default for BlockAnalysis {
             cex_dex_most_arbed_dex_profit_amt: Default::default(),
             cex_dex_most_arbed_dex_revenue: Default::default(),
             cex_dex_most_arbed_dex_revenue_amt: Default::default(),
+            cex_dex_bundle_count: Default::default(),
+            all_bundle_count: Default::default(),
+            atomic_bundle_count: Default::default(),
+            jit_bundle_count: Default::default(),
+            sandwich_bundle_count: Default::default(),
+            liquidation_bundle_count: Default::default(),
+            jit_sandwich_bundle_count: Default::default(),
 
             cex_dex_biggest_arb_profit:           Default::default(),
             cex_dex_biggest_arb_profit_amt:       Default::default(),
