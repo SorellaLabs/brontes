@@ -20,93 +20,64 @@ The inspector retrieves transactions in the block that involve `swap`, `transfer
 
 ### Step 2: Identify Potential Sandwiches
 
-The Sandwich Inspector runs two functions in parallel:
+We run two parallel functions to find possible sandwich attacks:
 
-1. `get_possible_sandwich_duplicate_senders`: Finds duplicate EOAs (`from` addresses)
-2. `get_possible_sandwich_duplicate_contracts`: Finds duplicate contract addresses (`to` addresses)
+1. One checks for repeated transactions from the same account: [`get_possible_sandwich_duplicate_senders`](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-inspect/src/mev_inspectors/sandwich/mod.rs#L1045)
+2. The other looks for repeated calls to the same contract: [`get_possible_sandwich_duplicate_contracts`](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-inspect/src/mev_inspectors/sandwich/mod.rs#L1107)
 
-Both functions use the same logic to detect possible sandwich attacks, differing only in their focus. This approach catches attacks executed through repeated contract calls or by the same EOA.
+We use the `PossibleSandwich` type to represent each potential attack:
 
-**Here's how these functions work:**
-
-```rust,ignore
-fn get_possible_sandwich_duplicate_contracts(
-    tree: Arc<BlockTree<Action>>,
-) -> Vec<PossibleSandwich> {
-   let mut duplicate_contracts: HashMap<Address, (B256, Address)> = HashMap::dfault();
-   let mut possible_victims: HashMap<B256, Vec<B256>> = HashMap::default();
-   let mut possible_sandwiches: HashMap<Address, PossibleSandwich> = HashMap::dfault();
-
-   for root in tree.tx_roots.iter() {
-      // Skip if the tx reverted
-      if root.get_root_action().is_revert() {
-         continue
-      }
-
-      match duplicate_mev_contracts.entry(root.get_to_address()) {
-         // If this is the first time this contract has been called within this block,
-         // insert the tx hash into the map
-         Entry::Vacant(duplicate_mev_contract) => {
-               duplicate_mev_contract.insert((root.tx_hash, root.head.address));
-         }
-         // Else get the previous tx hash for this contract & replaces it
-         // with the current tx hash
-         Entry::Occupied(mut duplicate_mev_contract) => {
-               let (prev_tx_hash, frontrun_eoa) = duplicate_mev_contract.get_mut();
-
-               // If the previous transaction calling this contract had possible victims
-               // check if we already have a possible sandwich for it.
-               if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
-                  // If we don't have a possible sandwich for this contract then
-                  // create one
-                  match possible_sandwiches.entry(root.get_to_address()) {
-                     Entry::Vacant(e) => {
-                           e.insert(PossibleSandwich {
-                              eoa:                   *frontrun_eoa,
-                              possible_frontruns:    vec![*prev_tx_hash],
-                              possible_backrun:      root.tx_hash,
-                              mev_executor_contract: root.get_to_address(),
-                              victims:               vec![frontrun_victims],
-                           });
-                     }
-                     // If we do, extend the sandwich, this covers the Big Mac
-                     // Sandwich case
-                     Entry::Occupied(mut o) => {
-                           let sandwich = o.get_mut();
-                           sandwich.possible_frontruns.push(*prev_tx_hash);
-                           sandwich.possible_backrun = root.tx_hash;
-                           sandwich.victims.push(frontrun_victims);
-                     }
-                  }
-               }
-               // Sets the previous tx hash in the duplicate_mev_contract map to
-               // the current tx hash
-               *prev_tx_hash = root.tx_hash;
-         }
-      }
-
-      // For each transaction we've inspected, add the current
-      // transaction hash as a potential victim
-      for (_, v) in possible_victims.iter_mut() {
-         v.push(root.tx_hash);
-      }
-
-      // Insert the current transaction hash into the possible_victims map
-      // to be used in the next iteration
-      possible_victims.insert(root.tx_hash, vec![]);
-   }
-
-   possible_sandwiches.into_values().collect()
+```rust, ignore
+pub struct PossibleSandwich {
+    pub eoa:                   Address,
+    pub possible_frontruns:    Vec<B256>,
+    pub possible_backrun:      B256,
+    pub mev_executor_contract: Address,
+    // Mapping of possible frontruns to the set of possible
+    // victims. By definition the victims of latter transactions
+    // can also be victims of the former
+    pub victims:               Vec<Vec<B256>>,
 }
 ```
 
-This function scans the transaction tree for repeated contract (`to`) addresses. It builds [`PossibleSandwich`](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-inspect/src/mev_inspectors/sandwich/types.rs#L7) structs for each potential attack scenario. Here's how:
+This type holds the attacker's address, frontrun and backrun transactions, the contract used, and sets of victim transactions grouped by frontrun.
 
-1. It tracks duplicate contracts.
-2. It identifies transactions between duplicates as potential victims.
-3. It creates or updates `PossibleSandwich` structs for each scenario.
+#### How It Works
 
-The `PossibleSandwich` results, identified by duplicate sender & contract, are deduplicated before proceeding to the next step.
+Our algorithm constructs the largest possible sandwich scenarios by identifying duplicate addresses. Here's the process:
+
+1. **Track Duplicates**
+
+   - Map addresses (contract or EOA) to their most recent transaction hash
+
+2. **Build Victim Sets**
+
+   - For each transaction, track potential victims (transactions that occur after it)
+
+3. **Construct a `PossibleSandwich`**
+
+   - When we encounter a duplicate address, we create or update a `PossibleSandwich`:
+
+     a) For the first duplicate:
+
+     - Create a new PossibleSandwich
+     - Set the previous transaction as the frontrun
+     - Set the current transaction as the backrun
+     - Add intervening transactions as victims
+
+     b) For subsequent duplicates:
+
+     - Add the previous transaction to possible frontruns
+     - Update the backrun to the current transaction
+     - Add the new set of victims
+
+#### The Result
+
+This step yields a list of `PossibleSandwich`. Each represents a potential sandwich attack, from simple to complex.
+
+We catch what we call "Big Mac" sandwiches - attacks with multiple frontrun transactions, each targeting its own set of victims. [Read more about these complex patterns](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-types/src/mev/sandwich.rs#L29).
+
+We remove duplicates from our list. What remains are the largest, most comprehensive sandwich scenarios in the block. This wide-net approach ensures we don't miss any potential sandwiches, no matter how intricate. We'll analyze the details in later steps.
 
 ### Step 3: Partitioning Possible Sandwiches
 
