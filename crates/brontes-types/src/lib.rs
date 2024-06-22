@@ -3,6 +3,7 @@
 #![feature(const_type_id)]
 #![feature(core_intrinsics)]
 #![allow(internal_features)]
+#![allow(clippy::type_complexity)]
 
 pub mod buf_writer;
 pub mod test_limiter;
