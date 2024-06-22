@@ -1,9 +1,10 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    hash::Hash,
     sync::Arc,
 };
 
+use alloy_primitives::TxHash;
+mod types;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -22,7 +23,8 @@ use malachite::{
     num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
-use reth_primitives::{Address, TxHash, B256};
+use reth_primitives::{Address, B256};
+use types::{PossibleSandwich, PossibleSandwichWithTxInfo};
 
 use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -37,6 +39,7 @@ type VictimSetActions = Option<Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTrans
 const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
 const MAX_NON_SWAP_FRONTRUN: Rational = Rational::const_from_unsigned(5000);
 
+//TODO: Add support for this type of flashloan sandwich
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
 }
@@ -45,51 +48,6 @@ impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
     pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
         Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
     }
-}
-
-pub struct PossibleSandwichWithTxInfo {
-    inner:                   PossibleSandwich,
-    possible_frontruns_info: Vec<TxInfo>,
-    possible_backrun_info:   TxInfo,
-    victims_info:            Vec<Vec<TxInfo>>,
-}
-
-impl PossibleSandwichWithTxInfo {
-    pub fn from_ps(ps: PossibleSandwich, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
-        let backrun = info_set.get(&ps.possible_backrun).cloned()?;
-        let mut frontruns = vec![];
-
-        for fr in &ps.possible_frontruns {
-            frontruns.push(info_set.get(fr).cloned()?);
-        }
-
-        let mut victims = vec![];
-        for victim in &ps.victims {
-            let mut set = vec![];
-            for v in victim {
-                set.push(info_set.get(v).cloned()?);
-            }
-            victims.push(set);
-        }
-
-        Some(PossibleSandwichWithTxInfo {
-            possible_backrun_info:   backrun,
-            possible_frontruns_info: frontruns,
-            victims_info:            victims,
-            inner:                   ps,
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct PossibleSandwich {
-    eoa:                   Address,
-    possible_frontruns:    Vec<B256>,
-    possible_backrun:      B256,
-    mev_executor_contract: Address,
-    // mapping of possible frontruns to set of possible victims
-    // By definition the victims of latter txes are victims of the former
-    victims:               Vec<Vec<B256>>,
 }
 
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
@@ -217,8 +175,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
         recusive: u8,
     ) -> Option<Vec<Bundle>> {
-        // if all of the sandwichers have the same eoa or are all verified contracts.
-        // then we can continue. otherwise false positive
+        // if all of the sandwichers have the same eoa or the to address is an mev
+        // contract then we can continue. otherwise false positive
         if !(possible_front_runs_info
             .iter()
             .chain(vec![&backrun_info])
@@ -513,7 +471,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .is_some()
     }
 
-    /// Because of the recusive split nature of the search,
+    /// Because of the recursive split nature of the search,
     /// we can sometimes get overlap which leads to double counting and
     /// false positives that are unwanted. to combat this
     /// we check all hashes and will check for duplicates.
@@ -569,63 +527,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         bundles.into_iter().map(|res| res.1).collect_vec()
     }
 
-    fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
-        let PossibleSandwich {
-            eoa,
-            possible_frontruns,
-            possible_backrun,
-            mev_executor_contract,
-            victims,
-        } = ps;
-        let mut results = vec![];
-        let mut victim_sets = vec![];
-        let mut last_partition = 0;
-
-        victims.into_iter().enumerate().for_each(|(i, group_set)| {
-            if group_set.is_empty() {
-                results.push(PossibleSandwich {
-                    eoa,
-                    mev_executor_contract,
-                    victims: std::mem::take(&mut victim_sets),
-                    possible_frontruns: possible_frontruns[last_partition..i].to_vec(),
-                    possible_backrun: possible_frontruns
-                        .get(i)
-                        .copied()
-                        .unwrap_or(possible_backrun),
-                });
-                last_partition = i + 1;
-            } else {
-                victim_sets.push(group_set);
-            }
-        });
-
-        if results.is_empty() {
-            results.push(PossibleSandwich {
-                eoa,
-                mev_executor_contract,
-                victims: victim_sets,
-                possible_frontruns,
-                possible_backrun,
-            });
-        } else if !victim_sets.is_empty() {
-            // add remainder
-            results.push(PossibleSandwich {
-                eoa,
-                mev_executor_contract,
-                victims: victim_sets,
-                possible_frontruns: possible_frontruns[last_partition..].to_vec(),
-                possible_backrun,
-            });
-        }
-
-        results
-    }
-
     /// for the given set of possible sandwich data.
     /// will call the main function recursively with two different revisions.
     /// 1) front shrink.
     /// 2) back shrink,
-    ///This is done as it recuserses as this will generate
+    ///This is done recursively as this will generate
     /// all possible sets of sandwiches that can occur.
     fn recursive_possible_sandwiches(
         &self,
@@ -637,16 +543,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         searcher_actions: &[Vec<Action>],
         victim_info: &[Vec<TxInfo>],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
-        mut recusive: u8,
+        mut recursive: u8,
     ) -> Option<Vec<Bundle>> {
         let mut res = vec![];
 
-        if recusive >= 6 {
+        if recursive >= 6 {
             return None
         }
 
         if possible_front_runs_info.len() > 1 {
-            recusive += 1;
+            recursive += 1;
             // remove dropped sandwiches
             if victim_info.is_empty() || victim_actions.is_empty() {
                 return None
@@ -680,7 +586,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions.to_vec(),
                     victim_info,
                     victim_actions,
-                    recusive,
+                    recursive,
                 )
             };
 
@@ -717,7 +623,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions,
                     victim_info,
                     victim_actions,
-                    recusive,
+                    recursive,
                 )
             };
             if let Some(front) = front_shrink {
@@ -789,7 +695,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     }
 
     // for each victim eoa, ensure they are a victim of a frontrun and a backrun
-    // either through a pool or overlapping tokens. However, we also ensure that
+    // either through a pool or overlapping tokens. We also ensure that
     // there exists at-least one sandwich
     fn is_victim(
         grouped_victims: GroupedVictims<'_>,
@@ -836,7 +742,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // wiggle room is to deal with unknowns
         if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
             let victim_pct = (was_victims as f64) / (amount as f64);
-            tracing::debug!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich, "sandiwch no vicitm\n\n\n\n\n\n\n");
+            tracing::debug!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich, "sandwich no victims\n\n\n\n\n\n\n");
             return false
         }
 
@@ -998,11 +904,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 let mut set = ps.possible_frontruns.clone();
                 set.push(ps.possible_backrun);
                 // max multihop of 10 or max total victim of 50
-                if ps.victims.len() > 10 || ps.victims.iter().flatten().count() > 50 {
+                if ps.victims.len() > 10 {
                     return None
                 }
-
                 set.extend(ps.victims.iter().flatten().copied());
+
                 Some(set)
             })
             .flatten()
@@ -1022,6 +928,58 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .filter_map(|ps| PossibleSandwichWithTxInfo::from_ps(ps, &tx_info_map))
             .collect_vec()
+    }
+
+    fn partition_into_gaps(ps: PossibleSandwich) -> Vec<PossibleSandwich> {
+        let PossibleSandwich {
+            eoa,
+            possible_frontruns,
+            possible_backrun,
+            mev_executor_contract,
+            victims,
+        } = ps;
+        let mut results = vec![];
+        let mut victim_sets = vec![];
+        let mut last_partition = 0;
+
+        victims.into_iter().enumerate().for_each(|(i, group_set)| {
+            if group_set.is_empty() {
+                results.push(PossibleSandwich {
+                    eoa,
+                    mev_executor_contract,
+                    victims: std::mem::take(&mut victim_sets),
+                    possible_frontruns: possible_frontruns[last_partition..i].to_vec(),
+                    possible_backrun: possible_frontruns
+                        .get(i)
+                        .copied()
+                        .unwrap_or(possible_backrun),
+                });
+                last_partition = i + 1;
+            } else {
+                victim_sets.push(group_set);
+            }
+        });
+
+        if results.is_empty() {
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns,
+                possible_backrun,
+            });
+        } else if !victim_sets.is_empty() {
+            // add remainder
+            results.push(PossibleSandwich {
+                eoa,
+                mev_executor_contract,
+                victims: victim_sets,
+                possible_frontruns: possible_frontruns[last_partition..].to_vec(),
+                possible_backrun,
+            });
+        }
+
+        results
     }
 
     fn get_victim_swap_transfer(
@@ -1097,7 +1055,6 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Action>>) -> Vec<
             // If we have not seen this sender before, we insert the tx hash into the map
             Entry::Vacant(v) => {
                 v.insert(root.tx_hash);
-                possible_victims.insert(root.tx_hash, vec![]);
             }
             Entry::Occupied(mut o) => {
                 // Get's prev tx hash for this sender & replaces it with the current tx hash
@@ -1124,18 +1081,17 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Action>>) -> Vec<
 
                 // Add current transaction hash to the list of transactions for this sender
                 o.insert(root.tx_hash);
-                possible_victims.insert(root.tx_hash, vec![]);
             }
         }
 
         // Now, for each existing entry in possible_victims, we add the current
         // transaction hash as a potential victim, if it is not the same as
         // the key (which represents another transaction hash)
-        for (k, v) in possible_victims.iter_mut() {
-            if k != &root.tx_hash {
-                v.push(root.tx_hash);
-            }
+        for (_, v) in possible_victims.iter_mut() {
+            v.push(root.tx_hash);
         }
+
+        possible_victims.insert(root.tx_hash, vec![]);
     }
 
     possible_sandwiches.into_values().collect()
@@ -1165,11 +1121,10 @@ fn get_possible_sandwich_duplicate_contracts(
             // into the map
             Entry::Vacant(duplicate_mev_contract) => {
                 duplicate_mev_contract.insert((root.tx_hash, root.head.address));
-                possible_victims.insert(root.tx_hash, vec![]);
             }
-            Entry::Occupied(mut o) => {
+            Entry::Occupied(mut duplicate_mev_contract) => {
                 // Get's prev tx hash &  for this sender & replaces it with the current tx hash
-                let (prev_tx_hash, frontrun_eoa) = o.get_mut();
+                let (prev_tx_hash, frontrun_eoa) = duplicate_mev_contract.get_mut();
 
                 if let Some(frontrun_victims) = possible_victims.remove(prev_tx_hash) {
                     match possible_sandwiches.entry(root.get_to_address()) {
@@ -1190,26 +1145,24 @@ fn get_possible_sandwich_duplicate_contracts(
                         }
                     }
                 }
-
+                // Sets the previous tx hash in the duplicate_mev_contract map to the current tx
+                // hash
                 *prev_tx_hash = root.tx_hash;
-                possible_victims.insert(root.tx_hash, vec![]);
             }
         }
 
         // Now, for each existing entry in possible_victims, we add the current
         // transaction hash as a potential victim, if it is not the same as
         // the key (which represents another transaction hash)
-        for (k, v) in possible_victims.iter_mut() {
-            if k != &root.tx_hash {
-                v.push(root.tx_hash);
-            }
+        for (_, v) in possible_victims.iter_mut() {
+            v.push(root.tx_hash);
         }
+
+        possible_victims.insert(root.tx_hash, vec![]);
     }
 
     possible_sandwiches.into_values().collect()
 }
-
-//TODO: Add support for this type of flashloan sandwich
 
 #[cfg(test)]
 mod tests {
