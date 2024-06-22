@@ -734,7 +734,7 @@ pub mod vec_fund {
 
     use crate::db::searcher::Fund;
     pub fn serialize<S: Serializer>(u: &Vec<Fund>, serializer: S) -> Result<S::Ok, S::Error> {
-        let st = u.into_iter().map(|f| f.to_string()).collect::<Vec<_>>();
+        let st = u.iter().map(|f| f.to_string()).collect::<Vec<_>>();
         st.serialize(serializer)
     }
 
@@ -850,7 +850,7 @@ pub mod vec_protocol {
     use crate::Protocol;
 
     pub fn serialize<S: Serializer>(u: &Vec<Protocol>, serializer: S) -> Result<S::Ok, S::Error> {
-        let st = u.into_iter().map(|u| u.to_string()).collect::<Vec<_>>();
+        let st = u.iter().map(|u| u.to_string()).collect::<Vec<_>>();
         st.serialize(serializer)
     }
 
