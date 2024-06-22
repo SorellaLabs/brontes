@@ -1872,7 +1872,7 @@ impl BlockAnalysis {
                 merged
             })
             .into_group_map()
-            .iter()
+            .into_iter()
             .map(|(k, v)| (k, v.iter().sum::<f64>()))
             .collect_vec();
 
@@ -1888,7 +1888,7 @@ impl BlockAnalysis {
                 merged
             })
             .into_group_map()
-            .iter()
+            .into_iter()
             .map(|(k, v)| (k, v.iter().sum::<f64>()))
             .collect_vec();
 
