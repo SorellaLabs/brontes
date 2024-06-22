@@ -5,6 +5,7 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     -- all
     `all_total_profit`                Float64,
     `all_total_revenue`               Float64,
+    `all_bundle_count` UInt64,
     `all_average_profit_margin`       Float64,
     `all_top_searcher_profit`         Nullable(String),
     `all_top_searcher_profit_amt`     Nullable(Float64),
@@ -34,6 +35,7 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `all_biggest_arb_revenue_amt`     Nullable(Float64),
 
     -- atomic arb
+    `atomic_bundle_count` UInt64,
     `atomic_total_profit`                Float64,
     `atomic_total_revenue`               Float64,
     `atomic_average_profit_margin`       Float64,
@@ -95,6 +97,7 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `atomic_biggest_arb_revenue_amt`     Nullable(Float64),
 
     -- sandwich
+    `sandwich_bundle_count` UInt64,
     `sandwich_total_profit`                Float64,
     `sandwich_total_revenue`               Float64,
     `sandwich_average_profit_margin`       Float64,
@@ -156,6 +159,7 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `sandwich_biggest_arb_revenue_amt`     Nullable(Float64),
 
     -- jit
+    `jit_bundle_count` UInt64,
     `jit_total_profit`                Float64,
     `jit_total_revenue`               Float64,
     `jit_average_profit_margin`       Float64,
@@ -217,6 +221,7 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `jit_biggest_arb_revenue_amt`     Nullable(Float64),
 
     -- jit sandwich
+    `jit_sandwich_bundle_count` UInt64,
     `jit_sandwich_total_profit`                Float64,
     `jit_sandwich_total_revenue`               Float64,
     `jit_sandwich_average_profit_margin`       Float64,
@@ -278,6 +283,7 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `jit_sandwich_biggest_arb_revenue_amt`     Nullable(Float64),
 
     -- cex_dex
+    `cex_dex_bundle_count` UInt64,
     `cex_dex_total_profit`                Float64,
     `cex_dex_total_revenue`               Float64,
     `cex_dex_average_profit_margin`       Float64,
@@ -339,6 +345,7 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `cex_dex_biggest_arb_revenue_amt`     Nullable(Float64),
 
     -- liquidation
+    `liquidation_bundle_count` UInt64,
     `liquidation_total_profit`                Float64,
     `liquidation_total_revenue`               Float64,
     `liquidation_average_profit_margin`       Float64,
