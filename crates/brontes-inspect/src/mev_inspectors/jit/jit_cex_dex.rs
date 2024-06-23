@@ -14,9 +14,9 @@ use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
+use super::JitInspector;
 use crate::{
     cex_dex_markout::{CexDexMarkoutInspector, CexDexProcessing},
-    jit::JitInspector,
     Inspector,
 };
 

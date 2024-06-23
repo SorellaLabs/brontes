@@ -14,53 +14,11 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::TxHash;
 
-use super::MAX_PROFIT;
+use super::types::{PossibleJit, PossibleJitWithInfo};
 use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
+    MAX_PROFIT,
 };
-
-#[derive(Debug)]
-struct PossibleJitWithInfo {
-    pub front_runs:  Vec<TxInfo>,
-    pub backrun:     TxInfo,
-    pub victim_info: Vec<Vec<TxInfo>>,
-    pub inner:       PossibleJit,
-}
-impl PossibleJitWithInfo {
-    pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
-        let backrun = info_set.get(&ps.backrun_tx).cloned()?;
-        let mut frontruns = vec![];
-
-        for fr in &ps.frontrun_txes {
-            frontruns.push(info_set.get(fr).cloned()?);
-        }
-
-        let mut victims = vec![];
-        for victim in &ps.victims {
-            let mut set = vec![];
-            for v in victim {
-                set.push(info_set.get(v).cloned()?);
-            }
-            victims.push(set);
-        }
-
-        Some(PossibleJitWithInfo {
-            front_runs: frontruns,
-            backrun,
-            victim_info: victims,
-            inner: ps,
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-struct PossibleJit {
-    pub eoa:               Address,
-    pub frontrun_txes:     Vec<B256>,
-    pub backrun_tx:        B256,
-    pub executor_contract: Address,
-    pub victims:           Vec<Vec<B256>>,
-}
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
     pub utils: SharedInspectorUtils<'db, DB>,
@@ -168,7 +126,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         )
     }
 
-    fn calcuate_recursive(
+    fn calculate_recursive(
         frontrun_info: &[TxInfo],
         backrun_info: &TxInfo,
         searcher_actions: &[Vec<Action>],
@@ -202,7 +160,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<Vec<TxInfo>>,
         recursive: u8,
     ) -> Option<Vec<Bundle>> {
-        if Self::calcuate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
+        if Self::calculate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
             return self.recursive_possible_jits(
                 frontrun_info,
                 backrun_info,
