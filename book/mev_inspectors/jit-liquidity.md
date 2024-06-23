@@ -12,12 +12,16 @@ JIT Liquidity is a type of MEV where a trader identifies a large swap on a conce
 
 ## What is JIT CexDex?
 
+TODO:
+
+- there is a third type where the pool can be arbed against the CEX, but their is a swap that goes in the opposite direction so they will fill by JITing to arb the user & then backrun the swap arbitraging the pool back to true price.
+
 JIT CexDex is a specialized form of JIT Liquidity that exploits price discrepancies between centralized exchanges (CEX) and decentralized exchanges (DEX). It occurs when:
 
 1. There's is a price discrepancy between a centralize exchange (CEX) and a decentralized exchange (DEX) but the price is within the fee bound so executing an arbitrage on the DEX is not profitable after the swap fee.
-2. A user makes a swap on the pool at this discrepant price.
+2. There is a CEX DEX opportunity, but the volume required to execute the arbitrage is less than an incoming swap on the DEX, so the attacker can extract more value by being a maker for the swap that executing the arbitrage directly against the pool.
 
-In this scenario, market makers provide liquidity for the user swap so they can capture the price discrepancy between the CEX and DEX without having to pay for the swap fee.
+In this scenario, market makers provide liquidity for the user swap, effectively arbitraging the price discrepancy between the CEX & DEX while receiving instead of paying the DEX swap fee.
 
 ## Methodology
 
@@ -28,9 +32,9 @@ We analyze the transaction tree to identify potential JIT Liquidity scenarios ch
 - Repeated transactions from the same account
 - Repeated calls to the same contract
 
-2. We use the `PossibleJit` type to represent each potential opportunity:
+The `PossibleJit` type represents each potential opportunity:
 
-```rust
+```rust,ignore
 pub struct PossibleJit {
     pub eoa: Address,
     pub frontrun_txes: Vec<B256>,
@@ -40,7 +44,7 @@ pub struct PossibleJit {
 }
 ```
 
-This structure holds the attacker's address, frontrun and backrun transactions, the contract used, and sets of victim transactions.
+This struct holds the attacker's address, frontrun and backrun transactions, the contract used, and sets of victim transactions.
 
 #### How It Works
 
@@ -68,8 +72,8 @@ Our algorithm constructs the largest possible JIT scenarios by identifying dupli
      - Add the new set of victims
 
 4. **Filter and Refine**:
-   - We filter out scenarios with more than 10 victim sets or more than 30 total victims
-   - We ensure that the set includes both mint and burn operations, which are characteristic of JIT Liquidity
+   - We filter out scenarios with more than 10 victim sets or 20 victims
+   - We ensure that the set includes both mint and burn operations
 
 This approach allows us to capture a wide range of JIT Liquidity patterns, from simple to complex multi-step operations. The resulting list of `PossibleJit` structures represents the most comprehensive JIT scenarios in the block, ready for further analysis in subsequent steps.
 
@@ -103,9 +107,3 @@ For confirmed JIT and JIT CexDex opportunities:
 
 1. Calculate the final profit, considering all relevant factors.
 2. Generate a `Bundle` structure containing detailed information about the MEV opportunity.
-
-## Note on Classification
-
-> **Note:** Our classification of JIT and JIT CexDex opportunities is based on observed patterns and known strategies. The DeFi landscape is constantly evolving, and new variations of these strategies may emerge. If you encounter JIT-like behaviors that don't fit our current classification, please let us know. We're always looking to improve our detection and analysis capabilities.
-
-This methodology allows us to identify and analyze complex JIT Liquidity and JIT CexDex opportunities, providing insights into these sophisticated MEV strategies.
