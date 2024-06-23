@@ -7,15 +7,15 @@ $ brontes db --help
 Usage: brontes db [OPTIONS] <COMMAND>
 
 Commands:
-  insert            Allows for inserting items into libmdbx
-  query             Query data from any libmdbx table and pretty print it in stdout
-  clear             Clear a libmdbx table
-  generate-traces   Generates traces and will store them in libmdbx (also clickhouse if --feature local-clickhouse)
-  libmdbx-mem-test  Test libmdbx memory usage
-  init              For a given range, will fetch all data from the api and insert it into libmdbx
-  export            Export libmbdx data to parquet
-  test-traces-init  Traces all blocks needed for testing and inserts them into clickhouse
-  help              Print this message or the help of the given subcommand(s)
+  insert             Allows for inserting items into libmdbx
+  query              Query data from any libmdbx table and pretty print it in stdout
+  clear              Clear a libmdbx table
+  generate-traces    Generates traces and will store them in libmdbx (also clickhouse if --feature local-clickhouse)
+  libmdbx-mem-test   Test libmdbx memory usage
+  init               For a given range, will fetch all data from the api and insert it into libmdbx
+  export             Export libmbdx data to parquet
+  download-snapshot  downloads a db snapshot from the remote endpoint
+  help               Print this message or the help of the given subcommand(s)
 
 Options:
       --brontes-db-path <BRONTES_DB_PATH>

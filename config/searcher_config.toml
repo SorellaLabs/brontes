@@ -10,6 +10,10 @@ builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 fund = "Symbolic Capital Partners"
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
+[searcher_eoas."0xae2Fc483527B8EF99EB5D9B44875F005ba1FaE13"]
+name = "jaredfromsubway.eth"
+mev_types = ["Sandwich"]
+
 [searcher_eoas."0x0D78FCF0a3E51124b2531A80950023f5Ba2E8FAc"]
 fund = "Symbolic Capital Partners"
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
@@ -181,9 +185,8 @@ mev_types = ["CexDex"]
 [searcher_contracts."0x1Fc4B4BDf5162Aa5E357041945C9333b2818ADAD"]
 mev_types = ["CexDex"]
 
-# Bugged out sandwich bot, need to add names to searcher & searcher_contracts
+
 [searcher_contracts."0x000000000dFDe7deaF24138722987c9a6991e2D4"]
-fund = "Kronos Research"
 mev_types = ["Sandwich, CexDex"]
 
 [searcher_contracts."0xe8cFAd4C75a5e1CaF939Fd80AfCf837DdE340a69"]
@@ -205,3 +208,7 @@ sibling_searchers = ["0xA0d5a274F95DEcB536BbBAA922D6D0Fb692a627D", "0x3FAcE0004b
 fund = "NC"
 sibling_searchers = ["0x3FAcE0004bC1003B9d0672e7B23134Cb80115fb6", "0xA0d5a274F95DEcB536BbBAA922D6D0Fb692a627D"]
 
+
+[searcher_contracts."0x6b75d8AF000000e20B7a7DDf000Ba900b4009A80"]
+name = "jaredfromsubway MEV bot"
+mev_types = ["Sandwich"]

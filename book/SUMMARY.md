@@ -37,5 +37,5 @@
       - [`brontes db libmdbx-mem-test`](./cli/brontes/db/libmdbx-mem-test.md)
       - [`brontes db init`](./cli/brontes/db/init.md)
       - [`brontes db export`](./cli/brontes/db/export.md)
-      - [`brontes db test-traces-init`](./cli/brontes/db/test-traces-init.md)
+      - [`brontes db download-snapshot`](./cli/brontes/db/download-snapshot.md)
 - [Developers](./developers/developers.md) <!-- CLI_REFERENCE END -->
