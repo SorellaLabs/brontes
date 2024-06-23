@@ -94,7 +94,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 #[derive(Clone)]
 pub struct LibmdbxReadWriter {
     pub db:  Arc<Libmdbx>,
-    tx:      UnboundedSender<WriterMessage>,
+    pub tx:  UnboundedSender<WriterMessage>,
     metrics: Option<LibmdbxMetrics>,
     // 100 shards for now, might change in future
     cache:   ReadWriteCache,
@@ -121,7 +121,7 @@ impl LibmdbxReadWriter {
         Ok(Self {
             db,
             tx,
-            metrics: metrics.then(LibmdbxMetrics::default),
+            metrics: metrics.then(|| LibmdbxMetrics::default()),
             cache: ReadWriteCache::new(memory_per_table_mb, metrics),
         })
     }

@@ -1,7 +1,15 @@
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    sync::Arc,
+    task::{Context, Waker},
+    time::Duration,
+};
 
 use brontes_types::{db::dex::make_filter_key_range, BrontesTaskExecutor};
+use futures::FutureExt;
+use libmdbx::libmdbx_writer::InitTables;
 use rayon::iter::*;
+use tokio::sync::Notify;
 
 use super::rclone_wrapper::BlockRangeList;
 use crate::{
@@ -138,6 +146,7 @@ impl LibmdbxReadWriter {
         T: CompressedTable<Key = u64>,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
+        InitTables: From<Vec<D>>,
     {
         let tx = self.db.no_timeout_ro_tx()?;
         let mut cur = tx.cursor_read::<T>()?;
@@ -181,6 +190,7 @@ impl LibmdbxReadWriter {
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
+        InitTables: From<Vec<D>>,
     {
         let tx = self.db.no_timeout_ro_tx()?;
         let mut cur = tx.cursor_read::<T>()?;
@@ -202,9 +212,25 @@ impl LibmdbxReadWriter {
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
+        InitTables: From<Vec<D>>,
     {
         let mapped = data.into_iter().map(D::from).collect::<Vec<_>>();
-        self.db.write_table(&mapped)?;
+        let not = Arc::new(Notify::new());
+        self.tx
+            .send(libmdbx::libmdbx_writer::WriterMessage::Init(mapped.into(), not.clone()))?;
+
+        let waker = Waker::noop();
+        let mut cx = Context::from_waker(waker);
+
+        let mut no = not.notified();
+        let mut pinned = std::pin::pin!(no);
+        loop {
+            if pinned.poll_unpin(&mut cx).is_ready() {
+                break
+            }
+
+            std::thread::sleep(Duration::from_millis(50));
+        }
 
         Ok(())
     }
@@ -228,6 +254,7 @@ where
     fn batch_write_to_db(self, db: &LibmdbxReadWriter, batch_size: usize)
     where
         Self: Sized,
+        InitTables: From<Vec<D>>,
     {
         let mut batch = Vec::with_capacity(batch_size);
         for next in self {
