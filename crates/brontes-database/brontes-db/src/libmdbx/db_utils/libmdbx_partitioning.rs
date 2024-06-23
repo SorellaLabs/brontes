@@ -12,7 +12,7 @@ use crate::{
 pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
 
 /// 1 week / 12 seconds
-pub const DEFAULT_PARTITION_SIZE: u64 = 7200;
+pub const DEFAULT_PARTITION_SIZE: u64 = 50_400;
 
 #[macro_export]
 macro_rules! move_tables_to_partition {
