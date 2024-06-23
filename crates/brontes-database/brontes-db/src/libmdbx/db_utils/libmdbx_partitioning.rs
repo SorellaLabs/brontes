@@ -144,7 +144,6 @@ impl LibmdbxReadWriter {
 
         TmpWriter::<T, D>::batch_write_to_db(
             cur.walk_range(start_block..end_block)?
-                .into_iter()
                 .flatten()
                 .map(|value| (value.0, value.1)),
             write_db,
@@ -168,7 +167,6 @@ impl LibmdbxReadWriter {
 
         TmpWriter::<DexPrice, DexPriceData>::batch_write_to_db(
             cur.walk_range(start_key..end_key)?
-                .into_iter()
                 .flatten()
                 .map(|value| (value.0, value.1)),
             write_db,
@@ -188,10 +186,7 @@ impl LibmdbxReadWriter {
         let mut cur = tx.cursor_read::<T>()?;
 
         TmpWriter::<T, D>::batch_write_to_db(
-            cur.walk(None)?
-                .into_iter()
-                .flatten()
-                .map(|val| (val.0, val.1)),
+            cur.walk(None)?.flatten().map(|val| (val.0, val.1)),
             write_db,
             500,
         );
@@ -230,12 +225,12 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
 {
-    fn batch_write_to_db(mut self, db: &LibmdbxReadWriter, batch_size: usize)
+    fn batch_write_to_db(self, db: &LibmdbxReadWriter, batch_size: usize)
     where
         Self: Sized,
     {
         let mut batch = Vec::with_capacity(batch_size);
-        while let Some(next) = self.next() {
+        for next in self {
             batch.push(next);
             if batch.len() == batch_size {
                 db.write_partitioned_range_data::<T, D>(std::mem::take(&mut batch))

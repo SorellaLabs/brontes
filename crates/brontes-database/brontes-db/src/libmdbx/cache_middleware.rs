@@ -23,7 +23,7 @@ pub struct ReadWriteCache {
 
 impl ReadWriteCache {
     pub fn new(memory_per_table_mb: usize, metrics: bool) -> Self {
-        let metrics = metrics.then(|| CacheData::default());
+        let metrics = metrics.then(CacheData::default);
         Self {
             metrics,
             address_meta: SegmentedCache::builder(200)

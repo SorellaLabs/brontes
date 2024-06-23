@@ -112,7 +112,7 @@ impl RCloneWrapper {
 
     async fn upload_full_range_tables(&self, partition_folder: &PathBuf) -> eyre::Result<()> {
         let directory = PathBuf::from(
-            get_dir_content(&partition_folder)?
+            get_dir_content(partition_folder)?
                 .directories
                 .iter()
                 .find(|path| path.ends_with("brontes-db-partition-full-range-tables"))
@@ -143,7 +143,7 @@ impl RCloneWrapper {
         tracing::info!(from=?directory, to=?tmp, "copying to tmp location");
 
         // copy the data to tmp
-        fs_extra::dir::copy(&directory, &"/tmp/", &copy)?;
+        fs_extra::dir::copy(directory, "/tmp/", &copy)?;
 
         if !Command::new("tar")
             .arg("-czvf")
@@ -178,7 +178,7 @@ impl RCloneWrapper {
 
         if !Command::new("rclone")
             .arg("copy")
-            .arg(format!("/tmp/brontes-available-ranges.json"))
+            .arg("/tmp/brontes-available-ranges.json")
             .arg(format!("{}:brontes-db/", self.config_name))
             .spawn()
             .unwrap()

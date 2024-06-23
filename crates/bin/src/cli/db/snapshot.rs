@@ -7,7 +7,7 @@ use brontes_types::{
 };
 use clap::Parser;
 use flate2::read::GzDecoder;
-use futures::stream::StreamExt;
+use futures::{stream::StreamExt, Stream};
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use reqwest::Url;
@@ -53,7 +53,7 @@ impl Snapshot {
         download_dir.push(format!("{}s", NAME));
         fs_extra::dir::create_all(&download_dir, false)?;
 
-        let err = futures::stream::iter(curl_queries)
+        futures::stream::iter(curl_queries)
             .map(|DbRequestWithBytes { url, size_bytes, file_name }| {
                 let client = client.clone();
                 let mb = multi_bar.clone();
@@ -80,13 +80,9 @@ impl Snapshot {
                 }
             })
             .unordered_buffer_map(10, |f| tokio::spawn(f))
-            .collect::<Vec<_>>()
-            .await;
-
-        // TODO: later cleanup
-        for e in err {
-            e??;
-        }
+            .map(|s| s.map_err(eyre::Error::from))
+            .collect_vec_transpose_double()
+            .await??;
 
         tracing::info!(
             "all partitions downloaded, merging into the current db at: {}",
@@ -248,4 +244,21 @@ pub struct DbRequestWithBytes {
     pub url:        String,
     pub file_name:  String,
     pub size_bytes: u64,
+}
+
+impl<S> AsyncFlatten for S where S: Stream + Sized {}
+
+trait AsyncFlatten: Stream {
+    async fn collect_vec_transpose_double<T, E1, E2>(mut self) -> Result<Result<Vec<T>, E2>, E1>
+    where
+        Self: Sized + Unpin + Stream<Item = Result<Result<T, E2>, E1>>,
+        E1: From<E2>,
+    {
+        let mut res = Vec::new();
+        while let Some(next) = self.next().await {
+            res.push(next??);
+        }
+
+        Ok(Ok(res))
+    }
 }
