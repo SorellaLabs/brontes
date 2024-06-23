@@ -40,6 +40,7 @@ impl Snapshot {
         let client = reqwest::Client::new();
         let ranges_avail = self.get_available_ranges(&client).await?;
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
+        fs_extra::dir::create_all(brontes_db_endpoint, false)?;
 
         let curl_queries = self
             .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
