@@ -58,7 +58,7 @@ impl LibmdbxPartitioner {
         start_block: u64,
         executor: BrontesTaskExecutor,
     ) -> Self {
-        fs_extra::dir::create_all(&parent_db, false).expect("failed to create parition db folder");
+        fs_extra::dir::create_all(&partition_db_folder, false).expect("failed to create parition db folder");
         Self { parent_db, start_block, partition_db_folder, executor }
     }
 
