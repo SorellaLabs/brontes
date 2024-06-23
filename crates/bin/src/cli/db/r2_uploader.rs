@@ -46,9 +46,13 @@ impl R2Uploader {
             "partitioning complete, uploading files, this will take a while. ~10 min per partition"
         );
 
-        r2wrapper
+        if let Err(e) = r2wrapper
             .tar_ball_and_upload_files(self.partition_db_folder, start_block)
-            .await?;
+            .await
+        {
+            tracing::error!(error=%e);
+            return Ok(())
+        }
 
         tracing::info!("uploading files completed");
 

@@ -138,8 +138,11 @@ impl RCloneWrapper {
                 .iter()
                 .filter(|file_name| file_name.starts_with(PARTITION_FILE_NAME))
                 .filter_map(|directory| {
+                    tracing::info!("tar balling directory {}", directory);
                     let end_portion = directory.clone().split_off(PARTITION_FILE_NAME.len() + 1);
+                    tracing::info!(?end_portion);
                     let file_start_block = u64::from_str(end_portion.split('-').next()?).unwrap();
+                    tracing::info!(%file_start_block);
                     (file_start_block >= start_block).then(|| {
                         let mut path = partition_folder.clone();
                         path.push(directory);
@@ -155,6 +158,8 @@ impl RCloneWrapper {
                 .as_os_str()
                 .to_str()
                 .unwrap();
+
+            tracing::info!(?directory, ?directory_name);
 
             // move to the tmp dir for zipping and zip
             let copy = CopyOptions::new();
