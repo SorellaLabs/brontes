@@ -76,7 +76,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     ) -> eyre::Result<BlockTree<Action>> {
         let Some((traces, header)) = fut.await else {
             classifier.block_load_failure(block);
-            return Err(eyre!("no traces found"))
+            return Err(eyre!("no traces found {block}"))
         };
 
         trace!("Got {} traces + header", traces.len());
