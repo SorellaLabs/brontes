@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use alloy_primitives::Address;
-use brontes_core::LibmdbxReader;
+use brontes_types::LibmdbxReader;
 use brontes_types::{
     db::{metadata::Metadata, token_info::TokenInfoWithAddress},
     display::utils::format_etherscan_url,

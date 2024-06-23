@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
-use brontes_core::LibmdbxReader;
 use brontes_types::{
     db::{builder::BuilderInfo, metadata::Metadata},
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Action,
     tree::BlockTree,
-    FastHashMap, GasDetails, ToFloatNearest, ToScaledRational, TreeSearchBuilder,
+    FastHashMap, GasDetails, LibmdbxReader, ToFloatNearest, ToScaledRational, TreeSearchBuilder,
 };
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
