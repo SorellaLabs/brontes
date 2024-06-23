@@ -52,45 +52,38 @@ impl Snapshot {
         // ensure dir exists
         let mut download_dir = temp_dir();
         download_dir.push(format!("{}s", NAME));
-        let cloned_download_dir = download_dir.clone();
         fs_extra::dir::create_all(&download_dir, false)?;
 
-        ctx.task_executor
-            .spawn_critical("download_streams", async move {
-                futures::stream::iter(curl_queries)
-                    .map(|DbRequestWithBytes { url, size_bytes, file_name }| {
-                        let client = client.clone();
-                        let mb = multi_bar.clone();
-                        tracing::info!(?url, ?size_bytes, ?file_name);
-                        let mut download_dir = download_dir.clone();
-                        async move {
-                            download_dir.push(file_name);
+        futures::stream::iter(curl_queries)
+            .map(|DbRequestWithBytes { url, size_bytes, file_name }| {
+                let client = client.clone();
+                let mb = multi_bar.clone();
+                tracing::info!(?url, ?size_bytes, ?file_name);
+                let mut download_dir = download_dir.clone();
+                async move {
+                    download_dir.push(file_name);
 
-                            tracing::info!("creating file");
-                            let file = tokio::fs::File::create(&download_dir).await?;
+                    tracing::info!("creating file");
+                    let file = tokio::fs::File::create(&download_dir).await?;
 
-                            let stream = client.get(url).send().await?.bytes_stream();
-                            DownloadBufWriterWithProgress::new(
-                                Some(size_bytes),
-                                stream,
-                                file,
-                                40 * 1024 * 1024,
-                                &mb,
-                            )
-                            .await?;
-                            Self::handle_downloaded_file(&download_dir)?;
+                    let stream = client.get(url).send().await?.bytes_stream();
+                    DownloadBufWriterWithProgress::new(
+                        Some(size_bytes),
+                        stream,
+                        file,
+                        40 * 1024 * 1024,
+                        &mb,
+                    )
+                    .await?;
+                    Self::handle_downloaded_file(&download_dir)?;
 
-                            eyre::Ok(())
-                        }
-                    })
-                    .unordered_buffer_map(10, |f| tokio::spawn(f))
-                    .map(|s| s.map_err(eyre::Error::from))
-                    .collect_vec_transpose_double()
-                    .await
-                    .unwrap()
-                    .unwrap();
+                    eyre::Ok(())
+                }
             })
-            .await?;
+            .unordered_buffer_map(10, |f| tokio::spawn(f))
+            .map(|s| s.map_err(eyre::Error::from))
+            .collect_vec_transpose_double()
+            .await??;
 
         tracing::info!(
             "all partitions downloaded, merging into the current db at: {}",
@@ -100,16 +93,9 @@ impl Snapshot {
         let final_db =
             LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
 
-        let db = cloned_download_dir.clone();
-        let ex = ctx.task_executor.clone();
-        ctx.task_executor
-            .spawn_blocking(async move {
-                merge_libmdbx_dbs(final_db, &db, ex).unwrap();
-            })
-            .await?;
-
+        merge_libmdbx_dbs(final_db, &download_dir, ctx.task_executor)?;
         tracing::info!("cleaning up tmp libmdbx partitions");
-        fs_extra::dir::remove(cloned_download_dir)?;
+        fs_extra::dir::remove(download_dir)?;
 
         Ok(())
     }
