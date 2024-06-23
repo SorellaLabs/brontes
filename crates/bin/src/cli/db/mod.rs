@@ -82,7 +82,7 @@ impl Database {
             DatabaseCommands::UploadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(ctx).await,
+            DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
             DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
