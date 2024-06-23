@@ -6,7 +6,7 @@ use std::{
 use alloy_rlp::Encodable;
 use bytes::{BufMut, Bytes};
 use futures::{stream::Stream, Future, FutureExt, StreamExt};
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use tokio::{fs::File, io::AsyncWriteExt};
 
 pub struct DownloadBufWriterWithProgress<S: Stream<Item = Result<Bytes, reqwest::Error>>> {
@@ -23,8 +23,11 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
         download_stream: S,
         file: File,
         buffer_cap: usize,
+        multi_bar: &MultiProgress,
     ) -> Self {
-        let progress_bar = Self::init_progress_bar(total_download_size);
+        let progress_bar =
+            Self::init_progress_bar(total_download_size).map(|bar| multi_bar.add(bar));
+
         Self {
             download_stream,
             progress_bar,
@@ -34,9 +37,13 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
         }
     }
 
+    fn is_over_buffer(&self) -> bool {
+        self.buffer.len() > self.buffer_cap
+    }
+
     fn handle_bytes(&mut self, bytes: Bytes) {
         let mut rem = self.buffer.remaining_mut();
-        if self.buffer.len() > self.buffer_cap {
+        if self.is_over_buffer() {
             rem = 0;
         }
 
@@ -117,7 +124,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>> + Unpin> Future
             }
 
             work -= 1;
-            if work == 0 {
+            if work == 0 || this.is_over_buffer() {
                 cx.waker().wake_by_ref();
                 return Poll::Pending
             }
