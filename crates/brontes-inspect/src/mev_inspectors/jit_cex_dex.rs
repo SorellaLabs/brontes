@@ -7,7 +7,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType},
     normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     tree::BlockTree,
-    FastHashMap, 
+    FastHashMap,
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -74,6 +74,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
             .filter_map(|jits| {
                 tracing::trace!("trying jit to see if cexdex - {:#?}", jits);
                 let BundleData::Jit(jit) = jits.data else { return None };
+                let details = [jit.backrun_burn_gas_details, jit.frontrun_mint_gas_details];
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
                 if !tx_info.is_labelled_searcher_of_type(MevType::CexDex) {
@@ -193,7 +194,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                     vec![tx_info.tx_hash],
                     &tx_info,
                     profit_usd,
-                    &[tx_info.gas_details],
+                    &details,
                     metadata.clone(),
                     MevType::JitCexDex,
                     false,
