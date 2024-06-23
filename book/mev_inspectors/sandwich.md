@@ -1,10 +1,8 @@
 # Sandwich Inspector
 
-## Overview
-
 The Sandwich Inspector is designed to detect and analyze the profitability of Sandwich attacks.
 
-### What is a Sandwich Attack?
+**What is a Sandwich Attack?**
 
 A Sandwich attack unfolds in three steps:
 
@@ -20,7 +18,7 @@ The inspector retrieves transactions in the block that involve `swap`, `transfer
 
 ### Step 2: Identify Potential Sandwiches
 
-We run two parallel functions to find possible sandwich attacks:
+We run two functions to find possible sandwich attacks:
 
 1. One checks for repeated transactions from the same account: [`get_possible_sandwich_duplicate_senders`](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-inspect/src/mev_inspectors/sandwich/mod.rs#L1045)
 2. The other looks for repeated calls to the same contract: [`get_possible_sandwich_duplicate_contracts`](https://github.com/SorellaLabs/brontes/blob/5b1d1b4e30d5c92b2a0bc56ff4dd441aed533681/crates/brontes-inspect/src/mev_inspectors/sandwich/mod.rs#L1107)
