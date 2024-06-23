@@ -104,6 +104,10 @@ impl RCloneWrapper {
         }
     }
 
+    async fn upload_full_range_tables(&self) -> eyre::Result<()> {
+        Ok(())
+    }
+
     async fn update_block_range_file(&self) -> eyre::Result<()> {
         let ranges = self.get_blockrange_list().await?;
         let mut file = File::create("/tmp/brontes-available-ranges.json")?;
@@ -206,7 +210,7 @@ impl RCloneWrapper {
             let file_size =
                 filesize::file_real_size(format!("/tmp/{directory_name}.tar.gz")).unwrap();
 
-            let mut file = File::create("/tmp/{directory_name}-byte-count.txt").unwrap();
+            let mut file = File::create(format!("/tmp/{directory_name}-byte-count.txt")).unwrap();
             write!(&mut file, "{}", file_size).unwrap();
 
             // upload to the r2 bucket using rclone
@@ -216,6 +220,7 @@ impl RCloneWrapper {
         .collect::<Vec<_>>()
         .await;
 
+        self.upload_full_range_tables().await?;
         // upload ranges for downloader
         self.update_block_range_file().await?;
 
