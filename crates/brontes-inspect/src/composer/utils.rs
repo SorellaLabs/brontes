@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use alloy_primitives::{Address, FixedBytes};
-use brontes_core::LibmdbxReader;
 use brontes_types::{
-    db::{builder::BuilderInfo, metadata::Metadata},
+    db::{builder::BuilderInfo, metadata::Metadata, traits::LibmdbxReader},
     mev::{Bundle, Mev, MevBlock, MevCount, MevType, PossibleMevCollection},
     normalized_actions::Action,
     tree::BlockTree,
