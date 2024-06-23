@@ -137,11 +137,6 @@ impl RCloneWrapper {
             get_dir_content(&partition_folder)?
                 .directories
                 .iter()
-                .map(|f| {
-                    tracing::info!("dir names: {f}");
-                    f
-                })
-                .filter(|file_name| file_name.starts_with(PARTITION_FILE_NAME))
                 .filter_map(|directory| {
                     tracing::info!("tar balling directory {}", directory);
                     let end_portion = directory.clone().split_off(PARTITION_FILE_NAME.len() + 1);
