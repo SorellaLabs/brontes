@@ -12,7 +12,7 @@ pub struct R2Uploader {
     r2_config_name:      String,
     #[clap(short, long)]
     start_block:         Option<u64>,
-    #[clap(short, long, default_value = "~/brontes-db-partitions/")]
+    #[clap(short, long, default_value = "/home/data/brontes-db-partitions/")]
     partition_db_folder: PathBuf,
 }
 
