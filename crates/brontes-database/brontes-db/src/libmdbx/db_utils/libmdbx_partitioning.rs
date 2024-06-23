@@ -73,6 +73,7 @@ impl LibmdbxPartitioner {
 
             start_block += DEFAULT_PARTITION_SIZE
         }
+        tracing::info!(?ranges, "partitioning db into ranges");
 
         // because we are just doing read operations. we can do all this in parallel
         ranges
@@ -81,7 +82,7 @@ impl LibmdbxPartitioner {
                 let mut path = self.partition_db_folder.clone();
                 path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
                 fs_extra::dir::create_all(&path, false)?;
-                let db = LibmdbxReadWriter::init_db(path, None, &self.executor)?;
+                let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
 
                 move_tables_to_partition!(
                     BLOCK_RANGE
@@ -108,7 +109,7 @@ impl LibmdbxPartitioner {
         let mut path = self.partition_db_folder.clone();
         path.push(format!("{PARTITION_FILE_NAME}-full-range-tables/",));
         fs_extra::dir::create_all(&path, false)?;
-        let db = LibmdbxReadWriter::init_db(path, None, &self.executor)?;
+        let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
 
         move_tables_to_partition!(
             FULL_RANGE

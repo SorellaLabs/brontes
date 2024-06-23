@@ -18,7 +18,7 @@ pub fn merge_libmdbx_dbs(
         .files
         .iter()
         .filter(|file_name| file_name.starts_with(PARTITION_FILE_NAME))
-        .filter_map(|path| LibmdbxReadWriter::init_db(path, None, &executor).ok())
+        .filter_map(|path| LibmdbxReadWriter::init_db(path, None, &executor, false).ok())
         .collect::<Vec<_>>();
 
     for db in dbs {
