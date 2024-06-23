@@ -137,10 +137,25 @@ impl RCloneWrapper {
             get_dir_content(&partition_folder)?
                 .directories
                 .iter()
+                .filter(|path| {
+                    *path != partition_folder.to_str().unwrap()
+                        && !path.ends_with("brontes-db-partition-full-range-tables")
+                })
                 .filter_map(|directory| {
+                    let pathed = PathBuf::from(directory);
+
+                    let directory = pathed
+                        .components()
+                        .last()
+                        .unwrap()
+                        .as_os_str()
+                        .to_str()?
+                        .to_string();
+
                     tracing::info!("tar balling directory {}", directory);
                     let end_portion = directory.clone().split_off(PARTITION_FILE_NAME.len() + 1);
                     tracing::info!(?end_portion);
+
                     let file_start_block = u64::from_str(end_portion.split('-').next()?).unwrap();
                     tracing::info!(%file_start_block);
                     (file_start_block >= start_block).then(|| {
