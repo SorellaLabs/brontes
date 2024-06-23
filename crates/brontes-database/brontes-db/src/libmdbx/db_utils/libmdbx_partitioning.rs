@@ -22,6 +22,8 @@ macro_rules! move_tables_to_partition {
     (BLOCK_RANGE $parent_db:expr, $db:expr, $start_block:expr,$end_block:expr,
      $($table_name:ident),*) => {
         $(
+            tracing::info!(start_block=%$start_block, end_block=%$end_block,
+                           "loading data from table: {}", stringify!($table_name));
             let value = $parent_db.fetch_partition_range_data::<$table_name>
             ($start_block, $end_block)?;
             ::paste::paste!(
@@ -31,6 +33,7 @@ macro_rules! move_tables_to_partition {
     };
     (FULL_RANGE $parent_db:expr, $db:expr, $($table_name:ident),*) => {
         $(
+            tracing::info!("loading data from table: {}", stringify!($table_name));
             let value = $parent_db.fetch_critical_data::<$table_name>()?;
             ::paste::paste!(
                 $db.write_partitioned_range_data::
