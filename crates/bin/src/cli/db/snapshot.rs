@@ -72,8 +72,10 @@ impl Snapshot {
                         &mb,
                     )
                     .await?;
+                    tracing::info!("downloaded file");
 
                     Self::handle_downloaded_file(&download_dir)?;
+                    tracing::info!("unpacked file");
 
                     eyre::Ok(())
                 }
