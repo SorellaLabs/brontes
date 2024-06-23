@@ -1,18 +1,19 @@
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 
 use brontes_types::{
     db::dex::{make_filter_key_range, DexKey, DexQuoteWithIndex},
     BrontesTaskExecutor,
 };
-use fs_extra::dir::get_dir_content;
 use rayon::iter::*;
 
+use super::rclone_wrapper::BlockRangeList;
 use crate::{
     libmdbx::{types::LibmdbxData, LibmdbxInit, LibmdbxReadWriter},
     CompressedTable, DexPrice, *,
 };
 
 pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
+
 /// 1 week / 12 seconds
 pub const DEFAULT_PARTITION_SIZE: u64 = 50_400;
 
@@ -43,7 +44,7 @@ pub struct LibmdbxPartitioner {
     // db with all the data
     parent_db:           LibmdbxReadWriter,
     partition_db_folder: PathBuf,
-    start_block:         Option<u64>,
+    start_block:         u64,
     executor:            BrontesTaskExecutor,
 }
 
@@ -51,30 +52,32 @@ impl LibmdbxPartitioner {
     pub fn new(
         parent_db: LibmdbxReadWriter,
         partition_db_folder: PathBuf,
-        start_block: Option<u64>,
+        start_block: u64,
         executor: BrontesTaskExecutor,
     ) -> Self {
         Self { parent_db, start_block, partition_db_folder, executor }
     }
 
     pub fn execute(self) -> eyre::Result<()> {
-        let mut start_block = self
-            .start_block
-            .or_else(|| self.check_most_recent_partition())
-            .unwrap_or(0);
+        // cleanup
+        let mut start_block = self.start_block;
 
         let end_block = self.parent_db.get_db_range()?.1;
 
         let mut ranges = vec![];
         while start_block + DEFAULT_PARTITION_SIZE < end_block {
-            ranges.push((start_block, start_block + DEFAULT_PARTITION_SIZE));
+            ranges.push(BlockRangeList {
+                start_block,
+                end_block: start_block + DEFAULT_PARTITION_SIZE,
+            });
+
             start_block += DEFAULT_PARTITION_SIZE
         }
 
         // because we are just doing read operations. we can do all this in parallel
         ranges
-            .into_par_iter()
-            .try_for_each(|(start_block, end_block)| {
+            .par_iter()
+            .try_for_each(|BlockRangeList { start_block, end_block }| {
                 let mut path = self.partition_db_folder.clone();
                 path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
                 fs_extra::dir::create_all(&path, false)?;
@@ -84,8 +87,8 @@ impl LibmdbxPartitioner {
                     BLOCK_RANGE
                     self.parent_db,
                     db,
-                    start_block,
-                    end_block,
+                    *start_block,
+                    *end_block,
                     CexPrice,
                     CexTrades,
                     BlockInfo,
@@ -97,7 +100,7 @@ impl LibmdbxPartitioner {
                 // manually dex pricing
                 let value = self
                     .parent_db
-                    .fetch_dex_price_range(start_block, end_block)?;
+                    .fetch_dex_price_range(*start_block, *end_block)?;
                 db.write_partitioned_range_data::<DexPrice, DexPriceData>(value)
             })?;
 
@@ -120,16 +123,6 @@ impl LibmdbxPartitioner {
         );
 
         Ok(())
-    }
-
-    fn check_most_recent_partition(&self) -> Option<u64> {
-        let dir_content = get_dir_content(&self.partition_db_folder).ok()?;
-        dir_content
-            .files
-            .iter()
-            .filter(|file_name| file_name.starts_with(PARTITION_FILE_NAME))
-            .filter_map(|files| u64::from_str(files.split('-').last()?.split('.').next()?).ok())
-            .max()
     }
 }
 

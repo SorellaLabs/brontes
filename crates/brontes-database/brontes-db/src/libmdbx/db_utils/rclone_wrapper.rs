@@ -4,18 +4,19 @@ use eyre::eyre;
 use fs_extra::dir::{get_dir_content, CopyOptions};
 use futures::StreamExt;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
 use super::PARTITION_FILE_NAME;
 
 /// rclone command wrapper
 pub struct RCloneWrapper {
-    config_name: &'static str,
+    config_name: String,
 }
 
 impl RCloneWrapper {
     // ensures rclone is installed properly
-    pub async fn new(config_name: &'static str) -> eyre::Result<Self> {
+    pub async fn new(config_name: String) -> eyre::Result<Self> {
         if !Command::new("rclone")
             .arg("--version")
             .spawn()?
@@ -30,6 +31,30 @@ impl RCloneWrapper {
     }
 
     pub async fn get_most_recent_partition_block(&self) -> eyre::Result<u64> {
+        self.get_all_tarballs()
+            .await?
+            .into_iter()
+            .filter_map(|files| u64::from_str(files.split('-').last()?.split('.').next()?).ok())
+            .max()
+            .ok_or_else(|| eyre!("no files found on r2"))
+    }
+
+    pub async fn get_blockrange_list(&self) -> eyre::Result<Vec<BlockRangeList>> {
+        Ok(self
+            .get_all_tarballs()
+            .await?
+            .into_iter()
+            .map(|mut file_names| {
+                let block_range_and_ext = file_names.split_off(PARTITION_FILE_NAME.len() + 1);
+                let mut r = block_range_and_ext.split('.').next().unwrap().split('-');
+                let start_block = u64::from_str(r.next().unwrap()).unwrap();
+                let end_block = u64::from_str(r.next().unwrap()).unwrap();
+                BlockRangeList { end_block, start_block }
+            })
+            .collect::<Vec<_>>())
+    }
+
+    async fn get_all_tarballs(&self) -> eyre::Result<Vec<String>> {
         let result = Command::new("rclone")
             .arg("tree")
             .arg(format!("{}:brontes_db", self.config_name))
@@ -41,16 +66,13 @@ impl RCloneWrapper {
         let pattern = Regex::new(r"[\w-]+\.tar\.gz").unwrap();
 
         // Find the matches
-        pattern
+        Ok(pattern
             .find_iter(&string_result)
-            .filter_map(|files| {
-                u64::from_str(files.as_str().split('-').last()?.split('.').next()?).ok()
-            })
-            .max()
-            .ok_or_else(|| eyre!("no files found on r2"))
+            .map(|file| file.as_str().to_string())
+            .collect::<Vec<_>>())
     }
 
-    pub async fn upload_tarball(&self, directory_name: &str) {
+    async fn upload_tarball(&self, directory_name: &str) {
         if !Command::new("rclone")
             .arg("copy")
             .arg(format!("/tmp/{directory_name}.tar.gz"))
@@ -80,6 +102,29 @@ impl RCloneWrapper {
         {
             panic!("failed to upload tarball");
         }
+    }
+
+    async fn update_block_range_file(&self) -> eyre::Result<()> {
+        let ranges = self.get_blockrange_list().await?;
+        let mut file = File::create("/tmp/brontes-available-ranges.json")?;
+        let str = serde_json::to_string(&ranges)?;
+        write!(&mut file, "{str}")?;
+
+        if !Command::new("rclone")
+            .arg("copy")
+            .arg(format!("/tmp/brontes-available-ranges.json"))
+            .arg(format!("{}:brontes-db/", self.config_name))
+            .spawn()
+            .unwrap()
+            .wait()
+            .await
+            .unwrap()
+            .success()
+        {
+            panic!("failed to upload available ranges");
+        }
+
+        Ok(())
     }
 
     pub async fn tar_ball_and_upload_files(
@@ -114,7 +159,7 @@ impl RCloneWrapper {
             // move to the tmp dir for zipping and zip
             let copy = CopyOptions::new();
             // copy the data to tmp
-            fs_extra::dir::copy(&directory, format!("/tmp/{directory_name}"), &copy);
+            fs_extra::dir::copy(&directory, format!("/tmp/{directory_name}"), &copy).unwrap();
             if !Command::new("tar")
                 .arg("-czvf")
                 .arg(format!("{directory_name}.tar.gz"))
@@ -134,17 +179,24 @@ impl RCloneWrapper {
             let file_size =
                 filesize::file_real_size(format!("/tmp/{directory_name}.tar.gz")).unwrap();
             let mut file = File::create("/tmp/{directory_name}-byte-count.txt").unwrap();
-            write!(&mut file, "{}", file_size);
+            write!(&mut file, "{}", file_size).unwrap();
 
             // upload to the r2 bucket using rclone
             self.upload_tarball(directory_name).await;
-
-            // c
         })
         .buffer_unordered(5)
         .collect::<Vec<_>>()
         .await;
 
+        // upload ranges for downloader
+        self.update_block_range_file().await?;
+
         Ok(())
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct BlockRangeList {
+    pub start_block: u64,
+    pub end_block:   u64,
 }

@@ -79,7 +79,7 @@ impl Database {
             DatabaseCommands::TraceRange(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Init(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
-            Dat
+            DatabaseCommands::UploadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(ctx).await,
