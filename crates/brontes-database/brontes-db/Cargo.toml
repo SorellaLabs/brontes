@@ -69,7 +69,7 @@ malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
 db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", optional = true, features = [
-  "test-utils",
+  "test-utils"
 ] }
 clickhouse = { workspace = true, features = ["tls"] }
 
