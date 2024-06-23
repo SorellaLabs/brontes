@@ -14,53 +14,11 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::TxHash;
 
-use super::MAX_PROFIT;
+use super::types::{PossibleJit, PossibleJitWithInfo};
 use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
+    MAX_PROFIT,
 };
-
-#[derive(Debug)]
-struct PossibleJitWithInfo {
-    pub front_runs:  Vec<TxInfo>,
-    pub backrun:     TxInfo,
-    pub victim_info: Vec<Vec<TxInfo>>,
-    pub inner:       PossibleJit,
-}
-impl PossibleJitWithInfo {
-    pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
-        let backrun = info_set.get(&ps.backrun_tx).cloned()?;
-        let mut frontruns = vec![];
-
-        for fr in &ps.frontrun_txes {
-            frontruns.push(info_set.get(fr).cloned()?);
-        }
-
-        let mut victims = vec![];
-        for victim in &ps.victims {
-            let mut set = vec![];
-            for v in victim {
-                set.push(info_set.get(v).cloned()?);
-            }
-            victims.push(set);
-        }
-
-        Some(PossibleJitWithInfo {
-            front_runs: frontruns,
-            backrun,
-            victim_info: victims,
-            inner: ps,
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-struct PossibleJit {
-    pub eoa:               Address,
-    pub frontrun_txes:     Vec<B256>,
-    pub backrun_tx:        B256,
-    pub executor_contract: Address,
-    pub victims:           Vec<Vec<B256>>,
-}
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
     pub utils: SharedInspectorUtils<'db, DB>,
@@ -168,7 +126,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         )
     }
 
-    fn calcuate_recursive(
+    fn calculate_recursive(
         frontrun_info: &[TxInfo],
         backrun_info: &TxInfo,
         searcher_actions: &[Vec<Action>],
@@ -202,7 +160,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<Vec<TxInfo>>,
         recursive: u8,
     ) -> Option<Vec<Bundle>> {
-        if Self::calcuate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
+        if Self::calculate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
             return self.recursive_possible_jits(
                 frontrun_info,
                 backrun_info,
@@ -459,7 +417,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 // into the map
                 Entry::Vacant(duplicate_mev_contract) => {
                     duplicate_mev_contract.insert((root.tx_hash, root.head.address));
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
                     // Get's prev tx hash &  for this sender & replaces it with the current tx hash
@@ -486,7 +443,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     }
 
                     *prev_tx_hash = root.tx_hash;
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
@@ -494,7 +450,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
                     // Get's prev tx hash for this sender & replaces it with the current tx hash
@@ -521,18 +476,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
                     // Add current transaction hash to the list of transactions for this sender
                     o.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
             // Now, for each existing entry in possible_victims, we add the current
             // transaction hash as a potential victim, if it is not the same as
             // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
-                }
+            for v in possible_victims.values_mut() {
+                v.push(root.tx_hash);
             }
+
+            possible_victims.insert(root.tx_hash, vec![]);
         }
 
         let set = Itertools::unique(set.into_values())

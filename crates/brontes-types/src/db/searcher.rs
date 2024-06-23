@@ -19,6 +19,8 @@ use crate::{
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherInfo {
+    #[serde(default)]
+    pub name:              Option<String>,
     #[redefined(same_fields)]
     #[serde(default)]
     pub fund:              Fund,
@@ -78,6 +80,8 @@ impl SearcherInfo {
     }
 
     pub fn merge(&mut self, other: SearcherInfo) {
+        self.name = other.name;
+
         self.fund = other.fund;
 
         for mev_type in other.config_labels.into_iter() {
@@ -95,6 +99,9 @@ impl SearcherInfo {
     }
 
     pub fn describe(&self) -> String {
+        if self.name.is_some() {
+            return self.name.clone().unwrap();
+        }
         let mut parts: Vec<String> = Vec::new();
 
         if let Fund::None = self.fund {

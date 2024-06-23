@@ -14,9 +14,9 @@ use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
+use super::JitInspector;
 use crate::{
     cex_dex_markout::{CexDexMarkoutInspector, CexDexProcessing},
-    jit::JitInspector,
     Inspector,
 };
 
@@ -73,11 +73,14 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
         jit_bundles
             .into_iter()
             .filter_map(|jits| {
-                tracing::trace!("trying jit to see if cexdex - {:#?}", jits);
+                tracing::trace!(
+                    "Checking if classified JITs are actually JIT Cex Dex- {:#?}",
+                    jits
+                );
                 let BundleData::Jit(jit) = jits.data else { return None };
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
-                if !tx_info.is_labelled_searcher_of_type(MevType::CexDex) {
+                if !tx_info.is_searcher_of_type_with_count_threshold(MevType::CexDex, 10) {
                     return None
                 }
 
