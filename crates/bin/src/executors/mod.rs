@@ -358,7 +358,11 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         if let Some(end_block) = self.end_block {
             (true, end_block)
         } else {
+            #[cfg(feature = "local-reth")]
             let chain_tip = self.parser.get_latest_block_number().unwrap();
+            #[cfg(not(feature = "local-reth"))]
+            let chain_tip = self.parser.get_latest_block_number().await.unwrap();
+
             (false, chain_tip - self.back_from_tip)
         }
     }
