@@ -74,10 +74,9 @@ impl LibmdbxPartitioner {
             start_block += DEFAULT_PARTITION_SIZE
         }
         tracing::info!(?ranges, "partitioning db into ranges");
-
         // because we are just doing read operations. we can do all this in parallel
         ranges
-            .par_iter()
+            .iter()
             .try_for_each(|BlockRangeList { start_block, end_block }| {
                 let mut path = self.partition_db_folder.clone();
                 path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
