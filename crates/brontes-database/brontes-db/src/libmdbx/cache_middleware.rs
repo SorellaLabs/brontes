@@ -7,7 +7,6 @@ use brontes_types::db::{
     searcher::SearcherInfo, token_info::TokenInfo,
 };
 use moka::{policy::EvictionPolicy, sync::SegmentedCache};
-use reth_tasks::metrics;
 
 const MEGABYTE: usize = 1024 * 1024;
 

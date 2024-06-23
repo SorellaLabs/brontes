@@ -122,7 +122,7 @@ impl LibmdbxReadWriter {
             db,
             tx,
             metrics: metrics.then(|| LibmdbxMetrics::default()),
-            cache: ReadWriteCache::new(memory_per_table_mb),
+            cache: ReadWriteCache::new(memory_per_table_mb, metrics),
         })
     }
 }
