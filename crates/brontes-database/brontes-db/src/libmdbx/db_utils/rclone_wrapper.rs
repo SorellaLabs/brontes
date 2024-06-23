@@ -45,6 +45,7 @@ impl RCloneWrapper {
             .await?
             .into_iter()
             .map(|mut file_names| {
+                tracing::info!(?file_names);
                 let block_range_and_ext = file_names.split_off(PARTITION_FILE_NAME.len() + 1);
                 let mut r = block_range_and_ext.split('.').next().unwrap().split('-');
                 let start_block = u64::from_str(r.next().unwrap()).unwrap();
@@ -203,6 +204,7 @@ impl RCloneWrapper {
                     *path != partition_folder.to_str().unwrap()
                         && !path.ends_with("brontes-db-partition-full-range-tables")
                 })
+                // ensure partition is in range
                 .filter_map(|directory| {
                     let pathed = PathBuf::from(directory);
 
