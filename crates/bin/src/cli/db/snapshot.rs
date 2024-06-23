@@ -1,19 +1,12 @@
-use std::{
-    clone,
-    env::{current_dir, temp_dir},
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{env::temp_dir, path::PathBuf, str::FromStr};
 
 use brontes_database::libmdbx::rclone_wrapper::BlockRangeList;
 use brontes_types::{
     buf_writer::DownloadBufWriterWithProgress, unordered_buffer_map::BrontesStreamExt,
 };
 use clap::Parser;
-use filesize::file_real_size;
 use flate2::read::GzDecoder;
-use fs_extra::dir::CopyOptions;
-use futures::{stream::StreamExt, FutureExt};
+use futures::stream::StreamExt;
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use reqwest::Url;
@@ -237,6 +230,8 @@ impl Snapshot {
         let mut unpack = tarball_location.clone();
         unpack.pop();
         archive.unpack(&unpack)?;
+
+        fs_extra::file::remove(&tarball_location)?;
 
         Ok(())
     }
