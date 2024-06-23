@@ -7,6 +7,7 @@ use brontes_types::db::{
     searcher::SearcherInfo, token_info::TokenInfo,
 };
 use moka::{policy::EvictionPolicy, sync::SegmentedCache};
+use reth_tasks::metrics;
 
 const MEGABYTE: usize = 1024 * 1024;
 
@@ -18,12 +19,12 @@ pub struct ReadWriteCache {
     protocol_info:     Arc<SegmentedCache<Address, Option<ProtocolInfo>, ahash::RandomState>>,
     token_info:        Arc<SegmentedCache<Address, Option<TokenInfo>, ahash::RandomState>>,
 
-    pub metrics: CacheData,
+    pub metrics: Option<CacheData>,
 }
 
 impl ReadWriteCache {
-    pub fn new(memory_per_table_mb: usize) -> Self {
-        let metrics = CacheData::default();
+    pub fn new(memory_per_table_mb: usize, metrics: bool) -> Self {
+        let metrics = metrics.then(|| CacheData::default());
         Self {
             metrics,
             address_meta: SegmentedCache::builder(200)
@@ -68,20 +69,30 @@ impl ReadWriteCache {
         }
     }
 
+    fn record_metrics<R, T, TY>(
+        &self,
+        read: bool,
+        name: &str,
+        cache: &T,
+        f: impl FnOnce(&T) -> R,
+    ) -> R {
+        if let Some(metrics) = self.metrics.clone() {
+            if read {
+                metrics.cache_read::<R, TY>(name, || f(cache))
+            } else {
+                metrics.cache_write::<R, TY>(name, || f(cache))
+            }
+        } else {
+            f(cache)
+        }
+    }
+
     pub fn address_meta<R>(
         &self,
         read: bool,
         f: impl FnOnce(&SegmentedCache<Address, Option<AddressMetadata>, ahash::RandomState>) -> R,
     ) -> R {
-        if read {
-            self.metrics
-                .clone()
-                .cache_read::<R, AddressMetadata>("address_meta", || f(&self.address_meta))
-        } else {
-            self.metrics
-                .clone()
-                .cache_write::<R, AddressMetadata>("address_meta", || f(&self.address_meta))
-        }
+        self.record_metrics::<R, _, AddressMetadata>(read, "address_meta", &*self.address_meta, f)
     }
 
     pub fn searcher_contract<R>(
@@ -89,15 +100,12 @@ impl ReadWriteCache {
         read: bool,
         f: impl FnOnce(&SegmentedCache<Address, Option<SearcherInfo>, ahash::RandomState>) -> R,
     ) -> R {
-        if read {
-            self.metrics
-                .clone()
-                .cache_read::<R, SearcherInfo>("searcher_contract", || f(&self.searcher_contract))
-        } else {
-            self.metrics
-                .clone()
-                .cache_write::<R, SearcherInfo>("searcher_contract", || f(&self.searcher_contract))
-        }
+        self.record_metrics::<R, _, SearcherInfo>(
+            read,
+            "searcher_contract",
+            &*self.searcher_contract,
+            f,
+        )
     }
 
     pub fn searcher_eoa<R>(
@@ -105,15 +113,7 @@ impl ReadWriteCache {
         read: bool,
         f: impl FnOnce(&SegmentedCache<Address, Option<SearcherInfo>, ahash::RandomState>) -> R,
     ) -> R {
-        if read {
-            self.metrics
-                .clone()
-                .cache_read::<R, SearcherInfo>("searcher_eoa", || f(&self.searcher_eoa))
-        } else {
-            self.metrics
-                .clone()
-                .cache_write::<R, SearcherInfo>("searcher_eoa", || f(&self.searcher_eoa))
-        }
+        self.record_metrics::<R, _, SearcherInfo>(read, "searcher_eoa", &*self.searcher_eoa, f)
     }
 
     pub fn protocol_info<R>(
@@ -121,15 +121,7 @@ impl ReadWriteCache {
         read: bool,
         f: impl FnOnce(&SegmentedCache<Address, Option<ProtocolInfo>, ahash::RandomState>) -> R,
     ) -> R {
-        if read {
-            self.metrics
-                .clone()
-                .cache_read::<R, ProtocolInfo>("protocol_info", || f(&self.protocol_info))
-        } else {
-            self.metrics
-                .clone()
-                .cache_write::<R, ProtocolInfo>("protocol_info", || f(&self.protocol_info))
-        }
+        self.record_metrics::<R, _, ProtocolInfo>(read, "protocol_info", &*self.protocol_info, f)
     }
 
     pub fn token_info<R>(
@@ -137,14 +129,6 @@ impl ReadWriteCache {
         read: bool,
         f: impl FnOnce(&SegmentedCache<Address, Option<TokenInfo>, ahash::RandomState>) -> R,
     ) -> R {
-        if read {
-            self.metrics
-                .clone()
-                .cache_read::<R, TokenInfo>("token_info", || f(&self.token_info))
-        } else {
-            self.metrics
-                .clone()
-                .cache_write::<R, TokenInfo>("token_info", || f(&self.token_info))
-        }
+        self.record_metrics::<R, _, TokenInfo>(read, "token_info", &*self.token_info, f)
     }
 }
