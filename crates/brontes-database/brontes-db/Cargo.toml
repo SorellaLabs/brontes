@@ -44,7 +44,7 @@ fs2.workspace = true
 fs_extra.workspace = true
 filesize.workspace = true
 tar.workspace = true
-flate2.workspcae = true
+flate2.workspace = true
 
 # libmdbx deps
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }
