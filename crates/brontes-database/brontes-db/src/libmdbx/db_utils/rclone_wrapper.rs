@@ -178,8 +178,13 @@ impl RCloneWrapper {
 
             // move to the tmp dir for zipping and zip
             let copy = CopyOptions::new();
+            let tmp = format!("/tmp/{directory_name}");
+            fs_extra::dir::create_all(&tmp, true).expect("failed to create tmp folder");
+            tracing::info!(from=?directory, to=?tmp, "copying to tmp location");
+
             // copy the data to tmp
-            fs_extra::dir::copy(&directory, format!("/tmp/{directory_name}"), &copy).unwrap();
+            fs_extra::dir::copy(&directory, &tmp, &copy).unwrap();
+
             if !Command::new("tar")
                 .arg("-czvf")
                 .arg(format!("{directory_name}.tar.gz"))
