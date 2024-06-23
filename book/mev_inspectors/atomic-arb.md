@@ -12,9 +12,16 @@ An atomic arbitrage is a type of arbitrage that involves multiple trades that ar
 
 The inspector retrieves transactions in the block that involve `swap`, `transfer`, `eth_transfer`, `FlashLoan`, `batch_swap` or `aggregator_swap` actions.
 
-### Step 2: Identify Potential Atomic Arbitrage
+### Step 2: Identify Potential Atomic Arbitrage and Classify it's Type
 
 We analyze the sequence of swaps in each transaction to identify and categorize potential atomic arbitrages. Our classification is based on the number of swaps and the relationships between the tokens involved.
+
+We classify atomic arbitrages in these distinct types:
+
+- Triangle,
+- CrossPair
+- StablecoinArb,
+- LongTail
 
 #### For Zero or One Swap
 
@@ -26,7 +33,7 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
 
    - Condition: Input token of Swap 1 matches output token of Swap 2, and swaps are continuous.
 
-   ```
+   ```ignore
    Swap 1: WETH → USDC
    Swap 2: USDC → WETH
    ```
@@ -35,14 +42,14 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
 
    - Triangle (stablecoins):
 
-   ```
+   ```ignore
    Swap 1: USDC → USDT
    Swap 2: USDT → USDC
    ```
 
    - Non-Triangle (input of Swap 1 and output of Swap 2 form a stable pair):
 
-   ```
+   ```ignore
    Swap 1: USDC → WETH
    Swap 2: WETH → USDT
    ```
@@ -51,7 +58,7 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
 
    - Condition: The sequence starts and ends with the same token, but there's a break in continuity where the second swap's input token doesn't match first swap's output token.
 
-   ```
+   ```ignore
    Swap 1: WETH → USDC
    Swap 2: WBTC → WETH
    ```
@@ -65,7 +72,7 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
 
    - Condition: First and last tokens form a stable pair.
 
-   ```
+   ```ignore
    Swap 1: USDC → WETH
    Swap 2: WETH → WBTC
    Swap 3: WBTC → DAI
@@ -73,36 +80,26 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
 
 2. **Cross-Pair Arbitrage**
 
-   - Condition: A break in the continuity of assets swap, where one swap's output doesn't match the next swap's input.
-
-   ```
-   Swap 1: WETH → USDC
-   Swap 2: WBTC → DAI
-   Swap 3: DAI  → WETH
-   ```
-
-3. **Cross-Pair Arbitrage**
-
    - Condition: The sequence starts and ends with the same token, but there's a break in continuity where one swap's output doesn't match the next swap's input.
 
-   ```
+   ```ignore
    Example:
    Swap 1: WETH → USDC
    Swap 2: WBTC → DAI
    Swap 3: DAI  → WETH
    ```
 
-4. **Triangle Arbitrage**
+3. **Triangle Arbitrage**
 
-   - Condition: All swaps are continuous and end with the starting token.
+   - Condition: All swaps are continuous and the swap sequence ends with the starting token.
 
-   ```
+   ```ignore
    Swap 1: WETH → USDC
    Swap 2: USDC → WBTC
    Swap 3: WBTC → WETH
    ```
 
-5. **Long Tail**
+4. **Long Tail**
    - Any swap pattern not fitting the above categories.
 
 > **Note on Stable Pair Identification:**
