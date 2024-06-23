@@ -103,7 +103,6 @@ default = [
   "brontes-classifier/default",
   "brontes-inspect/default",
   "jemalloc",
-  "local-reth",
   "cex-dex-markout",
 ]
 

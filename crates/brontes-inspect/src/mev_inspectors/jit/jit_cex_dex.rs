@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use alloy_primitives::Address;
-use brontes_core::LibmdbxReader;
 use brontes_types::{
-    db::{metadata::Metadata, token_info::TokenInfoWithAddress},
+    db::{metadata::Metadata, token_info::TokenInfoWithAddress, traits::LibmdbxReader},
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType},
     normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
@@ -78,6 +77,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                     jits
                 );
                 let BundleData::Jit(jit) = jits.data else { return None };
+                let details = [jit.backrun_burn_gas_details, jit.frontrun_mint_gas_details];
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
                 if !tx_info.is_searcher_of_type_with_count_threshold(MevType::CexDex, 10) {
@@ -197,7 +197,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                     vec![tx_info.tx_hash],
                     &tx_info,
                     profit_usd,
-                    &[tx_info.gas_details],
+                    &details,
                     metadata.clone(),
                     MevType::JitCexDex,
                     false,
