@@ -132,10 +132,15 @@ impl RCloneWrapper {
         partition_folder: PathBuf,
         start_block: u64,
     ) -> eyre::Result<()> {
+        tracing::info!(?partition_folder);
         futures::stream::iter(
             get_dir_content(&partition_folder)?
                 .directories
                 .iter()
+                .map(|f| {
+                    tracing::info!("dir names: {f}");
+                    f
+                })
                 .filter(|file_name| file_name.starts_with(PARTITION_FILE_NAME))
                 .filter_map(|directory| {
                     tracing::info!("tar balling directory {}", directory);
