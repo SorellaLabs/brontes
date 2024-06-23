@@ -62,7 +62,7 @@ pub mod discovery;
 pub mod mev_inspectors;
 use brontes_metrics::inspectors::OutlierMetrics;
 pub use mev_inspectors::*;
-use mev_inspectors::{jit_cex_dex::JitCexDex, searcher_activity::SearcherActivity};
+use mev_inspectors::{jit::JitCexDex, searcher_activity::SearcherActivity};
 
 #[cfg(feature = "tests")]
 pub mod test_utils;
@@ -85,9 +85,10 @@ use brontes_types::{
 use cex_dex::CexDexInspector;
 #[cfg(feature = "cex-dex-markout")]
 use cex_dex_markout::CexDexMarkoutInspector;
-use jit::JitInspector;
 use liquidations::LiquidationInspector;
 use sandwich::SandwichInspector;
+
+use crate::jit::jit_liquidity::JitInspector;
 
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
