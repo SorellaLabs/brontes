@@ -52,16 +52,17 @@ impl Snapshot {
         // download db tarball
         let multi_bar = MultiProgress::new();
 
-        futures::stream::iter(curl_queries)
+        let err = futures::stream::iter(curl_queries)
             .map(|DbRequestWithBytes { url, size_bytes, file_name }| {
                 let client = client.clone();
                 let mb = multi_bar.clone();
-                tracing::info!(?url,?size_bytes,?file_name);
+                tracing::info!(?url, ?size_bytes, ?file_name);
                 async move {
                     let mut download_dir = temp_dir();
                     download_dir.push(format!("{}s", NAME));
                     download_dir.push(file_name);
 
+                    tracing::info!("creating file");
                     let file = tokio::fs::File::create(&download_dir).await?;
 
                     let stream = client.get(url).send().await?.bytes_stream();
@@ -84,6 +85,10 @@ impl Snapshot {
             .buffer_unordered(10)
             .collect::<Vec<_>>()
             .await;
+
+        for e in err {
+            e?;
+        }
 
         tracing::info!(
             "finished downloading db. decompressing tar.gz and moving to final destination"
