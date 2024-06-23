@@ -13,6 +13,8 @@ brontes-macros.workspace = true
 brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
 moka = { version = "0.12.7", features = ["sync"] }
 
+regex = "1"
+
 reth-tracing-ext.workspace = true
 # alloy
 alloy-primitives = { workspace = true, features = [
@@ -37,6 +39,12 @@ reth-db.workspace = true
 reth-rpc.workspace = true
 reth-rpc-types.workspace = true
 
+# filesystem
+fs2.workspace = true
+fs_extra.workspace = true
+filesize.workspace = true
+tar.workspace = true
+flate2.workspace = true
 
 # libmdbx deps
 parity-scale-codec = { version = "3.2.1", features = ["derive", "bytes"] }

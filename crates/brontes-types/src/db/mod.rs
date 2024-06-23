@@ -1,5 +1,7 @@
 pub mod address_metadata;
 pub mod address_to_protocol_info;
+
+#[rustfmt::skip]
 pub mod block_analysis;
 pub mod block_times;
 pub mod builder;
