@@ -33,4 +33,7 @@ Display:
 
       --quiet
           Silence all log output
+
+      --metrics-port <METRICS_PORT>
+          [default: 6923]
 ```

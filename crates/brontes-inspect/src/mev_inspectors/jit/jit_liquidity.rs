@@ -417,7 +417,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 // into the map
                 Entry::Vacant(duplicate_mev_contract) => {
                     duplicate_mev_contract.insert((root.tx_hash, root.head.address));
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
                     // Get's prev tx hash &  for this sender & replaces it with the current tx hash
@@ -444,7 +443,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     }
 
                     *prev_tx_hash = root.tx_hash;
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
@@ -452,7 +450,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
                     // Get's prev tx hash for this sender & replaces it with the current tx hash
@@ -479,18 +476,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
                     // Add current transaction hash to the list of transactions for this sender
                     o.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
             // Now, for each existing entry in possible_victims, we add the current
             // transaction hash as a potential victim, if it is not the same as
             // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
-                }
+            for v in possible_victims.values_mut() {
+                v.push(root.tx_hash);
             }
+
+            possible_victims.insert(root.tx_hash, vec![]);
         }
 
         let set = Itertools::unique(set.into_values())

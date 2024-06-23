@@ -80,7 +80,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                 let BundleData::Jit(jit) = jits.data else { return None };
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
-                if !tx_info.is_labelled_searcher_of_type(MevType::CexDex) {
+                if !tx_info.is_searcher_of_type_with_count_threshold(MevType::CexDex, 10) {
                     return None
                 }
 

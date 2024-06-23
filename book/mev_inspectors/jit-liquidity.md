@@ -4,24 +4,20 @@ These inspectors are designed to detect and analyze the profitability of Just-In
 
 ## What is JIT Liquidity?
 
-JIT Liquidity is a type of MEV where a trader identifies a large swap on a concentrated liquidity pool and sandwiches it to provide liquidity, then removes it immediately after the swap. It unfolds in three steps:
+JIT Liquidity is a type of MEV where a trader sandwiches a large swap on a concentrated liquidity pool by providing & subsequently removing liquidity. It unfolds in three steps:
 
 1. **Front-run:** The attacker provides extremely concentrated liquidity at the ticks that will be active during the large swap.
 2. **Victim Transaction:** The victim executes their swap.
-3. **Back-run:** The attacker removes the liquidity immediately after the victim's transaction, collecting the fees from the swap.
+3. **Back-run:** The attacker removes the liquidity immediately after the victim's tx, collecting the fees from the swap.
 
 ## What is JIT CexDex?
 
-TODO:
+JIT CexDex, a variant of JIT Liquidity attacks, exploits the price discrepancies between centralized exchanges (CEX) and decentralized exchanges (DEX). Nearly all JITs observed in practice are JIT CexDex. It occurs when:
 
-- there is a third type where the pool can be arbed against the CEX, but their is a swap that goes in the opposite direction so they will fill by JITing to arb the user & then backrun the swap arbitraging the pool back to true price.
+1. There's is a price discrepancy between a CEX & a DEX that is within the fee bound so executing an arbitrage on the DEX is not profitable after accounting for the swap fee.
+2. There is a CEX DEX opportunity, but the volume required to execute the arbitrage & rebalance the pool back to the true price is less than the volume of an incoming user swap on the DEX, so the attacker can extract more value by being a maker for the swap as opposed to executing the arbitrage directly against the pool.
 
-JIT CexDex is a specialized form of JIT Liquidity that exploits price discrepancies between centralized exchanges (CEX) and decentralized exchanges (DEX). It occurs when:
-
-1. There's is a price discrepancy between a centralize exchange (CEX) and a decentralized exchange (DEX) but the price is within the fee bound so executing an arbitrage on the DEX is not profitable after the swap fee.
-2. There is a CEX DEX opportunity, but the volume required to execute the arbitrage is less than an incoming swap on the DEX, so the attacker can extract more value by being a maker for the swap that executing the arbitrage directly against the pool.
-
-In this scenario, market makers provide liquidity for the user swap, effectively arbitraging the price discrepancy between the CEX & DEX while receiving instead of paying the DEX swap fee.
+In this scenario, market makers provide liquidity for the user swap, effectively arbitraging the price discrepancy between the CEX & DEX while receiving, instead of incurring, the DEX swap fee.
 
 ## Methodology
 
@@ -52,7 +48,7 @@ Our algorithm constructs the largest possible JIT scenarios by identifying dupli
 
 1. **Track Duplicates**:
 
-   - Map addresses (contract or EOA) to their most recent transaction hash
+   - Map addresses (contract & EOA) to their most recent transaction hash
 
 2. **Build Victim Sets**:
 
@@ -71,39 +67,91 @@ Our algorithm constructs the largest possible JIT scenarios by identifying dupli
      - Update the backrun to the current transaction
      - Add the new set of victims
 
-4. **Filter and Refine**:
-   - We filter out scenarios with more than 10 victim sets or 20 victims
-   - We ensure that the set includes both mint and burn operations
+### Step 2: Partitioning & Filter Possible JITs
 
-This approach allows us to capture a wide range of JIT Liquidity patterns, from simple to complex multi-step operations. The resulting list of `PossibleJit` structures represents the most comprehensive JIT scenarios in the block, ready for further analysis in subsequent steps.
+Here's how partitioning works:
 
-### Step 2: Analyze JIT Candidates
+- We iterate through victim sets in each JIT.
+- Empty victim sets signal a break in the JIT.
+- We create new `PossibleJit` structs at these breaks.
+
+<div style="text-align: center;">
+ <img src="sandwich/partition-sandwich.png" alt="Possible Sandwich Partitioning" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
+
+> **Note:** Our partitioning assumes attackers maximize efficiency. Multiple attacker transactions without intervening victims may lead to unexpected results. If you find examples breaking this assumption, please report them for a bounty.
+
+**Filter and Refine**:
+
+- We filter out `PossibleJit` with more than 10 victim sets or 20 victims
+- We ensure that the frontrun in the set includes a `mint` action and the backrun includes a `burn` action.
+
+### Step 3: Analyze JIT Candidates
 
 For each `PossibleJit`, we:
 
-1. Retrieve detailed transaction information for front-runs, back-runs, and victims.
-2. Analyze the actions within these transactions (mints, burns, swaps).
-3. Calculate potential profit, considering gas costs and other factors.
+1. Check for recursive JIT patterns, verifying:
 
-### Step 3: Validate JIT Opportunities
+   - Mint and Burn Sequence: Logical order of liquidity additions and removals
+   - Account Consistency: Same account for all transactions
+   - Token Alignment: Matching tokens in mints and burns
 
-We apply specific criteria to filter out false positives:
+2. If a recursive pattern is detected, initiate recursive analysis. Otherwise, proceed with:
+   - Splitting actions into mints, burns, and other transfers
+   - Verifying presence of both mints and burns
+   - Ensuring mints and burns are for the same pools
 
-1. Ensure the presence of both mints (in front-runs) and burns (in back-runs).
-2. Verify that mints and burns are for the same tokens and pools.
-3. Check for profitability after accounting for gas costs.
+#### Recursive JIT Verification
 
-### Step 4: Identify JIT CexDex (for applicable cases)
+For non standard JIT patterns, we employ a recursive strategy:
+
+<div style="text-align: center;">
+ <img src="jit/recursive-check.png" alt="Recursive JIT Split" style="border-radius: 20px; width: 600px; height: auto;">
+</div>
+
+1. The process stops after 10 recursive iterations.
+
+2. We apply two types of "shrinking":
+
+   **Back Shrink**:
+
+   - Remove the last victim set
+   - Use the last front-run as the new back-run
+   - Recalculate the JIT opportunity
+
+   **Front Shrink**:
+
+   - Remove the first victim set
+   - Remove the first front-run transaction
+   - Retain the original back-run
+   - Recalculate the JIT opportunity
+
+3. We continue this process as long as:
+   - There's more than one front-run transaction
+   - Victim sets aren't empty
+   - At least one victim has non-empty actions
+
+### Step 4: Validate JIT Opportunities
+
+For confirmed JIT bundles:
+
+1. Calculate searcher revenue: Balance deltas of searcher addresses & sibling address (e.g piggy bank address) if applicable
+2. Calculate searcher cost: Sum of gas costs for all attacker transactions
+3. Profit = Revenue - Cost
+4. Applying a maximum profit threshold
+
+### Step 5: Generate JIT Bundle
+
+For confirmed opportunities:
+
+1. Construct a `JitLiquidity` structure with detailed transaction information
+2. Create a `Bundle` with a summary header and `JitLiquidity` data
+3. For recursive analyses, deduplicate results and keep the largest JIT bundle
+
+### Step 6: Identify JIT CexDex
 
 For validated JIT opportunities, we perform additional checks:
 
 1. Verify if the searcher is labeled as a known CexDex arbitrageur.
 2. Analyze the swaps to detect CEX-DEX arbitrage patterns.
 3. Compare DEX swaps with CEX trade data to confirm price discrepancies.
-
-### Step 5: Calculate Profit and Generate Bundle
-
-For confirmed JIT and JIT CexDex opportunities:
-
-1. Calculate the final profit, considering all relevant factors.
-2. Generate a `Bundle` structure containing detailed information about the MEV opportunity.
