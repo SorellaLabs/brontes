@@ -30,13 +30,16 @@ impl R2Uploader {
         let db = LibmdbxReadWriter::init_db(database_path, None, &ctx.task_executor)?;
         tracing::info!("partitioning new data into respective files");
 
-        LibmdbxPartitioner::new(
+        if let Err(e) = LibmdbxPartitioner::new(
             db,
             self.partition_db_folder.clone(),
             start_block,
             ctx.task_executor.clone(),
         )
-        .execute()?;
+        .execute() {
+            tracing::error!(error=%e);
+            return Ok(());
+        }
 
         tracing::info!(
             "partitioning complete, uploading files, this will take a while. ~10 min per partition"
