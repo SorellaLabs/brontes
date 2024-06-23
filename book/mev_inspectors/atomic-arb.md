@@ -36,6 +36,13 @@ The arbitrage type will determine the filtering conditions applied in the subseq
 
 > **Note:** This is by no means a comprehensive list of atomic arbitrage types. If you have discovered atomic arbitrages that do not fit these criteria, please let us know. We would love to expand our classification to include new patterns and improve our analysis.
 
+We classify atomic arbitrages in these distinct types:
+
+- Triangle,
+- CrossPair
+- StablecoinArb,
+- LongTail
+
 #### For Zero or One Swap
 
 - Not considered an arbitrage opportunity. We move to the next transaction.
