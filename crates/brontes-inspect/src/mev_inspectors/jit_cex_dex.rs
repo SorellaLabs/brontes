@@ -74,7 +74,6 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
             .filter_map(|jits| {
                 tracing::trace!("trying jit to see if cexdex - {:#?}", jits);
                 let BundleData::Jit(jit) = jits.data else { return None };
-                jit.frontrun_mint_tx_hash
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
                 if !tx_info.is_labelled_searcher_of_type(MevType::CexDex) {
