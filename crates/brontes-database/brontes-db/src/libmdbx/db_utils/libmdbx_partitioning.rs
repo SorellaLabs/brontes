@@ -86,8 +86,10 @@ impl LibmdbxPartitioner {
             .try_for_each(|BlockRangeList { start_block, end_block }| {
                 let mut path = self.partition_db_folder.clone();
                 path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
+                tracing::info!(?path, "creating path");
                 fs_extra::dir::create_all(&path, false)?;
                 let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
+                tracing::info!("database opened");
 
                 move_tables_to_partition!(
                     BLOCK_RANGE
