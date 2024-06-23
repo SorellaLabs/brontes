@@ -11,10 +11,11 @@ use crate::{
 
 pub fn merge_libmdbx_dbs(
     final_db: LibmdbxReadWriter,
-    partition_db_folder: PathBuf,
+    partition_db_folder: &PathBuf,
     executor: BrontesTaskExecutor,
 ) -> eyre::Result<()> {
-    let files = get_dir_content(&partition_db_folder)?;
+    let files = get_dir_content(partition_db_folder)?;
+    // we can par this due to the single reader and not have any read locks.
     files
         .files
         .par_iter()

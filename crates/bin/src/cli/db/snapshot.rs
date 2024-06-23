@@ -1,6 +1,7 @@
 use std::{env::temp_dir, path::PathBuf, str::FromStr};
 
-use brontes_database::libmdbx::rclone_wrapper::BlockRangeList;
+use brontes_core::LibmdbxReadWriter;
+use brontes_database::libmdbx::{merge_libmdbx_dbs, rclone_wrapper::BlockRangeList};
 use brontes_types::{
     buf_writer::DownloadBufWriterWithProgress, unordered_buffer_map::BrontesStreamExt,
 };
@@ -35,7 +36,7 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    pub async fn execute(self, brontes_db_endpoint: String, _: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
         let ranges_avail = self.get_available_ranges(&client).await?;
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
@@ -47,16 +48,18 @@ impl Snapshot {
         // download db tarball
         let multi_bar = MultiProgress::new();
 
+        // ensure dir exists
+        let mut download_dir = temp_dir();
+        download_dir.push(format!("{}s", NAME));
+        fs_extra::dir::create_all(&download_dir, false)?;
+
         let err = futures::stream::iter(curl_queries)
             .map(|DbRequestWithBytes { url, size_bytes, file_name }| {
                 let client = client.clone();
                 let mb = multi_bar.clone();
                 tracing::info!(?url, ?size_bytes, ?file_name);
+                let mut download_dir = download_dir.clone();
                 async move {
-                    let mut download_dir = temp_dir();
-                    download_dir.push(format!("{}s", NAME));
-                    fs_extra::dir::create_all(&download_dir, false)?;
-
                     download_dir.push(file_name);
 
                     tracing::info!("creating file");
@@ -80,18 +83,22 @@ impl Snapshot {
             .collect::<Vec<_>>()
             .await;
 
+        // TODO: later cleanup
         for e in err {
             e??;
         }
 
         tracing::info!(
-            "finished downloading db. decompressing tar.gz and moving to final destination"
+            "all partitions downloaded, merging into the current db at: {}",
+            brontes_db_endpoint
         );
 
-        // self.handle_downloaded_file(&download_dir, &self.write_location)?;
-        // tracing::info!("moved results to proper location");
-        // fs_extra::file::remove(download_dir)?;
-        // tracing::info!("deleted tarball");
+        let final_db =
+            LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
+
+        merge_libmdbx_dbs(final_db, &download_dir, ctx.task_executor)?;
+        tracing::info!("cleaning up tmp libmdbx partitions");
+        fs_extra::dir::remove(download_dir)?;
 
         Ok(())
     }
