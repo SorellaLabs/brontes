@@ -213,7 +213,7 @@ impl Snapshot {
         new_db_size += size;
 
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
-        let storage_available = fs2::free_space(&brontes_db_endpoint)?;
+        let storage_available = fs2::free_space(brontes_db_endpoint)?;
 
         if storage_available >= new_db_size {
             Ok(res)
@@ -234,7 +234,7 @@ impl Snapshot {
         unpack.pop();
         archive.unpack(&unpack)?;
 
-        fs_extra::file::remove(&tarball_location)?;
+        fs_extra::file::remove(tarball_location)?;
 
         Ok(())
     }
