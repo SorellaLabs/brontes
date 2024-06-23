@@ -106,7 +106,7 @@ For each `PossibleJit`, we:
 For non standard JIT patterns, we employ a recursive strategy:
 
 <div style="text-align: center;">
- <img src="sandwich/recursive-check.png" alt="Recursive JIT Split" style="border-radius: 20px; width: 600px; height: auto;">
+ <img src="jit/recursive-check.png" alt="Recursive JIT Split" style="border-radius: 20px; width: 600px; height: auto;">
 </div>
 
 1. The process stops after 10 recursive iterations.

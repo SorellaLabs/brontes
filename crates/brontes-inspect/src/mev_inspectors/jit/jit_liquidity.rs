@@ -105,37 +105,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         )
     }
 
-    fn get_searcher_actions<'a>(
-        &self,
-        i: impl Iterator<Item = &'a TxHash>,
-        tree: Arc<BlockTree<Action>>,
-    ) -> Vec<Vec<Action>> {
-        i.map(|tx| {
-            self.utils
-                .flatten_nested_actions(
-                    tree.clone().collect(
-                        tx,
-                        TreeSearchBuilder::default().with_actions([
-                            Action::is_mint,
-                            Action::is_burn,
-                            Action::is_transfer,
-                            Action::is_eth_transfer,
-                            Action::is_nested_action,
-                        ]),
-                    ),
-                    &|actions| {
-                        actions.is_mint()
-                            || actions.is_burn()
-                            || actions.is_collect()
-                            || actions.is_transfer()
-                            || actions.is_eth_transfer()
-                    },
-                )
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<Vec<Action>>>()
-    }
-
     fn calculate_recursive(
         frontrun_info: &[TxInfo],
         backrun_info: &TxInfo,

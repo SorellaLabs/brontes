@@ -24,6 +24,8 @@ const MAX_PRICE_DIFF: Rational = Rational::const_from_signed(3);
 
 //TODO: If price diff exceeds max price diff, attempt to find the trigger
 // transaction
+//TODO: If price diff exceeds max price diff, attempt to find the trigger
+// transaction
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
 }
@@ -157,6 +159,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let is_profitable = profit > Rational::ZERO;
 
+        let requirement_multiplier = if has_dex_price { 1 } else { 2 };
         let requirement_multiplier = if has_dex_price { 1 } else { 2 };
 
         let profit = match possible_arb_type {
@@ -301,6 +304,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     /// warning and captures relevant metrics. The function returns `true`
     /// if all evaluated swaps have price differences within the acceptable
     /// range.
+    /// Evaluates the validity of swap prices against DEX quoted prices within a
+    /// given metadata context.
+    ///
+    /// This function iterates over each token involved in the provided swaps
+    /// and compares the effective swap rates against the DEX quoted prices
+    /// for corresponding token pairs. It computes the difference
+    /// between the effective price and the DEX pricing rate. If any swap
+    /// exhibits a price difference exceeding `MAX_PRICE_DIFF`, it logs a
+    /// warning and captures relevant metrics. The function returns `true`
+    /// if all evaluated swaps have price differences within the acceptable
+    /// range.
     fn valid_pricing<'a>(
         &self,
         metadata: Arc<Metadata>,
@@ -347,10 +361,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                 return None
                             }
                             &effective_price / &dex_pricing_rate
+                            &effective_price / &dex_pricing_rate
                         } else {
                             if effective_price == Rational::ZERO {
                                 return None
                             }
+                            &dex_pricing_rate / &effective_price
                             &dex_pricing_rate / &effective_price
                         };
 
