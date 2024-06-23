@@ -57,7 +57,7 @@ impl RCloneWrapper {
     async fn get_all_tarballs(&self) -> eyre::Result<Vec<String>> {
         let result = Command::new("rclone")
             .arg("tree")
-            .arg(format!("{}:brontes_db", self.config_name))
+            .arg(format!("{}:brontes-db", self.config_name))
             .stdout(Stdio::piped())
             .output()
             .await?;
@@ -104,7 +104,63 @@ impl RCloneWrapper {
         }
     }
 
-    async fn upload_full_range_tables(&self) -> eyre::Result<()> {
+    async fn upload_full_range_tables(&self, partition_folder: &PathBuf) -> eyre::Result<()> {
+        let directory = PathBuf::from(
+            get_dir_content(&partition_folder)?
+                .directories
+                .iter()
+                .find(|path| path.ends_with("brontes-db-partition-full-range-tables"))
+                .expect("no full range table found"),
+        );
+
+        self.tar_ball_dir(&directory).await?;
+
+        Ok(())
+    }
+
+    async fn tar_ball_dir(&self, directory: &PathBuf) -> eyre::Result<()> {
+        let directory_name = directory
+            .components()
+            .last()
+            .unwrap()
+            .as_os_str()
+            .to_str()
+            .unwrap();
+
+        tracing::info!(?directory, ?directory_name);
+
+        // move to the tmp dir for zipping and zip
+        let copy = CopyOptions::new().overwrite(true);
+
+        let tmp = format!("/tmp/{directory_name}");
+        fs_extra::dir::create_all(&tmp, true).expect("failed to create tmp folder");
+        tracing::info!(from=?directory, to=?tmp, "copying to tmp location");
+
+        // copy the data to tmp
+        fs_extra::dir::copy(&directory, &"/tmp/", &copy)?;
+
+        if !Command::new("tar")
+            .arg("-czvf")
+            .arg(format!("/tmp/{directory_name}.tar.gz"))
+            .arg("-C")
+            .arg("/tmp/")
+            .arg(directory_name)
+            .spawn()?
+            .wait()
+            .await?
+            .success()
+        {
+            panic!("failed to create tarball");
+        }
+
+        // get the tarball file size and write that
+        let file_size = filesize::file_real_size(format!("/tmp/{directory_name}.tar.gz"))?;
+
+        let mut file = File::create(format!("/tmp/{directory_name}-byte-count.txt"))?;
+        write!(&mut file, "{}", file_size).unwrap();
+
+        // upload to the r2 bucket using rclone
+        self.upload_tarball(directory_name).await;
         Ok(())
     }
 
@@ -137,6 +193,8 @@ impl RCloneWrapper {
         start_block: u64,
     ) -> eyre::Result<()> {
         tracing::info!(?partition_folder);
+        self.upload_full_range_tables(&partition_folder).await?;
+
         futures::stream::iter(
             get_dir_content(&partition_folder)?
                 .directories
@@ -170,57 +228,14 @@ impl RCloneWrapper {
                 }),
         )
         .map(|directory| async move {
-            let directory_name = directory
-                .components()
-                .last()
-                .unwrap()
-                .as_os_str()
-                .to_str()
-                .unwrap();
-
-            tracing::info!(?directory, ?directory_name);
-
-            // move to the tmp dir for zipping and zip
-            let copy = CopyOptions::new().overwrite(true);
-
-            let tmp = format!("/tmp/{directory_name}");
-            fs_extra::dir::create_all(&tmp, true).expect("failed to create tmp folder");
-            tracing::info!(from=?directory, to=?tmp, "copying to tmp location");
-
-            // copy the data to tmp
-            fs_extra::dir::copy(&directory, &"/tmp/", &copy).unwrap();
-
-            if !Command::new("tar")
-                .arg("-czvf")
-                .arg(format!("/tmp/{directory_name}.tar.gz"))
-                .arg("-C")
-                .arg("/tmp/")
-                .arg(directory_name)
-                .spawn()
-                .unwrap()
-                .wait()
+            self.tar_ball_dir(&directory)
                 .await
-                .unwrap()
-                .success()
-            {
-                panic!("failed to create tarball");
-            }
-
-            // get the tarball file size and write that
-            let file_size =
-                filesize::file_real_size(format!("/tmp/{directory_name}.tar.gz")).unwrap();
-
-            let mut file = File::create(format!("/tmp/{directory_name}-byte-count.txt")).unwrap();
-            write!(&mut file, "{}", file_size).unwrap();
-
-            // upload to the r2 bucket using rclone
-            self.upload_tarball(directory_name).await;
+                .expect("failed to tarball dir")
         })
         .buffer_unordered(5)
         .collect::<Vec<_>>()
         .await;
 
-        self.upload_full_range_tables().await?;
         // upload ranges for downloader
         self.update_block_range_file().await?;
 
