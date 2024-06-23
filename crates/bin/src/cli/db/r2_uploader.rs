@@ -27,7 +27,7 @@ impl R2Uploader {
             r2wrapper.get_most_recent_partition_block().await?
         };
 
-        let db = LibmdbxReadWriter::init_db(database_path, None, &ctx.task_executor, true)(?;
+        let db = LibmdbxReadWriter::init_db(database_path, None, &ctx.task_executor, true)?;
         tracing::info!("partitioning new data into respective files");
 
         if let Err(e) = LibmdbxPartitioner::new(
