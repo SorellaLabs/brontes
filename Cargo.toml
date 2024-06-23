@@ -180,6 +180,13 @@ polars = { version = "0.38.3", features = ["lazy"] }
 parquet = { version = "51.0.0", features = ["async"] }
 indicatif = "0.17.8"
 
+# filesystem
+fs2 = "0.4.3"
+fs_extra = "1.3.0"
+filesize = "0.2.0"
+tar = "0.4.41"
+flate2 = "1.0.30"
+
 
 [profile.release]
 lto = "thin"

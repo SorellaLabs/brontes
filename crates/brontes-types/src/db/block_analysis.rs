@@ -619,6 +619,7 @@ pub struct BlockAnalysis {
 }
 
 impl BlockAnalysis {
+    #[rustfmt::skip]
     pub fn new(block: &MevBlock, bundles: &[Bundle]) -> Self {
         // All fields
         let (all_profit_addr, all_profit_am) =
