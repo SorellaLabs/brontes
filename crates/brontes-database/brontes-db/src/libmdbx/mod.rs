@@ -29,6 +29,7 @@ pub use libmdbx_read_write::{
 use reth_db::{
     is_database_empty,
     models::client_version::ClientVersion,
+    transaction::DbTx,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseError,
 };
@@ -217,6 +218,13 @@ impl Libmdbx {
     /// returns a RO transaction
     fn ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
         let tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
+
+        Ok(tx)
+    }
+
+    fn no_timeout_ro_tx(&self) -> eyre::Result<CompressedLibmdbxTx<RO>> {
+        let mut tx = CompressedLibmdbxTx::new_ro_tx(&self.0)?;
+        tx.0.disable_long_read_transaction_safety();
 
         Ok(tx)
     }

@@ -139,7 +139,7 @@ impl LibmdbxReadWriter {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
     {
-        let tx = self.db.ro_tx()?;
+        let tx = self.db.no_timeout_ro_tx()?;
         let mut cur = tx.cursor_read::<T>()?;
 
         TmpWriter::<T, D>::batch_write_to_db(
@@ -160,7 +160,7 @@ impl LibmdbxReadWriter {
         end_block: u64,
         write_db: &LibmdbxReadWriter,
     ) -> eyre::Result<()> {
-        let tx = self.db.ro_tx()?;
+        let tx = self.db.no_timeout_ro_tx()?;
         let mut cur = tx.cursor_read::<DexPrice>()?;
 
         let start_key = make_filter_key_range(start_block).0;
@@ -184,7 +184,7 @@ impl LibmdbxReadWriter {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
     {
-        let tx = self.db.ro_tx()?;
+        let tx = self.db.no_timeout_ro_tx()?;
         let mut cur = tx.cursor_read::<T>()?;
 
         TmpWriter::<T, D>::batch_write_to_db(
