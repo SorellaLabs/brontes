@@ -60,7 +60,7 @@ impl Snapshot {
                 async move {
                     let mut download_dir = temp_dir();
                     download_dir.push(format!("{}s", NAME));
-                    fs_extra::dir::create_all(&download_dir, false);
+                    fs_extra::dir::create_all(&download_dir, false)?;
 
                     download_dir.push(file_name);
 
