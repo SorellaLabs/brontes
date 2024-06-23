@@ -8,5 +8,5 @@
     - [`brontes db libmdbx-mem-test`](./brontes/db/libmdbx-mem-test.md)
     - [`brontes db init`](./brontes/db/init.md)
     - [`brontes db export`](./brontes/db/export.md)
-    - [`brontes db test-traces-init`](./brontes/db/test-traces-init.md)
+    - [`brontes db download-snapshot`](./brontes/db/download-snapshot.md)
 

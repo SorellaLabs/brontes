@@ -1,4 +1,4 @@
-# Atomic Arbitrage
+# Atomic Arbitrage Inspector
 
 The Atomic Arbitrage Inspector is designed to detect and analyze the profitability of various forms of atomic arbitrage.
 
@@ -12,9 +12,29 @@ An atomic arbitrage is a type of arbitrage that involves multiple trades that ar
 
 The inspector retrieves transactions in the block that involve `swap`, `transfer`, `eth_transfer`, `FlashLoan`, `batch_swap` or `aggregator_swap` actions.
 
-### Step 2: Identify Potential Atomic Arbitrage and Classify it's Type
+### Step 2: Identify and Classify Potential Atomic Arbitrages
 
-We analyze the sequence of swaps in each transaction to identify and categorize potential atomic arbitrages. Our classification is based on the number of swaps and the relationships between the tokens involved.
+In this step, we analyze the sequence of swaps within each transaction to identify and categorize potential atomic arbitrages.
+
+#### Classification Criteria
+
+We base our classification on two main factors:
+
+1. The number of swaps in the sequence
+2. The relationships between the tokens involved in these swaps
+
+#### Arbitrage Types
+
+We categorize atomic arbitrages into four distinct types:
+
+1. **Triangle**: A circular sequence of trades returning to the starting token
+2. **Cross-Pair**: Trade sequences where one swap's output doesn't match the next swap's input.
+3. **Stablecoin**: Arbitrages involving stablecoin pairs
+4. **Long Tail**: Complex patterns not fitting the above categories
+
+The arbitrage type will determine the filtering conditions applied in the subsequent steps.
+
+> **Note:** This is by no means a comprehensive list of atomic arbitrage types. If you have discovered atomic arbitrages that do not fit these criteria, please let us know. We would love to expand our classification to include new patterns and improve our analysis.
 
 We classify atomic arbitrages in these distinct types:
 
@@ -109,25 +129,60 @@ We classify atomic arbitrages in these distinct types:
 > - EURO stablecoins (e.g., EURS, EURT)
 > - GOLD stablecoins (e.g., PAXG, XAUT)
 
-### Step 4: Validate Profitability
+### Step 4: Calculate Arbitrage PnL
 
-We consider an arbitrage valid if:
+We calculate the arbitrage PnL with the following steps:
 
-1. It's profitable after gas costs, or
-2. It meets specific criteria based on the arbitrage type and transaction characteristics
+1. Calculate searcher revenue: Balance deltas of searcher addresses & sibling address (e.g piggy bank address) if applicable
+2. Calculate searcher cost: Gas cost & builder payment of the transaction
+3. Profit = Revenue - Cost
 
-### Step 5: Price Verification
+We filter out atomic arbitrages with more than $50M in profit as this is likely a false positive caused by a bug in our DEX pricing calculation.
 
-We compare the effective swap rates with external price data to ensure the arbitrage is genuine and not a result of manipulated on-chain prices.
+### Step 5: Validate Potential Arbitrages
 
-## Key Components
+We apply specific heuristics to filter out false positives for each identified arbitrage type. A transaction is considered a valid arbitrage if it meets any of the following conditions:
 
-- **PossibleSandwich**: Stores details of potential arbitrages, including involved addresses and transaction hashes.
-- **AtomicArbType**: Enum representing different types of atomic arbitrages.
-- **Profit Calculation**: We calculate profit by subtracting gas costs from the revenue in USD.
+#### 1. Triangle Arbitrage
 
-## Note on Filtering
+Valid if any of these conditions are met:
 
-We apply different filtering criteria based on the arbitrage type and transaction characteristics. This helps us focus on genuine arbitrage opportunities and reduce false positives.
+- Arbitrage is profitable
+- Searcher has executed > 20 \* `requirement_multiplier` previous atomic arbitrages
+- Searcher is manually labeled as a known atomic arbitrageur
+- Transaction is private and includes a direct builder payment
 
-For detailed implementation, refer to the [source code](https://github.com/YourRepo/AtomicArbInspector).
+#### 2. Cross-Pair Arbitrage
+
+Valid if any of these conditions are met:
+
+- Arbitrage is profitable
+- Swaps form a stable pair at the "jump" point
+- Searcher has executed > 10 \* `requirement_multiplier` previous atomic arbitrages
+- Searcher is manually labeled as a known atomic arbitrageur
+- Transaction is private
+- Transaction includes a direct builder payment
+
+#### 3. Stablecoin Arbitrage
+
+Valid if any of these conditions are met:
+
+- Arbitrage is profitable
+- Any condition from Cross-Pair Arbitrage (excluding stable pair check)
+
+#### 4. Long Tail Arbitrage
+
+Valid if both of these conditions are met:
+
+1. Arbitrage is profitable
+2. At least one of the following is true:
+   - Searcher has executed > 10 \* `requirement_multiplier` previous atomic arbitrages
+   - Searcher is manually labeled as a known atomic arbitrageur
+   - Transaction is private and includes a direct builder payment
+   - Transaction uses a known MEV contract
+
+> **Note on Requirement Multiplier:**
+> The `requirement_multiplier` adjusts the threshold for required previous arbitrages:
+>
+> - 1 with reliable pricing data
+> - 2 otherwise. This allows for more stringent classification when we have don't have reliable pricing data.
