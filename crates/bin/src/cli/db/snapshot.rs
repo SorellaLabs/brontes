@@ -56,6 +56,7 @@ impl Snapshot {
             .map(|DbRequestWithBytes { url, size_bytes, file_name }| {
                 let client = client.clone();
                 let mb = multi_bar.clone();
+                tracing::info!(?url,?size_bytes,?file_name);
                 async move {
                     let mut download_dir = temp_dir();
                     download_dir.push(format!("{}s", NAME));
