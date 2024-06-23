@@ -23,11 +23,14 @@ const LIBMDBX_FILES: [&str; 2] = ["mdbx.dat", "mdbx.lck"];
 pub struct Snapshot {
     /// endpoint url
     #[arg(long, short, default_value = "https://pub-e19b2b40b9c14ec3836e65c2c04590ec.r2.dev")]
-    pub endpoint:    Url,
+    pub endpoint:       Url,
+    /// where to write the database
     #[arg(long, short)]
-    pub start_block: Option<u64>,
-    #[arg(long, short)]
-    pub end_block:   Option<u64>,
+    pub write_location: PathBuf,
+    /// overwrite the database if it already exists
+    /// in the write location
+    #[arg(long, default_value = "false")]
+    pub overwrite_db:   bool,
 }
 
 impl Snapshot {
