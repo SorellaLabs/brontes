@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
 use alloy_primitives::Address;
-use brontes_types::LibmdbxReader;
 use brontes_types::{
-    db::{metadata::Metadata, token_info::TokenInfoWithAddress},
+    db::{metadata::Metadata, token_info::TokenInfoWithAddress, traits::LibmdbxReader},
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType},
     normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     tree::BlockTree,
-    FastHashMap,
+    FastHashMap, 
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -75,6 +74,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
             .filter_map(|jits| {
                 tracing::trace!("trying jit to see if cexdex - {:#?}", jits);
                 let BundleData::Jit(jit) = jits.data else { return None };
+                jit.frontrun_mint_tx_hash
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
                 if !tx_info.is_labelled_searcher_of_type(MevType::CexDex) {
