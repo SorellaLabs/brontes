@@ -177,17 +177,18 @@ impl RCloneWrapper {
             tracing::info!(?directory, ?directory_name);
 
             // move to the tmp dir for zipping and zip
-            let copy = CopyOptions::new();
+            let copy = CopyOptions::new().overwrite(true);
+
             let tmp = format!("/tmp/{directory_name}");
             fs_extra::dir::create_all(&tmp, true).expect("failed to create tmp folder");
             tracing::info!(from=?directory, to=?tmp, "copying to tmp location");
 
             // copy the data to tmp
-            fs_extra::dir::copy(&directory, &tmp, &copy).unwrap();
+            fs_extra::dir::copy(&directory, &"/tmp/", &copy).unwrap();
 
             if !Command::new("tar")
                 .arg("-czvf")
-                .arg(format!("{directory_name}.tar.gz"))
+                .arg(format!("/tmp/{directory_name}.tar.gz"))
                 .arg("-C")
                 .arg("/tmp/")
                 .arg(directory_name)
@@ -200,9 +201,11 @@ impl RCloneWrapper {
             {
                 panic!("failed to create tarball");
             }
+
             // get the tarball file size and write that
             let file_size =
                 filesize::file_real_size(format!("/tmp/{directory_name}.tar.gz")).unwrap();
+
             let mut file = File::create("/tmp/{directory_name}-byte-count.txt").unwrap();
             write!(&mut file, "{}", file_size).unwrap();
 
