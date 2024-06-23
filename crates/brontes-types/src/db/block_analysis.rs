@@ -1727,7 +1727,9 @@ impl BlockAnalysis {
                 *map.entry(r.header.eoa).or_insert(0.0) += r.header.profit_usd;
 
                 if let Some(contract) = r.header.mev_contract {
-                    *map.entry(contract).or_insert(0.0) += r.header.profit_usd;
+                    if contract != r.header.eoa {
+                        *map.entry(contract).or_insert(0.0) += r.header.profit_usd;
+                    }
                 }
             });
 
@@ -1760,7 +1762,10 @@ impl BlockAnalysis {
                 *map.entry(r.header.eoa).or_insert(0.0) += r.header.profit_usd + r.header.bribe_usd;
 
                 if let Some(contract) = r.header.mev_contract {
-                    *map.entry(contract).or_insert(0.0) += r.header.profit_usd + r.header.bribe_usd;
+                    if contract != r.header.eoa {
+                        *map.entry(contract).or_insert(0.0) +=
+                            r.header.profit_usd + r.header.bribe_usd;
+                    }
                 }
             });
 
