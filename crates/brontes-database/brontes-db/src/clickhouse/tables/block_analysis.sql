@@ -1,4 +1,5 @@
-CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
+CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  
+(
     `block_number` UInt64,
     `eth_price` Float64, 
 
@@ -43,13 +44,20 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `atomic_top_searcher_profit_amt`     Nullable(Float64),
     `atomic_top_searcher_revenue`        Nullable(String),
     `atomic_top_searcher_revenue_amt`    Nullable(Float64),
-    `atomic_searcher_all` Nested (
+    `atomic_searcher_eoa_all` Nested (
         `profit` String,
         `profit_amt` Float64,
         `revenue` String,
         `revenue_amt` Float64,
     ),
-    `atomic_searcher_count`              UInt64,
+    `atomic_searcher_eoa_count`              UInt64,
+    `atomic_mev_contract_all` Nested (
+        `profit` String,
+        `profit_amt` Float64,
+        `revenue` String,
+        `revenue_amt` Float64,
+    ),
+    `atomic_mev_contract_count`              UInt64,
     `atomic_top_fund_profit`             Nullable(String),
     `atomic_top_fund_profit_amt`         Nullable(Float64),
     `atomic_top_fund_revenue`            Nullable(String),
@@ -105,13 +113,20 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `sandwich_top_searcher_profit_amt`     Nullable(Float64),
     `sandwich_top_searcher_revenue`        Nullable(String),
     `sandwich_top_searcher_revenue_amt`    Nullable(Float64),
-    `sandwich_searcher_all` Nested (
+    `sandwich_searcher_eoa_all` Nested (
         `profit` String,
         `profit_amt` Float64,
         `revenue` String,
         `revenue_amt` Float64,
     ),
-    `sandwich_searcher_count`              UInt64,
+    `sandwich_searcher_eoa_count`              UInt64,
+    `sandwich_mev_contract_all` Nested (
+        `profit` String,
+        `profit_amt` Float64,
+        `revenue` String,
+        `revenue_amt` Float64,
+    ),
+    `sandwich_mev_contract_count`              UInt64,
     `sandwich_top_fund_profit`             Nullable(String),
     `sandwich_top_fund_profit_amt`         Nullable(Float64),
     `sandwich_top_fund_revenue`            Nullable(String),
@@ -167,13 +182,20 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `jit_top_searcher_profit_amt`     Nullable(Float64),
     `jit_top_searcher_revenue`        Nullable(String),
     `jit_top_searcher_revenue_amt`    Nullable(Float64),
-    `jit_searcher_all` Nested (
+    `jit_searcher_eoa_all` Nested (
         `profit` String,
         `profit_amt` Float64,
         `revenue` String,
         `revenue_amt` Float64,
     ),
-    `jit_searcher_count`              UInt64,
+    `jit_searcher_eoa_count`              UInt64,
+    `jit_mev_contract_all` Nested (
+        `profit` String,
+        `profit_amt` Float64,
+        `revenue` String,
+        `revenue_amt` Float64,
+    ),
+    `jit_mev_contract_count`              UInt64,
     `jit_top_fund_profit`             Nullable(String),
     `jit_top_fund_profit_amt`         Nullable(Float64),
     `jit_top_fund_revenue`            Nullable(String),
@@ -229,13 +251,20 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `jit_sandwich_top_searcher_profit_amt`     Nullable(Float64),
     `jit_sandwich_top_searcher_revenue`        Nullable(String),
     `jit_sandwich_top_searcher_revenue_amt`    Nullable(Float64),
-    `jit_sandwich_searcher_all` Nested (
+    `jit_sandwich_searcher_eoa_all` Nested (
         `profit` String,
         `profit_amt` Float64,
         `revenue` String,
         `revenue_amt` Float64,
     ),
-    `jit_sandwich_searcher_count`              UInt64,
+    `jit_sandwich_searcher_eoa_count`              UInt64,
+    `jit_sandwich_mev_contract_all` Nested (
+        `profit` String,
+        `profit_amt` Float64,
+        `revenue` String,
+        `revenue_amt` Float64,
+    ),
+    `jit_sandwich_mev_contract_count`              UInt64,
     `jit_sandwich_top_fund_profit`             Nullable(String),
     `jit_sandwich_top_fund_profit_amt`         Nullable(Float64),
     `jit_sandwich_top_fund_revenue`            Nullable(String),
@@ -291,13 +320,20 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `cex_dex_top_searcher_profit_amt`     Nullable(Float64),
     `cex_dex_top_searcher_revenue`        Nullable(String),
     `cex_dex_top_searcher_revenue_amt`    Nullable(Float64),
-    `cex_dex_searcher_all` Nested (
+    `cex_dex_searcher_eoa_all` Nested (
         `profit` String,
         `profit_amt` Float64,
         `revenue` String,
         `revenue_amt` Float64,
     ),
-    `cex_dex_searcher_count`              UInt64,
+    `cex_dex_searcher_eoa_count`              UInt64,
+    `cex_dex_mev_contract_all` Nested (
+        `profit` String,
+        `profit_amt` Float64,
+        `revenue` String,
+        `revenue_amt` Float64,
+    ),
+    `cex_dex_mev_contract_count`              UInt64,
     `cex_dex_top_fund_profit`             Nullable(String),
     `cex_dex_top_fund_profit_amt`         Nullable(Float64),
     `cex_dex_top_fund_revenue`            Nullable(String),
@@ -353,13 +389,20 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  (
     `liquidation_top_searcher_profit_amt`     Nullable(Float64),
     `liquidation_top_searcher_revenue`        Nullable(String),
     `liquidation_top_searcher_revenue_amt`    Nullable(Float64),
-    `liquidation_searcher_all` Nested (
+    `liquidation_searcher_eoa_all` Nested (
         `profit` String,
         `profit_amt` Float64,
         `revenue` String,
-        `revenue_amt` Float64
+        `revenue_amt` Float64,
     ),
-    `liquidation_searcher_count`              UInt64,
+    `liquidation_searcher_eoa_count`              UInt64,
+    `liquidation_mev_contract_all` Nested (
+        `profit` String,
+        `profit_amt` Float64,
+        `revenue` String,
+        `revenue_amt` Float64,
+    ),
+    `liquidation_mev_contract_count`              UInt64,
     `liquidation_top_fund_profit`             Nullable(String),
     `liquidation_top_fund_profit_amt`         Nullable(Float64),
     `liquidation_top_fund_revenue`            Nullable(String),
