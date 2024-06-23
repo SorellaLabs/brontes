@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use brontes_types::BrontesTaskExecutor;
 use fs_extra::dir::get_dir_content;
+use rayon::iter::*;
 
 use crate::{
     libmdbx::{libmdbx_partitioning::PARTITION_FILE_NAME, LibmdbxReadWriter},
@@ -14,31 +15,29 @@ pub fn merge_libmdbx_dbs(
     executor: BrontesTaskExecutor,
 ) -> eyre::Result<()> {
     let files = get_dir_content(&partition_db_folder)?;
-    let dbs = files
+    files
         .files
-        .iter()
+        .par_iter()
         .filter(|file_name| file_name.starts_with(PARTITION_FILE_NAME))
         .filter_map(|path| LibmdbxReadWriter::init_db(path, None, &executor, false).ok())
-        .collect::<Vec<_>>();
+        .try_for_each(|db| {
+            move_tables_to_partition!(FULL_RANGE db, final_db,
+            CexPrice,
+            CexTrades,
+            BlockInfo,
+            MevBlocks,
+            InitializedState,
+            PoolCreationBlocks,
+            TxTraces,
+            AddressMeta,
+            SearcherEOAs,
+            SearcherContracts,
+            Builder,
+            AddressToProtocolInfo,
+            TokenDecimals,
+            DexPrice
+            );
 
-    for db in dbs {
-        move_tables_to_partition!(FULL_RANGE db, final_db,
-        CexPrice,
-        CexTrades,
-        BlockInfo,
-        MevBlocks,
-        InitializedState,
-        PoolCreationBlocks,
-        TxTraces,
-        AddressMeta,
-        SearcherEOAs,
-        SearcherContracts,
-        Builder,
-        AddressToProtocolInfo,
-        TokenDecimals,
-        DexPrice
-        );
-    }
-
-    Ok(())
+            eyre::Ok(())
+        })
 }

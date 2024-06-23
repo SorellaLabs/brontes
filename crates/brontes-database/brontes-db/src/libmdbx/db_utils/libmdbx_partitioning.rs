@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use brontes_types::{
-    db::dex::{make_filter_key_range, DexKey, DexQuoteWithIndex},
-    BrontesTaskExecutor,
-};
+use brontes_types::{db::dex::make_filter_key_range, BrontesTaskExecutor};
 use rayon::iter::*;
 
 use super::rclone_wrapper::BlockRangeList;
@@ -24,20 +21,18 @@ macro_rules! move_tables_to_partition {
         $(
             tracing::info!(start_block=%$start_block, end_block=%$end_block,
                            "loading data from table: {}", stringify!($table_name));
-            let value = $parent_db.fetch_partition_range_data::<$table_name>
-            ($start_block, $end_block)?;
             ::paste::paste!(
-                $db.write_partitioned_range_data::<$table_name, [<$table_name Data>]>(value)?;
+                $parent_db.write_partition_range_data::<$table_name,
+                [<$table_name Data>]>($start_block, $end_block, &$db)?;
             );
         )*
     };
     (FULL_RANGE $parent_db:expr, $db:expr, $($table_name:ident),*) => {
         $(
             tracing::info!("loading data from table: {}", stringify!($table_name));
-            let value = $parent_db.fetch_critical_data::<$table_name>()?;
             ::paste::paste!(
-                $db.write_partitioned_range_data::
-                <$table_name, [<$table_name Data>]>(value)?;
+                $parent_db.write_critical_data::
+                <$table_name, [<$table_name Data>]>(&$db)?;
             );
         )*
     }
@@ -67,7 +62,6 @@ impl LibmdbxPartitioner {
     pub fn execute(self) -> eyre::Result<()> {
         // cleanup
         let mut start_block = self.start_block;
-
         let end_block = self.parent_db.get_db_range()?.1;
 
         let mut ranges = vec![];
@@ -80,9 +74,10 @@ impl LibmdbxPartitioner {
             start_block += DEFAULT_PARTITION_SIZE
         }
         tracing::info!(?ranges, "partitioning db into ranges");
+
         // because we are just doing read operations. we can do all this in parallel
         ranges
-            .iter()
+            .par_iter()
             .try_for_each(|BlockRangeList { start_block, end_block }| {
                 let mut path = self.partition_db_folder.clone();
                 path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
@@ -106,10 +101,8 @@ impl LibmdbxPartitioner {
                     TxTraces
                 );
                 // manually dex pricing
-                let value = self
-                    .parent_db
-                    .fetch_dex_price_range(*start_block, *end_block)?;
-                db.write_partitioned_range_data::<DexPrice, DexPriceData>(value)
+                self.parent_db
+                    .write_dex_price_range(*start_block, *end_block, &db)
             })?;
 
         // move over full range tables
@@ -135,6 +128,77 @@ impl LibmdbxPartitioner {
 }
 
 impl LibmdbxReadWriter {
+    pub fn write_partition_range_data<T, D>(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        write_db: &LibmdbxReadWriter,
+    ) -> eyre::Result<()>
+    where
+        T: CompressedTable<Key = u64>,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
+    {
+        let tx = self.db.ro_tx()?;
+        let mut cur = tx.cursor_read::<T>()?;
+
+        TmpWriter::<T, D>::batch_write_to_db(
+            cur.walk_range(start_block..end_block)?
+                .into_iter()
+                .flatten()
+                .map(|value| (value.0, value.1)),
+            write_db,
+            500,
+        );
+        Ok(())
+    }
+
+    // dex table has special key
+    pub fn write_dex_price_range(
+        &self,
+        start_block: u64,
+        end_block: u64,
+        write_db: &LibmdbxReadWriter,
+    ) -> eyre::Result<()> {
+        let tx = self.db.ro_tx()?;
+        let mut cur = tx.cursor_read::<DexPrice>()?;
+
+        let start_key = make_filter_key_range(start_block).0;
+        let end_key = make_filter_key_range(end_block).1;
+
+        TmpWriter::<DexPrice, DexPriceData>::batch_write_to_db(
+            cur.walk_range(start_key..end_key)?
+                .into_iter()
+                .flatten()
+                .map(|value| (value.0, value.1)),
+            write_db,
+            500,
+        );
+
+        Ok(())
+    }
+
+    pub fn write_critical_data<T, D>(&self, write_db: &LibmdbxReadWriter) -> eyre::Result<()>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
+    {
+        let tx = self.db.ro_tx()?;
+        let mut cur = tx.cursor_read::<T>()?;
+
+        TmpWriter::<T, D>::batch_write_to_db(
+            cur.walk(None)?
+                .into_iter()
+                .flatten()
+                .map(|val| (val.0, val.1)),
+            write_db,
+            500,
+        );
+
+        Ok(())
+    }
+
     pub fn write_partitioned_range_data<T, D>(
         &self,
         data: Vec<(T::Key, T::DecompressedValue)>,
@@ -149,57 +213,38 @@ impl LibmdbxReadWriter {
 
         Ok(())
     }
+}
 
-    pub fn fetch_partition_range_data<T>(
-        &self,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<Vec<(T::Key, T::DecompressedValue)>>
+impl<I: Sized, T, D> TmpWriter<T, D> for I
+where
+    I: Iterator<Item = (T::Key, T::DecompressedValue)>,
+    T: CompressedTable,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+    D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
+{
+}
+
+pub trait TmpWriter<T, D>: Iterator<Item = (T::Key, T::DecompressedValue)>
+where
+    T: CompressedTable,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+    D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
+{
+    fn batch_write_to_db(mut self, db: &LibmdbxReadWriter, batch_size: usize)
     where
-        T: CompressedTable<Key = u64>,
-        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        Self: Sized,
     {
-        let tx = self.db.ro_tx()?;
-        let mut cur = tx.cursor_read::<T>()?;
-        Ok(cur
-            .walk_range(start_block..end_block)?
-            .into_iter()
-            .flatten()
-            .map(|value| (value.0, value.1))
-            .collect::<Vec<_>>())
-    }
-
-    // dex table has special key
-    pub fn fetch_dex_price_range(
-        &self,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<Vec<(DexKey, DexQuoteWithIndex)>> {
-        let tx = self.db.ro_tx()?;
-        let mut cur = tx.cursor_read::<DexPrice>()?;
-
-        let start_key = make_filter_key_range(start_block).0;
-        let end_key = make_filter_key_range(end_block).1;
-
-        Ok(cur
-            .walk_range(start_key..end_key)?
-            .into_iter()
-            .flatten()
-            .map(|value| (value.0, value.1))
-            .collect::<Vec<_>>())
-    }
-
-    pub fn fetch_critical_data<T>(&self) -> eyre::Result<Vec<(T::Key, T::DecompressedValue)>>
-    where
-        T: CompressedTable,
-        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-    {
-        let tx = self.db.ro_tx()?;
-        let mut cur = tx.cursor_read::<T>()?;
-        let mut res = vec![];
-        while let Some(val) = cur.next()? {
-            res.push((val.0, val.1));
+        let mut batch = Vec::with_capacity(batch_size);
+        while let Some(next) = self.next() {
+            batch.push(next);
+            if batch.len() == batch_size {
+                db.write_partitioned_range_data::<T, D>(std::mem::take(&mut batch))
+                    .expect("failed to write partitioned data");
+            }
         }
-        Ok(res)
+
+        // write final amount that wasn't batched
+        db.write_partitioned_range_data::<T, D>(batch)
+            .expect("failed to write partitioned data");
     }
 }
