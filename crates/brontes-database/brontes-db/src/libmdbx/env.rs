@@ -3,11 +3,11 @@
 use std::{ops::Deref, path::Path};
 
 use brontes_libmdbx::{
-    DatabaseFlags, Environment, EnvironmentFlags, Geometry, MaxReadTransactionDuration, Mode,
-    PageSize, SyncMode,
+    DatabaseFlags, Environment, EnvironmentFlags, Geometry, Mode, PageSize, SyncMode,
 };
 use reth_db::{
     database_metrics::{DatabaseMetadata, DatabaseMetadataValue},
+    mdbx::MaxReadTransactionDuration,
     models::client_version::ClientVersion,
     tables::{TableType, Tables},
     DatabaseError,
@@ -246,9 +246,9 @@ impl DatabaseEnv {
             }
         }
 
-        if let Some(max_read_transaction_duration) = args.max_read_transaction_duration {
-            inner_env.set_max_read_transaction_duration(max_read_transaction_duration);
-        }
+        // if let Some(max_read_transaction_duration) = args.max_read_transaction_duration {
+        //     inner_env.set_max_read_transaction_duration(max_read_transaction_duration);
+        // }
 
         let env = DatabaseEnv {
             inner: inner_env
