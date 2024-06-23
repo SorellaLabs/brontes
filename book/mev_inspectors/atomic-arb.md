@@ -10,7 +10,7 @@ An atomic arbitrage is a type of arbitrage that involves multiple trades that ar
 
 ### Step 1: Retrieve Relevant Transactions
 
-The inspector retrieves transactions in the block that involve `swap`, `transfer`, `eth_transer`, `FlashLoan`, `batch_swap` or `aggregator_swap` actions.
+The inspector retrieves transactions in the block that involve `swap`, `transfer`, `eth_transfer`, `FlashLoan`, `batch_swap` or `aggregator_swap` actions.
 
 ### Step 2: Identify Potential Atomic Arbitrage
 
@@ -49,7 +49,7 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
 
 3. **Cross-Pair Arbitrage**
 
-   - Condition: Input token of Swap 1 matches output token of Swap 2, but swaps are not continuous.
+   - Condition: The sequence starts and ends with the same token, but there's a break in continuity where the second swap's input token doesn't match first swap's output token.
 
    ```
    Swap 1: WETH → USDC
@@ -73,7 +73,7 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
 
 2. **Cross-Pair Arbitrage**
 
-   - Condition: A "jump" where one swap's output doesn't match the next swap's input.
+   - Condition: A break in the continuity of assets swap, where one swap's output doesn't match the next swap's input.
 
    ```
    Swap 1: WETH → USDC
@@ -81,7 +81,18 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
    Swap 3: DAI  → WETH
    ```
 
-3. **Triangle Arbitrage**
+3. **Cross-Pair Arbitrage**
+
+   - Condition: The sequence starts and ends with the same token, but there's a break in continuity where one swap's output doesn't match the next swap's input.
+
+   ```
+   Example:
+   Swap 1: WETH → USDC
+   Swap 2: WBTC → DAI
+   Swap 3: DAI  → WETH
+   ```
+
+4. **Triangle Arbitrage**
 
    - Condition: All swaps are continuous and end with the starting token.
 
@@ -91,7 +102,7 @@ We analyze the sequence of swaps in each transaction to identify and categorize 
    Swap 3: WBTC → WETH
    ```
 
-4. **Long Tail**
+5. **Long Tail**
    - Any swap pattern not fitting the above categories.
 
 > **Note on Stable Pair Identification:**
