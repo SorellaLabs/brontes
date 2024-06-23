@@ -22,11 +22,11 @@ toml = "0.8.2"
 indicatif.workspace = true
 
 # filesystem
-fs2 = "0.4.3"
-fs_extra = "1.3.0"
-filesize = "0.2.0"
-tar = "0.4.41"
-flate2 = "1.0.30"
+fs2.workspace = true
+fs_extra.workspace = true
+filesize.workspace = true
+tar.workspace = true
+flate2.workspace = true
 
 # Async
 tokio = { workspace = true }

@@ -383,9 +383,9 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             handle.spawn(manager);
 
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None, &ex).unwrap_or_else(|e| {
-                    panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
-                }),
+                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None, &ex, false).unwrap_or_else(
+                    |e| panic!("failed to open db path {}, err={}", brontes_db_endpoint, e),
+                ),
             ));
 
             let (tx, _rx) = unbounded_channel();
