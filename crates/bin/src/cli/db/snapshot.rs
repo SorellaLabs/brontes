@@ -6,12 +6,14 @@ use std::{
 };
 
 use brontes_database::libmdbx::rclone_wrapper::BlockRangeList;
-use brontes_types::buf_writer::DownloadBufWriterWithProgress;
+use brontes_types::{
+    buf_writer::DownloadBufWriterWithProgress, unordered_buffer_map::BrontesStreamExt,
+};
 use clap::Parser;
 use filesize::file_real_size;
 use flate2::read::GzDecoder;
 use fs_extra::dir::CopyOptions;
-use futures::stream::StreamExt;
+use futures::{stream::StreamExt, FutureExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
 use reqwest::Url;
@@ -81,12 +83,12 @@ impl Snapshot {
                     eyre::Ok(())
                 }
             })
-            .buffer_unordered(10)
+            .unordered_buffer_map(10, |f| tokio::spawn(f))
             .collect::<Vec<_>>()
             .await;
 
         for e in err {
-            e?;
+            e??;
         }
 
         tracing::info!(
