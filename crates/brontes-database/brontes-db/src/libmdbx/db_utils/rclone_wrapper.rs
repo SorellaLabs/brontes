@@ -44,13 +44,18 @@ impl RCloneWrapper {
             .get_all_tarballs()
             .await?
             .into_iter()
-            .map(|mut file_names| {
+            .filter_map(|mut file_names| {
+                if file_names.ends_with("brontes-db-partition-full-range-tables.tar.gz") {
+                    return None
+                }
+
                 tracing::info!(?file_names);
+
                 let block_range_and_ext = file_names.split_off(PARTITION_FILE_NAME.len() + 1);
                 let mut r = block_range_and_ext.split('.').next().unwrap().split('-');
                 let start_block = u64::from_str(r.next().unwrap()).unwrap();
                 let end_block = u64::from_str(r.next().unwrap()).unwrap();
-                BlockRangeList { end_block, start_block }
+                Some(BlockRangeList { end_block, start_block })
             })
             .collect::<Vec<_>>())
     }
