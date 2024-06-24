@@ -80,7 +80,11 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
         block: u64,
         libmdbx: &'static DB,
     ) -> bool {
-        (self.always_generate_price || libmdbx.has_dex_quotes(block).unwrap_or(true))
+        (self.always_generate_price
+            || libmdbx
+                .get_dex_quotes(block)
+                .map(|f| f.0.is_empty())
+                .unwrap_or(true))
             && !self.force_no_dex_pricing
     }
 
