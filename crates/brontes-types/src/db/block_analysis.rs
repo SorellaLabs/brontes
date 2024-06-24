@@ -1,5 +1,5 @@
 use std::{collections::HashMap, hash::Hash, str::FromStr};
-
+use crate::serde_utils::address;
 use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
@@ -647,6 +647,7 @@ pub struct BlockAnalysis {
     pub builder_mev_profit_usd: f64,
     pub builder_mev_profit_eth: f64,
     pub builder_name:           Option<String>,
+    #[serde(with = "address")]
     pub builder_address:        Address,
     pub proposer_profit_usd:    Option<f64>,
     pub proposer_profit_eth:    Option<f64>,
