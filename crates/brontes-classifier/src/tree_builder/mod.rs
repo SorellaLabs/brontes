@@ -325,16 +325,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             TraceAction::Reward(_) => (vec![], Action::Unclassified(trace.clone())),
         };
 
-        if base_action.is_eth_transfer() {
-            (pricing, vec![base_action])
-        } else {
-            let mut res = vec![base_action];
-            if let Some(eth) = self.classify_eth_transfer(&trace, trace_index) {
-                res.push(eth);
-            }
-
-            (pricing, res)
-        }
+        (pricing, vec![base_action])
     }
 
     async fn classify_call(
@@ -499,7 +490,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace: &TransactionTraceWithLogs,
         trace_index: u64,
     ) -> Option<Action> {
-        (trace.get_msg_value() > U256::ZERO).then(|| {
+        (trace.get_msg_value() > U256::ZERO && trace.get_calldata().is_empty()).then(|| {
             Action::EthTransfer(NormalizedEthTransfer {
                 from: trace.get_from_addr(),
                 to: trace.get_to_address(),

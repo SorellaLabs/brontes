@@ -1,12 +1,6 @@
-use std::{
-    path::PathBuf,
-    sync::Arc,
-    task::{Context, Waker},
-    time::Duration,
-};
+use std::{path::PathBuf, sync::Arc};
 
 use brontes_types::{db::dex::make_filter_key_range, BrontesTaskExecutor};
-use futures::FutureExt;
 use libmdbx::libmdbx_writer::InitTables;
 use rayon::iter::*;
 use tokio::sync::Notify;
@@ -217,20 +211,7 @@ impl LibmdbxReadWriter {
         let mapped = data.into_iter().map(D::from).collect::<Vec<_>>();
         let not = Arc::new(Notify::new());
         self.tx
-            .send(libmdbx::libmdbx_writer::WriterMessage::Init(mapped.into(), not.clone()))?;
-
-        let waker = Waker::noop();
-        let mut cx = Context::from_waker(waker);
-
-        let mut no = not.notified();
-        let mut pinned = std::pin::pin!(no);
-        loop {
-            if pinned.poll_unpin(&mut cx).is_ready() {
-                break
-            }
-
-            std::thread::sleep(Duration::from_micros(250));
-        }
+            .send(libmdbx::libmdbx_writer::WriterMessage::Init(mapped.into(), not))?;
 
         Ok(())
     }
