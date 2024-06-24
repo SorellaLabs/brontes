@@ -344,7 +344,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         mev_addresses: FastHashSet<Address>,
         deltas: &AddressDeltas,
         metadata: Arc<Metadata>,
-        eth_value: U256,
     ) -> Option<Rational> {
         let mut usd_deltas = FastHashMap::default();
 
