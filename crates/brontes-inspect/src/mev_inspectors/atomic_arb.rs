@@ -4,7 +4,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
-    db::dex::PriceAt,
+    db::{dex::PriceAt, token_info::TokenInfoWithAddress},
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
         accounting::ActionAccounting, Action, NormalizedEthTransfer, NormalizedSwap,
@@ -12,7 +12,8 @@ use brontes_types::{
     },
     pair::Pair,
     tree::BlockTree,
-    FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    FastHashMap, FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder,
+    TxInfo,
 };
 use itertools::Itertools;
 use malachite::{
@@ -106,7 +107,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
     ) -> Option<Bundle> {
-        let (swaps, transfers, eth_transfers) = data;
+        let (mut swaps, transfers, eth_transfers) = data;
+        swaps.extend(self.try_create_swaps(&transfers));
+
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
@@ -291,6 +294,16 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
 
         res
+    }
+
+    /// tries to convert transfer over to swaps
+    fn try_create_swaps(&self, transfers: &[NormalizedTransfer]) -> Vec<NormalizedSwap> {
+        let mut pools: FastHashMap<Address, FastHashMap<TokenInfoWithAddress, Rational>> =
+            FastHashMap::default();
+
+
+
+        vec![]
     }
 
     /// Evaluates the validity of swap prices against DEX quoted prices within a
