@@ -330,6 +330,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     tx_hash,
                                     path.final_start_time,
                                     path.final_end_time,
+                                    "priec window vwam per ex",
                                 ),
                             )
                         })
@@ -361,6 +362,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         tx_hash,
                         start_time,
                         end_time,
+                        "price window vwam",
                     ))
                 })
                 .collect_vec(),
@@ -405,6 +407,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         tx_hash,
                         start_time,
                         end_time,
+                        "optimistic",
                     );
 
                     if profit.is_some() {
@@ -433,6 +436,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
         start_time: u64,
         end_time: u64,
+        shit_type: &str,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
@@ -450,6 +454,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 cex_quote.0.clone().to_float(),
                 &swap.token_in.address,
                 &swap.token_out.address,
+                shit_type,
             );
 
             return None
@@ -1297,6 +1302,7 @@ fn log_price_delta(
     cex_price: f64,
     token_in_address: &Address,
     token_out_address: &Address,
+    shit_type: &str,
 ) {
     warn!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
@@ -1305,7 +1311,7 @@ fn log_price_delta(
          - Token Contracts:\n\
            * Token In: https://etherscan.io/address/{}\n\
            * Token Out: https://etherscan.io/address/{}\n
-           * Tx Hash: https://etherscan.io/tx/{:?}\n",
+           * Tx Hash: https://etherscan.io/tx/{:?}\ngenerated_from: {shit_type}",
         token_in_symbol,
         token_out_symbol,
         dex_swap_rate,
