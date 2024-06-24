@@ -338,9 +338,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         // we reciprocal amount out because we won't have pricing for quote <> token
                         // out but we will have flipped
                         let dex_pricing_rate =
-                            (am_out_price.get_price(PriceAt::Average).reciprocal()
-                                * am_in_price.get_price(PriceAt::Average))
-                            .reciprocal();
+                            am_out_price.get_price(PriceAt::Average)
+                                / am_in_price.get_price(PriceAt::Average);
 
                         let pct = if effective_price > dex_pricing_rate {
                             if dex_pricing_rate == Rational::ZERO {
