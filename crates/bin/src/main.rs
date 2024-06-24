@@ -1,4 +1,4 @@
-use std::{env, error::Error};
+use std::{env, error::Error, time::Duration};
 
 use tracing_subscriber::Layer;
 
@@ -51,12 +51,16 @@ fn run() -> eyre::Result<()> {
     init_tracing(opt.verbosity.directive());
 
     match opt.command {
-        Commands::Run(command) => runner::run_command_until_exit(opt.metrics_port, |ctx| {
-            command.execute(brontes_db_endpoint, ctx)
-        }),
-        Commands::Database(command) => runner::run_command_until_exit(opt.metrics_port, |ctx| {
-            command.execute(brontes_db_endpoint, ctx)
-        }),
+        Commands::Run(command) => {
+            runner::run_command_until_exit(opt.metrics_port, Duration::from_secs(60), |ctx| {
+                command.execute(brontes_db_endpoint, ctx)
+            })
+        }
+        Commands::Database(command) => {
+            runner::run_command_until_exit(opt.metrics_port, Duration::from_secs(5), |ctx| {
+                command.execute(brontes_db_endpoint, ctx)
+            })
+        }
     }
 }
 

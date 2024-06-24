@@ -78,10 +78,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                     let action = vec![Action::Unclassified(root_trace)];
 
                     let mut tx_root = Root {
-                        position:    tx_idx,
-                        head:        node,
-                        tx_hash:     trace.tx_hash,
-                        private:     false,
+                        position: tx_idx,
+                        head: node,
+                        tx_hash: trace.tx_hash,
+                        private: false,
+                        total_msg_value_transfers: vec![],
                         gas_details: GasDetails {
                             coinbase_transfer:   None,
                             gas_used:            trace.gas_used,
@@ -89,7 +90,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                             priority_fee:        trace.effective_price
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
-                        data_store:  NodeData(vec![Some(action)]),
+                        data_store: NodeData(vec![Some(action)]),
                     };
 
                     let tx_trace = &trace.trace;

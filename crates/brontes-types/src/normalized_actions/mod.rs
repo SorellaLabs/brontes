@@ -162,6 +162,65 @@ impl serde::Serialize for Action {
 }
 
 impl Action {
+    pub fn get_msg_value_not_eth_transfer(&self) -> Option<NormalizedEthTransfer> {
+        match self {
+            Self::Swap(s) => (!s.msg_value.is_zero()).then(|| NormalizedEthTransfer {
+                value: s.msg_value,
+                to: s.recipient,
+                from: s.from,
+                ..Default::default()
+            }),
+            Self::SwapWithFee(s) => (!s.msg_value.is_zero()).then(|| NormalizedEthTransfer {
+                value: s.msg_value,
+                to: s.recipient,
+                from: s.from,
+                ..Default::default()
+            }),
+
+            Self::FlashLoan(f) => (!f.msg_value.is_zero()).then(|| NormalizedEthTransfer {
+                value: f.msg_value,
+                to: f.receiver_contract,
+                from: f.from,
+                ..Default::default()
+            }),
+            Self::Batch(b) => (!b.msg_value.is_zero()).then(|| NormalizedEthTransfer {
+                value: b.msg_value,
+                to: b.settlement_contract,
+                from: b.solver,
+                ..Default::default()
+            }),
+            Self::Liquidation(t) => (!t.msg_value.is_zero()).then(|| NormalizedEthTransfer {
+                value: t.msg_value,
+                to: t.pool,
+                from: t.liquidator,
+                ..Default::default()
+            }),
+            Self::Unclassified(u) => {
+                (!u.get_msg_value().is_zero()).then(|| NormalizedEthTransfer {
+                    value: u.get_msg_value(),
+                    to: u.get_to_address(),
+                    from: u.get_from_addr(),
+                    ..Default::default()
+                })
+            }
+            Self::Aggregator(a) => (!a.msg_value.is_zero()).then(|| NormalizedEthTransfer {
+                value: a.msg_value,
+                to: a.recipient,
+                from: a.from,
+                ..Default::default()
+            }),
+            Self::Mint(_) => None,
+            Self::Burn(_) => None,
+            Self::Transfer(_) => None,
+            Self::Collect(_) => None,
+            Self::SelfDestruct(_) => None,
+            Self::EthTransfer(_) => None,
+            Self::NewPool(_) => None,
+            Self::PoolConfigUpdate(_) => None,
+            Self::Revert => None,
+        }
+    }
+
     pub fn force_liquidation(self) -> NormalizedLiquidation {
         match self {
             Action::Liquidation(l) => l,
