@@ -16,7 +16,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
+    num::basic::traits::Zero,
     Rational,
 };
 use reth_primitives::Address;
@@ -330,8 +330,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                         let am_in_price_log = am_in_price.clone().get_price(PriceAt::Average).to_float();
 
                         let dex_pricing_rate =
-                            (am_in_price.get_price(PriceAt::Average) /
-                                am_out_price.get_price(PriceAt::Average));
+                            am_in_price.get_price(PriceAt::Average) /
+                                am_out_price.get_price(PriceAt::Average);
 
                         let pct = if effective_price > dex_pricing_rate {
                             if effective_price == Rational::ZERO {
@@ -345,7 +345,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                             (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                         };
 
-                        if pct > MAX_PRICE_DIFF {
+                        if pct > MAX_PRICE_DIFF && !(pct > 99 && pct < 101) {
                             self.utils.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     MevType::AtomicArb,
