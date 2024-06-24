@@ -193,14 +193,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        // assert mints and burns are same pool
-        let mut pools = FastHashSet::default();
-        mints.iter().for_each(|m| {
-            pools.insert(m.pool);
-        });
-        if !burns.iter().any(|b| pools.contains(&b.pool)) {
-            return None
-        }
+        self.ensure_valid_structure(&mints, &burns, &victim_actions)?;
 
         let mut info_set = frontrun_info.clone();
         info_set.push(backrun_info.clone());
@@ -343,6 +336,41 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 })
                 .unwrap_or(burns),
         })
+    }
+
+    fn ensure_valid_structure(
+        &self,
+        mints: &[NormalizedMint],
+        burns: &[NormalizedBurn],
+        victim_actions: &[Vec<Action>],
+    ) -> Option<()> {
+        // assert mints and burns are same pool
+        let mut pools = FastHashSet::default();
+        mints.iter().for_each(|m| {
+            pools.insert(m.pool);
+        });
+
+        if !burns.iter().any(|b| pools.contains(&b.pool)) {
+            return None
+        }
+
+        // ensure atleast 50% of victims also swap on the same pool
+        let v_swaps = victim_actions
+            .iter()
+            .flatten()
+            .filter(|a| a.is_swap())
+            .map(|a| a.clone().force_swap())
+            .collect::<Vec<_>>();
+
+        let v_swaps_len = v_swaps.len();
+
+        ((v_swaps
+            .into_iter()
+            .map(|swap| pools.contains(&swap.pool) as usize)
+            .sum::<usize>() as f64
+            / (v_swaps_len as f64))
+            >= 0.5)
+            .then_some(())
     }
 
     fn recursive_possible_jits(
