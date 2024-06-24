@@ -114,12 +114,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .into_iter()
             .map(Action::from)
             .chain(eth_transfers.into_iter().map(Action::from))
-            .chain(
-                info.get_total_eth_value()
-                    .into_iter()
-                    .cloned()
-                    .map(Action::from),
-            )
+            .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
             .account_for_actions();
 
         let mut has_dex_price = self.valid_pricing(

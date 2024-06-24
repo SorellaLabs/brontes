@@ -1,6 +1,6 @@
 use std::{fmt, fmt::Display};
 
-use alloy_primitives::{TxHash};
+use alloy_primitives::TxHash;
 use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;

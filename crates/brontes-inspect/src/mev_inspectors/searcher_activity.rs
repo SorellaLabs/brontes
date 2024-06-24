@@ -72,12 +72,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                         let deltas = transfers
                             .clone()
                             .into_iter()
-                            .chain(
-                                info.get_total_eth_value()
-                                    .into_iter()
-                                    .cloned()
-                                    .map(Action::from),
-                            )
+                            .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
                             .account_for_actions();
 
                         let mut searcher_address: FastHashSet<Address> = FastHashSet::default();
