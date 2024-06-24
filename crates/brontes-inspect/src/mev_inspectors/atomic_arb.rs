@@ -343,12 +343,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                             .reciprocal();
 
                         let pct = if effective_price > dex_pricing_rate {
-                            if effective_price == Rational::ZERO {
+                            if dex_pricing_rate == Rational::ZERO {
                                 return None
                             }
                             &effective_price / &dex_pricing_rate
                         } else {
-                            if dex_pricing_rate == Rational::ZERO {
+                            if effective_price == Rational::ZERO {
                                 return None
                             }
                             &dex_pricing_rate / &effective_price
