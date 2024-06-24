@@ -1,7 +1,5 @@
 use std::{
-    cmp::{max, min},
-    f64::consts::E,
-    ops::Div,
+    cmp::{max, min}, f64::consts::E, fmt::Display, ops::Div
 };
 
 use alloy_primitives::{Address, FixedBytes};
@@ -25,6 +23,7 @@ use crate::{
     db::cex::CexExchange,
     normalized_actions::NormalizedSwap,
     pair::Pair,
+    utils::ToFloatNearest,
     FastHashMap, FastHashSet,
 };
 
@@ -89,6 +88,16 @@ impl Div for WindowExchangePrice {
         self.global_exchange_price /= rhs.global_exchange_price;
 
         self
+    }
+}
+
+impl Display for WindowExchangePrice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (e, p) in &self.exchange_price_with_volume_direct {
+            f.write_str(&format!("{:?}: {}", e, p.price.clone().to_float()))?;
+        }
+        f.write_str(&format!("Global Exchange Price: {}", self.global_exchange_price.clone().to_float()))?;
+        Ok(())
     }
 }
 
