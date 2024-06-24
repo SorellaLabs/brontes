@@ -258,6 +258,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let (dex_swaps, pricing) =
             self.cex_trades_for_swap(dex_swaps, metadata, marked_cex_dex, tx_hash);
 
+        println!("dex_swaps: {:?}", dex_swaps);
+        println!("pricing: {:?}", pricing);
         // pricing window
         let pricing_window_vwam = pricing
             .iter()
