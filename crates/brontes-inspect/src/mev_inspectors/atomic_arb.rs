@@ -345,7 +345,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                             (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                         };
 
-                        if pct > MAX_PRICE_DIFF && !(pct > 99 && pct < 101) {
+                        if pct > MAX_PRICE_DIFF && !(pct > 0.985 && pct < 1.0) {
                             self.utils.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     MevType::AtomicArb,
