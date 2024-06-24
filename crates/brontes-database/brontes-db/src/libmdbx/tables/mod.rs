@@ -35,9 +35,9 @@ use crate::{
 };
 mod const_sql;
 use alloy_primitives::Address;
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use const_sql::*;
 use paste::paste;
@@ -215,7 +215,7 @@ impl Tables {
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
@@ -233,7 +233,7 @@ impl Tables {
                     .await?;
                 Ok(())
             }
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexPrice => Ok(()),
             Tables::BlockInfo => {
                 initializer
@@ -284,7 +284,7 @@ impl Tables {
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
@@ -300,7 +300,7 @@ impl Tables {
                     )
                     .await
             }
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             Tables::CexTrades => Ok(()),
 
             _ => unimplemented!("'initialize_table' not implemented for {:?}", self),
@@ -333,7 +333,7 @@ impl Tables {
                     "'initialize_table_arbitrary_state' not implemented for PoolCreationBlocks"
                 );
             }
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
@@ -348,7 +348,7 @@ impl Tables {
                     )
                     .await
             }
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexPrice => Ok(()),
             Tables::BlockInfo => {
                 initializer
@@ -404,7 +404,7 @@ impl Tables {
             Tables::SearcherEOAs => Ok(()),
             Tables::SearcherContracts => Ok(()),
             Tables::InitializedState => Ok(()),
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
@@ -419,7 +419,7 @@ impl Tables {
                     )
                     .await
             }
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             Tables::CexTrades => Ok(()),
         }
     }

@@ -90,10 +90,10 @@ statrs = "0.16"
 
 
 [features]
-default = ["cex-dex-markout"]
-cex-dex-markout = [
-  "brontes-types/cex-dex-markout",
-  "brontes-database/cex-dex-markout",
+
+cex-dex-quotes = [
+  "brontes-types/cex-dex-quotes",
+  "brontes-database/cex-dex-quotes",
 ]
 sorella-server = ["local-reth", "local-clickhouse"]
 

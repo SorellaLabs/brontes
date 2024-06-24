@@ -135,18 +135,18 @@ For non standard JIT patterns, we employ a recursive strategy:
 
 For confirmed JIT bundles:
 
-1. Calculate searcher revenue: Balance deltas of searcher addresses & sibling address (e.g piggy bank address) if applicable
+1. Calculate searcher revenue: Balance deltas for searcher addresses & sibling address (e.g piggy bank address) if applicable, using the all mint, burn and collect actions.
 2. Calculate searcher cost: Sum of gas costs for all attacker transactions
 3. Profit = Revenue - Cost
-4. Applying a maximum profit threshold
+4. Filter false positives using the maximum profit threshold
 
 ### Step 5: Generate JIT Bundle
 
 For confirmed opportunities:
 
-1. Construct a `JitLiquidity` structure with detailed transaction information
-2. Create a `Bundle` with a summary header and `JitLiquidity` data
-3. For recursive analyses, deduplicate results and keep the largest JIT bundle
+1. Construct a `JitLiquidity` type
+2. Create a `Bundle` with a summary `BundleHeader` and `JitLiquidity` data
+3. For recursive analyses, deduplicate results, by retaining the largest JIT bundle when multiple JITs with overlapping transaction sets are detected.
 
 ### Step 6: Identify JIT CexDex
 

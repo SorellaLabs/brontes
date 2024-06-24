@@ -14,7 +14,7 @@ use super::{
     cex::{CexPriceMap, CexTradeMap},
     dex::DexQuotes,
 };
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 use crate::db::cex::CexExchange;
 use crate::{
     constants::WETH_ADDRESS,
@@ -81,7 +81,7 @@ impl Metadata {
         let eth_price = if self.block_metadata.eth_prices == Rational::ZERO {
             if let Some(dex_quotes) = &self.dex_quotes {
                 if dex_quotes.0.is_empty() {
-                    #[cfg(feature = "cex-dex-markout")]
+                    #[cfg(not(feature = "cex-dex-quotes"))]
                     {
                         let trades = [
                             CexExchange::Binance,
@@ -117,7 +117,7 @@ impl Metadata {
                             })
                             .unwrap_or(Rational::ZERO)
                     }
-                    #[cfg(not(feature = "cex-dex-markout"))]
+                    #[cfg(feature = "cex-dex-quotes")]
                     Rational::ZERO
                 } else {
                     dex_quotes
@@ -128,7 +128,7 @@ impl Metadata {
                         .unwrap_or(Rational::ZERO)
                 }
             } else {
-                #[cfg(feature = "cex-dex-markout")]
+                #[cfg(not(feature = "cex-dex-quotes"))]
                 {
                     let trades = [
                         CexExchange::Binance,
@@ -164,7 +164,7 @@ impl Metadata {
                         })
                         .unwrap_or(Rational::ZERO)
                 }
-                #[cfg(not(feature = "cex-dex-markout"))]
+                #[cfg(feature = "cex-dex-quotes")]
                 Rational::ZERO
             }
         } else {

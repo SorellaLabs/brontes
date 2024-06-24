@@ -27,22 +27,22 @@ pub struct Init {
     ///     CexTrades
     #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
     pub tables_to_init:         Option<Vec<Tables>>,
-    #[cfg(not(feature = "cex-dex-markout"))]
+    #[cfg(feature = "cex-dex-quotes")]
     /// The sliding time window (BEFORE) for cex prices relative to the block
     /// timestamp
     #[arg(long = "price-tw-before", default_value = "0.5")]
     pub cex_time_window_before: f64,
-    #[cfg(not(feature = "cex-dex-markout"))]
+    #[cfg(feature = "cex-dex-quotes")]
     /// The sliding time window (AFTER) for cex prices relative to the block
     /// timestamp
     #[arg(long = "price-tw-after", default_value = "1.0")]
     pub cex_time_window_after:  f64,
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     /// The sliding time window (BEFORE) for cex trades relative to the block
     /// timestamp
     #[arg(long = "trades-tw-before", default_value = "0.5")]
     pub cex_time_window_before: f64,
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     /// The sliding time window (AFTER) for cex trades relative to the block
     /// timestamp
     #[arg(long = "trades-tw-after", default_value = "2.0")]
@@ -94,9 +94,9 @@ impl Init {
             task_executor
                 .spawn_critical("init", async move {
                     let mut tables = Tables::ALL.to_vec();
-                    #[cfg(not(feature = "cex-dex-markout"))]
+                    #[cfg(feature = "cex-dex-quotes")]
                     tables.retain(|t| !matches!(t, Tables::CexTrades));
-                    #[cfg(feature = "cex-dex-markout")]
+                    #[cfg(not(feature = "cex-dex-quotes"))]
                     tables.retain(|t| !matches!(t, Tables::CexPrice));
 
                     let multi = MultiProgress::default();

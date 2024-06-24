@@ -12,7 +12,7 @@ impl CexDownloadConfig {
     }
 }
 
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 impl Default for CexDownloadConfig {
     fn default() -> Self {
         Self {
@@ -28,7 +28,7 @@ impl Default for CexDownloadConfig {
     }
 }
 
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 impl Default for CexDownloadConfig {
     fn default() -> Self {
         Self {

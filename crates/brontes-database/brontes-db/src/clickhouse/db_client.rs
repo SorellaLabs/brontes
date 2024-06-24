@@ -1,12 +1,12 @@
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use std::cmp::max;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use brontes_types::db::cex::{CexQuotesConverter, RawCexQuotes};
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 use brontes_types::db::cex::{CexTradesConverter, RawCexTrades};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
@@ -33,16 +33,16 @@ use db_interfaces::{
 use serde::Deserialize;
 use tokio::sync::mpsc::UnboundedSender;
 
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use super::RAW_CEX_QUOTES;
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 use super::RAW_CEX_TRADES;
 use super::{cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle};
 #[cfg(feature = "local-clickhouse")]
 use super::{BLOCK_TIMES, CEX_SYMBOLS};
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
     clickhouse::const_sql::BLOCK_INFO,
@@ -268,7 +268,7 @@ impl ClickhouseHandle for Clickhouse {
             .unwrap()
             .value;
 
-        #[cfg(not(feature = "cex-dex-markout"))]
+        #[cfg(feature = "cex-dex-quotes")]
         {
             tracing::info!("not markout");
             let mut cex_quotes_for_block = self
@@ -292,7 +292,7 @@ impl ClickhouseHandle for Clickhouse {
             .into_metadata(cex_quotes.value, None, None, None))
         }
 
-        #[cfg(feature = "cex-dex-markout")]
+        #[cfg(not(feature = "cex-dex-quotes"))]
         {
             tracing::info!("markout");
             let cex_trades = self
@@ -372,7 +372,7 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
-    #[cfg(not(feature = "cex-dex-markout"))]
+    #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -468,7 +468,7 @@ impl ClickhouseHandle for Clickhouse {
         Ok(prices)
     }
 
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     async fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -900,7 +900,7 @@ mod tests {
             .await;
     }
 
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     #[brontes_macros::test]
     async fn test_db_trades() {
         let db_client = Clickhouse::default();

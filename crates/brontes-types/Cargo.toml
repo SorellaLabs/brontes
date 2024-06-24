@@ -92,10 +92,9 @@ reth-tracing-ext.workspace = true
 
 
 [features]
-default = ["cex-dex-markout"]
 tests = []
-cex-dex-markout = []
 test_pricing = []
+cex-dex-quotes = []
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",
