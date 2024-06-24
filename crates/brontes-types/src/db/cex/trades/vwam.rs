@@ -130,7 +130,6 @@ impl CexTradeMap {
                 tx_hash,
             )
             .or_else(|| {
-                tracing::info!(?pair, ?tx_hash, "getting intermediary");
                 self.get_vwam_via_intermediary(
                     config,
                     exchanges,

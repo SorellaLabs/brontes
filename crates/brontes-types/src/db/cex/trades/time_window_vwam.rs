@@ -164,7 +164,6 @@ impl<'a> TimeWindowTrades<'a> {
                 config, exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
             )
             .or_else(|| {
-                tracing::info!(?pair, ?tx_hash, "getting intermediary");
                 self.get_vwap_price_via_intermediary(
                     config, exchanges, &pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
                 )
