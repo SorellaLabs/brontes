@@ -297,25 +297,68 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     }
 
     /// tries to convert transfer over to swaps
-    fn try_create_swaps(&self, transfers: &[NormalizedTransfer]) -> Vec<NormalizedSwap> {
-        let mut pools: FastHashMap<
-            TokenInfoWithAddress,
-            FastHashMap<Address, Vec<(bool, Rational)>>,
-        > = FastHashMap::default();
+    fn try_create_swaps(
+        &self,
+        transfers: &[NormalizedTransfer],
+        invalid_addresses: FastHashSet<Address>,
+    ) -> Vec<NormalizedSwap> {
+        let mut pools: FastHashMap<Address, Vec<(TokenInfoWithAddress, bool, Rational, Address)>> =
+            FastHashMap::default();
 
         for t in transfers {
-            let inner = pools.entry(t.token.clone()).or_default();
-            inner
-                .entry(t.to)
-                .or_default()
-                .push((true, t.amount.clone()));
-            inner
-                .entry(t.from)
-                .or_default()
-                .push((false, t.amount.clone()));
+            // we do this so if the transfer is from a mev contract or a searcher, it gets
+            // ignored
+            if invalid_addresses.contains(&t.from) {
+                continue
+            }
+
+            pools.entry(t.to.clone()).or_default().push((
+                t.token.clone(),
+                true,
+                t.amount.clone(),
+                t.from,
+            ));
+
+            pools.entry(t.from.clone()).or_default().push((
+                t.token.clone(),
+                false,
+                t.amount.clone(),
+                t.to,
+            ));
         }
 
-        vec![]
+        pools
+            .into_iter()
+            .filter_map(|(pool, mut possible_swaps)| {
+                if possible_swaps.len() != 2 {
+                    return None
+                }
+
+                let (f_token, f_direction, f_am, f_addr) = possible_swaps.pop()?;
+                let (s_token, s_direction, s_am, s_addr) = possible_swaps.pop()?;
+
+                if s_token == f_token || s_direction == f_direction {
+                    return None
+                }
+
+                let (amount_in, amount_out, token_in, token_out, from, recip) = if f_direction {
+                    (f_am, s_am, f_token, s_token, f_addr, s_addr)
+                } else {
+                    (s_am, f_am, s_token, f_token, s_addr, f_addr)
+                };
+
+                Some(NormalizedSwap {
+                    pool,
+                    amount_in,
+                    amount_out,
+                    token_out,
+                    token_in,
+                    from,
+                    recipient: recip,
+                    ..Default::default()
+                })
+            })
+            .collect()
     }
 
     /// Evaluates the validity of swap prices against DEX quoted prices within a
