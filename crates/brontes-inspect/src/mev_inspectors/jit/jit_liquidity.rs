@@ -7,7 +7,9 @@ use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, Mev, MevType},
-    normalized_actions::{accounting::ActionAccounting, NormalizedBurn},
+    normalized_actions::{
+        accounting::ActionAccounting, NormalizedBurn, NormalizedCollect, NormalizedMint,
+    },
     ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
@@ -223,7 +225,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             (Some(Rational::ZERO), false)
         };
 
-        let (mut hashes, mut gas_details): (Vec<_>, Vec<_>) = info_set
+        let (hashes, gas_details): (Vec<_>, Vec<_>) = info_set
             .iter()
             .map(|info| info.clone().split_to_storage_info())
             .unzip();
@@ -270,6 +272,31 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             },
         );
 
+        let jit_details = self.build_jit_type(
+            hashes,
+            gas_details,
+            mints,
+            burns,
+            collect,
+            victim_hashes,
+            victim_gas_details,
+            &victim_actions,
+        )?;
+
+        Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
+    }
+
+    fn build_jit_type(
+        &self,
+        mut hashes: Vec<TxHash>,
+        mut gas_details: Vec<GasDetails>,
+        mints: Vec<NormalizedMint>,
+        burns: Vec<NormalizedBurn>,
+        collect: Vec<NormalizedCollect>,
+        victim_hashes: Vec<TxHash>,
+        victim_gas_details: Vec<GasDetails>,
+        victim_actions: &[Vec<Action>],
+    ) -> Option<JitLiquidity> {
         let victim_swaps = victim_actions
             .iter()
             .map(|tx_actions| {
@@ -281,7 +308,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             })
             .collect();
 
-        let jit_details = JitLiquidity {
+        Some(JitLiquidity {
             frontrun_mint_tx_hash: hashes[0],
             frontrun_mint_gas_details: gas_details[0],
             frontrun_mints: mints,
@@ -308,9 +335,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                         .collect_vec()
                 })
                 .unwrap_or(burns),
-        };
-
-        Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
+        })
     }
 
     fn recursive_possible_jits(
