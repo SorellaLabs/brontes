@@ -94,9 +94,11 @@ impl Div for WindowExchangePrice {
 impl Display for WindowExchangePrice {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (e, p) in &self.exchange_price_with_volume_direct {
-            f.write_str(&format!("{:?}: {}", e, p.price.clone().to_float()))?;
+            f.write_str(&format!("{:?}:\n", e))?;
+            f.write_str(&format!("\t-price:  {}\n", p.price.clone().to_float()))?;
+            f.write_str(&format!("\t-volume: {}\n", p.volume.clone().to_float()))?;
         }
-        f.write_str(&format!("Global Exchange Price: {}", self.global_exchange_price.clone().to_float()))?;
+        f.write_str(&format!("Global Exchange Price: {}\n", self.global_exchange_price.clone().to_float()))?;
         Ok(())
     }
 }
