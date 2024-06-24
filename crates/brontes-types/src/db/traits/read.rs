@@ -18,6 +18,8 @@ pub type ProtocolCreatedRange = FastHashMap<u64, Vec<(Address, Protocol, Pair)>>
 pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata>;
 
+    fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool>;
+
     fn try_fetch_searcher_info(
         &self,
         eoa_address: Address,

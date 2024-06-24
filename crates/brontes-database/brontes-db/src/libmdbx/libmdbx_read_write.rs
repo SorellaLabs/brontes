@@ -381,6 +381,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.fetch_dex_quotes(block)
     }
 
+    fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
+        self.db.view_db(|tx| {
+            let Some(state) = tx.get::<InitializedState>(block_num)? else { return Ok(false) };
+            Ok(state.is_initialized(DEX_PRICE_FLAG))
+        })
+    }
+
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"load_trace")]
     fn load_trace(&self, block_num: u64) -> eyre::Result<Vec<TxTrace>> {
         self.db.view_db(|tx| {
