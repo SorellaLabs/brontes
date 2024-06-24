@@ -438,11 +438,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
-        let swap_rate = Rational::ONE / swap.swap_rate();
+        let swap_rate = swap.swap_rate();
         let smaller = min(&swap_rate, &cex_quote.0);
         let larger = max(&swap_rate, &cex_quote.0);
 
-        if smaller * Rational::TWO < *larger {
+//        if smaller * Rational::TWO < *larger {
             println!("{:?}", swap);
             println!("{:?}", pairs);
             if (&cex_quote.0 * swap_rate - Rational::ONE).abs() < 0.05 {
@@ -466,8 +466,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     &swap.token_out.address,
                 );
             }
-            return None
-        }
+            return None;
+//        }
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let maker_delta = &cex_quote.0 - swap.swap_rate();
