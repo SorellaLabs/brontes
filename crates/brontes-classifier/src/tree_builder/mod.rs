@@ -150,11 +150,17 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                     let node = Node::new(trace_idx, address, vec![]);
 
+                    let total_msg_value_transfers = classification
+                        .iter()
+                        .filter_map(|s| s.get_msg_value_not_eth_transfer())
+                        .collect::<Vec<NormalizedEthTransfer>>();
+
                     let mut tx_root = Root {
-                        position:    tx_idx,
-                        head:        node,
-                        tx_hash:     trace.tx_hash,
-                        private:     false,
+                        position: tx_idx,
+                        head: node,
+                        tx_hash: trace.tx_hash,
+                        private: false,
+                        total_msg_value_transfers,
                         gas_details: GasDetails {
                             coinbase_transfer:   None,
                             gas_used:            trace.gas_used,
@@ -162,7 +168,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             priority_fee:        trace.effective_price
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
-                        data_store:  NodeData(vec![Some(classification)]),
+                        data_store: NodeData(vec![Some(classification)]),
                     };
 
                     let tx_trace = &trace.trace;
@@ -211,6 +217,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 &mut pool_updates,
                             )
                             .await;
+
+                        tx_root.total_msg_value_transfers.extend(
+                            classification
+                                .iter()
+                                .filter_map(|s| s.get_msg_value_not_eth_transfer()),
+                        );
 
                         tx_root.insert(node, classification);
                     }

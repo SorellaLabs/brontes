@@ -103,6 +103,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             &deltas,
             metadata.clone(),
             false,
+            info.get_total_eth_value(),
         ) {
             (Some(rev), true)
         } else {

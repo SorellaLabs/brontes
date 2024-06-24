@@ -265,6 +265,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .flatten()
             .chain(back_run_actions)
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
+            .chain(
+                possible_front_runs_info
+                    .iter()
+                    .chain(vec![backrun_info].iter())
+                    .flat_map(|info| info.get_total_eth_value())
+                    .cloned()
+                    .map(Action::from),
+            )
             .account_for_actions();
 
         // ensure valid pricing

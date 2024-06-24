@@ -1,8 +1,9 @@
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::{Address, TxHash, U256};
 
 use crate::{
     db::{address_metadata::ContractType, searcher::SearcherInfo},
     mev::MevType,
+    normalized_actions::NormalizedEthTransfer,
     FastHashSet, GasDetails,
 };
 
@@ -24,6 +25,7 @@ pub struct TxInfo {
     pub is_verified_contract:   bool,
     pub searcher_eoa_info:      Option<SearcherInfo>,
     pub searcher_contract_info: Option<SearcherInfo>,
+    pub total_eth_value:        Vec<NormalizedEthTransfer>,
 }
 
 impl TxInfo {
@@ -42,8 +44,10 @@ impl TxInfo {
         is_verified_contract: bool,
         searcher_eoa_info: Option<SearcherInfo>,
         searcher_contract_info: Option<SearcherInfo>,
+        total_eth_value: Vec<NormalizedEthTransfer>,
     ) -> Self {
         Self {
+            total_eth_value,
             tx_index,
             block_number,
             mev_contract,
@@ -58,6 +62,10 @@ impl TxInfo {
             searcher_eoa_info,
             searcher_contract_info,
         }
+    }
+
+    pub fn get_total_eth_value(&self) -> &[NormalizedEthTransfer] {
+        &self.total_eth_value
     }
 
     pub fn split_to_storage_info(self) -> (TxHash, GasDetails) {

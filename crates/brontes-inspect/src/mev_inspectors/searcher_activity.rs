@@ -83,6 +83,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                                 searcher_address,
                                 &deltas,
                                 metadata.clone(),
+                                info.get_total_eth_value(),
                             ) {
                             (Some(rev), true)
                         } else {
