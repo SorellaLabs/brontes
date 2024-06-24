@@ -16,7 +16,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{
-    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
+    num::basic::traits::Zero,
     Rational,
 };
 use reth_primitives::Address;
