@@ -272,8 +272,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         println!("dex_swaps: {:?}", dex_swaps);
         for p in &pricing {
             if let (Some((p1, p2)), _) = p {
-                println!("\t{}", p1);
-                println!("\t{}", p2);
+                println!("{}", p1);
+                println!("{}", p2);
             }
         }
         // pricing window
