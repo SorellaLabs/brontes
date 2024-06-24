@@ -204,7 +204,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .chain(
                 info_set
                     .iter()
-                    .map(|info| info.get_total_eth_value())
+                    .flat_map(|info| info.get_total_eth_value())
                     .cloned()
                     .map(Action::from),
             )
@@ -217,7 +217,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             &deltas,
             metadata.clone(),
             true,
-            info_set.iter().map(|info| info.get_total_eth_value()).sum(),
         ) {
             (Some(rev), true)
         } else {

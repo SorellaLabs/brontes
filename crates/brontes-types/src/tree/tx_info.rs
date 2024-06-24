@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, TxHash, U256};
+use alloy_primitives::{Address, TxHash};
 
 use crate::{
     db::{address_metadata::ContractType, searcher::SearcherInfo},

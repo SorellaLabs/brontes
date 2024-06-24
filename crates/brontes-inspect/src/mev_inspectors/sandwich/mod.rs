@@ -268,7 +268,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .chain(
                 possible_front_runs_info
                     .iter()
-                    .chain(vec![backrun_info].iter())
+                    .chain(vec![backrun_info.clone()].iter())
                     .flat_map(|info| info.get_total_eth_value())
                     .cloned()
                     .map(Action::from),

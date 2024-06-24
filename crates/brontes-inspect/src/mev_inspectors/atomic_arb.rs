@@ -116,8 +116,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .chain(eth_transfers.into_iter().map(Action::from))
             .chain(
                 info.get_total_eth_value()
-                    .clone()
                     .into_iter()
+                    .cloned()
                     .map(Action::from),
             )
             .account_for_actions();

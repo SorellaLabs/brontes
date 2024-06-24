@@ -1,6 +1,6 @@
 use std::{fmt, fmt::Display};
 
-use alloy_primitives::{TxHash, U256};
+use alloy_primitives::{TxHash};
 use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
@@ -183,7 +183,7 @@ impl<V: NormalizedAction> Root<V> {
                 is_verified_contract,
                 searcher_eoa_info,
                 None,
-                self.total_msg_value_transfers,
+                self.total_msg_value_transfers.clone(),
             ))
         }
 
@@ -201,7 +201,7 @@ impl<V: NormalizedAction> Root<V> {
             is_verified_contract,
             searcher_eoa_info,
             searcher_contract_info,
-            self.total_msg_value_transfers,
+            self.total_msg_value_transfers.clone(),
         ))
     }
 

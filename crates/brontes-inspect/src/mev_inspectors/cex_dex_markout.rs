@@ -142,8 +142,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .chain(
                         tx_info
                             .get_total_eth_value()
-                            .clone()
                             .into_iter()
+                            .cloned()
                             .map(Action::from),
                     )
                     .account_for_actions();

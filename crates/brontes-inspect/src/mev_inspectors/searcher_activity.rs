@@ -69,7 +69,16 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
 
                 (info.searcher_eoa_info.is_some() || info.searcher_contract_info.is_some()).then(
                     || {
-                        let deltas = transfers.clone().into_iter().account_for_actions();
+                        let deltas = transfers
+                            .clone()
+                            .into_iter()
+                            .chain(
+                                info.get_total_eth_value()
+                                    .into_iter()
+                                    .cloned()
+                                    .map(Action::from),
+                            )
+                            .account_for_actions();
 
                         let mut searcher_address: FastHashSet<Address> = FastHashSet::default();
                         searcher_address.insert(info.eoa);
@@ -83,7 +92,6 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                                 searcher_address,
                                 &deltas,
                                 metadata.clone(),
-                                info.get_total_eth_value(),
                             ) {
                             (Some(rev), true)
                         } else {
