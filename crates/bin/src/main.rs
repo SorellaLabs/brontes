@@ -52,7 +52,7 @@ fn run() -> eyre::Result<()> {
 
     match opt.command {
         Commands::Run(command) => {
-            runner::run_command_until_exit(opt.metrics_port, Duration::from_mins(60), |ctx| {
+            runner::run_command_until_exit(opt.metrics_port, Duration::from_secs(3600), |ctx| {
                 command.execute(brontes_db_endpoint, ctx)
             })
         }
