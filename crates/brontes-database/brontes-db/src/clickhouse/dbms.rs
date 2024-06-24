@@ -28,7 +28,7 @@ clickhouse_dbms!(
         BrontesToken_Info,
         EthereumPools,
         BrontesBuilder_Info,
-        BrontesTree2
+        BrontesTree
     ]
 );
 
@@ -37,7 +37,7 @@ impl BrontesClickhouseTables {
         matches!(
             self,
             BrontesClickhouseTables::BrontesDex_Price_Mapping
-                | BrontesClickhouseTables::BrontesTree2
+                | BrontesClickhouseTables::BrontesTree
         )
     }
 }
@@ -149,7 +149,7 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    [Brontes, Tree2],
+    [Brontes, Tree],
     TransactionRoot,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
@@ -218,6 +218,6 @@ db_types!(
     (TokenInfoWithAddress, BrontesToken_Info),
     (ProtocolInfoClickhouse, EthereumPools),
     (BuilderInfoWithAddress, BrontesBuilder_Info),
-    (TransactionRoot, BrontesTree2),
+    (TransactionRoot, BrontesTree),
     (BlockAnalysis, BrontesBlock_Analysis)
 );
