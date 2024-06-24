@@ -136,7 +136,18 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     }
                 }
 
-                let deltas = swaps.clone().into_iter().account_for_actions();
+                let deltas = swaps
+                    .clone()
+                    .into_iter()
+                    .chain(
+                        tx_info
+                            .get_total_eth_value()
+                            .iter()
+                            .cloned()
+                            .map(Action::from),
+                    )
+                    .account_for_actions();
+
                 let (mut dex_swaps, rem): (Vec<_>, _) = self
                     .utils
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())

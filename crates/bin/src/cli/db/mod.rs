@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod libmdbx_mem;
+mod r2_uploader;
 mod snapshot;
 use crate::runner::CliContext;
 mod db_clear;
@@ -50,6 +51,10 @@ pub enum DatabaseCommands {
     /// downloads a db snapshot from the remote endpoint
     #[command(name = "download-snapshot")]
     DownloadSnapshot(snapshot::Snapshot),
+    /// for internal use only. Constantly will upload snapshots
+    /// of db every 100k blocks for easy downloads.
+    #[command(name = "r2-upload")]
+    UploadSnapshot(r2_uploader::R2Uploader),
     #[cfg(feature = "local-clickhouse")]
     /// Traces all blocks needed for testing and inserts them into
     /// clickhouse
@@ -74,9 +79,10 @@ impl Database {
             DatabaseCommands::TraceRange(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Init(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
+            DatabaseCommands::UploadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(ctx).await,
+            DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
             DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]

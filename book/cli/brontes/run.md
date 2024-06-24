@@ -35,12 +35,22 @@ Options:
   -b, --tw-before <TIME_WINDOW_BEFORE>
           The sliding time window (BEFORE) for cex prices or trades relative to the block timestamp
           
-          [default: 3.0]
+          [default: 5.0]
 
   -a, --tw-after <TIME_WINDOW_AFTER>
           The sliding time window (AFTER) for cex prices or trades relative to the block timestamp
           
-          [default: 5.0]
+          [default: 8.0]
+
+      --op-tw-before <TIME_WINDOW_BEFORE_OPTIMISTIC>
+          The time window (BEFORE) for cex prices or trades relative to the block timestamp for fully optimistic calculations
+          
+          [default: 0.5]
+
+      --op-tw-after <TIME_WINDOW_AFTER_OPTIMISTIC>
+          The time window (AFTER) for cex prices or trades relative to the block timestamp for fully optimistic calculations
+          
+          [default: 2.0]
 
   -c, --cex-exchanges <CEX_EXCHANGES>
           CEX exchanges to consider for cex-dex analysis
@@ -56,13 +66,16 @@ Options:
       --behind-tip <BEHIND_TIP>
           How many blocks behind chain tip to run
           
-          [default: 5]
+          [default: 10]
 
       --cli-only
           Run in CLI only mode (no TUI) - will output progress bars to stdout
 
       --init-crit-tables
           Initialize full range database tables
+
+      --with-metrics
+          Metrics will be exported
 
   -h, --help
           Print help (see a summary with '-h')

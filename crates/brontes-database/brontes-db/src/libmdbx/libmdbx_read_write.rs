@@ -94,7 +94,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 #[derive(Clone)]
 pub struct LibmdbxReadWriter {
     pub db:  Arc<Libmdbx>,
-    tx:      UnboundedSender<WriterMessage>,
+    pub tx:  UnboundedSender<WriterMessage>,
     metrics: Option<LibmdbxMetrics>,
     // 100 shards for now, might change in future
     cache:   ReadWriteCache,
@@ -105,6 +105,7 @@ impl LibmdbxReadWriter {
         path: P,
         log_level: Option<LogLevel>,
         ex: &BrontesTaskExecutor,
+        metrics: bool,
     ) -> eyre::Result<Self> {
         // 5 gb total
         let memory_per_table_mb = 1_000;
@@ -120,8 +121,8 @@ impl LibmdbxReadWriter {
         Ok(Self {
             db,
             tx,
-            metrics: Some(LibmdbxMetrics::default()),
-            cache: ReadWriteCache::new(memory_per_table_mb),
+            metrics: metrics.then(LibmdbxMetrics::default),
+            cache: ReadWriteCache::new(memory_per_table_mb, metrics),
         })
     }
 }
@@ -378,6 +379,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"get_dex_quotes")]
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
         self.fetch_dex_quotes(block)
+    }
+
+    fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
+        self.db.view_db(|tx| {
+            let Some(state) = tx.get::<InitializedState>(block_num)? else { return Ok(false) };
+            Ok(state.is_initialized(DEX_PRICE_FLAG))
+        })
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"load_trace")]

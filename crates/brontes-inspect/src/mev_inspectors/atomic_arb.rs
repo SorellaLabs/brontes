@@ -15,18 +15,15 @@ use brontes_types::{
     FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
-use malachite::{
-    num::basic::traits::Zero,
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata, MAX_PROFIT};
 
-/// the price difference was more than 3x between dex pricing and effective
-/// price
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(2, 3);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_signed(3);
 
+//TODO: If price diff exceeds max price diff, attempt to find the trigger
+// transaction
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
 }
@@ -114,6 +111,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .into_iter()
             .map(Action::from)
             .chain(eth_transfers.into_iter().map(Action::from))
+            .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
             .account_for_actions();
 
         let mut has_dex_price = self.valid_pricing(
@@ -159,7 +157,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let is_profitable = profit > Rational::ZERO;
 
-        let requirement_multiplier = if has_dex_price { 2 } else { 1 };
+        let requirement_multiplier = if has_dex_price { 1 } else { 2 };
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => (is_profitable
@@ -205,7 +203,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 )
             },
         );
-        tracing::debug!("{:#?}\n\n {:#?}", header, data);
 
         Some(Bundle { header, data })
     }
@@ -293,6 +290,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         res
     }
 
+    /// Evaluates the validity of swap prices against DEX quoted prices within a
+    /// given metadata context.
+    ///
+    /// This function iterates over each token involved in the provided swaps
+    /// and compares the effective swap rates against the DEX quoted prices
+    /// for corresponding token pairs. It computes the difference
+    /// between the effective price and the DEX pricing rate. If any swap
+    /// exhibits a price difference exceeding `MAX_PRICE_DIFF`, it logs a
+    /// warning and captures relevant metrics. The function returns `true`
+    /// if all evaluated swaps have price differences within the acceptable
+    /// range.
     fn valid_pricing<'a>(
         &self,
         metadata: Arc<Metadata>,
@@ -326,23 +334,24 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
                         // we reciprocal amount out because we won't have pricing for quote <> token
                         // out but we will have flipped
-                        let am_out_price_log = am_out_price.clone().get_price(PriceAt::Average).to_float();
-                        let am_in_price_log = am_in_price.clone().get_price(PriceAt::Average).to_float();
+                        let am_out_price_log =
+                            am_out_price.clone().get_price(PriceAt::Average).to_float();
+                        let am_in_price_log =
+                            am_in_price.clone().get_price(PriceAt::Average).to_float();
 
-                        let dex_pricing_rate =
-                            am_in_price.get_price(PriceAt::Average) /
-                                am_out_price.get_price(PriceAt::Average);
+                        let dex_pricing_rate = am_in_price.get_price(PriceAt::Average)
+                            / am_out_price.get_price(PriceAt::Average);
 
                         let pct = if effective_price > dex_pricing_rate {
-                            if effective_price == Rational::ZERO {
-                                return None
-                            }
-                            (&effective_price - &dex_pricing_rate) / &effective_price
-                        } else {
                             if dex_pricing_rate == Rational::ZERO {
                                 return None
                             }
-                            (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                            &effective_price / &dex_pricing_rate
+                        } else {
+                            if effective_price == Rational::ZERO {
+                                return None
+                            }
+                            &dex_pricing_rate / &effective_price
                         };
 
                         if pct > MAX_PRICE_DIFF && !(pct > 0.985 && pct < 1.0) {

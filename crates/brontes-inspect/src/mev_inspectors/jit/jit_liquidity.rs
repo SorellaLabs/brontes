@@ -7,60 +7,20 @@ use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
     mev::{Bundle, JitLiquidity, Mev, MevType},
-    normalized_actions::{accounting::ActionAccounting, NormalizedBurn},
+    normalized_actions::{
+        accounting::ActionAccounting, NormalizedBurn, NormalizedCollect, NormalizedMint,
+    },
     ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::TxHash;
 
-use super::MAX_PROFIT;
+use super::types::{PossibleJit, PossibleJitWithInfo};
 use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
+    MAX_PROFIT,
 };
-
-#[derive(Debug)]
-struct PossibleJitWithInfo {
-    pub front_runs:  Vec<TxInfo>,
-    pub backrun:     TxInfo,
-    pub victim_info: Vec<Vec<TxInfo>>,
-    pub inner:       PossibleJit,
-}
-impl PossibleJitWithInfo {
-    pub fn from_jit(ps: PossibleJit, info_set: &FastHashMap<B256, TxInfo>) -> Option<Self> {
-        let backrun = info_set.get(&ps.backrun_tx).cloned()?;
-        let mut frontruns = vec![];
-
-        for fr in &ps.frontrun_txes {
-            frontruns.push(info_set.get(fr).cloned()?);
-        }
-
-        let mut victims = vec![];
-        for victim in &ps.victims {
-            let mut set = vec![];
-            for v in victim {
-                set.push(info_set.get(v).cloned()?);
-            }
-            victims.push(set);
-        }
-
-        Some(PossibleJitWithInfo {
-            front_runs: frontruns,
-            backrun,
-            victim_info: victims,
-            inner: ps,
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-struct PossibleJit {
-    pub eoa:               Address,
-    pub frontrun_txes:     Vec<B256>,
-    pub backrun_tx:        B256,
-    pub executor_contract: Address,
-    pub victims:           Vec<Vec<B256>>,
-}
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
     pub utils: SharedInspectorUtils<'db, DB>,
@@ -114,33 +74,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                          backrun,
                          front_runs,
                      }| {
-                        let searcher_actions = frontrun_txes
-                            .iter()
-                            .chain([backrun_tx].iter())
-                            .map(|tx| {
-                                self.utils
-                                    .flatten_nested_actions(
-                                        tree.clone().collect(
-                                            tx,
-                                            TreeSearchBuilder::default().with_actions([
-                                                Action::is_mint,
-                                                Action::is_burn,
-                                                Action::is_transfer,
-                                                Action::is_eth_transfer,
-                                                Action::is_nested_action,
-                                            ]),
-                                        ),
-                                        &|actions| {
-                                            actions.is_mint()
-                                                || actions.is_burn()
-                                                || actions.is_collect()
-                                                || actions.is_transfer()
-                                                || actions.is_eth_transfer()
-                                        },
-                                    )
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect::<Vec<Vec<Action>>>();
+                        let searcher_actions = self.get_searcher_actions(
+                            frontrun_txes.iter().chain([backrun_tx].iter()),
+                            tree.clone(),
+                        );
 
                         tracing::trace!(?frontrun_txes, ?backrun_tx, "checking if jit");
 
@@ -168,7 +105,38 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         )
     }
 
-    fn calcuate_recursive(
+    fn get_searcher_actions<'a>(
+        &self,
+        i: impl Iterator<Item = &'a TxHash>,
+        tree: Arc<BlockTree<Action>>,
+    ) -> Vec<Vec<Action>> {
+        i.map(|tx| {
+            self.utils
+                .flatten_nested_actions(
+                    tree.clone().collect(
+                        tx,
+                        TreeSearchBuilder::default().with_actions([
+                            Action::is_mint,
+                            Action::is_burn,
+                            Action::is_transfer,
+                            Action::is_eth_transfer,
+                            Action::is_nested_action,
+                        ]),
+                    ),
+                    &|actions| {
+                        actions.is_mint()
+                            || actions.is_burn()
+                            || actions.is_collect()
+                            || actions.is_transfer()
+                            || actions.is_eth_transfer()
+                    },
+                )
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<Vec<Action>>>()
+    }
+
+    fn calculate_recursive(
         frontrun_info: &[TxInfo],
         backrun_info: &TxInfo,
         searcher_actions: &[Vec<Action>],
@@ -190,7 +158,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         Some(!front_is_mint_back_is_burn || !matching_eoas || !mint_burn_eq)
     }
 
-    //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
         frontrun_info: Vec<TxInfo>,
@@ -202,7 +169,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         victim_info: Vec<Vec<TxInfo>>,
         recursive: u8,
     ) -> Option<Vec<Bundle>> {
-        if Self::calcuate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
+        if Self::calculate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
             return self.recursive_possible_jits(
                 frontrun_info,
                 backrun_info,
@@ -225,15 +192,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             tracing::trace!("missing mints & burns");
             return None
         }
-
-        // assert mints and burns are same pool
-        let mut pools = FastHashSet::default();
-        mints.iter().for_each(|m| {
-            pools.insert(m.pool);
-        });
-        if !burns.iter().any(|b| pools.contains(&b.pool)) {
-            return None
-        }
+        self.ensure_valid_structure(&mints, &burns, &victim_actions)?;
 
         let mut info_set = frontrun_info.clone();
         info_set.push(backrun_info.clone());
@@ -243,6 +202,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let deltas = rem
             .into_iter()
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
+            .chain(
+                info_set
+                    .iter()
+                    .flat_map(|info| info.get_total_eth_value())
+                    .cloned()
+                    .map(Action::from),
+            )
             .account_for_actions();
 
         let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
@@ -258,7 +224,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             (Some(Rational::ZERO), false)
         };
 
-        let (mut hashes, mut gas_details): (Vec<_>, Vec<_>) = info_set
+        let (hashes, gas_details): (Vec<_>, Vec<_>) = info_set
             .iter()
             .map(|info| info.clone().split_to_storage_info())
             .unzip();
@@ -305,6 +271,31 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             },
         );
 
+        let jit_details = self.build_jit_type(
+            hashes,
+            gas_details,
+            mints,
+            burns,
+            collect,
+            victim_hashes,
+            victim_gas_details,
+            &victim_actions,
+        )?;
+
+        Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
+    }
+
+    fn build_jit_type(
+        &self,
+        mut hashes: Vec<TxHash>,
+        mut gas_details: Vec<GasDetails>,
+        mints: Vec<NormalizedMint>,
+        burns: Vec<NormalizedBurn>,
+        collect: Vec<NormalizedCollect>,
+        victim_hashes: Vec<TxHash>,
+        victim_gas_details: Vec<GasDetails>,
+        victim_actions: &[Vec<Action>],
+    ) -> Option<JitLiquidity> {
         let victim_swaps = victim_actions
             .iter()
             .map(|tx_actions| {
@@ -316,7 +307,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             })
             .collect();
 
-        let jit_details = JitLiquidity {
+        Some(JitLiquidity {
             frontrun_mint_tx_hash: hashes[0],
             frontrun_mint_gas_details: gas_details[0],
             frontrun_mints: mints,
@@ -343,9 +334,42 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                         .collect_vec()
                 })
                 .unwrap_or(burns),
-        };
+        })
+    }
 
-        Some(vec![Bundle { header, data: BundleData::Jit(jit_details) }])
+    fn ensure_valid_structure(
+        &self,
+        mints: &[NormalizedMint],
+        burns: &[NormalizedBurn],
+        victim_actions: &[Vec<Action>],
+    ) -> Option<()> {
+        // assert mints and burns are same pool
+        let mut pools = FastHashSet::default();
+        mints.iter().for_each(|m| {
+            pools.insert(m.pool);
+        });
+
+        if !burns.iter().any(|b| pools.contains(&b.pool)) {
+            return None
+        }
+
+        // ensure atleast 50% of victims also swap on the same pool
+        let v_swaps = victim_actions
+            .iter()
+            .flatten()
+            .filter(|a| a.is_swap())
+            .map(|a| a.clone().force_swap())
+            .collect::<Vec<_>>();
+
+        let v_swaps_len = v_swaps.len();
+
+        ((v_swaps
+            .into_iter()
+            .map(|swap| pools.contains(&swap.pool) as usize)
+            .sum::<usize>() as f64
+            / (v_swaps_len as f64))
+            >= 0.5)
+            .then_some(())
     }
 
     fn recursive_possible_jits(
@@ -459,7 +483,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 // into the map
                 Entry::Vacant(duplicate_mev_contract) => {
                     duplicate_mev_contract.insert((root.tx_hash, root.head.address));
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
                     // Get's prev tx hash &  for this sender & replaces it with the current tx hash
@@ -486,7 +509,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     }
 
                     *prev_tx_hash = root.tx_hash;
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
@@ -494,7 +516,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 // If we have not seen this sender before, we insert the tx hash into the map
                 Entry::Vacant(v) => {
                     v.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
                 Entry::Occupied(mut o) => {
                     // Get's prev tx hash for this sender & replaces it with the current tx hash
@@ -521,18 +542,17 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
                     // Add current transaction hash to the list of transactions for this sender
                     o.insert(root.tx_hash);
-                    possible_victims.insert(root.tx_hash, vec![]);
                 }
             }
 
             // Now, for each existing entry in possible_victims, we add the current
             // transaction hash as a potential victim, if it is not the same as
             // the key (which represents another transaction hash)
-            for (k, v) in possible_victims.iter_mut() {
-                if k != &root.tx_hash {
-                    v.push(root.tx_hash);
-                }
+            for v in possible_victims.values_mut() {
+                v.push(root.tx_hash);
             }
+
+            possible_victims.insert(root.tx_hash, vec![]);
         }
 
         let set = Itertools::unique(set.into_values())

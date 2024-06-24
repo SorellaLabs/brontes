@@ -1,4 +1,4 @@
-CREATE TABLE brontes.tree2 ON CLUSTER eth_cluster0
+CREATE TABLE brontes.tree ON CLUSTER eth_cluster0
 (
     `block_number` UInt64,
     `tx_hash` String,
@@ -10,6 +10,6 @@ CREATE TABLE brontes.tree2 ON CLUSTER eth_cluster0
     `trace_nodes.action` Array(Nullable(String)),
     `last_updated` UInt64 DEFAULT now()
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/tree2', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/tree', '{replica}', `last_updated`)
 PRIMARY KEY `tx_hash`
 ORDER BY `tx_hash` 

@@ -1,10 +1,14 @@
-use std::{env::current_dir, path::PathBuf, str::FromStr};
+use std::{env::temp_dir, path::PathBuf, str::FromStr};
 
-use brontes_types::buf_writer::DownloadBufWriterWithProgress;
+use brontes_core::LibmdbxReadWriter;
+use brontes_database::libmdbx::{merge_libmdbx_dbs, rclone_wrapper::BlockRangeList};
+use brontes_types::{
+    buf_writer::DownloadBufWriterWithProgress, unordered_buffer_map::BrontesStreamExt,
+};
 use clap::Parser;
-use filesize::file_real_size;
 use flate2::read::GzDecoder;
-use fs_extra::dir::CopyOptions;
+use futures::{stream::StreamExt, Stream};
+use indicatif::MultiProgress;
 use itertools::Itertools;
 use reqwest::Url;
 use tar::Archive;
@@ -12,78 +16,222 @@ use tar::Archive;
 use crate::runner::CliContext;
 
 /// endpoint to check size of db snapshot
-const SIZE_PATH: &str = "db-size.txt";
-const DOWNLOAD_PATH: &str = "brontes-db-latest.tar.gz";
-const BYTES_TO_MB: u64 = 1_000_000;
+// const DOWNLOAD_PATH: &str = "brontes-db-latest.tar.gz";
 
-/// the 3 files of libmdbx
-const LIBMDBX_FILES: [&str; 2] = ["mdbx.dat", "mdbx.lck"];
+const NAME: &str = "brontes-db-partition";
+const FIXED_DB: &str = "full-range-tables";
+const SIZE_PATH: &str = "byte-count.txt";
+const RANGES_AVAILABLE: &str = "brontes-available-ranges.json";
+const BYTES_TO_MB: u64 = 1_000_000;
 
 #[derive(Debug, Parser)]
 pub struct Snapshot {
     /// endpoint url
-    #[arg(long, short, default_value = "https://pub-e19b2b40b9c14ec3836e65c2c04590ec.r2.dev")]
-    pub endpoint:       Url,
-    /// where to write the database
+    #[arg(long, short, default_value = "https://pub-d0f2c20688264963b2c4ff2b4baa7c27.r2.dev")]
+    pub endpoint:    Url,
     #[arg(long, short)]
-    pub write_location: PathBuf,
-    /// overwrite the database if it already exists
-    /// in the write location
-    #[arg(long, default_value = "false")]
-    pub overwrite_db:   bool,
+    pub start_block: Option<u64>,
+    #[arg(long, short)]
+    pub end_block:   Option<u64>,
 }
 
 impl Snapshot {
-    pub async fn execute(self, _: CliContext) -> eyre::Result<()> {
-        fs_extra::dir::create_all(&self.write_location, false)?;
-
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
-        let db_size = self.meets_space_requirement(&client).await?;
+        let ranges_avail = self.get_available_ranges(&client).await?;
+        let ranges_to_download = self.ranges_to_download(ranges_avail)?;
+        fs_extra::dir::create_all(&brontes_db_endpoint, false)?;
 
-        // delete db_location if exists
-        if self.overwrite_db {
-            if let Err(e) = self.try_delete_libmdbx_db() {
-                tracing::warn!(err=%e, "error when trying to delete db from current location");
-            }
-        }
+        let curl_queries = self
+            .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
+            .await?;
 
         // download db tarball
-        let url = format!("{}{}", self.endpoint, DOWNLOAD_PATH);
+        let multi_bar = MultiProgress::new();
 
-        let mut download_dir = current_dir()?;
-        download_dir.push("db-snapshot.tar.gz");
+        // ensure dir exists
+        let mut download_dir = temp_dir();
+        download_dir.push(format!("{}s", NAME));
+        let cloned_download_dir = download_dir.clone();
+        fs_extra::dir::create_all(&download_dir, false)?;
 
-        let file = tokio::fs::File::create(&download_dir).await?;
-        let stream = client.get(url).send().await?.bytes_stream();
+        ctx.task_executor
+            .spawn_critical("download_streams", async move {
+                futures::stream::iter(curl_queries)
+                    .map(|DbRequestWithBytes { url, size_bytes, file_name }| {
+                        let client = client.clone();
+                        let mb = multi_bar.clone();
+                        tracing::info!(?url, ?size_bytes, ?file_name);
+                        let mut download_dir = download_dir.clone();
+                        async move {
+                            download_dir.push(file_name);
 
-        DownloadBufWriterWithProgress::new(Some(db_size), stream, file, 100 * 1024 * 1024).await?;
+                            tracing::info!("creating file");
+                            let file = tokio::fs::File::create(&download_dir).await?;
+
+                            let stream = client.get(url).send().await?.bytes_stream();
+                            DownloadBufWriterWithProgress::new(
+                                Some(size_bytes),
+                                stream,
+                                file,
+                                40 * 1024 * 1024,
+                                &mb,
+                            )
+                            .await?;
+                            Self::handle_downloaded_file(&download_dir)?;
+
+                            eyre::Ok(())
+                        }
+                    })
+                    .unordered_buffer_map(10, |f| tokio::spawn(f))
+                    .map(|s| s.map_err(eyre::Error::from))
+                    .collect_vec_transpose_double()
+                    .await
+                    .unwrap()
+                    .unwrap();
+            })
+            .await?;
+
         tracing::info!(
-            "finished downloading db. decompressing tar.gz and moving to final destination"
+            "all partitions downloaded, merging into the current db at: {}",
+            brontes_db_endpoint
         );
-        self.handle_downloaded_file(&download_dir, &self.write_location)?;
-        tracing::info!("moved results to proper location");
-        fs_extra::file::remove(download_dir)?;
-        tracing::info!("deleted tarball");
+
+        let final_db =
+            LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
+
+        let db = cloned_download_dir.clone();
+        let ex = ctx.task_executor.clone();
+        ctx.task_executor
+            .spawn_blocking(async move {
+                merge_libmdbx_dbs(final_db, &db, ex).unwrap();
+            })
+            .await?;
+
+        tracing::info!("cleaning up tmp libmdbx partitions");
+        fs_extra::dir::remove(cloned_download_dir)?;
 
         Ok(())
+    }
+
+    // returns a error if the data isn't available.
+    // NOTE: assumes r2 data is continuous
+    fn ranges_to_download(
+        &self,
+        ranges_avail: Vec<BlockRangeList>,
+    ) -> eyre::Result<Vec<BlockRangeList>> {
+        match (self.start_block, self.end_block) {
+            (None, None) => Ok(ranges_avail),
+            (Some(start), None) => {
+                let ranges = ranges_avail
+                    .into_iter()
+                    .filter(|BlockRangeList { end_block, .. }| end_block >= &start)
+                    .collect_vec();
+                if ranges.is_empty() {
+                    eyre::bail!(
+                        "no data available for the set range: {:?}-{:?}",
+                        self.start_block,
+                        self.end_block
+                    )
+                }
+                Ok(ranges)
+            }
+            (None, Some(end)) => {
+                let ranges = ranges_avail
+                    .into_iter()
+                    .filter(|BlockRangeList { start_block, .. }| start_block <= &end)
+                    .collect_vec();
+
+                if ranges.is_empty() {
+                    eyre::bail!(
+                        "no data available for the set range: {:?}-{:?}",
+                        self.start_block,
+                        self.end_block
+                    )
+                }
+
+                Ok(ranges)
+            }
+            (Some(start), Some(end)) => {
+                let ranges = ranges_avail
+                    .into_iter()
+                    .filter(|BlockRangeList { start_block, end_block }| {
+                        end_block >= &start && start_block <= &end
+                    })
+                    .collect_vec();
+
+                if ranges.is_empty() {
+                    eyre::bail!(
+                        "no data available for the set range: {:?}-{:?}",
+                        self.start_block,
+                        self.end_block
+                    )
+                }
+
+                Ok(ranges)
+            }
+        }
+    }
+
+    async fn get_available_ranges(
+        &self,
+        client: &reqwest::Client,
+    ) -> eyre::Result<Vec<BlockRangeList>> {
+        Ok(client
+            .get(format!("{}{}", self.endpoint, RANGES_AVAILABLE))
+            .send()
+            .await?
+            .json()
+            .await?)
     }
 
     /// returns a error if there is not enough space remaining. If the overwrite
     /// db flag is enabled. Will delete the current db if that frees enough
     /// space
-    async fn meets_space_requirement(&self, client: &reqwest::Client) -> eyre::Result<u64> {
-        let url = format!("{}{}", self.endpoint, SIZE_PATH);
-        let new_db_size = client.get(url).send().await?.text().await?;
-        let new_db_size = u64::from_str(&new_db_size)?;
-        tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
+    async fn meets_space_requirement(
+        &self,
+        client: &reqwest::Client,
+        ranges: Vec<BlockRangeList>,
+        brontes_db_endpoint: &String,
+    ) -> eyre::Result<Vec<DbRequestWithBytes>> {
+        let mut new_db_size = 0u64;
+        let mut res = vec![];
+        for range in ranges {
+            let url = format!(
+                "{}{}-{}-{}-{}",
+                self.endpoint, NAME, range.start_block, range.end_block, SIZE_PATH
+            );
+            let size = client.get(url).send().await?.text().await?;
+            let size = u64::from_str(&size)?;
+            res.push(DbRequestWithBytes {
+                url:        format!(
+                    "{}{}-{}-{}.tar.gz",
+                    self.endpoint, NAME, range.start_block, range.end_block
+                ),
+                file_name:  format!("{}-{}-{}.tar.gz", NAME, range.start_block, range.end_block),
+                size_bytes: size,
+            });
 
-        let mut storage_available = fs2::free_space(&self.write_location)?;
-        if self.overwrite_db {
-            storage_available += self.libmdbx_file_size_bytes();
+            new_db_size += size;
         }
 
+        // query 1 off table
+        let url = format!("{}{}-{}-{}", self.endpoint, NAME, FIXED_DB, SIZE_PATH);
+        let size = client.get(url).send().await?.text().await?;
+        let size = u64::from_str(&size)?;
+
+        res.push(DbRequestWithBytes {
+            url:        format!("{}{}-{}.tar.gz", self.endpoint, NAME, FIXED_DB),
+            file_name:  format!("{}-{}.tar.gz", NAME, FIXED_DB),
+            size_bytes: size,
+        });
+        new_db_size += size;
+
+        tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
+        let storage_available = fs2::free_space(brontes_db_endpoint)?;
+
         if storage_available >= new_db_size {
-            Ok(new_db_size)
+            Ok(res)
         } else {
             Err(eyre::eyre!(
                 "not enough storage available. \nneeded: {}mb\navailable: {}mb",
@@ -93,68 +241,39 @@ impl Snapshot {
         }
     }
 
-    fn try_delete_libmdbx_db(&self) -> eyre::Result<()> {
-        let mut write_location = self.write_location.clone();
-        let mut report: Option<eyre::Report> = None;
-        for ext in LIBMDBX_FILES {
-            write_location.push(ext);
-            if std::fs::metadata(&write_location).is_err() {
-                tracing::warn!(path=?write_location, "file location doesn't exist");
-                continue
-            }
-
-            let removed_file = std::fs::remove_file(&write_location);
-            if let Err(e) = removed_file {
-                report = Some(eyre::eyre!("{:?}", e))
-            }
-            write_location.pop();
-        }
-
-        if let Some(r) = report {
-            return Err(r)
-        }
-
-        Ok(())
-    }
-
-    fn libmdbx_file_size_bytes(&self) -> u64 {
-        let mut write_location = self.write_location.clone();
-        LIBMDBX_FILES
-            .iter()
-            .filter_map(|ext| {
-                write_location.push(ext);
-                let res = file_real_size(&write_location).ok();
-                write_location.pop();
-
-                res
-            })
-            .sum::<u64>()
-    }
-
-    fn handle_downloaded_file(
-        &self,
-        tarball_location: &PathBuf,
-        write_location: &PathBuf,
-    ) -> eyre::Result<()> {
+    fn handle_downloaded_file(tarball_location: &PathBuf) -> eyre::Result<()> {
         let tar_gz = std::fs::File::open(tarball_location)?;
         let tar = GzDecoder::new(tar_gz);
         let mut archive = Archive::new(tar);
         let mut unpack = tarball_location.clone();
         unpack.pop();
         archive.unpack(&unpack)?;
-        // tmp
-        unpack.push("brontes-db-latest");
-        let from_paths = LIBMDBX_FILES
-            .iter()
-            .map(|file| {
-                let mut tmp = unpack.clone();
-                tmp.push(file);
-                tmp
-            })
-            .collect_vec();
 
-        fs_extra::move_items(&from_paths, write_location, &CopyOptions::new())?;
+        fs_extra::file::remove(tarball_location)?;
 
         Ok(())
+    }
+}
+
+pub struct DbRequestWithBytes {
+    pub url:        String,
+    pub file_name:  String,
+    pub size_bytes: u64,
+}
+
+impl<S> AsyncFlatten for S where S: Stream + Sized {}
+
+trait AsyncFlatten: Stream {
+    async fn collect_vec_transpose_double<T, E1, E2>(mut self) -> Result<Result<Vec<T>, E2>, E1>
+    where
+        Self: Sized + Unpin + Stream<Item = Result<Result<T, E2>, E1>>,
+        E1: From<E2>,
+    {
+        let mut res = Vec::new();
+        while let Some(next) = self.next().await {
+            res.push(next??);
+        }
+
+        Ok(Ok(res))
     }
 }
