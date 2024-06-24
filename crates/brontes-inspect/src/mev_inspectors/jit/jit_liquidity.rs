@@ -74,33 +74,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                          backrun,
                          front_runs,
                      }| {
-                        let searcher_actions = frontrun_txes
-                            .iter()
-                            .chain([backrun_tx].iter())
-                            .map(|tx| {
-                                self.utils
-                                    .flatten_nested_actions(
-                                        tree.clone().collect(
-                                            tx,
-                                            TreeSearchBuilder::default().with_actions([
-                                                Action::is_mint,
-                                                Action::is_burn,
-                                                Action::is_transfer,
-                                                Action::is_eth_transfer,
-                                                Action::is_nested_action,
-                                            ]),
-                                        ),
-                                        &|actions| {
-                                            actions.is_mint()
-                                                || actions.is_burn()
-                                                || actions.is_collect()
-                                                || actions.is_transfer()
-                                                || actions.is_eth_transfer()
-                                        },
-                                    )
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect::<Vec<Vec<Action>>>();
+                        let searcher_actions = self.get_searcher_actions(
+                            frontrun_txes.iter().chain([backrun_tx].iter()),
+                            tree.clone(),
+                        );
 
                         tracing::trace!(?frontrun_txes, ?backrun_tx, "checking if jit");
 
@@ -128,6 +105,37 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         )
     }
 
+    fn get_searcher_actions<'a>(
+        &self,
+        i: impl Iterator<Item = &'a TxHash>,
+        tree: Arc<BlockTree<Action>>,
+    ) -> Vec<Vec<Action>> {
+        i.map(|tx| {
+            self.utils
+                .flatten_nested_actions(
+                    tree.clone().collect(
+                        tx,
+                        TreeSearchBuilder::default().with_actions([
+                            Action::is_mint,
+                            Action::is_burn,
+                            Action::is_transfer,
+                            Action::is_eth_transfer,
+                            Action::is_nested_action,
+                        ]),
+                    ),
+                    &|actions| {
+                        actions.is_mint()
+                            || actions.is_burn()
+                            || actions.is_collect()
+                            || actions.is_transfer()
+                            || actions.is_eth_transfer()
+                    },
+                )
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<Vec<Action>>>()
+    }
+
     fn calculate_recursive(
         frontrun_info: &[TxInfo],
         backrun_info: &TxInfo,
@@ -150,7 +158,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         Some(!front_is_mint_back_is_burn || !matching_eoas || !mint_burn_eq)
     }
 
-    //TODO: Clean up JIT inspectors
     fn calculate_jit(
         &self,
         frontrun_info: Vec<TxInfo>,

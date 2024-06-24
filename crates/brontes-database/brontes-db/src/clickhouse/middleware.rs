@@ -223,6 +223,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
 }
 
 impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
+    fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
+        self.inner.has_dex_quotes(block_num)
+    }
+
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         self.inner.get_metadata_no_dex_price(block_num)
     }
@@ -514,6 +518,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
 }
 
 impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
+    fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
+        self.inner.has_dex_quotes(block_num)
+    }
+
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         self.inner.get_metadata_no_dex_price(block_num)
     }
