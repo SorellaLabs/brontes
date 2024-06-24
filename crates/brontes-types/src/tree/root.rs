@@ -14,7 +14,9 @@ use crate::{
         address_metadata::AddressMetadata, metadata::Metadata, searcher::SearcherInfo,
         traits::LibmdbxReader,
     },
-    normalized_actions::{Action, MultiCallFrameClassification, NormalizedAction},
+    normalized_actions::{
+        Action, MultiCallFrameClassification, NormalizedAction, NormalizedEthTransfer,
+    },
     tree::types::NodeWithDataRef,
     FastHashMap, FastHashSet, TreeSearchBuilder, TxInfo,
 };
@@ -49,12 +51,15 @@ impl<V: NormalizedAction> NodeData<V> {
 
 #[derive(Debug, Clone)]
 pub struct Root<V: NormalizedAction> {
-    pub head:        Node,
-    pub position:    usize,
-    pub tx_hash:     B256,
-    pub private:     bool,
+    pub head: Node,
+    pub position: usize,
+    pub tx_hash: B256,
+    pub private: bool,
     pub gas_details: GasDetails,
-    pub data_store:  NodeData<V>,
+    /// all msg.value transfers that aren't classified as
+    /// eth transfers
+    pub total_msg_value_transfers: Vec<NormalizedEthTransfer>,
+    pub data_store: NodeData<V>,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -178,6 +183,7 @@ impl<V: NormalizedAction> Root<V> {
                 is_verified_contract,
                 searcher_eoa_info,
                 None,
+                self.total_msg_value_transfers.clone(),
             ))
         }
 
@@ -195,6 +201,7 @@ impl<V: NormalizedAction> Root<V> {
             is_verified_contract,
             searcher_eoa_info,
             searcher_contract_info,
+            self.total_msg_value_transfers.clone(),
         ))
     }
 

@@ -94,7 +94,10 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
-        let deltas = actions.into_iter().account_for_actions();
+        let deltas = actions
+            .into_iter()
+            .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
+            .account_for_actions();
 
         let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
