@@ -6,7 +6,7 @@ use itertools::Itertools;
 use reth_primitives::TxHash;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-
+use crate::serde_utils::vec_address;
 use crate::{
     db::{searcher::Fund, token_info::TokenInfoWithAddress},
     mev::{Bundle, BundleData, Mev, MevBlock, MevType},
@@ -75,19 +75,23 @@ pub struct BlockAnalysis {
     #[serde(with = "option_address")]
     pub atomic_top_searcher_revenue:         Option<Address>,
     pub atomic_top_searcher_revenue_amt:     Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "atomic_searcher_eoa_all.profit")]
     pub atomic_searcher_eoa_all_profit:      Vec<Address>,
     #[serde(rename = "atomic_searcher_eoa_all.profit_amt")]
     pub atomic_searcher_eoa_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "atomic_searcher_eoa_all.revenue")]
     pub atomic_searcher_eoa_all_revenue:     Vec<Address>,
     #[serde(rename = "atomic_searcher_eoa_all.revenue_amt")]
     pub atomic_searcher_eoa_all_revenue_amt: Vec<f64>,
     pub atomic_searcher_eoa_count:           u64,
+    #[serde(with = "vec_address")]
     #[serde(rename = "atomic_mev_contract_all.profit")]
     pub atomic_mev_contract_all_profit:      Vec<Address>,
     #[serde(rename = "atomic_mev_contract_all.profit_amt")]
     pub atomic_mev_contract_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "atomic_mev_contract_all.revenue")]
     pub atomic_mev_contract_all_revenue:     Vec<Address>,
     #[serde(rename = "atomic_mev_contract_all.revenue_amt")]
@@ -126,10 +130,12 @@ pub struct BlockAnalysis {
     #[serde(with = "option_protocol")]
     pub atomic_most_arbed_dex_revenue:       Option<Protocol>,
     pub atomic_most_arbed_dex_revenue_amt:   Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "atomic_arbed_pool_all.profit")]
     pub atomic_arbed_pool_all_profit:        Vec<Address>,
     #[serde(rename = "atomic_arbed_pool_all.profit_amt")]
     pub atomic_arbed_pool_all_profit_amt:    Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "atomic_arbed_pool_all.revenue")]
     pub atomic_arbed_pool_all_revenue:       Vec<Address>,
     #[serde(rename = "atomic_arbed_pool_all.revenue_amt")]
@@ -170,19 +176,23 @@ pub struct BlockAnalysis {
     #[serde(with = "option_address")]
     pub sandwich_top_searcher_revenue:         Option<Address>,
     pub sandwich_top_searcher_revenue_amt:     Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_searcher_eoa_all.profit")]
     pub sandwich_searcher_eoa_all_profit:      Vec<Address>,
     #[serde(rename = "sandwich_searcher_eoa_all.profit_amt")]
     pub sandwich_searcher_eoa_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_searcher_eoa_all.revenue")]
     pub sandwich_searcher_eoa_all_revenue:     Vec<Address>,
     #[serde(rename = "sandwich_searcher_eoa_all.revenue_amt")]
     pub sandwich_searcher_eoa_all_revenue_amt: Vec<f64>,
     pub sandwich_searcher_eoa_count:           u64,
+    #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_mev_contract_all.profit")]
     pub sandwich_mev_contract_all_profit:      Vec<Address>,
     #[serde(rename = "sandwich_mev_contract_all.profit_amt")]
     pub sandwich_mev_contract_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_mev_contract_all.revenue")]
     pub sandwich_mev_contract_all_revenue:     Vec<Address>,
     #[serde(rename = "sandwich_mev_contract_all.revenue_amt")]
@@ -221,10 +231,12 @@ pub struct BlockAnalysis {
     #[serde(with = "option_protocol")]
     pub sandwich_most_arbed_dex_revenue:       Option<Protocol>,
     pub sandwich_most_arbed_dex_revenue_amt:   Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_arbed_pool_all.profit")]
     pub sandwich_arbed_pool_all_profit:        Vec<Address>,
     #[serde(rename = "sandwich_arbed_pool_all.profit_amt")]
     pub sandwich_arbed_pool_all_profit_amt:    Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_arbed_pool_all.revenue")]
     pub sandwich_arbed_pool_all_revenue:       Vec<Address>,
     #[serde(rename = "sandwich_arbed_pool_all.revenue_amt")]
@@ -265,19 +277,23 @@ pub struct BlockAnalysis {
     #[serde(with = "option_address")]
     pub jit_top_searcher_revenue:         Option<Address>,
     pub jit_top_searcher_revenue_amt:     Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_searcher_eoa_all.profit")]
     pub jit_searcher_eoa_all_profit:      Vec<Address>,
     #[serde(rename = "jit_searcher_eoa_all.profit_amt")]
     pub jit_searcher_eoa_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_searcher_eoa_all.revenue")]
     pub jit_searcher_eoa_all_revenue:     Vec<Address>,
     #[serde(rename = "jit_searcher_eoa_all.revenue_amt")]
     pub jit_searcher_eoa_all_revenue_amt: Vec<f64>,
     pub jit_searcher_eoa_count:           u64,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_mev_contract_all.profit")]
     pub jit_mev_contract_all_profit:      Vec<Address>,
     #[serde(rename = "jit_mev_contract_all.profit_amt")]
     pub jit_mev_contract_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_mev_contract_all.revenue")]
     pub jit_mev_contract_all_revenue:     Vec<Address>,
     #[serde(rename = "jit_mev_contract_all.revenue_amt")]
@@ -316,10 +332,12 @@ pub struct BlockAnalysis {
     #[serde(with = "option_protocol")]
     pub jit_most_arbed_dex_revenue:       Option<Protocol>,
     pub jit_most_arbed_dex_revenue_amt:   Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_arbed_pool_all.profit")]
     pub jit_arbed_pool_all_profit:        Vec<Address>,
     #[serde(rename = "jit_arbed_pool_all.profit_amt")]
     pub jit_arbed_pool_all_profit_amt:    Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_arbed_pool_all.revenue")]
     pub jit_arbed_pool_all_revenue:       Vec<Address>,
     #[serde(rename = "jit_arbed_pool_all.revenue_amt")]
@@ -360,19 +378,23 @@ pub struct BlockAnalysis {
     #[serde(with = "option_address")]
     pub jit_sandwich_top_searcher_revenue:         Option<Address>,
     pub jit_sandwich_top_searcher_revenue_amt:     Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_searcher_eoa_all.profit")]
     pub jit_sandwich_searcher_eoa_all_profit:      Vec<Address>,
     #[serde(rename = "jit_sandwich_searcher_eoa_all.profit_amt")]
     pub jit_sandwich_searcher_eoa_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_searcher_eoa_all.revenue")]
     pub jit_sandwich_searcher_eoa_all_revenue:     Vec<Address>,
     #[serde(rename = "jit_sandwich_searcher_eoa_all.revenue_amt")]
     pub jit_sandwich_searcher_eoa_all_revenue_amt: Vec<f64>,
     pub jit_sandwich_searcher_eoa_count:           u64,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_mev_contract_all.profit")]
     pub jit_sandwich_mev_contract_all_profit:      Vec<Address>,
     #[serde(rename = "jit_sandwich_mev_contract_all.profit_amt")]
     pub jit_sandwich_mev_contract_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_mev_contract_all.revenue")]
     pub jit_sandwich_mev_contract_all_revenue:     Vec<Address>,
     #[serde(rename = "jit_sandwich_mev_contract_all.revenue_amt")]
@@ -411,10 +433,12 @@ pub struct BlockAnalysis {
     #[serde(with = "option_protocol")]
     pub jit_sandwich_most_arbed_dex_revenue:       Option<Protocol>,
     pub jit_sandwich_most_arbed_dex_revenue_amt:   Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_arbed_pool_all.profit")]
     pub jit_sandwich_arbed_pool_all_profit:        Vec<Address>,
     #[serde(rename = "jit_sandwich_arbed_pool_all.profit_amt")]
     pub jit_sandwich_arbed_pool_all_profit_amt:    Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_arbed_pool_all.revenue")]
     pub jit_sandwich_arbed_pool_all_revenue:       Vec<Address>,
     #[serde(rename = "jit_sandwich_arbed_pool_all.revenue_amt")]
@@ -455,19 +479,23 @@ pub struct BlockAnalysis {
     #[serde(with = "option_address")]
     pub cex_dex_top_searcher_revenue:         Option<Address>,
     pub cex_dex_top_searcher_revenue_amt:     Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_searcher_eoa_all.profit")]
     pub cex_dex_searcher_eoa_all_profit:      Vec<Address>,
     #[serde(rename = "cex_dex_searcher_eoa_all.profit_amt")]
     pub cex_dex_searcher_eoa_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_searcher_eoa_all.revenue")]
     pub cex_dex_searcher_eoa_all_revenue:     Vec<Address>,
     #[serde(rename = "cex_dex_searcher_eoa_all.revenue_amt")]
     pub cex_dex_searcher_eoa_all_revenue_amt: Vec<f64>,
     pub cex_dex_searcher_eoa_count:           u64,
+    #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_mev_contract_all.profit")]
     pub cex_dex_mev_contract_all_profit:      Vec<Address>,
     #[serde(rename = "cex_dex_mev_contract_all.profit_amt")]
     pub cex_dex_mev_contract_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_mev_contract_all.revenue")]
     pub cex_dex_mev_contract_all_revenue:     Vec<Address>,
     #[serde(rename = "cex_dex_mev_contract_all.revenue_amt")]
@@ -506,10 +534,12 @@ pub struct BlockAnalysis {
     #[serde(with = "option_protocol")]
     pub cex_dex_most_arbed_dex_revenue:       Option<Protocol>,
     pub cex_dex_most_arbed_dex_revenue_amt:   Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_arbed_pool_all.profit")]
     pub cex_dex_arbed_pool_all_profit:        Vec<Address>,
     #[serde(rename = "cex_dex_arbed_pool_all.profit_amt")]
     pub cex_dex_arbed_pool_all_profit_amt:    Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_arbed_pool_all.revenue")]
     pub cex_dex_arbed_pool_all_revenue:       Vec<Address>,
     #[serde(rename = "cex_dex_arbed_pool_all.revenue_amt")]
@@ -550,19 +580,23 @@ pub struct BlockAnalysis {
     #[serde(with = "option_address")]
     pub liquidation_top_searcher_revenue:         Option<Address>,
     pub liquidation_top_searcher_revenue_amt:     Option<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_searcher_eoa_all.profit")]
     pub liquidation_searcher_eoa_all_profit:      Vec<Address>,
     #[serde(rename = "liquidation_searcher_eoa_all.profit_amt")]
     pub liquidation_searcher_eoa_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_searcher_eoa_all.revenue")]
     pub liquidation_searcher_eoa_all_revenue:     Vec<Address>,
     #[serde(rename = "liquidation_searcher_eoa_all.revenue_amt")]
     pub liquidation_searcher_eoa_all_revenue_amt: Vec<f64>,
     pub liquidation_searcher_eoa_count:           u64,
+    #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_mev_contract_all.profit")]
     pub liquidation_mev_contract_all_profit:      Vec<Address>,
     #[serde(rename = "liquidation_mev_contract_all.profit_amt")]
     pub liquidation_mev_contract_all_profit_amt:  Vec<f64>,
+    #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_mev_contract_all.revenue")]
     pub liquidation_mev_contract_all_revenue:     Vec<Address>,
     #[serde(rename = "liquidation_mev_contract_all.revenue_amt")]
