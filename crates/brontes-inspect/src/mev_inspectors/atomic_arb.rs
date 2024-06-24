@@ -160,7 +160,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let is_profitable = profit > Rational::ZERO;
 
         let requirement_multiplier = if has_dex_price { 1 } else { 2 };
-        let requirement_multiplier = if has_dex_price { 1 } else { 2 };
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => (is_profitable
@@ -361,12 +360,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                 return None
                             }
                             &effective_price / &dex_pricing_rate
-                            &effective_price / &dex_pricing_rate
                         } else {
                             if effective_price == Rational::ZERO {
                                 return None
                             }
-                            &dex_pricing_rate / &effective_price
                             &dex_pricing_rate / &effective_price
                         };
 
