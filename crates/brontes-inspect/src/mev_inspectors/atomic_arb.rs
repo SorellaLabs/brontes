@@ -110,7 +110,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let (mut swaps, transfers, eth_transfers) = data;
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
-        swaps.extend(self.try_create_swaps(&transfers, &mev_addresses));
+        let mut ignore_addresses = mev_addresses.clone();
+
+        swaps.iter().for_each(|s| {
+            ignore_addresses.insert(s.pool);
+        });
+
+        swaps.extend(self.try_create_swaps(&transfers, ignore_addresses));
 
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
@@ -301,7 +307,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     fn try_create_swaps(
         &self,
         transfers: &[NormalizedTransfer],
-        invalid_addresses: &FastHashSet<Address>,
+        invalid_addresses: FastHashSet<Address>,
     ) -> Vec<NormalizedSwap> {
         let mut pools: FastHashMap<Address, Vec<(TokenInfoWithAddress, bool, Rational, Address)>> =
             FastHashMap::default();
