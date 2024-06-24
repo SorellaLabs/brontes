@@ -192,7 +192,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             tracing::trace!("missing mints & burns");
             return None
         }
-
         self.ensure_valid_structure(&mints, &burns, &victim_actions)?;
 
         let mut info_set = frontrun_info.clone();
