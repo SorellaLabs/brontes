@@ -201,6 +201,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let deltas = rem
             .into_iter()
             .filter(|f| f.is_transfer() || f.is_eth_transfer())
+            .chain(
+                info_set
+                    .iter()
+                    .flat_map(|info| info.get_total_eth_value())
+                    .cloned()
+                    .map(Action::from),
+            )
             .account_for_actions();
 
         let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(

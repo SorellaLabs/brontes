@@ -1,6 +1,7 @@
 use std::{
     future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    time::Duration,
 };
 
 use brontes_metrics::prometheus_exporter::initialize;
@@ -13,6 +14,7 @@ use crate::PROMETHEUS_ENDPOINT_IP;
 
 pub fn run_command_until_exit<F, E>(
     metrics_port: u16,
+    shutdown_time: Duration,
     command: impl FnOnce(CliContext) -> F,
 ) -> Result<(), E>
 where
@@ -30,7 +32,7 @@ where
     // after the command has finished or exit signal was received we shutdown the
     // task manager which fires the shutdown signal to all tasks spawned via the
     // task executor and awaiting on tasks spawned with graceful shutdown
-    task_manager.graceful_shutdown_with_timeout(std::time::Duration::from_secs(50));
+    task_manager.graceful_shutdown_with_timeout(shutdown_time);
 
     // drop the tokio runtime on a separate thread because drop blocks until its
     // pools (including blocking pool) are shutdown. In other words
