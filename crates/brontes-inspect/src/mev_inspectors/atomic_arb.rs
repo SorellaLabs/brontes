@@ -298,10 +298,22 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
     /// tries to convert transfer over to swaps
     fn try_create_swaps(&self, transfers: &[NormalizedTransfer]) -> Vec<NormalizedSwap> {
-        let mut pools: FastHashMap<Address, FastHashMap<TokenInfoWithAddress, Rational>> =
-            FastHashMap::default();
+        let mut pools: FastHashMap<
+            TokenInfoWithAddress,
+            FastHashMap<Address, Vec<(bool, Rational)>>,
+        > = FastHashMap::default();
 
-
+        for t in transfers {
+            let inner = pools.entry(t.token.clone()).or_default();
+            inner
+                .entry(t.to)
+                .or_default()
+                .push((true, t.amount.clone()));
+            inner
+                .entry(t.from)
+                .or_default()
+                .push((false, t.amount.clone()));
+        }
 
         vec![]
     }
