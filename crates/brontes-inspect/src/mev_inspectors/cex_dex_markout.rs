@@ -28,6 +28,7 @@ use colored::Colorize;
 use itertools::{multizip, Itertools};
 use malachite::{
     num::basic::traits::{One, Two, Zero},
+    num::arithmetic::traits::Abs,
     Rational,
 };
 use reth_primitives::Address;
@@ -437,21 +438,32 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
-        let swap_rate = Rational::ONE / swap.swap_rate().clone();
+        let swap_rate = swap.swap_rate();
         let smaller = min(&swap_rate, &cex_quote.0);
         let larger = max(&swap_rate, &cex_quote.0);
 
         if smaller * Rational::TWO < *larger {
-            log_price_delta(
-                &tx_hash,
-                swap.token_in_symbol(),
-                swap.token_out_symbol(),
-                swap.swap_rate().clone().to_float(),
-                cex_quote.0.clone().to_float(),
-                &swap.token_in.address,
-                &swap.token_out.address,
-            );
-
+            if (&cex_quote.0 * swap_rate - Rational::ONE).abs() < 0.05 {
+                log_inverse_price(
+                    &tx_hash,
+                    swap.token_in_symbol(),
+                    swap.token_out_symbol(),
+                    swap.swap_rate().clone().to_float(),
+                    cex_quote.0.clone().to_float(),
+                    &swap.token_in.address,
+                    &swap.token_out.address
+                )
+            } else {
+                log_price_delta(
+                    &tx_hash,
+                    swap.token_in_symbol(),
+                    swap.token_out_symbol(),
+                    swap.swap_rate().clone().to_float(),
+                    cex_quote.0.clone().to_float(),
+                    &swap.token_in.address,
+                    &swap.token_out.address,
+                );
+            }
             return None
         }
         // A positive delta indicates potential profit from buying on DEX
@@ -1300,6 +1312,33 @@ fn log_price_delta(
 ) {
     warn!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
+         - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
+         - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
+         - Token Contracts:\n\
+           * Token In: https://etherscan.io/address/{}\n\
+           * Token Out: https://etherscan.io/address/{}\n
+           * Tx Hash: https://etherscan.io/tx/{:?}\n",
+        token_in_symbol,
+        token_out_symbol,
+        dex_swap_rate,
+        cex_price,
+        token_in_address,
+        token_out_address,
+        tx_hash
+    );
+}
+
+fn log_inverse_price(
+    tx_hash: &FixedBytes<32>,
+    token_in_symbol: &str,
+    token_out_symbol: &str,
+    dex_swap_rate: f64,
+    cex_price: f64,
+    token_in_address: &Address,
+    token_out_address: &Address,
+) {
+    warn!(
+        "\n\x1b[1;35mDetected inverse price for direct pair for {} - {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
          - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
          - Token Contracts:\n\
