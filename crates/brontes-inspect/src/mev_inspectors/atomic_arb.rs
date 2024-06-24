@@ -319,19 +319,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 continue
             }
 
-            pools.entry(t.to.clone()).or_default().push((
-                t.token.clone(),
-                true,
-                t.amount.clone(),
-                t.from,
-            ));
+            pools
+                .entry(t.to)
+                .or_default()
+                .push((t.token.clone(), true, t.amount.clone(), t.from));
 
-            pools.entry(t.from.clone()).or_default().push((
-                t.token.clone(),
-                false,
-                t.amount.clone(),
-                t.to,
-            ));
+            pools
+                .entry(t.from)
+                .or_default()
+                .push((t.token.clone(), false, t.amount.clone(), t.to));
         }
 
         pools
