@@ -30,6 +30,7 @@ action_impl!(
 
         println!("UniswapV2 logs: {:?}", logs);
         println!("UniswapV2 call_data: {:?}", call_data);
+        println!("UniswapV2 tokens: 0:{:?}, 1:{:?}", t0_info, t1_info);
         if logs.amount0In == U256::ZERO {
             let amount_in = logs.amount1In.to_scaled_rational(t1_info.decimals);
             let amount_out = logs.amount0Out.to_scaled_rational(t0_info.decimals);
