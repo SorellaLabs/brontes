@@ -92,7 +92,7 @@ pub struct RunArgs {
     /// the address of the fallback server. if the socket breaks,
     /// the fallback server will trigger db writes to ensure we
     /// don't lose data
-    #[arg(long, default_value = "None")]
+    #[arg(long)]
     pub fallback_server: Option<String>,
 }
 
