@@ -89,6 +89,7 @@ impl Stream for HeartRateMonitor {
         }
 
         if self.timeout.poll_tick(cx).is_ready() {
+            tracing::info!("disconnect detected, starting backup");
             return Poll::Ready(Some(false))
         }
 
