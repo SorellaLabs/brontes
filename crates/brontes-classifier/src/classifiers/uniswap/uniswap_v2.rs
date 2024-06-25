@@ -45,9 +45,20 @@ action_impl!(
                 msg_value: info.msg_value
             })
         } else {
+            /*
+            if this else statement is reached, that means:
+                amount0In != 0
+                amount1In = 0
+                amount0Out = 0
+                amount1Out != 0
+             */
             let amount_in = logs.amount0In.to_scaled_rational(t0_info.decimals);
+
+            // since amount1Out != 0 must be true as per above, the else statement here will never be reached
             let amount_out = if logs.amount1Out == U256::ZERO {
-                logs.amount0Out.to_scaled_rational(t1_info.decimals)
+                // this should use t0_info instead of t1 since it's token0
+                logs.amount0Out.to_scaled_rational(t0_info.decimals)
+               // logs.amount0Out.to_scaled_rational(t1_info.decimals)
             } else {
                 logs.amount1Out.to_scaled_rational(t1_info.decimals)
             };
