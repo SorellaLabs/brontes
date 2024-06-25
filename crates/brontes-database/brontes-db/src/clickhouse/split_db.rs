@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use brontes_types::{FastHashMap, UnboundedYapperReceiver};
+use brontes_types::{db_write_trigger::HeartRateMonitor, FastHashMap, UnboundedYapperReceiver};
 use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,
