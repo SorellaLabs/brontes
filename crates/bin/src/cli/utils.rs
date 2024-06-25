@@ -12,8 +12,6 @@ use brontes_database::clickhouse::ClickhouseHttpClient;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::ClickhouseMiddleware;
 #[cfg(feature = "local-clickhouse")]
-use brontes_database::clickhouse::ClickhouseMiddleware;
-#[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::ReadOnlyMiddleware;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::{dbms::BrontesClickhouseData, ClickhouseBuffered};
@@ -61,7 +59,7 @@ pub fn load_database(
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    spawn_db_writer_thread(executor, rx);
+    spawn_db_writer_thread(executor, rx, hr);
     let mut clickhouse = Clickhouse::default();
     clickhouse.buffered_insert_tx = Some(tx);
 
