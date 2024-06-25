@@ -1,7 +1,7 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToFloatNearest, ToScaledRational
 };
 
 action_impl!(
@@ -35,6 +35,12 @@ action_impl!(
 
         let amount_in = log.tokens_sold.to_scaled_rational(token_in.decimals);
         let amount_out = log.tokens_bought.to_scaled_rational(token_out.decimals);
+
+        println!("token_in: {token_in:?}");
+        println!("token_out: {token_out:?}");
+        println!("amount_in: {}", amount_in.clone().to_float());
+        println!("amount_out: {}", amount_out.clone().to_float());
+        println!("info: {info:?}");
 
         Ok(NormalizedSwap {
             protocol: details.protocol,
