@@ -1921,6 +1921,7 @@ dependencies = [
  "erased-serde",
  "eyre",
  "futures",
+ "hyper 0.14.29",
  "indicatif",
  "indoc",
  "itertools 0.11.0",

@@ -78,7 +78,7 @@ impl Init {
             (self.cex_time_window_before, self.cex_time_window_after),
             self.cex_exchanges.clone(),
         );
-        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint)?);
+        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint, None)?);
         let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
 
         let tracer = Arc::new(get_tracing_provider(Path::new(&db_path), 10, task_executor.clone()));

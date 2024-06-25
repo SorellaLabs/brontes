@@ -29,7 +29,7 @@ impl DiscoveryFill {
         let db_path = get_env_vars()?;
 
         let max_tasks = self.max_tasks.unwrap_or(num_cpus::get_physical());
-        init_threadpools(max_tasks as usize);
+        init_threadpools(max_tasks);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
