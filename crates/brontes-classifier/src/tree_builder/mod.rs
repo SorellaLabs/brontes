@@ -2,6 +2,7 @@ use std::{cmp::min, sync::Arc};
 
 use alloy_primitives::{Log, U256};
 use brontes_core::missing_token_info::load_missing_token_info;
+use brontes_pricing::types::PoolUpdate;
 use brontes_types::{
     normalized_actions::{
         pool::NormalizedNewPool, MultiCallFrameClassification, MultiFrameRequest, NormalizedAction,
@@ -66,9 +67,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         header: Header,
         generate_pricing: bool,
     ) -> BlockTree<Action> {
+        let block_number = header.number;
         if !generate_pricing {
             self.pricing_update_sender
-                .send(DexPriceMsg::DisablePricingFor(header.number))
+                .send(DexPriceMsg::DisablePricingFor(block_number))
                 .unwrap();
         }
 
@@ -76,7 +78,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         let mut tree = BlockTree::new(header, tx_roots.len());
 
         // send out all updates
-        let further_classification_requests = self.process_tx_roots(tx_roots, &mut tree);
+        let further_classification_requests =
+            self.process_tx_roots(tx_roots, &mut tree, block_number);
+
         account_for_tax_tokens(&mut tree);
         remove_possible_transfer_double_counts(&mut tree);
 
@@ -90,8 +94,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         &self,
         tx_roots: Vec<TxTreeResult>,
         tree: &mut BlockTree<Action>,
+        block: u64,
     ) -> Vec<Option<(usize, Vec<MultiCallFrameClassification<Action>>)>> {
-        tx_roots
+        let root_count = tx_roots.len();
+        let results = tx_roots
             .into_iter()
             .map(|root_data| {
                 tree.insert_root(root_data.root);
@@ -104,7 +110,19 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     .further_classification_requests
                     .map(|(tx, requests)| (tx, parse_multi_frame_requests(requests)))
             })
-            .collect_vec()
+            .collect_vec();
+
+        // ensure we always have eth price being generated
+        self.pricing_update_sender
+            .send(DexPriceMsg::Update(PoolUpdate {
+                block,
+                tx_idx: root_count as u64,
+                logs: vec![],
+                action: Action::EthTransfer(NormalizedEthTransfer::default()),
+            }))
+            .unwrap();
+
+        results
     }
 
     pub(crate) async fn build_tx_trees(
