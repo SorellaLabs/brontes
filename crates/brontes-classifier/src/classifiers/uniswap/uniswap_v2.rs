@@ -59,7 +59,7 @@ action_impl!(
             // since amount1Out != 0 must be true as per above, the else statement here will never be reached
             let amount_out = if logs.amount1Out == U256::ZERO {
                 // this should use t0_info instead of t1 since it's token0
-                logs.amount0Out.to_scaled_rational(t0_info.decimals)
+                logs.amount1Out.to_scaled_rational(t1_info.decimals)
                // logs.amount0Out.to_scaled_rational(t1_info.decimals)
             } else {
                 logs.amount1Out.to_scaled_rational(t1_info.decimals)
