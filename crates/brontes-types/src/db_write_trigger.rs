@@ -82,6 +82,7 @@ impl Stream for HeartRateMonitor {
             Poll::Ready(Some(_)) => {
                 self.timeout.reset();
                 cx.waker().wake_by_ref();
+                tracing::info!("got heartbeat");
                 return Poll::Ready(Some(true))
             }
             Poll::Ready(None) => return Poll::Ready(None),
