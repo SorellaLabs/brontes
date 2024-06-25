@@ -222,6 +222,7 @@ impl Future for ClickhouseBuffered {
                             this.handle_incoming(val)
                         }
                     }
+                    Some(_) => {}
                     None => return Poll::Ready(()),
                 }
 
