@@ -28,6 +28,10 @@ action_impl!(
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
+        println!("info: {info:?}");
+        println!("call_data: {call_data:?}");
+        println!("return_data: {:?}", return_data);
+
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
             (
                 token_1_delta.to_scaled_rational(t1_info.decimals),

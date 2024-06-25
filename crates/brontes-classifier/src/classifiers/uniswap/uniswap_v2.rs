@@ -6,7 +6,6 @@ use brontes_types::{
     structured_trace::CallInfo,
     ToScaledRational,
 };
-use reth_primitives::{hex, Address};
 
 action_impl!(
     Protocol::UniswapV2,
@@ -29,11 +28,6 @@ action_impl!(
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
-        if recipient == Address::new(hex!("26600E8e37faff6E63EAa7Ef44C225Da42d82814")) {
-            println!("info: {info:?}");
-            println!("call_data: {call_data:?}");
-            println!("log_data: {:?}", logs);
-        }
         if logs.amount0In == U256::ZERO {
             let amount_in = logs.amount1In.to_scaled_rational(t1_info.decimals);
             let amount_out = logs.amount0Out.to_scaled_rational(t0_info.decimals);
