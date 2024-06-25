@@ -60,8 +60,7 @@ pub fn load_database(
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
-    let mut clickhouse = Clickhouse::default();
-    let clickhouse = Clickhosue { buffered_insert_tx: Some(tx), ..Default::default() };
+    let clickhouse = Clickhouse { buffered_insert_tx: Some(tx), ..Default::default() };
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
 }
