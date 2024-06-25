@@ -67,6 +67,18 @@ sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
 sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
 sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
 
+impl std::fmt::Debug for UniswapV2::swapCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("swapCall").field("amount0Out", &self.amount0Out).field("amount1Out", &self.amount1Out).field("to", &self.to).field("data", &self.data).finish()
+    }
+}
+
+impl std::fmt::Debug for UniswapV2::Swap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Swap").field("sender", &self.sender).field("amount0In", &self.amount0In).field("amount1In", &self.amount1In).field("amount0Out", &self.amount0Out).field("amount1Out", &self.amount1Out).field("to", &self.to).finish()
+    }
+}
+
 impl std::fmt::Debug for UniswapV3::swapCall {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("swapCall").field("recipient", &self.recipient).field("zeroForOne", &self.zeroForOne).field("amountSpecified", &self.amountSpecified).field("sqrtPriceLimitX96", &self.sqrtPriceLimitX96).field("data", &self.data).finish()
