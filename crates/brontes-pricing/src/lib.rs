@@ -671,10 +671,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             }
                         }
                     });
-                    self.graph_manager.add_verified_subgraph(
-                        passed.subgraph,
-                        passed.block,
-                    );
+                    self.graph_manager
+                        .add_verified_subgraph(passed.subgraph, passed.block);
 
                     None
                 }
@@ -691,7 +689,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     });
 
                     Some(RequeryPairs {
-                        pair: failed.pair,
+                        pair:         failed.pair,
                         extends_pair: failed.extends,
                         block:        failed.block,
                         frayed_ends:  failed.frayed_ends,
@@ -699,11 +697,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     })
                 }
                 VerificationResults::Abort(pair, block) => {
-                    tracing::debug!(target: "brontes_pricing::missing_pricing", ?pair,  ?block, "aborted verification process");
-                    self.failed_pairs
-                        .entry(block)
-                        .or_default()
-                        .push(pair);
+                    tracing::debug!(target: "brontes_pricing::missing_pricing",
+                                    ?pair,
+                                    ?block,
+                                    "aborted verification process");
+                    self.failed_pairs.entry(block).or_default().push(pair);
 
                     None
                 }

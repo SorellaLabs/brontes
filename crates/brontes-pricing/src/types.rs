@@ -2,6 +2,7 @@ use std::fmt::{Debug, Display};
 
 use alloy_primitives::{wrap_fixed_bytes, Address, FixedBytes, Log};
 use brontes_types::{
+    constants::WETH_ADDRESS,
     normalized_actions::{pool::NormalizedPoolConfigUpdate, Action},
     pair::Pair,
 };
@@ -239,6 +240,7 @@ impl PoolUpdate {
                 b.token.get(1).map(|t| t.address).unwrap_or(quote),
             )),
             Action::Transfer(t) => Some(Pair(t.token.address, quote)),
+            Action::EthTransfer(_) => Some(Pair(WETH_ADDRESS, quote)),
             Action::Liquidation(l) => Some(Pair(l.collateral_asset.address, l.debt_asset.address)),
             Action::SwapWithFee(s) => Some(Pair(s.token_in.address, s.token_out.address)),
             rest => {
