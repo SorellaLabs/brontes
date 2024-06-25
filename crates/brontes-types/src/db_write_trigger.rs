@@ -66,6 +66,7 @@ pub struct HeartRateMonitor {
 
 impl HeartRateMonitor {
     pub fn new(timeout: Duration, rx: Receiver<()>) -> Self {
+        tracing::info!("started hr monitor");
         Self { timeout: interval(timeout), rx }
     }
 }
