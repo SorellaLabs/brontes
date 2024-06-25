@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, path::Path, sync::atomic::AtomicBool};
+use std::{net::SocketAddr, path::Path, sync::atomic::AtomicBool, time::Duration};
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
@@ -7,6 +7,7 @@ use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
     constants::USDT_ADDRESS_STRING,
     db::cex::{config::CexDexTradeConfig, CexExchange},
+    db_write_trigger::{backup_server_heartbeat, start_hr_monitor, HeartRateMonitor},
     init_threadpools, UnboundedYapperReceiver,
 };
 use clap::Parser;
@@ -92,7 +93,7 @@ pub struct RunArgs {
     /// the fallback server will trigger db writes to ensure we
     /// don't lose data
     #[arg(long)]
-    pub fallback_server: Option<SocketAddr>,
+    pub fallback_server: Option<String>,
 }
 
 impl RunArgs {
@@ -131,9 +132,17 @@ impl RunArgs {
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        let mut write_trigger = AtomicBool::new(self.write_to_clickhouse).into();
+        let hr = if let Some(fallback_server) = self.fallback_server {
+            backup_server_heartbeat(fallback_server, Duration::from_secs(4)).await;
+            None
+        } else {
+            let (tx, rx) = tokio::sync::mpsc::channel(10);
+            start_hr_monitor(tx).await?;
+            Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
+        };
+
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
-        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint)?);
+        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint, hr)?);
 
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");

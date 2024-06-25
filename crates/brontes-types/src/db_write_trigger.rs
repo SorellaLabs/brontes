@@ -1,25 +1,19 @@
 use std::{
     convert::Infallible,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    task::{Context, Poll},
+    task::Poll,
     time::Duration,
 };
 
-use bytes::Buf;
 use eyre::WrapErr;
 use futures::Stream;
 use hyper::{
-    body::HttpBody,
     service::{make_service_fn, service_fn},
-    Body, Request, Response, Server, StatusCode,
+    Body, Request, Response, Server,
 };
 use tokio::{
     sync::mpsc::{Receiver, Sender},
-    time::Interval,
+    time::{interval, Interval},
 };
 
 const TRIGGER_ADDRESS: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 54321);
@@ -44,27 +38,14 @@ pub async fn backup_server_heartbeat(url: String, ping_rate: Duration) {
     });
 }
 
-pub async fn start_db_write_switch(switch: Arc<AtomicBool>) -> eyre::Result<()> {
+pub async fn start_hr_monitor(tx: Sender<()>) -> eyre::Result<()> {
     let make_svc = make_service_fn(move |_| {
-        let s = switch.clone();
+        let s = tx.clone();
         async move {
             let s = s.clone();
-            Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
-                let s = s.clone();
-                async move {
-                    let mut body = req.collect().await.unwrap().to_bytes();
-
-                    if body.len() == 1 {
-                        let res = body.get_u8() == 1;
-                        s.store(res, Ordering::SeqCst);
-                        tracing::info!(write=%res,"db writer set");
-                        Ok::<_, Infallible>(Response::new(Body::from("")))
-                    } else {
-                        let mut res = Response::new(Body::from(""));
-                        *res.status_mut() = StatusCode::BAD_REQUEST;
-                        Ok(res)
-                    }
-                }
+            Ok::<_, Infallible>(service_fn(move |_: Request<Body>| {
+                s.try_send(()).unwrap();
+                async move { Ok::<_, Infallible>(Response::new(Body::from(""))) }
             }))
         }
     });
@@ -81,6 +62,12 @@ pub async fn start_db_write_switch(switch: Arc<AtomicBool>) -> eyre::Result<()> 
 pub struct HeartRateMonitor {
     pub timeout: Interval,
     pub rx:      Receiver<()>,
+}
+
+impl HeartRateMonitor {
+    pub fn new(timeout: Duration, rx: Receiver<()>) -> Self {
+        Self { timeout: interval(timeout), rx }
+    }
 }
 
 impl Stream for HeartRateMonitor {

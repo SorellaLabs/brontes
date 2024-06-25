@@ -27,6 +27,7 @@ use brontes_types::{
         cex::{config::CexDexTradeConfig, CexExchange},
         traits::LibmdbxReader,
     },
+    db_write_trigger::HeartRateMonitor,
     mev::Bundle,
     BrontesTaskExecutor,
 };
@@ -40,6 +41,7 @@ use tracing::info;
 pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
+    _: Option<HeartRateMonitor>,
 ) -> eyre::Result<LibmdbxReadWriter> {
     LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)
 }
@@ -54,10 +56,8 @@ pub fn load_tip_database(cur: &LibmdbxReadWriter) -> eyre::Result<LibmdbxReadWri
 pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
-    clickhouse_write: Arc<AtomicBool>,
+    hr: Option<HeartRateMonitor>,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    use std::sync::atomic::AtomicBool;
-
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -184,6 +184,7 @@ pub fn get_env_vars() -> eyre::Result<String> {
 fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseData>>,
+    hr: Option<HeartRateMonitor>,
 ) {
     let shutdown = executor.get_graceful_shutdown();
     ClickhouseBuffered::new(
@@ -191,6 +192,7 @@ fn spawn_db_writer_thread(
         clickhouse_config(),
         5000,
         800,
+        hr,
     )
     .run(shutdown);
     tracing::info!("started writer");
