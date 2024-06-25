@@ -54,7 +54,10 @@ pub fn load_tip_database(cur: &LibmdbxReadWriter) -> eyre::Result<LibmdbxReadWri
 pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
+    clickhouse_write: Arc<AtomicBool>,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
+    use std::sync::atomic::AtomicBool;
+
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();

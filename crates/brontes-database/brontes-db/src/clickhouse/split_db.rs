@@ -24,6 +24,9 @@ pub struct ClickhouseBuffered {
     buffer_size_small: usize,
     buffer_size_big:   usize,
     futs:              FuturesUnordered<InsertFut>,
+    /// if none, will always write to db. if some. will only start writing if
+    heart_rate:        Option<HeartRateMonitor>,
+    skip:              bool,
 }
 
 impl ClickhouseBuffered {
@@ -32,6 +35,7 @@ impl ClickhouseBuffered {
         config: ClickhouseConfig,
         buffer_size_small: usize,
         buffer_size_big: usize,
+        heart_rate: Option<HeartRateMonitor>,
     ) -> Self {
         Self {
             client: config.build(),
@@ -39,6 +43,8 @@ impl ClickhouseBuffered {
             value_map: FastHashMap::default(),
             buffer_size_small,
             buffer_size_big,
+            skip: heart_rate.is_some(),
+            heart_rate,
             futs: FuturesUnordered::default(),
         }
     }
@@ -198,10 +204,20 @@ impl Future for ClickhouseBuffered {
         let mut work = 128;
 
         loop {
+            if let Some(hr) = this.heart_rate.as_mut() {
+                match hr.poll_next_unpin(cx) {
+                    Poll::Ready(Some(val)) => {
+                        this.skip = !val;
+                    }
+                    Poll::Ready(None) => return Poll::Ready(()),
+                    Poll::Pending => {}
+                }
+            }
+
             let mut cnt = 500;
             while let Poll::Ready(val) = this.rx.poll_recv(cx) {
                 match val {
-                    Some(val) => {
+                    Some(val) if !this.skip => {
                         if !val.is_empty() {
                             this.handle_incoming(val)
                         }

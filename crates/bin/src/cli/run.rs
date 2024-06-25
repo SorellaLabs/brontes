@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{net::SocketAddr, path::Path, sync::atomic::AtomicBool};
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
@@ -88,6 +88,11 @@ pub struct RunArgs {
     /// Metrics will be exported
     #[arg(long, default_value = "true")]
     pub with_metrics: bool,
+    /// the address of the fallback server. if the socket breaks,
+    /// the fallback server will trigger db writes to ensure we
+    /// don't lose data
+    #[arg(long)]
+    pub fallback_server: Option<SocketAddr>,
 }
 
 impl RunArgs {
@@ -126,8 +131,10 @@ impl RunArgs {
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
+        let mut write_trigger = AtomicBool::new(self.write_to_clickhouse).into();
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
         let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint)?);
+
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
