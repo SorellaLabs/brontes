@@ -2,9 +2,7 @@ use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
-    structured_trace::CallInfo,
-    ToScaledRational,
+    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap}, structured_trace::CallInfo, ToFloatNearest, ToScaledRational
 };
 use reth_primitives::{Address, hex};
 
@@ -49,8 +47,8 @@ action_impl!(
         //     t1_info.address == Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")) {
             println!("token_in: {token_in:?}");
             println!("token_out: {token_out:?}");
-            println!("amount_in: {amount_in:?}");
-            println!("amount_out: {amount_out:?}");
+            println!("amount_in: {}", amount_in.clone().to_float());
+            println!("amount_out: {}", amount_out.clone().to_float());
             println!("info: {info:?}");
             println!("call_data: {call_data:?}");
             println!("return_data: {:?}", return_data);
