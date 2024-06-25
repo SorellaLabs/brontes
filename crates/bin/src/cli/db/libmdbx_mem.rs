@@ -16,7 +16,7 @@ pub struct LMem {
 
 impl LMem {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
-        let libmdbx = static_object(load_database(&ctx.task_executor, brontes_db_endpoint)?);
+        let libmdbx = static_object(load_database(&ctx.task_executor, brontes_db_endpoint, None)?);
 
         let mut set = vec![];
         for block_range in (self.start..self.end)

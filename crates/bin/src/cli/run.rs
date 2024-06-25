@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, path::Path, sync::atomic::AtomicBool, time::Duration};
+use std::{path::Path, time::Duration};
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
