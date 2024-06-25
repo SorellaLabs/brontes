@@ -133,11 +133,14 @@ impl RunArgs {
         task_executor.spawn_critical("metrics", metrics_listener);
 
         let hr = if let Some(fallback_server) = self.fallback_server {
+            tracing::info!("starting heartbeat");
             backup_server_heartbeat(fallback_server, Duration::from_secs(4)).await;
             None
         } else {
+            tracing::info!("starting monitor");
             let (tx, rx) = tokio::sync::mpsc::channel(10);
             start_hr_monitor(tx).await?;
+            tracing::info!("monitor server started");
             Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
         };
 
