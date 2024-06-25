@@ -61,7 +61,7 @@ pub fn load_database(
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
     let mut clickhouse = Clickhouse::default();
-    clickhouse.buffered_insert_tx = Some(tx);
+    let clickhouse = Clickhosue { buffered_insert_tx: Some(tx), ..Default::default() };
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
 }
@@ -85,7 +85,7 @@ pub fn load_read_only_database(
 ) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
     let clickhouse = Clickhouse::default();
-    Ok(ReadOnlyMiddleware::new(clickhouse, inner.into()))
+    Ok(ReadOnlyMiddleware::new(clickhouse, inner))
 }
 
 pub fn load_libmdbx(
