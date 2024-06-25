@@ -45,6 +45,7 @@ action_impl!(
 
         // if t0_info.address == Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")) &&
         //     t1_info.address == Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")) {
+            println!("UniswapV3 swap");
             println!("token_in: {token_in:?}");
             println!("token_out: {token_out:?}");
             println!("amount_in: {}", amount_in.clone().to_float());
