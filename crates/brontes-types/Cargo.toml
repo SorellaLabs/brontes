@@ -65,6 +65,7 @@ pin-project = "1.1.4"
 clap.workspace = true
 brontes-macros.workspace = true
 indicatif.workspace = true
+hyper.workspace = true
 
 # stats
 statrs = "0.16"
