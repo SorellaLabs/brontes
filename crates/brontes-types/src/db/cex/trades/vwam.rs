@@ -239,7 +239,7 @@ impl CexTradeMap {
                     tx_hash,
                 )?;
 
-                let new_vol = volume / &res.prices.0.final_price.clone().reciprocal();
+                let new_vol = volume * &res.prices.0.final_price.clone();
 
                 let pair1 = self.get_vwam_via_intermediary_spread(
                     config,

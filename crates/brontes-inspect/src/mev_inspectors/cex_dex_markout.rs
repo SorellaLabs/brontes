@@ -442,7 +442,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let smaller = min(&swap_rate, &cex_quote.0);
         let larger = max(&swap_rate, &cex_quote.0);
 
-//        if smaller * Rational::TWO < *larger {
+        if smaller * Rational::TWO < *larger {
             println!("{:?}", swap);
             println!("{:?}", pairs);
             if (&cex_quote.0 * swap_rate - Rational::ONE).abs() < 0.05 {
@@ -467,7 +467,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 );
             }
             return None;
-//        }
+        }
         // A positive delta indicates potential profit from buying on DEX
         // and selling on CEX.
         let maker_delta = &cex_quote.0 - swap.swap_rate();
