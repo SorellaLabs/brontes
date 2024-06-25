@@ -29,12 +29,6 @@ action_impl!(
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
         let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
-        // if t0_info.address == Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")) &&
-        //     t1_info.address == Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")) {
-            println!("info: {info:?}");
-            println!("call_data: {call_data:?}");
-            println!("return_data: {:?}", return_data);
-            // }
         let (amount_in, amount_out, token_in, token_out) = if token_0_delta.is_negative() {
             (
                 token_1_delta.to_scaled_rational(t1_info.decimals),
@@ -50,6 +44,17 @@ action_impl!(
                 t1_info,
             )
         };
+
+        // if t0_info.address == Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")) &&
+        //     t1_info.address == Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")) {
+            println!("token_in: {token_in:?}");
+            println!("token_out: {token_out:?}");
+            println!("amount_in: {amount_in:?}");
+            println!("amount_out: {amount_out:?}");
+            println!("info: {info:?}");
+            println!("call_data: {call_data:?}");
+            println!("return_data: {:?}", return_data);
+        // }
 
         Ok(NormalizedSwap {
             protocol: Protocol::UniswapV3,
