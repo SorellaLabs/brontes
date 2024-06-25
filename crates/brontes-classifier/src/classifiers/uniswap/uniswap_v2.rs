@@ -52,7 +52,11 @@ action_impl!(
             })
         } else {
             let amount_in = logs.amount0In.to_scaled_rational(t0_info.decimals);
-            let amount_out = logs.amount1Out.to_scaled_rational(t1_info.decimals);
+            let amount_out = if logs.amount1Out == U256::ZERO {
+                logs.amount0Out.to_scaled_rational(t1_info.decimals)
+            } else {
+                logs.amount1Out.to_scaled_rational(t1_info.decimals)
+            };
 
             return Ok(NormalizedSwap {
                 protocol: Protocol::UniswapV2,
