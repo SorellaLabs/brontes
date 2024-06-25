@@ -80,6 +80,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // send out all updates
         let further_classification_requests =
             self.process_tx_roots(tx_roots, &mut tree, block_number);
+
         account_for_tax_tokens(&mut tree);
         remove_possible_transfer_double_counts(&mut tree);
 
