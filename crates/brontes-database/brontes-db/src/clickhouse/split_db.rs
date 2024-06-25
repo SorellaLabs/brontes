@@ -207,7 +207,7 @@ impl Future for ClickhouseBuffered {
             if let Some(hr) = this.heart_rate.as_mut() {
                 match hr.poll_next_unpin(cx) {
                     Poll::Ready(Some(val)) => {
-                        this.skip = !val;
+                        this.skip = val;
                     }
                     Poll::Ready(None) => return Poll::Ready(()),
                     Poll::Pending => {}
