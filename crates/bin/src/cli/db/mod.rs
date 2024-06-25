@@ -7,13 +7,13 @@ use crate::runner::CliContext;
 mod db_clear;
 mod db_insert;
 mod db_query;
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 mod discovery;
 #[cfg(feature = "local-clickhouse")]
 mod ensure_test_traces;
 mod export;
 mod init;
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 mod tip_tracer;
 mod trace_range;
 
@@ -60,13 +60,13 @@ pub enum DatabaseCommands {
     /// clickhouse
     #[command(name = "test-traces-init")]
     TestTracesInit(ensure_test_traces::TestTraceArgs),
-    #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+    #[cfg(feature = "local-clickhouse")]
     /// Generates traces up to chain tip and inserts them into libmbx
     #[command(name = "trace-at-tip")]
     TraceAtTip(tip_tracer::TipTraceArgs),
     /// from the start block, runs only discovery and inserts into clickhouse.
     /// this ensures we have all classifier data.
-    #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+    #[cfg(feature = "local-clickhouse")]
     #[command(name = "run-discovery")]
     Discovery(discovery::DiscoveryFill),
 }
@@ -83,11 +83,11 @@ impl Database {
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+            #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            #[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+            #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
         }
     }

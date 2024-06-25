@@ -3,24 +3,24 @@ use std::{env, path::Path};
 use alloy_primitives::Address;
 #[cfg(not(feature = "local-reth"))]
 use brontes_core::local_provider::LocalProvider;
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::clickhouse_config;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
 use brontes_database::clickhouse::ClickhouseHttpClient;
-#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
+#[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::ClickhouseMiddleware;
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::ClickhouseMiddleware;
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::ReadOnlyMiddleware;
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::{dbms::BrontesClickhouseData, ClickhouseBuffered};
 use brontes_database::libmdbx::LibmdbxReadWriter;
 use brontes_inspect::{Inspector, Inspectors};
 use brontes_metrics::inspectors::OutlierMetrics;
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
     db::{
@@ -36,7 +36,7 @@ use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
 use tracing::info;
 
-#[cfg(not(any(feature = "local-clickhouse", feature = "local-no-inserts")))]
+#[cfg(not(feature = "local-clickhouse"))]
 pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
@@ -44,37 +44,13 @@ pub fn load_database(
     LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)
 }
 
-#[cfg(not(any(feature = "local-clickhouse", feature = "local-no-inserts")))]
+#[cfg(not(feature = "local-clickhouse"))]
 pub fn load_tip_database(cur: &LibmdbxReadWriter) -> eyre::Result<LibmdbxReadWriter> {
     Ok(cur.clone())
 }
 
-/// This version is used when `local-clickhouse` is enabled but
-/// `local-no-inserts` is not.
-#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
-pub fn load_database(
-    executor: &BrontesTaskExecutor,
-    db_endpoint: String,
-) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
-    let clickhouse = Clickhouse::default();
-    Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
-}
-
-/// This version is used when `local-clickhouse` is enabled but
-/// `local-no-inserts` is not. for tip tracer
-#[cfg(all(feature = "local-clickhouse", feature = "local-no-inserts"))]
-pub fn load_tip_database(
-    cur: &ClickhouseMiddleware<LibmdbxReadWriter>,
-) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let mut tip = cur.clone();
-    tip.client.tip = true;
-    Ok(tip)
-}
-
 /// This version is used when `local-clickhouse` and
-/// `local-no-inserts` is enabled
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 pub fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
@@ -89,10 +65,10 @@ pub fn load_database(
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
 }
 
-/// This version is used when `local-clickhouse` and
-/// `local-no-inserts` is enabled this also will set a config in the clickhouse
-/// to ensure that
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+/// This version is used when `local-clickhouse`
+/// is enabled this also will set
+/// a config in the clickhouse to ensure that
+#[cfg(feature = "local-clickhouse")]
 pub fn load_tip_database(
     cur: &ClickhouseMiddleware<LibmdbxReadWriter>,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
@@ -101,7 +77,7 @@ pub fn load_tip_database(
     Ok(tip)
 }
 
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 pub fn load_read_only_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
@@ -201,7 +177,7 @@ pub fn get_env_vars() -> eyre::Result<String> {
     Ok(db_path)
 }
 
-#[cfg(all(feature = "local-clickhouse", not(feature = "local-no-inserts")))]
+#[cfg(feature = "local-clickhouse")]
 fn spawn_db_writer_thread(
     executor: &BrontesTaskExecutor,
     buffered_rx: tokio::sync::mpsc::UnboundedReceiver<Vec<BrontesClickhouseData>>,

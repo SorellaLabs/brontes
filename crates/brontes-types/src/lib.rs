@@ -6,6 +6,7 @@
 #![allow(clippy::type_complexity)]
 
 pub mod buf_writer;
+pub mod db_write_trigger;
 pub mod test_limiter;
 pub use test_limiter::*;
 pub mod hasher;

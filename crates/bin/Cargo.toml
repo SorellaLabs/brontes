@@ -119,8 +119,6 @@ cex-dex-markout = [
 ]
 
 
-local-no-inserts = []
-
 tests = [
   "brontes-core/tests",
   "brontes-database/tests",
