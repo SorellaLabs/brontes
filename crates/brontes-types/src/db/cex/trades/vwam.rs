@@ -3,10 +3,7 @@ use std::{fmt::Display, ops::Div};
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{One, Zero},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 
