@@ -4,7 +4,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
-    db::{dex::PriceAt, token_info::TokenInfoWithAddress},
+    db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
         accounting::ActionAccounting, Action, NormalizedEthTransfer, NormalizedSwap,
@@ -12,8 +12,7 @@ use brontes_types::{
     },
     pair::Pair,
     tree::BlockTree,
-    FastHashMap, FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder,
-    TxInfo,
+    FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{

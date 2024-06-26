@@ -204,7 +204,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .iter()
             .map(|action| {
                 let (mut swaps, transfers): (Vec<_>, Vec<_>) = action
-                    .into_iter()
+                    .iter()
                     .cloned()
                     .split_actions((Action::try_swaps_merged, Action::try_transfer));
 
