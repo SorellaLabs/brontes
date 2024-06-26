@@ -24,7 +24,7 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-const BASE_EXECUTION_QUALITY: usize = 80;
+const BASE_EXECUTION_QUALITY: usize = 65;
 
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
