@@ -12,6 +12,7 @@ use brontes_types::{
     },
     ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
+use futures::future::Then;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::TxHash;
@@ -356,7 +357,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             return None
         }
 
-        // ensure atleast 50% of victims also swap on the same pool
+        // ensure we have overlap
         let v_swaps = victim_actions
             .iter()
             .flatten()
@@ -364,17 +365,12 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .map(|a| a.clone().force_swap())
             .collect::<Vec<_>>();
 
-        let v_swaps_len = v_swaps.len();
-
-        let overlap = v_swaps
+        (v_swaps
             .into_iter()
             .map(|swap| pools.contains(&swap.pool) as usize)
-            .sum::<usize>() as f64
-            / (v_swaps_len as f64);
-
-        tracing::trace!(?overlap);
-
-        (overlap >= 0.5).then_some(())
+            .sum::<usize>()
+            != 0)
+            .then_some(())
     }
 
     fn recursive_possible_jits(
