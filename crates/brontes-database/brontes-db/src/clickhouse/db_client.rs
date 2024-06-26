@@ -532,7 +532,6 @@ impl ClickhouseHandle for Clickhouse {
                 self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
-                tracing::info!(?block_times, "blocktimes");
                 let mut query = RAW_CEX_TRADES.to_string();
 
                 let query_mod = block_times
