@@ -107,6 +107,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
     ) -> Option<Bundle> {
+        tracing::trace!(?info, "trying atomic");
         let (mut swaps, transfers, eth_transfers) = data;
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
@@ -748,8 +749,7 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
-                    "522824b872e68f3227350d65a9447d46d6cd039d70bd469f0de2477bc4333fbb"
-
+                "522824b872e68f3227350d65a9447d46d6cd039d70bd469f0de2477bc4333fbb"
             )
             .into()])
             .with_dex_prices()
