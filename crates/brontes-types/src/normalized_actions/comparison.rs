@@ -1,6 +1,9 @@
 use std::fmt::Debug;
 
-use super::{Action, NormalizedCollect, NormalizedMint, NormalizedSwap, NormalizedTransfer};
+use super::{
+    Action, NormalizedCollect, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+    NormalizedTransfer,
+};
 
 impl<T: Sized + SubordinateAction<O>, O: ActionCmp<T>> ActionComparison<O> for T {}
 
@@ -25,10 +28,11 @@ impl ActionCmp<Action> for Action {
             Action::Batch(b) => {
                 let user = b.user_swaps.iter().any(|b| b.is_superior_action(other));
                 if let Some(swaps) = &b.solver_swaps {
-                    return user || swaps.iter().any(|b| b.is_superior_action(other));
+                    return user || swaps.iter().any(|b| b.is_superior_action(other))
                 }
                 user
             }
+            Action::Liquidation(l) => l.is_superior_action(other),
             action => {
                 tracing::trace!(?action, ?other, "no action cmp impl for given action");
                 false
@@ -57,6 +61,13 @@ pub trait SubordinateAction<O> {
     }
 }
 
+impl ActionCmp<NormalizedTransfer> for NormalizedLiquidation {
+    fn is_superior_action(&self, other: &NormalizedTransfer) -> bool {
+        (self.debt_asset == other.token && self.covered_debt == other.amount)
+            || (self.collateral_asset == other.token && self.liquidated_collateral == other.amount)
+    }
+}
+
 impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
         // we cannot filter on from address for a transfer to a pool.
@@ -82,7 +93,7 @@ impl ActionCmp<NormalizedTransfer> for NormalizedMint {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
         for (amount, token) in self.amount.iter().zip(&self.token) {
             if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                return true;
+                return true
             }
         }
 
@@ -103,7 +114,7 @@ impl ActionCmp<NormalizedTransfer> for NormalizedCollect {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
         for (amount, token) in self.amount.iter().zip(&self.token) {
             if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                return true;
+                return true
             }
         }
 
