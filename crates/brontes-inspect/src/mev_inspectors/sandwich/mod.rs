@@ -193,6 +193,36 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             return None
         }
 
+        //  assert that all frontruns and backruns can be generated from a swap
+        let mut mev_addresses: FastHashSet<Address> =
+            collect_address_set_for_accounting(&possible_front_runs_info);
+        let backrun_addresses: FastHashSet<Address> =
+            collect_address_set_for_accounting(std::slice::from_ref(&backrun_info));
+        mev_addresses.extend(backrun_addresses);
+
+        let possible_searcher_swaps = searcher_actions
+            .iter()
+            .map(|action| {
+                let (mut swaps, transfers): (Vec<_>, Vec<_>) = action
+                    .into_iter()
+                    .cloned()
+                    .split_actions((Action::try_swaps_merged, Action::try_transfer));
+
+                swaps.extend(
+                    self.utils
+                        .try_create_swaps(&transfers, mev_addresses.clone()),
+                );
+                swaps
+            })
+            .collect::<Vec<_>>();
+        // assert for each possible sandwich that
+        if !possible_searcher_swaps
+            .iter()
+            .all(|searcher_tx_swaps| !searcher_tx_swaps.is_empty())
+        {
+            return None
+        }
+
         let back_run_actions = searcher_actions.pop()?;
 
         if !Self::has_pool_overlap(
