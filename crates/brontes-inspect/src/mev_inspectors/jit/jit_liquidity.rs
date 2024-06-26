@@ -141,7 +141,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         backrun_info: &TxInfo,
         searcher_actions: &[Vec<Action>],
     ) -> Option<bool> {
-        tracing::trace!(?frontrun_info, ?backrun_info, "should calculate_recursive?");
         let front_is_mint_back_is_burn = searcher_actions.last()?.iter().any(|h| h.is_burn())
             || searcher_actions
                 .iter()
@@ -171,6 +170,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         recursive: u8,
     ) -> Option<Vec<Bundle>> {
         if Self::calculate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
+            tracing::trace!("recusing time");
             return self.recursive_possible_jits(
                 frontrun_info,
                 backrun_info,
@@ -181,6 +181,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 recursive,
             )
         }
+        tracing::trace!("formulating");
 
         // grab all mints and burns
         let ((mints, burns, collect), rem): ((Vec<_>, Vec<_>, Vec<_>), Vec<_>) = searcher_actions
