@@ -45,7 +45,7 @@ mod tests {
         let eq_action = Action::Aggregator(NormalizedAggregator {
             protocol:      OneInchFusion,
             trace_index:   0,
-            to:            Address::new(hex!("0xa88800cd213da5ae406ce248380802bd53b47647")),
+            to:            Address::new(hex!("a88800cd213da5ae406ce248380802bd53b47647")),
             from:          Address::new(hex!("D14699b6B02e900A5C2338700d5181a674FDB9a2")),
             recipient:     Address::new(hex!("d10F17699137DD6215c01F539726227fC042c9b2")),
             child_actions: vec![
