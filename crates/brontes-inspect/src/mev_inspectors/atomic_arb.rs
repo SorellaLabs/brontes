@@ -4,7 +4,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
-    db::{dex::PriceAt, token_info::TokenInfoWithAddress},
+    db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
         accounting::ActionAccounting, Action, NormalizedEthTransfer, NormalizedSwap,
@@ -12,8 +12,7 @@ use brontes_types::{
     },
     pair::Pair,
     tree::BlockTree,
-    FastHashMap, FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder,
-    TxInfo,
+    FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{
@@ -117,7 +116,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             ignore_addresses.insert(s.pool);
         });
 
-        swaps.extend(self.try_create_swaps(&transfers, ignore_addresses));
+        swaps.extend(self.utils.try_create_swaps(&transfers, ignore_addresses));
 
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
@@ -303,67 +302,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
 
         res
-    }
-
-    /// tries to convert transfer over to swaps
-    fn try_create_swaps(
-        &self,
-        transfers: &[NormalizedTransfer],
-        invalid_addresses: FastHashSet<Address>,
-    ) -> Vec<NormalizedSwap> {
-        let mut pools: FastHashMap<Address, Vec<(TokenInfoWithAddress, bool, Rational, Address)>> =
-            FastHashMap::default();
-
-        for t in transfers {
-            // we do this so if the transfer is from a mev contract or a searcher, it gets
-            // ignored
-            if invalid_addresses.contains(&t.from) {
-                continue
-            }
-
-            pools
-                .entry(t.to)
-                .or_default()
-                .push((t.token.clone(), true, t.amount.clone(), t.from));
-
-            pools
-                .entry(t.from)
-                .or_default()
-                .push((t.token.clone(), false, t.amount.clone(), t.to));
-        }
-
-        pools
-            .into_iter()
-            .filter_map(|(pool, mut possible_swaps)| {
-                if possible_swaps.len() != 2 {
-                    return None
-                }
-
-                let (f_token, f_direction, f_am, f_addr) = possible_swaps.pop()?;
-                let (s_token, s_direction, s_am, s_addr) = possible_swaps.pop()?;
-
-                if s_token == f_token || s_direction == f_direction {
-                    return None
-                }
-
-                let (amount_in, amount_out, token_in, token_out, from, recip) = if f_direction {
-                    (f_am, s_am, f_token, s_token, f_addr, s_addr)
-                } else {
-                    (s_am, f_am, s_token, f_token, s_addr, f_addr)
-                };
-
-                Some(NormalizedSwap {
-                    pool,
-                    amount_in,
-                    amount_out,
-                    token_out,
-                    token_in,
-                    from,
-                    recipient: recip,
-                    ..Default::default()
-                })
-            })
-            .collect()
     }
 
     /// Evaluates the validity of swap prices against DEX quoted prices within a
@@ -747,17 +685,14 @@ mod tests {
     #[brontes_macros::test]
     async fn test_eth_transfer_structure() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
                 "522824b872e68f3227350d65a9447d46d6cd039d70bd469f0de2477bc4333fbb"
             )
             .into()])
             .with_dex_prices()
-            .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(28.06)
-            .with_gas_paid_usd(4.38);
+            .needs_tokens(vec![WETH_ADDRESS]);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }
