@@ -71,6 +71,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Action>,
     ) -> Option<Bundle> {
+        tracing::debug!("trying liquidation");
         let (swaps, liqs): (Vec<_>, Vec<_>) = actions
             .clone()
             .into_iter()
