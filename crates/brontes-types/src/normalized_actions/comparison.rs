@@ -80,6 +80,15 @@ impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
     }
 }
 
+impl ActionCmp<Action> for NormalizedLiquidation {
+    fn is_superior_action(&self, other: &Action) -> bool {
+        match other {
+            Action::Transfer(t) => self.is_superior_action(t),
+            _ => false,
+        }
+    }
+}
+
 impl ActionCmp<Action> for NormalizedSwap {
     fn is_superior_action(&self, other: &Action) -> bool {
         match other {
