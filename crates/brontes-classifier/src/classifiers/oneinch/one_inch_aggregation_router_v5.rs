@@ -230,6 +230,7 @@ mod tests {
             protocol:      OneInchV5,
             trace_index:   0,
             from:          Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
+            to:            Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
             recipient:     Address::new(hex!("f4F8845ceDe63e79De1B2c3bbA395e8547FE4283")),
             child_actions: vec![
                 Action::Transfer(NormalizedTransfer {
