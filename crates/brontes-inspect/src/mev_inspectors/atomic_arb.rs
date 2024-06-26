@@ -172,6 +172,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let is_profitable = profit > Rational::ZERO;
 
         let requirement_multiplier = if has_dex_price { 1 } else { 2 };
+        tracing::info!(?profit);
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => (is_profitable
