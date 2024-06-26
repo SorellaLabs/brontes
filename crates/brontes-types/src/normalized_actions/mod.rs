@@ -220,7 +220,7 @@ impl Action {
             Self::Revert => None,
         };
         if res.is_some() {
-            tracing::info!(?res, ?self);
+            tracing::trace!(?res, ?self, "created eth transfer for internal accounting");
         }
         res
     }
