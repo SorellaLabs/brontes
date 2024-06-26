@@ -219,7 +219,9 @@ impl Action {
             Self::PoolConfigUpdate(_) => None,
             Self::Revert => None,
         };
-        tracing::info!(?res, ?self);
+        if res.is_some() {
+            tracing::info!(?res, ?self);
+        }
         res
     }
 
