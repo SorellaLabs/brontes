@@ -845,4 +845,19 @@ mod tests {
             .with_block(19506666);
         test_utils.assert_no_mev(config).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    pub async fn test_jit_sandwich_multi_hop_jit() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(18674873)
+            .with_gas_paid_usd(273.9)
+            .with_expected_profit_usd(18.1)
+            .with_dex_prices();
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
