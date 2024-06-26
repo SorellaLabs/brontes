@@ -141,6 +141,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         backrun_info: &TxInfo,
         searcher_actions: &[Vec<Action>],
     ) -> Option<bool> {
+        tracing::trace!(?frontrun_info, ?backrun_info, "should calculate_recursive?");
         let front_is_mint_back_is_burn = searcher_actions.last()?.iter().any(|h| h.is_burn())
             || searcher_actions
                 .iter()
