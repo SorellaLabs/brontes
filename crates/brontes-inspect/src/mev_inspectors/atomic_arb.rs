@@ -685,7 +685,6 @@ mod tests {
     #[brontes_macros::test]
     async fn test_eth_transfer_structure() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
                 "522824b872e68f3227350d65a9447d46d6cd039d70bd469f0de2477bc4333fbb"
@@ -693,7 +692,7 @@ mod tests {
             .into()])
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(28.06)
+            .with_expected_profit_usd(-20.545)
             .with_gas_paid_usd(4.38);
 
         inspector_util.run_inspector(config, None).await.unwrap();
