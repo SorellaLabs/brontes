@@ -352,6 +352,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         });
 
         if !burns.iter().any(|b| pools.contains(&b.pool)) {
+            tracing::trace!("no burn overlaps");
             return None
         }
 
@@ -365,13 +366,15 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         let v_swaps_len = v_swaps.len();
 
-        ((v_swaps
+        let overlap = v_swaps
             .into_iter()
             .map(|swap| pools.contains(&swap.pool) as usize)
             .sum::<usize>() as f64
-            / (v_swaps_len as f64))
-            >= 0.5)
-            .then_some(())
+            / (v_swaps_len as f64);
+
+        tracing::trace!(?overlap);
+
+        (overlap >= 0.5).then_some(())
     }
 
     fn recursive_possible_jits(
