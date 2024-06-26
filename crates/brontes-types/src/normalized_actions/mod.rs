@@ -163,16 +163,16 @@ impl serde::Serialize for Action {
 
 impl Action {
     pub fn get_msg_value_not_eth_transfer(&self) -> Option<NormalizedEthTransfer> {
-        match self {
+        let res = match self {
             Self::Swap(s) => (!s.msg_value.is_zero()).then(|| NormalizedEthTransfer {
                 value: s.msg_value,
-                to: s.recipient,
+                to: s.pool,
                 from: s.from,
                 ..Default::default()
             }),
             Self::SwapWithFee(s) => (!s.msg_value.is_zero()).then(|| NormalizedEthTransfer {
                 value: s.msg_value,
-                to: s.recipient,
+                to: s.pool,
                 from: s.from,
                 ..Default::default()
             }),
@@ -205,7 +205,7 @@ impl Action {
             }
             Self::Aggregator(a) => (!a.msg_value.is_zero()).then(|| NormalizedEthTransfer {
                 value: a.msg_value,
-                to: a.recipient,
+                to: a.to,
                 from: a.from,
                 ..Default::default()
             }),
@@ -218,7 +218,11 @@ impl Action {
             Self::NewPool(_) => None,
             Self::PoolConfigUpdate(_) => None,
             Self::Revert => None,
+        };
+        if res.is_some() {
+            tracing::trace!(?res, ?self, "created eth transfer for internal accounting");
         }
+        res
     }
 
     pub fn force_liquidation(self) -> NormalizedLiquidation {

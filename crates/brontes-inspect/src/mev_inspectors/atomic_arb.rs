@@ -107,6 +107,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         metadata: Arc<Metadata>,
         data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
     ) -> Option<Bundle> {
+        tracing::trace!(?info, "trying atomic");
         let (mut swaps, transfers, eth_transfers) = data;
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
@@ -171,6 +172,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let is_profitable = profit > Rational::ZERO;
 
         let requirement_multiplier = if has_dex_price { 1 } else { 2 };
+        tracing::info!(?profit);
 
         let profit = match possible_arb_type {
             AtomicArbType::Triangle => (is_profitable
@@ -732,6 +734,23 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
                 "93ac782b37a95f385ac0df6b5b24ded6f4701c81e96698ca528e9606ee970066"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(28.06)
+            .with_gas_paid_usd(4.38);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_eth_transfer_structure() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "522824b872e68f3227350d65a9447d46d6cd039d70bd469f0de2477bc4333fbb"
             )
             .into()])
             .with_dex_prices()

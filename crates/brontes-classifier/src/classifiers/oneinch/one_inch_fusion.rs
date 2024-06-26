@@ -13,6 +13,7 @@ action_impl!(
             protocol:      Protocol::OneInchFusion,
             trace_index:   info.trace_idx,
             from:          info.from_address,
+            to:            info.target_address,
             recipient:     Address::default(),
             child_actions: vec![],
             msg_value:     info.msg_value,
@@ -44,6 +45,7 @@ mod tests {
         let eq_action = Action::Aggregator(NormalizedAggregator {
             protocol:      OneInchFusion,
             trace_index:   0,
+            to:            Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
             from:          Address::new(hex!("D14699b6B02e900A5C2338700d5181a674FDB9a2")),
             recipient:     Address::new(hex!("d10F17699137DD6215c01F539726227fC042c9b2")),
             child_actions: vec![
