@@ -143,6 +143,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             liquidations:        liqs,
             gas_details:         info.gas_details,
         };
+        tracing::debug!("{:#?}\n {:#?}", new_liquidation, header);
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
