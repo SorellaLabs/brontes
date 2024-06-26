@@ -75,6 +75,7 @@ action_impl!(
         Ok(NormalizedAggregator {
             protocol: Protocol::ZeroX,
             trace_index: info.trace_idx,
+            to: info.target_address,
             from: info.from_address,
             recipient: call_data.recipient,
             child_actions: vec![],
