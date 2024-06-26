@@ -13,6 +13,7 @@ action_impl!(
             protocol:      Protocol::OneInchFusion,
             trace_index:   info.trace_idx,
             from:          info.from_address,
+            to:            info.target_address,
             recipient:     Address::default(),
             child_actions: vec![],
             msg_value:     info.msg_value,

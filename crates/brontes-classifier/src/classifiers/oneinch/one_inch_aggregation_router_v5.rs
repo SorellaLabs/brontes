@@ -17,7 +17,8 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
-            recipient: dst_receiver,
+            to: info.target_address
+                , recipient: dst_receiver,
             child_actions: vec![],
             msg_value: info.msg_value
         })
@@ -39,6 +40,7 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
+            to: info.target_address,
             recipient,
             child_actions: vec![],
             msg_value: info.msg_value
@@ -56,6 +58,7 @@ action_impl!(
             protocol:      Protocol::OneInchV5,
             trace_index:   info.trace_idx,
             from:          info.from_address,
+            to:            info.target_address,
             recipient:     info.msg_sender,
             child_actions: vec![],
             msg_value:     info.msg_value,
@@ -78,6 +81,7 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
+            to: info.target_address,
             recipient,
             child_actions: vec![],
             msg_value: info.msg_value
@@ -100,6 +104,7 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
+            to: info.target_address,
             recipient,
             child_actions: vec![],
             msg_value: info.msg_value
@@ -122,6 +127,7 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
+            to: info.target_address,
             recipient,
             child_actions: vec![],
             msg_value: info.msg_value
@@ -144,6 +150,7 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
+            to: info.target_address,
             recipient,
             child_actions: vec![],
             msg_value: info.msg_value
@@ -166,6 +173,7 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
+            to: info.target_address,
             recipient,
             child_actions: vec![],
             msg_value: info.msg_value
@@ -188,6 +196,7 @@ action_impl!(
             protocol: Protocol::OneInchV5,
             trace_index: info.trace_idx,
             from: info.from_address,
+            to: info.target_address,
             recipient,
             child_actions: vec![],
             msg_value: info.msg_value

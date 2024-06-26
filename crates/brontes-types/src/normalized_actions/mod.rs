@@ -166,13 +166,13 @@ impl Action {
         let res = match self {
             Self::Swap(s) => (!s.msg_value.is_zero()).then(|| NormalizedEthTransfer {
                 value: s.msg_value,
-                to: s.recipient,
+                to: s.pool,
                 from: s.from,
                 ..Default::default()
             }),
             Self::SwapWithFee(s) => (!s.msg_value.is_zero()).then(|| NormalizedEthTransfer {
                 value: s.msg_value,
-                to: s.recipient,
+                to: s.pool,
                 from: s.from,
                 ..Default::default()
             }),
@@ -205,7 +205,7 @@ impl Action {
             }
             Self::Aggregator(a) => (!a.msg_value.is_zero()).then(|| NormalizedEthTransfer {
                 value: a.msg_value,
-                to: a.recipient,
+                to: a.to,
                 from: a.from,
                 ..Default::default()
             }),
