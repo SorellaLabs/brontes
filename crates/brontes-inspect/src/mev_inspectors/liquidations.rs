@@ -87,12 +87,12 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let deltas = actions
             .into_iter()
-            // .chain(
-            //     info.get_total_eth_value()
-            //         .into_iter()
-            //         .cloned()
-            //         .map(Action::from),
-            // )
+            .chain(
+                info.get_total_eth_value()
+                    .into_iter()
+                    .cloned()
+                    .map(Action::from),
+            )
             .filter(|a| a.is_liquidation())
             .account_for_actions();
 
