@@ -170,6 +170,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         recursive: u8,
     ) -> Option<Vec<Bundle>> {
         if Self::calculate_recursive(&frontrun_info, &backrun_info, &searcher_actions)? {
+            tracing::trace!("recusing time");
             return self.recursive_possible_jits(
                 frontrun_info,
                 backrun_info,
@@ -180,6 +181,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 recursive,
             )
         }
+        tracing::trace!("formulating");
 
         // grab all mints and burns
         let ((mints, burns, collect), rem): ((Vec<_>, Vec<_>, Vec<_>), Vec<_>) = searcher_actions
@@ -350,10 +352,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         });
 
         if !burns.iter().any(|b| pools.contains(&b.pool)) {
+            tracing::trace!("no burn overlaps");
             return None
         }
 
-        // ensure atleast 50% of victims also swap on the same pool
+        // ensure we have overlap
         let v_swaps = victim_actions
             .iter()
             .flatten()
@@ -361,14 +364,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .map(|a| a.clone().force_swap())
             .collect::<Vec<_>>();
 
-        let v_swaps_len = v_swaps.len();
-
-        ((v_swaps
+        (v_swaps
             .into_iter()
             .map(|swap| pools.contains(&swap.pool) as usize)
-            .sum::<usize>() as f64
-            / (v_swaps_len as f64))
-            >= 0.5)
+            .sum::<usize>()
+            != 0)
             .then_some(())
     }
 
@@ -844,5 +844,20 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS])
             .with_block(19506666);
         test_utils.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    pub async fn test_jit_sandwich_multi_hop_jit() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.2).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Jit)
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_block(18674873)
+            .with_gas_paid_usd(273.9)
+            .with_expected_profit_usd(18.1)
+            .with_dex_prices();
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }

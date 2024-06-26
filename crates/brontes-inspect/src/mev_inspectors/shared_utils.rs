@@ -7,9 +7,13 @@ use brontes_types::{
     db::{
         dex::{BlockPrice, PriceAt},
         metadata::Metadata,
+        token_info::TokenInfoWithAddress,
     },
     mev::{AddressBalanceDeltas, BundleHeader, MevType, TokenBalanceDelta, TransactionAccounting},
-    normalized_actions::{Action, NormalizedAggregator, NormalizedBatch, NormalizedFlashLoan},
+    normalized_actions::{
+        Action, NormalizedAggregator, NormalizedBatch, NormalizedFlashLoan, NormalizedSwap,
+        NormalizedTransfer,
+    },
     pair::Pair,
     utils::ToFloatNearest,
     ActionIter, FastHashMap, FastHashSet, GasDetails, TxInfo,
@@ -165,6 +169,67 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .fold(Rational::ZERO, |acc, delta| acc + delta);
 
         sum
+    }
+
+    /// tries to convert transfer over to swaps
+    pub fn try_create_swaps(
+        &self,
+        transfers: &[NormalizedTransfer],
+        invalid_addresses: FastHashSet<Address>,
+    ) -> Vec<NormalizedSwap> {
+        let mut pools: FastHashMap<Address, Vec<(TokenInfoWithAddress, bool, Rational, Address)>> =
+            FastHashMap::default();
+
+        for t in transfers {
+            // we do this so if the transfer is from a mev contract or a searcher, it gets
+            // ignored
+            if invalid_addresses.contains(&t.from) {
+                continue
+            }
+
+            pools
+                .entry(t.to)
+                .or_default()
+                .push((t.token.clone(), true, t.amount.clone(), t.from));
+
+            pools
+                .entry(t.from)
+                .or_default()
+                .push((t.token.clone(), false, t.amount.clone(), t.to));
+        }
+
+        pools
+            .into_iter()
+            .filter_map(|(pool, mut possible_swaps)| {
+                if possible_swaps.len() != 2 {
+                    return None
+                }
+
+                let (f_token, f_direction, f_am, f_addr) = possible_swaps.pop()?;
+                let (s_token, s_direction, s_am, s_addr) = possible_swaps.pop()?;
+
+                if s_token == f_token || s_direction == f_direction {
+                    return None
+                }
+
+                let (amount_in, amount_out, token_in, token_out, from, recip) = if f_direction {
+                    (f_am, s_am, f_token, s_token, f_addr, s_addr)
+                } else {
+                    (s_am, f_am, s_token, f_token, s_addr, f_addr)
+                };
+
+                Some(NormalizedSwap {
+                    pool,
+                    amount_in,
+                    amount_out,
+                    token_out,
+                    token_in,
+                    from,
+                    recipient: recip,
+                    ..Default::default()
+                })
+            })
+            .collect()
     }
 
     pub fn get_token_value_dex(
