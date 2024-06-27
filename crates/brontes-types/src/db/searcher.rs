@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::{fmt, ops::Add};
 
 use alloy_primitives::Address;
 use clickhouse::Row;
@@ -7,7 +7,7 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
-use strum::{AsRefStr, Display};
+use strum::AsRefStr;
 
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
@@ -106,7 +106,7 @@ impl SearcherInfo {
 
         if let Fund::None = self.fund {
         } else {
-            parts.push(self.fund.short().to_string());
+            parts.push(self.fund.to_string());
         }
 
         let mev_type: Option<String> = vec![
@@ -255,7 +255,6 @@ impl TollByType {
 #[derive(
     Debug,
     Default,
-    Display,
     PartialEq,
     Eq,
     Clone,
@@ -281,24 +280,30 @@ pub enum Fund {
     ICANHAZBLOCK,
 }
 
+impl fmt::Display for Fund {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Fund::None => "None",
+                Fund::SymbolicCapitalPartners => "SCP",
+                Fund::Wintermute => "Wintermute",
+                Fund::JaneStreet => "Jane Street",
+                Fund::JumpTrading => "Jump Trading",
+                Fund::Kronos => "Kronos",
+                Fund::FlowTraders => "Flow Traders",
+                Fund::TokkaLabs => "Tokka Labs",
+                Fund::EthBuilder => "Eth Builder",
+                Fund::ICANHAZBLOCK => "I CAN HAZ BLOCK",
+            }
+        )
+    }
+}
+
 impl Fund {
     pub fn is_none(&self) -> bool {
         matches!(self, Fund::None)
-    }
-
-    pub fn short(&self) -> &'static str {
-        match self {
-            Fund::None => "None",
-            Fund::SymbolicCapitalPartners => "SCP",
-            Fund::Wintermute => "Wintermute",
-            Fund::JaneStreet => "Jane Street",
-            Fund::JumpTrading => "Jump Trading",
-            Fund::Kronos => "Kronos",
-            Fund::FlowTraders => "Flow Traders",
-            Fund::TokkaLabs => "Tokka Labs",
-            Fund::EthBuilder => "Eth Builder",
-            Fund::ICANHAZBLOCK => "I CAN HAZ BLOCK",
-        }
     }
 }
 

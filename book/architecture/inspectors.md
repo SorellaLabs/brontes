@@ -72,6 +72,8 @@ After processing the inspector results, we [calculate the block builder’s PnL]
   - **Proposer Payments:** ETH paid by the builder to the block proposer.
   - **Transaction Sponsorship:** ETH spent by the builder to [sponsor](https://titanbuilder.substack.com/p/titan-tech-teatime-1) transactions within the block.
 
+> **Note:** Some builders secretly refund parts of priority fees to searchers or order flow generators (tg bots for example). We can't track these kickbacks without knowing the addresses involved. If you have this information, please share it to help us improve our calculations.
+
 ### Step 4: Store Results
 
 Finally the resulting [`MevBlock`](./database/schema/mev_blocks.md#mevblock-fields) and [`Vec<Bundles>`](./database/schema/mev_blocks.md#bundle-fields) are written to the database in the `MevBlocks` table.

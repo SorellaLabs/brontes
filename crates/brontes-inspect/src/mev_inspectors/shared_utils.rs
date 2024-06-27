@@ -499,7 +499,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .db
             .get_protocol_details(address)
             .ok()
-            .map(|protocol| protocol.protocol.short().to_string());
+            .map(|protocol| protocol.protocol.to_string());
 
         protocol_name.or_else(|| {
             self.db
