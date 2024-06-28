@@ -32,7 +32,7 @@ impl ActionCmp<Action> for Action {
                 }
                 user
             }
-            // Action::Liquidation(l) => l.is_superior_action(other),
+            Action::Liquidation(l) => l.is_superior_action(other),
             action => {
                 tracing::trace!(?action, ?other, "no action cmp impl for given action");
                 false

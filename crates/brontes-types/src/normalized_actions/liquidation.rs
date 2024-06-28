@@ -42,8 +42,7 @@ impl TokenAccounting for NormalizedLiquidation {
         // for the liquidatee's collateral
         apply_delta(self.pool, self.debt_asset.address, debt_covered.clone(), delta_map);
         // this is picked up by the transfer
-        // apply_delta(self.liquidator, self.debt_asset.address, -debt_covered,
-        // delta_map);
+        apply_delta(self.liquidator, self.debt_asset.address, -debt_covered, delta_map);
 
         // Pool sends collateral to the liquidator
         apply_delta(
