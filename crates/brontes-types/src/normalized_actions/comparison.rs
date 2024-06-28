@@ -4,6 +4,7 @@ use super::{
     Action, NormalizedCollect, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
     NormalizedTransfer,
 };
+use crate::serde_utils::address;
 
 impl<T: Sized + SubordinateAction<O>, O: ActionCmp<T>> ActionComparison<O> for T {}
 
@@ -63,9 +64,12 @@ pub trait SubordinateAction<O> {
 
 impl ActionCmp<NormalizedTransfer> for NormalizedLiquidation {
     fn is_superior_action(&self, other: &NormalizedTransfer) -> bool {
-        false
-        // (self.debt_asset == other.token && self.covered_debt == other.amount)
-        //     || (self.collateral_asset == other.token && self.liquidated_collateral == other.amount)
+        (self.debt_asset == other.token
+            && self.covered_debt == other.amount
+            && self.pool == other.to)
+            || (self.collateral_asset == other.token
+                && self.liquidated_collateral == other.amount
+                && self.pool == other.from)
     }
 }
 
