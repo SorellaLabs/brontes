@@ -26,7 +26,7 @@ action_impl!(
         return Ok(NormalizedLiquidation {
             protocol: Protocol::AaveV3,
             trace_index: info.trace_idx,
-            pool: info.target_address,
+            pool: info.from_address,
             liquidator: info.msg_sender,
             debtor: call_data.user,
             collateral_asset: collateral_info,
@@ -140,7 +140,7 @@ mod tests {
             collateral_asset:      classifier_utils
                 .get_token_info(Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))),
             liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
-            pool:                  Address::from(hex!("5faab9e1adbddad0a08734be8a52185fd6558e14")),
+            pool:                  Address::from(hex!("87870bca3f3fd6335c3f4ce8392d69350b4fa4e2")),
             trace_index:           6,
             msg_value:             U256::ZERO,
         });

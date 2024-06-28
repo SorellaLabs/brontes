@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use clickhouse::Row;
 use malachite::Rational;
 use redefined::Redefined;
-use reth_primitives::Address;
+use reth_primitives::{Address, U256};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +25,7 @@ pub struct NormalizedTransfer {
     pub token:       TokenInfoWithAddress,
     pub amount:      Rational,
     pub fee:         Rational,
+    pub msg_value:   U256,
 }
 
 impl TokenAccounting for NormalizedTransfer {
@@ -43,6 +44,7 @@ pub struct ClickhouseVecNormalizedTransfer {
     pub token:       Vec<(String, String)>,
     pub amount:      Vec<([u8; 32], [u8; 32])>,
     pub fee:         Vec<([u8; 32], [u8; 32])>,
+    pub msg_value:   Vec<U256>,
 }
 
 impl TryFrom<Vec<NormalizedTransfer>> for ClickhouseVecNormalizedTransfer {
@@ -62,6 +64,7 @@ impl TryFrom<Vec<NormalizedTransfer>> for ClickhouseVecNormalizedTransfer {
                 .iter()
                 .map(|val| rational_to_u256_fraction(&val.fee))
                 .collect::<eyre::Result<Vec<_>>>()?,
+            msg_value:   value.iter().map(|val| val.msg_value).collect::<Vec<_>>(),
         })
     }
 }

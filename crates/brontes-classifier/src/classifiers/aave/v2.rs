@@ -25,7 +25,7 @@ action_impl!(
         return Ok(NormalizedLiquidation {
             protocol: Protocol::AaveV2,
             trace_index: info.trace_idx,
-            pool: info.target_address,
+            pool: info.from_address,
             liquidator: info.msg_sender,
             debtor: call_data.user,
             collateral_asset: collateral_info,

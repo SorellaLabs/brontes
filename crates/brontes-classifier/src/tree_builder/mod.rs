@@ -350,12 +350,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .await
             }
             TraceAction::Selfdestruct(sd) => {
-                (vec![], Action::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+                (vec![], vec![Action::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd))])
             }
-            TraceAction::Reward(_) => (vec![], Action::Unclassified(trace.clone())),
+            TraceAction::Reward(_) => (vec![], vec![Action::Unclassified(trace.clone())]),
         };
 
-        (pricing, vec![base_action])
+        (pricing, base_action)
     }
 
     async fn classify_call(
@@ -365,9 +365,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace: TransactionTraceWithLogs,
         full_trace: &[TransactionTraceWithLogs],
         trace_index: u64,
-    ) -> (Vec<DexPriceMsg>, Action) {
+    ) -> (Vec<DexPriceMsg>, Vec<Action>) {
         if trace.is_static_call() {
-            return (vec![], Action::Unclassified(trace))
+            return (vec![], vec![Action::Unclassified(trace)])
         }
         let mut call_info = trace.get_callframe_info();
 
@@ -407,7 +407,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 }
             }
 
-            (vec![results.0], results.1)
+            (vec![results.0], vec![results.1])
         } else if let Some(transfer) = self
             .classify_transfer(tx_idx, trace_index, &trace, block)
             .await
@@ -416,8 +416,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         } else {
             return (
                 vec![],
-                self.classify_eth_transfer(&trace, trace_index)
-                    .unwrap_or(Action::Unclassified(trace)),
+                vec![self
+                    .classify_eth_transfer(&trace, trace_index)
+                    .unwrap_or(Action::Unclassified(trace))],
             )
         }
     }
@@ -428,7 +429,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace_idx: u64,
         trace: &TransactionTraceWithLogs,
         block: u64,
-    ) -> Option<(Vec<DexPriceMsg>, Action)> {
+    ) -> Option<(Vec<DexPriceMsg>, Vec<Action>)> {
         if trace.is_delegate_call() {
             return None
         };
@@ -470,6 +471,17 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     }
                 }
 
+                let mut result = vec![Action::Transfer(transfer.clone())];
+                if trace.get_msg_value() != U256::ZERO {
+                    result.push(Action::EthTransfer(NormalizedEthTransfer {
+                        coinbase_transfer: false,
+                        trace_index:       trace_idx,
+                        to:                trace.get_to_address(),
+                        from:              trace.get_from_addr(),
+                        value:             trace.get_msg_value(),
+                    }));
+                }
+
                 // Return the adjusted transfer as an action
                 Some((
                     vec![DexPriceMsg::Update(brontes_pricing::types::PoolUpdate {
@@ -478,7 +490,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         logs: vec![],
                         action: Action::Transfer(transfer.clone()),
                     })],
-                    Action::Transfer(transfer),
+                    result,
                 ))
             }
             Err(_) => {
@@ -497,6 +509,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             from,
                             fee: Rational::ZERO,
                             trace_index: trace_idx,
+                            msg_value: trace.get_msg_value(),
                         };
 
                         return Some((
@@ -506,7 +519,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 logs: vec![],
                                 action: Action::Transfer(transfer.clone()),
                             })],
-                            Action::Transfer(transfer),
+                            vec![Action::Transfer(transfer)],
                         ))
                     }
                 }
@@ -539,7 +552,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
-    ) -> (Vec<DexPriceMsg>, Action) {
+    ) -> (Vec<DexPriceMsg>, Vec<Action>) {
         let from_address = trace.get_from_addr();
         let created_addr = trace.get_create_output();
 
@@ -547,11 +560,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // deployment function params
         let node_data = match root_head {
             Some(head) => head.get_immediate_parent_node(trace_index - 1),
-            None => return (vec![], Action::Unclassified(trace)),
+            None => return (vec![], vec![Action::Unclassified(trace)]),
         };
         let Some(node_data) = node_data else {
             debug!(block, tx_idx, "failed to find create parent node");
-            return (vec![], Action::Unclassified(trace));
+            return (vec![], vec![Action::Unclassified(trace)]);
         };
 
         let Some(calldata) = node_data_store
@@ -559,7 +572,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .and_then(|node| node.first())
             .and_then(|res| res.get_calldata())
         else {
-            return (vec![], Action::Unclassified(trace));
+            return (vec![], vec![Action::Unclassified(trace)]);
         };
 
         (
@@ -586,7 +599,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .flatten()
             .map(DexPriceMsg::DiscoveredPool)
             .collect_vec(),
-            Action::Unclassified(trace),
+            vec![Action::Unclassified(trace)],
         )
     }
 

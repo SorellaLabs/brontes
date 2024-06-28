@@ -47,9 +47,9 @@ impl<IT: Iterator<Item = Action>> ActionAccounting for IT {
         let mut rem = vec![];
 
         for next in self {
-            if !next.is_transfer() {
+            if next.is_transfer() {
                 rem.push(next);
-                continue;
+                continue
             }
             accounting_calc(&mut accounting, next);
         }

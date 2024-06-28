@@ -38,40 +38,35 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
     }
 
     fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+        let ex = || {
+            let (tx, liq): (Vec<_>, Vec<_>) = tree
+                .clone()
+                .collect_all(TreeSearchBuilder::default().with_actions([
+                    Action::is_swap,
+                    Action::is_liquidation,
+                    Action::is_transfer,
+                    Action::is_eth_transfer,
+                    Action::is_aggregator,
+                ]))
+                .unzip();
+            let tx_info = tree.get_tx_info_batch(&tx, self.utils.db);
+
+            multizip((liq, tx_info))
+                .filter_map(|(liq, info)| {
+                    let info = info?;
+                    let actions = self
+                        .utils
+                        .flatten_nested_actions_default(liq.into_iter())
+                        .collect::<Vec<_>>();
+
+                    self.calculate_liquidation(info, metadata.clone(), actions)
+                })
+                .collect::<Vec<_>>()
+        };
         self.utils
             .get_metrics()
-            .map(|m| {
-                m.run_inspector(MevType::Liquidation, || {
-                    let (tx, liq): (Vec<_>, Vec<_>) = tree
-                        .clone()
-                        .collect_all(
-                            TreeSearchBuilder::default()
-                                .with_actions([Action::is_swap, Action::is_liquidation]),
-                        )
-                        .unzip();
-                    let tx_info = tree.get_tx_info_batch(&tx, self.utils.db);
-
-                    multizip((liq, tx_info))
-                        .filter_map(|(liq, info)| {
-                            let info = info?;
-                            self.calculate_liquidation(info, metadata.clone(), liq)
-                        })
-                        .collect::<Vec<_>>()
-                })
-            })
-            .unwrap_or_else(|| {
-                tree.clone()
-                    .collect_all(
-                        TreeSearchBuilder::default()
-                            .with_actions([Action::is_swap, Action::is_liquidation]),
-                    )
-                    .filter_map(|(tx_hash, liq)| {
-                        let info = tree.get_tx_info(tx_hash, self.utils.db)?;
-
-                        self.calculate_liquidation(info, metadata.clone(), liq)
-                    })
-                    .collect::<Vec<_>>()
-            })
+            .map(|m| m.run_inspector(MevType::Liquidation, ex))
+            .unwrap_or_else(ex)
     }
 }
 
@@ -82,6 +77,9 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Action>,
     ) -> Option<Bundle> {
+        tracing::debug!("trying liquidation\n{actions:#?}");
+        let total_val = info.get_total_eth_value();
+        tracing::debug!(other_eth_transfers=?total_val);
         let (swaps, liqs): (Vec<_>, Vec<_>) = actions
             .clone()
             .into_iter()
@@ -97,6 +95,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let deltas = actions
             .into_iter()
             .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
+            .filter(|a| a.is_eth_transfer() || a.is_transfer())
             .account_for_actions();
 
         let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
@@ -152,6 +151,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             liquidations:        liqs,
             gas_details:         info.gas_details,
         };
+        tracing::debug!("{:#?}\n {:#?}", new_liquidation, header);
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
