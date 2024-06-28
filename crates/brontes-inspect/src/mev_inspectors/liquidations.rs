@@ -121,6 +121,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             has_dex_price = false;
             profit_usd = Rational::ZERO;
         }
+        tracing::info!(?profit_usd);
 
         let header = self.utils.build_bundle_header(
             vec![deltas],
