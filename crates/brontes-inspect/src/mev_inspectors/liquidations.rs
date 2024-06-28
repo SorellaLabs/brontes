@@ -113,6 +113,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let gas_finalized =
             metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
 
+        tracing::info!(?gas_finalized);
+
         let mut profit_usd = rev
             .map(|rev| rev - &gas_finalized)
             .filter(|_| has_dex_price)
