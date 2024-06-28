@@ -66,6 +66,7 @@ impl ActionCmp<NormalizedTransfer> for NormalizedLiquidation {
         self.collateral_asset == other.token
             && self.liquidated_collateral == other.amount
             && self.pool == other.from
+            && self.liquidator == other.to
     }
 }
 
