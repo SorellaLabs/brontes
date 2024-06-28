@@ -89,12 +89,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         tracing::debug!("{:#?}", v);
         let deltas = actions
             .into_iter()
-            .chain(
-                info.get_total_eth_value()
-                    .into_iter()
-                    .cloned()
-                    .map(Action::from),
-            )
+            .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
             .filter(|a| a.is_eth_transfer() || a.is_transfer() || a.is_liquidation())
             .account_for_actions();
 
@@ -110,12 +105,9 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         } else {
             (Some(Rational::ZERO), false)
         };
-        tracing::info!(?rev, ?mev_addresses);
 
         let gas_finalized =
             metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
-
-        tracing::info!(?gas_finalized);
 
         let mut profit_usd = rev
             .map(|rev| rev - &gas_finalized)
@@ -126,7 +118,6 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             has_dex_price = false;
             profit_usd = Rational::ZERO;
         }
-        tracing::info!(?profit_usd);
 
         let header = self.utils.build_bundle_header(
             vec![deltas],
