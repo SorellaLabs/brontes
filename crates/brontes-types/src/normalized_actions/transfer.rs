@@ -64,10 +64,7 @@ impl TryFrom<Vec<NormalizedTransfer>> for ClickhouseVecNormalizedTransfer {
                 .iter()
                 .map(|val| rational_to_u256_fraction(&val.fee))
                 .collect::<eyre::Result<Vec<_>>>()?,
-            msg_value:   value
-                .iter()
-                .map(|val| val.msg_value.clone())
-                .collect::<Vec<_>>(),
+            msg_value:   value.iter().map(|val| val.msg_value).collect::<Vec<_>>(),
         })
     }
 }
