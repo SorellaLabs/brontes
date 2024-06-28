@@ -5,7 +5,7 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
-    normalized_actions::{accounting::ActionAccounting, Action, NormalizedLiquidation},
+    normalized_actions::{accounting::ActionAccounting, Action},
     tree::BlockTree,
     ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };

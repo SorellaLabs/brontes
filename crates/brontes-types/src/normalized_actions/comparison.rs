@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use super::{
-    Action, NormalizedCollect, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+    Action, NormalizedCollect, NormalizedMint, NormalizedSwap,
     NormalizedTransfer,
 };
 

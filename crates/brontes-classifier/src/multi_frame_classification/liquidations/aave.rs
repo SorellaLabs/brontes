@@ -42,14 +42,13 @@ fn parse_v2_v3(this: &mut Action, child_nodes: Vec<(NodeDataIndex, Action)>) -> 
     let this = this.try_liquidation_mut().unwrap();
     child_nodes
         .into_iter()
-        .find_map(|(index, action)| {
+        .find_map(|(_, action)| {
             if let Action::Transfer(transfer) = action {
                 // because aave has the option to return the Atoken or regular,
                 // we can't filter by collateral filter. This might be an issue...
                 // tbd tho
                 if transfer.to == this.liquidator {
                     this.liquidated_collateral = transfer.amount;
-                    // return Some(index)
                 }
             }
 
