@@ -49,7 +49,7 @@ fn parse_v2_v3(this: &mut Action, child_nodes: Vec<(NodeDataIndex, Action)>) -> 
                 // tbd tho
                 if transfer.to == this.liquidator {
                     this.liquidated_collateral = transfer.amount;
-                    return Some(index)
+                    // return Some(index)
                 }
             }
 
