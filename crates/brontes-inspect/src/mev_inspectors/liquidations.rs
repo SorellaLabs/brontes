@@ -5,9 +5,9 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
-    normalized_actions::{accounting::ActionAccounting, Action},
+    normalized_actions::{accounting::ActionAccounting, Action, NormalizedLiquidation},
     tree::BlockTree,
-    ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, FastHashSet, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -88,12 +88,15 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         let v = info.get_total_eth_value();
         tracing::debug!("{:#?}", v);
 
-        // gotta fix up the actions here
-
-        let deltas = actions
+        let deltas = self
+            .handle_liquidation_and_transfer_conflicts(
+                actions
+                    .into_iter()
+                    .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
+                    .collect::<Vec<_>>(),
+                liqs.clone(),
+            )
             .into_iter()
-            .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
-            .filter(|a| a.is_eth_transfer() || a.is_transfer() || a.is_liquidation())
             .account_for_actions();
 
         let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
@@ -152,6 +155,35 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         tracing::debug!("{:#?}\n {:#?}", new_liquidation, header);
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
+    }
+
+    /// there are some edge cases where transfers do and don't account for
+    /// proper liquidation deltas. because of this, we need to adjust the
+    /// liquidations in order to deal with the possible overlap and semi
+    /// overlap that can occur
+    fn handle_liquidation_and_transfer_conflicts(
+        &self,
+        actions: Vec<Action>,
+        liquidation: Vec<NormalizedLiquidation>,
+    ) -> Vec<Action> {
+        let (transfers, mut rem): (Vec<_>, Vec<_>) =
+            actions.into_iter().split_return_rem(Action::try_transfer);
+
+        for mut liq in liquidation {
+            let mut keep_front = true;
+            let mut keep_back = true;
+            for t in &transfers {
+                // possible transfer in
+                if t.trace_index < liq.trace_index {
+                    if t.to == liq.pool && t.token == liq.debt_asset {
+                        keep_front = false;
+                    }
+                } else {
+                }
+            }
+        }
+
+        vec![]
     }
 }
 

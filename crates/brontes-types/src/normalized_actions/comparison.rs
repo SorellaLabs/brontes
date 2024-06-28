@@ -32,7 +32,6 @@ impl ActionCmp<Action> for Action {
                 }
                 user
             }
-            Action::Liquidation(l) => l.is_superior_action(other),
             action => {
                 tracing::trace!(?action, ?other, "no action cmp impl for given action");
                 false
@@ -61,16 +60,6 @@ pub trait SubordinateAction<O> {
     }
 }
 
-impl ActionCmp<NormalizedTransfer> for NormalizedLiquidation {
-    fn is_superior_action(&self, other: &NormalizedTransfer) -> bool {
-        false 
-        // self.collateral_asset == other.token
-        //     && self.liquidated_collateral == other.amount
-        //     && self.pool == other.from
-        //     && self.liquidator == other.to
-    }
-}
-
 impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
         // we cannot filter on from address for a transfer to a pool.
@@ -80,15 +69,6 @@ impl ActionCmp<NormalizedTransfer> for NormalizedSwap {
             || (transfer.amount == self.amount_out
                 && transfer.from == self.pool
                 && self.recipient == transfer.to)
-    }
-}
-
-impl ActionCmp<Action> for NormalizedLiquidation {
-    fn is_superior_action(&self, other: &Action) -> bool {
-        match other {
-            Action::Transfer(t) => self.is_superior_action(t),
-            _ => false,
-        }
     }
 }
 
