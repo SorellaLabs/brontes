@@ -85,6 +85,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         tracing::debug!("{:#?}", actions);
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
+        let v = info.get_total_eth_value();
+        tracing::debug!("{:#?}", v);
         let deltas = actions
             .into_iter()
             // .chain(
