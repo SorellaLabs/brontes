@@ -235,6 +235,7 @@ mod tests {
             child_actions: vec![
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 1,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("f4f8845cede63e79de1b2c3bba395e8547fe4283")),
                     to:          Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     token:       TokenInfoWithAddress::usdc(),
@@ -245,6 +246,7 @@ mod tests {
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 5,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     to:          Address::new(hex!("beec796a4a2a27b687e1d48efad3805d78800522")),
                     token:       TokenInfoWithAddress::usdc(),
@@ -269,6 +271,7 @@ mod tests {
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 12,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("3416cf6c708da44db2624d63ea0aaef7113527c6")),
                     to:          Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     token:       TokenInfoWithAddress::usdt(),
@@ -279,6 +282,7 @@ mod tests {
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 16,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     to:          Address::new(hex!("3416cf6c708da44db2624d63ea0aaef7113527c6")),
                     token:       TokenInfoWithAddress::usdc(),
@@ -289,6 +293,7 @@ mod tests {
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 21,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("e37e799d5077682fa0a244d46e5649f71457bd09")),
                     to:          Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
                     token:       TokenInfoWithAddress::usdt(),
@@ -299,6 +304,7 @@ mod tests {
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 23,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("1111111254eeb25477b68fb85ed929f73a960582")),
                     to:          Address::new(hex!("f4f8845cede63e79de1b2c3bba395e8547fe4283")),
                     token:       TokenInfoWithAddress::usdt(),

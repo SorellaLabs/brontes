@@ -51,6 +51,7 @@ mod tests {
             child_actions: vec![
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 5,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("d10f17699137dd6215c01f539726227fc042c9b2")),
                     to:          Address::new(hex!("235d3afac42f5e5ff346cb6c19af13194988551f")),
                     token:       TokenInfoWithAddress::usdc(),
@@ -59,6 +60,7 @@ mod tests {
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 9,
+                    msg_value:   U256::ZERO,
                     from:        Address::new(hex!("235d3afac42f5e5ff346cb6c19af13194988551f")),
                     to:          Address::new(hex!("655edce464cc797526600a462a8154650eee4b77")),
                     token:       TokenInfoWithAddress::usdc(),
@@ -84,6 +86,7 @@ mod tests {
                     token:       TokenInfoWithAddress::usdt(),
                     amount:      U256::from_str("269716012").unwrap().to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
+                    msg_value:   U256::ZERO,
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 16,
@@ -92,6 +95,7 @@ mod tests {
                     token:       TokenInfoWithAddress::usdt(),
                     amount:      U256::from_str("216122672").unwrap().to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
+                    msg_value:   U256::ZERO,
                 }),
                 Action::Transfer(NormalizedTransfer {
                     trace_index: 18,
@@ -100,6 +104,7 @@ mod tests {
                     token:       TokenInfoWithAddress::usdt(),
                     amount:      U256::from_str("216122672").unwrap().to_scaled_rational(6),
                     fee:         U256::from_str("0").unwrap().to_scaled_rational(1),
+                    msg_value:   U256::ZERO,
                 }),
             ],
 

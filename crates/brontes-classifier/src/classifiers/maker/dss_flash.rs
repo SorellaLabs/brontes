@@ -76,6 +76,7 @@ mod tests {
             // Ignore child actions as we only need to focus on pruning necessary nodes.
             child_actions:     vec![],
             repayments:        vec![NormalizedTransfer {
+                msg_value:   U256::ZERO,
                 trace_index: 238,
                 from:        Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
                 to:          Address::new(hex!("60744434d6339a6b27d73d9eda62b6f66a0a04fa")),
