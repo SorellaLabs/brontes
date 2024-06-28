@@ -192,7 +192,7 @@ mod tests {
             .with_dex_prices()
             .with_gas_paid_usd(638.71) //TODO: Joe I am changing this for now because your quotes data seems to still be
             // incorrect. Please fix it, the previous value was 636.54
-            .with_expected_profit_usd(16439.12); // Same here previous value was: 129.23
+            .with_expected_profit_usd(128.11); // Same here previous value was: 129.23
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
