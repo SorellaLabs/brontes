@@ -203,7 +203,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             if let Some(coinbase_transfer) =
                                 get_coinbase_transfer(header.beneficiary, &trace.trace.action)
                             {
-                                tracing::info!("got coinbase transfer");
                                 if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
                                     *coinbase += coinbase_transfer;
                                 } else {
