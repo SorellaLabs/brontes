@@ -350,12 +350,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .await
             }
             TraceAction::Selfdestruct(sd) => {
-                (vec![], Action::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd)))
+                (vec![], vec![Action::SelfDestruct(SelfdestructWithIndex::new(trace_index, *sd))])
             }
-            TraceAction::Reward(_) => (vec![], Action::Unclassified(trace.clone())),
+            TraceAction::Reward(_) => (vec![], vec![Action::Unclassified(trace.clone())]),
         };
 
-        (pricing, vec![base_action])
+        (pricing, base_action)
     }
 
     async fn classify_call(
@@ -471,7 +471,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     }
                 }
 
-                let mut result = vec![Action::Transfer(transfer)];
+                let mut result = vec![Action::Transfer(transfer.clone())];
                 if trace.get_msg_value() != U256::ZERO {
                     result.push(Action::EthTransfer(NormalizedEthTransfer {
                         coinbase_transfer: false,
@@ -519,7 +519,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 logs: vec![],
                                 action: Action::Transfer(transfer.clone()),
                             })],
-                            Action::Transfer(transfer),
+                            vec![Action::Transfer(transfer)],
                         ))
                     }
                 }
@@ -560,11 +560,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // deployment function params
         let node_data = match root_head {
             Some(head) => head.get_immediate_parent_node(trace_index - 1),
-            None => return (vec![], Action::Unclassified(trace)),
+            None => return (vec![], vec![Action::Unclassified(trace)]),
         };
         let Some(node_data) = node_data else {
             debug!(block, tx_idx, "failed to find create parent node");
-            return (vec![], Action::Unclassified(trace));
+            return (vec![], vec![Action::Unclassified(trace)]);
         };
 
         let Some(calldata) = node_data_store
@@ -572,7 +572,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .and_then(|node| node.first())
             .and_then(|res| res.get_calldata())
         else {
-            return (vec![], Action::Unclassified(trace));
+            return (vec![], vec![Action::Unclassified(trace)]);
         };
 
         (
@@ -599,7 +599,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .flatten()
             .map(DexPriceMsg::DiscoveredPool)
             .collect_vec(),
-            Action::Unclassified(trace),
+            vec![Action::Unclassified(trace)],
         )
     }
 
