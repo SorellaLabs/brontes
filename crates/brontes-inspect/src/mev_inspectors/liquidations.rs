@@ -46,6 +46,7 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
                     Action::is_liquidation,
                     Action::is_transfer,
                     Action::is_eth_transfer,
+                    Action::is_aggregator,
                 ]))
                 .unzip();
             let tx_info = tree.get_tx_info_batch(&tx, self.utils.db);
@@ -53,7 +54,12 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
             multizip((liq, tx_info))
                 .filter_map(|(liq, info)| {
                     let info = info?;
-                    self.calculate_liquidation(info, metadata.clone(), liq)
+                    let actions = self
+                        .utils
+                        .flatten_nested_actions_default(liq.into_iter())
+                        .collect::<Vec<_>>();
+
+                    self.calculate_liquidation(info, metadata.clone(), actions)
                 })
                 .collect::<Vec<_>>()
         };
