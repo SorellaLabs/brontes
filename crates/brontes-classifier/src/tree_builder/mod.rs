@@ -82,7 +82,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             self.process_tx_roots(tx_roots, &mut tree, block_number);
 
         account_for_tax_tokens(&mut tree);
-        remove_possible_transfer_double_counts(&mut tree);
+        // remove_possible_transfer_double_counts(&mut tree);
 
         self.finish_classification(&mut tree, further_classification_requests);
         tree.finalize_tree();
