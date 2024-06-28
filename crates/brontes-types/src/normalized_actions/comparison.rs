@@ -63,10 +63,11 @@ pub trait SubordinateAction<O> {
 
 impl ActionCmp<NormalizedTransfer> for NormalizedLiquidation {
     fn is_superior_action(&self, other: &NormalizedTransfer) -> bool {
-        self.collateral_asset == other.token
-            && self.liquidated_collateral == other.amount
-            && self.pool == other.from
-            && self.liquidator == other.to
+        false 
+        // self.collateral_asset == other.token
+        //     && self.liquidated_collateral == other.amount
+        //     && self.pool == other.from
+        //     && self.liquidator == other.to
     }
 }
 
