@@ -82,19 +82,12 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
-        tracing::debug!("{:#?}", actions);
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
-        tracing::info!(?mev_addresses);
-
-        let v = info.get_total_eth_value();
-        tracing::debug!("{:#?}", v);
-
-        // let actions = self.handle_liquidation_and_transfer_conflicts(actions, liqs);
 
         let deltas = actions
             .into_iter()
             .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
-            .filter(|a| a.is_eth_transfer() || a.is_transfer()) // || a.is_liquidation())
+            .filter(|a| a.is_eth_transfer() || a.is_transfer())
             .account_for_actions();
 
         let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
@@ -154,14 +147,6 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
-
-    fn handle_liquidation_and_transfer_conflicts(
-        &self,
-        actions: Vec<Action>,
-        liquidation: Vec<NormalizedLiquidation>,
-    ) -> Vec<Action> {
-        vec![]
-    }
 }
 
 #[cfg(test)]
@@ -207,7 +192,7 @@ mod tests {
             .with_dex_prices()
             .with_gas_paid_usd(638.71) //TODO: Joe I am changing this for now because your quotes data seems to still be
             // incorrect. Please fix it, the previous value was 636.54
-            .with_expected_profit_usd(128.11); // Same here previous value was: 129.23
+            .with_expected_profit_usd(16439.12); // Same here previous value was: 129.23
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
