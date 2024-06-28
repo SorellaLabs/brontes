@@ -108,6 +108,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         } else {
             (Some(Rational::ZERO), false)
         };
+        tracing::info!(?rev, ?mev_addresses);
 
         let gas_finalized =
             metadata.get_gas_price_usd(info.gas_details.gas_paid(), self.utils.quote);
