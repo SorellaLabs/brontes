@@ -140,7 +140,7 @@ mod tests {
             collateral_asset:      classifier_utils
                 .get_token_info(Address::from(hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599"))),
             liquidator:            Address::from(hex!("80d4230c0a68fc59cb264329d3a717fcaa472a13")),
-            pool:                  Address::from(hex!("98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c")),
+            pool:                  Address::from(hex!("87870bca3f3fd6335c3f4ce8392d69350b4fa4e2")),
             trace_index:           6,
             msg_value:             U256::ZERO,
         });
