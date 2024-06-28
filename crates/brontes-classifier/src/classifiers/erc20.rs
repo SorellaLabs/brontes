@@ -58,6 +58,7 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
         to:          to_addr,
         from:        from_addr,
         trace_index: idx,
+        msg_value:   value,
         fee:         Rational::ZERO,
     })
 }

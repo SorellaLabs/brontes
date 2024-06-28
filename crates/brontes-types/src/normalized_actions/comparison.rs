@@ -1,9 +1,6 @@
 use std::fmt::Debug;
 
-use super::{
-    Action, NormalizedCollect, NormalizedMint, NormalizedSwap,
-    NormalizedTransfer,
-};
+use super::{Action, NormalizedCollect, NormalizedMint, NormalizedSwap, NormalizedTransfer};
 
 impl<T: Sized + SubordinateAction<O>, O: ActionCmp<T>> ActionComparison<O> for T {}
 
