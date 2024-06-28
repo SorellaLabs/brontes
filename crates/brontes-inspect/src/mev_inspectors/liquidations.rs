@@ -93,7 +93,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                     .cloned()
                     .map(Action::from),
             )
-            .filter(|a| a.is_transfer() || a.is_liquidation())
+            .filter(|a| a.is_eth_transfer() || a.is_transfer() || a.is_liquidation())
             .account_for_actions();
 
         let (rev, mut has_dex_price) = if let Some(rev) = self.utils.get_deltas_usd(
