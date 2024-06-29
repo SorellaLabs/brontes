@@ -1,10 +1,10 @@
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use std::str::FromStr;
 
 use alloy_primitives::hex;
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use alloy_primitives::B256;
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use brontes_classifier::test_utils::ClassifierTestUtils;
 use brontes_inspect::{
     test_utils::{InspectorBenchUtils, USDC_ADDRESS},
@@ -101,7 +101,7 @@ fn bench_liquidation(c: &mut Criterion) {
         .unwrap()
 }
 
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 fn bench_cex_dex(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
 
@@ -248,7 +248,7 @@ fn bench_jit_regular_block(c: &mut Criterion) {
         .unwrap()
 }
 
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 fn bench_cex_dex_regular_block(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
     bencher
@@ -263,7 +263,7 @@ fn bench_cex_dex_regular_block(c: &mut Criterion) {
         .unwrap()
 }
 
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 fn bench_markout_cexdex(_c: &mut Criterion) {}
 
 criterion_group!(
@@ -276,9 +276,9 @@ criterion_group!(
     bench_composer,
 );
 
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 criterion_group!(cex_dex, bench_cex_dex, bench_cex_dex_regular_block);
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 criterion_group!(cex_dex, bench_markout_cexdex);
 
 criterion_group!(

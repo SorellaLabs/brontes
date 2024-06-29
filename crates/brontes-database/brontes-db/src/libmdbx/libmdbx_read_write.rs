@@ -3,11 +3,11 @@ use std::{cmp::max, ops::RangeInclusive, path::Path, sync::Arc};
 use alloy_primitives::Address;
 use brontes_metrics::db_reads::LibmdbxMetrics;
 use brontes_pricing::Protocol;
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 use brontes_types::db::cex::cex_trades::CexTradeMap;
-#[cfg(not(feature = "cex-dex-markout"))]
+#[cfg(feature = "cex-dex-quotes")]
 use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
-#[cfg(feature = "cex-dex-markout")]
+#[cfg(not(feature = "cex-dex-quotes"))]
 use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 #[cfg(not(feature = "local-reth"))]
 use brontes_types::db::initialized_state::TRACE_FLAG;
@@ -430,7 +430,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
-        #[cfg(feature = "cex-dex-markout")]
+        #[cfg(not(feature = "cex-dex-quotes"))]
         let trades = self.fetch_trades(block_num).ok();
 
         Ok(BlockMetadata::new(
@@ -448,9 +448,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
             cex_quotes,
             None,
             None,
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             trades,
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             None,
         ))
     }
@@ -462,7 +462,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
 
-        #[cfg(feature = "cex-dex-markout")]
+        #[cfg(not(feature = "cex-dex-quotes"))]
         let trades = self.fetch_trades(block_num).ok();
 
         Ok({
@@ -481,9 +481,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 cex_quotes,
                 Some(dex_quotes),
                 None,
-                #[cfg(feature = "cex-dex-markout")]
+                #[cfg(not(feature = "cex-dex-quotes"))]
                 trades,
-                #[cfg(not(feature = "cex-dex-markout"))]
+                #[cfg(feature = "cex-dex-quotes")]
                 None,
             )
         })
@@ -1157,7 +1157,7 @@ impl LibmdbxReadWriter {
         })
     }
 
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
         self.db.view_db(|tx| {
             tx.get::<CexTrades>(block_num)?
@@ -1223,9 +1223,9 @@ fn default_tables_to_init() -> Vec<Tables> {
     let mut tables_to_init = vec![Tables::BlockInfo, Tables::DexPrice];
     #[cfg(not(feature = "local-reth"))]
     tables_to_init.push(Tables::TxTraces);
-    #[cfg(not(feature = "cex-dex-markout"))]
+    #[cfg(feature = "cex-dex-quotes")]
     tables_to_init.push(Tables::CexPrice);
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     tables_to_init.push(Tables::CexTrades);
 
     tables_to_init
@@ -1244,9 +1244,9 @@ pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
 
         #[cfg(not(feature = "local-reth"))]
         tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
-        #[cfg(not(feature = "cex-dex-markout"))]
+        #[cfg(feature = "cex-dex-quotes")]
         tables.push((Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)));
-        #[cfg(feature = "cex-dex-markout")]
+        #[cfg(not(feature = "cex-dex-quotes"))]
         tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
 
         tables

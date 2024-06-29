@@ -4,7 +4,7 @@ Brontes runs on Linux and macOS. Currently it must be installed from source, tho
 
 ## Hardware Requirements
 
-Running Brontes with Reth in the background requires hardware that's more robust than what might typically be recommended for Reth alone. This ensures optimal performance and reliability, especially for those aiming to keep up with the blockchain tip.
+Running Brontes with Reth in the background requires hardware that's more robust than what might typically be recommended for Reth alone.
 
 - See [reth installation guide](https://paradigmxyz.github.io/reth/installation/installation.html) for more details on Reth's hardware requirements.
 

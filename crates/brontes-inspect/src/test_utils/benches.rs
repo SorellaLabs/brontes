@@ -118,9 +118,9 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false)
                 .await;
 
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             let cmp = Inspectors::CexDex;
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             let cmp = Inspectors::CexDexMarkout;
 
             if inspector_type == cmp {
@@ -175,9 +175,9 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false)
                 .await;
 
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             let cmp = Inspectors::CexDex;
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             let cmp = Inspectors::CexDexMarkout;
 
             if inspector_type == cmp {

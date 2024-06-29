@@ -6,27 +6,41 @@ _Documentation for Brontes users and developers._
 <img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/SorellaLabs?style=social">
 </a>
 
-**Brontes** is a blazingly fast and modular blockchain analytics pipeline, designed with a focus on systematically identifying **MEV**.
+**Brontes** is a _blazingly_ fast and modular blockchain analytics pipeline, designed to systematically identify **MEV**.
 
 <div style="text-align: center;">
     <img src="https://raw.githubusercontent.com/0xvanbeethoven/brontes-img/main/Brontes.png" alt="Brontes" style="border-radius: 20px; width: 400px; height: auto;">
 </div>
 
-## What is Brontes?
-
-[Brontes](https://github.com/SorellaLabs/brontes), developed by [Sorella Labs](https://twitter.com/Sorellalabs), is an advanced blockchain analytics pipeline built on top of [Reth](https://github.com/paradigmxyz/reth/). It transforms raw Ethereum data into a structured, analyzable format, enriched with off-chain data. Brontes provides a pipelined and modular framework for complex analytics, enabling data scientists, and researchers to focus on their analysis and methodology without being burdened by the intricacies of data preprocessing.
-
 ## Why Brontes?
 
-Analyzing blockchain data, particularly at the transaction trace level, is an overwhelming and time-consuming process. The sheer volume of data and the effort required for data classification, and normalization often hinder the ability of data scientists to focus on pioneering analysis and developing new methodologies.
+[Brontes](https://github.com/SorellaLabs/brontes), developed by [Sorella Labs](https://twitter.com/Sorellalabs), is a blockchain analytics pipeline built on top of [Reth](https://github.com/paradigmxyz/reth/). It addresses a critical challenge in blockchain research: the overwhelming flood of data and tedious preprocessing that often derail researchers from their core focus.
 
-Albeit a few masochists might revel in the painstaking but necessary prep work, the rest of us don't exactly find joy in it; the true thrill emerges in the exploration and refinement of new methodologies. This insight is what shapes our Inspector Framework and Brontes at its core. Our aim is to strip away the burden of these initial steps, giving you the freedom to leap straight into pioneering analysis.
+**Key features:**
+
+- Transforms raw Ethereum data into a structured, analyzable format
+- Enhances analysis with off-chain data (metadata, CEX prices, p2p data...)
+- Provides a modular framework to easily implement user-defined inspectors for custom analytics
+
+Blockchain data analysis, especially at the trace level, can overwhelm even seasoned researchers. While a few masochists might find satisfaction in the chore of data preprocessing and normalization, most of us are captivated by the intellectual challenge of crafting innovative analytical techniques.
+
+Our Inspector Framework allows you to focus on developing and applying novel methodologies. By eliminating initial hurdles, Brontes frees you to immerse yourself in creative analysis rather than getting bogged down in preprocessing.
+
+## Who is this for?
+
+Brontes is designed for:
+
+- Blockchain researchers and data scientists
+- MEV analysts and strategists
+- DeFi protocol developers
+- Anyone working with large-scale Ethereum data
 
 ## Navigating This Book
 
-- To install Brontes, refer to the [installation guide](./installation/installation.md).
-- To run Brontes, follow the instructions in the [run guide](./run/run_brontes.md).
-- To learn about how brontes works under the hood, see the [architecture doc](./architecture/intro.md).
+- **Installation**: Get started with our [step-by-step guide](./installation/installation.md)
+- **Running Brontes**: Follow our [quick-start instructions](./run/run_brontes.md)
+- **Under the Hood**: Explore Brontes' [architecture](./architecture/intro.md)
+- **MEV Identification**: Dive into our [mev-inspector methodologies](./mev_inspectors/intro.md)
 
 ## Licensing and Community Involvement
 

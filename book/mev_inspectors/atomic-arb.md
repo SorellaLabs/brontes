@@ -2,9 +2,10 @@
 
 The Atomic Arbitrage Inspector is designed to detect and analyze the profitability of various forms of atomic arbitrage.
 
+//TODO: Add transfer to swap creation to identify arbs on missing exchanges
 **What is an atomic arbitrage?**
 
-An atomic arbitrage is a type of arbitrage that involves multiple trades that are executed atomically and result in a profit for the trader. Typically, atomic arbitrages involve arbitraging price differences between different liquidity pools.
+An atomic arbitrage is a type of arbitrage that involves multiple trades that are executed in a single transaction and result in a profit for the trader. Typically, these involve arbitraging price differences between different liquidity pools.
 
 ## Methodology
 
@@ -14,7 +15,7 @@ The inspector retrieves transactions in the block that involve `swap`, `transfer
 
 ### Step 2: Identify and Classify Potential Atomic Arbitrages
 
-In this step, we analyze the sequence of swaps within each transaction to identify and categorize potential atomic arbitrages.
+In this step, we analyze the sequence of swaps within each transaction to identify and categorize potential arbitrages.
 
 #### Classification Criteria
 
@@ -32,16 +33,9 @@ We categorize atomic arbitrages into four distinct types:
 3. **Stablecoin**: Arbitrages involving stablecoin pairs
 4. **Long Tail**: Complex patterns not fitting the above categories
 
-The arbitrage type will determine the filtering conditions applied in the subsequent steps.
+The arbitrage type will determine the filtering conditions applied subsequent steps.
 
 > **Note:** This is by no means a comprehensive list of atomic arbitrage types. If you have discovered atomic arbitrages that do not fit these criteria, please let us know. We would love to expand our classification to include new patterns and improve our analysis.
-
-We classify atomic arbitrages in these distinct types:
-
-- Triangle,
-- CrossPair
-- StablecoinArb,
-- LongTail
 
 #### For Zero or One Swap
 

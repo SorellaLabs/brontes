@@ -46,13 +46,13 @@ use crate::{
 pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     fn get_metadata(&self, block_num: u64) -> impl Future<Output = eyre::Result<Metadata>> + Send;
 
-    #[cfg(not(feature = "cex-dex-markout"))]
+    #[cfg(feature = "cex-dex-quotes")]
     fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> impl Future<Output = eyre::Result<Vec<crate::CexPriceData>>> + Send;
 
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,

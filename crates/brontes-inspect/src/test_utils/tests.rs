@@ -219,9 +219,9 @@ impl InspectorTestUtils {
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
 
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             let cmp = Inspectors::CexDex;
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             let cmp = Inspectors::CexDexMarkout;
 
             if config.expected_mev_type == cmp {
@@ -331,9 +331,9 @@ impl InspectorTestUtils {
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
 
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             let cmp = Inspectors::CexDex;
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             let cmp = Inspectors::CexDexMarkout;
 
             if config.inspectors.contains(&cmp) {

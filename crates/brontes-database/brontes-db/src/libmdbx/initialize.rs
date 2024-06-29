@@ -204,7 +204,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
             async move {
                 if cex_table_flag {
-                    #[cfg(not(feature = "cex-dex-markout"))]
+                    #[cfg(feature = "cex-dex-quotes")]
                     {
                         let data = clickhouse
                             .get_cex_prices(CexRangeOrArbitrary::Range(start, end + 1))
@@ -224,7 +224,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     }
 
-                    #[cfg(feature = "cex-dex-markout")]
+                    #[cfg(not(feature = "cex-dex-quotes"))]
                     {
                         let data = clickhouse
                             .get_cex_trades(CexRangeOrArbitrary::Range(start, end + 1))
@@ -310,7 +310,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
             async move {
                 if cex_table_flag {
-                    #[cfg(not(feature = "cex-dex-markout"))]
+                    #[cfg(feature = "cex-dex-quotes")]
                     {
                         let data = clickhouse
                             .get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range))
@@ -331,7 +331,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         }
                     }
 
-                    #[cfg(feature = "cex-dex-markout")]
+                    #[cfg(not(feature = "cex-dex-quotes"))]
                     {
                         let data = clickhouse
                             .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))

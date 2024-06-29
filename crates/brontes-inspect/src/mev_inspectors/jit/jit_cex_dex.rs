@@ -15,7 +15,7 @@ use tracing::trace;
 
 use super::JitInspector;
 use crate::{
-    cex_dex_markout::{CexDexMarkoutInspector, CexDexProcessing},
+    cex_dex::{CexDexMarkoutInspector, CexDexProcessing},
     Inspector,
 };
 

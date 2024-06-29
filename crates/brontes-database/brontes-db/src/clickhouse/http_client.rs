@@ -115,9 +115,9 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 max(eth_prices.price_maker.0, eth_prices.price_maker.1),
                 block_meta.value.private_flow.into_iter().collect(),
             );
-            #[cfg(feature = "cex-dex-markout")]
+            #[cfg(not(feature = "cex-dex-quotes"))]
             let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
-            #[cfg(not(feature = "cex-dex-markout"))]
+            #[cfg(feature = "cex-dex-quotes")]
             let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
             metadata
         })
@@ -266,7 +266,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         Ok(res)
     }
 
-    #[cfg(not(feature = "cex-dex-markout"))]
+    #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
@@ -274,7 +274,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         unimplemented!()
     }
 
-    #[cfg(feature = "cex-dex-markout")]
+    #[cfg(not(feature = "cex-dex-quotes"))]
     async fn get_cex_trades(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,

@@ -99,11 +99,8 @@ tikv-jemallocator = { version = "0.5.0", features = [
 [features]
 default = [
   "brontes-core/default",
-  "brontes-database/default",
   "brontes-classifier/default",
-  "brontes-inspect/default",
   "jemalloc",
-  "cex-dex-markout",
 ]
 
 jemalloc = ["brontes-metrics/jemalloc"]
@@ -112,10 +109,10 @@ dhat-heap = []
 
 sorella-server = ["local-reth", "local-clickhouse"]
 
-cex-dex-markout = [
-  "brontes-types/cex-dex-markout",
-  "brontes-database/cex-dex-markout",
-  "brontes-inspect/cex-dex-markout",
+cex-dex-quotes = [
+  "brontes-types/cex-dex-quotes",
+  "brontes-database/cex-dex-quotes",
+  "brontes-inspect/cex-dex-quotes",
 ]
 
 
