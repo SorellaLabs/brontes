@@ -32,7 +32,7 @@ Brontes is designed for:
 
 - Blockchain researchers and data scientists
 - MEV analysts and strategists
-- DeFi protocol developers and auditors
+- DeFi protocol developers
 - Anyone working with large-scale Ethereum data
 
 ## Navigating This Book

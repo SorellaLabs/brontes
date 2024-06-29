@@ -10,7 +10,7 @@ brontes run
 
 ### Required Parameters
 
-When running Brontes, you must a start block and end block
+When running Brontes, you must input a start block and end block
 
 - **Start Block**: The block number from which Brontes begins processing.
 - **End Block**: The block number at which Brontes stops processing. If omitted, Brontes will run historically and continue at the tip until manually stopped, provided you have access to the metadata API.
