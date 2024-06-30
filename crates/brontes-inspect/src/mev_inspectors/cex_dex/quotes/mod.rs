@@ -1,5 +1,5 @@
-mod cex_dex_quotes;
+mod cex_dex;
 mod types;
 
-pub use cex_dex_quotes::CexDexQuotesInspector;
+pub use cex_dex::CexDexQuotesInspector;
 pub use types::{log_price_delta, CexDexProcessing, ExchangeLeg, PossibleCexDex};
