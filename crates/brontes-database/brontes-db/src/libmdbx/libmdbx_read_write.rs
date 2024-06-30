@@ -490,8 +490,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope, db_read, "try_fetch_token_info")]
-    fn try_fetch_token_info(&self, address: Address) -> eyre::Result<TokenInfoWithAddress> {
-        let address = if address == ETH_ADDRESS { WETH_ADDRESS } else { address };
+    fn try_fetch_token_info(&self, og_address: Address) -> eyre::Result<TokenInfoWithAddress> {
+        let address = if og_address == ETH_ADDRESS { WETH_ADDRESS } else { og_address };
 
         self.db
             .view_db(|tx| match self.cache.token_info(true, |lock| lock.get(&address)) {
@@ -504,7 +504,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                             lock.get_with(address, || data.clone());
                         })
                     })?
-                    .map(|inner| TokenInfoWithAddress { inner, address })
+                    .map(|inner| TokenInfoWithAddress { inner, address: og_address })
                     .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
             })
     }
