@@ -364,7 +364,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         if no_pricing_calculated {
             profit_usd = 0.0;
         }
-        tracing::info!(?bundle_deltas);
+        tracing::info!("{:#?}", bundle_deltas);
 
         let balance_deltas = self.get_bundle_accounting(bundle_txes, bundle_deltas, price_f);
 
