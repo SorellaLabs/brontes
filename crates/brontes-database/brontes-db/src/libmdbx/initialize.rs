@@ -693,7 +693,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
-        let block_range = (19000000, 20000000);
+        let block_range = (19000000, 20000010);
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         init_threadpools(10);
@@ -723,34 +723,34 @@ mod tests {
                 .unwrap();
         }
 
-        // // TokenDecimals
-        // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // TokenDecimals
+        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // AddressToProtocol
-        // AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // AddressToProtocol
+        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
         // Metadata
         BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
 
-        // // PoolCreationBlocks
-        // PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // PoolCreationBlocks
+        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // Builder
-        // Builder::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // Builder
+        Builder::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
 
-        // // AddressMeta
-        // AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-        //     .await
-        //     .unwrap();
+        // AddressMeta
+        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+            .await
+            .unwrap();
     }
 }
