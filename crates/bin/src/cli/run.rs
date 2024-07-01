@@ -102,7 +102,7 @@ impl RunArgs {
         brontes_db_endpoint: String,
         ctx: CliContext,
     ) -> eyre::Result<()> {
-        banner::print_banner();
+        banner::rain();
 
         if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
             if start > end {

@@ -81,7 +81,6 @@ hyper.workspace = true
 # cli
 clap.workspace = true
 # logging
-indoc = "2"
 rayon.workspace = true
 cfg-if = "1.0.0"
 
@@ -91,6 +90,16 @@ prometheus = "0.13.4"
 itertools.workspace = true
 fdlimit = "0.3.0"
 dhat = "0.3.3"
+
+
+# banner
+indoc = "2"
+crossterm = "0.27.0"
+regex = "1.10.4"
+rand = "0.8.5"
+ansi_term = "0.12.1"
+ansi-parser = "0.9.0"
+
 
 tikv-jemallocator = { version = "0.5.0", features = [
   "unprefixed_malloc_on_supported_platforms",
