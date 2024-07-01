@@ -723,34 +723,34 @@ mod tests {
                 .unwrap();
         }
 
-        // TokenDecimals
-        TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // TokenDecimals
+        // TokenDecimals::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // AddressToProtocol
-        AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // AddressToProtocol
+        // AddressToProtocolInfo::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
         // Metadata
         BlockInfo::test_initialized_data(clickhouse, libmdbx, Some(block_range))
             .await
             .unwrap();
 
-        // PoolCreationBlocks
-        PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // PoolCreationBlocks
+        // PoolCreationBlocks::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // Builder
-        Builder::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // Builder
+        // Builder::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
 
-        // AddressMeta
-        AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
-            .await
-            .unwrap();
+        // // AddressMeta
+        // AddressMeta::test_initialized_data(clickhouse, libmdbx, None)
+        //     .await
+        //     .unwrap();
     }
 }

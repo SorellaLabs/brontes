@@ -609,6 +609,16 @@ mod tests {
 
     use super::*;
 
+    #[brontes_macros::test]
+    async fn test_block_info_query() {
+        let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
+        let _ = test_db
+            .client
+            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
+            .await
+            .unwrap();
+    }
+
     async fn load_tree() -> Arc<BlockTree<Action>> {
         let classifier_utils = ClassifierTestUtils::new().await;
         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
