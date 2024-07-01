@@ -14,16 +14,18 @@ use super::{
     cex::{CexPriceMap, CexTradeMap},
     dex::DexQuotes,
 };
-#[cfg(not(feature = "cex-dex-quotes"))]
-use crate::db::cex::CexExchange;
 use crate::{
     constants::WETH_ADDRESS,
-    db::{cex::config::CexDexTradeConfig, redefined_types::primitives::*},
+    db::redefined_types::primitives::*,
     implement_table_value_codecs_with_zc,
-    normalized_actions::NormalizedSwap,
     pair::Pair,
     serde_utils::{option_addresss, u256, vec_txhash},
     FastHashSet,
+};
+#[cfg(not(feature = "cex-dex-quotes"))]
+use crate::{
+    db::cex::{config::CexDexTradeConfig, CexExchange},
+    normalized_actions::NormalizedSwap,
 };
 
 /// libmdbx type

@@ -101,8 +101,7 @@ tikv-jemallocator = { version = "0.5.0", features = [
 default = [
   "brontes-core/default",
   "brontes-classifier/default",
-  "jemalloc",
-  "sorella-server"
+  "jemalloc"
 ]
 
 jemalloc = ["brontes-metrics/jemalloc"]
