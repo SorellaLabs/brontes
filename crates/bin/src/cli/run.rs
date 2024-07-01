@@ -139,7 +139,9 @@ impl RunArgs {
         } else {
             tracing::info!("starting monitor");
             let (tx, rx) = tokio::sync::mpsc::channel(10);
-            start_hr_monitor(tx).await?;
+            if let Err(e) = start_hr_monitor(tx).await {
+                tracing::error!(err=%e);
+            }
             tracing::info!("monitor server started");
             Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
         };
