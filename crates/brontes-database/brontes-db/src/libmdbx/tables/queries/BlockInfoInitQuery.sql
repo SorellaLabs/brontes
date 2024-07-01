@@ -62,4 +62,3 @@ LEFT JOIN relay_bids r ON b.block_number = r.block_number AND b.block_hash = r.b
 LEFT JOIN relay_payloads p ON b.block_number = p.block_number AND b.block_hash = p.block_hash
 LEFT JOIN block_observations o ON b.block_number = o.block_number AND b.block_hash = o.block_hash
 LEFT JOIN private_txs v ON b.block_number = v.block_number
-ORDER BY block_number DESC LIMIT 1 FORMAT Vertical
