@@ -693,7 +693,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_intialize_clickhouse_tables() {
-        let block_range = (19000000, 20000010);
+        let block_range = (19000000, 19000010);
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
         init_threadpools(10);
