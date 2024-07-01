@@ -1,27 +1,35 @@
 # Cex-Dex Inspector
 
-The Cex-Dex inspector identifies arbitrage between centralized and decentralized exchanges. While on-chain DEX trades are visible, CEX trades must be inferred. Using available CEX trade data, the inspector estimates likely CEX trade prices. This allows for approximating the full arbitrage strategy and its potential profitability.
+The Cex-Dex inspector identifies arbitrage between centralized and decentralized exchanges. While on-chain DEX trades are visible, CEX trades must be inferred. Using available CEX trade data the inspector estimates likely CEX trade prices to approximate the full arbitrage strategy and its profitability.
 
 **What is Cex-Dex Arbitrage?**
 
-CEX/DEX arbitrage is a product of arbitrageurs exploiting price discrepancies between centralized and decentralized exchanges. Centralized exchanges (CEX) operate in near-continuous time, updating prices as trades occur, which reflects market changes in real-time. On the contrary, decentralized exchanges (DEX) operate in discrete time and display price changes as an aggregate effect of the transactions within a block. Thus, DEX price displays update only when a new block is produced which means that price discovery always occurs on centralized exchanges. Consequently, the DEX prices constantly lag behind the more rapidly adjusting CEX prices, creating opportunities for arbitrage.
+Centralized exchanges (CEX) and decentralized exchanges (DEX) operate on fundamentally different time scales. CEX function in continuous time, allowing trades to be executed at any moment without interruption. In contrast, DEX operate in discrete time intervals, as trades are only executed upon inclusion in a new block - leaving prices stale in between blocks. Consequently, DEX prices consistently lag behind the more frequently updated CEX prices, creating arbitrage opportunities between the two exchange types.
 
 ## Methodology
 
-### Step 1: Retrieve Relevant Transactions
+### Step 1: Identify Potential Arbitrage Transactions
 
-The inspector retrieves transactions in the block that involve `swap`, `transfer`, `eth_transfer`, `aggregator_swap` actions.
+The inspector works in two phases:
 
-### Step 2: Identify Potential Cex-Dex Arbitrage
+First, it collects all block transactions involving `swap`, `transfer`, `eth_transfer`, `aggregator_swap` actions.
 
-For each transaction:
+Then, for each transaction:
 
-1. Filter out solver settlement and DeFi automation transactions.
-2. Extract DEX swaps and transfers from the transaction.
-3. If no DEX swaps are found, attempt to convert transfers to swaps for labeled CEX-DEX bots.
-4. Filter out triangular arbitrage (where the first and last token in the swap sequence are the same).
+1. Discard transactions if it's a solver settlements or from a known DeFi automation bot.
+2. Extract DEX swaps and transfers.
+3. If no swaps are found, attempt to reconstruct swaps from transfers.
+4. Discard transactions that represent atomic arbitrage (where trades form a closed loop).
 
-### Step 3: Estimate Centralized Exchange Prices
+TODO: We are currently only attempting to create swaps from transfers if there are no identified swaps. We should instead do this for all transfers but apply a stricter methodology to identify them.
+
+### Step 2: CEX Price Estimation
+
+1. Merge Sequential Swaps
+
+- We first use the `merge_possible_swaps` function to combine sequential swaps via intermediaries into direct swaps where possible.
+- This process identifies cases where two swaps (A->B and B->C) can be represented as a single swap (A->C).
+- Merging swaps allows us to evaluate CEX prices more accurately, especially when there's a direct trading pair on centralized exchanges.
 
 For each DEX swap, the inspector estimates corresponding CEX prices using two methods:
 

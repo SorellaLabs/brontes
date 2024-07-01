@@ -154,6 +154,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
 
+                // TODO: Convert transfers to swaps even if we have swaps, but do it in a more
+                // robust way & deduplicate the swaps post
                 if dex_swaps.is_empty() {
                     if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
                         dex_swaps.push(extra);
@@ -596,6 +598,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         (dex_swaps, res)
     }
 
+    //TODO: This should likely be done on the pricing side instead of here, so that
+    // we can pass it on to the pricer and it can attempt to get the price doing
+    // this & the baseline individual price calculation so that we can make sure
+    // we're getting the best price
+    // We also want to make
     /// see's if we can form a intermediary path on dex swaps
     fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
         let mut matching: FastHashMap<_, Vec<_>> = FastHashMap::default();
