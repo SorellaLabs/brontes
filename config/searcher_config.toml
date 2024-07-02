@@ -212,3 +212,6 @@ sibling_searchers = ["0x3FAcE0004bC1003B9d0672e7B23134Cb80115fb6", "0xA0d5a274F9
 [searcher_contracts."0x6b75d8AF000000e20B7a7DDf000Ba900b4009A80"]
 name = "jaredfromsubway MEV bot"
 mev_types = ["Sandwich"]
+
+[searcher_contracts."0x00000000009E50a7dDb7a7B0e2ee6604fd120E49"]
+mev_types = ["AtomicArb"]
