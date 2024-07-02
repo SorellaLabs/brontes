@@ -592,12 +592,18 @@ where
     query = query.replace(
         "    ? AS start_block,
     ? AS end_block",
-        &format!("{:?} AS block_numbers", range),
+        &format!(
+            "    block_numbers AS (
+        SELECT
+            arrayJoin({:?}) AS block_number
+    )",
+            range
+        ),
     );
 
     query = query.replace(
         "block_number >= start_block AND block_number < end_block",
-        "has(block_numbers, block_number)",
+        "block_number in block_numbers",
     );
 
     query
