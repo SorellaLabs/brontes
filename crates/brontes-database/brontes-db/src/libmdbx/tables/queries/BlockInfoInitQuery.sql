@@ -1,4 +1,6 @@
 WITH
+    ? AS start_block,
+    ? AS end_block,
     relay_bids AS (
         SELECT
             block_number,
@@ -7,7 +9,7 @@ WITH
             anyLast(proposer_fee_recipient) AS proposer_fee_recipient,
             anyLast(value) AS proposer_mev_reward
         FROM ethereum.relays 
-        WHERE block_number >= ? AND block_number < ? AND value != 0 AND relays.proposer_fee_recipient != ''
+        WHERE block_number >= start_block AND block_number < end_block AND value != 0 AND relays.proposer_fee_recipient != ''
         GROUP BY block_number, block_hash
     ),
     relay_payloads AS (
@@ -17,7 +19,7 @@ WITH
             anyLast(proposer_fee_recipient) AS proposer_fee_recipient,
             anyLast(value) AS proposer_mev_reward
         FROM ethereum.relay_payloads
-        WHERE block_number >= ? AND block_number < ? AND value != 0 AND relay_payloads.proposer_fee_recipient != ''
+        WHERE block_number >= start_block AND block_number < end_block AND value != 0 AND relay_payloads.proposer_fee_recipient != ''
         GROUP BY block_number, block_hash
     ),
     raw_blocks AS (
@@ -26,7 +28,7 @@ WITH
             block_hash,
             anyLast(block_timestamp) AS block_timestamp
         FROM ethereum.blocks
-        WHERE block_number >= ? AND block_number < ? AND valid = 1
+        WHERE block_number >= start_block AND block_number < end_block AND valid = 1
         GROUP BY block_number, block_hash
     ),
     block_observations AS (
@@ -35,7 +37,7 @@ WITH
             block_hash,
             round(max(timestamp) / 1000) AS p2p_timestamp
         FROM ethereum.block_observations
-        WHERE block_number >= ? AND block_number < ?
+        WHERE block_number >= start_block AND block_number < end_block
         GROUP BY block_number, block_hash
     ),
     private_txs AS (
@@ -43,7 +45,7 @@ WITH
             block_number,
             groupUniqArray(tx_hash) AS private_flow
         FROM eth_analytics.private_txs
-        WHERE block_number >= ? AND block_number < ?
+        WHERE block_number >= start_block AND block_number < end_block
         GROUP BY block_number
     )
 SELECT
