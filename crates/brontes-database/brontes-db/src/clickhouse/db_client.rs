@@ -355,7 +355,7 @@ impl ClickhouseHandle for Clickhouse {
 
         query = query.replace(
             "block_number >= start_block AND block_number < end_block",
-            &format!("block_number IN block_numbers", range),
+            "block_number IN block_numbers",
         );
 
         self.client
