@@ -347,6 +347,17 @@ impl ClickhouseHandle for Clickhouse {
             &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
         );
 
+        query = query.replace(
+            "    ? AS start_block,
+    ? AS end_block",
+            &format!("[{:?}] AS block_numbers", range),
+        );
+
+        query = query.replace(
+            "block_number >= start_block AND block_number < end_block",
+            &format!("block_number IN block_numbers", range),
+        );
+
         self.client
             .query_many::<D, _>(&query, &())
             .await
