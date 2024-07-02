@@ -338,25 +338,7 @@ impl ClickhouseHandle for Clickhouse {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
-        let mut query = T::INIT_QUERY
-            .expect("no init query found for clickhouse query")
-            .to_string();
-
-        query = query.replace(
-            "block_number >= ? AND block_number < ?",
-            &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
-        );
-
-        query = query.replace(
-            "    ? AS start_block,
-    ? AS end_block",
-            &format!("[{:?}] AS block_numbers", range),
-        );
-
-        query = query.replace(
-            "block_number >= start_block AND block_number < end_block",
-            "has(block_numbers, block_number)",
-        );
+        let query = format_arbitrary_query::<T>(range);
 
         self.client
             .query_many::<D, _>(&query, &())
@@ -591,6 +573,34 @@ pub fn clickhouse_config() -> db_interfaces::clickhouse::config::ClickhouseConfi
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
 
     db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None)
+}
+
+fn format_arbitrary_query<T>(range: &'static [u64]) -> String
+where
+    T: CompressedTable,
+    T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+{
+    let mut query = T::INIT_QUERY
+        .expect("no init query found for clickhouse query")
+        .to_string();
+
+    query = query.replace(
+        "block_number >= ? AND block_number < ?",
+        &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", range),
+    );
+
+    query = query.replace(
+        "    ? AS start_block,
+    ? AS end_block",
+        &format!("{:?} AS block_numbers", range),
+    );
+
+    query = query.replace(
+        "block_number >= start_block AND block_number < end_block",
+        "has(block_numbers, block_number)",
+    );
+
+    query
 }
 
 #[cfg(test)]
