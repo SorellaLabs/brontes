@@ -460,6 +460,20 @@ mod tests {
     }
 
     #[brontes_macros::test]
+    async fn test_misclassification() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let tx = hex!("00044a090a5eb970334de119b680834ddcdd55cc34488c7446558e98d2660bfb").into();
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(0)
+            .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
     async fn test_not_false_positive_uni_router() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
         let tx = hex!("ac1127310fdec0b07e618407eabfb7cdf5ada81dc47e914c76fc759843346a0e").into();

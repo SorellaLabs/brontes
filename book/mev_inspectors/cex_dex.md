@@ -23,6 +23,8 @@ Then, for each transaction:
 
 TODO: We are currently only attempting to create swaps from transfers if there are no identified swaps. We should instead do this for all transfers but apply a stricter methodology to identify them.
 
+FOR API: Intermediary skip only happens when we have A->B->C which will change what is stored in the bundle data vs the tree, so you know that you should show the A->B->C on a single page for the details when these two are different.
+
 ### Step 2: CEX Price Estimation
 
 1. Merge Sequential Swaps
