@@ -460,6 +460,9 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
+    // TODO: This fails because we don't classify the DODO swap on this contract
+    // https://etherscan.io/address/0x7ca7b5eaaf526d93705d28c1b47e9739595c90e7#code
+    //
     #[brontes_macros::test]
     async fn test_misclassification() {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
