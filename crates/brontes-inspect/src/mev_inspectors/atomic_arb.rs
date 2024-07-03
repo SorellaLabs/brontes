@@ -185,7 +185,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
             .then_some(profit),
             AtomicArbType::LongTail => (self.is_long_tail(&info, requirement_multiplier)
-                && is_profitable)
+                && is_profitable
+                || self.is_long_tail(&info, requirement_multiplier) & !has_dex_price)
                 .then_some(profit),
         }?;
 
