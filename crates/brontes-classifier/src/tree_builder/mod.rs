@@ -562,6 +562,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             Some(head) => head.get_immediate_parent_node(trace_index - 1),
             None => return (vec![], vec![Action::Unclassified(trace)]),
         };
+
+        println!("Parent node data: {:?}", node_data);
+
         let Some(node_data) = node_data else {
             debug!(block, tx_idx, "failed to find create parent node");
             return (vec![], vec![Action::Unclassified(trace)]);
@@ -604,6 +607,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     }
 
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
+        println!("Inserting new pool: {:?}", pool);
+
         if self
             .libmdbx
             .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)
