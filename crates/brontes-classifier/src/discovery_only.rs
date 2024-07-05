@@ -13,7 +13,7 @@ use brontes_types::{
 use futures::future::join_all;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use self::erc20::try_decode_transfer;
 use crate::{

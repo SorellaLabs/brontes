@@ -15,13 +15,10 @@ use brontes_types::{
 };
 use criterion::{black_box, Criterion};
 use reth_db::DatabaseError;
-use reth_rpc_types::trace::parity::Action as TraceAction;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
-use crate::{
-    ActionCollection, Classifier, DiscoveryClassifier, FactoryDiscoveryDispatch, ProtocolClassifier,
-};
+use crate::{ActionCollection, Classifier, FactoryDiscoveryDispatch, ProtocolClassifier};
 
 pub struct ClassifierBenchUtils {
     trace_loader:          TraceLoader,
