@@ -570,7 +570,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 head.get_last_create_call(&mut start_index, node_data_store);
                 head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
             }
-            None => return (vec![], vec![Action::Unclassified(trace)]),
+            None => {
+                tracing::warn!("no root head found");
+                return (vec![], vec![Action::Unclassified(trace)])
+            }
         };
 
         let search_data = all_nodes
@@ -584,6 +587,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .collect::<Vec<_>>();
 
         if search_data.is_empty() {
+            tracing::warn!("search data empty");
             return (vec![], vec![Action::Unclassified(trace)])
         }
 
