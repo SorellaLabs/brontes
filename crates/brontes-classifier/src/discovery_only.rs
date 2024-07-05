@@ -277,31 +277,34 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         trace: TransactionTraceWithLogs,
         trace_index: u64,
     ) {
-        let from_address = trace.get_from_addr();
         let created_addr = trace.get_create_output();
 
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
-        let node_data = match root_head {
-            Some(head) => head.get_immediate_parent_node(trace_index - 1),
+        let mut all_nodes = Vec::new();
+
+        match root_head {
+            Some(head) => head.get_all_parent_nodes(&mut all_nodes, trace_index),
             None => return,
         };
-        let Some(node_data) = node_data else {
-            debug!(block, tx_idx, "failed to find create parent node");
-            return
-        };
 
-        let Some(calldata) = node_data_store
-            .get_ref(node_data.data)
-            .and_then(|node| node.first())
-            .and_then(|res| res.get_calldata())
-        else {
+        let search_data = all_nodes
+            .iter()
+            .filter_map(|node| {
+                node_data_store
+                    .get_ref(node.data)
+                    .and_then(|node| node.first())
+            })
+            .filter_map(|node_data| Some((node_data.get_from_address(), node_data.get_calldata()?)))
+            .collect::<Vec<_>>();
+
+        if search_data.is_empty() {
             return
-        };
+        }
 
         join_all(
             DiscoveryClassifier::default()
-                .dispatch(self.provider.clone(), from_address, created_addr, trace_index, calldata)
+                .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
                 .await
                 .into_iter()
                 // insert the pool returning if it has token values.

@@ -300,6 +300,15 @@ impl Node {
             .collect::<Vec<_>>()
     }
 
+    pub fn get_all_parent_nodes(&self, res: &mut Vec<Node>, tx_index: u64) {
+        if self.index < tx_index {
+            res.push(self.clone());
+            for i in &self.inner {
+                i.get_all_parent_nodes(res, tx_index);
+            }
+        }
+    }
+
     pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node> {
         if self.inner.last()?.index == tx_index {
             Some(self)

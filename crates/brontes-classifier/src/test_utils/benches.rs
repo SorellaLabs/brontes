@@ -160,65 +160,6 @@ impl ClassifierBenchUtils {
         Ok(())
     }
 
-    pub fn bench_protocol_discovery(
-        &self,
-        bench_name: &str,
-        iters: usize,
-        tx: TxHash,
-        created_pool: Address,
-        c: &mut Criterion,
-    ) -> Result<(), ClassifierBenchError> {
-        let TxTracesWithHeaderAnd { trace, .. } = self
-            .rt
-            .block_on(self.trace_loader.get_tx_trace_with_header(tx))?;
-
-        let found_trace = trace
-            .trace
-            .iter()
-            .filter(|t| t.is_create())
-            .find(|t| t.get_create_output() == created_pool)
-            .ok_or_else(|| ClassifierBenchError::DiscoveryError(created_pool))?;
-
-        let mut trace_addr = found_trace.get_trace_address();
-
-        if trace_addr.len() > 1 {
-            trace_addr.pop().unwrap();
-        } else {
-            return Err(ClassifierBenchError::ProtocolDiscoveryError(created_pool))
-        };
-
-        let p_trace = trace
-            .trace
-            .iter()
-            .find(|f| f.get_trace_address() == trace_addr)
-            .ok_or_else(|| ClassifierBenchError::ProtocolDiscoveryError(created_pool))?;
-
-        let TraceAction::Call(call) = &p_trace.trace.action else { panic!() };
-
-        c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter(|| async move {
-                let from_address = found_trace.get_from_addr();
-                let created_addr = found_trace.get_create_output();
-                let dispatcher = DiscoveryClassifier::default();
-                let call_data = call.input.clone();
-                let tracer = self.trace_loader.get_provider();
-
-                for _ in 0..=iters {
-                    black_box(dispatcher.dispatch(
-                        tracer.clone(),
-                        from_address,
-                        created_addr,
-                        found_trace.trace_idx,
-                        call_data.clone(),
-                    ))
-                    .await;
-                }
-            })
-        });
-
-        Ok(())
-    }
-
     pub fn bench_protocol_classification(
         &self,
         bench_name: &str,
