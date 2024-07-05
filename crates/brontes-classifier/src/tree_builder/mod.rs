@@ -12,6 +12,7 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
+
 mod tree_pruning;
 pub(crate) mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -28,7 +29,7 @@ use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};
 use utils::{decode_transfer, get_coinbase_transfer};
 
@@ -596,6 +597,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     // insert the pool returning if it has token values.
                     .filter(|pool| !self.contains_pool(pool.pool_address))
                     .map(|pool| async {
+                        tracing::trace!(
+                            target: "brontes_classifier::discovery",
+                            "Discovered new {} pool:
+                            \nAddress:{}
+                            ",
+                            pool.pool_address,
+                            pool.protocol,
+                        );
                         self.insert_new_pool(block, &pool).await;
                         pool.try_into().ok()
                     }),
