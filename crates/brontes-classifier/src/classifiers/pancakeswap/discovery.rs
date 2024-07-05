@@ -75,34 +75,4 @@ pub mod test {
             .await
             .unwrap();
     }
-
-    async fn test_pancake_v3_discovery() {
-        let utils = ClassifierTestUtils::new().await;
-        let tx =
-            TxHash::new(hex!("2b16d7a3937375d50b29bbec621b3f33bee00c76d1f4c907ae483fa49f63e2f1"));
-
-        let eq_create = NormalizedNewPool {
-            trace_index:  1,
-            protocol:     Protocol::PancakeSwapV3,
-            pool_address: Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
-            tokens:       vec![
-                Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
-                TokenInfoWithAddress::usdt().address,
-            ],
-        };
-
-        utils
-            .test_discovery_classification(
-                tx,
-                Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
-                |mut pool| {
-                    assert_eq!(pool.len(), 1);
-                    let pool = pool.remove(0);
-                    assert_eq!(pool.protocol, eq_create.protocol);
-                    assert_eq!(pool.tokens, eq_create.tokens);
-                },
-            )
-            .await
-            .unwrap();
-    }
 }
