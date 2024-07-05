@@ -48,14 +48,14 @@ pub fn discovery_impl(token_stream: TokenStream) -> syn::Result<TokenStream> {
                     let Ok(decoded_data) = <#function_call_path
                         as ::alloy_sol_types::SolCall>::abi_decode(&parent_calldata[..], false)
                         else {
-                            ::tracing::error!("{} failed to decode calldata", #discovery_name_str);
+                            ::tracing::error!(target: "brontes_classifier::discovery", "{} failed to decode calldata", #discovery_name_str);
                             return Vec::new();
                     };
                     let res = (#address_call_function)
                         (deployed_address, trace_idx, decoded_data, tracer)
                         .await;
                     if res.is_empty() {
-                            ::tracing::error!("discovery classifier returned nothing");
+                            ::tracing::error!(target: "brontes_classifier::discovery", "discovery classifier returned nothing");
                     }
 
                     res
@@ -70,13 +70,13 @@ fn is_proper_address(possible_address: &Literal) -> syn::Result<()> {
     if !stred.starts_with("0x") {
         return Err(syn::Error::new(
             possible_address.span(),
-            "given factory address is invalid. Needs to start with 0x",
+            "Supplied factory address is invalid. Needs to start with 0x",
         ))
     }
     if stred.len() != 42 {
         return Err(syn::Error::new(
             possible_address.span(),
-            format!("given factory address length is incorrect got: {} wanted: 40", stred.len()),
+            format!("Supplied factory address length is incorrect got: {} wanted: 40", stred.len()),
         ))
     }
 
@@ -156,7 +156,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                             let tracer = tracer.clone();
                             async move {
                         if parent_calldata.len() < 4 {
-                            ::tracing::debug!(?deployed_address, ?factory, "invalid calldata length");
+                            ::tracing::debug!(target: "brontes_classifier::discovery", ?deployed_address, ?factory, "invalid calldata length");
                             return Vec::new()
                         }
 
@@ -171,6 +171,7 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                         match key {
                             #(
                                 #var_name => {
+                                ::tracing::trace!(target: "brontes_classifier::discovery", ?deployed_address, ?factory, ?key, "match found");
                                 return
                                     crate::FactoryDiscovery::decode_create_trace(
                                         &self.#i,
@@ -181,7 +182,10 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
                                     ).await
                                 }
                             )*
-                            _ => Vec::new()
+                            _ => {
+                                ::tracing::trace!(target: "brontes_classifier::discovery", ?deployed_address, ?factory, ?key, "no match found");
+                                Vec::new()
+                            }
                         }
                     }
                         })
