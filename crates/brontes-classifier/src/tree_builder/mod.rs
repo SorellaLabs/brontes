@@ -578,11 +578,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         let search_data = all_nodes
             .iter()
-            .filter_map(|node| {
-                node_data_store
-                    .get_ref(node.data)
-                    .and_then(|node| node.first())
-            })
+            .filter_map(|node| node_data_store.get_ref(node.data))
+            .flatten()
             .filter_map(|node_data| Some((node_data.get_to_address(), node_data.get_calldata()?)))
             .collect::<Vec<_>>();
 
@@ -596,8 +593,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
                 .await
                 .into_iter()
-                // insert the pool returning if it has token values.
-                .filter(|pool| !self.contains_pool(pool.pool_address))
                 .map(|pool| async {
                     self.insert_new_pool(block, &pool).await;
                     Some((pool.clone().try_into().ok()?, pool))
