@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
 use brontes_macros::discovery_impl;
 use brontes_pricing::Protocol;
-
+/*
 discovery_impl!(
     PancakeSwapV3Discovery,
     crate::UniswapV3Factory::createPoolCall,
@@ -18,7 +18,7 @@ discovery_impl!(
         }]
     }
 );
-
+*/
 discovery_impl!(
     PancakeSwapV2Discovery,
     crate::UniswapV2Factory::createPairCall,
@@ -37,7 +37,7 @@ discovery_impl!(
 );
 
 discovery_impl!(
-    PancakeSwapV3Discoery,
+    PancakeSwapV3Discovery,
     crate::PancakeSwapV3PoolDeployer::deployCall,
     0x41ff9aa7e16b8b1a8a8dc4f0efacd93d02d071c9,
     |deployed_address: Address, trace_index: u64, call_data: deployCall, _| async move {
