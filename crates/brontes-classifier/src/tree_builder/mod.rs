@@ -554,8 +554,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Vec<Action>) {
         let from_address = trace.get_from_addr();
-
-        println!("From address of create trace is: {:#?}", from_addresse);
         let created_addr = trace.get_create_output();
 
         // get the immediate parent node of this create action so that we can decode the
@@ -564,9 +562,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             Some(head) => head.get_immediate_parent_node(trace_index - 1),
             None => return (vec![], vec![Action::Unclassified(trace)]),
         };
-
-        println!("Parent node data: {:#?}", node_data);
-
         let Some(node_data) = node_data else {
             debug!(block, tx_idx, "failed to find create parent node");
             return (vec![], vec![Action::Unclassified(trace)]);
@@ -579,27 +574,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         else {
             return (vec![], vec![Action::Unclassified(trace)]);
         };
-        println!("Attempting to classify create action: {:#?}", calldata);
-
-        println!(
-            "From address: {:#?}",
-            node_data_store
-                .get_ref(node_data.data)
-                .unwrap()
-                .first()
-                .unwrap()
-                .get_from_address()
-        );
-
-        println!(
-            "To address: {:#?}",
-            node_data_store
-                .get_ref(node_data.data)
-                .unwrap()
-                .first()
-                .unwrap()
-                .get_to_address()
-        );
 
         (
             join_all(
@@ -630,8 +604,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     }
 
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
-        println!("Inserting new pool: {:?}", pool);
-
         if self
             .libmdbx
             .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)
