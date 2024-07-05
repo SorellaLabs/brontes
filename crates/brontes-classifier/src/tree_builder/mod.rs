@@ -555,7 +555,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
     ) -> (Vec<DexPriceMsg>, Vec<Action>) {
         let from_address = trace.get_from_addr();
 
-        println!("From address of create trace is: {:#?}", from_address);
+        println!("From address of create trace is: {:#?}", from_addresse);
         let created_addr = trace.get_create_output();
 
         // get the immediate parent node of this create action so that we can decode the
