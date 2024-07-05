@@ -43,9 +43,18 @@ pub trait NormalizedAction: Debug + Send + Sync + Clone + PartialEq + Eq {
     fn get_action(&self) -> &Action;
     fn multi_frame_classification(&self) -> Option<MultiFrameRequest>;
     fn get_trace_index(&self) -> u64;
+    fn is_create(&self) -> bool;
 }
 
 impl NormalizedAction for Action {
+    fn is_create(&self) -> bool {
+        if let Action::Unclassified(u) = self {
+            u.is_create()
+        } else {
+            matches!(self, Action::NewPool(_))
+        }
+    }
+
     fn is_classified(&self) -> bool {
         !matches!(
             self,
