@@ -568,7 +568,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             Some(head) => {
                 let mut start_index = 0u64;
                 head.get_last_create_call(&mut start_index, node_data_store);
-                head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
+                head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index);
+
+                trace!(
+                    target: "brontes_classifier::discovery",
+                    "Found {} parent nodes for created address: {}, start index: {}, end index: {}",
+                    all_nodes.len(),
+                    created_addr,
+                    start_index,
+                    trace_index
+                );
             }
             None => {
                 trace!(
