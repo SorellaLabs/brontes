@@ -592,7 +592,7 @@ impl ClassifierTestUtils {
         let testdata = trace
             .trace
             .iter()
-            .take_while(|t| !t.is_create() && t.get_create_output() != created_pool)
+            .take_while_inclusive(|t| !t.is_create() && t.get_create_output() != created_pool)
             .filter(|t| t.is_create())
             .map(|t| {
                 index = t.trace_idx + 1;
