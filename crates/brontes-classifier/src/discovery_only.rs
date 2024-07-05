@@ -273,7 +273,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         block: u64,
         root_head: Option<&Node>,
         node_data_store: &NodeData<Action>,
-        tx_idx: u64,
+        _tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
     ) {

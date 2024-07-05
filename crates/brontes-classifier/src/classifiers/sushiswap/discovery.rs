@@ -7,7 +7,6 @@ discovery_impl!(
     crate::UniswapV2Factory::createPairCall,
     0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac,
     |deployed_address: Address, trace_index: u64, call_data: createPairCall, _| async move {
-        tracing::info!("sushi v2 discovery");
         let token_a = call_data.tokenA;
         let token_b = call_data.tokenB;
 
