@@ -599,7 +599,7 @@ impl ClassifierTestUtils {
             })
             .collect_vec();
 
-        tracing::debug!(?testdata);
+        tracing::debug!("{:#?}", testdata);
         let res = DiscoveryClassifier::default()
             .dispatch(self.get_provider(), testdata, created_pool, index)
             .await;
