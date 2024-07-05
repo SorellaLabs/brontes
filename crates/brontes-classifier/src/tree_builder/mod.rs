@@ -577,7 +577,27 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         else {
             return (vec![], vec![Action::Unclassified(trace)]);
         };
-        println!("Attempting to classify create action: {:#?}", trace);
+        println!("Attempting to classify create action: {:#?}", calldata);
+
+        println!(
+            "From address: {:#?}",
+            node_data_store
+                .get_ref(node_data.data)
+                .unwrap()
+                .first()
+                .unwrap()
+                .get_from_address()
+        );
+
+        println!(
+            "To address: {:#?}",
+            node_data_store
+                .get_ref(node_data.data)
+                .unwrap()
+                .first()
+                .unwrap()
+                .get_to_address()
+        );
 
         (
             join_all(
