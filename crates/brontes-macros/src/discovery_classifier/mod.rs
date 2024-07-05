@@ -71,13 +71,13 @@ fn is_proper_address(possible_address: &Literal) -> syn::Result<()> {
         return Err(syn::Error::new(
             possible_address.span(),
             "given factory address is invalid. Needs to start with 0x",
-        ));
+        ))
     }
     if stred.len() != 42 {
         return Err(syn::Error::new(
             possible_address.span(),
             format!("given factory address length is incorrect got: {} wanted: 40", stred.len()),
-        ));
+        ))
     }
 
     Ok(())
@@ -110,7 +110,7 @@ impl Parse for MacroParse {
             return Err(syn::Error::new(
                 input.span(),
                 "There should be no values after the call function",
-            ));
+            ))
         }
 
         Ok(Self { discovery_name, factory_address, function_call_path, address_call_function })
@@ -145,39 +145,52 @@ pub fn discovery_dispatch(input: TokenStream) -> syn::Result<TokenStream> {
             async fn dispatch<T: ::brontes_types::traits::TracingProvider>(
                     &self,
                     tracer: ::std::sync::Arc<T>,
-                    factory: ::alloy_primitives::Address,
+                    search_data: ::std::vec::Vec<(::alloy_primitives::Address,
+                        ::alloy_primitives::Bytes)>,
                     deployed_address: ::alloy_primitives::Address,
                     trace_idx: u64,
-                    parent_calldata: ::alloy_primitives::Bytes,
                 ) ->Vec<::brontes_types::normalized_actions::pool::NormalizedNewPool> {
-                    if parent_calldata.len() < 4 {
-                        ::tracing::debug!(?deployed_address, ?factory, "invalid calldata length");
-                        return Vec::new()
-                    }
 
-                    let mut key = [0u8; 24];
-                    key[0..20].copy_from_slice(&**factory);
-                    key[20..].copy_from_slice(&parent_calldata[0..4]);
+                    ::futures::stream::iter(search_data)
+                        .map(|(factory, parent_calldata)| {
+                            let tracer = tracer.clone();
+                            async move {
+                        if parent_calldata.len() < 4 {
+                            ::tracing::debug!(?deployed_address, ?factory, "invalid calldata length");
+                            return Vec::new()
+                        }
 
-                    #(
-                        const #var_name: [u8; 24] = #fn_name();
-                    )*
+                        let mut key = [0u8; 24];
+                        key[0..20].copy_from_slice(&**factory);
+                        key[20..].copy_from_slice(&parent_calldata[0..4]);
 
-                    match key {
                         #(
-                            #var_name => {
-                            return
-                                crate::FactoryDiscovery::decode_create_trace(
-                                    &self.#i,
-                                    tracer,
-                                    deployed_address,
-                                    trace_idx,
-                                    parent_calldata,
-                                ).await
-                            }
+                            const #var_name: [u8; 24] = #fn_name();
                         )*
-                        _ => Vec::new()
-                }
+
+                        match key {
+                            #(
+                                #var_name => {
+                                return
+                                    crate::FactoryDiscovery::decode_create_trace(
+                                        &self.#i,
+                                        tracer,
+                                        deployed_address,
+                                        trace_idx,
+                                        parent_calldata,
+                                    ).await
+                                }
+                            )*
+                            _ => Vec::new()
+                        }
+                    }
+                        })
+                    .buffer_unordered(10)
+                    .collect::<Vec<_>>()
+                    .await
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
             }
         }
     ))
@@ -199,7 +212,7 @@ impl Parse for DiscoveryDispatch {
             return Err(syn::Error::new(
                 Span::call_site(),
                 "no discovery implementations to dispatch to",
-            ));
+            ))
         }
 
         Ok(Self { rest, struct_name })

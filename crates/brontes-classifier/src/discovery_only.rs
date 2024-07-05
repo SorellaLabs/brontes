@@ -13,7 +13,7 @@ use brontes_types::{
 use futures::future::join_all;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use self::erc20::try_decode_transfer;
 use crate::{
@@ -273,35 +273,42 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         block: u64,
         root_head: Option<&Node>,
         node_data_store: &NodeData<Action>,
-        tx_idx: u64,
+        _tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
     ) {
-        let from_address = trace.get_from_addr();
         let created_addr = trace.get_create_output();
 
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
-        let node_data = match root_head {
-            Some(head) => head.get_immediate_parent_node(trace_index - 1),
+        let mut all_nodes = Vec::new();
+
+        match root_head {
+            Some(head) => {
+                let mut start_index = 0u64;
+                head.get_last_create_call(&mut start_index, node_data_store);
+                head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
+            }
             None => return,
         };
-        let Some(node_data) = node_data else {
-            debug!(block, tx_idx, "failed to find create parent node");
-            return
-        };
 
-        let Some(calldata) = node_data_store
-            .get_ref(node_data.data)
-            .and_then(|node| node.first())
-            .and_then(|res| res.get_calldata())
-        else {
+        let search_data = all_nodes
+            .iter()
+            .filter_map(|node| {
+                node_data_store
+                    .get_ref(node.data)
+                    .and_then(|node| node.first())
+            })
+            .filter_map(|node_data| Some((node_data.get_from_address(), node_data.get_calldata()?)))
+            .collect::<Vec<_>>();
+
+        if search_data.is_empty() {
             return
-        };
+        }
 
         join_all(
             DiscoveryClassifier::default()
-                .dispatch(self.provider.clone(), from_address, created_addr, trace_index, calldata)
+                .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
                 .await
                 .into_iter()
                 // insert the pool returning if it has token values.

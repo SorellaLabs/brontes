@@ -29,8 +29,8 @@ use brontes_types::{
     BrontesTaskManager, FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
+use itertools::Itertools;
 use reth_db::DatabaseError;
-use reth_rpc_types::trace::parity::Action as TraceAction;
 use serde_json::Value;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -583,39 +583,27 @@ impl ClassifierTestUtils {
         created_pool: Address,
         cmp_fn: impl Fn(Vec<NormalizedNewPool>),
     ) -> Result<(), ClassifierTestUtilsError> {
-        let TxTracesWithHeaderAnd { trace, .. } = self.get_tx_trace_with_header(tx).await?;
+        let TxTracesWithHeaderAnd { mut trace, .. } = self.get_tx_trace_with_header(tx).await?;
+        // ensure shit is sorted
+        trace.trace.sort_by_key(|a| a.trace_idx);
 
-        let found_trace = trace
+        let mut index = 0;
+        // pre traces
+        let testdata = trace
             .trace
             .iter()
-            .filter(|t| t.is_create())
-            .find(|t| t.get_create_output() == created_pool)
-            .ok_or_else(|| ClassifierTestUtilsError::DiscoveryError(created_pool))?;
+            .take_while_inclusive(|t| !t.is_create() && t.get_create_output() != created_pool)
+            .map(|t| {
+                index = t.trace_idx + 1;
+                (t.get_to_address(), t.get_calldata())
+            })
+            .collect_vec();
 
-        let mut trace_addr = found_trace.get_trace_address();
-
-        if !trace_addr.is_empty() {
-            trace_addr.pop().unwrap();
-        } else {
-            return Err(ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))
-        };
-
-        let p_trace = trace
-            .trace
-            .iter()
-            .find(|f| f.get_trace_address() == trace_addr)
-            .ok_or_else(|| ClassifierTestUtilsError::ProtocolDiscoveryError(created_pool))?;
-
-        let TraceAction::Call(call) = &p_trace.trace.action else { panic!() };
-
-        let from_address = found_trace.get_from_addr();
-        let created_addr = found_trace.get_create_output();
-        let calldata = call.input.clone();
-        let trace_index = found_trace.trace_idx;
-
+        tracing::debug!("{:#?}", testdata);
         let res = DiscoveryClassifier::default()
-            .dispatch(self.get_provider(), from_address, created_addr, trace_index, calldata)
+            .dispatch(self.get_provider(), testdata, created_pool, index)
             .await;
+        tracing::debug!(?res);
 
         cmp_fn(res);
 

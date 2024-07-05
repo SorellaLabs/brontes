@@ -1,4 +1,5 @@
 use brontes_macros::{action_dispatch, discovery_dispatch};
+use futures::StreamExt;
 pub mod erc20;
 
 pub mod uniswap;

@@ -300,8 +300,47 @@ impl Node {
             .collect::<Vec<_>>()
     }
 
-    pub fn get_immediate_parent_node(&self, trace_index: u64) -> Option<&Node> {
-        if self.inner.last()?.index == trace_index {
+    /// returns the last create call index
+    pub fn get_last_create_call<V: NormalizedAction>(
+        &self,
+        lowest: &mut u64,
+        data_store: &NodeData<V>,
+    ) {
+        // go through this data setting the index if its a create and happened later
+        // than the last index.
+        if let Some(this_data) = data_store.get_ref(self.data) {
+            for data in this_data {
+                if data.is_create() && self.index > *lowest {
+                    *lowest = self.index;
+                }
+            }
+        }
+        // recursively call lower levels to allow for max index to be found
+        for i in &self.inner {
+            i.get_last_create_call(lowest, data_store);
+        }
+    }
+
+    pub fn get_all_parent_nodes_for_discovery(
+        &self,
+        res: &mut Vec<Node>,
+        start_index: u64,
+        tx_index: u64,
+    ) {
+        if self.index > start_index && self.index < tx_index {
+            res.push(self.clone());
+            for i in &self.inner {
+                i.get_all_parent_nodes_for_discovery(res, start_index, tx_index);
+            }
+        } else if self.index < start_index && self.index < tx_index {
+            for i in &self.inner {
+                i.get_all_parent_nodes_for_discovery(res, start_index, tx_index);
+            }
+        }
+    }
+
+    pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node> {
+        if self.inner.last()?.index == tx_index {
             Some(self)
         } else {
             self.inner.last()?.get_immediate_parent_node(trace_index)

@@ -166,9 +166,8 @@ pub trait FactoryDiscoveryDispatch: Sync + Send {
     fn dispatch<T: TracingProvider>(
         &self,
         tracer: Arc<T>,
-        factory: Address,
+        possible_calls: Vec<(Address, Bytes)>,
         deployed_address: Address,
         trace_idx: u64,
-        parent_calldata: Bytes,
     ) -> impl Future<Output = Vec<NormalizedNewPool>> + Send;
 }
