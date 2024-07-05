@@ -549,7 +549,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         block: u64,
         root_head: Option<&Node>,
         node_data_store: &NodeData<Action>,
-        tx_idx: u64,
+        _tx_idx: u64,
         trace: TransactionTraceWithLogs,
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Vec<Action>) {
@@ -580,7 +580,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     .get_ref(node.data)
                     .and_then(|node| node.first())
             })
-            .filter_map(|node_data| Some((node_data.get_from_address(), node_data.get_calldata()?)))
+            .filter_map(|node_data| Some((node_data.get_to_address(), node_data.get_calldata()?)))
             .collect::<Vec<_>>();
 
         if search_data.is_empty() {

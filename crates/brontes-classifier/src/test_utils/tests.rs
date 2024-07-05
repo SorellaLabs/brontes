@@ -595,7 +595,7 @@ impl ClassifierTestUtils {
             .take_while_inclusive(|t| !t.is_create() && t.get_create_output() != created_pool)
             .map(|t| {
                 index = t.trace_idx + 1;
-                (t.get_from_addr(), t.get_calldata())
+                (t.get_to_address(), t.get_calldata())
             })
             .collect_vec();
 
