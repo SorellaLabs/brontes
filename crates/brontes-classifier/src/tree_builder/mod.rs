@@ -11,7 +11,6 @@ use brontes_types::{
     tree::root::NodeData,
     ToScaledRational,
 };
-use futures::StreamExt;
 use malachite::{num::basic::traits::Zero, Rational};
 mod tree_pruning;
 pub(crate) mod utils;
@@ -29,7 +28,7 @@ use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};
 use utils::{decode_transfer, get_coinbase_transfer};
 
@@ -566,7 +565,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         let mut all_nodes = Vec::new();
 
         match root_head {
-            Some(head) => head.get_all_parent_nodes(&mut all_nodes, trace_index),
+            Some(head) => {
+                let mut start_index = 0u64;
+                head.get_last_create_call(&mut start_index, node_data_store);
+                head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
+            }
             None => return (vec![], vec![Action::Unclassified(trace)]),
         };
 

@@ -284,7 +284,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         let mut all_nodes = Vec::new();
 
         match root_head {
-            Some(head) => head.get_all_parent_nodes(&mut all_nodes, trace_index),
+            Some(head) => {
+                let mut start_index = 0u64;
+                head.get_last_create_call(&mut start_index, node_data_store);
+                head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
+            }
             None => return,
         };
 
