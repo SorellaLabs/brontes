@@ -29,16 +29,12 @@ use brontes_types::{
     BrontesTaskManager, FastHashMap, TreeCollector, TreeSearchBuilder, UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
-use itertools::Itertools;
 use reth_db::DatabaseError;
 use serde_json::Value;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
-use crate::{
-    Action, ActionCollection, Classifier, DiscoveryClassifier, FactoryDiscoveryDispatch,
-    ProtocolClassifier,
-};
+use crate::{Action, ActionCollection, Classifier, ProtocolClassifier};
 
 pub struct ClassifierTestUtils {
     pub trace_loader: TraceLoader,
@@ -580,10 +576,10 @@ impl ClassifierTestUtils {
     pub async fn test_discovery_classification(
         &self,
         txes: TxHash,
-        created_pool: Address,
+        _created_pool: Address,
         cmp_fn: impl Fn(Vec<NormalizedNewPool>),
     ) -> Result<(), ClassifierTestUtilsError> {
-        let TxTracesWithHeaderAnd { mut trace, header, .. } =
+        let TxTracesWithHeaderAnd { trace, header, .. } =
             self.get_tx_trace_with_header(txes).await?;
 
         let (tx, _rx) = unbounded_channel();
@@ -592,7 +588,6 @@ impl ClassifierTestUtils {
         let res = Arc::new(tree)
             .collect(&txes, TreeSearchBuilder::default().with_action(Action::is_new_pool))
             .split_actions(Action::try_new_pool);
-
 
         cmp_fn(res);
 
