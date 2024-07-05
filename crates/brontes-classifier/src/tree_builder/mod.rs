@@ -557,21 +557,27 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         let created_addr = trace.get_create_output();
 
         if created_addr == Address::ZERO {
-            tracing::error!("created address is zero address");
+            tracing::error!(target: "brontes_classifier::discovery", "created address is zero address");
             return (vec![], vec![Action::Unclassified(trace)])
         }
 
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
         let mut all_nodes = Vec::new();
-
         match root_head {
             Some(head) => {
                 let mut start_index = 0u64;
                 head.get_last_create_call(&mut start_index, node_data_store);
                 head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
             }
-            None => return (vec![], vec![Action::Unclassified(trace)]),
+            None => {
+                trace!(
+                    target: "brontes_classifier::discovery",
+                    "No root head found for trace index: {}",
+                    trace_index
+                );
+                return (vec![], vec![Action::Unclassified(trace)])
+            }
         };
 
         let search_data = all_nodes
@@ -585,6 +591,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .collect::<Vec<_>>();
 
         if search_data.is_empty() {
+            trace!(
+                target: "brontes_classifier::discovery",
+                "No parent calldata found for created address: {}",
+                created_addr
+            );
             return (vec![], vec![Action::Unclassified(trace)])
         }
 
@@ -597,7 +608,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     // insert the pool returning if it has token values.
                     .filter(|pool| !self.contains_pool(pool.pool_address))
                     .map(|pool| async {
-                        tracing::trace!(
+                        trace!(
                             target: "brontes_classifier::discovery",
                             "Discovered new {} pool:
                             \nAddress:{}
