@@ -300,11 +300,11 @@ impl Node {
             .collect::<Vec<_>>()
     }
 
-    pub fn get_immediate_parent_node(&self, tx_index: u64) -> Option<&Node> {
-        if self.inner.last()?.index == tx_index {
+    pub fn get_immediate_parent_node(&self, trace_index: u64) -> Option<&Node> {
+        if self.inner.last()?.index == trace_index {
             Some(self)
         } else {
-            self.inner.last()?.get_immediate_parent_node(tx_index)
+            self.inner.last()?.get_immediate_parent_node(trace_index)
         }
     }
 

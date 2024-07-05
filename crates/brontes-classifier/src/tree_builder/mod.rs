@@ -563,7 +563,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             None => return (vec![], vec![Action::Unclassified(trace)]),
         };
 
-        println!("Parent node data: {:?}", node_data);
+        println!("Parent node data: {:#?}", node_data);
 
         let Some(node_data) = node_data else {
             debug!(block, tx_idx, "failed to find create parent node");
