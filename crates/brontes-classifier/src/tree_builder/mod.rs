@@ -559,7 +559,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
         let node_data = match root_head {
-            Some(head) => head.get_immediate_parent_node(trace_index - 1),
+            Some(head) => head.get_immediate_parent_node(trace_index),
             None => return (vec![], vec![Action::Unclassified(trace)]),
         };
 
@@ -577,6 +577,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         else {
             return (vec![], vec![Action::Unclassified(trace)]);
         };
+        println!("Attempting to classify create action: {:#?}", trace);
 
         (
             join_all(
