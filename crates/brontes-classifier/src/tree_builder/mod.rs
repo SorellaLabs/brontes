@@ -587,26 +587,23 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             return (vec![], vec![Action::Unclassified(trace)])
         }
 
-        (
-            join_all(
-                DiscoveryClassifier::default()
-                    .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
-                    .await
-                    .into_iter()
-                    // insert the pool returning if it has token values.
-                    .filter(|pool| !self.contains_pool(pool.pool_address))
-                    .map(|pool| async {
-                        self.insert_new_pool(block, &pool).await;
-                        pool.try_into().ok()
-                    }),
-            )
-            .await
-            .into_iter()
-            .flatten()
-            .map(DexPriceMsg::DiscoveredPool)
-            .collect_vec(),
-            vec![Action::Unclassified(trace)],
+        join_all(
+            DiscoveryClassifier::default()
+                .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
+                .await
+                .into_iter()
+                // insert the pool returning if it has token values.
+                .filter(|pool| !self.contains_pool(pool.pool_address))
+                .map(|pool| async {
+                    self.insert_new_pool(block, &pool).await;
+                    Some((pool.clone().try_into().ok()?, pool))
+                }),
         )
+        .await
+        .into_iter()
+        .flatten()
+        .map(|(config, output)| (DexPriceMsg::DiscoveredPool(config), Action::NewPool(output)))
+        .unzip()
     }
 
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {
