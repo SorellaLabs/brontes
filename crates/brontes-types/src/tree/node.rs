@@ -343,7 +343,7 @@ impl Node {
         if self.inner.last()?.index == tx_index {
             Some(self)
         } else {
-            self.inner.last()?.get_immediate_parent_node(trace_index)
+            self.inner.last()?.get_immediate_parent_node(tx_index)
         }
     }
 
