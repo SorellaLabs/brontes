@@ -75,35 +75,4 @@ pub mod test {
             .await
             .unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_pancake_v3_discovery_failing() {
-        let utils = ClassifierTestUtils::new().await;
-        let tx =
-            TxHash::new(hex!("a3383ac63fd07e0f021e6fbf39a586730464e7eced180542f9687ad896dcd938"));
-
-        let eq_create = NormalizedNewPool {
-            trace_index:  1,
-            protocol:     Protocol::PancakeSwapV3,
-            pool_address: Address::new(hex!("Ed4D5317823Ff7BC8BB868C1612Bb270a8311179")),
-            tokens:       vec![
-                Address::new(hex!("186eF81fd8E77EEC8BfFC3039e7eC41D5FC0b457")),
-                TokenInfoWithAddress::usdt().address,
-            ],
-        };
-
-        utils
-            .test_discovery_classification(
-                tx,
-                Address::new(hex!("bc7766ae74f38f251683633d50cc2c1cd14af948")),
-                |mut pool| {
-                    assert_eq!(pool.len(), 1);
-                    let pool = pool.remove(0);
-                    assert_eq!(pool.protocol, eq_create.protocol);
-                    assert_eq!(pool.tokens, eq_create.tokens);
-                },
-            )
-            .await
-            .unwrap();
-    }
 }

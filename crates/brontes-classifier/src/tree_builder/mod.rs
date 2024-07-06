@@ -618,7 +618,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .await
                 .into_iter()
                 // insert the pool returning if it has token values.
-                .filter(|pool| !self.contains_pool(pool.pool_address))
                 .map(|pool| async {
                     trace!(
                         target: "brontes_classifier::discovery",
