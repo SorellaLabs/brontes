@@ -317,10 +317,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         classification
     }
 
-    fn contains_pool(&self, address: Address) -> bool {
-        self.libmdbx.get_protocol(address).is_ok()
-    }
-
     async fn classify_node(
         &self,
         block: u64,
