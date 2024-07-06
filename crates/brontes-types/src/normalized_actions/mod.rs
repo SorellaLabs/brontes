@@ -525,7 +525,8 @@ extra_impls!(
     (Liquidation, NormalizedLiquidation),
     (FlashLoan, NormalizedFlashLoan),
     (Aggregator, NormalizedAggregator),
-    (Batch, NormalizedBatch)
+    (Batch, NormalizedBatch),
+    (NewPool, NormalizedNewPool)
 );
 
 /// Custom impl for itering over swaps and swap with fee

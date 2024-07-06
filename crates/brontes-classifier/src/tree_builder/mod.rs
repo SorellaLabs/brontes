@@ -599,6 +599,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         let search_data = all_nodes
             .iter()
             .filter_map(|node| node_data_store.get_ref(node.data))
+            .flatten()
             .filter_map(|node_data| Some((node_data.get_to_address(), node_data.get_calldata()?)))
             .collect::<Vec<_>>();
 
@@ -638,6 +639,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .collect_vec(),
             vec![Action::Unclassified(trace)],
         )
+        .await
+        .into_iter()
+        .flatten()
+        .map(|(config, output)| (DexPriceMsg::DiscoveredPool(config), Action::NewPool(output)))
+        .unzip()
     }
 
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {

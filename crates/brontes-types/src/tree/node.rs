@@ -332,7 +332,7 @@ impl Node {
             for i in &self.inner {
                 i.get_all_parent_nodes_for_discovery(res, start_index, trace_index);
             }
-        } else if self.index < start_index && self.index < trace_index {
+        } else if self.index <= start_index && self.index < trace_index {
             for i in &self.inner {
                 i.get_all_parent_nodes_for_discovery(res, start_index, trace_index);
             }
