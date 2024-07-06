@@ -629,7 +629,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         pool.protocol,
                     );
                     self.insert_new_pool(block, &pool).await;
-                    pool.try_into().ok()
+                    Some((pool.clone().try_into().ok()?, pool))
                 }),
         )
         .await
