@@ -570,43 +570,39 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 head.get_last_create_call(&mut start_index, node_data_store);
                 head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
             }
-            None => return (vec![], vec![Action::Unclassified(trace)]),
+            None => {
+                tracing::warn!("no root head found");
+                return (vec![], vec![Action::Unclassified(trace)])
+            }
         };
 
         let search_data = all_nodes
             .iter()
-            .filter_map(|node| {
-                node_data_store
-                    .get_ref(node.data)
-                    .and_then(|node| node.first())
-            })
+            .filter_map(|node| node_data_store.get_ref(node.data))
+            .flatten()
             .filter_map(|node_data| Some((node_data.get_to_address(), node_data.get_calldata()?)))
             .collect::<Vec<_>>();
 
         if search_data.is_empty() {
+            tracing::warn!("search data empty");
             return (vec![], vec![Action::Unclassified(trace)])
         }
 
-        (
-            join_all(
-                DiscoveryClassifier::default()
-                    .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
-                    .await
-                    .into_iter()
-                    // insert the pool returning if it has token values.
-                    .filter(|pool| !self.contains_pool(pool.pool_address))
-                    .map(|pool| async {
-                        self.insert_new_pool(block, &pool).await;
-                        pool.try_into().ok()
-                    }),
-            )
-            .await
-            .into_iter()
-            .flatten()
-            .map(DexPriceMsg::DiscoveredPool)
-            .collect_vec(),
-            vec![Action::Unclassified(trace)],
+        join_all(
+            DiscoveryClassifier::default()
+                .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
+                .await
+                .into_iter()
+                .map(|pool| async {
+                    self.insert_new_pool(block, &pool).await;
+                    Some((pool.clone().try_into().ok()?, pool))
+                }),
         )
+        .await
+        .into_iter()
+        .flatten()
+        .map(|(config, output)| (DexPriceMsg::DiscoveredPool(config), Action::NewPool(output)))
+        .unzip()
     }
 
     async fn insert_new_pool(&self, block: u64, pool: &NormalizedNewPool) {

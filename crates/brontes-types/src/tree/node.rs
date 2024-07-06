@@ -327,12 +327,12 @@ impl Node {
         start_index: u64,
         tx_index: u64,
     ) {
-        if self.index > start_index && self.index < tx_index {
+        if self.index >= start_index && self.index < tx_index {
             res.push(self.clone());
             for i in &self.inner {
                 i.get_all_parent_nodes_for_discovery(res, start_index, tx_index);
             }
-        } else if self.index < start_index && self.index < tx_index {
+        } else if self.index <= start_index && self.index < tx_index {
             for i in &self.inner {
                 i.get_all_parent_nodes_for_discovery(res, start_index, tx_index);
             }

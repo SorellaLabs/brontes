@@ -26,19 +26,15 @@ use brontes_types::{
     normalized_actions::{pool::NormalizedNewPool, NormalizedTransfer},
     structured_trace::TraceActions,
     tree::BlockTree,
-    BrontesTaskManager, FastHashMap, TreeSearchBuilder, UnboundedYapperReceiver,
+    BrontesTaskManager, FastHashMap, TreeCollector, TreeSearchBuilder, UnboundedYapperReceiver,
 };
 use futures::{future::join_all, StreamExt};
-use itertools::Itertools;
 use reth_db::DatabaseError;
 use serde_json::Value;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
-use crate::{
-    Action, ActionCollection, Classifier, DiscoveryClassifier, FactoryDiscoveryDispatch,
-    ProtocolClassifier,
-};
+use crate::{Action, ActionCollection, Classifier, ProtocolClassifier};
 
 pub struct ClassifierTestUtils {
     pub trace_loader: TraceLoader,
@@ -579,31 +575,19 @@ impl ClassifierTestUtils {
 
     pub async fn test_discovery_classification(
         &self,
-        tx: TxHash,
-        created_pool: Address,
+        txes: TxHash,
+        _created_pool: Address,
         cmp_fn: impl Fn(Vec<NormalizedNewPool>),
     ) -> Result<(), ClassifierTestUtilsError> {
-        let TxTracesWithHeaderAnd { mut trace, .. } = self.get_tx_trace_with_header(tx).await?;
-        // ensure shit is sorted
-        trace.trace.sort_by_key(|a| a.trace_idx);
+        let TxTracesWithHeaderAnd { trace, header, .. } =
+            self.get_tx_trace_with_header(txes).await?;
 
-        let mut index = 0;
-        // pre traces
-        let testdata = trace
-            .trace
-            .iter()
-            .take_while_inclusive(|t| !t.is_create() && t.get_create_output() != created_pool)
-            .map(|t| {
-                index = t.trace_idx + 1;
-                (t.get_to_address(), t.get_calldata())
-            })
-            .collect_vec();
-
-        tracing::debug!("{:#?}", testdata);
-        let res = DiscoveryClassifier::default()
-            .dispatch(self.get_provider(), testdata, created_pool, index)
-            .await;
-        tracing::debug!(?res);
+        let (tx, _rx) = unbounded_channel();
+        let classifier = Classifier::new(self.libmdbx, tx.clone(), self.get_provider());
+        let tree = classifier.build_block_tree(vec![trace], header, true).await;
+        let res = Arc::new(tree)
+            .collect(&txes, TreeSearchBuilder::default().with_action(Action::is_new_pool))
+            .split_actions(Action::try_new_pool);
 
         cmp_fn(res);
 
