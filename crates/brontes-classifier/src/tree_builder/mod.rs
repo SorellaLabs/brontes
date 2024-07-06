@@ -564,6 +564,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // get the immediate parent node of this create action so that we can decode the
         // deployment function params
         let mut all_nodes = Vec::new();
+
+        //TODO: If this edge case is an issue, where the create is a multi create that
+        //TODO: only passes the init code once and batch creates a series of identical
+        //TODO: contracts in one function, like in this tx:
+        //TODO: https://dashboard.tenderly.co/tx/mainnet/0xff10373254380609d7c0746291678f218c7926a2870021229b654d96896ce405?trace=0.2.24
+        //TODO: then remove the `get_last_create_call` and eat the runtime overhead of
+        //TODO: dispatching on all parent nodes
         match root_head {
             Some(head) => {
                 let mut start_index = 0u64;
@@ -591,11 +598,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         let search_data = all_nodes
             .iter()
-            .filter_map(|node| {
-                node_data_store
-                    .get_ref(node.data)
-                    .and_then(|node| node.first())
-            })
+            .filter_map(|node| node_data_store.get_ref(node.data))
             .filter_map(|node_data| Some((node_data.get_to_address(), node_data.get_calldata()?)))
             .collect::<Vec<_>>();
 
@@ -607,8 +610,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             );
             return (vec![], vec![Action::Unclassified(trace)])
         }
-
-        (
+        .and_then(|node| node.first())(
             join_all(
                 DiscoveryClassifier::default()
                     .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
