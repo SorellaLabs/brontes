@@ -611,33 +611,26 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             );
             return (vec![], vec![Action::Unclassified(trace)])
         }
-        .and_then(|node| node.first())(
-            join_all(
-                DiscoveryClassifier::default()
-                    .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
-                    .await
-                    .into_iter()
-                    // insert the pool returning if it has token values.
-                    .filter(|pool| !self.contains_pool(pool.pool_address))
-                    .map(|pool| async {
-                        trace!(
-                            target: "brontes_classifier::discovery",
-                            "Discovered new {} pool:
-                            \nAddress:{}
-                            ",
-                            pool.pool_address,
-                            pool.protocol,
-                        );
-                        self.insert_new_pool(block, &pool).await;
-                        pool.try_into().ok()
-                    }),
-            )
-            .await
-            .into_iter()
-            .flatten()
-            .map(DexPriceMsg::DiscoveredPool)
-            .collect_vec(),
-            vec![Action::Unclassified(trace)],
+
+        join_all(
+            DiscoveryClassifier::default()
+                .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
+                .await
+                .into_iter()
+                // insert the pool returning if it has token values.
+                .filter(|pool| !self.contains_pool(pool.pool_address))
+                .map(|pool| async {
+                    trace!(
+                        target: "brontes_classifier::discovery",
+                        "Discovered new {} pool:
+                        \nAddress:{}
+                        ",
+                        pool.pool_address,
+                        pool.protocol,
+                    );
+                    self.insert_new_pool(block, &pool).await;
+                    pool.try_into().ok()
+                }),
         )
         .await
         .into_iter()
