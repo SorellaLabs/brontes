@@ -12,6 +12,7 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
+
 mod tree_pruning;
 pub(crate) mod utils;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -28,7 +29,7 @@ use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};
 use utils::{decode_transfer, get_coinbase_transfer};
 
@@ -316,10 +317,6 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         classification
     }
 
-    fn contains_pool(&self, address: Address) -> bool {
-        self.libmdbx.get_protocol(address).is_ok()
-    }
-
     async fn classify_node(
         &self,
         block: u64,
@@ -556,7 +553,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         let created_addr = trace.get_create_output();
 
         if created_addr == Address::ZERO {
-            tracing::error!("created address is zero address");
+            tracing::error!(target: "brontes_classifier::discovery", "created address is zero address");
             return (vec![], vec![Action::Unclassified(trace)])
         }
 
@@ -564,14 +561,33 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         // deployment function params
         let mut all_nodes = Vec::new();
 
+        //TODO: If this edge case is an issue, where the create is a multi create that
+        //TODO: only passes the init code once and batch creates a series of identical
+        //TODO: contracts in one function, like in this tx:
+        //TODO: https://dashboard.tenderly.co/tx/mainnet/0xff10373254380609d7c0746291678f218c7926a2870021229b654d96896ce405?trace=0.2.24
+        //TODO: then remove the `get_last_create_call` and eat the runtime overhead of
+        //TODO: dispatching on all parent nodes
         match root_head {
             Some(head) => {
                 let mut start_index = 0u64;
                 head.get_last_create_call(&mut start_index, node_data_store);
-                head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index)
+                head.get_all_parent_nodes_for_discovery(&mut all_nodes, start_index, trace_index);
+
+                trace!(
+                    target: "brontes_classifier::discovery",
+                    "Found {} parent nodes for created address: {}, start index: {}, end index: {}",
+                    all_nodes.len(),
+                    created_addr,
+                    start_index,
+                    trace_index
+                );
             }
             None => {
-                tracing::warn!("no root head found");
+                trace!(
+                    target: "brontes_classifier::discovery",
+                    "No root head found for trace index: {}",
+                    trace_index
+                );
                 return (vec![], vec![Action::Unclassified(trace)])
             }
         };
@@ -584,7 +600,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .collect::<Vec<_>>();
 
         if search_data.is_empty() {
-            tracing::warn!("search data empty");
+            trace!(
+                target: "brontes_classifier::discovery",
+                "No parent calldata found for created address: {}",
+                created_addr
+            );
             return (vec![], vec![Action::Unclassified(trace)])
         }
 
@@ -593,7 +613,16 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 .dispatch(self.provider.clone(), search_data, created_addr, trace_index)
                 .await
                 .into_iter()
+                // insert the pool returning if it has token values.
                 .map(|pool| async {
+                    trace!(
+                        target: "brontes_classifier::discovery",
+                        "Discovered new {} pool:
+                        \nAddress:{}
+                        ",
+                        pool.pool_address,
+                        pool.protocol,
+                    );
                     self.insert_new_pool(block, &pool).await;
                     Some((pool.clone().try_into().ok()?, pool))
                 }),

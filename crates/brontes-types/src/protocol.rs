@@ -112,10 +112,10 @@ impl Protocol {
         match self {
             Protocol::UniswapV2 => ("Uniswap", "V2"),
             Protocol::SushiSwapV2 => ("SushiSwap", "V2"),
-            Protocol::PancakeSwapV2 => todo!(),
+            Protocol::PancakeSwapV2 => ("PancakeSwap", "V2"),
             Protocol::UniswapV3 => ("Uniswap", "V3"),
             Protocol::SushiSwapV3 => ("SushiSwap", "V3"),
-            Protocol::PancakeSwapV3 => todo!(),
+            Protocol::PancakeSwapV3 => ("PancakeSwap", "V3"),
             Protocol::AaveV2 => ("Aave", "V2"),
             Protocol::AaveV3 => ("Aave", "V3"),
             Protocol::BalancerV1 => ("Balancer", "V1"),

@@ -15,7 +15,7 @@ use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
-    banner,
+    banner::rain,
     cli::{get_tracing_provider, init_inspectors, load_tip_database},
     runner::CliContext,
     BrontesRunConfig, MevProcessor,
@@ -102,11 +102,11 @@ impl RunArgs {
         brontes_db_endpoint: String,
         ctx: CliContext,
     ) -> eyre::Result<()> {
-        banner::print_banner();
-
         if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
             if start > end {
                 return Err(eyre::eyre!("start block must be less than end block"))
+            } else if end - start > 100_000 {
+                rain();
             }
         }
 

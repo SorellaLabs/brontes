@@ -303,21 +303,21 @@ impl Node {
     /// returns the last create call index
     pub fn get_last_create_call<V: NormalizedAction>(
         &self,
-        lowest: &mut u64,
+        start_index: &mut u64,
         data_store: &NodeData<V>,
     ) {
         // go through this data setting the index if its a create and happened later
         // than the last index.
         if let Some(this_data) = data_store.get_ref(self.data) {
             for data in this_data {
-                if data.is_create() && self.index > *lowest {
-                    *lowest = self.index;
+                if data.is_create() && self.index > *start_index {
+                    *start_index = self.index;
                 }
             }
         }
-        // recusively call lower levels to allow for max index to be found
+        // recursively call lower levels to allow for max index to be found
         for i in &self.inner {
-            i.get_last_create_call(lowest, data_store);
+            i.get_last_create_call(start_index, data_store);
         }
     }
 
@@ -325,16 +325,16 @@ impl Node {
         &self,
         res: &mut Vec<Node>,
         start_index: u64,
-        tx_index: u64,
+        trace_index: u64,
     ) {
-        if self.index >= start_index && self.index < tx_index {
+        if self.index >= start_index && self.index < trace_index {
             res.push(self.clone());
             for i in &self.inner {
-                i.get_all_parent_nodes_for_discovery(res, start_index, tx_index);
+                i.get_all_parent_nodes_for_discovery(res, start_index, trace_index);
             }
-        } else if self.index <= start_index && self.index < tx_index {
+        } else if self.index <= start_index && self.index < trace_index {
             for i in &self.inner {
-                i.get_all_parent_nodes_for_discovery(res, start_index, tx_index);
+                i.get_all_parent_nodes_for_discovery(res, start_index, trace_index);
             }
         }
     }

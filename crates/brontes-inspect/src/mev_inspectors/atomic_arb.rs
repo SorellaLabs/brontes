@@ -185,7 +185,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
             .then_some(profit),
             AtomicArbType::LongTail => (self.is_long_tail(&info, requirement_multiplier)
-                && is_profitable)
+                && is_profitable
+                || self.is_long_tail(&info, requirement_multiplier) & !has_dex_price)
                 .then_some(profit),
         }?;
 
@@ -454,6 +455,23 @@ mod tests {
             .with_dex_prices()
             .needs_token(hex!("2559813bbb508c4c79e9ccce4703bcb1f149edd7").into())
             .with_expected_profit_usd(0.188588)
+            .with_gas_paid_usd(71.632668);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    // TODO: This fails because we don't classify the DODO swap on this contract
+    // https://etherscan.io/address/0x7ca7b5eaaf526d93705d28c1b47e9739595c90e7#code
+    //
+    #[brontes_macros::test]
+    async fn test_misclassification() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let tx = hex!("00044a090a5eb970334de119b680834ddcdd55cc34488c7446558e98d2660bfb").into();
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![tx])
+            .with_dex_prices()
+            .with_expected_profit_usd(0.0)
             .with_gas_paid_usd(71.632668);
 
         inspector_util.run_inspector(config, None).await.unwrap();

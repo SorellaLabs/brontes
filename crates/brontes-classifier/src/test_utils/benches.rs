@@ -18,7 +18,7 @@ use reth_db::DatabaseError;
 use thiserror::Error;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
-use crate::{ActionCollection, Classifier, FactoryDiscoveryDispatch, ProtocolClassifier};
+use crate::{ActionCollection, Classifier, ProtocolClassifier};
 
 pub struct ClassifierBenchUtils {
     trace_loader:          TraceLoader,
