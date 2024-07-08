@@ -55,6 +55,7 @@ const SECONDS_TO_US: f64 = 1_000_000.0;
 #[derive(Clone)]
 pub struct Clickhouse {
     pub tip:                 bool,
+    pub run_id:              u64,
     pub client:              ClickhouseClient<BrontesClickhouseTables>,
     pub cex_download_config: CexDownloadConfig,
     pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
@@ -67,18 +68,33 @@ impl Default for Clickhouse {
 }
 
 impl Clickhouse {
-    pub fn new(
+    pub async fn new(
         config: ClickhouseConfig,
         cex_download_config: CexDownloadConfig,
         buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
         tip: bool,
     ) -> Self {
         let client = config.build();
-        Self { client, cex_download_config, buffered_insert_tx, tip }
+        let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0};
+        this.run_id = this.get_and_inc_run_id().await.expect("failed to set run_id");
+
+        this
     }
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
         &self.client
+    }
+
+    pub async fn get_and_inc_run_id(&self) -> eyre::Result<u64> {
+        let id = self
+            .client
+            .query_one::<u64, _>("select max(run_id) from brontes.run_id", &())
+            .await? + 1;
+
+        let query = format!("insert into brontes.run_id (run_id) values ({})" id);
+        self.client.execute_remote(&query, &()).await?;
+
+        Ok(id)
     }
 
     pub async fn max_traced_block(&self) -> eyre::Result<u64> {
@@ -94,11 +110,6 @@ impl Clickhouse {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        // let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
-        //
-        // if let Some(tx) = self.buffered_insert_tx.as_ref() {
-        //     tx.send(vec![(joined, self.tip).into()])?;
-        // }
 
         Ok(())
     }
@@ -108,11 +119,6 @@ impl Clickhouse {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        // let joined = JoinedSearcherInfo::new_eoa(searcher_contract, searcher_info);
-        //
-        // if let Some(tx) = self.buffered_insert_tx.as_ref() {
-        //     tx.send(vec![(joined, self.tip).into()])?;
-        // }
 
         Ok(())
     }
@@ -122,24 +128,18 @@ impl Clickhouse {
         builder_eoa: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        // let info = BuilderInfoWithAddress::new_with_address(builder_eoa,
-        // builder_info);
-        //
-        // if let Some(tx) = self.buffered_insert_tx.as_ref() {
-        //     tx.send(vec![(info, self.tip).into()])?;
-        // }
 
         Ok(())
     }
 
     pub async fn save_mev_blocks(
         &self,
-        block_number: u64,
+        _block_number: u64,
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![(block, self.tip, block_number).into()])?;
+            tx.send(vec![(block, self.tip, self.run_id).into()])?;
 
             let (bundle_headers, bundle_data): (Vec<_>, Vec<_>) = mev
                 .into_iter()
@@ -149,26 +149,26 @@ impl Clickhouse {
             tx.send(
                 bundle_headers
                     .into_iter()
-                    .map(|a| (a, self.tip, block_number))
+                    .map(|a| (a, self.tip,self.run_id))
                     .map(Into::into)
                     .collect(),
             )?;
 
             bundle_data.into_iter().try_for_each(|data| {
                 match data {
-                    BundleData::Sandwich(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
+                    BundleData::Sandwich(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::AtomicArb(s) => {
-                        tx.send(vec![(s, self.tip, block_number).into()])?
+                        tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
                     BundleData::JitSandwich(s) => {
-                        tx.send(vec![(s, self.tip, block_number).into()])?
+                        tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
-                    BundleData::Jit(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
-                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
+                    BundleData::Jit(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
+                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip,self.run_id).into()])?,
                     BundleData::Liquidation(s) => {
-                        tx.send(vec![(s, self.tip, block_number).into()])?
+                        tx.send(vec![(s, self.tip,self.run_id).into()])?
                     }
-                    BundleData::Unknown(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
+                    BundleData::Unknown(s) => tx.send(vec![(s, self.tip,self.run_id).into()])?,
                 };
 
                 Ok(()) as eyre::Result<()>
@@ -212,7 +212,7 @@ impl Clickhouse {
             tx.send(
                 roots
                     .into_iter()
-                    .map(|root| (root, self.tip, block_number))
+                    .map(|root| (root, self.tip, self.run_id))
                     .map(Into::into)
                     .collect(),
             )?;
@@ -257,7 +257,7 @@ impl Clickhouse {
     pub async fn block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
         let block_number = block_analysis.block_number;
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![(block_analysis, self.tip, block_number).into()])?
+            tx.send(vec![(block_analysis, self.tip, self.run_id).into()])?
         };
 
         Ok(())
