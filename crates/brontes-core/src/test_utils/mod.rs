@@ -1,13 +1,15 @@
 #[cfg(feature = "local-reth")]
 use std::sync::OnceLock;
-use std::{collections::hash_map::Entry, env, sync::Arc};
+use std::{collections::hash_map::Entry, env, fs::OpenOptions, io::Write, sync::Arc};
 
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
 use brontes_database::clickhouse::ClickhouseHttpClient;
 pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
-use brontes_database::{libmdbx::LibmdbxInit, Tables};
+use brontes_database::{
+    libmdbx::LibmdbxInit, AddressToProtocolInfo, PoolCreationBlocks, Tables, TokenDecimals,
+};
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::metadata::Metadata, init_threadpools, structured_trace::TxTrace, traits::TracingProvider,
@@ -23,6 +25,7 @@ use reth_provider::ProviderError;
 use reth_tracing_ext::init_db;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::{
     runtime::Handle,
@@ -139,7 +142,7 @@ impl TraceLoader {
             (Tables::CexTrades, Tables::CexTrades.build_init_state_progress_bar(&multi, 4)),
         ]);
 
-        let (a, b, c) = futures::join!(
+        futures::try_join!(
             self.libmdbx.initialize_tables(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
@@ -164,10 +167,7 @@ impl TraceLoader {
                 Some((block - 2, block + 2)),
                 tables,
             ),
-        );
-        a?;
-        b?;
-        c?;
+        )?;
 
         multi.clear().unwrap();
 
@@ -391,14 +391,85 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
             let tracer = init_trace_parser(handle, tx, this, 5).await;
-
-            this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
-                .await
-                .unwrap();
+            if init_crit_tables(this) {
+                tracing::info!("initting crit tables");
+                this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
+                    .await
+                    .unwrap();
+            } else {
+                tracing::info!("skipping crit table init");
+            }
 
             this
         })
         .await
+}
+
+/// will trigger a update if a test with a new highest block is written
+/// or if any of the 3 critical tables are empty
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CritTablesCache {
+    pub biggest_block: u64,
+    pub tables:        FastHashMap<Tables, usize>,
+}
+
+fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
+    // try load table cache
+    let tables =
+        &[Tables::PoolCreationBlocks, Tables::AddressToProtocolInfo, Tables::TokenDecimals];
+
+    let mut is_init = true;
+    let mut map = FastHashMap::default();
+    for table in tables {
+        let cnt = match table {
+            Tables::PoolCreationBlocks => db.get_table_entry_count::<PoolCreationBlocks>().unwrap(),
+            Tables::AddressToProtocolInfo => {
+                db.get_table_entry_count::<AddressToProtocolInfo>().unwrap()
+            }
+            Tables::TokenDecimals => db.get_table_entry_count::<TokenDecimals>().unwrap(),
+            _ => unreachable!(),
+        };
+        is_init &= cnt != 0;
+        map.insert(*table, cnt);
+    }
+
+    let write_fn = |block: u64| {
+        let cache = CritTablesCache { biggest_block: block, tables: map };
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(".test_cache.json")
+            .unwrap();
+        let strd = serde_json::to_string(&cache).unwrap();
+
+        write!(&mut file, "{}", strd).unwrap();
+        file.flush().unwrap();
+    };
+
+    // try fetch highest block number. if there is no highest block number.
+    // init crit tables and save current cache.
+    let Ok(max_block) = db.get_highest_block_number() else {
+        tracing::info!("no highest block found");
+        write_fn(0);
+
+        return true
+    };
+    // try load file.
+    let Ok(cache_data) = std::fs::read_to_string(".test_cache.json") else {
+        tracing::info!("no .test_cache.json found");
+        write_fn(max_block);
+        return true
+    };
+
+    let stats: CritTablesCache = serde_json::from_str(&cache_data).unwrap();
+    // now that we have loaded the stats. lets update them.
+    write_fn(max_block);
+
+    // we init if stats.biggest block is < the db biggest block or we have a table
+    // with zero entries
+    tracing::info!(cache_block=?stats.biggest_block, ?max_block, ?is_init);
+    stats.biggest_block < max_block || !is_init
 }
 
 #[cfg(feature = "local-reth")]
@@ -413,6 +484,7 @@ pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
 
 // if we want more tracing/logging/metrics layers, build and push to this vec
 // the stdout one (logging) is the only 1 we need
+//
 // peep the Database repo -> bin/sorella-db/src/cli.rs line 34 for example
 pub fn init_tracing() {
     // all lower level logging directives include higher level ones (Trace includes

@@ -1207,6 +1207,23 @@ impl LibmdbxReadWriter {
     pub fn send_message(&self, message: WriterMessage) -> eyre::Result<()> {
         Ok(self.tx.send(message)?)
     }
+
+    pub fn get_table_entry_count<T>(&self) -> eyre::Result<usize>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+    {
+        Ok(self.db.ro_tx()?.entries::<T>()?)
+    }
+
+    pub fn get_highest_block_number(&self) -> eyre::Result<u64> {
+        self.db
+            .ro_tx()?
+            .cursor_read::<TxTraces>()?
+            .last()?
+            .map(|v| v.0)
+            .ok_or_else(|| eyre::eyre!("no max block found"))
+    }
 }
 
 pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> FeeAdjustedQuote {
