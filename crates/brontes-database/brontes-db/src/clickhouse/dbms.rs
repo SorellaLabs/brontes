@@ -25,7 +25,8 @@ clickhouse_dbms!(
         MevAtomic_Arbs,
         BrontesToken_Info,
         EthereumPools,
-        BrontesTree
+        BrontesTree,
+        BrontesRun_Id
     ]
 );
 
@@ -139,7 +140,7 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    [Brontes, Run_ID],
+    [Brontes, Run_Id],
     RunId,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
