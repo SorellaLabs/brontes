@@ -223,16 +223,16 @@ macro_rules! db_types {
 db_types!(
     (DexQuotesWithBlockNumber, BrontesDex_Price_Mapping, false),
     (MevBlock, MevMev_Blocks, true),
-    (BundleHeader, MevBundle_Header,true),
-    (SearcherTx, MevSearcher_Tx,true),
-    (CexDex, MevCex_Dex,true),
-    (Liquidation, MevLiquidations,true),
-    (JitLiquiditySandwich, MevJit_Sandwich,true),
-    (JitLiquidity, MevJit,true),
-    (Sandwich, MevSandwiches,true),
-    (AtomicArb, MevAtomic_Arbs,true),
-    (TokenInfoWithAddress, BrontesToken_Info,false),
-    (ProtocolInfoClickhouse, EthereumPools,false),
-    (TransactionRoot, BrontesTree,true),
-    (BlockAnalysis, BrontesBlock_Analysis,true)
+    (BundleHeader, MevBundle_Header, true),
+    (SearcherTx, MevSearcher_Tx, true),
+    (CexDex, MevCex_Dex, true),
+    (Liquidation, MevLiquidations, true),
+    (JitLiquiditySandwich, MevJit_Sandwich, true),
+    (JitLiquidity, MevJit, true),
+    (Sandwich, MevSandwiches, true),
+    (AtomicArb, MevAtomic_Arbs, true),
+    (TokenInfoWithAddress, BrontesToken_Info, false),
+    (ProtocolInfoClickhouse, EthereumPools, false),
+    (TransactionRoot, BrontesTree, true),
+    (BlockAnalysis, BrontesBlock_Analysis, true)
 );

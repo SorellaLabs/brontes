@@ -133,12 +133,12 @@ impl Clickhouse {
 
     pub async fn save_mev_blocks(
         &self,
-        _block_number: u64,
+        block_number: u64,
         block: MevBlock,
         mev: Vec<Bundle>,
     ) -> eyre::Result<()> {
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![(block, self.tip).into()])?;
+            tx.send(vec![(block, self.tip, block_number).into()])?;
 
             let (bundle_headers, bundle_data): (Vec<_>, Vec<_>) = mev
                 .into_iter()
@@ -155,13 +155,19 @@ impl Clickhouse {
 
             bundle_data.into_iter().try_for_each(|data| {
                 match data {
-                    BundleData::Sandwich(s) => tx.send(vec![(s, self.tip).into()])?,
-                    BundleData::AtomicArb(s) => tx.send(vec![(s, self.tip).into()])?,
-                    BundleData::JitSandwich(s) => tx.send(vec![(s, self.tip).into()])?,
-                    BundleData::Jit(s) => tx.send(vec![(s, self.tip).into()])?,
-                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip).into()])?,
-                    BundleData::Liquidation(s) => tx.send(vec![(s, self.tip).into()])?,
-                    BundleData::Unknown(s) => tx.send(vec![(s, self.tip).into()])?,
+                    BundleData::Sandwich(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
+                    BundleData::AtomicArb(s) => {
+                        tx.send(vec![(s, self.tip, block_number).into()])?
+                    }
+                    BundleData::JitSandwich(s) => {
+                        tx.send(vec![(s, self.tip, block_number).into()])?
+                    }
+                    BundleData::Jit(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
+                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
+                    BundleData::Liquidation(s) => {
+                        tx.send(vec![(s, self.tip, block_number).into()])?
+                    }
+                    BundleData::Unknown(s) => tx.send(vec![(s, self.tip, block_number).into()])?,
                 };
 
                 Ok(()) as eyre::Result<()>
@@ -194,6 +200,7 @@ impl Clickhouse {
     }
 
     pub async fn insert_tree(&self, tree: BlockTree<Action>) -> eyre::Result<()> {
+        let block_number = tree.header.number;
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
@@ -204,7 +211,7 @@ impl Clickhouse {
             tx.send(
                 roots
                     .into_iter()
-                    .zip(vec![self.tip].into_iter().cycle())
+                    .map(|root| (root, self.tip, block_number))
                     .map(Into::into)
                     .collect(),
             )?;
@@ -247,8 +254,9 @@ impl Clickhouse {
     }
 
     pub async fn block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
+        let block_number = block_analysis.block_number;
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![(block_analysis, self.tip).into()])?
+            tx.send(vec![(block_analysis, self.tip, block_number).into()])?
         };
 
         Ok(())
