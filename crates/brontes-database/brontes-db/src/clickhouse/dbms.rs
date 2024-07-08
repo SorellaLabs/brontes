@@ -234,6 +234,5 @@ db_types!(
     (TokenInfoWithAddress, BrontesToken_Info, false),
     (ProtocolInfoClickhouse, EthereumPools, false),
     (TransactionRoot, BrontesTree, true),
-    (BlockAnalysis, BrontesBlock_Analysis, true),
-    (BrontesRun_Id, RunId, false)
+    (BlockAnalysis, BrontesBlock_Analysis, true)
 );
