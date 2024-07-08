@@ -50,7 +50,7 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Block_Analysis],
-    BlockAnalysis,
+    DbDataWithRunId<BlockAnalysis>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
