@@ -1221,7 +1221,6 @@ impl LibmdbxReadWriter {
             .ro_tx()?
             .cursor_read::<TxTraces>()?
             .last()?
-            .inspect(|f| tracing::info!(?f))
             .map(|v| v.0)
             .ok_or_else(|| eyre::eyre!("no max block found"))
     }
