@@ -1,13 +1,11 @@
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse, block_analysis::BlockAnalysis,
-        builder::BuilderInfoWithAddress, dex::DexQuotesWithBlockNumber,
-        normalized_actions::TransactionRoot, searcher::JoinedSearcherInfo,
-        token_info::TokenInfoWithAddress,
+        dex::DexQuotesWithBlockNumber, normalized_actions::TransactionRoot,
+        token_info::TokenInfoWithAddress, DbDataWithRunId,
     },
     mev::*,
 };
- use brontes_types::db::DbDataWithRunId;
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
 clickhouse_dbms!(
@@ -131,7 +129,6 @@ remote_clickhouse_table!(
     ProtocolInfoClickhouse,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
-
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,

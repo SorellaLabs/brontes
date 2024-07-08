@@ -312,7 +312,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect();
 
         Some(JitLiquidity {
-            block_number: block_number,
+            block_number,
             frontrun_mint_tx_hash: hashes[0],
             frontrun_mint_gas_details: gas_details[0],
             frontrun_mints: mints,

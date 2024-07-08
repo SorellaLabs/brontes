@@ -30,22 +30,12 @@ use serde::{Deserialize, Serialize};
 /// This table is used to add run id inserts for each clickhouse table in order
 /// for us to not have to clear runs multiple times
 #[derive(Debug, Clone, Serialize)]
-pub struct DbDataWithRunId<
-    Table: Debug + Clone +   Serialize + DbRow + Sync + Send,
-> {
+pub struct DbDataWithRunId<Table: Debug + Clone + Serialize + DbRow + Sync + Send> {
     #[serde(flatten)]
     pub table:  Table,
     pub run_id: u64,
 }
-impl<
-        Table: Debug
-            + Clone
-            + Serialize
-            + DbRow
-            + Sync
-            + Send,
-    > InsertRow for DbDataWithRunId<Table>
-{
+impl<Table: Debug + Clone + Serialize + DbRow + Sync + Send> InsertRow for DbDataWithRunId<Table> {
     fn get_column_names(&self) -> &'static [&'static str] {
         let inner = Table::COLUMN_NAMES;
         let mut res = Vec::new();

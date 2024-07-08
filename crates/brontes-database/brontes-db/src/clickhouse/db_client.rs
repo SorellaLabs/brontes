@@ -1,7 +1,6 @@
 #[cfg(feature = "cex-dex-quotes")]
 use std::cmp::max;
 use std::fmt::Debug;
- use brontes_types::db::DbDataWithRunId;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -15,11 +14,11 @@ use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
-        builder::{BuilderInfo, BuilderInfoWithAddress},
+        builder::BuilderInfo,
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         normalized_actions::TransactionRoot,
-        searcher::{JoinedSearcherInfo, SearcherInfo},
+        searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, BundleData, MevBlock},
@@ -123,7 +122,8 @@ impl Clickhouse {
         builder_eoa: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        // let info = BuilderInfoWithAddress::new_with_address(builder_eoa, builder_info);
+        // let info = BuilderInfoWithAddress::new_with_address(builder_eoa,
+        // builder_info);
         //
         // if let Some(tx) = self.buffered_insert_tx.as_ref() {
         //     tx.send(vec![(info, self.tip).into()])?;
