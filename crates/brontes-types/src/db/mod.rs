@@ -53,3 +53,9 @@ impl<Table: Debug + Clone + serde::Serialize + DbRow + Sync + Send> InsertRow
 pub struct RunId {
     pub run_id: u64,
 }
+
+impl From<u64> for RunId {
+    fn from(value: u64) -> Self {
+        Self { run_id: value }
+    }
+}

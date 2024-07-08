@@ -89,11 +89,12 @@ impl Clickhouse {
     }
 
     pub async fn get_and_inc_run_id(&self) -> eyre::Result<u64> {
-        let id = self
+        let id = (self
             .client
             .query_one::<u64, _>("select max(run_id) from brontes.run_id", &())
             .await?
-            + 1;
+            + 1)
+        .into();
 
         self.client.insert_one::<BrontesRun_Id>(&id).await?;
 
