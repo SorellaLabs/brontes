@@ -29,9 +29,9 @@ use serde::{Deserialize, Serialize};
 
 /// This table is used to add run id inserts for each clickhouse table in order
 /// for us to not have to clear runs multiple times
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DbDataWithRunId<
-    Table: Debug + Clone +  PartialEq +  Serialize + DbRow + Sync + Send,
+    Table: Debug + Clone +   Serialize + DbRow + Sync + Send,
 > {
     #[serde(flatten)]
     pub table:  Table,
