@@ -540,7 +540,7 @@ pub async fn init_trace_parser(
 
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse() -> Clickhouse {
-    Clickhouse::default()
+    Clickhouse::new_default().await
 }
 
 #[cfg(not(feature = "local-clickhouse"))]

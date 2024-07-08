@@ -61,12 +61,6 @@ pub struct Clickhouse {
     pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
 }
 
-impl Default for Clickhouse {
-    fn default() -> Self {
-        Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false)
-    }
-}
-
 impl Clickhouse {
     pub async fn new(
         config: ClickhouseConfig,
@@ -82,6 +76,10 @@ impl Clickhouse {
             .expect("failed to set run_id");
 
         this
+    }
+
+    pub async fn new_default() -> Self {
+        Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false).await
     }
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
@@ -646,7 +644,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_block_info_query() {
-        let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
+        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
         let _ = test_db
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
@@ -910,7 +908,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_all_inserts() {
         init_threadpools(10);
-        let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
+        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
 
         let tables = &BrontesClickhouseTables::all_tables();
         test_db
@@ -921,7 +919,7 @@ mod tests {
     #[cfg(not(feature = "cex-dex-quotes"))]
     #[brontes_macros::test]
     async fn test_db_trades() {
-        let db_client = Clickhouse::default();
+        let db_client = Clickhouse::new_default().await;
 
         let db_cex_trades = db_client
             .get_cex_trades(CexRangeOrArbitrary::Arbitrary(&[18700684]))

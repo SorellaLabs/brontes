@@ -235,5 +235,5 @@ db_types!(
     (ProtocolInfoClickhouse, EthereumPools, false),
     (TransactionRoot, BrontesTree, true),
     (BlockAnalysis, BrontesBlock_Analysis, true),
-    (BrontesRun_Id, RunId, false)
+    (BrontesRun_Id, RunId, true)
 );

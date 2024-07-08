@@ -78,12 +78,12 @@ pub fn load_tip_database(
 }
 
 #[cfg(feature = "local-clickhouse")]
-pub fn load_read_only_database(
+pub async fn load_read_only_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
-    let clickhouse = Clickhouse::default();
+    let clickhouse = Clickhouse::new_default().await;
     Ok(ReadOnlyMiddleware::new(clickhouse, inner))
 }
 
@@ -99,7 +99,7 @@ pub fn load_libmdbx(
 pub async fn load_clickhouse(
     cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
 ) -> eyre::Result<Clickhouse> {
-    let mut clickhouse = Clickhouse::default();
+    let mut clickhouse = Clickhouse::new_default().await;
     clickhouse.cex_download_config = cex_download_config;
     Ok(clickhouse)
 }
