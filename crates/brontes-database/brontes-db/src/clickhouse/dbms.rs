@@ -147,7 +147,7 @@ pub struct BrontesClickhouseData {
 
 macro_rules! db_types {
     ($(($db_type:ident, $db_table:ident, $t:tt)),*) => {
-        db_types!(enum_s {}, $($db_type, $t),*);
+        db_types!(enum_s {}, $($db_type, $t,)*);
         // #[derive(Debug, Clone, serde::Serialize)]
         // #[serde(untagged)]
         // #[allow(clippy::large_enum_variant)]
