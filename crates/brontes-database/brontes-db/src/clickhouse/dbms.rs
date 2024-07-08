@@ -78,13 +78,6 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    [Brontes, Searcher_Info],
-    JoinedSearcherInfo,
-    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-);
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
     [Mev, Cex_Dex],
     DbDataWithRunId<CexDex>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
@@ -139,12 +132,6 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    [Brontes, Builder_Info],
-    BuilderInfoWithAddress,
-    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-);
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
