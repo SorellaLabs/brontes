@@ -172,11 +172,11 @@ macro_rules! db_types {
         $(
             db_types!($db_type, $t);
 
-            impl From<$db_type> for BrontesClickhouseTableDataTypes {
-                fn from(value: $db_type) -> BrontesClickhouseTableDataTypes {
-                    BrontesClickhouseTableDataTypes::$db_type(Box::new(value))
-                }
-            }
+            // impl From<$db_type> for BrontesClickhouseTableDataTypes {
+            //     fn from(value: $db_type) -> BrontesClickhouseTableDataTypes {
+            //         BrontesClickhouseTableDataTypes::$db_type(Box::new(value))
+            //     }
+            // }
 
         )*
     };
@@ -206,6 +206,8 @@ macro_rules! db_types {
             }
         }
     };
+    ($
+
 }
 
 db_types!(
