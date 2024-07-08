@@ -1219,7 +1219,7 @@ impl LibmdbxReadWriter {
     pub fn get_highest_block_number(&self) -> eyre::Result<u64> {
         self.db
             .ro_tx()?
-            .cursor_read::<BlockInfo>()?
+            .cursor_read::<TxTraces>()?
             .last()?
             .inspect(|f| tracing::info!(?f))
             .map(|v| v.0)
