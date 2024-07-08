@@ -40,9 +40,7 @@ pub struct DbDataWithRunId<
 impl<
         Table: Debug
             + Clone
-            + PartialEq
             + Serialize
-            + for<'de> Deserialize<'de>
             + DbRow
             + Sync
             + Send,
