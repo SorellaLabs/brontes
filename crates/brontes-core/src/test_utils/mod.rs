@@ -19,6 +19,7 @@ use futures::future::join_all;
 use indicatif::MultiProgress;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
+use reth_interfaces::db::LogLevel;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
@@ -383,9 +384,15 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             handle.spawn(manager);
 
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None, &ex, false).unwrap_or_else(
-                    |e| panic!("failed to open db path {}, err={}", brontes_db_endpoint, e),
-                ),
+                LibmdbxReadWriter::init_db(
+                    &brontes_db_endpoint,
+                    Some(LogLevel::Notice),
+                    &ex,
+                    false,
+                )
+                .unwrap_or_else(|e| {
+                    panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
+                }),
             ));
 
             let (tx, _rx) = unbounded_channel();
@@ -396,6 +403,8 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
                 this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
                     .await
                     .unwrap();
+            } else {
+                tracing::info!("skipping crit table init");
             }
 
             this
