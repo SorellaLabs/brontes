@@ -158,6 +158,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
 
     // Combine data from Sandwich and JitLiquidity into JitLiquiditySandwich
     let jit_sand = JitLiquiditySandwich {
+        block_number: sandwich.block_number,
         frontrun_tx_hash: sandwich.frontrun_tx_hash.clone(),
         frontrun_swaps: sandwich.frontrun_swaps,
         frontrun_mints,
