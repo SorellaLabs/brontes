@@ -206,7 +206,6 @@ macro_rules! db_types {
             }
         }
     };
-    ($
 
 }
 
