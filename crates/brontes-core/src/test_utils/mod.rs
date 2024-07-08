@@ -392,6 +392,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
             let tracer = init_trace_parser(handle, tx, this, 5).await;
             if init_crit_tables(&this) {
+                tracing::info!("initting crit tables");
                 this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
                     .await
                     .unwrap();
