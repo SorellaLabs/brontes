@@ -414,6 +414,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let victim_swaps = victim_swaps.into_iter().map(|(s, _)| s).collect_vec();
 
         let sandwich = Sandwich {
+            block_number: metadata.block_num,
             frontrun_tx_hash,
             frontrun_gas_details,
             frontrun_swaps: front_run_swaps,

@@ -138,6 +138,7 @@ impl CexDexProcessing {
         Some((
             optimistic.max(Some(window))?.to_float(),
             BundleData::CexDex(CexDex {
+                block_number:        meta.block_num,
                 tx_hash:             tx_info.tx_hash,
                 global_vmap_pnl:     self.global_vmam_cex_dex.as_ref()?.aggregate_pnl.clone(),
                 global_vmap_details: self

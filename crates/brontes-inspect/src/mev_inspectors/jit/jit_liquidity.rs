@@ -276,6 +276,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let jit_details = self.build_jit_type(
             hashes,
             gas_details,
+            metadata.block_num,
             mints,
             burns,
             collect,
@@ -291,6 +292,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         &self,
         mut hashes: Vec<TxHash>,
         mut gas_details: Vec<GasDetails>,
+        block_number: u64,
         mints: Vec<NormalizedMint>,
         burns: Vec<NormalizedBurn>,
         collect: Vec<NormalizedCollect>,
@@ -310,6 +312,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .collect();
 
         Some(JitLiquidity {
+            block_number: block_number,
             frontrun_mint_tx_hash: hashes[0],
             frontrun_mint_gas_details: gas_details[0],
             frontrun_mints: mints,

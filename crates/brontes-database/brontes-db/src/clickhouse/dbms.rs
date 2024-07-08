@@ -148,14 +148,6 @@ pub struct BrontesClickhouseData {
 macro_rules! db_types {
     ($(($db_type:ident, $db_table:ident, $t:tt)),*) => {
         db_types!(enum_s {}, $($db_type, $t,)*);
-        // #[derive(Debug, Clone, serde::Serialize)]
-        // #[serde(untagged)]
-        // #[allow(clippy::large_enum_variant)]
-        // pub enum BrontesClickhouseTableDataTypes {
-        //     $(
-        //         $db_type(Box<$db_type>),
-        //     )*
-        // }
 
         paste::paste! {
             impl BrontesClickhouseTableDataTypes {
@@ -172,12 +164,6 @@ macro_rules! db_types {
 
         $(
             db_types!($db_type, $t);
-
-            // impl From<$db_type> for BrontesClickhouseTableDataTypes {
-            //     fn from(value: $db_type) -> BrontesClickhouseTableDataTypes {
-            //         BrontesClickhouseTableDataTypes::$db_type(Box::new(value))
-            //     }
-            // }
 
         )*
     };
