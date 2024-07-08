@@ -384,15 +384,9 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             handle.spawn(manager);
 
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db(
-                    &brontes_db_endpoint,
-                    Some(LogLevel::Notice),
-                    &ex,
-                    false,
-                )
-                .unwrap_or_else(|e| {
-                    panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
-                }),
+                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None, &ex, false).unwrap_or_else(
+                    |e| panic!("failed to open db path {}, err={}", brontes_db_endpoint, e),
+                ),
             ));
 
             let (tx, _rx) = unbounded_channel();
@@ -450,6 +444,7 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
         let strd = serde_json::to_string(&cache).unwrap();
 
         write!(&mut file, "{}", strd).unwrap();
+        file.flush().unwrap();
     };
 
     // try fetch highest block number. if there is no highest block number.
