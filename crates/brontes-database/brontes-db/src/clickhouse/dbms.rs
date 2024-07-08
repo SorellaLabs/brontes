@@ -59,21 +59,21 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Mev_Blocks],
-    MevBlock,
+    DbDataWithRunId<MevBlock>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Bundle_Header],
-    BundleHeader,
+    DbDataWithRunId<BundleHeader>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Searcher_Tx],
-    SearcherTx,
+    DbDataWithRunId<SearcherTx>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
@@ -87,42 +87,42 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Cex_Dex],
-    CexDex,
+    DbDataWithRunId<CexDex>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Liquidations],
-    Liquidation,
+    DbDataWithRunId<Liquidation>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Jit_Sandwich],
-    JitLiquiditySandwich,
+    DbDataWithRunId<JitLiquiditySandwich>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Jit],
-    JitLiquidity,
+    DbDataWithRunId<JitLiquidity>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Sandwiches],
-    Sandwich,
+    DbDataWithRunId<Sandwich>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Atomic_Arbs],
-    AtomicArb,
+    DbDataWithRunId<AtomicArb>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
