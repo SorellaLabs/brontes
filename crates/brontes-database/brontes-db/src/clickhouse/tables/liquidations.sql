@@ -1,6 +1,7 @@
 CREATE TABLE mev.liquidations ON CLUSTER eth_cluster0
 (
     `liquidation_tx_hash` String,
+    `block_number` UInt64,
     `liquidation_swaps` Nested(
         `trace_idx` UInt64,
         `from` String,
@@ -27,8 +28,8 @@ CREATE TABLE mev.liquidations ON CLUSTER eth_cluster0
         `gas_used` UInt128,
         `effective_gas_price` UInt128
     ),
-    `last_updated` UInt64 DEFAULT now()
+    `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/liquidations', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/liquidations', '{replica}', `run_id`)
 PRIMARY KEY (`liquidation_tx_hash`)
 ORDER BY (`liquidation_tx_hash` )

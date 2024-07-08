@@ -114,11 +114,9 @@ impl ClickhouseBuffered {
             (MevSandwiches, Sandwich),
             (MevAtomic_Arbs, AtomicArb),
             (MevLiquidations, Liquidation),
-            (BrontesSearcher_Info, JoinedSearcherInfo),
             (BrontesDex_Price_Mapping, DexQuotesWithBlockNumber),
             (BrontesToken_Info, TokenInfoWithAddress),
             (EthereumPools, ProtocolInfoClickhouse),
-            (BrontesBuilder_Info, BuilderInfoWithAddress),
             (BrontesTree, TransactionRoot),
             (BrontesBlock_Analysis, BlockAnalysis)
         );

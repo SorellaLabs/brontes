@@ -18,7 +18,6 @@ clickhouse_dbms!(
         MevMev_Blocks,
         MevBundle_Header,
         MevSearcher_Tx,
-        BrontesSearcher_Info,
         MevCex_Dex,
         MevLiquidations,
         MevJit_Sandwich,
@@ -27,7 +26,6 @@ clickhouse_dbms!(
         MevAtomic_Arbs,
         BrontesToken_Info,
         EthereumPools,
-        BrontesBuilder_Info,
         BrontesTree
     ]
 );
@@ -208,7 +206,6 @@ db_types!(
     (MevBlock, MevMev_Blocks),
     (BundleHeader, MevBundle_Header),
     (SearcherTx, MevSearcher_Tx),
-    (JoinedSearcherInfo, BrontesSearcher_Info),
     (CexDex, MevCex_Dex),
     (Liquidation, MevLiquidations),
     (JitLiquiditySandwich, MevJit_Sandwich),
@@ -217,7 +214,6 @@ db_types!(
     (AtomicArb, MevAtomic_Arbs),
     (TokenInfoWithAddress, BrontesToken_Info),
     (ProtocolInfoClickhouse, EthereumPools),
-    (BuilderInfoWithAddress, BrontesBuilder_Info),
     (TransactionRoot, BrontesTree),
     (BlockAnalysis, BrontesBlock_Analysis)
 );
