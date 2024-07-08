@@ -147,14 +147,15 @@ pub struct BrontesClickhouseData {
 
 macro_rules! db_types {
     ($(($db_type:ident, $db_table:ident, $t:tt)),*) => {
-        #[derive(Debug, Clone, serde::Serialize)]
-        #[serde(untagged)]
-        #[allow(clippy::large_enum_variant)]
-        pub enum BrontesClickhouseTableDataTypes {
-            $(
-                $db_type(Box<$db_type>),
-            )*
-        }
+        db_types!(enum_s {}, $($db_type, $t),*);
+        // #[derive(Debug, Clone, serde::Serialize)]
+        // #[serde(untagged)]
+        // #[allow(clippy::large_enum_variant)]
+        // pub enum BrontesClickhouseTableDataTypes {
+        //     $(
+        //         $db_type(Box<$db_type>),
+        //     )*
+        // }
 
         paste::paste! {
             impl BrontesClickhouseTableDataTypes {
@@ -206,7 +207,26 @@ macro_rules! db_types {
             }
         }
     };
-
+    (enum_s  {$($acc:tt)* }, $db_type:ident, true, $($tail)*) => {
+        db_types!(enum_s {
+            $($acc)*,
+            $db_type(Box<DbDataWithRunId<$db_type>>),
+        }, $($tail)*);
+    };
+    (enum_s {$($acc:tt)* }, $db_type:ident, false, $($tail)*) => {
+        db_types!(enum_s {
+            $($acc)*,
+            $db_type(Box<$db_type>),
+        }, $($tail)*);
+    };
+    (enum_s {$($acc:tt)*},$(,)*) => {
+        #[derive(Debug, Clone, serde::Serialize)]
+        #[serde(untagged)]
+        #[allow(clippy::large_enum_variant)]
+        pub enum BrontesClickhouseTableDataTypes {
+            $($acc)*
+        }
+    }
 }
 
 db_types!(
