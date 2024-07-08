@@ -133,7 +133,7 @@ impl Serialize for CexDex {
         let mut ser_struct = serializer.serialize_struct("CexDex", 68)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
-        ser_struct.serialize_field("block_number", &block_number)?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
 
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps
