@@ -618,357 +618,357 @@ where
     query
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::sync::Arc;
-//
-//     use alloy_primitives::{hex, TxHash};
-//     use brontes_classifier::test_utils::ClassifierTestUtils;
-//     use brontes_types::{
-//         db::{cex::CexExchange, dex::DexPrices, searcher::SearcherEoaContract},
-//         init_threadpools,
-//         mev::{
-//             ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, JitLiquidity,
-//             JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
-//             Sandwich,
-//         },
-//         normalized_actions::{
-//             NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
-//         },
-//         pair::Pair,
-//         FastHashMap, GasDetails,
-//     };
-//     use db_interfaces::{
-//         clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestClient},
-//         test_utils::TestDatabase,
-//     };
-//
-//     use super::*;
-//
-//     #[brontes_macros::test]
-//     async fn test_block_info_query() {
-//         let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
-//         let _ = test_db
-//             .client
-//             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
-//             .await
-//             .unwrap();
-//     }
-//
-//     async fn load_tree() -> Arc<BlockTree<Action>> {
-//         let classifier_utils = ClassifierTestUtils::new().await;
-//         let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
-//         classifier_utils.build_tree_tx(tx).await.unwrap().into()
-//     }
-//
-//     async fn token_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let case0 = TokenInfoWithAddress::default();
-//
-//         db.insert_one::<BrontesToken_Info>(&case0).await.unwrap();
-//     }
-//
-//     // async fn searcher_stats(db:
-//     // &ClickhouseTestClient<BrontesClickhouseTables>) {     let case0 =
-//     // SearcherStatsWithAddress::default();
-//     //
-//     //     db.insert_one::<ClickhouseSearcherStats>(&case0)
-//     //         .await
-//     //         .unwrap();
-//     //
-//     //     let query = "SELECT * FROM brontes.searcher_stats";
-//     //     let queried: SearcherStatsWithAddress = db.query_one(query,
-//     // &()).await.unwrap();
-//     //
-//     //     assert_eq!(queried, case0);
-//     // }
-//
-//     #[allow(unused)]
-//     async fn builder_stats(_db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         todo!();
-//         /*
-//         let case0 = BuilderStatsWithAddress::default();
-//
-//         db.insert_one::<ClickhouseBuilderStats>(&case0)
-//             .await
-//             .unwrap();
-//
-//         let query = "SELECT * FROM brontes.builder_stats";
-//         let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
-//
-//         assert_eq!(queried, case0);
-//         */
-//     }
-//
-//     async fn dex_price_mapping(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let case0_pair = Pair::default();
-//         let case0_dex_prices = DexPrices::default();
-//         let mut case0_map = FastHashMap::default();
-//         case0_map.insert(case0_pair, case0_dex_prices);
-//
-//         let case0 = DexQuotesWithBlockNumber {
-//             block_number: Default::default(),
-//             tx_idx:       Default::default(),
-//             quote:        Some(case0_map),
-//         };
-//
-//         db.insert_one::<BrontesDex_Price_Mapping>(&case0)
-//             .await
-//             .unwrap();
-//
-//         let query = "SELECT * FROM brontes.dex_price_mapping";
-//         let queried: DexQuotesWithBlockNumber = db.query_one(query, &()).await.unwrap();
-//
-//         assert_eq!(queried, case0);
-//     }
-//
-//     async fn mev_block(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let case0_possible = PossibleMev::default();
-//         let case0 = MevBlock {
-//             possible_mev: PossibleMevCollection(vec![case0_possible]),
-//             ..Default::default()
-//         };
-//
-//         db.insert_one::<MevMev_Blocks>(&case0).await.unwrap();
-//     }
-//
-//     async fn cex_dex(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let swap = NormalizedSwap::default();
-//         let arb_detail = ArbDetails::default();
-//         let arb_pnl = ArbPnl::default();
-//         let opt_trade = OptimisticTrade::default();
-//         let cex_exchange = CexExchange::Binance;
-//
-//         let case0 = CexDex {
-//             swaps: vec![swap.clone()],
-//             global_vmap_details: vec![arb_detail.clone()],
-//             global_vmap_pnl: arb_pnl.clone(),
-//             optimal_route_details: vec![arb_detail.clone()],
-//             optimal_route_pnl: arb_pnl.clone(),
-//             optimistic_route_details: vec![arb_detail.clone()],
-//             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-//             optimistic_route_pnl: Some(arb_pnl.clone()),
-//             per_exchange_details: vec![vec![arb_detail.clone()]],
-//             per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
-//             ..CexDex::default()
-//         };
-//
-//         db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
-//
-//         let case1 = CexDex {
-//             swaps: vec![swap.clone()],
-//             global_vmap_details: vec![arb_detail.clone()],
-//             global_vmap_pnl: arb_pnl.clone(),
-//             optimal_route_details: vec![arb_detail.clone()],
-//             optimal_route_pnl: arb_pnl.clone(),
-//             optimistic_route_details: vec![arb_detail.clone()],
-//             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-//             optimistic_route_pnl: None,
-//             per_exchange_details: vec![vec![arb_detail.clone()]],
-//             per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
-//             ..CexDex::default()
-//         };
-//
-//         db.insert_one::<MevCex_Dex>(&case1).await.unwrap();
-//     }
-//
-//     async fn jit(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let swap = NormalizedSwap::default();
-//         let mint = NormalizedMint::default();
-//         let burn = NormalizedBurn::default();
-//         let gas_details = GasDetails::default();
-//         let case0 = JitLiquidity {
-//             frontrun_mints: vec![mint],
-//             backrun_burns: vec![burn],
-//             victim_swaps: vec![vec![swap]],
-//             victim_swaps_gas_details: vec![gas_details],
-//             ..JitLiquidity::default()
-//         };
-//
-//         db.insert_one::<MevJit>(&case0).await.unwrap();
-//     }
-//
-//     async fn jit_sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let swap = NormalizedSwap::default();
-//         let mint = NormalizedMint::default();
-//         let burn = NormalizedBurn::default();
-//         let gas_details = GasDetails::default();
-//         let case0 = JitLiquiditySandwich {
-//             frontrun_mints: vec![Some(vec![mint])],
-//             backrun_burns: vec![burn],
-//             victim_swaps: vec![vec![swap]],
-//             victim_swaps_gas_details: vec![gas_details],
-//             ..JitLiquiditySandwich::default()
-//         };
-//
-//         db.insert_one::<MevJit_Sandwich>(&case0).await.unwrap();
-//     }
-//
-//     async fn liquidations(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let swap = NormalizedSwap::default();
-//         let liquidation = NormalizedLiquidation::default();
-//         let gas_details = GasDetails::default();
-//         let case0 = Liquidation {
-//             liquidation_swaps: vec![swap],
-//             liquidations: vec![liquidation],
-//             gas_details,
-//             ..Liquidation::default()
-//         };
-//
-//         db.insert_one::<MevLiquidations>(&case0).await.unwrap();
-//     }
-//
-//     async fn bundle_header(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let case0 = BundleHeader::default();
-//
-//         db.insert_one::<MevBundle_Header>(&case0).await.unwrap();
-//     }
-//
-//     async fn sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let swap0 = NormalizedSwap::default();
-//         let swap1 = NormalizedSwap::default();
-//         let swap2 = NormalizedSwap::default();
-//         let gas_details = GasDetails::default();
-//         let case0 = Sandwich {
-//             frontrun_swaps: vec![vec![swap0]],
-//             victim_swaps: vec![vec![swap1]],
-//             victim_swaps_gas_details: vec![gas_details],
-//             backrun_swaps: vec![swap2],
-//             ..Sandwich::default()
-//         };
-//
-//         db.insert_one::<MevSandwiches>(&case0).await.unwrap();
-//     }
-//
-//     async fn atomic_arb(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let swap = NormalizedSwap::default();
-//         let gas_details = GasDetails::default();
-//         let case0 = AtomicArb { swaps: vec![swap], gas_details, ..AtomicArb::default() };
-//
-//         db.insert_one::<MevAtomic_Arbs>(&case0).await.unwrap();
-//     }
-//
-//     async fn pools(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let case0 = ProtocolInfoClickhouse {
-//             protocol:         "NONE".to_string(),
-//             protocol_subtype: "NONE".to_string(),
-//             address:          "0x229b8325bb9Ac04602898B7e8989998710235d5f"
-//                 .to_string()
-//                 .into(),
-//             tokens:           vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
-//                 .to_string()
-//                 .into()],
-//             curve_lp_token:   Some(
-//                 "0x229b8325bb9Ac04602898B7e8989998710235d5f"
-//                     .to_string()
-//                     .into(),
-//             ),
-//             init_block:       0,
-//         };
-//
-//         db.insert_one::<EthereumPools>(&case0).await.unwrap();
-//     }
-//
-//     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let case0 = BlockAnalysis::default();
-//
-//         db.insert_one::<BrontesBlock_Analysis>(&case0)
-//             .await
-//             .unwrap();
-//     }
-//
-//     async fn tree(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         let tree = load_tree().await;
-//
-//         let roots: Vec<TransactionRoot> = tree
-//             .tx_roots
-//             .iter()
-//             .map(|root| (root, tree.header.number).into())
-//             .collect::<Vec<_>>();
-//
-//         db.insert_many::<BrontesTree>(&roots).await.unwrap();
-//     }
-//
-//     async fn run_all(database: &ClickhouseTestClient<BrontesClickhouseTables>) {
-//         builder_info(database).await;
-//         pools(database).await;
-//         atomic_arb(database).await;
-//         sandwich(database).await;
-//         bundle_header(database).await;
-//         liquidations(database).await;
-//         jit_sandwich(database).await;
-//         jit(database).await;
-//         cex_dex(database).await;
-//         mev_block(database).await;
-//         dex_price_mapping(database).await;
-//         // builder_stats(database).await;
-//         // searcher_stats(database).await;
-//         token_info(database).await;
-//         // searcher_info(database).await;
-//         tree(database).await;
-//         block_analysis(database).await;
-//     }
-//
-//     #[brontes_macros::test]
-//     async fn test_all_inserts() {
-//         init_threadpools(10);
-//         let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
-//
-//         let tables = &BrontesClickhouseTables::all_tables();
-//         test_db
-//             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
-//             .await;
-//     }
-//
-//     #[cfg(not(feature = "cex-dex-quotes"))]
-//     #[brontes_macros::test]
-//     async fn test_db_trades() {
-//         let db_client = Clickhouse::default();
-//
-//         let db_cex_trades = db_client
-//             .get_cex_trades(CexRangeOrArbitrary::Arbitrary(&[18700684]))
-//             .await
-//             .unwrap();
-//
-//         let cex_trade_map = &db_cex_trades.first().unwrap().value;
-//
-//         let pair = Pair(
-//             hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
-//             hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
-//         );
-//
-//         println!("ORDERED PAIR: {:?}", pair.ordered());
-//
-//         cex_trade_map.get_vwam_via_intermediary_spread(
-//             brontes_types::db::cex::config::CexDexTradeConfig::default(),
-//             &[CexExchange::Okex],
-//             1701543803 * 1_000_000,
-//             &pair,
-//             &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
-//             None,
-//             &NormalizedSwap::default(),
-//             TxHash::default(),
-//         );
-//
-//         let trades = cex_trade_map
-//             .0
-//             .get(&CexExchange::Okex)
-//             .unwrap()
-//             .get(&pair.ordered())
-//             .unwrap();
-//
-//         for t in trades {
-//             println!("ORDERED: {:?}", t);
-//         }
-//
-//         let trades = cex_trade_map
-//             .0
-//             .get(&CexExchange::Okex)
-//             .unwrap()
-//             .get(&pair)
-//             .unwrap();
-//
-//         for t in trades {
-//             println!("UNORDERED: {:?}", t);
-//         }
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use alloy_primitives::{hex, TxHash};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::{cex::CexExchange, dex::DexPrices, searcher::SearcherEoaContract},
+        init_threadpools,
+        mev::{
+            ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, JitLiquidity,
+            JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
+            Sandwich,
+        },
+        normalized_actions::{
+            NormalizedBurn, NormalizedLiquidation, NormalizedMint, NormalizedSwap,
+        },
+        pair::Pair,
+        FastHashMap, GasDetails,
+    };
+    use db_interfaces::{
+        clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestClient},
+        test_utils::TestDatabase,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_block_info_query() {
+        let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
+        let _ = test_db
+            .client
+            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
+            .await
+            .unwrap();
+    }
+
+    async fn load_tree() -> Arc<BlockTree<Action>> {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let tx = hex!("31dedbae6a8e44ec25f660b3cd0e04524c6476a0431ab610bb4096f82271831b").into();
+        classifier_utils.build_tree_tx(tx).await.unwrap().into()
+    }
+
+    async fn token_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let case0 = TokenInfoWithAddress::default();
+
+        db.insert_one::<BrontesToken_Info>(&case0).await.unwrap();
+    }
+
+    // async fn searcher_stats(db:
+    // &ClickhouseTestClient<BrontesClickhouseTables>) {     let case0 =
+    // SearcherStatsWithAddress::default();
+    //
+    //     db.insert_one::<ClickhouseSearcherStats>(&case0)
+    //         .await
+    //         .unwrap();
+    //
+    //     let query = "SELECT * FROM brontes.searcher_stats";
+    //     let queried: SearcherStatsWithAddress = db.query_one(query,
+    // &()).await.unwrap();
+    //
+    //     assert_eq!(queried, case0);
+    // }
+
+    #[allow(unused)]
+    async fn builder_stats(_db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        todo!();
+        /*
+        let case0 = BuilderStatsWithAddress::default();
+
+        db.insert_one::<ClickhouseBuilderStats>(&case0)
+            .await
+            .unwrap();
+
+        let query = "SELECT * FROM brontes.builder_stats";
+        let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+        */
+    }
+
+    async fn dex_price_mapping(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let case0_pair = Pair::default();
+        let case0_dex_prices = DexPrices::default();
+        let mut case0_map = FastHashMap::default();
+        case0_map.insert(case0_pair, case0_dex_prices);
+
+        let case0 = DexQuotesWithBlockNumber {
+            block_number: Default::default(),
+            tx_idx:       Default::default(),
+            quote:        Some(case0_map),
+        };
+
+        db.insert_one::<BrontesDex_Price_Mapping>(&case0)
+            .await
+            .unwrap();
+
+        let query = "SELECT * FROM brontes.dex_price_mapping";
+        let queried: DexQuotesWithBlockNumber = db.query_one(query, &()).await.unwrap();
+
+        assert_eq!(queried, case0);
+    }
+
+    async fn mev_block(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let case0_possible = PossibleMev::default();
+        let case0 = MevBlock {
+            possible_mev: PossibleMevCollection(vec![case0_possible]),
+            ..Default::default()
+        };
+
+        db.insert_one::<MevMev_Blocks>(&case0).await.unwrap();
+    }
+
+    async fn cex_dex(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let swap = NormalizedSwap::default();
+        let arb_detail = ArbDetails::default();
+        let arb_pnl = ArbPnl::default();
+        let opt_trade = OptimisticTrade::default();
+        let cex_exchange = CexExchange::Binance;
+
+        let case0 = CexDex {
+            swaps: vec![swap.clone()],
+            global_vmap_details: vec![arb_detail.clone()],
+            global_vmap_pnl: arb_pnl.clone(),
+            optimal_route_details: vec![arb_detail.clone()],
+            optimal_route_pnl: arb_pnl.clone(),
+            optimistic_route_details: vec![arb_detail.clone()],
+            optimistic_trade_details: vec![vec![opt_trade.clone()]],
+            optimistic_route_pnl: Some(arb_pnl.clone()),
+            per_exchange_details: vec![vec![arb_detail.clone()]],
+            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            ..CexDex::default()
+        };
+
+        db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
+
+        let case1 = CexDex {
+            swaps: vec![swap.clone()],
+            global_vmap_details: vec![arb_detail.clone()],
+            global_vmap_pnl: arb_pnl.clone(),
+            optimal_route_details: vec![arb_detail.clone()],
+            optimal_route_pnl: arb_pnl.clone(),
+            optimistic_route_details: vec![arb_detail.clone()],
+            optimistic_trade_details: vec![vec![opt_trade.clone()]],
+            optimistic_route_pnl: None,
+            per_exchange_details: vec![vec![arb_detail.clone()]],
+            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            ..CexDex::default()
+        };
+
+        db.insert_one::<MevCex_Dex>(&case1).await.unwrap();
+    }
+
+    async fn jit(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let swap = NormalizedSwap::default();
+        let mint = NormalizedMint::default();
+        let burn = NormalizedBurn::default();
+        let gas_details = GasDetails::default();
+        let case0 = JitLiquidity {
+            frontrun_mints: vec![mint],
+            backrun_burns: vec![burn],
+            victim_swaps: vec![vec![swap]],
+            victim_swaps_gas_details: vec![gas_details],
+            ..JitLiquidity::default()
+        };
+
+        db.insert_one::<MevJit>(&case0).await.unwrap();
+    }
+
+    async fn jit_sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let swap = NormalizedSwap::default();
+        let mint = NormalizedMint::default();
+        let burn = NormalizedBurn::default();
+        let gas_details = GasDetails::default();
+        let case0 = JitLiquiditySandwich {
+            frontrun_mints: vec![Some(vec![mint])],
+            backrun_burns: vec![burn],
+            victim_swaps: vec![vec![swap]],
+            victim_swaps_gas_details: vec![gas_details],
+            ..JitLiquiditySandwich::default()
+        };
+
+        db.insert_one::<MevJit_Sandwich>(&case0).await.unwrap();
+    }
+
+    async fn liquidations(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let swap = NormalizedSwap::default();
+        let liquidation = NormalizedLiquidation::default();
+        let gas_details = GasDetails::default();
+        let case0 = Liquidation {
+            liquidation_swaps: vec![swap],
+            liquidations: vec![liquidation],
+            gas_details,
+            ..Liquidation::default()
+        };
+
+        db.insert_one::<MevLiquidations>(&case0).await.unwrap();
+    }
+
+    async fn bundle_header(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let case0 = BundleHeader::default();
+
+        db.insert_one::<MevBundle_Header>(&case0).await.unwrap();
+    }
+
+    async fn sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let swap0 = NormalizedSwap::default();
+        let swap1 = NormalizedSwap::default();
+        let swap2 = NormalizedSwap::default();
+        let gas_details = GasDetails::default();
+        let case0 = Sandwich {
+            frontrun_swaps: vec![vec![swap0]],
+            victim_swaps: vec![vec![swap1]],
+            victim_swaps_gas_details: vec![gas_details],
+            backrun_swaps: vec![swap2],
+            ..Sandwich::default()
+        };
+
+        db.insert_one::<MevSandwiches>(&case0).await.unwrap();
+    }
+
+    async fn atomic_arb(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let swap = NormalizedSwap::default();
+        let gas_details = GasDetails::default();
+        let case0 = AtomicArb { swaps: vec![swap], gas_details, ..AtomicArb::default() };
+
+        db.insert_one::<MevAtomic_Arbs>(&case0).await.unwrap();
+    }
+
+    async fn pools(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let case0 = ProtocolInfoClickhouse {
+            protocol:         "NONE".to_string(),
+            protocol_subtype: "NONE".to_string(),
+            address:          "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                .to_string()
+                .into(),
+            tokens:           vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                .to_string()
+                .into()],
+            curve_lp_token:   Some(
+                "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+                    .to_string()
+                    .into(),
+            ),
+            init_block:       0,
+        };
+
+        db.insert_one::<EthereumPools>(&case0).await.unwrap();
+    }
+
+    async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let case0 = BlockAnalysis::default();
+
+        db.insert_one::<BrontesBlock_Analysis>(&case0)
+            .await
+            .unwrap();
+    }
+
+    async fn tree(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let tree = load_tree().await;
+
+        let roots: Vec<TransactionRoot> = tree
+            .tx_roots
+            .iter()
+            .map(|root| (root, tree.header.number).into())
+            .collect::<Vec<_>>();
+
+        db.insert_many::<BrontesTree>(&roots).await.unwrap();
+    }
+
+    async fn run_all(database: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        builder_info(database).await;
+        pools(database).await;
+        atomic_arb(database).await;
+        sandwich(database).await;
+        bundle_header(database).await;
+        liquidations(database).await;
+        jit_sandwich(database).await;
+        jit(database).await;
+        cex_dex(database).await;
+        mev_block(database).await;
+        dex_price_mapping(database).await;
+        // builder_stats(database).await;
+        // searcher_stats(database).await;
+        token_info(database).await;
+        // searcher_info(database).await;
+        tree(database).await;
+        block_analysis(database).await;
+    }
+
+    #[brontes_macros::test]
+    async fn test_all_inserts() {
+        init_threadpools(10);
+        let test_db = ClickhouseTestClient { client: Clickhouse::default().client };
+
+        let tables = &BrontesClickhouseTables::all_tables();
+        test_db
+            .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
+            .await;
+    }
+
+    #[cfg(not(feature = "cex-dex-quotes"))]
+    #[brontes_macros::test]
+    async fn test_db_trades() {
+        let db_client = Clickhouse::default();
+
+        let db_cex_trades = db_client
+            .get_cex_trades(CexRangeOrArbitrary::Arbitrary(&[18700684]))
+            .await
+            .unwrap();
+
+        let cex_trade_map = &db_cex_trades.first().unwrap().value;
+
+        let pair = Pair(
+            hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
+            hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
+        );
+
+        println!("ORDERED PAIR: {:?}", pair.ordered());
+
+        cex_trade_map.get_vwam_via_intermediary_spread(
+            brontes_types::db::cex::config::CexDexTradeConfig::default(),
+            &[CexExchange::Okex],
+            1701543803 * 1_000_000,
+            &pair,
+            &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
+            None,
+            &NormalizedSwap::default(),
+            TxHash::default(),
+        );
+
+        let trades = cex_trade_map
+            .0
+            .get(&CexExchange::Okex)
+            .unwrap()
+            .get(&pair.ordered())
+            .unwrap();
+
+        for t in trades {
+            println!("ORDERED: {:?}", t);
+        }
+
+        let trades = cex_trade_map
+            .0
+            .get(&CexExchange::Okex)
+            .unwrap()
+            .get(&pair)
+            .unwrap();
+
+        for t in trades {
+            println!("UNORDERED: {:?}", t);
+        }
+    }
+}
