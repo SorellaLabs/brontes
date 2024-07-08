@@ -25,17 +25,17 @@ pub mod token_info;
 pub mod traces;
 pub mod traits;
 
-use serde::Serialize;
-
 /// This table is used to add run id inserts for each clickhouse table in order
 /// for us to not have to clear runs multiple times
-#[derive(Debug, Clone, Serialize)]
-pub struct DbDataWithRunId<Table: Debug + Clone + Serialize + DbRow + Sync + Send> {
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DbDataWithRunId<Table: Debug + Clone + serde::Serialize + DbRow + Sync + Send> {
     #[serde(flatten)]
     pub table:  Table,
     pub run_id: u64,
 }
-impl<Table: Debug + Clone + Serialize + DbRow + Sync + Send> InsertRow for DbDataWithRunId<Table> {
+impl<Table: Debug + Clone + serde::Serialize + DbRow + Sync + Send> InsertRow
+    for DbDataWithRunId<Table>
+{
     fn get_column_names(&self) -> &'static [&'static str] {
         let inner = Table::COLUMN_NAMES;
         let mut res = Vec::new();
@@ -47,4 +47,9 @@ impl<Table: Debug + Clone + Serialize + DbRow + Sync + Send> InsertRow for DbDat
 
         Box::leak(sliced)
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize, ::clickhouse::Row)]
+pub struct RunId {
+    pub run_id: u64,
 }

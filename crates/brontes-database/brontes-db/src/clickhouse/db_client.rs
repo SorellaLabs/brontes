@@ -75,8 +75,11 @@ impl Clickhouse {
         tip: bool,
     ) -> Self {
         let client = config.build();
-        let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0};
-        this.run_id = this.get_and_inc_run_id().await.expect("failed to set run_id");
+        let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0 };
+        this.run_id = this
+            .get_and_inc_run_id()
+            .await
+            .expect("failed to set run_id");
 
         this
     }
@@ -89,10 +92,10 @@ impl Clickhouse {
         let id = self
             .client
             .query_one::<u64, _>("select max(run_id) from brontes.run_id", &())
-            .await? + 1;
+            .await?
+            + 1;
 
-        let query = format!("insert into brontes.run_id (run_id) values ({})" id);
-        self.client.execute_remote(&query, &()).await?;
+        self.client.insert_one::<BrontesRun_Id>(&id).await?;
 
         Ok(id)
     }
@@ -110,7 +113,6 @@ impl Clickhouse {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-
         Ok(())
     }
 
@@ -119,7 +121,6 @@ impl Clickhouse {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-
         Ok(())
     }
 
@@ -128,7 +129,6 @@ impl Clickhouse {
         builder_eoa: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-
         Ok(())
     }
 
@@ -149,7 +149,7 @@ impl Clickhouse {
             tx.send(
                 bundle_headers
                     .into_iter()
-                    .map(|a| (a, self.tip,self.run_id))
+                    .map(|a| (a, self.tip, self.run_id))
                     .map(Into::into)
                     .collect(),
             )?;
@@ -157,18 +157,16 @@ impl Clickhouse {
             bundle_data.into_iter().try_for_each(|data| {
                 match data {
                     BundleData::Sandwich(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
-                    BundleData::AtomicArb(s) => {
-                        tx.send(vec![(s, self.tip, self.run_id).into()])?
-                    }
+                    BundleData::AtomicArb(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::JitSandwich(s) => {
                         tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
                     BundleData::Jit(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
-                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip,self.run_id).into()])?,
+                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::Liquidation(s) => {
-                        tx.send(vec![(s, self.tip,self.run_id).into()])?
+                        tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
-                    BundleData::Unknown(s) => tx.send(vec![(s, self.tip,self.run_id).into()])?,
+                    BundleData::Unknown(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                 };
 
                 Ok(()) as eyre::Result<()>

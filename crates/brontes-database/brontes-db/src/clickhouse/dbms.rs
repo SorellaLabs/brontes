@@ -2,7 +2,7 @@ use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse, block_analysis::BlockAnalysis,
         dex::DexQuotesWithBlockNumber, normalized_actions::TransactionRoot,
-        token_info::TokenInfoWithAddress, DbDataWithRunId,
+        token_info::TokenInfoWithAddress, DbDataWithRunId, RunId,
     },
     mev::*,
 };
@@ -134,6 +134,13 @@ remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Tree],
     DbDataWithRunId<TransactionRoot>,
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    [Brontes, Run_ID],
+    RunId,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
