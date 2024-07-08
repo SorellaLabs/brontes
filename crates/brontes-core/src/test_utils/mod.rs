@@ -455,12 +455,14 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
     // try fetch highest block number. if there is no highest block number.
     // init crit tables and save current cache.
     let Ok(max_block) = db.get_highest_block_number() else {
+        tracing::info!("no highest block found");
         write_fn(0);
 
         return true
     };
     // try load file.
     let Ok(cache_data) = std::fs::read_to_string(".test_cache.json") else {
+        tracing::info!("no .test_cache.json found");
         write_fn(max_block);
         return true
     };
