@@ -26,6 +26,7 @@ use brontes_types::{
 };
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use reth_db::table::Table;
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{
@@ -52,7 +53,7 @@ pub const NUM_TABLES: usize = 14;
 
 macro_rules! tables {
     ($($table:ident),*) => {
-        #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+        #[derive(Debug, PartialEq, Copy, Clone, Eq, Hash, Serialize, Deserialize)]
         #[repr(u8)]
         /// Default tables that should be present inside database.
         pub enum Tables {
