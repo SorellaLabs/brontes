@@ -21,5 +21,5 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
     `run_id` UInt64
 ) 
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/atomic_arbs', '{replica}', `run_id`)
-PRIMARY KEY (`tx_hash`)
-ORDER BY (`tx_hash`)
+PRIMARY KEY (`block_number`, `tx_hash`)
+ORDER BY (`block_number`, `tx_hash`)

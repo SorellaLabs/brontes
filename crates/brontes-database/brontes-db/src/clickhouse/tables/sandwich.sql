@@ -60,5 +60,5 @@ CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
     `run_id` UInt64
 ) 
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/sandwiches', '{replica}', `run_id`)
-PRIMARY KEY (`backrun_tx_hash`)
-ORDER BY (`backrun_tx_hash`)
+PRIMARY KEY (`block_number`, `backrun_tx_hash`)
+ORDER BY (`block_number`, `backrun_tx_hash`)

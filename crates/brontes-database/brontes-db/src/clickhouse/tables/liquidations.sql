@@ -31,5 +31,7 @@ CREATE TABLE mev.liquidations ON CLUSTER eth_cluster0
     `run_id` UInt64
 ) 
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/liquidations', '{replica}', `run_id`)
-PRIMARY KEY (`liquidation_tx_hash`)
-ORDER BY (`liquidation_tx_hash` )
+PRIMARY KEY (`block_number`,`liquidation_tx_hash`)
+ORDER BY (`block_number`,`liquidation_tx_hash` )
+
+
