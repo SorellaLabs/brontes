@@ -98,7 +98,7 @@ impl Clickhouse {
 
         self.client.insert_one::<BrontesRun_Id>(&id).await?;
 
-        Ok(id)
+        Ok(id.run_id)
     }
 
     pub async fn max_traced_block(&self) -> eyre::Result<u64> {
