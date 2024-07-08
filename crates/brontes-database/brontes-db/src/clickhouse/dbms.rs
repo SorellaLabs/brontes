@@ -207,13 +207,13 @@ macro_rules! db_types {
             }
         }
     };
-    (enum_s  {$($acc:tt)* }, $db_type:ident, true, $($tail)*) => {
+    (enum_s  {$($acc:tt)* }, $db_type:ident, true, $($tail:tt)*) => {
         db_types!(enum_s {
             $($acc)*,
             $db_type(Box<DbDataWithRunId<$db_type>>),
         }, $($tail)*);
     };
-    (enum_s {$($acc:tt)* }, $db_type:ident, false, $($tail)*) => {
+    (enum_s {$($acc:tt)* }, $db_type:ident, false, $($tail:tt)*) => {
         db_types!(enum_s {
             $($acc)*,
             $db_type(Box<$db_type>),
