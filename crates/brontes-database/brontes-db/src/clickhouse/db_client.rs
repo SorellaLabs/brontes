@@ -652,27 +652,6 @@ mod tests {
         classifier_utils.build_tree_tx(tx).await.unwrap().into()
     }
 
-    #[allow(unused)]
-    async fn searcher_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let case0 = JoinedSearcherInfo {
-            address:         Default::default(),
-            fund:            Default::default(),
-            mev:             Default::default(),
-            builder:         Some(Default::default()),
-            eoa_or_contract: SearcherEoaContract::Contract,
-            config_labels:   Default::default(),
-            pnl:             Default::default(),
-            gas_bids:        Default::default(),
-        };
-
-        db.insert_one::<BrontesSearcher_Info>(&case0).await.unwrap();
-
-        let query = "SELECT * FROM brontes.searcher_info";
-        let queried: JoinedSearcherInfo = db.query_one(query, &()).await.unwrap();
-
-        assert_eq!(queried, case0);
-    }
-
     async fn token_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = TokenInfoWithAddress::default();
 
@@ -878,12 +857,6 @@ mod tests {
         };
 
         db.insert_one::<EthereumPools>(&case0).await.unwrap();
-    }
-
-    async fn builder_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let case0 = BuilderInfoWithAddress::default();
-
-        db.insert_one::<BrontesBuilder_Info>(&case0).await.unwrap();
     }
 
     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {

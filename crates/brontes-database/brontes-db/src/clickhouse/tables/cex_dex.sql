@@ -1,6 +1,7 @@
 CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
 (
     `tx_hash` String,
+    `block_number` UInt64,
     `swaps` Nested(
         `trace_idx` UInt64,
         `from` String,
@@ -85,8 +86,8 @@ CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
         `gas_used` UInt128,
         `effective_gas_price` UInt128
     ),
-    `last_updated` UInt64 DEFAULT now()
+    `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/cex_dex', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/cex_dex', '{replica}', `run_id`)
 PRIMARY KEY (`tx_hash`)
 ORDER BY (`tx_hash`)

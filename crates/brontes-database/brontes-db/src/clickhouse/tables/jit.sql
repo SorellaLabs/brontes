@@ -1,6 +1,7 @@
 CREATE TABLE mev.jit ON CLUSTER eth_cluster0
 (
     `frontrun_mint_tx_hash` String,
+    `block_number` UInt64,
     `frontrun_mints` Nested(
         `trace_idx` UInt64,
         `from` String,
@@ -48,8 +49,8 @@ CREATE TABLE mev.jit ON CLUSTER eth_cluster0
         `gas_used` UInt128,
         `effective_gas_price` UInt128
     ),
-    `last_updated` UInt64 DEFAULT now()
+    `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/jit', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/jit', '{replica}', `run_id`)
 PRIMARY KEY (`backrun_burn_tx_hash`)
 ORDER BY (`backrun_burn_tx_hash`)
