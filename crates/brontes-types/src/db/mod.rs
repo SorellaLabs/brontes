@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 /// for us to not have to clear runs multiple times
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize)]
 pub struct DbDataWithRunId<
-    Table: Debug + Clone + Hash + PartialEq + Eq + Serialize + DbRow + Sync + Send,
+    Table: Debug + Clone +  PartialEq +  Serialize + DbRow + Sync + Send,
 > {
     #[serde(flatten)]
     pub table:  Table,
@@ -40,9 +40,7 @@ pub struct DbDataWithRunId<
 impl<
         Table: Debug
             + Clone
-            + Hash
             + PartialEq
-            + Eq
             + Serialize
             + for<'de> Deserialize<'de>
             + DbRow
