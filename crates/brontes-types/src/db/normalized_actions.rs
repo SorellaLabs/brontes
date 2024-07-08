@@ -1,3 +1,4 @@
+use alloy_primitives::Address;
 use clickhouse::DbRow;
 use itertools::MultiUnzip;
 use reth_primitives::B256;
@@ -10,6 +11,8 @@ pub struct TransactionRoot {
     pub block_number: u64,
     pub tx_hash:      B256,
     pub tx_idx:       usize,
+    pub from_address: Address,
+    pub to_address:   Address,
     pub gas_details:  GasDetails,
     pub trace_nodes:  Vec<TraceNode>,
 }
@@ -22,6 +25,8 @@ impl From<(&Root<Action>, u64)> for TransactionRoot {
         make_trace_nodes(&root.head, tx_data, &mut trace_nodes);
 
         Self {
+            from_address: root.get_from_address(),
+            to_address: root.get_to_address(),
             block_number,
             tx_hash: root.tx_hash,
             tx_idx: root.position,
@@ -36,11 +41,13 @@ impl Serialize for TransactionRoot {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("TransactionRoot", 7)?;
+        let mut ser_struct = serializer.serialize_struct("TransactionRoot", 9)?;
 
         ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("tx_idx", &self.tx_idx)?;
+        ser_struct.serialize_field("from_address", &format!("{:?}", self.from_address))?;
+        ser_struct.serialize_field("to_address", &format!("{:?}", self.to_address))?;
         ser_struct.serialize_field(
             "gas_details",
             &(

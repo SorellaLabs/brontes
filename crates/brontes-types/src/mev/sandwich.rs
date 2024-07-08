@@ -60,6 +60,7 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Sandwich {
+    pub block_number:             u64,
     /// Transaction hashes of the frontrunning transactions.
     /// Supports multiple transactions for complex sandwich scenarios.
     pub frontrun_tx_hash:         Vec<B256>,
@@ -165,7 +166,8 @@ impl Serialize for Sandwich {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("Sandwich", 34)?;
+        let mut ser_struct = serializer.serialize_struct("Sandwich", 35)?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
 
         // frontrun
         ser_struct.serialize_field(
@@ -286,6 +288,7 @@ impl Serialize for Sandwich {
 
 impl DbRow for Sandwich {
     const COLUMN_NAMES: &'static [&'static str] = &[
+        "block_number",
         "frontrun_tx_hash",
         "frontrun_swaps.tx_hash",
         "frontrun_swaps.trace_idx",

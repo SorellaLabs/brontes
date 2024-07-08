@@ -1,3 +1,6 @@
+use std::{fmt::Debug, hash::Hash};
+
+use ::clickhouse::{DbRow, InsertRow};
 pub mod address_metadata;
 pub mod address_to_protocol_info;
 
@@ -21,3 +24,41 @@ pub mod searcher;
 pub mod token_info;
 pub mod traces;
 pub mod traits;
+
+use serde::{Deserialize, Serialize};
+
+/// This table is used to add run id inserts for each clickhouse table in order
+/// for us to not have to clear runs multiple times
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize)]
+pub struct DbDataWithRunId<
+    Table: Debug + Clone + Hash + PartialEq + Eq + Serialize + DbRow + Sync + Send,
+> {
+    #[serde(flatten)]
+    pub table:  Table,
+    pub run_id: u64,
+}
+impl<
+        Table: Debug
+            + Clone
+            + Hash
+            + PartialEq
+            + Eq
+            + Serialize
+            + for<'de> Deserialize<'de>
+            + DbRow
+            + Sync
+            + Send,
+    > InsertRow for DbDataWithRunId<Table>
+{
+    fn get_column_names(&self) -> &'static [&'static str] {
+        let inner = Table::COLUMN_NAMES;
+        let mut res = Vec::new();
+        for i in inner {
+            res.push(*i);
+        }
+        res.push("run_id");
+        let sliced = res.into_boxed_slice();
+
+        Box::leak(sliced)
+    }
+}

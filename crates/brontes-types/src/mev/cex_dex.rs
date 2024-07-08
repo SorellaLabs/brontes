@@ -69,6 +69,7 @@ impl Serialize for OptimisticTrade {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDex {
     pub tx_hash:               B256,
+    pub block_number:          u64,
     pub swaps:                 Vec<NormalizedSwap>,
     // Represents the arb details, using the cross exchange VMAP quote
     pub global_vmap_details:   Vec<ArbDetails>,
@@ -129,9 +130,10 @@ impl Serialize for CexDex {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("CexDex", 67)?;
+        let mut ser_struct = serializer.serialize_struct("CexDex", 68)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
+        ser_struct.serialize_field("block_number", &block_number)?;
 
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps
@@ -586,6 +588,7 @@ impl Serialize for CexDex {
 impl DbRow for CexDex {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "tx_hash",
+        "block_number",
         "swaps.trace_idx",
         "swaps.from",
         "swaps.recipient",

@@ -28,6 +28,7 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct JitLiquidity {
     pub frontrun_mint_tx_hash: B256,
+    pub block_number: u64,
     pub frontrun_mints: Vec<NormalizedMint>,
     #[redefined(same_fields)]
     pub frontrun_mint_gas_details: GasDetails,
@@ -82,13 +83,14 @@ impl Serialize for JitLiquidity {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("JitLiquidity", 30)?;
+        let mut ser_struct = serializer.serialize_struct("JitLiquidity", 31)?;
 
         // frontrun mint
         ser_struct.serialize_field(
             "frontrun_mint_tx_hash",
             &format!("{:?}", self.frontrun_mint_tx_hash),
         )?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
 
         let frontrun_mints: ClickhouseVecNormalizedMintOrBurn = self
             .frontrun_mints
@@ -178,6 +180,7 @@ impl Serialize for JitLiquidity {
 impl DbRow for JitLiquidity {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "frontrun_mint_tx_hash",
+        "block_number",
         "frontrun_mints.trace_idx",
         "frontrun_mints.from",
         "frontrun_mints.pool",
