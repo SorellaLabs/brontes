@@ -37,7 +37,7 @@ Our `merge_possible_swaps` function combines these sequential swaps, allowing us
 
 To estimate the CEX price the arbitrageur traded at, we use two distinct methods:
 
-### Dynamic Time Window Volume Weighted Markouts
+### A. Dynamic Time Window Volume Weighted Markouts
 
 This method calculates a Volume Weighted Average Price (VWAP) within a dynamic time window around each block. We use a dynamic window to capture diverse arbitrage scenarios across different market conditions.
 
@@ -125,11 +125,37 @@ This formula balances three key factors:
 
 The result is a price estimate that reflects both market depth and the likely timing of arbitrage executions.
 
-#### B. Optimistic VWAP
+### B. Optimistic Execution Calculation
 
-1. Collect all trades within a set time window.
-2. Sort trades by price and select the most favorable trades up to the required volume.
-3. Calculate VWAP based on these selected trades.
+This method provides an upper bound on potential arbitrage profitability by assuming near optimal trade execution within a fixed time window.
+
+#### Process:
+
+1. Data Collection:
+
+   - Gather all trades across all exchanges within a fixed time window. We currently set the default to -0.5 +2 seconds around the block time.
+
+2. Trade Sorting:
+
+   - Order trades from most to least advantageous price.
+   - Most advantageous trades are those resulting in highest PnL for the arbitrageur.
+
+3. Volume Filtering:
+
+   - Remove trades with volume exceeding arbitrage requirements.
+   - Apply a 10% buffer to account for potential volume variations.
+
+4. Trade Selection:
+   - Use a quality parameter (expressed as a percentage) to determine starting point in sorted trades.
+   - Select most favorable trades up to the required clearance amount.
+
+#### Key Considerations:
+
+- This method assumes perfect foresight and execution, providing a "best-case" scenario.
+- It's useful for identifying the maximum potential of an arbitrage opportunity.
+- The fixed time window and quality parameter are configurable to adjust for different market conditions.
+
+By using both the Dynamic Time Window VWAP and Optimistic Execution methods, we gain a comprehensive view of arbitrage opportunities, from realistic estimates to theoretical maximums.
 
 ### Step 4: Calculate Potential Arbitrage Profits
 
