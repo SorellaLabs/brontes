@@ -1,4 +1,4 @@
-use std::{fmt::Debug, hash::Hash};
+use std::fmt::Debug;
 
 use ::clickhouse::{DbRow, InsertRow};
 pub mod address_metadata;
@@ -25,7 +25,7 @@ pub mod token_info;
 pub mod traces;
 pub mod traits;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// This table is used to add run id inserts for each clickhouse table in order
 /// for us to not have to clear runs multiple times
