@@ -7,6 +7,7 @@ use brontes_types::{
     },
     mev::*,
 };
+ use brontes_types::db::DbDataWithRunId
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
 clickhouse_dbms!(
