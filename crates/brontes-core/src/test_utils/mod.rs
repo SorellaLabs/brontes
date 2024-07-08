@@ -471,7 +471,7 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
 
     // we init if stats.biggest block is < the db biggest block or we have a table
     // with zero entries
-    stats.biggest_block <= max_block || !is_init
+    stats.biggest_block < max_block || !is_init
 }
 
 #[cfg(feature = "local-reth")]
