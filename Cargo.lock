@@ -2901,7 +2901,7 @@ dependencies = [
 [[package]]
 name = "db-interfaces"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#c06dc5ea4479f4ec6229c7e5fe3d5d314a6c0f9a"
+source = "git+https://github.com/SorellaLabs/db-interfaces#9196c054277f7c59cc6150f6111a9360331765e5"
 dependencies = [
  "chrono",
  "clickhouse",
@@ -2927,7 +2927,7 @@ dependencies = [
 [[package]]
 name = "db-interfaces-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#c06dc5ea4479f4ec6229c7e5fe3d5d314a6c0f9a"
+source = "git+https://github.com/SorellaLabs/db-interfaces#9196c054277f7c59cc6150f6111a9360331765e5"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -4220,7 +4220,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.4.10",
+ "socket2 0.5.7",
  "tokio",
  "tower-service",
  "tracing",
