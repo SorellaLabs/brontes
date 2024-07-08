@@ -19,7 +19,6 @@ use futures::future::join_all;
 use indicatif::MultiProgress;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
-use reth_interfaces::db::LogLevel;
 use reth_primitives::{Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
@@ -392,7 +391,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             let (tx, _rx) = unbounded_channel();
             let clickhouse = Box::leak(Box::new(load_clickhouse().await));
             let tracer = init_trace_parser(handle, tx, this, 5).await;
-            if init_crit_tables(&this) {
+            if init_crit_tables(this) {
                 tracing::info!("initting crit tables");
                 this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
                     .await
@@ -439,6 +438,7 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .open(".test_cache.json")
             .unwrap();
         let strd = serde_json::to_string(&cache).unwrap();
