@@ -1,6 +1,7 @@
 #[cfg(feature = "cex-dex-quotes")]
 use std::cmp::max;
 use std::fmt::Debug;
+ use brontes_types::db::DbDataWithRunId;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -94,11 +95,11 @@ impl Clickhouse {
         searcher_eoa: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
-
-        if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![(joined, self.tip).into()])?;
-        }
+        // let joined = JoinedSearcherInfo::new_eoa(searcher_eoa, searcher_info);
+        //
+        // if let Some(tx) = self.buffered_insert_tx.as_ref() {
+        //     tx.send(vec![(joined, self.tip).into()])?;
+        // }
 
         Ok(())
     }
@@ -108,11 +109,11 @@ impl Clickhouse {
         searcher_contract: Address,
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
-        let joined = JoinedSearcherInfo::new_eoa(searcher_contract, searcher_info);
-
-        if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![(joined, self.tip).into()])?;
-        }
+        // let joined = JoinedSearcherInfo::new_eoa(searcher_contract, searcher_info);
+        //
+        // if let Some(tx) = self.buffered_insert_tx.as_ref() {
+        //     tx.send(vec![(joined, self.tip).into()])?;
+        // }
 
         Ok(())
     }
@@ -122,11 +123,11 @@ impl Clickhouse {
         builder_eoa: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        let info = BuilderInfoWithAddress::new_with_address(builder_eoa, builder_info);
-
-        if let Some(tx) = self.buffered_insert_tx.as_ref() {
-            tx.send(vec![(info, self.tip).into()])?;
-        }
+        // let info = BuilderInfoWithAddress::new_with_address(builder_eoa, builder_info);
+        //
+        // if let Some(tx) = self.buffered_insert_tx.as_ref() {
+        //     tx.send(vec![(info, self.tip).into()])?;
+        // }
 
         Ok(())
     }
@@ -148,7 +149,7 @@ impl Clickhouse {
             tx.send(
                 bundle_headers
                     .into_iter()
-                    .zip(vec![self.tip].into_iter().cycle())
+                    .map(|a| (a, self.tip, block_number))
                     .map(Into::into)
                     .collect(),
             )?;
