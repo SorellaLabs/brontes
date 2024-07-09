@@ -16,6 +16,3 @@ ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/bront
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
 SETTINGS index_granularity = 8192, parts_to_throw_insert = 10000
-
-
-

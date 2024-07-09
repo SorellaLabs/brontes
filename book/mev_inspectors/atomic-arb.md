@@ -2,7 +2,6 @@
 
 The Atomic Arbitrage Inspector is designed to detect and analyze the profitability of various forms of atomic arbitrage.
 
-//TODO: Add transfer to swap creation to identify arbs on missing exchanges
 **What is an atomic arbitrage?**
 
 An atomic arbitrage is a type of arbitrage that involves multiple trades that are executed in a single transaction and result in a profit for the trader. Typically, these involve arbitraging price differences between different liquidity pools.

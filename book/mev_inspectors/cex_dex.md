@@ -10,50 +10,87 @@ Centralized exchanges (CEX) and decentralized exchanges (DEX) operate on fundame
 
 ### Step 1: Identify Potential Arbitrage Transactions
 
-The inspector works in two phases:
+First, the inspector collects all block transactions involving `swap`, `transfer`, `eth_transfer`, `aggregator_swap` actions.
 
-First, it collects all block transactions involving `swap`, `transfer`, `eth_transfer`, `aggregator_swap` actions.
+Then, for each transaction it:
 
-Then, for each transaction:
-
-1. Discard transactions if it's a solver settlements or from a known DeFi automation bot.
+1. Discards transactions if it's a solver settlements or from a known DeFi automation bot.
 2. Extract DEX swaps and transfers.
 3. If no swaps are found, attempt to reconstruct swaps from transfers.
 4. Discard transactions that represent atomic arbitrage (where trades form a closed loop).
 
-TODO: We are currently only attempting to create swaps from transfers if there are no identified swaps. We should instead do this for all transfers but apply a stricter methodology to identify them.
+### Step 2: Merge Sequential Swaps
 
-FOR API: Intermediary skip only happens when we have A->B->C which will change what is stored in the bundle data vs the tree, so you know that you should show the A->B->C on a single page for the details when these two are different.
+<div style="text-align: center;">
+ <img src="cex-dex/swap-merging.png" alt="Swap Merging" style="border-radius: 20px; width: 400px; height: auto;">
+</div>
 
-### Step 2: CEX Price Estimation
+We merge sequential swaps to match on-chain routes with off-chain markets. Here's why:
 
-1. Merge Sequential Swaps
+- On-chain and off-chain liquidity often differ. For example, PEPE-WETH might be the most liquid pair on-chain, while PEPE-USDT dominates off-chain.
+- Arbitrageurs might swap PEPE-WETH then WETH-USDT on-chain to arbitrage against the PEPE-USDT off-chain market.
+- By merging these on-chain swaps (PEPE-WETH-USDT into PEPE-USDT), we align our analysis with the actual off-chain trade.
 
-- We first use the `merge_possible_swaps` function to combine sequential swaps via intermediaries into direct swaps where possible.
-- This process identifies cases where two swaps (A->B and B->C) can be represented as a single swap (A->C).
-- Merging swaps allows us to evaluate CEX prices more accurately, especially when there's a direct trading pair on centralized exchanges.
+Our `merge_possible_swaps` function combines these sequential swaps, allowing us to evaluate CEX prices more precisely.
 
-For each DEX swap, the inspector estimates corresponding CEX prices using two methods:
+### Step 3: CEX Price Estimation
 
-## Dynamic Time Window Volume Weighted Markout
+To estimate the CEX price the arbitrageur traded at, we use two distinct methods:
 
-We establish a default time window. Say: -0.5 before the block | +2 after the block
+### Dynamic Time Window Volume Weighted Markouts
 
-For that given default interval, we collect all trades & evaluate total volume. If volume is insufficient we will extend the post-block time interval by increments of 0.1.
+This method calculates a Volume Weighted Average Price (VWAP) within a dynamic time window around each block. We use a dynamic window to capture diverse arbitrage scenarios across different market conditions.
 
-Once our time window has been extended to -0.5 | +3 post, if we still don't have sufficient volume we start extending our pre block by increments of 0.1 until we reach - 2. We do so while incrementing post block up to +4.
+#### Why a Dynamic Window?
 
-Once our time window has been extended to -2 | +4 if we still don't have we will increment our post window up to +5. If there is still insufficient volume we will increment our pre window to -3.
+1. Highly Competitive Markets (e.g., ETH/USDT):
 
-We will repeat this extension if volume is insufficient until we reach our max interval. E.g: -3 | + 5
+   - Arbitrageurs face uncertainty about DEX trade inclusion until block proposal because of high competition of other arbitrageurs seeking the same opportunity.
+   - They often wait for block confirmation before executing the CEX leg.
+   - High volume allows rapid trade execution close to block time.
+   - Window: Narrow, focused around and shortly after block time.
 
-## Accounting for execution risk
+2. Less Competitive and Low-Volume Markets:
+   - Lower trade volume reduces concerns about DEX trade inclusion.
+   - Arbitrageurs have more flexibility in timing CEX execution.
+   - Focus shifts to optimizing execution and minimizing price impact.
+   - Traders may need extended time to clear positions without excessive slippage.
+   - Insufficient off-chain volume in tight windows may obscure arbitrage activity.
+   - Window: Wider, allowing for gradual execution strategies and capturing sparse but significant arbitrage events.
 
-- **Risk of Price Movements**:
+#### Determining the Trade Time Window
 
-### Bi-Exponential Decay Function
+We expand the time window in three phases:
 
-The bi-exponential decay function is used to assign different weights to trades occurring before and after the block time. This approach allows us to skew the weighting to favour the post block time trades in consideration of the fact that arbitrageurs gain certainty in their DEX execution.
+1. Default Window
+<div style="text-align: center;">
+ <img src="cex-dex/default-time-window.png" alt="Default Time Window" style="border-radius: 20px; width: 550px; height: auto;">
+</div>
+
+- Setting: ±50 milliseconds around block time
+- Purpose: Capture highly competitive, time-sensitive arbitrages
+
+2. Initial Extension
+<div style="text-align: center;">
+ <img src="cex-dex/first-extension-time-window.png" alt="Initial Time Window Extension" style="border-radius: 20px; width: 550px; height: auto;">
+</div>
+
+- Action: Extend post-block time up to 350ms in 10ms increments
+- Rationale: Traders gain certainty post-block, likely executing shortly after
+
+3. Full Extension
+<div style="text-align: center;">
+ <img src="cex-dex/final-time-window.png" alt="Fully Extended Time Window" style="border-radius: 20px; width: 550px; height: auto;">
+</div>
+
+- Action: Extend both pre and post-block time up to -5/+8 seconds
+- Purpose: Capture less competitive arbitrages and low-volume pair activity
+
+#### Weighting Trades: Bi-Exponential Decay Function
+
+We use a bi-exponential decay function to weight trades based on their timing relative to the block time. This approach favors post-block trades, reflecting increased arbitrageur certainty after DEX execution confirmation.
+
+The weight function:
 
 $$
 Weight(t) =
@@ -70,23 +107,23 @@ Where:
 - \\( \lambda\_{pre} \\) is the decay rate before the block time.
 - \\( \lambda\_{post} \\) is the decay rate after the block time.
 
-Proposed values are [here](https://www.desmos.com/calculator/7ktqmde9ab)
+Current λ values are set [here](https://www.desmos.com/calculator/7ktqmde9ab).
 
-### Adjusted Volume Weighted Average Price (VWAP)
+#### Adjusted Volume Weighted Average Price (VWAP)
 
-To integrate both volume information and the bi-exponential time decay into the VWAP, we adjust the calculation as follows:
+We integrate volume data and time-based weights into our VWAP calculation:
 
 $$
 AdjustedVWAP = \frac{\sum (Price_i \times Volume_i \times TimingWeight_i)}{\sum (Volume_i \times TimingWeight_i)}
 $$
 
-#### A. Time Window Volume Weighted Average Markout (VWAM)
+This formula balances three key factors:
 
-1. Set a default time window around the block timestamp.
-2. Collect all trades within this window and calculate the total volume.
-3. If volume is insufficient, dynamically extend the time window.
-4. Apply a bi-exponential decay function to weight trades based on their temporal proximity to the block timestamp.
-5. Calculate an Adjusted Volume Weighted Average Price (VWAP) using these weights.
+1. Trade price
+2. Trade volume
+3. Temporal proximity to block time
+
+The result is a price estimate that reflects both market depth and the likely timing of arbitrage executions.
 
 #### B. Optimistic VWAP
 
