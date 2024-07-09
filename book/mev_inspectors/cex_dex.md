@@ -127,7 +127,7 @@ The result is a price estimate that reflects both market depth and the likely ti
 
 This method returns a `MakerTakerWindowVWAP` for each DEX swap:
 
-```rust
+```rust,ignore
 pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
 
 pub struct WindowExchangePrice {
@@ -173,7 +173,7 @@ This method provides an upper bound on potential arbitrage profitability by assu
 
 This method returns a `MakerTaker` for each DEX swap:
 
-```rust
+```rust,ignore
 pub type MakerTaker = (ExchangePrice, ExchangePrice);
 
 pub struct ExchangePrice {
