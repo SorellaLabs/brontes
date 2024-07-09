@@ -620,7 +620,7 @@ mod tests {
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::{cex::CexExchange, dex::DexPrices},
+        db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_threadpools,
         mev::{
             ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, JitLiquidity,
@@ -662,38 +662,6 @@ mod tests {
         db.insert_one::<BrontesToken_Info>(&case0).await.unwrap();
     }
 
-    // async fn searcher_stats(db:
-    // &ClickhouseTestClient<BrontesClickhouseTables>) {     let case0 =
-    // SearcherStatsWithAddress::default();
-    //
-    //     db.insert_one::<ClickhouseSearcherStats>(&case0)
-    //         .await
-    //         .unwrap();
-    //
-    //     let query = "SELECT * FROM brontes.searcher_stats";
-    //     let queried: SearcherStatsWithAddress = db.query_one(query,
-    // &()).await.unwrap();
-    //
-    //     assert_eq!(queried, case0);
-    // }
-
-    #[allow(unused)]
-    async fn builder_stats(_db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        todo!();
-        /*
-        let case0 = BuilderStatsWithAddress::default();
-
-        db.insert_one::<ClickhouseBuilderStats>(&case0)
-            .await
-            .unwrap();
-
-        let query = "SELECT * FROM brontes.builder_stats";
-        let queried: BuilderStatsWithAddress = db.query_one(query, &()).await.unwrap();
-
-        assert_eq!(queried, case0);
-        */
-    }
-
     async fn dex_price_mapping(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0_pair = Pair::default();
         let case0_dex_prices = DexPrices::default();
@@ -723,7 +691,9 @@ mod tests {
             ..Default::default()
         };
 
-        db.insert_one::<MevMev_Blocks>(&case0).await.unwrap();
+        db.insert_one::<MevMev_Blocks>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
     }
 
     async fn cex_dex(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -747,7 +717,9 @@ mod tests {
             ..CexDex::default()
         };
 
-        db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
+        db.insert_one::<MevCex_Dex>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
 
         let case1 = CexDex {
             swaps: vec![swap.clone()],
@@ -763,7 +735,9 @@ mod tests {
             ..CexDex::default()
         };
 
-        db.insert_one::<MevCex_Dex>(&case1).await.unwrap();
+        db.insert_one::<MevCex_Dex>(&DbDataWithRunId::new_with_run_id(case1, 0))
+            .await
+            .unwrap();
     }
 
     async fn jit(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -779,7 +753,9 @@ mod tests {
             ..JitLiquidity::default()
         };
 
-        db.insert_one::<MevJit>(&case0).await.unwrap();
+        db.insert_one::<MevJit>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
     }
 
     async fn jit_sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -795,7 +771,9 @@ mod tests {
             ..JitLiquiditySandwich::default()
         };
 
-        db.insert_one::<MevJit_Sandwich>(&case0).await.unwrap();
+        db.insert_one::<MevJit_Sandwich>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
     }
 
     async fn liquidations(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -809,13 +787,17 @@ mod tests {
             ..Liquidation::default()
         };
 
-        db.insert_one::<MevLiquidations>(&case0).await.unwrap();
+        db.insert_one::<MevLiquidations>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
     }
 
     async fn bundle_header(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BundleHeader::default();
 
-        db.insert_one::<MevBundle_Header>(&case0).await.unwrap();
+        db.insert_one::<MevBundle_Header>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
     }
 
     async fn sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -831,7 +813,9 @@ mod tests {
             ..Sandwich::default()
         };
 
-        db.insert_one::<MevSandwiches>(&case0).await.unwrap();
+        db.insert_one::<MevSandwiches>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
     }
 
     async fn atomic_arb(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -839,7 +823,9 @@ mod tests {
         let gas_details = GasDetails::default();
         let case0 = AtomicArb { swaps: vec![swap], gas_details, ..AtomicArb::default() };
 
-        db.insert_one::<MevAtomic_Arbs>(&case0).await.unwrap();
+        db.insert_one::<MevAtomic_Arbs>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
     }
 
     async fn pools(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
@@ -858,7 +844,8 @@ mod tests {
                     .into(),
             ),
             init_block:       0,
-        };
+        }
+        .into();
 
         db.insert_one::<EthereumPools>(&case0).await.unwrap();
     }
@@ -866,7 +853,7 @@ mod tests {
     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = BlockAnalysis::default();
 
-        db.insert_one::<BrontesBlock_Analysis>(&case0)
+        db.insert_one::<BrontesBlock_Analysis>(&DbDataWithRunId::new_with_run_id(case0, 0))
             .await
             .unwrap();
     }
@@ -874,17 +861,21 @@ mod tests {
     async fn tree(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let tree = load_tree().await;
 
-        let roots: Vec<TransactionRoot> = tree
+        let roots: Vec<_> = tree
             .tx_roots
             .iter()
-            .map(|root| (root, tree.header.number).into())
+            .map(|root| {
+                DbDataWithRunId::<TransactionRoot>::new_with_run_id(
+                    (root, tree.header.number).into(),
+                    0,
+                )
+            })
             .collect::<Vec<_>>();
 
         db.insert_many::<BrontesTree>(&roots).await.unwrap();
     }
 
     async fn run_all(database: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        builder_info(database).await;
         pools(database).await;
         atomic_arb(database).await;
         sandwich(database).await;
@@ -917,6 +908,8 @@ mod tests {
     #[cfg(not(feature = "cex-dex-quotes"))]
     #[brontes_macros::test]
     async fn test_db_trades() {
+        use reth_primitives::TxHash;
+
         let db_client = Clickhouse::new_default().await;
 
         let db_cex_trades = db_client

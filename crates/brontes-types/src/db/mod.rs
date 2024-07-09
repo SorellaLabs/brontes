@@ -32,6 +32,13 @@ pub struct DbDataWithRunId<Table: Debug + Clone + serde::Serialize + DbRow + Syn
     pub table:  Table,
     pub run_id: u64,
 }
+
+impl<Table: Debug + Clone + serde::Serialize + DbRow + Sync + Send> DbDataWithRunId<Table> {
+    pub fn new_with_run_id(table: Table, run_id: u64) -> Self {
+        Self { table, run_id }
+    }
+}
+
 impl<Table: Debug + Clone + serde::Serialize + DbRow + Sync + Send> InsertRow
     for DbDataWithRunId<Table>
 {
