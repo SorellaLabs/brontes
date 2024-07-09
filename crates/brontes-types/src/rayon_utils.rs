@@ -73,6 +73,8 @@ fn init_inspect_threadpool(threads: usize) {
     let threadpool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
         .thread_name(|idx| format!("Inspect: {}", idx))
+        // fat stack
+        .stack_size(1024 * 1024 * 32)
         .build()
         .unwrap();
     let _ = RAYON_INSPECT_THREADPOOL.set(threadpool);
