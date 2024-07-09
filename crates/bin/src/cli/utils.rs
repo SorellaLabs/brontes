@@ -51,7 +51,7 @@ pub fn load_tip_database(cur: &LibmdbxReadWriter) -> eyre::Result<LibmdbxReadWri
 
 /// This version is used when `local-clickhouse` and
 #[cfg(feature = "local-clickhouse")]
-pub fn load_database(
+pub async fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
     hr: Option<HeartRateMonitor>,
@@ -60,7 +60,7 @@ pub fn load_database(
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
-    let mut clickhouse = Clickhouse::new_default();
+    let mut clickhouse = Clickhouse::new_default().await;
     clickhouse.buffered_insert_tx = Some(tx);
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
