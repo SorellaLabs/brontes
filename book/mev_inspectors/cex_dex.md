@@ -35,7 +35,7 @@ Our `merge_possible_swaps` function combines these sequential swaps, allowing us
 
 ### Step 3: CEX Price Estimation
 
-To estimate the CEX price the arbitrageur traded at, we use two distinct methods:
+To estimate the CEX price the arbitrageur traded at, we use two distinct methods
 
 ### A. Dynamic Time Window Volume Weighted Markouts
 
@@ -125,11 +125,27 @@ This formula balances three key factors:
 
 The result is a price estimate that reflects both market depth and the likely timing of arbitrage executions.
 
+This method returns a `MakerTakerWindowVWAP` for each DEX swap:
+
+```rust
+pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
+
+pub struct WindowExchangePrice {
+    pub exchange_price_with_volume_direct: FastHashMap<CexExchange, ExchangePath>,
+    pub pairs: Vec<Pair>,
+    pub global_exchange_price: Rational,
+}
+```
+
+- `exchange_price_with_volume_direct`: Provides the prices and volumes for each exchange
+- `pairs`: Shows the traded token pairs, which is useful when their isn't a direct pair on the CEX
+- `global_exchange_price`: Represents the volume weighted average price across all exchanges
+
 ### B. Optimistic Execution Calculation
 
 This method provides an upper bound on potential arbitrage profitability by assuming near optimal trade execution within a fixed time window.
 
-#### Process:
+#### Process
 
 1. Data Collection:
 
@@ -155,7 +171,23 @@ This method provides an upper bound on potential arbitrage profitability by assu
 - It's useful for identifying the maximum potential of an arbitrage opportunity.
 - The fixed time window and quality parameter are configurable to adjust for different market conditions.
 
-By using both the Dynamic Time Window VWAP and Optimistic Execution methods, we gain a comprehensive view of arbitrage opportunities, from realistic estimates to theoretical maximums.
+This method returns a `MakerTaker` for each DEX swap:
+
+```rust
+pub type MakerTaker = (ExchangePrice, ExchangePrice);
+
+pub struct ExchangePrice {
+    pub trades_used: Vec<OptimisticTrade>,
+    pub pairs: Vec<Pair>,
+    pub final_price: Rational,
+}
+```
+
+- `trades_used`: Lists the specific trades used in the optimistic calculation
+- `pairs`: Indicates the token pairs involved
+- `final_price`: Represents the optimistic execution price
+
+In the next step, we'll explore how we use these price estimates to calculate the actual arbitrage PnL, considering both realistic market conditions and best-case scenarios.
 
 ### Step 4: Calculate Potential Arbitrage Profits
 
