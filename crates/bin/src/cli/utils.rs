@@ -36,7 +36,7 @@ use strum::IntoEnumIterator;
 use tracing::info;
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub fn load_database(
+pub async fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
     _: Option<HeartRateMonitor>,
