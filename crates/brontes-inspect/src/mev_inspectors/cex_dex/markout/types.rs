@@ -3,7 +3,7 @@ use std::{fmt, fmt::Display, sync::Arc};
 use alloy_primitives::FixedBytes;
 use brontes_types::{
     db::cex::{config::CexDexTradeConfig, CexExchange, FeeAdjustedQuote},
-    mev::{ArbDetails, ArbPnl, BundleData, CexDex, OptimisticTrade},
+    mev::{header, ArbDetails, ArbPnl, BundleData, CexDex, CexMethodology, OptimisticTrade},
     normalized_actions::NormalizedSwap,
     pair::Pair,
     ToFloatNearest, TxInfo,
@@ -126,31 +126,52 @@ impl CexDexProcessing {
         let optimistic = self
             .optimstic_details
             .as_ref()
-            .map(|o| o.route_pnl().maker_taker_mid.0);
+            .map(|o| o.route_pnl().maker_taker_mid.0.clone());
         let window = self
             .global_vmam_cex_dex
-            .as_ref()?
-            .aggregate_pnl
-            .maker_taker_mid
-            .0
-            .clone();
+            .as_ref()
+            .map(|w| w.aggregate_pnl.maker_taker_mid.0.clone());
+
+        let max_profit = self
+            .max_profit
+            .as_ref()
+            .map(|v| v.aggregate_pnl.maker_taker_mid.0.clone());
+
+        let (header_pnl, header_pnl_methodology) = [
+            (max_profit, CexMethodology::OptimalRouteVWAP),
+            (optimistic, CexMethodology::Optimistic),
+            (window, CexMethodology::GlobalWWAP),
+        ]
+        .into_iter()
+        .filter_map(|(pnl, methodology)| pnl.map(|p| (p, methodology)))
+        .max_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .unwrap_or((
+            self.max_profit
+                .as_ref()?
+                .aggregate_pnl
+                .maker_taker_mid
+                .0
+                .clone(),
+            CexMethodology::OptimalRouteVWAP,
+        ));
 
         Some((
-            optimistic.max(Some(window))?.to_float(),
+            header_pnl.to_float(),
             BundleData::CexDex(CexDex {
-                block_number:        meta.block_num,
-                tx_hash:             tx_info.tx_hash,
-                global_vmap_pnl:     self.global_vmam_cex_dex.as_ref()?.aggregate_pnl.clone(),
+                block_number: meta.block_num,
+                tx_hash: tx_info.tx_hash,
+                header_pnl_methodology,
+                global_vmap_pnl: self.global_vmam_cex_dex.as_ref()?.aggregate_pnl.clone(),
                 global_vmap_details: self
                     .global_vmam_cex_dex?
                     .generate_arb_details(&self.dex_swaps),
 
-                optimal_route_details:    self
+                optimal_route_details: self
                     .max_profit
                     .as_ref()?
                     .generate_arb_details(&self.dex_swaps),
-                optimal_route_pnl:        self.max_profit.as_ref().unwrap().aggregate_pnl.clone(),
-                per_exchange_pnl:         self
+                optimal_route_pnl: self.max_profit.as_ref().unwrap().aggregate_pnl.clone(),
+                per_exchange_pnl: self
                     .per_exchange_pnl
                     .iter()
                     .map(|p| p.as_ref().unwrap())
@@ -170,20 +191,20 @@ impl CexDexProcessing {
                     .as_ref()
                     .map(|r| r.optimistic_trade_details.clone())
                     .unwrap_or_default(),
-                optimistic_route_pnl:     self.optimstic_details.map(|o| o.route_pnl()),
-                per_exchange_details:     self
+                optimistic_route_pnl: self.optimstic_details.map(|o| o.route_pnl()),
+                per_exchange_details: self
                     .per_exchange_pnl
                     .iter()
                     .filter_map(|p| p.as_ref().map(|p| p.generate_arb_details(&self.dex_swaps)))
                     .collect(),
 
-                gas_details:              tx_info.gas_details,
-                swaps:                    self.dex_swaps,
-                global_optimistic_end:    meta.microseconds_block_timestamp()
+                gas_details: tx_info.gas_details,
+                swaps: self.dex_swaps,
+                global_optimistic_end: meta.microseconds_block_timestamp()
                     + config.optimistic_after_us,
-                global_optimistic_start:  meta.microseconds_block_timestamp()
+                global_optimistic_start: meta.microseconds_block_timestamp()
                     - config.optimistic_before_us,
-                global_time_window_end:   meta.microseconds_block_timestamp()
+                global_time_window_end: meta.microseconds_block_timestamp()
                     + config.time_window_after_us,
                 global_time_window_start: meta.microseconds_block_timestamp()
                     - config.time_window_before_us,
