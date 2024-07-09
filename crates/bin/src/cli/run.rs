@@ -105,8 +105,6 @@ impl RunArgs {
         if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
             if start > end {
                 return Err(eyre::eyre!("start block must be less than end block"))
-            } else if end - start > 100_000 {
-                rain();
             }
         }
 
