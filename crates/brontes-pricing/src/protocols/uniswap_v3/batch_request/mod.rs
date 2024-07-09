@@ -66,7 +66,7 @@ const TICK_SPACING_RANGE: std::ops::Range<usize> = 6146..6146 + 64;
 //TODO: Good first issue for someone to prune the unnecessary data we are
 // loading for the pools TODO: We don't need ticks or fees, we should already
 // have token 0 & token 1 TODO: We also don't need bytecode or tick spacing
-pub fn extract_uni_v3_immutables(bytecode: Bytes) -> (Address, Address, u32, i32) {
+pub fn extract_uni_v3_immutables(bytecode: Bytes) -> eyre::Result<(Address, Address, u32, i32)> {
     // Slices
     let token0_slice = &bytecode[TOKEN0_RANGE];
     let token1_slice = &bytecode[TOKEN1_RANGE];
@@ -74,21 +74,21 @@ pub fn extract_uni_v3_immutables(bytecode: Bytes) -> (Address, Address, u32, i32
     let tick_spacing_slice = &bytecode[TICK_SPACING_RANGE];
 
     // To UTF-8 String
-    let token0 = from_utf8(token0_slice).unwrap();
-    let token1 = from_utf8(token1_slice).unwrap();
-    let fee = from_utf8(fee_slice).unwrap();
-    let tick_spacing = from_utf8(tick_spacing_slice).unwrap();
+    let token0 = from_utf8(token0_slice)?;
+    let token1 = from_utf8(token1_slice)?;
+    let fee = from_utf8(fee_slice)?;
+    let tick_spacing = from_utf8(tick_spacing_slice)?;
 
     // Convert tokens to addresses
-    let token0 = Address::from_str(token0).unwrap();
-    let token1 = Address::from_str(token1).unwrap();
+    let token0 = Address::from_str(token0)?;
+    let token1 = Address::from_str(token1)?;
 
     // Convert fee to uint
-    let fee = u32::from_str_radix(fee, 16).unwrap();
+    let fee = u32::from_str_radix(fee, 16)?;
     // Convert tick_spacing to int
-    let tick_spacing = i32::from_str_radix(tick_spacing, 16).unwrap();
+    let tick_spacing = i32::from_str_radix(tick_spacing, 16)?;
 
-    (token0, token1, fee, tick_spacing)
+    Ok((token0, token1, fee, tick_spacing))
 }
 
 pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
@@ -137,7 +137,7 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
             )))
         }
         let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode.as_ref()));
-        let (token0, token1, fee, tick_spacing) = extract_uni_v3_immutables(pool_bytecode);
+        let (token0, token1, fee, tick_spacing) = extract_uni_v3_immutables(pool_bytecode)?;
         pool.fee = fee;
         pool.tick_spacing = tick_spacing;
         pool.token_a = token0;
