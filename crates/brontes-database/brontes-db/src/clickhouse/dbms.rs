@@ -235,9 +235,5 @@ db_types!(
     (ProtocolInfoClickhouse, EthereumPools, false),
     (TransactionRoot, BrontesTree, true),
     (BlockAnalysis, BrontesBlock_Analysis, true),
-<<<<<<< HEAD
-    (BrontesRun_Id, RunId, true)
-=======
     (RunId, BrontesRun_Id, false)
->>>>>>> refs/remotes/origin/feat/run-id
 );
