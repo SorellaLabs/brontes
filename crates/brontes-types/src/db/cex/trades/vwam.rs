@@ -396,7 +396,6 @@ impl CexTradeMap {
     ) -> Option<MakerTakerWithVolumeFilled> {
         let mut trades = Vec::new();
 
-        // multiply volume by baskets to assess more potential baskets of trades
         let volume_amount = volume;
         let mut cur_vol = Rational::ZERO;
         // Populates an ordered vec of trades from best to worst price
@@ -417,6 +416,7 @@ impl CexTradeMap {
         let mut exchange_with_vol = FastHashMap::default();
 
         let mut trades_used = Vec::with_capacity(trades.len());
+
         // For the closest basket sum volume and volume weighted prices
         for trade in trades {
             let (m_fee, t_fee) = trade.get().exchange.fees();
