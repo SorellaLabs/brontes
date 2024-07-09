@@ -29,7 +29,6 @@ pub mod traits;
 /// for us to not have to clear runs multiple times
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DbDataWithRunId<Table: Debug + Clone + serde::Serialize + DbRow + Sync + Send> {
-    // #[serde(flatten)]
     pub table:  Table,
     pub run_id: u64,
 }
