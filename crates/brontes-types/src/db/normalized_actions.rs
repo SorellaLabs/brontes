@@ -12,7 +12,7 @@ pub struct TransactionRoot {
     pub tx_hash:      B256,
     pub tx_idx:       usize,
     pub from_address: Address,
-    pub to_address:   Address,
+    pub to_address:   Option<Address>,
     pub gas_details:  GasDetails,
     pub trace_nodes:  Vec<TraceNode>,
 }
@@ -26,7 +26,7 @@ impl From<(&Root<Action>, u64)> for TransactionRoot {
 
         Self {
             from_address: root.get_from_address(),
-            to_address: root.get_to_address(),
+            to_address: root.try_get_to_address(),
             block_number,
             tx_hash: root.tx_hash,
             tx_idx: root.position,
@@ -47,7 +47,10 @@ impl Serialize for TransactionRoot {
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("tx_idx", &self.tx_idx)?;
         ser_struct.serialize_field("from_address", &format!("{:?}", self.from_address))?;
-        ser_struct.serialize_field("to_address", &format!("{:?}", self.to_address))?;
+        ser_struct.serialize_field(
+            "to_address",
+            &self.to_address.as_ref().map(|addr| format!("{:?}", addr)),
+        )?;
         ser_struct.serialize_field(
             "gas_details",
             &(
