@@ -39,7 +39,7 @@ impl TipTraceArgs {
             .spawn_critical("metrics", metrics_listener);
 
         let libmdbx =
-            static_object(load_read_only_database(&ctx.task_executor, brontes_db_endpoint)?);
+            static_object(load_read_only_database(&ctx.task_executor, brontes_db_endpoint).await?);
 
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
