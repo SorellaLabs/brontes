@@ -252,7 +252,6 @@ impl Clickhouse {
     }
 
     pub async fn block_analysis(&self, block_analysis: BlockAnalysis) -> eyre::Result<()> {
-        let block_number = block_analysis.block_number;
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
             tx.send(vec![(block_analysis, self.tip, self.run_id).into()])?
         };
