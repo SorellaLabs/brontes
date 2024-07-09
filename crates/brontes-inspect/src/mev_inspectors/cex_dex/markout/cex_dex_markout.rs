@@ -190,6 +190,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
+                //TODO: Set methodology enum in data
                 let (profit_usd, cex_dex, trade_prices) =
                     self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
 

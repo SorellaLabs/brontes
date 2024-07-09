@@ -17,6 +17,7 @@ use redefined::Redefined;
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde_with::serde_as;
+use strum::Display;
 
 use super::{Mev, MevType};
 use crate::{
@@ -70,6 +71,8 @@ impl Serialize for OptimisticTrade {
 pub struct CexDex {
     pub tx_hash:               B256,
     pub block_number:          u64,
+    #[redefined(same_fields)]
+    pub profit_in_header:      CexMethodology,
     pub swaps:                 Vec<NormalizedSwap>,
     // Represents the arb details, using the cross exchange VMAP quote
     pub global_vmap_details:   Vec<ArbDetails>,
@@ -123,6 +126,29 @@ impl Mev for CexDex {
     fn protocols(&self) -> HashSet<Protocol> {
         self.swaps.iter().map(|swap| swap.protocol).collect()
     }
+}
+
+#[derive(
+    Copy,
+    Display,
+    Default,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
+pub enum CexMethodology {
+    GlobalWWAP,
+    OptimalRouteVWAP,
+    Optimistic,
+    #[default]
+    None,
 }
 
 impl Serialize for CexDex {

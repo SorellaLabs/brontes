@@ -38,9 +38,6 @@ pub struct ClickhousePoolReserves {
     pub prices_price:      Vec<f64>,
 }
 
-//TODO: (Joe): Fix the query now that I have added support for multiple
-// exchanges, thank you
-
 #[serde_as]
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct ClickhouseTokenPrices {

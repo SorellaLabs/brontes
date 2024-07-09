@@ -17,9 +17,8 @@ use crate::{normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
 
 impl CexTradeMap {
     /// Calculate the price of a pair with a given volume using both the dynamic
-    /// time window VMAP method & the optimistic VMAP that selects the best
+    /// time window VWAP method & the optimistic VWAP that selects the best
     /// trades for a given time interval & volume.
-    //TODO: Allow custom max pre & post TW via cli or config file
     pub fn calculate_all_methods(
         &mut self,
         exchanges: &[CexExchange],

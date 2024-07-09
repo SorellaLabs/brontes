@@ -145,7 +145,7 @@ pub struct WindowExchangePrice {
 
 This method provides an upper bound on potential arbitrage profitability by assuming near optimal trade execution within a fixed time window.
 
-#### Process
+#### Processes
 
 1. Data Collection:
 
@@ -194,6 +194,72 @@ pub struct ExchangePrice {
 - `final_price`: Represents the optimistic execution price
 
 In the next step, we'll explore how we use these price estimates to calculate the actual arbitrage PnL, considering both realistic market conditions and best-case scenarios.
+
+### C. Updated Optimistic Execution Calculation
+
+This method provides an optimistic yet realistic estimate of potential arbitrage profitability, adapting to market conditions while minimizing lookahead bias.
+
+#### Process
+
+1. Dynamic Time Window:
+
+   - Start with a narrow window: ±200 milliseconds around block time.
+   - Expand the window progressively if needed, favoring post-block expansion:
+     a. Extend post-block time up to 450ms in 10ms increments.
+     b. If necessary, extend both pre and post-block time up to -5/+8 seconds.
+
+2. Trade Weighting:
+   Apply the bi-exponential decay function to weight trades:
+
+   ```
+   Weight(t) =
+   {
+     e^(-λ_pre * (BlockTime - t))  if t < BlockTime
+     e^(-λ_post * (t - BlockTime)) if t ≥ BlockTime
+   }
+   ```
+
+3. Volume Allocation:
+
+   - Calculate total volume needed for arbitrage (x) and total trade volume across all time baskets (y).
+   - For each time basket i, calculate initial volume allocation: V_i = (z_i / y) \* x
+     where z_i is the volume in basket i.
+   - Apply time weights to adjust allocations: V*i_adjusted = V_i * w*i / Σ(V_j * w_j)
+     where w_i is the bi-exponential weight for basket i.
+
+4. Trade Sorting and Selection:
+
+   - Within each time basket:
+     a. Sort trades by price, from most to least advantageous.
+     b. Select top trades based on a quality parameter (e.g., top 20%).
+     c. Fill up to the adjusted volume allocation (V_i_adjusted) for that basket.
+
+5. Progressive Filling:
+
+   - Start from the basket closest to block time (usually just after).
+   - If a basket can't fulfill its allocation, distribute the remainder to subsequent baskets.
+
+6. Price Calculation:
+   Calculate the final price using both volume and time weights:
+
+   ```
+   FinalPrice = Σ(Price_i * V_i_adjusted * w_i) / Σ(V_i_adjusted * w_i)
+   ```
+
+7. Lookahead Mitigation:
+   - Implement a "sliding window" approach within the dynamic window.
+   - For each trade, only consider information from its timestamp and before.
+
+#### Key Considerations:
+
+- The dynamic window adapts to market conditions (competitive vs. less liquid markets).
+- Bi-exponential weighting favors trades closer to block time, reflecting real execution patterns.
+- Volume allocation respects market liquidity while prioritizing times close to block confirmation.
+- The quality parameter allows for optimistic selection without assuming perfect execution.
+- Progressive filling and sliding window approach reduce lookahead bias.
+- The method balances optimism with realism, providing a nuanced view of potential arbitrage opportunities.
+
+This refined approach provides a realistically optimistic estimate of CEX prices for arbitrage calculations, respecting market dynamics and execution constraints while acknowledging arbitrageur sophistication.
 
 ### Step 4: Calculate Potential Arbitrage Profits
 
