@@ -21,6 +21,7 @@ use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails}
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Liquidation {
     pub liquidation_tx_hash: B256,
+    pub block_number:        u64,
     pub trigger:             B256,
     pub liquidation_swaps:   Vec<NormalizedSwap>,
     pub liquidations:        Vec<NormalizedLiquidation>,
@@ -74,6 +75,7 @@ impl Serialize for Liquidation {
         // frontrun
         ser_struct
             .serialize_field("liquidation_tx_hash", &format!("{:?}", self.liquidation_tx_hash))?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
 
         let liquidation_swaps: ClickhouseVecNormalizedSwap = self
             .liquidation_swaps
@@ -128,6 +130,7 @@ impl Serialize for Liquidation {
 impl DbRow for Liquidation {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "liquidation_tx_hash",
+        "block_number",
         "liquidation_swaps.trace_idx",
         "liquidation_swaps.from",
         "liquidation_swaps.recipient",

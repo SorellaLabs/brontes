@@ -36,7 +36,7 @@ use strum::IntoEnumIterator;
 use tracing::info;
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub fn load_database(
+pub async fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
     _: Option<HeartRateMonitor>,
@@ -51,7 +51,7 @@ pub fn load_tip_database(cur: &LibmdbxReadWriter) -> eyre::Result<LibmdbxReadWri
 
 /// This version is used when `local-clickhouse` and
 #[cfg(feature = "local-clickhouse")]
-pub fn load_database(
+pub async fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
     hr: Option<HeartRateMonitor>,
@@ -60,7 +60,8 @@ pub fn load_database(
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
-    let clickhouse = Clickhouse { buffered_insert_tx: Some(tx), ..Default::default() };
+    let mut clickhouse = Clickhouse::new_default().await;
+    clickhouse.buffered_insert_tx = Some(tx);
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
 }
@@ -78,12 +79,12 @@ pub fn load_tip_database(
 }
 
 #[cfg(feature = "local-clickhouse")]
-pub fn load_read_only_database(
+pub async fn load_read_only_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
 ) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
-    let clickhouse = Clickhouse::default();
+    let clickhouse = Clickhouse::new_default().await;
     Ok(ReadOnlyMiddleware::new(clickhouse, inner))
 }
 
@@ -99,7 +100,7 @@ pub fn load_libmdbx(
 pub async fn load_clickhouse(
     cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
 ) -> eyre::Result<Clickhouse> {
-    let mut clickhouse = Clickhouse::default();
+    let mut clickhouse = Clickhouse::new_default().await;
     clickhouse.cex_download_config = cex_download_config;
     Ok(clickhouse)
 }

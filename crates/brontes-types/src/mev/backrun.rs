@@ -25,12 +25,13 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AtomicArb {
-    pub tx_hash:     B256,
-    pub swaps:       Vec<NormalizedSwap>,
+    pub tx_hash:      B256,
+    pub block_number: u64,
+    pub swaps:        Vec<NormalizedSwap>,
     #[redefined(same_fields)]
-    pub gas_details: GasDetails,
+    pub gas_details:  GasDetails,
     #[redefined(same_fields)]
-    pub arb_type:    AtomicArbType,
+    pub arb_type:     AtomicArbType,
 }
 /// Represents the different types of atomic arb
 /// A triangle arb is a simple arb that goes from token A -> B -> C -> A
@@ -102,9 +103,10 @@ impl Serialize for AtomicArb {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("AtomicArb", 34)?;
+        let mut ser_struct = serializer.serialize_struct("AtomicArb", 35)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
 
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps
@@ -137,6 +139,7 @@ impl Serialize for AtomicArb {
 impl DbRow for AtomicArb {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "tx_hash",
+        "block_number",
         "swaps.trace_idx",
         "swaps.from",
         "swaps.recipient",

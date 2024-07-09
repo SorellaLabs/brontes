@@ -2324,7 +2324,7 @@ checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 [[package]]
 name = "clickhouse"
 version = "0.11.5"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#a85b4fecdde36cd84a3048ae790ca56e639b0888"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#f20a9d17e9d8e5faac5e0f41ce1d0a43b67332b7"
 dependencies = [
  "bstr",
  "bytes",
@@ -2349,7 +2349,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.1.1"
-source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#a85b4fecdde36cd84a3048ae790ca56e639b0888"
+source = "git+https://github.com/SorellaLabs/clickhouse.rs?branch=master#f20a9d17e9d8e5faac5e0f41ce1d0a43b67332b7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2901,7 +2901,7 @@ dependencies = [
 [[package]]
 name = "db-interfaces"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#63fc24ff01fd654fff182d1188064cd3bdc728d8"
+source = "git+https://github.com/SorellaLabs/db-interfaces#6b1fbb94c6ee55a937c104a9e18c963d9d257a42"
 dependencies = [
  "chrono",
  "clickhouse",
@@ -2927,7 +2927,7 @@ dependencies = [
 [[package]]
 name = "db-interfaces-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#63fc24ff01fd654fff182d1188064cd3bdc728d8"
+source = "git+https://github.com/SorellaLabs/db-interfaces#6b1fbb94c6ee55a937c104a9e18c963d9d257a42"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -4220,7 +4220,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.5.7",
+ "socket2 0.4.10",
  "tokio",
  "tower-service",
  "tracing",

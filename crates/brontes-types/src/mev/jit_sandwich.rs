@@ -26,6 +26,7 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct JitLiquiditySandwich {
+    pub block_number:         u64,
     pub frontrun_tx_hash:     Vec<B256>,
     pub frontrun_swaps:       Vec<Vec<NormalizedSwap>>,
     pub frontrun_mints:       Vec<Option<Vec<NormalizedMint>>>,
@@ -157,6 +158,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
 
     // Combine data from Sandwich and JitLiquidity into JitLiquiditySandwich
     let jit_sand = JitLiquiditySandwich {
+        block_number: sandwich.block_number,
         frontrun_tx_hash: sandwich.frontrun_tx_hash.clone(),
         frontrun_swaps: sandwich.frontrun_swaps,
         frontrun_mints,
@@ -193,7 +195,8 @@ impl Serialize for JitLiquiditySandwich {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("JitLiquiditySandwich", 34)?;
+        let mut ser_struct = serializer.serialize_struct("JitLiquiditySandwich", 35)?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
 
         // frontruns
         ser_struct.serialize_field(
@@ -347,6 +350,7 @@ impl Serialize for JitLiquiditySandwich {
 
 impl DbRow for JitLiquiditySandwich {
     const COLUMN_NAMES: &'static [&'static str] = &[
+        "block_number",
         "frontrun_tx_hash",
         "frontrun_swaps.tx_hash",
         "frontrun_swaps.trace_idx",

@@ -41,8 +41,8 @@ CREATE TABLE mev.mev_blocks ON CLUSTER eth_cluster0
         `triggers.coinbase_transfer` Bool,
         `triggers.high_priority_fee` Bool
     ),
-    `last_updated` UInt64 DEFAULT now()
+    `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/mev_blocks', '{replica}', `last_updated`)
-PRIMARY KEY (`block_hash`, `block_number`)
-ORDER BY (`block_hash`, `block_number`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/mev_blocks', '{replica}', `run_id`)
+PRIMARY KEY (`block_number`, `block_hash`)
+ORDER BY (`block_number`, `block_hash`)

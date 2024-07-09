@@ -22,10 +22,11 @@ use crate::{display::utils::display_sandwich, normalized_actions::NormalizedTran
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct SearcherTx {
-    pub tx_hash:     B256,
-    pub transfers:   Vec<NormalizedTransfer>,
+    pub tx_hash:      B256,
+    pub block_number: u64,
+    pub transfers:    Vec<NormalizedTransfer>,
     #[redefined(same_fields)]
-    pub gas_details: GasDetails,
+    pub gas_details:  GasDetails,
 }
 
 impl Mev for SearcherTx {
@@ -59,9 +60,10 @@ impl Serialize for SearcherTx {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("SearcherTx", 8)?;
+        let mut ser_struct = serializer.serialize_struct("SearcherTx", 9)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
+        ser_struct.serialize_field("block_number", &self.block_number)?;
 
         let victim_transfer: ClickhouseVecNormalizedTransfer = self
             .transfers
@@ -91,6 +93,7 @@ impl Serialize for SearcherTx {
 impl DbRow for SearcherTx {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "tx_hash",
+        "block_number",
         "transfers.trace_idx",
         "transfers.from",
         "transfers.to",

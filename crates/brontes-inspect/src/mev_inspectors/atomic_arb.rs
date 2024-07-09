@@ -191,6 +191,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }?;
 
         let backrun = AtomicArb {
+            block_number: metadata.block_num,
             tx_hash: info.tx_hash,
             gas_details: info.gas_details,
             swaps,

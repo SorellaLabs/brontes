@@ -441,8 +441,8 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0
     `proposer_profit_usd`    Nullable(Float64),
     `proposer_profit_eth`    Nullable(Float64),
     
-    `last_updated` UInt64 DEFAULT now()
+    `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/block_analysis', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/block_analysis', '{replica}', `run_id`)
 PRIMARY KEY (`block_number`)
 ORDER BY (`block_number`)

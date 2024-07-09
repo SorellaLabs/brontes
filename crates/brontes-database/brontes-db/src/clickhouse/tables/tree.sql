@@ -10,9 +10,9 @@ CREATE TABLE brontes.tree ON CLUSTER eth_cluster0
     `trace_nodes.trace_address` Array(Array(UInt64)),
     `trace_nodes.action_kind` Array(Nullable(String)),
     `trace_nodes.action` Array(Nullable(String)),
-    `last_updated` UInt64 DEFAULT now()
+    `run_id` UInt64
 )
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/tree', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/tree', '{replica}', `run_id`)
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
 SETTINGS index_granularity = 8192, parts_to_throw_insert = 10000

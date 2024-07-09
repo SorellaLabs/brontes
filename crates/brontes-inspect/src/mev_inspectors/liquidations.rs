@@ -145,6 +145,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         );
 
         let new_liquidation = Liquidation {
+            block_number:        metadata.block_num,
             liquidation_tx_hash: info.tx_hash,
             trigger:             b256!(),
             liquidation_swaps:   swaps,

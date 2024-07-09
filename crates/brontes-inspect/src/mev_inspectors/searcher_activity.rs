@@ -121,6 +121,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                         Some(Bundle {
                             header,
                             data: BundleData::Unknown(SearcherTx {
+                                block_number: metadata.block_num,
                                 tx_hash,
                                 gas_details: info.gas_details,
                                 transfers: transfers

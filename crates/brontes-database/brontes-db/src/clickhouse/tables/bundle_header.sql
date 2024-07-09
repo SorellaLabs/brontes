@@ -16,9 +16,8 @@ CREATE TABLE mev.bundle_header ON CLUSTER eth_cluster0
         `name` Nullable(String),
         `token_deltas` Array(Tuple(Tuple(String, UInt8, String), Float64, Float64))
     ),
-    `last_updated` UInt64 DEFAULT now()
+    `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/bundle_header', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/bundle_header', '{replica}', `run_id`)
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
-

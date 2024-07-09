@@ -1,9 +1,8 @@
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse, block_analysis::BlockAnalysis,
-        builder::BuilderInfoWithAddress, dex::DexQuotesWithBlockNumber,
-        normalized_actions::TransactionRoot, searcher::JoinedSearcherInfo,
-        token_info::TokenInfoWithAddress,
+        dex::DexQuotesWithBlockNumber, normalized_actions::TransactionRoot,
+        token_info::TokenInfoWithAddress, DbDataWithRunId, RunId,
     },
     mev::*,
 };
@@ -18,7 +17,6 @@ clickhouse_dbms!(
         MevMev_Blocks,
         MevBundle_Header,
         MevSearcher_Tx,
-        BrontesSearcher_Info,
         MevCex_Dex,
         MevLiquidations,
         MevJit_Sandwich,
@@ -27,8 +25,8 @@ clickhouse_dbms!(
         MevAtomic_Arbs,
         BrontesToken_Info,
         EthereumPools,
-        BrontesBuilder_Info,
-        BrontesTree
+        BrontesTree,
+        BrontesRun_Id
     ]
 );
 
@@ -52,77 +50,70 @@ remote_clickhouse_table!(
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Brontes, Block_Analysis],
-    BlockAnalysis,
+    DbDataWithRunId<BlockAnalysis>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Mev_Blocks],
-    MevBlock,
+    DbDataWithRunId<MevBlock>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Bundle_Header],
-    BundleHeader,
+    DbDataWithRunId<BundleHeader>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Searcher_Tx],
-    SearcherTx,
-    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
-);
-
-remote_clickhouse_table!(
-    BrontesClickhouseTables,
-    [Brontes, Searcher_Info],
-    JoinedSearcherInfo,
+    DbDataWithRunId<SearcherTx>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Cex_Dex],
-    CexDex,
+    DbDataWithRunId<CexDex>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Liquidations],
-    Liquidation,
+    DbDataWithRunId<Liquidation>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Jit_Sandwich],
-    JitLiquiditySandwich,
+    DbDataWithRunId<JitLiquiditySandwich>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Jit],
-    JitLiquidity,
+    DbDataWithRunId<JitLiquidity>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Sandwiches],
-    Sandwich,
+    DbDataWithRunId<Sandwich>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Atomic_Arbs],
-    AtomicArb,
+    DbDataWithRunId<AtomicArb>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
@@ -142,15 +133,15 @@ remote_clickhouse_table!(
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    [Brontes, Builder_Info],
-    BuilderInfoWithAddress,
+    [Brontes, Tree],
+    DbDataWithRunId<TransactionRoot>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
 remote_clickhouse_table!(
     BrontesClickhouseTables,
-    [Brontes, Tree],
-    TransactionRoot,
+    [Brontes, Run_Id],
+    RunId,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
@@ -160,15 +151,8 @@ pub struct BrontesClickhouseData {
 }
 
 macro_rules! db_types {
-    ($(($db_type:ident, $db_table:ident)),*) => {
-        #[derive(Debug, Clone, serde::Serialize)]
-        #[serde(untagged)]
-        #[allow(clippy::large_enum_variant)]
-        pub enum BrontesClickhouseTableDataTypes {
-            $(
-                $db_type(Box<$db_type>),
-            )*
-        }
+    ($(($db_type:ident, $db_table:ident, $t:tt)),*) => {
+        db_types!(enum_s {}, $($db_type, $t,)*);
 
         paste::paste! {
             impl BrontesClickhouseTableDataTypes {
@@ -184,40 +168,72 @@ macro_rules! db_types {
         }
 
         $(
-            impl From<($db_type, bool)> for BrontesClickhouseData {
-                fn from(value: ($db_type, bool)) ->BrontesClickhouseData {
+            db_types!($db_type, $t);
+
+        )*
+    };
+    ($db_type:ident, true) => {
+            impl From<($db_type, bool, u64)> for BrontesClickhouseData {
+                fn from(value: ($db_type, bool, u64)) ->BrontesClickhouseData {
                     BrontesClickhouseData {
-                        data: BrontesClickhouseTableDataTypes::$db_type(Box::new(value.0)),
+                        data: BrontesClickhouseTableDataTypes::$db_type(Box::new(
+                                      DbDataWithRunId {
+                                          table: value.0,
+                                          run_id: value.2
+                                      }
+                                      )),
                         force_insert: value.1
                     }
                 }
             }
 
-            impl From<$db_type> for BrontesClickhouseTableDataTypes {
-                fn from(value: $db_type) -> BrontesClickhouseTableDataTypes {
-                    BrontesClickhouseTableDataTypes::$db_type(Box::new(value))
+    };
+    ($db_type:ident, false) => {
+        impl From<($db_type, bool)> for BrontesClickhouseData {
+            fn from(value: ($db_type, bool)) ->BrontesClickhouseData {
+                BrontesClickhouseData {
+                    data: BrontesClickhouseTableDataTypes::$db_type(Box::new(value.0)),
+                    force_insert: value.1
                 }
             }
-
-        )*
+        }
     };
+    (enum_s  {$($acc:tt)* }, $db_type:ident, true, $($tail:tt)*) => {
+        db_types!(enum_s {
+            $($acc)*
+            $db_type(Box<DbDataWithRunId<$db_type>>),
+        }, $($tail)*);
+    };
+    (enum_s {$($acc:tt)* }, $db_type:ident, false, $($tail:tt)*) => {
+        db_types!(enum_s {
+            $($acc)*
+            $db_type(Box<$db_type>),
+        }, $($tail)*);
+    };
+    (enum_s {$($acc:tt)*},$(,)*) => {
+        #[derive(Debug, Clone, serde::Serialize)]
+        #[serde(untagged)]
+        #[allow(clippy::large_enum_variant)]
+        pub enum BrontesClickhouseTableDataTypes {
+            $($acc)*
+        }
+    }
 }
 
 db_types!(
-    (DexQuotesWithBlockNumber, BrontesDex_Price_Mapping),
-    (MevBlock, MevMev_Blocks),
-    (BundleHeader, MevBundle_Header),
-    (SearcherTx, MevSearcher_Tx),
-    (JoinedSearcherInfo, BrontesSearcher_Info),
-    (CexDex, MevCex_Dex),
-    (Liquidation, MevLiquidations),
-    (JitLiquiditySandwich, MevJit_Sandwich),
-    (JitLiquidity, MevJit),
-    (Sandwich, MevSandwiches),
-    (AtomicArb, MevAtomic_Arbs),
-    (TokenInfoWithAddress, BrontesToken_Info),
-    (ProtocolInfoClickhouse, EthereumPools),
-    (BuilderInfoWithAddress, BrontesBuilder_Info),
-    (TransactionRoot, BrontesTree),
-    (BlockAnalysis, BrontesBlock_Analysis)
+    (DexQuotesWithBlockNumber, BrontesDex_Price_Mapping, false),
+    (MevBlock, MevMev_Blocks, true),
+    (BundleHeader, MevBundle_Header, true),
+    (SearcherTx, MevSearcher_Tx, true),
+    (CexDex, MevCex_Dex, true),
+    (Liquidation, MevLiquidations, true),
+    (JitLiquiditySandwich, MevJit_Sandwich, true),
+    (JitLiquidity, MevJit, true),
+    (Sandwich, MevSandwiches, true),
+    (AtomicArb, MevAtomic_Arbs, true),
+    (TokenInfoWithAddress, BrontesToken_Info, false),
+    (ProtocolInfoClickhouse, EthereumPools, false),
+    (TransactionRoot, BrontesTree, true),
+    (BlockAnalysis, BrontesBlock_Analysis, true),
+    (RunId, BrontesRun_Id, false)
 );

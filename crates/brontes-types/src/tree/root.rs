@@ -209,6 +209,14 @@ impl<V: NormalizedAction> Root<V> {
         self.head.address
     }
 
+    pub fn try_get_to_address(&self) -> Option<Address> {
+        Some(self.data_store
+            .get_ref(0)?
+            .first()?
+            .get_action()
+            .get_to_address())
+    }
+
     pub fn get_to_address(&self) -> Address {
         self.data_store
             .get_ref(0)

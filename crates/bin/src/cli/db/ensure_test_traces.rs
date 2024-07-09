@@ -36,7 +36,8 @@ impl TestTraceArgs {
         ctx.task_executor
             .spawn_critical("metrics", metrics_listener);
 
-        let libmdbx = static_object(load_database(&ctx.task_executor, brontes_db_endpoint, None)?);
+        let libmdbx =
+            static_object(load_database(&ctx.task_executor, brontes_db_endpoint, None).await?);
 
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
