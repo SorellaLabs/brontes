@@ -15,7 +15,6 @@ use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
-    banner::rain,
     cli::{get_tracing_provider, init_inspectors, load_tip_database},
     runner::CliContext,
     BrontesRunConfig, MevProcessor,

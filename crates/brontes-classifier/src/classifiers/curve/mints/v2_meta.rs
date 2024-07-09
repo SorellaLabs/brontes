@@ -17,12 +17,12 @@ action_impl!(
         let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let token_addrs = vec![details.token0, details.curve_lp_token.ok_or(eyre::eyre!("Expected 'curve_lp_token', found 'None'"))?];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
         let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter()
-.enumerate().map(|(i, t)|
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -57,12 +57,12 @@ action_impl!(
         let log = log.add_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let token_addrs = vec![details.token0, details.curve_lp_token.ok_or(eyre::eyre!("Expected 'curve_lp_token', found 'None'"))?];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
         let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter()
-.enumerate().map(|(i, t)|
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -109,6 +109,8 @@ mod tests {
             None,
             Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
+
+        //
 
         let mint =
             B256::from(hex!("f56e28f6c8f3610f1705c34a3f179dc09dafbf8cdc8695cefb683d0f32995251"));

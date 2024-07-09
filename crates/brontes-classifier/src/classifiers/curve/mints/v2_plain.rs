@@ -21,7 +21,7 @@ action_impl!(
 
         let amounts = log.token_amounts;
         let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
-.enumerate().map(|(i, t)|
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -58,7 +58,7 @@ action_impl!(
 
         let amounts = log.token_amounts;
         let (tokens, token_amts): (Vec<_>, Vec<_>) = details.into_iter()
-.enumerate().map(|(i, t)|
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -92,7 +92,7 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_curve_v2_plain_pool_exchange0() {
+    async fn test_curve_v2_plain_pool_add_liquidity1() {
         let classifier_utils = ClassifierTestUtils::new().await;
         classifier_utils.ensure_protocol(
             Protocol::CurveV2PlainPool,
