@@ -844,8 +844,7 @@ mod tests {
                     .into(),
             ),
             init_block:       0,
-        }
-        .into();
+        };
 
         db.insert_one::<EthereumPools>(&case0).await.unwrap();
     }
