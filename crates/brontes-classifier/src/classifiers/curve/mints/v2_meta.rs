@@ -110,6 +110,8 @@ mod tests {
             Some(Address::new(hex!("6c3F90f043a72FA612cbac8115EE7e52BDe6E490"))),
         );
 
+        //
+
         let mint =
             B256::from(hex!("f56e28f6c8f3610f1705c34a3f179dc09dafbf8cdc8695cefb683d0f32995251"));
 
@@ -136,6 +138,62 @@ mod tests {
             amount:      vec![
                 U256::from(0_u128).to_scaled_rational(18),
                 U256::from(100000000000000000000_u128).to_scaled_rational(18),
+            ],
+        });
+
+        classifier_utils
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Action::is_mint),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_curve_v2_metapool_add_liquidity1() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        classifier_utils.ensure_protocol(
+            Protocol::CurveV2MetaPool,
+            Address::new(hex!("95dFDC8161832e4fF7816aC4B6367CE201538253")),
+            Address::new(hex!("269895a3dF4D73b077Fc823dD6dA1B95f72Aaf9B")),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
+        //
+
+        let mint =
+            B256::from(hex!("7b9079d84836dd84a2080ae62e3ad21240e64a1579867f290506d8c3e47a6788"));
+
+        let token0 = TokenInfoWithAddress {
+            address: Address::new(hex!("95dFDC8161832e4fF7816aC4B6367CE201538253")),
+            inner:   TokenInfo { decimals: 18, symbol: "ibKRW".to_string() },
+        };
+
+        let token1 = TokenInfoWithAddress {
+            address: Address::new(hex!("269895a3dF4D73b077Fc823dD6dA1B95f72Aaf9B")),
+            inner:   TokenInfo { decimals: 18, symbol: "sKRW".to_string() },
+        };
+
+        classifier_utils.ensure_token(token0.clone());
+        classifier_utils.ensure_token(token1.clone());
+
+        let eq_action = Action::Mint(NormalizedMint {
+            protocol:    Protocol::CurveV2MetaPool,
+            trace_index: 1,
+            from:        Address::new(hex!("37bE92f21943dC91629d884F8C41C8203024633a")),
+            recipient:   Address::new(hex!("37bE92f21943dC91629d884F8C41C8203024633a")),
+            pool:        Address::new(hex!("8461A004b50d321CB22B7d034969cE6803911899")),
+            token:       vec![token0, token1],
+            amount:      vec![
+                U256::from(25269585000000000000000000_u128).to_scaled_rational(18),
+                U256::from(25269585000000000000000000_u128).to_scaled_rational(18),
             ],
         });
 
