@@ -22,7 +22,7 @@ action_impl!(
 
         let amounts = log.token_amounts;
         let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter()
-.enumerate().map(|(i, t)|
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
@@ -62,7 +62,7 @@ action_impl!(
 
         let amounts = log.token_amounts;
         let (tokens, token_amts): (Vec<_>, Vec<_>) = token_addrs.into_iter()
-.enumerate().map(|(i, t)|
+            .enumerate().map(|(i, t)|
         {
             let token = db_tx.try_fetch_token_info(t)?;
             let decimals = token.decimals;
