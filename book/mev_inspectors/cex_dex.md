@@ -167,6 +167,12 @@ This method provides an upper bound on potential arbitrage profitability by assu
 
 #### Key Considerations:
 
+TODO: Changes to optimistic execution calculation
+
+- Break up the trade window into smaller trade baskets
+- use the quality parameter to select trades on this basis
+-
+
 - This method assumes perfect foresight and execution, providing a "best-case" scenario.
 - It's useful for identifying the maximum potential of an arbitrage opportunity.
 - The fixed time window and quality parameter are configurable to adjust for different market conditions.
