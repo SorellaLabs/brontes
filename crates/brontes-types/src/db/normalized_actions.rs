@@ -46,11 +46,9 @@ impl Serialize for TransactionRoot {
         ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("tx_idx", &self.tx_idx)?;
-        ser_struct.serialize_field("from_address", &format!("{:?}", self.from_address))?;
-        ser_struct.serialize_field(
-            "to_address",
-            &self.to_address.as_ref().map(|addr| format!("{:?}", addr)),
-        )?;
+        ser_struct.serialize_field("from", &format!("{:?}", self.from_address))?;
+        ser_struct
+            .serialize_field("to", &self.to_address.as_ref().map(|addr| format!("{:?}", addr)))?;
         ser_struct.serialize_field(
             "gas_details",
             &(
@@ -90,6 +88,8 @@ impl DbRow for TransactionRoot {
         "block_number",
         "tx_hash",
         "tx_idx",
+        "from",
+        "to",
         "gas_details",
         "trace_nodes.trace_idx",
         "trace_nodes.trace_address",
