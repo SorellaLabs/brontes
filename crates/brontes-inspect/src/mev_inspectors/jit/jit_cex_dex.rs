@@ -14,10 +14,9 @@ use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
 use super::JitInspector;
-use crate::{
-    cex_dex::{CexDexMarkoutInspector, CexDexProcessing},
-    Inspector,
-};
+#[cfg(not(feature = "cex-dex-quotes"))]
+use crate::cex_dex::{CexDexMarkoutInspector, CexDexProcessing};
+use crate::Inspector;
 
 /// jit cex dex happens when two things are present.
 /// 1) a cex dex arb on a pool

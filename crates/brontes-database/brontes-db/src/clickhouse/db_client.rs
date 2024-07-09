@@ -109,24 +109,24 @@ impl Clickhouse {
     // inserts
     pub async fn write_searcher_eoa_info(
         &self,
-        searcher_eoa: Address,
-        searcher_info: SearcherInfo,
+        _searcher_eoa: Address,
+        _searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         Ok(())
     }
 
     pub async fn write_searcher_contract_info(
         &self,
-        searcher_contract: Address,
-        searcher_info: SearcherInfo,
+        _searcher_contract: Address,
+        _searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         Ok(())
     }
 
     pub async fn write_builder_info(
         &self,
-        builder_eoa: Address,
-        builder_info: BuilderInfo,
+        _builder_eoa: Address,
+        _builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
         Ok(())
     }
@@ -198,7 +198,6 @@ impl Clickhouse {
     }
 
     pub async fn insert_tree(&self, tree: BlockTree<Action>) -> eyre::Result<()> {
-        let block_number = tree.header.number;
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
@@ -618,10 +617,10 @@ where
 mod tests {
     use std::sync::Arc;
 
-    use alloy_primitives::{hex, TxHash};
+    use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::{cex::CexExchange, dex::DexPrices, searcher::SearcherEoaContract},
+        db::{cex::CexExchange, dex::DexPrices},
         init_threadpools,
         mev::{
             ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, JitLiquidity,

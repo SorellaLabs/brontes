@@ -83,8 +83,8 @@ use brontes_types::{
 };
 #[cfg(not(feature = "cex-dex-quotes"))]
 use cex_dex::CexDexMarkoutInspector;
-#[cfg(feature = "cex-dex-quotes")]
-use cex_dex::CexDexQuotesInspector;
+//#[cfg(feature = "cex-dex-quotes")]
+//use cex_dex::CexDexQuotesInspector;
 #[cfg(not(feature = "cex-dex-quotes"))]
 use jit::JitCexDex;
 use liquidations::LiquidationInspector;
@@ -125,8 +125,8 @@ impl Inspectors {
         &self,
         quote_token: Address,
         db: &'static DB,
-        cex_exchanges: &[CexExchange],
-        trade_config: CexDexTradeConfig,
+        _cex_exchanges: &[CexExchange],
+        _trade_config: CexDexTradeConfig,
         metrics: Option<OutlierMetrics>,
     ) -> DynMevInspector {
         match &self {
@@ -138,8 +138,9 @@ impl Inspectors {
             }
             #[cfg(feature = "cex-dex-quotes")]
             Self::CexDex => {
-                static_object(CexDexQuotesInspector::new(quote_token, db, cex_exchanges, metrics))
-                    as DynMevInspector
+                todo!();
+                //static_object(CexDexQuotesInspector::new(quote_token, db,
+                // cex_exchanges, metrics)) as DynMevInspector
             }
             Self::Sandwich => {
                 static_object(SandwichInspector::new(quote_token, db, metrics)) as DynMevInspector
@@ -155,8 +156,8 @@ impl Inspectors {
             Self::CexDexMarkout => static_object(CexDexMarkoutInspector::new(
                 quote_token,
                 db,
-                cex_exchanges,
-                trade_config,
+                _cex_exchanges,
+                _trade_config,
                 metrics,
             )) as DynMevInspector,
             #[cfg(not(feature = "cex-dex-quotes"))]
@@ -164,8 +165,8 @@ impl Inspectors {
                 cex_dex: CexDexMarkoutInspector::new(
                     quote_token,
                     db,
-                    cex_exchanges,
-                    trade_config,
+                    _cex_exchanges,
+                    _trade_config,
                     metrics.clone(),
                 ),
                 jit:     JitInspector::new(quote_token, db, metrics),
