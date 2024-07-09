@@ -18,7 +18,7 @@ action_impl!(
         let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let token_addrs = vec![details.token0, details.curve_lp_token.ok_or(eyre::eyre!("Expected 'curve_lp_token', found 'None'"))?];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
@@ -61,7 +61,7 @@ action_impl!(
         let log = log.remove_liquidity_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let token_addrs = vec![details.token0, details.curve_lp_token.ok_or(eyre::eyre!("Expected 'curve_lp_token', found 'None'"))?];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
@@ -101,7 +101,7 @@ action_impl!(
         let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let token_addrs = vec![details.token0, details.curve_lp_token.ok_or(eyre::eyre!("Expected 'curve_lp_token', found 'None'"))?];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
@@ -142,7 +142,7 @@ action_impl!(
         let log = log.remove_liquidity_imbalance_field?;
 
         let details = db_tx.get_protocol_details(info.from_address)?;
-        let token_addrs = vec![details.token0, details.curve_lp_token.expect("Expected curve_lp_token, found None")];
+        let token_addrs = vec![details.token0, details.curve_lp_token.ok_or(eyre::eyre!("Expected 'curve_lp_token', found 'None'"))?];
         let protocol = details.protocol;
 
         let amounts = log.token_amounts;
