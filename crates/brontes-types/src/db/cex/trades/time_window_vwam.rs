@@ -310,7 +310,7 @@ impl<'a> TimeWindowTrades<'a> {
                 .iter()
                 .filter(|(e, _)| exchanges.contains(e))
                 .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
-                .map(|(ex, (idx, trades))| ((ex, (*idx - 1, *idx), (ex, *trades))))
+                .map(|(ex, (idx, trades))| ((ex, (*idx - 1, *idx)), (ex, *trades)))
                 .unzip();
 
         if trades.is_empty() {

@@ -13,11 +13,11 @@ use malachite::{
 use super::{
     cex_trades::CexTradeMap,
     config::CexDexTradeConfig,
-    time_window_vwam::TimeWindowTrades,
     utils::{CexTradePtr, PairTradeQueue},
 };
 use crate::{
     db::cex::{
+        trades::SortedTrades,
         utils::{log_missing_trade_data, PairTradeWalker, TimeBasketQueue},
         CexExchange,
     },
@@ -72,7 +72,7 @@ impl Display for ExchangePrice {
 
 pub type MakerTaker = (ExchangePrice, ExchangePrice);
 
-impl<'a> TimeBasketQueue<'a> {
+impl<'a> SortedTrades<'a> {
     // Calculates VWAPs for the given pair across all provided exchanges - this
     // will assess trades across each exchange
     //
@@ -166,13 +166,12 @@ impl<'a> TimeBasketQueue<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
-        todo!();
-        /*
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
                 let pair0 = Pair(pair.0, intermediary);
                 let pair1 = Pair(pair.1, intermediary);
+
                 // check if we have a path
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
@@ -220,8 +219,6 @@ impl<'a> TimeBasketQueue<'a> {
                 Some((maker, taker))
             })
             .max_by(|a, b| a.0.final_price.cmp(&b.0.final_price))
-
-            */
     }
 
     pub fn get_optimistic_via_intermediary_spread(
@@ -235,49 +232,25 @@ impl<'a> TimeBasketQueue<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWithVolumeFilled> {
-        todo!();
-        /*        // Populate Map of Assumed Execution Quality by Exchange
+        // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
         //   markout for each pair on each exchange.
         // - Quality percent adjusts the total percent of "good" trades the arber is
         //   capturing for the relevant pair on a given exchange.
 
-        todo!();
         let quality_pct = quality.map(|map| {
             map.iter()
                 .map(|(k, v)| (*k, v.get(pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
                 .collect::<FastHashMap<_, _>>()
         });
 
-        let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
-            self.0
-                .iter()
-                .filter(|(e, _)| exchanges.contains(e))
-                .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
-                .map(|(ex, (idx, trades))| ((ex, (*idx, *idx - 1)), (ex, *trades)))
-                .unzip();
+        let (indexes, trades) = self.0.get(pair)?;
 
         let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
 
-        let mut walker = PairTradeWalker::new(
-            trades,
-            ptrs,
-            block_timestamp - START_PRE_TIME_US,
-            block_timestamp + START_POST_TIME_US,
-        );
+        let mut baskets_queue = TimeBasketQueue::new(config, *trades, *indexes, block_timestamp);
 
-        let mut trade_volume_global = Rational::ZERO;
-
-        // Populate trade queue per exchange
-        // - This utilizes the quality percent number to set the number of
-        //   trades that will be assessed in picking a bucket to calculate the
-        //   vwam with. A lower quality percent will cause us to examine more
-        //   trades (go deeper into the vec) - resulting in a potentially worse
-        //   price (remember, trades are sorted by price)
-
-        //self.get_most_accurate_basket_intermediary(trade_queue, volume,
-        // *pair)
-         */
+        todo!();
     }
 
     fn get_optimistic_no_intermediary(
@@ -523,24 +496,6 @@ impl<'a> TimeBasketQueue<'a> {
             Some((maker, taker))
                 */
     }
-}
-
-// TODO: Potentially collect all sets from 100% to 120% then select best price
-fn _closest<'a>(
-    iter: impl Iterator<Item = Vec<&'a CexTradePtr<'a>>>,
-    vol: &Rational,
-) -> Option<Vec<&'a CexTradePtr<'a>>> {
-    // sort from lowest to highest volume returning the first
-    // does not return a vec that does not have enough volume to fill the arb
-    let mut mapped = iter
-        .map(|a| (a.iter().map(|t| &t.get().amount).sum::<Rational>(), a))
-        .collect::<Vec<_>>();
-
-    mapped.sort_unstable_by(|a, b| a.0.cmp(&b.0));
-
-    mapped
-        .into_iter()
-        .find_map(|(m_vol, set)| m_vol.ge(vol).then_some(set))
 }
 
 #[derive(Debug)]

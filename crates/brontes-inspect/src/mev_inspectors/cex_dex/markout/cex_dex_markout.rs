@@ -571,7 +571,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .get_optimistic_vmap(
                             self.trade_config,
                             &self.cex_exchanges,
-                            &pair,
+                            pair,
                             &swap.amount_out,
                             metadata.microseconds_block_timestamp(),
                             None,

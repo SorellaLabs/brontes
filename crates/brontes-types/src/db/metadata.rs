@@ -105,9 +105,9 @@ impl Metadata {
                                         .get_optimistic_vmap(
                                             CexDexTradeConfig::default(),
                                             &trades,
-                                            self.microseconds_block_timestamp(),
                                             pair,
                                             &baseline_for_tokeprice,
+                                            self.microseconds_block_timestamp(),
                                             None,
                                             true,
                                             &NormalizedSwap::default(),
