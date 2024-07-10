@@ -19,7 +19,7 @@ use crate::{
     db::cex::{
         trades::SortedTrades,
         utils::{log_missing_trade_data, TimeBasketQueue},
-        CexExchange,
+        CexExchange, CexTrades,
     },
     mev::OptimisticTrade,
     normalized_actions::NormalizedSwap,
@@ -29,8 +29,6 @@ use crate::{
 };
 
 const BASE_EXECUTION_QUALITY: usize = 90;
-const START_POST_TIME_US: u64 = 300_000;
-const START_PRE_TIME_US: u64 = 50_000;
 
 const PRE_SCALING_DIFF: u64 = 200_000;
 const TIME_STEP: u64 = 20_000;
@@ -166,7 +164,7 @@ impl<'a> SortedTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
-        self.calculate_intermediary_addresses(exchanges, pair)
+        self.calculate_intermediary_addresses(&pair)
             .into_iter()
             .filter_map(|intermediary| {
                 let pair0 = Pair(pair.0, intermediary);
@@ -175,9 +173,10 @@ impl<'a> SortedTrades<'a> {
                 // check if we have a path
                 let mut has_pair0 = false;
                 let mut has_pair1 = false;
-                for (_, trades) in self.0.iter().filter(|(ex, _)| exchanges.contains(ex)) {
-                    has_pair0 |= trades.contains_key(&pair0);
-                    has_pair1 |= trades.contains_key(&pair1);
+
+                for trades in self.0.keys() {
+                    has_pair0 |= **trades == pair0;
+                    has_pair1 |= **trades == pair1;
 
                     if has_pair1 && has_pair0 {
                         break
@@ -187,8 +186,7 @@ impl<'a> SortedTrades<'a> {
                 if !(has_pair0 && has_pair1) {
                     return None
                 }
-
-                tracing::debug!(?pair, ?intermediary, "trying via intermediary");
+                tracing::debug!(target: "brontes_types::db::cex::trades::optimistic", ?pair, ?intermediary, "trying via intermediary");
 
                 let res = self.get_optimistic_via_intermediary_spread(
                     config,
@@ -367,17 +365,28 @@ impl<'a> SortedTrades<'a> {
             baskets_queue.expand_time_bounds(min_expand, TIME_STEP);
         }
 
+        let mut trades_used: Vec<CexTrades> = Vec::new();
+        let mut unfilled = Rational::ZERO;
 
+        for basket in baskets_queue.baskets {
+            let to_fill: Rational = ((&basket.volume / &baskets_queue.volume) * volume) + &unfilled;
 
-        baskets_queue.baskets.iter().map(|basket| {
-            let mut to_fill = (&basket.volume / &baskets_queue.volume) * volume;
+            let (basket_trades, basket_unfilled) = basket.get_trades_used(&to_fill);
 
-            basket.
+            unfilled = basket_unfilled;
+            trades_used.extend(basket_trades);
+        }
 
+        let mut vxp_maker = Rational::ZERO;
+        let mut vxp_taker = Rational::ZERO;
+        let mut trade_volume = Rational::ZERO;
 
+        for trade in trades_used {
+            let (m_fee, t_fee) = trade.exchange.fees();
 
-        })
-
+            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount;
+            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount;
+        }
 
         todo!();
     }

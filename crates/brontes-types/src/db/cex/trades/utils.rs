@@ -14,6 +14,9 @@ use crate::{
     utils::ToFloatNearest, FastHashMap,
 };
 
+const START_POST_TIME_US: u64 = 300_000;
+const START_PRE_TIME_US: u64 = 50_000;
+
 /// Manages the traversal and collection of trade data within dynamically
 /// adjustable time windows.
 ///
@@ -217,35 +220,41 @@ impl<'a> TradeBasket<'a> {
         quality_pct: usize,
         volume: Rational,
     ) -> Self {
-        let length = trades.len();
+        let length = trades.len() - 1;
         let trade_index = length - (length * quality_pct / 100);
         trades.sort_unstable_by_key(|k| k.get().price.clone());
 
         Self { start_time, end_time, trade_index, trades, volume }
     }
 
-    //TODO: problem with granularity of size & not perfectly filling, might need to
-    // use partial fill...
-    pub fn get_trades_used(&self, volume_to_fill: Rational) -> Vec<CexTrades> {
-        let mut volume_filled = Rational::ZERO;
+    pub fn get_trades_used(&self, volume_to_fill: &Rational) -> (Vec<CexTrades>, Rational) {
         let mut trades_used = Vec::new();
+        let mut remaining_volume = volume_to_fill.clone();
 
-        for trade in self.trades.iter().skip(self.trade_index) {
+        for trade in self
+            .trades
+            .iter()
+            .skip((self.trades.len() - 1) - self.trade_index)
+        {
             let trade_data = trade.get();
 
-            if &volume_filled + &trade_data.amount <= volume_to_fill {
-                volume_filled += &trade_data.amount;
-                trades_used.push(trade_data.clone());
+            if trade_data.amount >= remaining_volume {
+                let mut final_trade = trade_data.clone();
+                final_trade.amount = remaining_volume;
+                trades_used.push(final_trade);
+                remaining_volume = Rational::ZERO;
+                break;
             } else {
-                continue;
+                trades_used.push(trade_data.clone());
+                remaining_volume -= &trade_data.amount;
             }
 
-            if volume_filled >= volume_to_fill {
+            if remaining_volume == Rational::ZERO {
                 break;
             }
         }
 
-        trades_used
+        (trades_used, remaining_volume)
     }
 }
 
@@ -327,7 +336,6 @@ pub struct TimeBasketQueue<'a> {
 
 impl<'a> TimeBasketQueue<'a> {
     pub(crate) fn new(
-        config: CexDexTradeConfig,
         trades: &'a Vec<&'a CexTrades>,
         indexes: (usize, usize),
         block_timestamp: u64,
@@ -335,12 +343,12 @@ impl<'a> TimeBasketQueue<'a> {
         Self {
             current_pre_time: block_timestamp,
             current_post_time: block_timestamp,
-            min_timestamp: block_timestamp - config.optimistic_before_us,
-            max_timestamp: block_timestamp + config.optimistic_after_us,
+            min_timestamp: block_timestamp - START_PRE_TIME_US,
+            max_timestamp: block_timestamp + START_POST_TIME_US,
             indexes,
             trades,
             volume: Rational::ZERO,
-            baskets: Vec::with_capacity(10),
+            baskets: Vec::with_capacity(20),
         }
     }
 
@@ -428,7 +436,6 @@ impl<'a> TimeBasketQueue<'a> {
             }
 
             if !basket_trades.is_empty() {
-                basket_trades.reverse(); // Ensure chronological order
                 self.volume += &basket_volume;
                 let basket = TradeBasket::new(
                     self.current_pre_time,
