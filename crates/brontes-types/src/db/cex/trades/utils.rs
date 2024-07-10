@@ -206,25 +206,46 @@ pub(crate) struct TradeBasket<'a> {
     end_time:    u64,
     trade_index: usize,
     trades:      Vec<CexTradePtr<'a>>,
-    volume:      Rational,
+    pub volume:  Rational,
 }
 
 impl<'a> TradeBasket<'a> {
     pub fn new(
         start_time: u64,
         end_time: u64,
-        trades: Vec<CexTradePtr<'a>>,
+        mut trades: Vec<CexTradePtr<'a>>,
         quality_pct: usize,
         volume: Rational,
     ) -> Self {
         let length = trades.len();
         let trade_index = length - (length * quality_pct / 100);
+        trades.sort_unstable_by_key(|k| k.get().price.clone());
 
         Self { start_time, end_time, trade_index, trades, volume }
     }
 
-    pub fn order_by_price(&mut self) {
-        self.trades.sort_unstable_by_key(|k| k.get().price.clone())
+    //TODO: problem with granularity of size & not perfectly filling, might need to
+    // use partial fill...
+    pub fn get_trades_used(&self, volume_to_fill: Rational) -> Vec<CexTrades> {
+        let mut volume_filled = Rational::ZERO;
+        let mut trades_used = Vec::new();
+
+        for trade in self.trades.iter().skip(self.trade_index) {
+            let trade_data = trade.get();
+
+            if &volume_filled + &trade_data.amount <= volume_to_fill {
+                volume_filled += &trade_data.amount;
+                trades_used.push(trade_data.clone());
+            } else {
+                continue;
+            }
+
+            if volume_filled >= volume_to_fill {
+                break;
+            }
+        }
+
+        trades_used
     }
 }
 
@@ -307,7 +328,7 @@ pub struct TimeBasketQueue<'a> {
 impl<'a> TimeBasketQueue<'a> {
     pub(crate) fn new(
         config: CexDexTradeConfig,
-        trades: &Vec<&'a CexTrades>,
+        trades: &'a Vec<&'a CexTrades>,
         indexes: (usize, usize),
         block_timestamp: u64,
     ) -> Self {
@@ -319,7 +340,7 @@ impl<'a> TimeBasketQueue<'a> {
             indexes,
             trades,
             volume: Rational::ZERO,
-            baskets: trades,
+            baskets: Vec::with_capacity(10),
         }
     }
 

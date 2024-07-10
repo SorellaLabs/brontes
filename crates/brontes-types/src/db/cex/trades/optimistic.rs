@@ -18,7 +18,7 @@ use super::{
 use crate::{
     db::cex::{
         trades::SortedTrades,
-        utils::{log_missing_trade_data, PairTradeWalker, TimeBasketQueue},
+        utils::{log_missing_trade_data, TimeBasketQueue},
         CexExchange,
     },
     mev::OptimisticTrade,
@@ -366,6 +366,18 @@ impl<'a> SortedTrades<'a> {
 
             baskets_queue.expand_time_bounds(min_expand, TIME_STEP);
         }
+
+
+
+        baskets_queue.baskets.iter().map(|basket| {
+            let mut to_fill = (&basket.volume / &baskets_queue.volume) * volume;
+
+            basket.
+
+
+
+        })
+
 
         todo!();
     }
