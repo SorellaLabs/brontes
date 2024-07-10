@@ -220,6 +220,8 @@ Question D: How big should the time baskets be?
 - Max should be 200ms
 - Min should be 20ms
 
+Question E: Should I remove trades that are larger than the total amount required to clear?
+
 1. Dynamic Time Window:
 
    - Start with a narrow window: ±200 milliseconds around block time.

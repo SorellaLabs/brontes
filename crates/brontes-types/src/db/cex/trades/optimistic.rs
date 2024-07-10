@@ -221,7 +221,7 @@ impl<'a> SortedTrades<'a> {
             .max_by(|a, b| a.0.final_price.cmp(&b.0.final_price))
     }
 
-    pub fn get_optimistic_via_intermediary_spread(
+    /*pub fn get_optimistic_via_intermediary_spread(
         &self,
         config: CexDexTradeConfig,
         exchanges: &[CexExchange],
@@ -251,22 +251,21 @@ impl<'a> SortedTrades<'a> {
         let mut baskets_queue = TimeBasketQueue::new(config, *trades, *indexes, block_timestamp);
 
         todo!();
-    }
+    }*/
 
-    fn get_optimistic_no_intermediary(
+    pub fn get_optimistic_via_intermediary_spread(
         &self,
         config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         block_timestamp: u64,
-        pair: Pair,
+        pair: &Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
-        bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<MakerTakerWithVolumeFilled> {
         todo!();
-        /*
+        /*&
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
         //   markout for each pair on each exchange.
@@ -285,51 +284,23 @@ impl<'a> SortedTrades<'a> {
         //   isn't offsetting inventory for other purposes at the same time
 
         let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
-        let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
         let trades = self
             .0
             .iter()
             .filter(|(e, _)| exchanges.contains(e))
             .filter_map(|(exchange, trades)| {
-                Some((
-                    *exchange,
-                    trades.get(pair).map(|trades| {
-                        trades
-                            .iter()
-                            .filter(|f| {
-                                f.amount.le(&max_vol_per_trade)
-                                    && f.timestamp < block_timestamp + config.optimistic_after_us
-                                    && f.timestamp > block_timestamp - config.optimistic_before_us
-                            })
-                            .collect_vec()
-                    })?,
-                ))
-            })
-            .collect::<Vec<_>>();
+                let result = trades.get(pair).map(|trades| {
+                    trades
+                        .iter()
+                        .filter(|f| {
+                            f.amount.le(&max_vol_per_trade)
+                                && f.timestamp > block_timestamp - config.optimistic_before_us
+                                && f.timestamp < block_timestamp + config.optimistic_after_us
+                        })
+                        .collect_vec()
+                });
 
-        if trades.is_empty() {
-            log_missing_trade_data(dex_swap, &tx_hash);
-            return None
-        }
-
-        let trades = self
-            .0
-            .iter()
-            .filter(|(e, _)| exchanges.contains(e))
-            .filter_map(|(exchange, trades)| {
-                Some((
-                    *exchange,
-                    trades.get(pair).map(|trades| {
-                        trades
-                            .iter()
-                            .filter(|f| {
-                                f.amount.le(&max_vol_per_trade)
-                                    && f.timestamp < block_timestamp + config.optimistic_after_us
-                                    && f.timestamp > block_timestamp - config.optimistic_before_us
-                            })
-                            .collect_vec()
-                    })?,
-                ))
+                Some((*exchange, result?))
             })
             .collect::<Vec<_>>();
 
@@ -344,9 +315,59 @@ impl<'a> SortedTrades<'a> {
         //   vec) - resulting in a potentially worse price (remember, trades are sorted
         //   by price)
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
+        self.get_most_accurate_basket_intermediary(trade_queue, volume, *pair)
+        */
+    }
 
-        self.get_most_accurate_basket(trade_queue, volume, *pair, bypass_vol)
-         */
+    fn get_optimistic_no_intermediary(
+        &self,
+        config: CexDexTradeConfig,
+        block_timestamp: u64,
+        pair: Pair,
+        volume: &Rational,
+        quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
+    ) -> Option<MakerTaker> {
+        // Populate Map of Assumed Execution Quality by Exchange
+        // - We're making the assumption that the stat arber isn't hitting *every* good
+        //   markout for each pair on each exchange.
+        // - Quality percent adjusts the total percent of "good" trades the arber is
+        //   capturing for the relevant pair on a given exchange.
+
+        let quality_pct = quality.map(|map| {
+            map.iter()
+                .map(|(k, v)| (*k, v.get(&pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
+                .collect::<FastHashMap<_, _>>()
+        });
+
+        let (indexes, trades) = self.0.get(&pair)?;
+
+        if trades.is_empty() {
+            log_missing_trade_data(dex_swap, &tx_hash);
+            return None
+        }
+
+        let mut baskets_queue = TimeBasketQueue::new(config, trades, *indexes, block_timestamp);
+
+        baskets_queue.construct_time_baskets();
+
+        while baskets_queue.volume.lt(volume) {
+            if baskets_queue.get_min_time_delta(block_timestamp) >= config.optimistic_before_us
+                || baskets_queue.get_max_time_delta(block_timestamp) >= config.optimistic_after_us
+            {
+                break
+            }
+
+            let min_expand = (baskets_queue.get_max_time_delta(block_timestamp)
+                >= PRE_SCALING_DIFF)
+                .then_some(TIME_STEP)
+                .unwrap_or_default();
+
+            baskets_queue.expand_time_bounds(min_expand, TIME_STEP);
+        }
+
+        todo!();
     }
 
     fn get_most_accurate_basket_intermediary(

@@ -294,20 +294,20 @@ impl<'a> SortedTrades<'a> {
 }
 
 pub struct TimeBasketQueue<'a> {
-    baskets:           Vec<TradeBasket<'a>>,
+    pub baskets:       Vec<TradeBasket<'a>>,
     min_timestamp:     u64,
     max_timestamp:     u64,
     current_pre_time:  u64,
     current_post_time: u64,
-    volume:            Rational,
+    pub volume:        Rational,
     indexes:           (usize, usize),
-    trades:            Vec<&'a CexTrades>,
+    trades:            &'a Vec<&'a CexTrades>,
 }
 
 impl<'a> TimeBasketQueue<'a> {
     pub(crate) fn new(
         config: CexDexTradeConfig,
-        trades: Vec<&'a CexTrades>,
+        trades: &Vec<&'a CexTrades>,
         indexes: (usize, usize),
         block_timestamp: u64,
     ) -> Self {
@@ -319,7 +319,7 @@ impl<'a> TimeBasketQueue<'a> {
             indexes,
             trades,
             volume: Rational::ZERO,
-            baskets: Vec::with_capacity(10),
+            baskets: trades,
         }
     }
 
@@ -339,6 +339,8 @@ impl<'a> TimeBasketQueue<'a> {
     pub fn expand_time_bounds(&mut self, min: u64, max: u64) {
         self.min_timestamp -= min;
         self.max_timestamp += max;
+
+        self.construct_time_baskets();
     }
 
     fn construct_forward_baskets(&mut self) {
