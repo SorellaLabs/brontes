@@ -95,7 +95,7 @@ impl Div for WindowExchangePrice {
 // trades sorted by time-stamp with the index to block time-stamp closest to the
 // block_number
 pub struct TimeWindowTrades<'a>(
-    FastHashMap<&'a CexExchange, FastHashMap<&'a Pair, (usize, &'a Vec<CexTrades>)>>,
+    pub FastHashMap<&'a CexExchange, FastHashMap<&'a Pair, (usize, &'a Vec<CexTrades>)>>,
 );
 
 impl<'a> TimeWindowTrades<'a> {
@@ -310,7 +310,7 @@ impl<'a> TimeWindowTrades<'a> {
                 .iter()
                 .filter(|(e, _)| exchanges.contains(e))
                 .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
-                .map(|(ex, (idx, trades))| ((ex, (*idx, *idx - 1)), (ex, *trades)))
+                .map(|(ex, (idx, trades))| ((ex, (*idx - 1, *idx), (ex, *trades))))
                 .unzip();
 
         if trades.is_empty() {
@@ -319,6 +319,8 @@ impl<'a> TimeWindowTrades<'a> {
         } else {
             trace!(trade_qty=%trades.len(), "have trades");
         }
+
+        //TODO: Extend time window if vol is cleared by 1.5
 
         let mut walker = PairTradeWalker::new(
             trades,
@@ -450,7 +452,7 @@ impl<'a> TimeWindowTrades<'a> {
         Some((maker_ret, taker_ret))
     }
 
-    fn calculate_intermediary_addresses(
+    pub fn calculate_intermediary_addresses(
         &self,
         exchanges: &[CexExchange],
         pair: &Pair,

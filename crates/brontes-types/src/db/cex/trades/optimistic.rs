@@ -13,10 +13,14 @@ use malachite::{
 use super::{
     cex_trades::CexTradeMap,
     config::CexDexTradeConfig,
+    time_window_vwam::TimeWindowTrades,
     utils::{CexTradePtr, PairTradeQueue},
 };
 use crate::{
-    db::cex::{utils::log_missing_trade_data, CexExchange},
+    db::cex::{
+        utils::{log_missing_trade_data, PairTradeWalker, TimeBasketQueue},
+        CexExchange,
+    },
     mev::OptimisticTrade,
     normalized_actions::NormalizedSwap,
     pair::Pair,
@@ -24,7 +28,12 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-const BASE_EXECUTION_QUALITY: usize = 65;
+const BASE_EXECUTION_QUALITY: usize = 90;
+const START_POST_TIME_US: u64 = 300_000;
+const START_PRE_TIME_US: u64 = 50_000;
+
+const PRE_SCALING_DIFF: u64 = 200_000;
+const TIME_STEP: u64 = 20_000;
 
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
@@ -63,7 +72,7 @@ impl Display for ExchangePrice {
 
 pub type MakerTaker = (ExchangePrice, ExchangePrice);
 
-impl CexTradeMap {
+impl<'a> TimeBasketQueue<'a> {
     // Calculates VWAPs for the given pair across all provided exchanges - this
     // will assess trades across each exchange
     //
@@ -87,12 +96,12 @@ impl CexTradeMap {
     // - 3. Selects most profitable route and returns it as the Price
     // -- It should be noted here that this will not aggregate multiple possible
     // routes
-    pub(crate) fn get_price(
+    pub(crate) fn get_optimistic_price(
         &mut self,
         config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         block_timestamp: u64,
-        pair: &Pair,
+        pair: Pair,
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         bypass_vol: bool,
@@ -103,22 +112,19 @@ impl CexTradeMap {
             return Some((
                 ExchangePrice {
                     trades_used: vec![],
-                    pairs:       vec![*pair],
+                    pairs:       vec![pair],
                     final_price: Rational::ONE,
                 },
                 ExchangePrice {
                     trades_used: vec![],
-                    pairs:       vec![*pair],
+                    pairs:       vec![pair],
                     final_price: Rational::ONE,
                 },
             ))
         }
 
-        // order the possible trade pairs.
-        self.ensure_proper_order(exchanges, pair);
-
         let res = self
-            .get_vwam_no_intermediary(
+            .get_optimistic_no_intermediary(
                 config,
                 exchanges,
                 block_timestamp,
@@ -130,7 +136,7 @@ impl CexTradeMap {
                 tx_hash,
             )
             .or_else(|| {
-                self.get_vwam_via_intermediary(
+                self.get_optimistic_via_intermediary(
                     config,
                     exchanges,
                     block_timestamp,
@@ -149,66 +155,23 @@ impl CexTradeMap {
         res
     }
 
-    fn ensure_proper_order(&mut self, exchanges: &[CexExchange], pair: &Pair) {
-        self.0.iter_mut().for_each(|(ex, pairs)| {
-            if !exchanges.contains(ex) || pair.0 == pair.1 {
-                return
-            }
-            pairs.iter_mut().for_each(|(ex_pair, trades)| {
-                if !(pair.0 == ex_pair.0
-                    || pair.0 == ex_pair.1
-                    || pair.1 == ex_pair.0
-                    || pair.1 == ex_pair.1)
-                {
-                    return
-                }
-                trades.sort_unstable_by_key(|k| k.price.clone());
-            });
-        })
-    }
-
-    fn calculate_intermediary_addresses(
-        &self,
-        exchanges: &[CexExchange],
-        pair: &Pair,
-    ) -> FastHashSet<Address> {
-        self.0
-            .iter()
-            .filter(|(k, _)| exchanges.contains(k))
-            .flat_map(|(_, pairs)| {
-                pairs
-                    .keys()
-                    .filter_map(|trade_pair| {
-                        if trade_pair.ordered() == pair.ordered() {
-                            return None
-                        }
-
-                        (trade_pair.0 == pair.0)
-                            .then_some(trade_pair.1)
-                            .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
-                    })
-                    .collect_vec()
-            })
-            .collect::<FastHashSet<_>>()
-    }
-
-    fn get_vwam_via_intermediary(
+    fn get_optimistic_via_intermediary(
         &self,
         config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         block_timestamp: u64,
-        pair: &Pair,
+        pair: Pair,
         volume: &Rational,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
+        todo!();
+        /*
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
-                // usdc / bnb 0.004668534080298786price
                 let pair0 = Pair(pair.0, intermediary);
-                // bnb / eth 0.1298price
                 let pair1 = Pair(pair.1, intermediary);
                 // check if we have a path
                 let mut has_pair0 = false;
@@ -228,7 +191,7 @@ impl CexTradeMap {
 
                 tracing::debug!(?pair, ?intermediary, "trying via intermediary");
 
-                let res = self.get_vwam_via_intermediary_spread(
+                let res = self.get_optimistic_via_intermediary_spread(
                     config,
                     exchanges,
                     block_timestamp,
@@ -241,7 +204,7 @@ impl CexTradeMap {
 
                 let new_vol = volume / &res.prices.0.final_price.clone().reciprocal();
 
-                let pair1 = self.get_vwam_via_intermediary_spread(
+                let pair1 = self.get_optimistic_via_intermediary_spread(
                     config,
                     exchanges,
                     block_timestamp,
@@ -257,9 +220,11 @@ impl CexTradeMap {
                 Some((maker, taker))
             })
             .max_by(|a, b| a.0.final_price.cmp(&b.0.final_price))
+
+            */
     }
 
-    pub fn get_vwam_via_intermediary_spread(
+    pub fn get_optimistic_via_intermediary_spread(
         &self,
         config: CexDexTradeConfig,
         exchanges: &[CexExchange],
@@ -270,6 +235,65 @@ impl CexTradeMap {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWithVolumeFilled> {
+        todo!();
+        /*        // Populate Map of Assumed Execution Quality by Exchange
+        // - We're making the assumption that the stat arber isn't hitting *every* good
+        //   markout for each pair on each exchange.
+        // - Quality percent adjusts the total percent of "good" trades the arber is
+        //   capturing for the relevant pair on a given exchange.
+
+        todo!();
+        let quality_pct = quality.map(|map| {
+            map.iter()
+                .map(|(k, v)| (*k, v.get(pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
+                .collect::<FastHashMap<_, _>>()
+        });
+
+        let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
+            self.0
+                .iter()
+                .filter(|(e, _)| exchanges.contains(e))
+                .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
+                .map(|(ex, (idx, trades))| ((ex, (*idx, *idx - 1)), (ex, *trades)))
+                .unzip();
+
+        let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
+
+        let mut walker = PairTradeWalker::new(
+            trades,
+            ptrs,
+            block_timestamp - START_PRE_TIME_US,
+            block_timestamp + START_POST_TIME_US,
+        );
+
+        let mut trade_volume_global = Rational::ZERO;
+
+        // Populate trade queue per exchange
+        // - This utilizes the quality percent number to set the number of
+        //   trades that will be assessed in picking a bucket to calculate the
+        //   vwam with. A lower quality percent will cause us to examine more
+        //   trades (go deeper into the vec) - resulting in a potentially worse
+        //   price (remember, trades are sorted by price)
+
+        //self.get_most_accurate_basket_intermediary(trade_queue, volume,
+        // *pair)
+         */
+    }
+
+    fn get_optimistic_no_intermediary(
+        &self,
+        config: CexDexTradeConfig,
+        exchanges: &[CexExchange],
+        block_timestamp: u64,
+        pair: Pair,
+        volume: &Rational,
+        quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        bypass_vol: bool,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
+    ) -> Option<MakerTaker> {
+        todo!();
+        /*
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
         //   markout for each pair on each exchange.
@@ -288,23 +312,25 @@ impl CexTradeMap {
         //   isn't offsetting inventory for other purposes at the same time
 
         let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
+        let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
         let trades = self
             .0
             .iter()
             .filter(|(e, _)| exchanges.contains(e))
             .filter_map(|(exchange, trades)| {
-                let result = trades.get(pair).map(|trades| {
-                    trades
-                        .iter()
-                        .filter(|f| {
-                            f.amount.le(&max_vol_per_trade)
-                                && f.timestamp > block_timestamp - config.optimistic_before_us
-                                && f.timestamp < block_timestamp + config.optimistic_after_us
-                        })
-                        .collect_vec()
-                });
-
-                Some((*exchange, result?))
+                Some((
+                    *exchange,
+                    trades.get(pair).map(|trades| {
+                        trades
+                            .iter()
+                            .filter(|f| {
+                                f.amount.le(&max_vol_per_trade)
+                                    && f.timestamp < block_timestamp + config.optimistic_after_us
+                                    && f.timestamp > block_timestamp - config.optimistic_before_us
+                            })
+                            .collect_vec()
+                    })?,
+                ))
             })
             .collect::<Vec<_>>();
 
@@ -312,46 +338,7 @@ impl CexTradeMap {
             log_missing_trade_data(dex_swap, &tx_hash);
             return None
         }
-        // Populate trade queue per exchange
-        // - This utilizes the quality percent number to set the number of trades that
-        //   will be assessed in picking a bucket to calculate the vwam with. A lower
-        //   quality percent will cause us to examine more trades (go deeper into the
-        //   vec) - resulting in a potentially worse price (remember, trades are sorted
-        //   by price)
-        let trade_queue = PairTradeQueue::new(trades, quality_pct);
-        self.get_most_accurate_basket_intermediary(trade_queue, volume, *pair)
-    }
 
-    fn get_vwam_no_intermediary(
-        &self,
-        config: CexDexTradeConfig,
-        exchanges: &[CexExchange],
-        block_timestamp: u64,
-        pair: &Pair,
-        volume: &Rational,
-        quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
-        bypass_vol: bool,
-        dex_swap: &NormalizedSwap,
-        tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
-        // Populate Map of Assumed Execution Quality by Exchange
-        // - We're making the assumption that the stat arber isn't hitting *every* good
-        //   markout for each pair on each exchange.
-        // - Quality percent adjusts the total percent of "good" trades the arber is
-        //   capturing for the relevant pair on a given exchange.
-        let quality_pct = quality.map(|map| {
-            map.iter()
-                .map(|(k, v)| (*k, v.get(pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
-                .collect::<FastHashMap<_, _>>()
-        });
-
-        // Filter Exchange Trades Based On Volume
-        // - This filters trades used to calculate the VWAM by excluding trades that
-        //   have significantly more volume than the needed inventory offset
-        // - The assumption here is the stat arber is trading just for this arb and
-        //   isn't offsetting inventory for other purposes at the same time
-
-        let max_vol_per_trade = volume + (volume * EXCESS_VOLUME_PCT);
         let trades = self
             .0
             .iter()
@@ -386,6 +373,7 @@ impl CexTradeMap {
         let trade_queue = PairTradeQueue::new(trades, quality_pct);
 
         self.get_most_accurate_basket(trade_queue, volume, *pair, bypass_vol)
+         */
     }
 
     fn get_most_accurate_basket_intermediary(
@@ -394,143 +382,146 @@ impl CexTradeMap {
         volume: &Rational,
         pair: Pair,
     ) -> Option<MakerTakerWithVolumeFilled> {
-        let mut trades = Vec::new();
+        todo!();
+        /*
+            let mut trades = Vec::new();
 
-        let volume_amount = volume;
-        let mut cur_vol = Rational::ZERO;
-        // Populates an ordered vec of trades from best to worst price
-        while volume_amount.gt(&cur_vol) {
-            let Some(next) = queue.next_best_trade() else {
-                break;
+            let volume_amount = volume;
+            let mut cur_vol = Rational::ZERO;
+            // Populates an ordered vec of trades from best to worst price
+            while volume_amount.gt(&cur_vol) {
+                let Some(next) = queue.next_best_trade() else {
+                    break;
+                };
+                // we do this due to the sheer amount of trades we have and to not have to copy.
+                // all of this is safe
+                cur_vol += &next.get().amount;
+
+                trades.push(next);
+            }
+
+            let mut vxp_maker = Rational::ZERO;
+            let mut vxp_taker = Rational::ZERO;
+            let mut trade_volume = Rational::ZERO;
+            let mut exchange_with_vol = FastHashMap::default();
+
+            let mut trades_used = Vec::with_capacity(trades.len());
+
+            // For the closest basket sum volume and volume weighted prices
+            for trade in trades {
+                let (m_fee, t_fee) = trade.get().exchange.fees();
+
+                vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
+                vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
+
+                *exchange_with_vol
+                    .entry(trade.get().exchange)
+                    .or_insert(Rational::ZERO) += &trade.get().amount;
+
+                trade_volume += &trade.get().amount;
+                let trade = trade.get();
+                trades_used.push(OptimisticTrade {
+                    volume: trade.amount.clone(),
+                    pair,
+                    price: trade.price.clone(),
+                    exchange: trade.exchange,
+                    timestamp: trade.timestamp,
+                });
+            }
+
+            if trade_volume == Rational::ZERO {
+                return None
+            }
+
+            let maker = ExchangePrice {
+                trades_used: trades_used.clone(),
+                pairs:       vec![pair],
+                final_price: vxp_maker / &trade_volume,
             };
-            // we do this due to the sheer amount of trades we have and to not have to copy.
-            // all of this is safe
-            cur_vol += &next.get().amount;
-
-            trades.push(next);
-        }
-
-        let mut vxp_maker = Rational::ZERO;
-        let mut vxp_taker = Rational::ZERO;
-        let mut trade_volume = Rational::ZERO;
-        let mut exchange_with_vol = FastHashMap::default();
-
-        let mut trades_used = Vec::with_capacity(trades.len());
-
-        // For the closest basket sum volume and volume weighted prices
-        for trade in trades {
-            let (m_fee, t_fee) = trade.get().exchange.fees();
-
-            vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
-            vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
-
-            *exchange_with_vol
-                .entry(trade.get().exchange)
-                .or_insert(Rational::ZERO) += &trade.get().amount;
-
-            trade_volume += &trade.get().amount;
-            let trade = trade.get();
-            trades_used.push(OptimisticTrade {
-                volume: trade.amount.clone(),
-                pair,
-                price: trade.price.clone(),
-                exchange: trade.exchange,
-                timestamp: trade.timestamp,
-            });
-        }
-
-        if trade_volume == Rational::ZERO {
-            return None
-        }
-
-        let maker = ExchangePrice {
-            trades_used: trades_used.clone(),
-            pairs:       vec![pair],
-            final_price: vxp_maker / &trade_volume,
-        };
-        let taker = ExchangePrice {
-            trades_used,
-            pairs: vec![pair],
-            final_price: vxp_taker / &trade_volume,
-        };
-
-        Some(MakerTakerWithVolumeFilled { prices: (maker, taker) })
-    }
-
-    fn get_most_accurate_basket(
-        &self,
-        mut queue: PairTradeQueue<'_>,
-        volume: &Rational,
-        pair: Pair,
-        bypass_vol: bool,
-    ) -> Option<MakerTaker> {
-        let mut trades = Vec::new();
-
-        // multiply volume by baskets to assess more potential baskets of trades
-        let volume_amount = volume;
-        let mut cur_vol = Rational::ZERO;
-
-        // Populates an ordered vec of trades from best to worst price
-        while volume_amount.gt(&cur_vol) {
-            let Some(next) = queue.next_best_trade() else {
-                break;
+            let taker = ExchangePrice {
+                trades_used,
+                pairs: vec![pair],
+                final_price: vxp_taker / &trade_volume,
             };
-            // we do this due to the sheer amount of trades we have and to not have to copy.
-            // all of this is safe
-            cur_vol += &next.get().amount;
 
-            trades.push(next);
+            Some(MakerTakerWithVolumeFilled { prices: (maker, taker) })
         }
 
-        if &cur_vol < volume && !bypass_vol {
-            return None
-        }
+        fn get_most_accurate_basket(
+            &self,
+            mut queue: PairTradeQueue<'_>,
+            volume: &Rational,
+            pair: Pair,
+            bypass_vol: bool,
+        ) -> Option<MakerTaker> {
+            let mut trades = Vec::new();
 
-        let mut vxp_maker = Rational::ZERO;
-        let mut vxp_taker = Rational::ZERO;
-        let mut trade_volume = Rational::ZERO;
-        let mut exchange_with_vol = FastHashMap::default();
+            // multiply volume by baskets to assess more potential baskets of trades
+            let volume_amount = volume;
+            let mut cur_vol = Rational::ZERO;
 
-        let mut trades_used = Vec::with_capacity(trades.len());
-        // For the closest basket sum volume and volume weighted prices
-        for trade in trades {
-            let (m_fee, t_fee) = trade.get().exchange.fees();
+            // Populates an ordered vec of trades from best to worst price
+            while volume_amount.gt(&cur_vol) {
+                let Some(next) = queue.next_best_trade() else {
+                    break;
+                };
+                // we do this due to the sheer amount of trades we have and to not have to copy.
+                // all of this is safe
+                cur_vol += &next.get().amount;
 
-            vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
-            vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
+                trades.push(next);
+            }
 
-            *exchange_with_vol
-                .entry(trade.get().exchange)
-                .or_insert(Rational::ZERO) += &trade.get().amount;
+            if &cur_vol < volume && !bypass_vol {
+                return None
+            }
 
-            trade_volume += &trade.get().amount;
+            let mut vxp_maker = Rational::ZERO;
+            let mut vxp_taker = Rational::ZERO;
+            let mut trade_volume = Rational::ZERO;
+            let mut exchange_with_vol = FastHashMap::default();
 
-            let trade = trade.get();
-            trades_used.push(OptimisticTrade {
-                volume: trade.amount.clone(),
-                pair,
-                price: trade.price.clone(),
-                exchange: trade.exchange,
-                timestamp: trade.timestamp,
-            });
-        }
+            let mut trades_used = Vec::with_capacity(trades.len());
+            // For the closest basket sum volume and volume weighted prices
+            for trade in trades {
+                let (m_fee, t_fee) = trade.get().exchange.fees();
 
-        if trade_volume == Rational::ZERO {
-            return None
-        }
+                vxp_maker += (&trade.get().price * (Rational::ONE - m_fee)) * &trade.get().amount;
+                vxp_taker += (&trade.get().price * (Rational::ONE - t_fee)) * &trade.get().amount;
 
-        let maker = ExchangePrice {
-            trades_used: trades_used.clone(),
-            pairs:       vec![pair],
-            final_price: vxp_maker / &trade_volume,
-        };
-        let taker = ExchangePrice {
-            trades_used,
-            pairs: vec![pair],
-            final_price: vxp_taker / &trade_volume,
-        };
+                *exchange_with_vol
+                    .entry(trade.get().exchange)
+                    .or_insert(Rational::ZERO) += &trade.get().amount;
 
-        Some((maker, taker))
+                trade_volume += &trade.get().amount;
+
+                let trade = trade.get();
+                trades_used.push(OptimisticTrade {
+                    volume: trade.amount.clone(),
+                    pair,
+                    price: trade.price.clone(),
+                    exchange: trade.exchange,
+                    timestamp: trade.timestamp,
+                });
+            }
+
+            if trade_volume == Rational::ZERO {
+                return None
+            }
+
+            let maker = ExchangePrice {
+                trades_used: trades_used.clone(),
+                pairs:       vec![pair],
+                final_price: vxp_maker / &trade_volume,
+            };
+            let taker = ExchangePrice {
+                trades_used,
+                pairs: vec![pair],
+                final_price: vxp_taker / &trade_volume,
+            };
+
+            Some((maker, taker))
+                */
     }
 }
 

@@ -201,6 +201,25 @@ This method provides an optimistic yet realistic estimate of potential arbitrage
 
 #### Process
 
+Question A: To decay or not to decay?
+
+- Yes, but less than VWAP
+
+Question B: How much should I extend the time window?
+
+- Expand by 1.5x for search
+
+Question C: How much volume should I attribute to each time basket?
+
+- volume weight proportion + time decay weight
+
+Question D: How big should the time baskets be?
+
+- Scale them to 1/20 of time window
+
+- Max should be 200ms
+- Min should be 20ms
+
 1. Dynamic Time Window:
 
    - Start with a narrow window: ±200 milliseconds around block time.

@@ -9,8 +9,8 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::cex::{
         config::CexDexTradeConfig,
+        optimistic::{ExchangePrice, MakerTaker},
         time_window_vwam::MakerTakerWindowVWAP,
-        vwam::{ExchangePrice, MakerTaker},
         CexExchange, FeeAdjustedQuote,
     },
     display::utils::format_etherscan_url,
