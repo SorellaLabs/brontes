@@ -124,12 +124,10 @@ impl<'a> SortedTrades<'a> {
         let res = self
             .get_optimistic_no_intermediary(
                 config,
-                exchanges,
                 block_timestamp,
                 pair,
                 volume,
                 quality.as_ref(),
-                bypass_vol,
                 dex_swap,
                 tx_hash,
             )
@@ -346,7 +344,7 @@ impl<'a> SortedTrades<'a> {
             return None
         }
 
-        let mut baskets_queue = TimeBasketQueue::new(config, trades, *indexes, block_timestamp);
+        let mut baskets_queue = TimeBasketQueue::new(trades, *indexes, block_timestamp);
 
         baskets_queue.construct_time_baskets();
 
