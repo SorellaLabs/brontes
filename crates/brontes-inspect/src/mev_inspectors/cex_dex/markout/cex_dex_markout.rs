@@ -467,6 +467,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let vol = Rational::ONE;
 
+        //TODO: Pair is flipped, this don't make sense
         let pair = Pair(self.utils.quote, swap.token_in.address);
         let token_price = metadata
             .cex_trades
@@ -493,9 +494,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             price1: &cex_quote.0 * &token_price.clone(),
         };
 
+        //TODO: This is wrong, we should be calculating token in, as
+        //TODO: we are assuming they are getting the surplus in token out
+        //TODO:
         let pnl_mid = (
-            &maker_delta * &swap.amount_out * &token_price,
-            &taker_delta * &swap.amount_out * &token_price,
+            &maker_delta * &swap.amount_in * &token_price,
+            &taker_delta * &swap.amount_in * &token_price,
         );
 
         let quote = FeeAdjustedQuote {
