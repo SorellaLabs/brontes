@@ -23,6 +23,7 @@ use super::{
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
     db::cex::CexExchange,
+    display::utils::format_etherscan_url,
     normalized_actions::NormalizedSwap,
     pair::Pair,
     FastHashMap, FastHashSet,
@@ -170,7 +171,7 @@ impl<'a> TimeWindowTrades<'a> {
             });
 
         if res.is_none() {
-            tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, "No price VMAP found for {}-{} in time window.", dex_swap.token_in.symbol, dex_swap.token_out.symbol);
+            tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, "No price VMAP found for {}-{} in time window.\n Tx: {}", dex_swap.token_in.symbol, dex_swap.token_out.symbol, format_etherscan_url(&tx_hash));
         }
 
         res

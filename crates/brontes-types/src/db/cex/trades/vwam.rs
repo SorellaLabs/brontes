@@ -17,6 +17,7 @@ use super::{
 };
 use crate::{
     db::cex::{utils::log_missing_trade_data, CexExchange},
+    display::utils::format_etherscan_url,
     mev::OptimisticTrade,
     normalized_actions::NormalizedSwap,
     pair::Pair,
@@ -143,7 +144,7 @@ impl CexTradeMap {
             });
 
         if res.is_none() {
-            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "No price VMAP found for {}-{} in time window.", dex_swap.token_in.symbol, dex_swap.token_out.symbol);
+            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "No price VMAP found for {}-{} in time window. \n Tx: {}", dex_swap.token_in.symbol, dex_swap.token_out.symbol, format_etherscan_url(&tx_hash));
         }
 
         res
