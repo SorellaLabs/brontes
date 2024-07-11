@@ -170,7 +170,7 @@ impl<'a> TimeWindowTrades<'a> {
             });
 
         if res.is_none() {
-            tracing::debug!(?pair, "No price VMAP found for pair in time window.");
+            tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, "No price VMAP found for pair in time window.");
         }
 
         res
@@ -190,7 +190,7 @@ impl<'a> TimeWindowTrades<'a> {
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
-                trace!(?intermediary, "trying inter");
+                trace!(target: "brontes_types::db::cex::time_window_vwam", ?intermediary, "trying intermediary");
 
                 let pair0 = Pair(pair.1, intermediary);
                 let pair1 = Pair(pair.0, intermediary);
@@ -216,7 +216,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                tracing::debug!(?pair, ?intermediary, ?volume, "trying via intermediary");
+                tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, ?intermediary, ?volume, "trying via intermediary");
                 let res = self.get_vwap_price(
                     config,
                     exchanges,
@@ -317,7 +317,7 @@ impl<'a> TimeWindowTrades<'a> {
             log_missing_trade_data(dex_swap, &tx_hash);
             return None
         } else {
-            trace!(trade_qty=%trades.len(), "have trades");
+            trace!(target: "brontes_types::db::cex::time_window_vwam", trade_qty=%trades.len(), "have trades");
         }
 
         let mut walker = PairTradeWalker::new(

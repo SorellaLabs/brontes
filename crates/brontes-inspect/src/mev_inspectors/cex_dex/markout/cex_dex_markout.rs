@@ -163,7 +163,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 }
 
                 if dex_swaps.is_empty() {
-                    trace!("no dex swaps found");
+                    trace!(    target: "brontes::cex-dex-markout",
+                    "no dex swaps found");
                     return None
                 }
 

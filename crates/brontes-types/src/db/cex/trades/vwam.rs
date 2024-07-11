@@ -143,7 +143,7 @@ impl CexTradeMap {
             });
 
         if res.is_none() {
-            tracing::debug!(?pair, "no vwam found");
+            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "no vwam found");
         }
 
         res
@@ -226,7 +226,7 @@ impl CexTradeMap {
                     return None
                 }
 
-                tracing::debug!(?pair, ?intermediary, "trying via intermediary");
+                tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, ?intermediary, "trying via intermediary");
 
                 let res = self.get_vwam_via_intermediary_spread(
                     config,
