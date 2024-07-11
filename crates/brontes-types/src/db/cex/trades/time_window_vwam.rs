@@ -170,7 +170,7 @@ impl<'a> TimeWindowTrades<'a> {
             });
 
         if res.is_none() {
-            tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, "No price VMAP found for pair in time window.");
+            tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, "No price VMAP found for {}-{} in time window.", dex_swap.token_in.symbol, dex_swap.token_out.symbol);
         }
 
         res

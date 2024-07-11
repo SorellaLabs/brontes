@@ -143,7 +143,7 @@ impl CexTradeMap {
             });
 
         if res.is_none() {
-            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "no vwam found");
+            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "No price VMAP found for {}-{} in time window.", dex_swap.token_in.symbol, dex_swap.token_out.symbol);
         }
 
         res
