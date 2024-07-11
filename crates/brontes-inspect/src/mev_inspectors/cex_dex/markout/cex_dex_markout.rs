@@ -498,8 +498,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         //TODO: we are assuming they are getting the surplus in token out
         //TODO:
         let pnl_mid = (
-            &maker_delta * &swap.amount_in * &token_price,
-            &taker_delta * &swap.amount_in * &token_price,
+            &maker_delta * &swap.amount_out * &token_price,
+            &taker_delta * &swap.amount_out * &token_price,
         );
 
         let quote = FeeAdjustedQuote {
