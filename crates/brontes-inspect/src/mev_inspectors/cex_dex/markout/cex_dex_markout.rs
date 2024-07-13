@@ -492,7 +492,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let vol = Rational::ONE;
 
-        let pair = Pair(swap.token_in.address, self.utils.quote);
+        let pair = Pair(self.utils.quote, swap.token_in.address);
 
         println!("Calculating token price");
         //TODO: Pre calculate as we always need token in priced in quote asset
