@@ -8,5 +8,3 @@
       c.amount AS amount
   FROM cex.normalized_trades as c 
   where c.timestamp >= ? AND c.timestamp < ?
-
-d
