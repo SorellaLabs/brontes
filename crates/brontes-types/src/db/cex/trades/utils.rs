@@ -81,7 +81,7 @@ impl<'a> PairTradeWalker<'a> {
             // time window
             if *lower_idx > 0 {
                 loop {
-                    let next_trade = &trades[*lower_idx - 1];
+                    let next_trade = &trades[*lower_idx];
                     if next_trade.timestamp >= self.min_timestamp {
                         trade_res.push(CexTradePtr::new(next_trade));
                         *lower_idx -= 1;
@@ -100,7 +100,7 @@ impl<'a> PairTradeWalker<'a> {
             let max = trades.len() - 1;
             if *upper_idx < max {
                 loop {
-                    let next_trade = &trades[*upper_idx + 1];
+                    let next_trade = &trades[*upper_idx];
                     if next_trade.timestamp <= self.max_timestamp {
                         trade_res.push(CexTradePtr::new(next_trade));
                         *upper_idx += 1;

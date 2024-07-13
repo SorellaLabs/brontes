@@ -332,7 +332,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     tx_hash,
                                     path.final_start_time,
                                     path.final_end_time,
-                                    "priec window vwam per ex",
+                                    "price window vwam per ex",
                                 ),
                             )
                         })
@@ -443,9 +443,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
-        let swap_rate = swap.swap_rate();
-        let smaller = min(&swap_rate, &cex_quote.0);
-        let larger = max(&swap_rate, &cex_quote.0);
+        let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
+            (&cex_quote.0 * &swap.amount_out, &cex_quote.1 * &swap.amount_out);
+
+        let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
+        let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
@@ -461,15 +463,16 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
             return None
         }
-        // A positive delta indicates potential profit from buying on DEX
-        // and selling on CEX.
-        let maker_delta = &cex_quote.0 - swap.swap_rate();
-        let taker_delta = &cex_quote.1 - swap.swap_rate();
+        // A positive amount indicates potential profit from selling the token in on the
+        // DEX and buying it on the CEX.
+        let maker_token_delta = &output_of_cex_trade_maker - &swap.amount_in;
+        let taker_token_delta = &output_of_cex_trade_taker - &swap.amount_in;
 
         let vol = Rational::ONE;
 
-        //TODO: Pair is flipped, this don't make sense
-        let pair = Pair(self.utils.quote, swap.token_in.address);
+        let pair = Pair(swap.token_in.address, self.utils.quote);
+
+        //TODO: Pre calculate as we always need token in priced in quote asset
         let token_price = metadata
             .cex_trades
             .as_ref()
@@ -492,16 +495,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             token0: swap.token_in.address,
             price0: token_price.clone(),
             token1: swap.token_out.address,
-            price1: &cex_quote.0 * &token_price.clone(),
+            price1: &token_price / &cex_quote.0,
         };
 
-        //TODO: This is wrong, we should be calculating token in, as
-        //TODO: we are assuming they are getting the surplus in token out
-        //TODO:
-        let pnl_mid = (
-            &maker_delta * &swap.amount_out * &token_price,
-            &taker_delta * &swap.amount_out * &token_price,
-        );
+        let pnl_mid = (&maker_token_delta * &token_price, &taker_token_delta * &token_price);
 
         let quote = FeeAdjustedQuote {
             timestamp: metadata.block_timestamp,
@@ -777,6 +774,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     }
 
     /// Filters out triangular arbitrage
+    //TODO: Check for bug on tx:
+    // https://dashboard.tenderly.co/tx/mainnet/0x310430b40132df960020af330b2e3b6a281751d45786f6b790e1cf1daf9a78bb?trace=0
     pub fn is_triangular_arb(&self, dex_swaps: &[NormalizedSwap]) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if dex_swaps.len() < 2 {

@@ -1,11 +1,11 @@
 use clickhouse::Row;
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use super::raw_cex_trades::RawCexTrades;
+use super::{raw_cex_trades::RawCexTrades, time_window_vwam::Direction};
 use crate::{
     db::{cex::CexExchange, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,
@@ -124,6 +124,25 @@ pub struct CexTrades {
     pub timestamp: u64,
     pub price:     Rational,
     pub amount:    Rational,
+}
+
+impl CexTrades {
+    pub fn adjust_for_direction(&self, direction: Direction) -> Self {
+        match direction {
+            Direction::Buy => Self {
+                exchange:  self.exchange,
+                timestamp: self.timestamp,
+                price:     self.price.clone(),
+                amount:    &self.amount * &self.price,
+            },
+            Direction::Sell => Self {
+                exchange:  self.exchange,
+                timestamp: self.timestamp,
+                price:     self.price.clone().reciprocal(),
+                amount:    self.amount.clone(),
+            },
+        }
+    }
 }
 
 impl From<RawCexTrades> for CexTrades {
