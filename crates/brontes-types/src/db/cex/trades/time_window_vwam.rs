@@ -156,6 +156,7 @@ impl<'a> TimeWindowTrades<'a> {
                 config, exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
             )
             .or_else(|| {
+                println!("No direct pair, trying intermediary");
                 self.get_vwap_price_via_intermediary(
                     config, exchanges, &pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
                 )
@@ -445,6 +446,8 @@ impl<'a> TimeWindowTrades<'a> {
             global_exchange_price: global_taker,
         };
 
+        println!("Price is {} for pair {}-{}", maker_ret.global_exchange_price.clone().to_float(), dex_swap.token_out_symbol(), dex_swap.token_in_symbol());
+
         Some((maker_ret, taker_ret))
     }
 
@@ -509,10 +512,6 @@ impl<'a> TimeWindowTrades<'a> {
                 pairs
                     .keys()
                     .filter_map(|trade_pair| {
-                        if trade_pair.ordered() == pair.ordered() {
-                            return None
-                        }
-
                         (trade_pair.0 == pair.0)
                             .then_some(trade_pair.1)
                             .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
