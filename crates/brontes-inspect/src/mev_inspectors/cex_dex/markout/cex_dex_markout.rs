@@ -443,20 +443,30 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
+        println!("Starting profit_classifier function");
+        println!("Tx: {}", format_etherscan_url(&tx_hash));
+        println!("NormalizedSwap: {}", swap);
+
         let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
             (&cex_quote.0 * &swap.amount_out, &cex_quote.1 * &swap.amount_out);
 
-        println!("Price calc type: {:?}", price_calculation_type);
-
-        println!("Cex quote: {:?}", cex_quote.0.clone().to_float());
-
+        println!("Price calculation type: {}", price_calculation_type);
+        println!("CEX quote (maker): {}", cex_quote.0.clone().to_float());
+        println!("CEX quote (taker): {}", cex_quote.1.clone().to_float());
         println!(
-            "Amount of token in from Cex swap: {:?}",
+            "Amount of token out from CEX swap (maker): {}",
             output_of_cex_trade_maker.clone().to_float()
+        );
+        println!(
+            "Amount of token out from CEX swap (taker): {}",
+            output_of_cex_trade_taker.clone().to_float()
         );
 
         let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
+
+        println!("Smaller amount: {}", smaller.clone().to_float());
+        println!("Larger amount: {}", larger.clone().to_float());
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
@@ -477,10 +487,14 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let maker_token_delta = &output_of_cex_trade_maker - &swap.amount_in;
         let taker_token_delta = &output_of_cex_trade_taker - &swap.amount_in;
 
+        println!("Maker token delta: {}", maker_token_delta.clone().to_float());
+        println!("Taker token delta: {}", taker_token_delta.clone().to_float());
+
         let vol = Rational::ONE;
 
         let pair = Pair(swap.token_in.address, self.utils.quote);
 
+        println!("Calculating token price");
         //TODO: Pre calculate as we always need token in priced in quote asset
         let token_price = metadata
             .cex_trades
@@ -509,7 +523,17 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             price1: &token_price / &cex_quote.0,
         };
 
+        println!("Pairs price:");
+        println!("  Token0: {:?}", pairs_price.token0);
+        println!("  Price0: {}", pairs_price.price0.clone().to_float());
+        println!("  Token1: {:?}", pairs_price.token1);
+        println!("  Price1: {}", pairs_price.price1.clone().to_float());
+
         let pnl_mid = (&maker_token_delta * &token_price, &taker_token_delta * &token_price);
+
+        println!("PnL (mid):");
+        println!("  Maker: {}", pnl_mid.0.clone().to_float());
+        println!("  Taker: {}", pnl_mid.1.clone().to_float());
 
         let quote = FeeAdjustedQuote {
             timestamp: metadata.block_timestamp,
