@@ -446,6 +446,15 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
             (&cex_quote.0 * &swap.amount_out, &cex_quote.1 * &swap.amount_out);
 
+        println!("Price calc type: {:?}", price_calculation_type);
+
+        println!("Cex quote: {:?}", cex_quote.0.clone().to_float());
+
+        println!(
+            "Amount of token in from Cex swap: {:?}",
+            output_of_cex_trade_maker.clone().to_float()
+        );
+
         let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
 
@@ -490,6 +499,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             )?
             .0
             .global_exchange_price;
+
+        println!("Price of token in {}", token_price.clone().to_float());
 
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
