@@ -180,6 +180,13 @@ impl<'a> TimeWindowTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
+
+        println!("Attempting to find intermediary for pair: {:?}", pair);
+    
+        let intermediaries = self.calculate_intermediary_addresses(exchanges, pair);
+        println!("Potential intermediaries: {:?}", intermediaries);
+    
+
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
@@ -192,8 +199,8 @@ impl<'a> TimeWindowTrades<'a> {
                 let mut has_pair1 = false;
 
                 for (_, trades) in self.0.iter().filter(|(ex, _)| exchanges.contains(ex)) {
-                    has_pair0 |= trades.contains_key(&pair0);
-                    has_pair1 |= trades.contains_key(&pair1);
+                    has_pair0 |= trades.contains_key(&pair0) || trades.contains_key(&pair0.flip());
+                    has_pair1 |= trades.contains_key(&pair1) || trades.contains_key(&pair1.flip());
 
                     if has_pair1 && has_pair0 {
                         break
@@ -201,6 +208,7 @@ impl<'a> TimeWindowTrades<'a> {
                 }
 
                 if !(has_pair0 && has_pair1) {
+                    println!("Missing pairs for intermediary {:?}", intermediary);
                     return None
                 }
 
