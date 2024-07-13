@@ -24,7 +24,7 @@ use crate::{
     display::utils::format_etherscan_url,
     normalized_actions::NormalizedSwap,
     pair::Pair,
-    FastHashMap, FastHashSet,
+    FastHashMap, FastHashSet, ToFloatNearest,
 };
 
 const PRE_DECAY: f64 = -0.0000005;
@@ -242,6 +242,8 @@ impl<'a> TimeWindowTrades<'a> {
 
                 let maker = first_leg.0 * second_leg.0;
                 let taker = first_leg.1 * second_leg.1;
+
+                println!("Price of intermediary is {} for pair {}-{}", maker.global_exchange_price.clone().to_float(), dex_swap.token_out_symbol(), dex_swap.token_in_symbol());
 
                 Some((maker, taker))
             })
