@@ -540,7 +540,7 @@ impl CexTradeMap {
         let mut trade_volume = Rational::ZERO;
         let mut exchange_with_vol = FastHashMap::default();
 
-        let mut trades_used = Vec::new();
+        let mut trades_used = Vec::with_capacity(trades.len());
         // For the closest basket sum volume and volume weighted prices
         for trade in trades {
             let trade = trade.get();
