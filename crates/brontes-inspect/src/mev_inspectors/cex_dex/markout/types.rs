@@ -18,6 +18,7 @@ use crate::atomic_arb::is_stable_pair;
 
 pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000);
 
+use super::cex_dex_markout::PriceCalcType;
 use crate::Metadata;
 
 #[derive(Debug)]
@@ -518,7 +519,7 @@ pub fn log_price_delta(
     cex_price: f64,
     token_in_address: &Address,
     token_out_address: &Address,
-    price_calculation_type: &str,
+    price_calculation_type: PriceCalcType,
 ) {
     warn!(
         "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\

@@ -28,6 +28,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
+use strum::Display;
 use tracing::trace;
 
 use super::{
@@ -332,7 +333,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     tx_hash,
                                     path.final_start_time,
                                     path.final_end_time,
-                                    "price window vwam per ex",
+                                    PriceCalcType::TimeWindowPerEx,
                                 ),
                             )
                         })
@@ -364,7 +365,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         tx_hash,
                         start_time,
                         end_time,
-                        "price window vwam",
+                        PriceCalcType::TimeWindowGlobal,
                     ))
                 })
                 .collect_vec(),
@@ -409,7 +410,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         tx_hash,
                         start_time,
                         end_time,
-                        "optimistic",
+                        PriceCalcType::Optimistic,
                     );
 
                     if profit.is_some() {
@@ -438,35 +439,41 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
         start_time: u64,
         end_time: u64,
-        price_calculation_type: &str,
+        price_calculation_type: PriceCalcType,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
-        println!("Starting profit_classifier function");
-        println!("Tx: {}", format_etherscan_url(&tx_hash));
-        println!("NormalizedSwap: {}", swap);
+        if price_calculation_type == PriceCalcType::Optimistic {
+            println!("Starting profit_classifier function");
+            println!("Tx: {}", format_etherscan_url(&tx_hash));
+            println!("NormalizedSwap: {}", swap);
+        }
 
         let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
             (&cex_quote.0 * &swap.amount_out, &cex_quote.1 * &swap.amount_out);
 
-        println!("Price calculation type: {}", price_calculation_type);
-        println!("CEX quote (maker): {}", cex_quote.0.clone().to_float());
-        println!("CEX quote (taker): {}", cex_quote.1.clone().to_float());
-        println!(
-            "Amount of token out from CEX swap (maker): {}",
-            output_of_cex_trade_maker.clone().to_float()
-        );
-        println!(
-            "Amount of token out from CEX swap (taker): {}",
-            output_of_cex_trade_taker.clone().to_float()
-        );
+        if price_calculation_type == PriceCalcType::Optimistic {
+            println!("Price calculation type: {}", price_calculation_type.to_string());
+            println!("CEX quote (maker): {}", cex_quote.0.clone().to_float());
+            println!("CEX quote (taker): {}", cex_quote.1.clone().to_float());
+            println!(
+                "Amount of token out from CEX swap (maker): {}",
+                output_of_cex_trade_maker.clone().to_float()
+            );
+            println!(
+                "Amount of token out from CEX swap (taker): {}",
+                output_of_cex_trade_taker.clone().to_float()
+            );
+        }
 
         let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
 
-        println!("Smaller amount: {}", smaller.clone().to_float());
-        println!("Larger amount: {}", larger.clone().to_float());
+        if price_calculation_type == PriceCalcType::Optimistic {
+            println!("Smaller amount: {}", smaller.clone().to_float());
+            println!("Larger amount: {}", larger.clone().to_float());
+        }
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
@@ -487,14 +494,15 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let maker_token_delta = &output_of_cex_trade_maker - &swap.amount_in;
         let taker_token_delta = &output_of_cex_trade_taker - &swap.amount_in;
 
-        println!("Maker token delta: {}", maker_token_delta.clone().to_float());
-        println!("Taker token delta: {}", taker_token_delta.clone().to_float());
+        if price_calculation_type == PriceCalcType::Optimistic {
+            println!("Maker token delta: {}", maker_token_delta.clone().to_float());
+            println!("Taker token delta: {}", taker_token_delta.clone().to_float());
+        }
 
         let vol = Rational::ONE;
 
         let pair = Pair(self.utils.quote, swap.token_in.address);
 
-        println!("Calculating token price");
         //TODO: Pre calculate as we always need token in priced in quote asset
         let token_price = metadata
             .cex_trades
@@ -514,7 +522,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .0
             .global_exchange_price;
 
-        println!("Price of token in {}", token_price.clone().to_float());
+        if price_calculation_type == PriceCalcType::Optimistic {
+            println!("Token price: {}", token_price.clone().to_float());
+        }
 
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
@@ -523,17 +533,21 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             price1: &token_price / &cex_quote.0,
         };
 
-        println!("Pairs price:");
-        println!("  Token0: {:?}", pairs_price.token0);
-        println!("  Price0: {}", pairs_price.price0.clone().to_float());
-        println!("  Token1: {:?}", pairs_price.token1);
-        println!("  Price1: {}", pairs_price.price1.clone().to_float());
+        if price_calculation_type == PriceCalcType::Optimistic {
+            println!("Pairs price:");
+            println!("  Token0: {:?}", pairs_price.token0);
+            println!("  Price0: {}", pairs_price.price0.clone().to_float());
+            println!("  Token1: {:?}", pairs_price.token1);
+            println!("  Price1: {}", pairs_price.price1.clone().to_float());
+        }
 
         let pnl_mid = (&maker_token_delta * &token_price, &taker_token_delta * &token_price);
 
-        println!("PnL (mid):");
-        println!("  Maker: {}", pnl_mid.0.clone().to_float());
-        println!("  Taker: {}", pnl_mid.1.clone().to_float());
+        if price_calculation_type == PriceCalcType::Optimistic {
+            println!("PnL (mid):");
+            println!("  Maker: {}", pnl_mid.0.clone().to_float());
+            println!("  Taker: {}", pnl_mid.1.clone().to_float());
+        }
 
         let quote = FeeAdjustedQuote {
             timestamp: metadata.block_timestamp,
@@ -984,4 +998,11 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+}
+
+#[derive(Debug, Clone, Display, PartialEq, Eq)]
+pub enum PriceCalcType {
+    Optimistic,
+    TimeWindowGlobal,
+    TimeWindowPerEx,
 }
