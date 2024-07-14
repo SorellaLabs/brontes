@@ -156,7 +156,7 @@ impl<'a> SortedTrades<'a> {
             .into_iter()
             .filter_map(|intermediary| {
                 let pair0 = Pair(pair.0, intermediary);
-                let pair1 = Pair(pair.1, intermediary);
+                let pair1 = Pair(intermediary, pair.1);
 
                 // check if we have a path
                 let mut has_pair0 = false;
@@ -223,7 +223,7 @@ impl<'a> SortedTrades<'a> {
 
                 Some((maker, taker))
             })
-            .max_by(|a, b| a.0.final_price.cmp(&b.0.final_price))
+            .max_by_key(|a| a.0.final_price.clone())
     }
 
     fn get_optimistic_no_intermediary(
