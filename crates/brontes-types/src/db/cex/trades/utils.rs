@@ -174,16 +174,16 @@ impl<'a> PairTradeQueue<'a> {
             }
 
             if let Some(trade) = trades.get(len - exchange_depth) {
-                let trade = &trade.adjust_for_direction(direction);
+                let t = &trade.adjust_for_direction(direction);
 
                 if let Some(cur_best) = next.as_ref() {
                     // found a better price
-                    if trade.price.gt(&cur_best.get().price) {
-                        next = Some(CexTradePtr::new(trade));
+                    if t.price.gt(&cur_best.get().price) {
+                        next = Some(CexTradePtr::new(t));
                     }
                 // not set
                 } else {
-                    next = Some(CexTradePtr::new(trade));
+                    next = Some(CexTradePtr::new(t));
                 }
             }
         }
