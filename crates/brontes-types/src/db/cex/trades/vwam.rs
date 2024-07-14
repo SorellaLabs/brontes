@@ -528,10 +528,7 @@ impl CexTradeMap {
             // all of this is safe
             cur_vol += &next.get().amount;
 
-            if let Err(e) = std::panic::catch_unwind(|| trades.push(next)) {
-                error!("Failed to push trade: {:?}", e);
-                return None;
-            }
+            trades.push(next);
         }
 
         if &cur_vol < volume && !bypass_vol {
@@ -543,7 +540,7 @@ impl CexTradeMap {
         let mut trade_volume = Rational::ZERO;
         let mut exchange_with_vol = FastHashMap::default();
 
-        let mut trades_used = Vec::with_capacity(trades.len());
+        let mut trades_used = Vec::new();
         // For the closest basket sum volume and volume weighted prices
         for trade in trades {
             let trade = trade.get();
