@@ -1,17 +1,21 @@
 use std::marker::PhantomData;
 
-use alloy_primitives::TxHash;
-use malachite::Rational;
+use alloy_primitives::{Address, TxHash};
+use itertools::Itertools;
+use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
-use super::{time_window_vwam::Direction, CexTrades};
+use crate::{db::cex::trades::CexDexTradeConfig, FastHashSet};
+const TIME_BASKET_SIZE: u64 = 100_000;
+
+use super::CexTrades;
 use crate::{
-    db::cex::{vwam::Trades, CexExchange},
-    normalized_actions::NormalizedSwap,
-    pair::Pair,
-    utils::ToFloatNearest,
-    FastHashMap,
+    db::cex::CexExchange, mev::block, normalized_actions::NormalizedSwap, pair::Pair,
+    utils::ToFloatNearest, FastHashMap,
 };
+
+const START_POST_TIME_US: u64 = 300_000;
+const START_PRE_TIME_US: u64 = 50_000;
 
 /// Manages the traversal and collection of trade data within dynamically
 /// adjustable time windows.
@@ -73,7 +77,7 @@ impl<'a> PairTradeWalker<'a> {
     /// window criteria.
 
     pub(crate) fn get_trades_for_window(&mut self) -> Vec<CexTradePtr<'a>> {
-        let mut trade_res: Vec<CexTradePtr<'a>> = Vec::with_capacity(420);
+        let mut trade_res: Vec<CexTradePtr<'a>> = Vec::with_capacity(1000);
 
         for (exchange, trades) in &self.trades {
             let Some((lower_idx, upper_idx)) = self.exchange_ptrs.get_mut(exchange) else {
@@ -201,6 +205,257 @@ pub(crate) struct CexTradePtr<'ptr> {
     raw: *const CexTrades,
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
     _p:  PhantomData<&'ptr u8>,
+}
+
+pub(crate) struct TradeBasket<'a> {
+    start_time:  u64,
+    end_time:    u64,
+    trade_index: usize,
+    trades:      Vec<CexTradePtr<'a>>,
+    pub volume:  Rational,
+}
+
+impl<'a> TradeBasket<'a> {
+    pub fn new(
+        start_time: u64,
+        end_time: u64,
+        mut trades: Vec<CexTradePtr<'a>>,
+        quality_pct: usize,
+        volume: Rational,
+    ) -> Self {
+        let length = trades.len() - 1;
+        let trade_index = length - (length * quality_pct / 100);
+        trades.sort_unstable_by_key(|k| k.get().price.clone());
+
+        Self { start_time, end_time, trade_index, trades, volume }
+    }
+
+    pub fn get_trades_used(&self, volume_to_fill: &Rational) -> (Vec<CexTrades>, Rational) {
+        let mut trades_used = Vec::new();
+        let mut remaining_volume = volume_to_fill.clone();
+
+        for trade in self
+            .trades
+            .iter()
+            .skip((self.trades.len() - 1) - self.trade_index)
+        {
+            let trade_data = trade.get();
+
+            if trade_data.amount >= remaining_volume {
+                let mut final_trade = trade_data.clone();
+                final_trade.amount = remaining_volume;
+                trades_used.push(final_trade);
+                remaining_volume = Rational::ZERO;
+                break;
+            } else {
+                trades_used.push(trade_data.clone());
+                remaining_volume -= &trade_data.amount;
+            }
+
+            if remaining_volume == Rational::ZERO {
+                break;
+            }
+        }
+
+        (trades_used, remaining_volume)
+    }
+}
+
+pub struct SortedTrades<'a>(pub FastHashMap<&'a Pair, ((usize, usize), Vec<&'a CexTrades>)>);
+
+impl<'a> SortedTrades<'a> {
+    pub fn new_from_cex_trade_map(
+        trade_map: &'a FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
+        exchanges: &[CexExchange],
+        pair: Pair,
+        block_timestamp: u64,
+    ) -> Self {
+        let mut consolidated_trades: FastHashMap<&'a Pair, Vec<&'a CexTrades>> =
+            FastHashMap::default();
+
+        for (ex, pairs) in trade_map.iter() {
+            if !exchanges.contains(ex) || pair.0 == pair.1 {
+                continue;
+            }
+
+            for (ex_pair, trades) in pairs.iter() {
+                // Filter out pairs that couldn't be used as intermediaries
+                if !(pair.0 == ex_pair.0
+                    || pair.0 == ex_pair.1
+                    || pair.1 == ex_pair.0
+                    || pair.1 == ex_pair.1)
+                {
+                    continue;
+                }
+
+                consolidated_trades
+                    .entry(ex_pair)
+                    .or_insert_with(Vec::new)
+                    .extend(trades.iter());
+            }
+        }
+
+        let pair_trades = consolidated_trades
+            .into_iter()
+            .map(|(pair, mut trades)| {
+                trades.sort_unstable_by_key(|t| t.timestamp);
+                let partition_point = trades.partition_point(|t| t.timestamp < block_timestamp);
+                let lower_index = if partition_point > 0 { partition_point - 1 } else { 0 };
+                let upper_index = partition_point;
+
+                (pair, ((lower_index, upper_index), trades))
+            })
+            .collect();
+
+        Self(pair_trades)
+    }
+
+    pub fn calculate_intermediary_addresses(&self, pair: &Pair) -> FastHashSet<Address> {
+        self.0
+            .keys()
+            .filter_map(|trade_pair| {
+                if trade_pair.ordered() == pair.ordered() {
+                    return None
+                }
+
+                (trade_pair.0 == pair.0)
+                    .then_some(trade_pair.1)
+                    .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
+            })
+            .collect::<FastHashSet<_>>()
+    }
+}
+
+pub struct TimeBasketQueue<'a> {
+    pub baskets:       Vec<TradeBasket<'a>>,
+    min_timestamp:     u64,
+    max_timestamp:     u64,
+    current_pre_time:  u64,
+    current_post_time: u64,
+    pub volume:        Rational,
+    indexes:           (usize, usize),
+    trades:            &'a Vec<&'a CexTrades>,
+}
+
+impl<'a> TimeBasketQueue<'a> {
+    pub(crate) fn new(
+        trades: &'a Vec<&'a CexTrades>,
+        indexes: (usize, usize),
+        block_timestamp: u64,
+    ) -> Self {
+        Self {
+            current_pre_time: block_timestamp,
+            current_post_time: block_timestamp,
+            min_timestamp: block_timestamp - START_PRE_TIME_US,
+            max_timestamp: block_timestamp + START_POST_TIME_US,
+            indexes,
+            trades,
+            volume: Rational::ZERO,
+            baskets: Vec::with_capacity(20),
+        }
+    }
+
+    pub fn construct_time_baskets(&mut self) {
+        self.construct_forward_baskets();
+        self.construct_backward_baskets();
+    }
+
+    pub fn get_min_time_delta(&self, timestamp: u64) -> u64 {
+        timestamp - self.min_timestamp
+    }
+
+    pub fn get_max_time_delta(&self, timestamp: u64) -> u64 {
+        self.max_timestamp - timestamp
+    }
+
+    pub fn expand_time_bounds(&mut self, min: u64, max: u64) {
+        self.min_timestamp -= min;
+        self.max_timestamp += max;
+
+        self.construct_time_baskets();
+    }
+
+    fn construct_forward_baskets(&mut self) {
+        while self.current_post_time < self.max_timestamp && self.indexes.1 < self.trades.len() {
+            self.current_post_time += TIME_BASKET_SIZE;
+
+            // Adjust the last basket to cover remaining time
+            if self.current_post_time > self.max_timestamp {
+                self.current_post_time = self.max_timestamp;
+            }
+
+            let mut basket_trades = Vec::new();
+            let mut basket_volume = Rational::ZERO;
+
+            while self.indexes.1 < self.trades.len() {
+                let trade = &self.trades[self.indexes.1];
+                if trade.timestamp > self.current_post_time {
+                    break;
+                }
+                basket_trades.push(CexTradePtr::new(trade));
+                basket_volume += &trade.amount;
+                self.indexes.1 += 1;
+            }
+
+            if !basket_trades.is_empty() {
+                self.volume += &basket_volume;
+                let basket = TradeBasket::new(
+                    self.current_post_time - TIME_BASKET_SIZE,
+                    self.current_post_time,
+                    basket_trades,
+                    20,
+                    basket_volume,
+                );
+                self.baskets.push(basket);
+            }
+
+            // Break if we've reached the max timestamp
+            if self.current_post_time >= self.max_timestamp {
+                break;
+            }
+        }
+    }
+
+    fn construct_backward_baskets(&mut self) {
+        while self.current_pre_time > self.min_timestamp && self.indexes.0 > 0 {
+            self.current_pre_time -= TIME_BASKET_SIZE;
+
+            // Adjust the last basket to cover remaining time
+            if self.current_pre_time < self.min_timestamp {
+                self.current_pre_time = self.min_timestamp;
+            }
+
+            let mut basket_trades = Vec::new();
+            let mut basket_volume = Rational::ZERO;
+
+            while self.indexes.0 > 0 {
+                let trade = &self.trades[self.indexes.0];
+                if trade.timestamp < self.current_pre_time {
+                    break;
+                }
+                basket_trades.push(CexTradePtr::new(trade));
+                basket_volume += &trade.amount;
+                self.indexes.0 -= 1;
+            }
+
+            if !basket_trades.is_empty() {
+                self.volume += &basket_volume;
+                let basket = TradeBasket::new(
+                    self.current_pre_time,
+                    self.current_pre_time + TIME_BASKET_SIZE,
+                    basket_trades,
+                    20,
+                    basket_volume,
+                );
+                self.baskets.push(basket);
+            }
+
+            // Break if we've reached the min timestamp
+            if self.current_pre_time <= self.min_timestamp {
+                break;
+            }
+        }
+    }
 }
 
 unsafe impl<'a> Send for CexTradePtr<'a> {}

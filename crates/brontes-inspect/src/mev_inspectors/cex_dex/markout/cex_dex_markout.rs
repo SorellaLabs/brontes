@@ -9,8 +9,8 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::cex::{
         config::CexDexTradeConfig,
+        optimistic::{ExchangePrice, MakerTaker},
         time_window_vwam::MakerTakerWindowVWAP,
-        vwam::{ExchangePrice, MakerTaker},
         CexExchange, FeeAdjustedQuote,
     },
     display::utils::format_etherscan_url,
@@ -192,6 +192,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
+                //TODO: Set methodology enum in data
                 let (profit_usd, cex_dex, trade_prices) =
                     self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
 
@@ -621,7 +622,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .get_optimistic_vmap(
                             self.trade_config,
                             &self.cex_exchanges,
-                            &pair,
+                            pair,
                             &swap.amount_out,
                             metadata.microseconds_block_timestamp(),
                             None,

@@ -102,12 +102,12 @@ impl Metadata {
                                 Some(
                                     trade_map
                                         .lock()
-                                        .get_price(
+                                        .get_optimistic_vmap(
                                             CexDexTradeConfig::default(),
                                             &trades,
-                                            self.microseconds_block_timestamp(),
-                                            &pair,
+                                            pair,
                                             &baseline_for_tokeprice,
+                                            self.microseconds_block_timestamp(),
                                             None,
                                             true,
                                             &NormalizedSwap::default(),
@@ -152,7 +152,7 @@ impl Metadata {
                                     .get_optimistic_vmap(
                                         CexDexTradeConfig::default(),
                                         &trades,
-                                        &pair,
+                                        pair,
                                         &baseline_for_tokeprice,
                                         self.microseconds_block_timestamp(),
                                         None,
