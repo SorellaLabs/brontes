@@ -164,7 +164,7 @@ impl<'a> PairTradeQueue<'a> {
     pub(crate) fn next_best_trade(&mut self, direction: Direction) -> Option<CexTradePtr<'a>> {
         let mut next: Option<CexTradePtr<'a>> = None;
 
-        for (exchange, trades) in self.trades.iter_mut() {
+        for (exchange, trades) in self.trades.iter() {
             let exchange_depth = *self.exchange_depth.entry(*exchange).or_insert(0);
             let len = trades.len() - 1;
 
@@ -173,8 +173,8 @@ impl<'a> PairTradeQueue<'a> {
                 continue
             }
 
-            if let Some(trade) = trades.get_mut(len - exchange_depth) {
-                trade.adjust_for_direction(direction);
+            if let Some(trade) = trades.get(len - exchange_depth) {
+                let trade = &trade.adjust_for_direction(direction);
 
                 if let Some(cur_best) = next.as_ref() {
                     // found a better price
