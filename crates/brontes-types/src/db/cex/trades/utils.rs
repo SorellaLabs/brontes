@@ -4,9 +4,12 @@ use alloy_primitives::TxHash;
 use malachite::Rational;
 use tracing::trace;
 
-use super::CexTrades;
+use super::{time_window_vwam::Direction, CexTrades};
 use crate::{
-    db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair, utils::ToFloatNearest,
+    db::cex::{vwam::Trades, CexExchange},
+    normalized_actions::NormalizedSwap,
+    pair::Pair,
+    utils::ToFloatNearest,
     FastHashMap,
 };
 
@@ -124,12 +127,13 @@ impl<'a> PairTradeWalker<'a> {
 pub struct PairTradeQueue<'a> {
     exchange_depth: FastHashMap<CexExchange, usize>,
     trades:         Vec<(CexExchange, Vec<&'a CexTrades>)>,
+    pub direction:  Direction,
 }
 
 impl<'a> PairTradeQueue<'a> {
     /// Assumes the trades are sorted based off the side that's passed in
     pub fn new(
-        trades: Vec<(CexExchange, Vec<&'a CexTrades>)>,
+        trades: Trades<'a>,
         execution_quality_pct: Option<FastHashMap<CexExchange, usize>>,
     ) -> Self {
         // calculate the ending index (depth) based of the quality pct for the given
@@ -141,6 +145,7 @@ impl<'a> PairTradeQueue<'a> {
         // high quality percent
         let exchange_depth = if let Some(quality_pct) = execution_quality_pct {
             trades
+                .trades
                 .iter()
                 .map(|(exchange, data)| {
                     let length = data.len();
@@ -153,13 +158,13 @@ impl<'a> PairTradeQueue<'a> {
             FastHashMap::default()
         };
 
-        Self { exchange_depth, trades }
+        Self { exchange_depth, trades: trades.trades, direction: trades.direction }
     }
 
-    pub(crate) fn next_best_trade(&mut self) -> Option<CexTradePtr<'a>> {
+    pub(crate) fn next_best_trade(&mut self, direction: Direction) -> Option<CexTradePtr<'a>> {
         let mut next: Option<CexTradePtr<'a>> = None;
 
-        for (exchange, trades) in &self.trades {
+        for (exchange, trades) in self.trades.iter_mut() {
             let exchange_depth = *self.exchange_depth.entry(*exchange).or_insert(0);
             let len = trades.len() - 1;
 
@@ -168,10 +173,11 @@ impl<'a> PairTradeQueue<'a> {
                 continue
             }
 
-            if let Some(trade) = trades.get(len - exchange_depth) {
+            if let Some(trade) = trades.get_mut(len - exchange_depth) {
+                trade.adjust_for_direction(direction);
+
                 if let Some(cur_best) = next.as_ref() {
                     // found a better price
-
                     if trade.price.gt(&cur_best.get().price) {
                         next = Some(CexTradePtr::new(trade));
                     }

@@ -1,8 +1,8 @@
 use std::{
     cmp::{max, min},
     f64::consts::E,
+    ops::Mul,
 };
-use std::ops::Mul;
 
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
@@ -10,7 +10,6 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-
 use tracing::trace;
 
 use super::{
@@ -59,22 +58,25 @@ pub struct WindowExchangePrice {
     pub global_exchange_price: Rational,
 }
 
-
 impl Mul for WindowExchangePrice {
     type Output = WindowExchangePrice;
 
     fn mul(mut self, mut rhs: Self) -> Self::Output {
-        self.exchange_price_with_volume_direct = self.exchange_price_with_volume_direct.into_iter().filter_map(|(exchange, mut first_leg)| {
-            let second_leg = rhs.exchange_price_with_volume_direct.remove(&exchange)?;
-            first_leg.price *= second_leg.price;
+        self.exchange_price_with_volume_direct = self
+            .exchange_price_with_volume_direct
+            .into_iter()
+            .filter_map(|(exchange, mut first_leg)| {
+                let second_leg = rhs.exchange_price_with_volume_direct.remove(&exchange)?;
+                first_leg.price *= second_leg.price;
 
-            first_leg.final_start_time =
-            min(first_leg.final_start_time, second_leg.final_start_time);
+                first_leg.final_start_time =
+                    min(first_leg.final_start_time, second_leg.final_start_time);
 
-            first_leg.final_end_time = max(first_leg.final_end_time, second_leg.final_end_time);
+                first_leg.final_end_time = max(first_leg.final_end_time, second_leg.final_end_time);
 
-            Some((exchange, first_leg))             
-        }).collect();
+                Some((exchange, first_leg))
+            })
+            .collect();
 
         self.pairs.extend(rhs.pairs);
         self.global_exchange_price *= rhs.global_exchange_price;
@@ -180,13 +182,6 @@ impl<'a> TimeWindowTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
-
-        println!("Attempting to find intermediary for pair: {:?}", pair);
-    
-        let intermediaries = self.calculate_intermediary_addresses(exchanges, pair);
-        println!("Potential intermediaries: {:?}", intermediaries);
-    
-
         self.calculate_intermediary_addresses(exchanges, pair)
             .into_iter()
             .filter_map(|intermediary| {
@@ -215,7 +210,8 @@ impl<'a> TimeWindowTrades<'a> {
                 let mut bypass_intermediary_vol = false;
 
                 // bypass volume requirements for stable pairs
-                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS{
+                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS
+                || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS {
                     bypass_intermediary_vol = true;
                 }
 
@@ -234,7 +230,8 @@ impl<'a> TimeWindowTrades<'a> {
                 // Volume of second leg
                 let second_leg_volume = &first_leg.1.global_exchange_price * volume;
 
-                if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS || pair1.0 == USDC_ADDRESS && pair1.1 == USDT_ADDRESS{
+                if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
+                || pair1.0 == USDC_ADDRESS && pair1.1 == USDT_ADDRESS{
                     bypass_intermediary_vol = true;
                 }
 
@@ -301,11 +298,10 @@ impl<'a> TimeWindowTrades<'a> {
     /// AdjustedVWAP = (Sum of (Price_i * Volume_i * TimingWeight_i)) / (Sum of
     /// (Volume_i * TimingWeight_i))
 
-
-
-    //TODO: This currently expands the time window if the global volume is not met. 
-    //which means that each exchange is not actually expanded to the point of the full arbitrage
-    // volume. We should probably redesign this later on to improve upon this because that feels a bit weird.
+    //TODO: This currently expands the time window if the global volume is not met.
+    //which means that each exchange is not actually expanded to the point of the
+    // full arbitrage volume. We should probably redesign this later on to
+    // improve upon this because that feels a bit weird.
     fn get_vwap_price(
         &self,
         config: CexDexTradeConfig,
@@ -454,12 +450,15 @@ impl<'a> TimeWindowTrades<'a> {
             global_exchange_price: global_taker,
         };
 
-        println!("Price is {} for pair {}-{}", maker_ret.global_exchange_price.clone().to_float(), dex_swap.token_out_symbol(), dex_swap.token_in_symbol());
+        println!(
+            "Price is {} for pair {}-{}",
+            maker_ret.global_exchange_price.clone().to_float(),
+            dex_swap.token_out_symbol(),
+            dex_swap.token_in_symbol()
+        );
 
         Some((maker_ret, taker_ret))
     }
-
-
 
     pub fn get_trades(
         &'a self,

@@ -1,6 +1,9 @@
 use clickhouse::Row;
 use itertools::Itertools;
-use malachite::{num::arithmetic::traits::Reciprocal, Rational};
+use malachite::{
+    num::arithmetic::traits::{Reciprocal, ReciprocalAssign},
+    Rational,
+};
 use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
@@ -12,7 +15,6 @@ use crate::{
     pair::{Pair, PairRedefined},
     FastHashMap,
 };
-
 type RedefinedTradeMapVec = Vec<(PairRedefined, Vec<CexTradesRedefined>)>;
 
 #[derive(Debug, Default, Clone, Row, PartialEq, Eq, Serialize)]
@@ -141,6 +143,13 @@ impl CexTrades {
                 price:     self.price.clone().reciprocal(),
                 amount:    self.amount.clone(),
             },
+        }
+    }
+
+    pub fn adjust_for_direction_mut(&mut self, direction: Direction) {
+        match direction {
+            Direction::Buy => self.amount *= &self.price,
+            Direction::Sell => self.price.reciprocal_assign(),
         }
     }
 }
