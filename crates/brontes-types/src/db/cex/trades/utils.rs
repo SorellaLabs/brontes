@@ -253,12 +253,17 @@ pub struct TimeBasketQueue<'a> {
     current_pre_time:  u64,
     current_post_time: u64,
     pub volume:        Rational,
+    quality_pct:       Option<FastHashMap<CexExchange, usize>>,
     indexes:           (usize, usize),
     trades:            Vec<CexTrades>,
 }
 
 impl<'a> TimeBasketQueue<'a> {
-    pub(crate) fn new(trade_data: OptimisticTradeData, block_timestamp: u64) -> Self {
+    pub(crate) fn new(
+        trade_data: OptimisticTradeData,
+        block_timestamp: u64,
+        quality: Option<FastHashMap<CexExchange, usize>>,
+    ) -> Self {
         Self {
             current_pre_time:  block_timestamp,
             current_post_time: block_timestamp,
@@ -266,6 +271,7 @@ impl<'a> TimeBasketQueue<'a> {
             max_timestamp:     block_timestamp + START_POST_TIME_US,
             indexes:           trade_data.indices,
             trades:            trade_data.trades,
+            quality_pct:       quality,
             volume:            Rational::ZERO,
             baskets:           Vec::with_capacity(20),
         }
@@ -320,7 +326,10 @@ impl<'a> TimeBasketQueue<'a> {
                     self.current_post_time - TIME_BASKET_SIZE,
                     self.current_post_time,
                     basket_trades,
-                    20,
+                    self.quality_pct
+                        .as_ref()
+                        .map(|map| map.get(&CexExchange::Binance).unwrap().clone())
+                        .unwrap(),
                     basket_volume,
                 );
                 self.baskets.push(basket);
@@ -361,7 +370,10 @@ impl<'a> TimeBasketQueue<'a> {
                     self.current_pre_time,
                     self.current_pre_time + TIME_BASKET_SIZE,
                     basket_trades,
-                    20,
+                    self.quality_pct
+                        .as_ref()
+                        .map(|map| map.get(&CexExchange::Binance).unwrap().clone())
+                        .unwrap(),
                     basket_volume,
                 );
                 self.baskets.push(basket);

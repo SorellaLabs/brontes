@@ -23,7 +23,7 @@ use crate::{
     FastHashMap,
 };
 
-const BASE_EXECUTION_QUALITY: usize = 90;
+const BASE_EXECUTION_QUALITY: usize = 70;
 
 const PRE_SCALING_DIFF: u64 = 200_000;
 const TIME_STEP: u64 = 100_000;
@@ -96,7 +96,7 @@ impl<'a> SortedTrades<'a> {
         block_timestamp: u64,
         pair: Pair,
         volume: &Rational,
-        _quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+        quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         _bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
@@ -117,11 +117,12 @@ impl<'a> SortedTrades<'a> {
         }
 
         let res = self
-            .get_optimistic_no_intermediary(
+            .get_optimistic_direct(
                 config,
                 block_timestamp,
                 pair,
                 volume,
+                quality.as_ref(),
                 dex_swap,
                 tx_hash,
             )
@@ -131,6 +132,7 @@ impl<'a> SortedTrades<'a> {
                     block_timestamp,
                     pair,
                     volume,
+                    quality.as_ref(),
                     dex_swap,
                     tx_hash,
                 )
@@ -149,6 +151,7 @@ impl<'a> SortedTrades<'a> {
         block_timestamp: u64,
         pair: Pair,
         volume: &Rational,
+        quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
@@ -176,11 +179,12 @@ impl<'a> SortedTrades<'a> {
                 }
                 tracing::debug!(target: "brontes_types::db::cex::trades::optimistic", ?pair, ?intermediary, "trying via intermediary");
 
-                let first_leg = self.get_optimistic_no_intermediary(
+                let first_leg = self.get_optimistic_direct(
                     config,
                     block_timestamp,
                     pair0,
                     volume,
+                    quality,
                     dex_swap,
                     tx_hash,
                 )?;
@@ -194,11 +198,12 @@ impl<'a> SortedTrades<'a> {
 
                 let new_vol = volume * &first_leg.0.final_price;
 
-                let second_leg = self.get_optimistic_no_intermediary(
+                let second_leg = self.get_optimistic_direct(
                     config,
                     block_timestamp,
                     pair1,
                     &new_vol,
+                    quality,
                     dex_swap,
                     tx_hash,
                 )?;
@@ -226,12 +231,13 @@ impl<'a> SortedTrades<'a> {
             .max_by_key(|a| a.0.final_price.clone())
     }
 
-    fn get_optimistic_no_intermediary(
+    fn get_optimistic_direct(
         &self,
         config: CexDexTradeConfig,
         block_timestamp: u64,
         pair: Pair,
         volume: &Rational,
+        quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
@@ -241,15 +247,15 @@ impl<'a> SortedTrades<'a> {
         // - Quality percent adjusts the total percent of "good" trades the arber is
         //   capturing for the relevant pair on a given exchange.
 
-        /*let quality_pct = quality.map(|map| {
+        let quality_pct = quality.map(|map| {
             map.iter()
                 .map(|(k, v)| (*k, v.get(&pair).copied().unwrap_or(BASE_EXECUTION_QUALITY)))
                 .collect::<FastHashMap<_, _>>()
-        });*/
+        });
 
         let trade_data = self.get_trades(pair, dex_swap, tx_hash)?;
 
-        let mut baskets_queue = TimeBasketQueue::new(trade_data, block_timestamp);
+        let mut baskets_queue = TimeBasketQueue::new(trade_data, block_timestamp, quality_pct);
 
         baskets_queue.construct_time_baskets();
 
