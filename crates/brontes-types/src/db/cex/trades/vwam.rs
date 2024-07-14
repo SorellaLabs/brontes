@@ -6,6 +6,7 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
+use tracing::error;
 
 use super::{cex_trades::CexTradeMap, config::CexDexTradeConfig, utils::PairTradeQueue};
 use crate::{
@@ -527,7 +528,10 @@ impl CexTradeMap {
             // all of this is safe
             cur_vol += &next.get().amount;
 
-            trades.push(next);
+            if let Err(e) = std::panic::catch_unwind(|| trades.push(next)) {
+                error!("Failed to push trade: {:?}", e);
+                return None;
+            }
         }
 
         if &cur_vol < volume && !bypass_vol {
