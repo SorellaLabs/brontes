@@ -1,20 +1,13 @@
-use std::{fmt::Display, ops::Div};
+use std::{fmt::Display, ops::Mul};
 
 use alloy_primitives::{Address, FixedBytes};
 use itertools::Itertools;
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{One, Zero},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 
-use super::{
-    cex_trades::CexTradeMap,
-    config::CexDexTradeConfig,
-    utils::{CexTradePtr, PairTradeQueue},
-};
+use super::{cex_trades::CexTradeMap, config::CexDexTradeConfig, utils::PairTradeQueue};
 use crate::{
     db::cex::{time_window_vwam::Direction, utils::log_missing_trade_data, CexExchange, CexTrades},
     display::utils::format_etherscan_url,
@@ -42,12 +35,12 @@ pub struct ExchangePrice {
     pub final_price: Rational,
 }
 
-impl Div for ExchangePrice {
+impl Mul for ExchangePrice {
     type Output = ExchangePrice;
 
-    fn div(mut self, rhs: Self) -> Self::Output {
+    fn mul(mut self, rhs: Self) -> Self::Output {
         self.pairs.extend(rhs.pairs);
-        self.final_price /= rhs.final_price;
+        self.final_price *= rhs.final_price;
         self.trades_used.extend(rhs.trades_used);
 
         self
@@ -224,7 +217,7 @@ impl CexTradeMap {
 
                 tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, ?intermediary, "trying via intermediary");
 
-                let res = self.get_vwam_via_intermediary_spread(
+                let first_leg = self.get_vwam_via_intermediary_spread(
                     config,
                     exchanges,
                     block_timestamp,
@@ -235,9 +228,9 @@ impl CexTradeMap {
                     tx_hash,
                 )?;
 
-                let new_vol = volume / &res.prices.0.final_price.clone().reciprocal();
+                let new_vol = volume * &first_leg.prices.0.final_price;
 
-                let pair1 = self.get_vwam_via_intermediary_spread(
+                let second_leg = self.get_vwam_via_intermediary_spread(
                     config,
                     exchanges,
                     block_timestamp,
@@ -247,8 +240,8 @@ impl CexTradeMap {
                     dex_swap,
                     tx_hash,
                 )?;
-                let maker = res.prices.0 / pair1.prices.0;
-                let taker = res.prices.1 / pair1.prices.1;
+                let maker = first_leg.prices.0 * second_leg.prices.0;
+                let taker = first_leg.prices.1 * second_leg.prices.1;
 
                 Some((maker, taker))
             })
