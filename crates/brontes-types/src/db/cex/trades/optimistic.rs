@@ -26,7 +26,7 @@ use crate::{
 const BASE_EXECUTION_QUALITY: usize = 90;
 
 const PRE_SCALING_DIFF: u64 = 200_000;
-const TIME_STEP: u64 = 20_000;
+const TIME_STEP: u64 = 100_000;
 
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
@@ -271,6 +271,8 @@ impl<'a> SortedTrades<'a> {
         let mut trades_used: Vec<CexTrades> = Vec::new();
         let mut unfilled = Rational::ZERO;
 
+        // This pushed the unfilled to the next basket, given how we create the baskets
+        // this means we will start from the baskets closest to the block time
         for basket in baskets_queue.baskets {
             let to_fill: Rational = ((&basket.volume / &baskets_queue.volume) * volume) + &unfilled;
 
@@ -300,6 +302,10 @@ impl<'a> SortedTrades<'a> {
                 exchange: trade.exchange,
                 timestamp: trade.timestamp,
             });
+        }
+
+        if trade_volume == Rational::ZERO {
+            return None
         }
 
         let maker = ExchangePrice {
