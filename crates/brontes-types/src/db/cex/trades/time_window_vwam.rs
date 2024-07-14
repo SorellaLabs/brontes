@@ -23,7 +23,7 @@ use crate::{
     display::utils::format_etherscan_url,
     normalized_actions::NormalizedSwap,
     pair::Pair,
-    FastHashMap, FastHashSet, ToFloatNearest,
+    FastHashMap, FastHashSet,
 };
 
 const PRE_DECAY: f64 = -0.0000005;
@@ -158,7 +158,6 @@ impl<'a> TimeWindowTrades<'a> {
                 config, exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
             )
             .or_else(|| {
-                println!("No direct pair, trying intermediary");
                 self.get_vwap_price_via_intermediary(
                     config, exchanges, &pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
                 )
@@ -203,7 +202,6 @@ impl<'a> TimeWindowTrades<'a> {
                 }
 
                 if !(has_pair0 && has_pair1) {
-                    println!("Missing pairs for intermediary {:?}", intermediary);
                     return None
                 }
 
@@ -249,7 +247,6 @@ impl<'a> TimeWindowTrades<'a> {
                 let maker = first_leg.0 * second_leg.0;
                 let taker = first_leg.1 * second_leg.1;
 
-                println!("Price of intermediary is {} for pair {}-{}", maker.global_exchange_price.clone().to_float(), dex_swap.token_out_symbol(), dex_swap.token_in_symbol());
 
                 Some((maker, taker))
             })
@@ -449,13 +446,6 @@ impl<'a> TimeWindowTrades<'a> {
             pairs: vec![pair],
             global_exchange_price: global_taker,
         };
-
-        println!(
-            "Price is {} for pair {}-{}",
-            maker_ret.global_exchange_price.clone().to_float(),
-            dex_swap.token_out_symbol(),
-            dex_swap.token_in_symbol()
-        );
 
         Some((maker_ret, taker_ret))
     }

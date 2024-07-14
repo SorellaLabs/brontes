@@ -228,6 +228,13 @@ impl CexTradeMap {
                     tx_hash,
                 )?;
 
+                println!(
+                    "First leg price is {} for pair {}-{}",
+                    first_leg.prices.0.final_price.clone().to_float(),
+                    dex_swap.token_out_symbol(),
+                    dex_swap.token_in_symbol()
+                );
+
                 let new_vol = volume * &first_leg.prices.0.final_price;
 
                 let second_leg = self.get_vwam_via_intermediary_spread(
@@ -240,8 +247,24 @@ impl CexTradeMap {
                     dex_swap,
                     tx_hash,
                 )?;
+
+                println!(
+                    "Second price is {} for pair {}-{}",
+                    second_leg.prices.0.final_price.clone().to_float(),
+                    dex_swap.token_out_symbol(),
+                    dex_swap.token_in_symbol()
+                );
+
+
                 let maker = first_leg.prices.0 * second_leg.prices.0;
                 let taker = first_leg.prices.1 * second_leg.prices.1;
+
+                println!(
+                    "Price is {} for pair {}-{}",
+                    maker.final_price.clone().to_float(),
+                    dex_swap.token_out_symbol(),
+                    dex_swap.token_in_symbol()
+                );
 
                 Some((maker, taker))
             })
