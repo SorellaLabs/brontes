@@ -570,7 +570,7 @@ pub enum Direction {
 
 #[derive(Debug)]
 pub struct TradeData<'a> {
-    indices:   FastHashMap<CexExchange, (usize, usize)>,
-    trades:    Vec<(CexExchange, &'a Vec<CexTrades>)>,
-    direction: Direction,
+    pub indices:   FastHashMap<CexExchange, (usize, usize)>,
+    pub trades:    Vec<(CexExchange, &'a Vec<CexTrades>)>,
+    pub direction: Direction,
 }

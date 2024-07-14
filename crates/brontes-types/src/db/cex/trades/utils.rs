@@ -1,17 +1,16 @@
 use std::marker::PhantomData;
 
 use alloy_primitives::{Address, TxHash};
-use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
-use crate::{db::cex::trades::CexDexTradeConfig, FastHashSet};
+use crate::FastHashSet;
 const TIME_BASKET_SIZE: u64 = 100_000;
 
-use super::CexTrades;
+use super::{optimistic::OptimisticTradeData, CexTrades};
 use crate::{
-    db::cex::CexExchange, mev::block, normalized_actions::NormalizedSwap, pair::Pair,
-    utils::ToFloatNearest, FastHashMap,
+    db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair, utils::ToFloatNearest,
+    FastHashMap,
 };
 
 const START_POST_TIME_US: u64 = 300_000;
@@ -126,88 +125,13 @@ impl<'a> PairTradeWalker<'a> {
     }
 }
 
-/// Its ok that we create 2 of these for pair price and intermediary price
-/// as it runs off of borrowed data so there is no overhead we occur
-pub struct PairTradeQueue<'a> {
-    exchange_depth: FastHashMap<CexExchange, usize>,
-    trades:         Vec<(CexExchange, Vec<&'a CexTrades>)>,
-    pub direction:  Direction,
-}
-
-impl<'a> PairTradeQueue<'a> {
-    /// Assumes the trades are sorted based off the side that's passed in
-    pub fn new(
-        trades: Trades<'a>,
-        execution_quality_pct: Option<FastHashMap<CexExchange, usize>>,
-    ) -> Self {
-        // calculate the ending index (depth) based of the quality pct for the given
-        // exchange and pair.
-        // -- quality percent is the assumed percent of good trades the arber is
-        // capturing for the relevant pair on a given exchange
-        // -- a lower quality percentage means we need to assess more trades because
-        // it's possible the arber was getting bad execution. Vice versa for a
-        // high quality percent
-        let exchange_depth = if let Some(quality_pct) = execution_quality_pct {
-            trades
-                .trades
-                .iter()
-                .map(|(exchange, data)| {
-                    let length = data.len();
-                    let quality = quality_pct.get(exchange).copied().unwrap_or(100);
-                    let idx = length - (length * quality / 100);
-                    (*exchange, idx)
-                })
-                .collect::<FastHashMap<_, _>>()
-        } else {
-            FastHashMap::default()
-        };
-
-        Self { exchange_depth, trades: trades.trades, direction: trades.direction }
-    }
-
-    pub(crate) fn next_best_trade(&mut self, direction: Direction) -> Option<CexTradePtr<'a>> {
-        let mut next: Option<CexTradePtr<'a>> = None;
-
-        for (exchange, trades) in self.trades.iter() {
-            let exchange_depth = *self.exchange_depth.entry(*exchange).or_insert(0);
-            let len = trades.len() - 1;
-
-            // hit max depth
-            if exchange_depth > len {
-                continue
-            }
-
-            if let Some(trade) = trades.get(len - exchange_depth) {
-                let t = &trade.adjust_for_direction(direction);
-
-                if let Some(cur_best) = next.as_ref() {
-                    // found a better price
-                    if t.price.gt(&cur_best.get().price) {
-                        next = Some(CexTradePtr::new(t));
-                    }
-                // not set
-                } else {
-                    next = Some(CexTradePtr::new(t));
-                }
-            }
-        }
-
-        // increment ptr
-        if let Some(next) = next.as_ref() {
-            *self.exchange_depth.get_mut(&next.get().exchange).unwrap() += 1;
-        }
-
-        next
-    }
-}
-
 pub(crate) struct CexTradePtr<'ptr> {
     raw: *const CexTrades,
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
     _p:  PhantomData<&'ptr u8>,
 }
 
-pub(crate) struct TradeBasket<'a> {
+pub struct TradeBasket<'a> {
     start_time:  u64,
     end_time:    u64,
     trade_index: usize,
@@ -314,10 +238,6 @@ impl<'a> SortedTrades<'a> {
         self.0
             .keys()
             .filter_map(|trade_pair| {
-                if trade_pair.ordered() == pair.ordered() {
-                    return None
-                }
-
                 (trade_pair.0 == pair.0)
                     .then_some(trade_pair.1)
                     .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
@@ -334,24 +254,20 @@ pub struct TimeBasketQueue<'a> {
     current_post_time: u64,
     pub volume:        Rational,
     indexes:           (usize, usize),
-    trades:            &'a Vec<&'a CexTrades>,
+    trades:            Vec<CexTrades>,
 }
 
 impl<'a> TimeBasketQueue<'a> {
-    pub(crate) fn new(
-        trades: &'a Vec<&'a CexTrades>,
-        indexes: (usize, usize),
-        block_timestamp: u64,
-    ) -> Self {
+    pub(crate) fn new(trade_data: OptimisticTradeData, block_timestamp: u64) -> Self {
         Self {
-            current_pre_time: block_timestamp,
+            current_pre_time:  block_timestamp,
             current_post_time: block_timestamp,
-            min_timestamp: block_timestamp - START_PRE_TIME_US,
-            max_timestamp: block_timestamp + START_POST_TIME_US,
-            indexes,
-            trades,
-            volume: Rational::ZERO,
-            baskets: Vec::with_capacity(20),
+            min_timestamp:     block_timestamp - START_PRE_TIME_US,
+            max_timestamp:     block_timestamp + START_POST_TIME_US,
+            indexes:           trade_data.indices,
+            trades:            trade_data.trades,
+            volume:            Rational::ZERO,
+            baskets:           Vec::with_capacity(20),
         }
     }
 
@@ -376,7 +292,8 @@ impl<'a> TimeBasketQueue<'a> {
     }
 
     fn construct_forward_baskets(&mut self) {
-        while self.current_post_time < self.max_timestamp && self.indexes.1 < self.trades.len() {
+        while self.current_post_time < self.max_timestamp && self.indexes.1 < self.trades.len() - 1
+        {
             self.current_post_time += TIME_BASKET_SIZE;
 
             // Adjust the last basket to cover remaining time

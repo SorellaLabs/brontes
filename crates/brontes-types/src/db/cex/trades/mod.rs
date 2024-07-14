@@ -12,9 +12,7 @@ pub use raw_cex_trades::*;
 use time_window_vwam::TimeWindowTrades;
 
 use self::{
-    config::CexDexTradeConfig,
-    time_window_vwam::MakerTakerWindowVWAP,
-    utils::{SortedTrades, TimeBasketQueue},
+    config::CexDexTradeConfig, time_window_vwam::MakerTakerWindowVWAP, utils::SortedTrades,
 };
 use super::{optimistic::MakerTaker, CexExchange};
 use crate::{normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
