@@ -323,33 +323,33 @@ fn print_trade_stats(stats: &[TradeStats]) {
 
 const TRADE_STATS_QUERY: &str = r#"
 WITH 
-    block_time AS (SELECT ? AS ts),
-    intervals AS (
-        SELECT number AS sec
-        FROM numbers(1, ?)  -- Pass the number of seconds to check before/after
+    params AS (
+        SELECT 
+            ? AS block_time,
+            ? AS time_window,
+            ? AS symbol
+    ),
+    time_ranges AS (
+        SELECT
+            block_time - time_window * 1000000 AS start_time,
+            block_time + time_window * 1000000 AS end_time
+        FROM params
     )
 SELECT 
     symbol,
     exchange,
-    CASE 
-        WHEN timestamp < bt.ts THEN 'before'
-        ELSE 'after'
-    END AS period,
-    i.sec AS seconds_from_block,
+    IF(timestamp < block_time, 'before', 'after') AS period,
+    ceil(abs(toUnixTimestamp64Micro(timestamp) - toUnixTimestamp64Micro(block_time)) / 1000000) AS seconds_from_block,
     COUNT(*) AS trade_count,
     SUM(amount) AS total_volume,
     SUM(price * amount) / SUM(amount) AS average_price
 FROM 
     cex.normalized_trades
-CROSS JOIN block_time bt
-CROSS JOIN intervals i
+CROSS JOIN params
+CROSS JOIN time_ranges
 WHERE 
-    symbol = ?
-    AND (
-        (timestamp BETWEEN bt.ts - i.sec * 1000000 AND bt.ts - (i.sec - 1) * 1000000)
-        OR
-        (timestamp BETWEEN bt.ts + (i.sec - 1) * 1000000 AND bt.ts + i.sec * 1000000)
-    )
+    symbol = params.symbol
+    AND timestamp BETWEEN time_ranges.start_time AND time_ranges.end_time
 GROUP BY 
     symbol, exchange, period, seconds_from_block
 ORDER BY
