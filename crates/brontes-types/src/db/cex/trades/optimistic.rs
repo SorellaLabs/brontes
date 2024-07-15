@@ -218,7 +218,7 @@ impl<'a> SortedTrades<'a> {
                 ) {
                     Some(leg) => leg,
                     None => {
-                        println!("No second leg price for this intermediary: {:?}-{}", intermediary, swap.token_out_symbol());
+                        println!("No second leg price for this intermediary: {:?}-{}", intermediary, dex_swap.token_out_symbol());
                         return None;
                     }
                 };
