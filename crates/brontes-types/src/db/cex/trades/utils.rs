@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use ahash::HashSetExt;
 use alloy_primitives::{Address, TxHash};
 use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
@@ -235,16 +236,26 @@ impl<'a> SortedTrades<'a> {
     }
 
     pub fn calculate_intermediary_addresses(&self, pair: &Pair) -> FastHashSet<Address> {
-        self.0
+        let (token_a, token_b) = (pair.0, pair.1);
+
+        let connected_to_a: FastHashSet<_> = self
+            .0
             .keys()
-            .filter_map(|trade_pair| {
-                (trade_pair.0 == pair.0)
-                    .then_some(trade_pair.1)
-                    .or_else(|| (trade_pair.1 == pair.0).then_some(trade_pair.0))
-                    .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
-                    .or_else(|| { trade_pair.0 == pair.1 }.then_some(trade_pair.1))
-            })
-            .collect::<FastHashSet<_>>()
+            .filter(|trade_pair| trade_pair.0 == token_a || trade_pair.1 == token_a)
+            .map(|trade_pair| if trade_pair.0 == token_a { trade_pair.1 } else { trade_pair.0 })
+            .collect();
+
+        let connected_to_b: FastHashSet<_> = self
+            .0
+            .keys()
+            .filter(|trade_pair| trade_pair.0 == token_b || trade_pair.1 == token_b)
+            .map(|trade_pair| if trade_pair.0 == token_b { trade_pair.1 } else { trade_pair.0 })
+            .collect();
+
+        connected_to_a
+            .intersection(&connected_to_b)
+            .cloned()
+            .collect()
     }
 }
 

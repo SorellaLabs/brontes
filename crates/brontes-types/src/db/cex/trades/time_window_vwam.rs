@@ -228,6 +228,7 @@ impl<'a> TimeWindowTrades<'a> {
                 // Volume of second leg
                 let second_leg_volume = &first_leg.1.global_exchange_price * volume;
 
+                bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
                 || pair1.0 == USDC_ADDRESS && pair1.1 == USDT_ADDRESS{
                     bypass_intermediary_vol = true;

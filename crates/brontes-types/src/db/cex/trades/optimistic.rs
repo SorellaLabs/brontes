@@ -6,7 +6,7 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-
+use crate::constants::{USDC_ADDRESS, USDT_ADDRESS};
 use super::config::CexDexTradeConfig;
 use crate::{
     db::cex::{
@@ -97,7 +97,7 @@ impl<'a> SortedTrades<'a> {
         pair: Pair,
         volume: &Rational,
         quality: Option<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
-        _bypass_vol: bool,
+        bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
@@ -122,6 +122,7 @@ impl<'a> SortedTrades<'a> {
                 block_timestamp,
                 pair,
                 volume,
+                bypass_vol,
                 quality.as_ref(),
                 dex_swap,
                 tx_hash,
@@ -132,6 +133,7 @@ impl<'a> SortedTrades<'a> {
                     block_timestamp,
                     pair,
                     volume,
+                    bypass_vol,
                     quality.as_ref(),
                     dex_swap,
                     tx_hash,
@@ -151,6 +153,7 @@ impl<'a> SortedTrades<'a> {
         block_timestamp: u64,
         pair: Pair,
         volume: &Rational,
+        bypass_vol: bool,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
@@ -170,30 +173,24 @@ impl<'a> SortedTrades<'a> {
                 let pair0 = Pair(pair.0, intermediary);
                 let pair1 = Pair(intermediary, pair.1);
 
-                // check if we have a path
-                let mut has_pair0 = false;
-                let mut has_pair1 = false;
-
-                for trades in self.0.keys() {
-                    has_pair0 |= **trades == pair0 || **trades == pair0.flip();
-                    has_pair1 |= **trades == pair1 || **trades == pair1.flip();
-
-
-                    if has_pair1 && has_pair0 {
-                        break
-                    }
-                }
-
-                if !(has_pair0 && has_pair1) {
-                    return None
-                }
+     
                 tracing::debug!(target: "brontes_types::db::cex::trades::optimistic", ?pair, ?intermediary, "trying via intermediary");
+
+                let mut bypass_intermediary_vol = false;
+
+                // bypass volume requirements for stable pairs
+                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS
+                || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS {
+                    bypass_intermediary_vol = true;
+                }
+
 
                 let first_leg = self.get_optimistic_direct(
                     config,
                     block_timestamp,
                     pair0,
                     volume,
+                    bypass_vol || bypass_intermediary_vol,
                     quality,
                     dex_swap,
                     tx_hash,
@@ -207,11 +204,19 @@ impl<'a> SortedTrades<'a> {
                 );
 
                 let new_vol = volume * &first_leg.0.final_price;
+
+                bypass_intermediary_vol = false;
+                if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
+                || pair1.0 == USDC_ADDRESS && pair1.1 == USDT_ADDRESS{
+                    bypass_intermediary_vol = true;
+                }
+
                 let second_leg = match self.get_optimistic_direct(
                     config,
                     block_timestamp,
                     pair1,
                     &new_vol,
+                    bypass_vol || bypass_intermediary_vol,
                     quality,
                     dex_swap,
                     tx_hash,
@@ -252,6 +257,7 @@ impl<'a> SortedTrades<'a> {
         block_timestamp: u64,
         pair: Pair,
         volume: &Rational,
+        bypass_vol: bool,
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
