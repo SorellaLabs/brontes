@@ -139,7 +139,7 @@ impl<'a> SortedTrades<'a> {
             });
 
         if res.is_none() {
-            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "No price VMAP found for {}-{} in time window. \n Tx: {}", dex_swap.token_in.symbol, dex_swap.token_out.symbol, format_etherscan_url(&tx_hash));
+            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "No price VMAP found for {}-{} in optimistic time window. \n Tx: {}", dex_swap.token_in.symbol, dex_swap.token_out.symbol, format_etherscan_url(&tx_hash));
         }
 
         res
@@ -166,8 +166,9 @@ impl<'a> SortedTrades<'a> {
                 let mut has_pair1 = false;
 
                 for trades in self.0.keys() {
-                    has_pair0 |= **trades == pair0;
-                    has_pair1 |= **trades == pair1;
+                    has_pair0 |= **trades == pair0 || **trades == pair0.flip();
+                    has_pair1 |= **trades == pair1 || **trades == pair1.flip();
+
 
                     if has_pair1 && has_pair0 {
                         break
@@ -372,11 +373,6 @@ impl<'a> SortedTrades<'a> {
             }
         }
     }
-}
-
-#[derive(Debug)]
-pub struct MakerTakerWithVolumeFilled {
-    prices: MakerTaker,
 }
 
 pub struct Trades<'a> {
