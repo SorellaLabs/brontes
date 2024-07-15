@@ -1,16 +1,13 @@
 use std::{
     cmp::{max, min},
     f64::consts::E,
-    ops::Div,
+    ops::Mul,
 };
 
+use ahash::HashSetExt;
 use alloy_primitives::{Address, FixedBytes};
-use itertools::Itertools;
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{One, Zero},
-    },
+    num::basic::traits::{One, Zero},
     Rational,
 };
 use tracing::trace;
@@ -23,6 +20,7 @@ use super::{
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
     db::cex::CexExchange,
+    display::utils::format_etherscan_url,
     normalized_actions::NormalizedSwap,
     pair::Pair,
     FastHashMap, FastHashSet,
@@ -60,33 +58,28 @@ pub struct WindowExchangePrice {
     pub global_exchange_price: Rational,
 }
 
-impl Div for WindowExchangePrice {
+impl Mul for WindowExchangePrice {
     type Output = WindowExchangePrice;
 
-    #[allow(clippy::suspicious_arithmetic_impl)]
-    fn div(mut self, mut rhs: Self) -> Self::Output {
-        // adjust the price with volume
+    fn mul(mut self, mut rhs: Self) -> Self::Output {
         self.exchange_price_with_volume_direct = self
             .exchange_price_with_volume_direct
             .into_iter()
-            .filter_map(|(exchange, mut this_path)| {
-                let other_path = rhs.exchange_price_with_volume_direct.remove(&exchange)?;
+            .filter_map(|(exchange, mut first_leg)| {
+                let second_leg = rhs.exchange_price_with_volume_direct.remove(&exchange)?;
+                first_leg.price *= second_leg.price;
 
-                let this_vol = &this_path.price * &this_path.volume;
-                let other_vol = &other_path.price * &other_path.volume;
-                this_path.volume = this_vol + other_vol;
-                this_path.price /= other_path.price;
+                first_leg.final_start_time =
+                    min(first_leg.final_start_time, second_leg.final_start_time);
 
-                this_path.final_start_time =
-                    min(this_path.final_start_time, other_path.final_start_time);
-                this_path.final_end_time = max(this_path.final_end_time, other_path.final_end_time);
+                first_leg.final_end_time = max(first_leg.final_end_time, second_leg.final_end_time);
 
-                Some((exchange, this_path))
+                Some((exchange, first_leg))
             })
             .collect();
 
         self.pairs.extend(rhs.pairs);
-        self.global_exchange_price /= rhs.global_exchange_price;
+        self.global_exchange_price *= rhs.global_exchange_price;
 
         self
     }
@@ -94,17 +87,20 @@ impl Div for WindowExchangePrice {
 
 // trades sorted by time-stamp with the index to block time-stamp closest to the
 // block_number
-pub struct TimeWindowTrades<'a>(
-    FastHashMap<&'a CexExchange, FastHashMap<&'a Pair, (usize, &'a Vec<CexTrades>)>>,
-);
+pub struct TimeWindowTrades<'a> {
+    pub trades: FastHashMap<&'a CexExchange, FastHashMap<&'a Pair, (usize, &'a Vec<CexTrades>)>>,
+    pub intermediaries: FastHashSet<Address>,
+}
 
 impl<'a> TimeWindowTrades<'a> {
-    pub(crate) fn new_from_cex_trade_map(
+    pub fn new_from_cex_trade_map(
         trade_map: &'a mut FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
         block_timestamp: u64,
         exchanges: &'a [CexExchange],
         pair: Pair,
     ) -> Self {
+        let intermediaries = Self::calculate_intermediary_addresses(trade_map, exchanges, &pair);
+
         let map = trade_map
             .iter_mut()
             .filter_map(|(ex, pairs)| {
@@ -117,28 +113,27 @@ impl<'a> TimeWindowTrades<'a> {
                     pairs
                         .iter_mut()
                         .filter_map(|(ex_pair, trades)| {
-                            // Filter out pairs that couldn't be used as intermediaries
-                            if !(pair.0 == ex_pair.0
-                                || pair.0 == ex_pair.1
-                                || pair.1 == ex_pair.0
-                                || pair.1 == ex_pair.1)
+                            if (ex_pair == &pair || ex_pair == &pair.flip())
+                                || (ex_pair.0 == pair.0 && intermediaries.contains(&ex_pair.1))
+                                || (ex_pair.1 == pair.0 && intermediaries.contains(&ex_pair.0))
+                                || (ex_pair.0 == pair.1 && intermediaries.contains(&ex_pair.1))
+                                || (ex_pair.1 == pair.1 && intermediaries.contains(&ex_pair.0))
                             {
-                                return None
+                                // Sorts trades by timestamp & store the partition point
+                                trades.sort_unstable_by_key(|k| k.timestamp);
+                                let idx = trades
+                                    .partition_point(|trades| trades.timestamp < block_timestamp);
+                                Some((ex_pair, (idx, &*trades)))
+                            } else {
+                                None
                             }
-
-                            // Sorts trades by timestamp &
-                            trades.sort_unstable_by_key(|k| k.timestamp);
-
-                            let idx =
-                                trades.partition_point(|trades| trades.timestamp < block_timestamp);
-                            Some((ex_pair, (idx, &*trades)))
                         })
                         .collect(),
                 ))
             })
             .collect::<FastHashMap<&CexExchange, FastHashMap<&Pair, (usize, &Vec<CexTrades>)>>>();
 
-        Self(map)
+        Self { trades: map, intermediaries }
     }
 
     pub(crate) fn get_price(
@@ -170,7 +165,7 @@ impl<'a> TimeWindowTrades<'a> {
             });
 
         if res.is_none() {
-            tracing::debug!(?pair, "No price VMAP found for pair in time window.");
+            tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, "No price VMAP found for {}-{} in time window.\n Tx: {}", dex_swap.token_in.symbol, dex_swap.token_out.symbol, format_etherscan_url(&tx_hash));
         }
 
         res
@@ -187,37 +182,24 @@ impl<'a> TimeWindowTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
-        self.calculate_intermediary_addresses(exchanges, pair)
-            .into_iter()
+        self.intermediaries
+            .iter()
             .filter_map(|intermediary| {
-                trace!(?intermediary, "trying inter");
+                trace!(target: "brontes_types::db::cex::time_window_vwam", ?intermediary, "trying intermediary");
 
-                let pair0 = Pair(pair.1, intermediary);
-                let pair1 = Pair(pair.0, intermediary);
-
-                let mut has_pair0 = false;
-                let mut has_pair1 = false;
-
-                for (_, trades) in self.0.iter().filter(|(ex, _)| exchanges.contains(ex)) {
-                    has_pair0 |= trades.contains_key(&pair0);
-                    has_pair1 |= trades.contains_key(&pair1);
-
-                    if has_pair1 && has_pair0 {
-                        break
-                    }
-                }
-
-                if !(has_pair0 && has_pair1) {
-                    return None
-                }
+                let pair0 = Pair(pair.0, *intermediary);
+                let pair1 = Pair(*intermediary, pair.1);
 
                 let mut bypass_intermediary_vol = false;
-                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS {
+
+                // bypass volume requirements for stable pairs
+                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS
+                || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS {
                     bypass_intermediary_vol = true;
                 }
 
-                tracing::debug!(?pair, ?intermediary, ?volume, "trying via intermediary");
-                let res = self.get_vwap_price(
+                tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, ?intermediary, ?volume, "trying via intermediary");
+                let first_leg = self.get_vwap_price(
                     config,
                     exchanges,
                     pair0,
@@ -228,24 +210,29 @@ impl<'a> TimeWindowTrades<'a> {
                     tx_hash,
                 )?;
 
-                if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS {
+                // Volume of second leg
+                let second_leg_volume = &first_leg.1.global_exchange_price * volume;
+
+                bypass_intermediary_vol = false;
+                if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
+                || pair1.0 == USDC_ADDRESS && pair1.1 == USDT_ADDRESS{
                     bypass_intermediary_vol = true;
                 }
 
-                let new_vol = volume / &res.0.global_exchange_price.clone().reciprocal();
-                let pair1_v = self.get_vwap_price(
+                let second_leg = self.get_vwap_price(
                     config,
                     exchanges,
                     pair1,
-                    &new_vol,
+                    &second_leg_volume,
                     block_timestamp,
                     bypass_vol || bypass_intermediary_vol,
                     dex_swap,
                     tx_hash,
                 )?;
 
-                let maker = pair1_v.0 / res.0;
-                let taker = pair1_v.1 / res.1;
+                let maker = first_leg.0 * second_leg.0;
+                let taker = first_leg.1 * second_leg.1;
+
 
                 Some((maker, taker))
             })
@@ -294,6 +281,10 @@ impl<'a> TimeWindowTrades<'a> {
     /// AdjustedVWAP = (Sum of (Price_i * Volume_i * TimingWeight_i)) / (Sum of
     /// (Volume_i * TimingWeight_i))
 
+    //TODO: This currently expands the time window if the global volume is not met.
+    //which means that each exchange is not actually expanded to the point of the
+    // full arbitrage volume. We should probably redesign this later on to
+    // improve upon this because that feels a bit weird.
     fn get_vwap_price(
         &self,
         config: CexDexTradeConfig,
@@ -305,24 +296,13 @@ impl<'a> TimeWindowTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
-        let (ptrs, trades): (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, _)>) =
-            self.0
-                .iter()
-                .filter(|(e, _)| exchanges.contains(e))
-                .filter_map(|(exchange, trades)| Some((**exchange, trades.get(&pair)?)))
-                .map(|(ex, (idx, trades))| ((ex, (*idx, *idx - 1)), (ex, *trades)))
-                .unzip();
+        let trade_data = self.get_trades(exchanges, pair, dex_swap, tx_hash)?;
 
-        if trades.is_empty() {
-            log_missing_trade_data(dex_swap, &tx_hash);
-            return None
-        } else {
-            trace!(trade_qty=%trades.len(), "have trades");
-        }
+        //TODO: Extend time window if vol is cleared by 1.5
 
         let mut walker = PairTradeWalker::new(
-            trades,
-            ptrs,
+            trade_data.trades,
+            trade_data.indices,
             block_timestamp - START_PRE_TIME_US,
             block_timestamp + START_POST_TIME_US,
         );
@@ -334,6 +314,10 @@ impl<'a> TimeWindowTrades<'a> {
             let trades = walker.get_trades_for_window();
             for trade in trades {
                 let trade = trade.get();
+
+                // See explanation of trade representation in the book
+                let adjusted_trade = trade.adjust_for_direction(trade_data.direction);
+
                 let (m_fee, t_fee) = trade.exchange.fees();
                 let weight = calculate_weight(block_timestamp, trade.timestamp);
 
@@ -353,11 +337,15 @@ impl<'a> TimeWindowTrades<'a> {
                     0u64,
                 ));
 
-                *vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
-                *vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;
-                *trade_volume_weight += &trade.amount * weight;
-                *trade_volume_ex += &trade.amount;
-                trade_volume_global += &trade.amount;
+                *vxp_maker += (&adjusted_trade.price * (Rational::ONE - m_fee))
+                    * &adjusted_trade.amount
+                    * &weight;
+                *vxp_taker += (&adjusted_trade.price * (Rational::ONE - t_fee))
+                    * &adjusted_trade.amount
+                    * &weight;
+                *trade_volume_weight += &adjusted_trade.amount * weight;
+                *trade_volume_ex += &adjusted_trade.amount;
+                trade_volume_global += &adjusted_trade.amount;
 
                 *start_time = walker.min_timestamp;
                 *end_time = walker.max_timestamp;
@@ -450,30 +438,98 @@ impl<'a> TimeWindowTrades<'a> {
         Some((maker_ret, taker_ret))
     }
 
+    pub fn get_trades(
+        &'a self,
+        exchanges: &[CexExchange],
+        pair: Pair,
+        dex_swap: &NormalizedSwap,
+        tx_hash: FixedBytes<32>,
+    ) -> Option<TradeData<'a>> {
+        let (mut indices, mut trades) = self.query_trades(exchanges, &pair);
+
+        if trades.is_empty() {
+            let flipped_pair = pair.flip();
+            (indices, trades) = self.query_trades(exchanges, &flipped_pair);
+
+            if !trades.is_empty() {
+                trace!(
+                    target: "brontes_types::db::cex::time_window_vwam",
+                    trade_qty = %trades.len(),
+                    "have trades (flipped pair)"
+                );
+                return Some(TradeData { indices, trades, direction: Direction::Buy });
+            } else {
+                log_missing_trade_data(dex_swap, &tx_hash);
+                return None;
+            }
+        }
+
+        trace!(
+            target: "brontes_types::db::cex::time_window_vwam",
+            trade_qty = %trades.len(),
+            "have trades"
+        );
+        Some(TradeData { indices, trades, direction: Direction::Sell })
+    }
+
+    fn query_trades(
+        &'a self,
+        exchanges: &[CexExchange],
+        pair: &Pair,
+    ) -> (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, &'a Vec<CexTrades>)>) {
+        self.trades
+            .iter()
+            .filter(|(e, _)| exchanges.contains(e))
+            .filter_map(|(exchange, pairs)| Some((**exchange, pairs.get(pair)?)))
+            .map(|(ex, (idx, trades))| ((ex, (idx.saturating_sub(1), *idx)), (ex, *trades)))
+            .unzip()
+    }
+
     fn calculate_intermediary_addresses(
-        &self,
+        trade_map: &FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
         exchanges: &[CexExchange],
         pair: &Pair,
     ) -> FastHashSet<Address> {
-        self.0
-            .iter()
-            .filter(|(k, _)| exchanges.contains(k))
-            .flat_map(|(_, pairs)| {
-                pairs
-                    .keys()
-                    .filter_map(|trade_pair| {
-                        if trade_pair.ordered() == pair.ordered() {
-                            return None
-                        }
+        let (token_a, token_b) = (pair.0, pair.1);
+        let mut connected_to_a = FastHashSet::new();
+        let mut connected_to_b = FastHashSet::new();
 
-                        (trade_pair.0 == pair.0)
-                            .then_some(trade_pair.1)
-                            .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
-                    })
-                    .collect_vec()
-            })
-            .collect::<FastHashSet<_>>()
+        trade_map
+            .iter()
+            .filter(|(exchange, _)| exchanges.contains(exchange))
+            .flat_map(|(_, pairs)| pairs.keys())
+            .for_each(|trade_pair| {
+                if trade_pair.0 == token_a {
+                    connected_to_a.insert(trade_pair.1);
+                } else if trade_pair.1 == token_a {
+                    connected_to_a.insert(trade_pair.0);
+                }
+
+                if trade_pair.0 == token_b {
+                    connected_to_b.insert(trade_pair.1);
+                } else if trade_pair.1 == token_b {
+                    connected_to_b.insert(trade_pair.0);
+                }
+            });
+
+        connected_to_a
+            .intersection(&connected_to_b)
+            .cloned()
+            .collect()
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Buy,
+    Sell,
+}
+
+#[derive(Debug)]
+pub struct TradeData<'a> {
+    pub indices:   FastHashMap<CexExchange, (usize, usize)>,
+    pub trades:    Vec<(CexExchange, &'a Vec<CexTrades>)>,
+    pub direction: Direction,
 }
 
 /// Calculates the weight for a trade using a bi-exponential decay function

@@ -197,6 +197,8 @@ mev_types = ["CexDex"]
 mev_types = ["AtomicArb"]
 sibling_searchers = ["0x00000000032962B51589768828ad878876299E14"]
 
+[searcher_contracts."0x0c3DE458b51A11da7D4616f42F66C861e3859D3E"]
+mev_types = ["CexDex"]
 
 [searcher_contracts."0x53FacEe52e897740B140F5304E9Cd9DC6238d735"]
 fund = "NC"

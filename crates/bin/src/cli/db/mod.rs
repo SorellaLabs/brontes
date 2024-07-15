@@ -4,6 +4,7 @@ mod libmdbx_mem;
 mod r2_uploader;
 mod snapshot;
 use crate::runner::CliContext;
+mod cex_data;
 mod db_clear;
 mod db_insert;
 mod db_query;
@@ -41,6 +42,8 @@ pub enum DatabaseCommands {
     /// Test libmdbx memory usage
     #[command(name = "libmdbx-mem-test")]
     LibmdbxMem(libmdbx_mem::LMem),
+    #[command(name = "cex-query")]
+    CexData(cex_data::CexDB),
     /// For a given range, will fetch all data from the api and insert it into
     /// libmdbx.
     #[command(name = "init")]
@@ -83,6 +86,7 @@ impl Database {
             DatabaseCommands::LibmdbxMem(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::CexData(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
