@@ -140,7 +140,7 @@ async fn process_pair<D: ClickhouseDBMS>(
 ) -> Result<(), eyre::Report> {
     let pair_info = query_trading_pair_info(clickhouse, pair).await?;
 
-    query_trade_stats(clickhouse, &pair_info.trading_pair, block_timestamp, tw_size).await;
+    query_trade_stats(clickhouse, &pair_info.trading_pair, block_timestamp, tw_size).await?;
 
     Ok(())
 }
@@ -242,7 +242,6 @@ struct TradeStats {
     total_volume:       f64,
     average_price:      f64,
 }
-
 fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
     if stats.is_empty() {
         return;
@@ -281,7 +280,7 @@ fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
         };
 
         table.add_row(Row::new(vec![
-            Cell::new(&format!("{}-{}", relative_seconds, relative_seconds + 1)),
+            Cell::new(&format!("{}-{}", relative_seconds - 1, relative_seconds)),
             Cell::new(&stat.exchange),
             Cell::new(&stat.trade_count.to_string()),
             Cell::new(&format!("{:.8}", stat.total_volume)),
