@@ -237,7 +237,7 @@ struct TradeStats {
     symbol:             String,
     exchange:           String,
     period:             String,
-    seconds_from_block: u64,
+    seconds_from_block: i64,
     trade_count:        u64,
     total_volume:       f64,
     average_price:      f64,
@@ -271,9 +271,10 @@ fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
         *volume_by_exchange.entry(stat.exchange.clone()).or_default() += stat.total_volume;
 
         let table = if stat.period == "before" { &mut before_table } else { &mut after_table };
+        let (start, end) = (stat.seconds_from_block - 1, stat.seconds_from_block);
 
         table.add_row(Row::new(vec![
-            Cell::new(&format!("{}-{}", stat.seconds_from_block - 1, stat.seconds_from_block)),
+            Cell::new(&format!("{}-{}", start, end)),
             Cell::new(&stat.exchange),
             Cell::new(&stat.trade_count.to_string()),
             Cell::new(&format!("{:.8}", stat.total_volume)),
@@ -304,7 +305,10 @@ WITH
             symbol,
             exchange,
             IF(timestamp < block_time, 'before', 'after') AS period,
-            CAST(round(ABS(CAST(block_time AS Int64) - CAST(timestamp AS Int64)) / 1000000), 'UInt64') AS seconds_from_block,
+            IF(timestamp < block_time,
+                CAST((block_time - timestamp) / 1000000, 'Int64'),
+                CAST((timestamp - block_time) / 1000000, 'Int64')
+             ) AS seconds_from_block,
             amount,
             price
         FROM 
@@ -324,6 +328,8 @@ SELECT
 FROM trades_in_time
 GROUP BY 
     symbol, exchange, period, seconds_from_block
+ORDER BY
+    period, seconds_from_block
 "#;
 
 #[derive(Debug, Clone, Row, Deserialize, Serialize)]
