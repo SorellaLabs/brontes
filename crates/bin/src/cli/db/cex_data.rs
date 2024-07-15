@@ -166,8 +166,11 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
 ) -> Result<(), eyre::Report> {
     println!("Querying trade stats for {}", trading_pair);
 
+    let start_time = block_timestamp - tw_size * SECONDS_TO_US;
+    let end_time = block_timestamp + tw_size * SECONDS_TO_US;
+
     let result: Result<Vec<TradeStats>, DatabaseError> = clickhouse
-        .query_many(TRADE_STATS_QUERY, &(block_timestamp, tw_size, trading_pair))
+        .query_many(TRADE_STATS_QUERY, &(block_timestamp, start_time, end_time, trading_pair))
         .await;
 
     match result {
@@ -326,32 +329,26 @@ WITH
     params AS (
         SELECT 
             ? AS block_time,
-            ? AS time_window,
-            ? AS symbol
-    ),
-    time_ranges AS (
-        SELECT
-            block_time - time_window * 1000000 AS start_time,
-            block_time + time_window * 1000000 AS end_time
-        FROM params
+            ? AS start_time,
+            ? AS end_time,
+            ? AS symbol_param
     )
 SELECT 
-    symbol,
+    cex.normalized_trades.symbol,
     exchange,
-    IF(timestamp < block_time, 'before', 'after') AS period,
-    ceil(abs(toUnixTimestamp64Micro(timestamp) - toUnixTimestamp64Micro(block_time)) / 1000000) AS seconds_from_block,
+    IF(timestamp < params.block_time, 'before', 'after') AS period,
+    ceil(abs(timestamp - params.block_time) / 1000000) AS seconds_from_block,
     COUNT(*) AS trade_count,
     SUM(amount) AS total_volume,
     SUM(price * amount) / SUM(amount) AS average_price
 FROM 
     cex.normalized_trades
 CROSS JOIN params
-CROSS JOIN time_ranges
 WHERE 
-    symbol = params.symbol
-    AND timestamp BETWEEN time_ranges.start_time AND time_ranges.end_time
+    cex.normalized_trades.symbol = params.symbol_param
+    AND timestamp BETWEEN params.start_time AND params.end_time
 GROUP BY 
-    symbol, exchange, period, seconds_from_block
+    cex.normalized_trades.symbol, exchange, period, seconds_from_block
 ORDER BY
     exchange, period, seconds_from_block
 "#;
