@@ -99,6 +99,7 @@ db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces",  feature
 clickhouse.workspace = true
 
 
+prettytable-rs = "0.10"
 
 # banner
 indoc = "2"

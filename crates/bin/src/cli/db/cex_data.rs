@@ -10,6 +10,7 @@ use brontes_types::{
         cex::{CexExchange, CexTrades},
     },
     init_threadpools,
+    mev::block,
     pair::Pair,
     FastHashMap, FastHashSet,
 };
@@ -25,6 +26,7 @@ use db_interfaces::{
     Database,
 };
 use eyre::Result;
+use prettytable::{Cell, Row, Table};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -82,12 +84,11 @@ impl CexDB {
             })
         });
 
-        let (start_timestamp, end_timestamp) = self.time_window(&cex_config, block_timestamp);
-
         if !pair_exists {
             println!("No direct trading pair found for {:?}", pair);
         } else {
-            process_pair(&clickhouse, pair, start_timestamp, end_timestamp).await?;
+            process_pair(&clickhouse, pair, block_timestamp, (10.0 * self.w_multiplier) as u64)
+                .await?;
         }
 
         let intermediary_addresses =
@@ -99,8 +100,8 @@ impl CexDB {
             &clickhouse,
             pair,
             intermediary_addresses,
-            start_timestamp,
-            end_timestamp,
+            block_timestamp,
+            (10.0 as f64 * self.w_multiplier) as u64,
         )
         .await?;
 
@@ -121,8 +122,8 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
     pair: Pair,
     intermediaries: FastHashSet<Address>,
-    start_timestamp: u64,
-    end_timestamp: u64,
+    block_timestamp: u64,
+    tw_size: u64,
 ) -> Result<(), eyre::Report> {
     for intermediary in intermediaries {
         let intermediary_pair_1 = Pair(pair.0, intermediary);
@@ -133,14 +134,12 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
         // Query for the first intermediary pair
         let pair_info_1 = query_trading_pair_info(clickhouse, intermediary_pair_1).await?;
 
-        query_trade_stats(clickhouse, &pair_info_1.trading_pair, start_timestamp, end_timestamp)
-            .await;
+        query_trade_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp, tw_size).await;
 
         // Query for the second intermediary pair
         let pair_info_2 = query_trading_pair_info(clickhouse, intermediary_pair_2).await?;
 
-        query_trade_stats(clickhouse, &pair_info_2.trading_pair, start_timestamp, end_timestamp)
-            .await;
+        query_trade_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp, tw_size).await;
     }
     println!("-----------------------------------");
     Ok(())
@@ -149,12 +148,33 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
 async fn process_pair<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
     pair: Pair,
-    start_timestamp: u64,
-    end_timestamp: u64,
+    block_timestamp: u64,
+    tw_size: u64,
 ) -> Result<(), eyre::Report> {
     let pair_info = query_trading_pair_info(clickhouse, pair).await?;
 
-    query_trade_stats(clickhouse, &pair_info.trading_pair, start_timestamp, end_timestamp).await;
+    query_trade_stats(clickhouse, &pair_info.trading_pair, block_timestamp, tw_size).await;
+
+    Ok(())
+}
+
+async fn query_trade_stats<D: ClickhouseDBMS>(
+    clickhouse: &ClickhouseClient<D>,
+    trading_pair: &str,
+    block_timestamp: u64,
+    tw_size: u64,
+) -> Result<(), eyre::Report> {
+    println!("Querying trade stats for {}", trading_pair);
+
+    let result: Vec<TradeStats> = clickhouse
+        .query_many(TRADE_STATS_QUERY, &(block_timestamp, tw_size, trading_pair))
+        .await?;
+
+    if result.is_empty() {
+        println!("No trades found for {}", trading_pair);
+    } else {
+        print_trade_stats(&result);
+    }
 
     Ok(())
 }
@@ -218,7 +238,7 @@ async fn query_trading_pair_info<D: ClickhouseDBMS>(
     Ok(result)
 }
 
-async fn query_trade_stats<D: ClickhouseDBMS>(
+/*async fn query_trade_stats<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
     trading_pair: &str,
     start_timestamp: u64,
@@ -237,14 +257,17 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
             println!("No trades for {} stats: {:?}", trading_pair, e);
         }
     }
-}
+}*/
 
 #[derive(Debug, Clone, Row, Deserialize, Serialize)]
 struct TradeStats {
-    symbol:        String,
-    trade_count:   u64,
-    total_volume:  f64,
-    average_price: f64,
+    symbol:             String,
+    exchange:           String,
+    period:             String,
+    seconds_from_block: u64,
+    trade_count:        u64,
+    total_volume:       f64,
+    average_price:      f64,
 }
 
 #[derive(Debug, Clone, Row, Deserialize, Serialize)]
@@ -255,11 +278,54 @@ struct TradingPairInfo {
     quote_asset:  (String, String),
 }
 
-fn print_trade_stats(stats: &TradeStats) {
-    println!("Trade Statistics for {}", stats.symbol);
-    println!("  Number of trades: {}", stats.trade_count);
-    println!("  Total volume: {:.8}", stats.total_volume);
-    println!("  Average price: {:.8}", stats.average_price);
+fn print_trade_stats(stats: &[TradeStats]) {
+    if stats.is_empty() {
+        return;
+    }
+
+    let symbol = &stats[0].symbol;
+    println!("Trade Statistics for {}", symbol);
+
+    let mut before_table = Table::new();
+    let mut after_table = Table::new();
+    for table in [&mut before_table, &mut after_table].iter_mut() {
+        table.add_row(Row::new(vec![
+            Cell::new("Seconds"),
+            Cell::new("Exchange"),
+            Cell::new("Trade Count"),
+            Cell::new("Volume"),
+            Cell::new("Avg Price"),
+        ]));
+    }
+
+    let mut total_volume = 0.0;
+    let mut volume_by_exchange: std::collections::HashMap<String, f64> =
+        std::collections::HashMap::new();
+
+    for stat in stats {
+        total_volume += stat.total_volume;
+        *volume_by_exchange.entry(stat.exchange.clone()).or_default() += stat.total_volume;
+
+        let table = if stat.period == "before" { &mut before_table } else { &mut after_table };
+        table.add_row(Row::new(vec![
+            Cell::new(&format!("{}-{}", stat.seconds_from_block - 1, stat.seconds_from_block)),
+            Cell::new(&stat.exchange),
+            Cell::new(&stat.trade_count.to_string()),
+            Cell::new(&format!("{:.8}", stat.total_volume)),
+            Cell::new(&format!("{:.8}", stat.average_price)),
+        ]));
+    }
+
+    println!("\nTrades before block time:");
+    before_table.printstd();
+    println!("\nTrades after block time:");
+    after_table.printstd();
+
+    println!("\nTotal volume across all exchanges: {:.8}", total_volume);
+    println!("Volume breakdown by exchange:");
+    for (exchange, volume) in volume_by_exchange.iter() {
+        println!("  {}: {:.8} ({:.2}%)", exchange, volume, (volume / total_volume) * 100.0);
+    }
 }
 
 // Define the SQL query as a constant
@@ -284,7 +350,7 @@ FROM cex.trading_pairs AS s
 INNER JOIN all_symbols AS p1 ON p1.symbol = s.base_asset
 INNER JOIN all_symbols AS p2 ON p2.symbol = s.quote_asset";
 
-const TRADE_STATS_QUERY: &str = r#"
+const TRADE_STATS_SINGLE_QUERY: &str = r#"
 SELECT 
     symbol,
     COUNT(*) AS trade_count,
@@ -297,4 +363,39 @@ WHERE
     AND timestamp BETWEEN ? AND ?
 GROUP BY 
     symbol
+"#;
+
+const TRADE_STATS_QUERY: &str = r#"
+WITH 
+    block_time AS (SELECT toUnixTimestamp64Micro(?) AS ts),
+    intervals AS (
+        SELECT number AS sec
+        FROM numbers(1, ?)  -- Pass the number of seconds to check before/after
+    )
+SELECT 
+    symbol,
+    exchange,
+    CASE 
+        WHEN timestamp < bt.ts THEN 'before'
+        ELSE 'after'
+    END AS period,
+    i.sec AS seconds_from_block,
+    COUNT(*) AS trade_count,
+    SUM(amount) AS total_volume,
+    SUM(price * amount) / SUM(amount) AS average_price
+FROM 
+    cex.normalized_trades
+CROSS JOIN block_time bt
+CROSS JOIN intervals i
+WHERE 
+    symbol = ?
+    AND (
+        (timestamp BETWEEN bt.ts - i.sec * 1000000 AND bt.ts - (i.sec - 1) * 1000000)
+        OR
+        (timestamp BETWEEN bt.ts + (i.sec - 1) * 1000000 AND bt.ts + i.sec * 1000000)
+    )
+GROUP BY 
+    symbol, exchange, period, seconds_from_block
+ORDER BY
+    exchange, period, seconds_from_block
 "#;
