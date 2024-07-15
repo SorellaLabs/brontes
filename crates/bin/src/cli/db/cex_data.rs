@@ -5,12 +5,8 @@ use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_types::{
-    db::{
-        block_times,
-        cex::{CexExchange, CexTrades},
-    },
+    db::cex::{CexExchange, CexTrades},
     init_threadpools,
-    mev::block,
     pair::Pair,
     FastHashMap, FastHashSet,
 };
@@ -107,15 +103,6 @@ impl CexDB {
 
         Ok(())
     }
-
-    fn time_window(&self, cex_config: &CexDownloadConfig, block_timestamp: u64) -> (u64, u64) {
-        let start_timestamp = block_timestamp
-            - (self.w_multiplier * cex_config.time_window.0 + 5.0) as u64 * SECONDS_TO_US;
-        let end_timestamp = block_timestamp
-            + (self.w_multiplier * cex_config.time_window.1 + 10.0) as u64 * SECONDS_TO_US;
-
-        (start_timestamp, end_timestamp)
-    }
 }
 
 async fn process_intermediaries<D: ClickhouseDBMS>(
@@ -134,12 +121,12 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
         // Query for the first intermediary pair
         let pair_info_1 = query_trading_pair_info(clickhouse, intermediary_pair_1).await?;
 
-        query_trade_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp, tw_size).await;
+        query_trade_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp, tw_size).await?;
 
         // Query for the second intermediary pair
         let pair_info_2 = query_trading_pair_info(clickhouse, intermediary_pair_2).await?;
 
-        query_trade_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp, tw_size).await;
+        query_trade_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp, tw_size).await?;
     }
     println!("-----------------------------------");
     Ok(())
@@ -158,6 +145,9 @@ async fn process_pair<D: ClickhouseDBMS>(
     Ok(())
 }
 
+//TODO: So to identify if a token is missing we can:
+// query the -
+
 async fn query_trade_stats<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
     trading_pair: &str,
@@ -174,7 +164,7 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
         .await;
 
     match result {
-        Ok(stats) => print_trade_stats(&stats),
+        Ok(stats) => print_trade_stats(&stats, block_timestamp),
         Err(e) => {
             println!("No trades for {} stats: {:?}", trading_pair, e);
         }
@@ -242,27 +232,6 @@ async fn query_trading_pair_info<D: ClickhouseDBMS>(
     Ok(result)
 }
 
-/*async fn query_trade_stats<D: ClickhouseDBMS>(
-    clickhouse: &ClickhouseClient<D>,
-    trading_pair: &str,
-    start_timestamp: u64,
-    end_timestamp: u64,
-) {
-    print!("Querying trade stats for {}...", trading_pair);
-    println!("between {} and {}", start_timestamp, end_timestamp);
-
-    let result: Result<TradeStats, DatabaseError> = clickhouse
-        .query_one(TRADE_STATS_QUERY, &(trading_pair, start_timestamp, end_timestamp))
-        .await;
-
-    match result {
-        Ok(stats) => print_trade_stats(&stats),
-        Err(e) => {
-            println!("No trades for {} stats: {:?}", trading_pair, e);
-        }
-    }
-}*/
-
 #[derive(Debug, Clone, Row, Deserialize, Serialize)]
 struct TradeStats {
     symbol:             String,
@@ -274,7 +243,7 @@ struct TradeStats {
     average_price:      f64,
 }
 
-fn print_trade_stats(stats: &[TradeStats]) {
+fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
     if stats.is_empty() {
         return;
     }
@@ -303,8 +272,16 @@ fn print_trade_stats(stats: &[TradeStats]) {
         *volume_by_exchange.entry(stat.exchange.clone()).or_default() += stat.total_volume;
 
         let table = if stat.period == "before" { &mut before_table } else { &mut after_table };
+
+        // Calculate relative seconds
+        let relative_seconds = if stat.period == "before" {
+            (block_timestamp - stat.seconds_from_block) / SECONDS_TO_US
+        } else {
+            (stat.seconds_from_block - block_timestamp) / SECONDS_TO_US
+        };
+
         table.add_row(Row::new(vec![
-            Cell::new(&format!("{}-{}", stat.seconds_from_block - 1, stat.seconds_from_block)),
+            Cell::new(&format!("{}-{}", relative_seconds, relative_seconds + 1)),
             Cell::new(&stat.exchange),
             Cell::new(&stat.trade_count.to_string()),
             Cell::new(&format!("{:.8}", stat.total_volume)),
