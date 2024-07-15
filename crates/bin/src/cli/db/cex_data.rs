@@ -272,15 +272,8 @@ fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
 
         let table = if stat.period == "before" { &mut before_table } else { &mut after_table };
 
-        // Calculate relative seconds
-        let relative_seconds = if stat.period == "before" {
-            (block_timestamp - stat.seconds_from_block) / SECONDS_TO_US
-        } else {
-            (stat.seconds_from_block - block_timestamp) / SECONDS_TO_US
-        };
-
         table.add_row(Row::new(vec![
-            Cell::new(&format!("{}-{}", relative_seconds - 1, relative_seconds)),
+            Cell::new(&format!("{}-{}", stat.seconds_from_block - 1, stat.seconds_from_block)),
             Cell::new(&stat.exchange),
             Cell::new(&stat.trade_count.to_string()),
             Cell::new(&format!("{:.8}", stat.total_volume)),
