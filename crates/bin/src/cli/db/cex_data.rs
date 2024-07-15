@@ -302,13 +302,25 @@ fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
 }
 
 const TRADE_STATS_QUERY: &str = r#"
-WITH params AS (
-    SELECT 
-        ? AS block_time,
-        ? AS start_time,
-        ? AS end_time,
-        ? AS symbol_param
-)
+WITH 
+    ? AS block_time,
+    ? AS start_time,
+    ? AS end_time,
+    ? AS symbol_param,
+    trades_in_time AS (
+        SELECT 
+            symbol,
+            exchange,
+            IF(timestamp < block_time, 'before', 'after') AS period,
+            CAST(round(ABS(CAST(block_time, 'Int64') - CAST(timestamp, 'Int64') / 1000000)), 'UInt64') AS seconds_from_block,
+            amount,
+            price
+        FROM 
+            cex.normalized_trades
+        WHERE 
+            symbol = symbol_param
+            AND timestamp BETWEEN start_time AND end_time
+    )
 SELECT 
     symbol,
     exchange,
@@ -317,29 +329,9 @@ SELECT
     COUNT(*) AS trade_count,
     SUM(amount) AS total_volume,
     SUM(price * amount) / SUM(amount) AS average_price
-FROM 
-(
-    SELECT 
-        symbol,
-        exchange,
-        IF(timestamp < params.block_time, 'before', 'after') AS period,
-        IF(timestamp < params.block_time,
-           intDiv(params.block_time - timestamp, 1000000) + 1,
-           intDiv(timestamp - params.block_time, 1000000) + 1
-        ) AS seconds_from_block,
-        amount,
-        price
-    FROM 
-        cex.normalized_trades
-    CROSS JOIN params
-    WHERE 
-        symbol = params.symbol_param
-        AND timestamp BETWEEN params.start_time AND params.end_time
-)
+FROM trades_in_time
 GROUP BY 
     symbol, exchange, period, seconds_from_block
-ORDER BY
-    period, seconds_from_block, exchange
 "#;
 
 #[derive(Debug, Clone, Row, Deserialize, Serialize)]
