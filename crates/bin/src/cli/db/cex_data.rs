@@ -108,10 +108,10 @@ impl CexDB {
     }
 
     fn time_window(&self, cex_config: &CexDownloadConfig, block_timestamp: u64) -> (u64, u64) {
-        let start_timestamp =
-            block_timestamp - (self.w_multiplier * cex_config.time_window.0) as u64 * SECONDS_TO_US;
-        let end_timestamp =
-            block_timestamp + (self.w_multiplier * cex_config.time_window.1) as u64 * SECONDS_TO_US;
+        let start_timestamp = block_timestamp
+            - (self.w_multiplier * cex_config.time_window.0 + 7.0) as u64 * SECONDS_TO_US;
+        let end_timestamp = block_timestamp
+            + (self.w_multiplier * cex_config.time_window.1 + 4.0) as u64 * SECONDS_TO_US;
 
         (start_timestamp, end_timestamp)
     }
