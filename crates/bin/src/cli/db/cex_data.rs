@@ -28,6 +28,8 @@ use crate::{
     runner::CliContext,
 };
 
+const SECONDS_TO_US: u64 = 1_000_000;
+
 #[derive(Debug, Parser)]
 pub struct CexDB {
     /// The block number
@@ -73,8 +75,13 @@ impl CexDB {
             })
         });
 
+        let start_timestamp = block_timestamp - cex_config.time_window.0 as u64 * SECONDS_TO_US;
+        let end_timestamp = block_timestamp + cex_config.time_window.1 as u64 * SECONDS_TO_US;
+
         if !pair_exists {
             println!("No direct trading pair found for {:?}", pair);
+        } else {
+            process_pair(&clickhouse, pair, start_timestamp, end_timestamp).await?;
         }
 
         let intermediary_addresses = calculate_intermediary_addresses(
@@ -82,9 +89,6 @@ impl CexDB {
             &cex_config.exchanges_to_use,
             &pair,
         );
-
-        let start_timestamp = block_timestamp - cex_config.time_window.0 as u64 * 1000000;
-        let end_timestamp = block_timestamp + cex_config.time_window.1 as u64 * 1000000;
 
         process_intermediaries(
             &clickhouse,
