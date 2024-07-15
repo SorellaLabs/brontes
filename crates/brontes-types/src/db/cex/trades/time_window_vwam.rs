@@ -513,7 +513,9 @@ impl<'a> TimeWindowTrades<'a> {
                     .filter_map(|trade_pair| {
                         (trade_pair.0 == pair.0)
                             .then_some(trade_pair.1)
+                            .or_else(|| (trade_pair.1 == pair.0).then_some(trade_pair.0))
                             .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
+                            .or_else(|| (trade_pair.0 == pair.1).then_some(trade_pair.1))
                     })
                     .collect_vec()
             })
