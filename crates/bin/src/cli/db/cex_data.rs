@@ -1,4 +1,4 @@
-use std::{env, result::Result::Ok};
+use std::env;
 
 use ahash::HashSetExt;
 use alloy_primitives::Address;
@@ -21,7 +21,7 @@ use db_interfaces::{
     errors::DatabaseError,
     Database,
 };
-use eyre::Ok;
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::{

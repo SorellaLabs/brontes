@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use db_interfaces::clickhouse::dbms::ClickhouseDBMS;
 
 mod libmdbx_mem;
 mod r2_uploader;
