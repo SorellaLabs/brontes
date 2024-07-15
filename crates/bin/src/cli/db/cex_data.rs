@@ -82,7 +82,7 @@ impl CexDB {
             })
         });
 
-        let (start_timestamp, end_timestamp) = self.time_window(cex_config, block_timestamp);
+        let (start_timestamp, end_timestamp) = self.time_window(&cex_config, block_timestamp);
 
         if !pair_exists {
             println!("No direct trading pair found for {:?}", pair);
@@ -107,7 +107,7 @@ impl CexDB {
         Ok(())
     }
 
-    fn time_window(&self, cex_config: CexDownloadConfig, block_timestamp: u64) -> (u64, u64) {
+    fn time_window(&self, cex_config: &CexDownloadConfig, block_timestamp: u64) -> (u64, u64) {
         let start_timestamp =
             block_timestamp - (self.w_multiplier * cex_config.time_window.0) as u64 * SECONDS_TO_US;
         let end_timestamp =
