@@ -93,7 +93,7 @@ pub struct TimeWindowTrades<'a> {
 }
 
 impl<'a> TimeWindowTrades<'a> {
-    pub(crate) fn new_from_cex_trade_map(
+    pub fn new_from_cex_trade_map(
         trade_map: &'a mut FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
         block_timestamp: u64,
         exchanges: &'a [CexExchange],

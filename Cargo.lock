@@ -1485,6 +1485,7 @@ checksum = "e0d8372f2d5cbac600a260de87877141b42da1e18d2c7a08ccb493a49cbd55c0"
 name = "brontes"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "alloy-json-rpc",
  "alloy-network",
  "alloy-primitives",
@@ -1510,8 +1511,10 @@ dependencies = [
  "brontes-types",
  "cfg-if",
  "clap",
+ "clickhouse",
  "colored",
  "crossterm",
+ "db-interfaces",
  "dhat",
  "dotenv",
  "eyre",
@@ -1546,6 +1549,7 @@ dependencies = [
  "reth-tasks",
  "reth-tracing-ext",
  "reth-transaction-pool",
+ "serde",
  "strum 0.25.0",
  "tar",
  "thiserror",

@@ -1,5 +1,6 @@
 use std::{env, error::Error, time::Duration};
 
+use db_interfaces::clickhouse::dbms::ClickhouseDBMS;
 use tracing_subscriber::Layer;
 
 #[cfg(all(feature = "jemalloc", unix))]
