@@ -23,7 +23,7 @@ use crate::{
     FastHashMap,
 };
 
-const BASE_EXECUTION_QUALITY: usize = 70;
+pub const BASE_EXECUTION_QUALITY: usize = 70;
 
 const PRE_SCALING_DIFF: u64 = 200_000;
 const TIME_STEP: u64 = 100_000;

@@ -4,7 +4,7 @@ use alloy_primitives::{Address, TxHash};
 use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
-use crate::FastHashSet;
+use crate::{db::cex::optimistic::BASE_EXECUTION_QUALITY, FastHashSet};
 const TIME_BASKET_SIZE: u64 = 100_000;
 
 use super::{optimistic::OptimisticTradeData, CexTrades};
@@ -328,8 +328,12 @@ impl<'a> TimeBasketQueue<'a> {
                     basket_trades,
                     self.quality_pct
                         .as_ref()
-                        .map(|map| map.get(&CexExchange::Binance).unwrap().clone())
-                        .unwrap(),
+                        .map(|map| {
+                            map.get(&CexExchange::Binance)
+                                .unwrap_or(&BASE_EXECUTION_QUALITY)
+                                .clone()
+                        })
+                        .unwrap_or(BASE_EXECUTION_QUALITY),
                     basket_volume,
                 );
                 self.baskets.push(basket);
@@ -372,8 +376,12 @@ impl<'a> TimeBasketQueue<'a> {
                     basket_trades,
                     self.quality_pct
                         .as_ref()
-                        .map(|map| map.get(&CexExchange::Binance).unwrap().clone())
-                        .unwrap(),
+                        .map(|map| {
+                            map.get(&CexExchange::Binance)
+                                .unwrap_or(&BASE_EXECUTION_QUALITY)
+                                .clone()
+                        })
+                        .unwrap_or(BASE_EXECUTION_QUALITY),
                     basket_volume,
                 );
                 self.baskets.push(basket);
