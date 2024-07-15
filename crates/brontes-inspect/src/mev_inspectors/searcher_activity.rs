@@ -7,7 +7,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType, SearcherTx},
     normalized_actions::{accounting::ActionAccounting, Action},
     tree::BlockTree,
-    ActionIter, FastHashSet, ToFloatNearest, TreeSearchBuilder,
+    ActionIter, BlockData, FastHashSet, MultiBlockData, ToFloatNearest, TreeSearchBuilder,
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -37,7 +37,9 @@ impl<DB: LibmdbxReader> Inspector for SearcherActivity<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
+        let block = data.per_block_data.pop().expect("no blocks");
+        let BlockData { metadata, tree } = block;
         self.utils
             .get_metrics()
             .map(|m| {

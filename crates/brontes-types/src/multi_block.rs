@@ -4,14 +4,15 @@ use crate::{
     BlockTree,
 };
 
+#[derive(Debug, Clone)]
 pub struct MultiBlockData {
     pub per_block_data: Vec<BlockData>,
-    pub cex_trades:     CexTradeMap,
+    pub cex_trades:     Arc<CexTradeMap>,
     pub blocks:         usize,
 }
 
-
+#[derive(Debug, Clone)]
 pub struct BlockData {
-    metadata:   Arc<Metadata>,
-    block_tree: Arc<BlockTree<Action>>,
+    pub metadata:   Arc<Metadata>,
+    pub tree: Arc<BlockTree<Action>>,
 }

@@ -20,7 +20,8 @@ use brontes_types::{
     },
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    FastHashMap, FastHashSet, ToFloatNearest, TreeCollector, TreeSearchBuilder, TxInfo,
+    BlockData, FastHashMap, FastHashSet, MultiBlockData, ToFloatNearest, TreeCollector,
+    TreeSearchBuilder, TxInfo,
 };
 use itertools::{multizip, Itertools};
 use malachite::{
@@ -77,7 +78,10 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
+        let block = data.per_block_data.pop().expect("no blocks");
+        let BlockData { metadata, tree } = block;
+
         if metadata.cex_trades.is_none() {
             tracing::warn!("no cex trades for block");
             return vec![]
