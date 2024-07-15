@@ -32,6 +32,7 @@ use db_interfaces::{
 };
 use serde::Deserialize;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::{info, warn};
 
 #[cfg(feature = "cex-dex-quotes")]
 use super::RAW_CEX_QUOTES;
@@ -470,27 +471,33 @@ impl ClickhouseHandle for Clickhouse {
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexTradesData>> {
+        info!("Starting get_cex_trades function");
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(s, e) => {
+                info!("Querying block times for range: start={}, end={}", s, e);
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
+                info!("Querying block times for arbitrary values: {:?}", vals);
                 let mut query = BLOCK_TIMES.to_string();
-
                 query = query.replace(
                     "block_number >= ? AND block_number < ?",
                     &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
                 );
-
                 self.client.query_many(query, &()).await?
             }
         };
 
+        info!("Retrieved {} block times", block_times.len());
+
         if block_times.is_empty() {
+            warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
 
+        info!("Querying CEX symbols");
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
+        info!("Retrieved {} CEX symbols", symbols.len());
 
         let exchanges_str = self
             .cex_download_config
@@ -498,8 +505,9 @@ impl ClickhouseHandle for Clickhouse {
             .exchanges_to_use
             .into_iter()
             .map(|s| s.to_clickhouse_filter().to_string())
-            .collect::<Vec<_>>()
+            .collect::<Vec<String>>()
             .join(" OR ");
+        info!("Using exchanges filter: {}", exchanges_str);
 
         let data: Vec<RawCexTrades> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
@@ -509,7 +517,6 @@ impl ClickhouseHandle for Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64
                     - (self.cex_download_config.time_window.0 * SECONDS_TO_US);
-
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
@@ -517,20 +524,23 @@ impl ClickhouseHandle for Clickhouse {
                     .unwrap() as f64
                     + (self.cex_download_config.time_window.1 * SECONDS_TO_US);
 
+                info!(
+                    "Querying raw CEX trades for time range: start={}, end={}",
+                    start_time, end_time
+                );
+
                 let mut query = RAW_CEX_TRADES.to_string();
                 query = query.replace(
                     "c.timestamp >= ? AND c.timestamp < ?",
                     &format!(
-                        "c.timestamp >= {start_time} AND c.timestamp < {end_time}
-                            and ({exchanges_str})"
+                        "c.timestamp >= {start_time} AND c.timestamp < {end_time} 
+                        and ({exchanges_str})"
                     ),
                 );
-
                 self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
                 let mut query = RAW_CEX_TRADES.to_string();
-
                 let query_mod = block_times
                     .iter()
                     .map(|b| {
@@ -539,17 +549,20 @@ impl ClickhouseHandle for Clickhouse {
                             self.cex_download_config.time_window.1 * SECONDS_TO_US,
                         )
                     })
-                    .collect::<Vec<_>>()
+                    .collect::<Vec<String>>()
                     .join(" OR ");
+
+                info!("Querying raw CEX trades for arbitrary block times");
 
                 query = query.replace(
                     "c.timestamp >= ? AND c.timestamp < ?",
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
-
                 self.client.query_many(query, &()).await?
             }
         };
+
+        info!("Retrieved {} raw CEX trades", data.len());
 
         let trades_converter = CexTradesConverter::new(
             block_times,
@@ -557,11 +570,15 @@ impl ClickhouseHandle for Clickhouse {
             data,
             self.cex_download_config.time_window,
         );
+
+        info!("Converting raw trades to CexTradesData");
         let trades: Vec<crate::CexTradesData> = trades_converter
             .convert_to_trades()
             .into_iter()
             .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
             .collect();
+
+        info!("Converted {} CexTradesData entries", trades.len());
 
         Ok(trades)
     }

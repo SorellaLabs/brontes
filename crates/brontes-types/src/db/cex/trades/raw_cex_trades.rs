@@ -135,14 +135,8 @@ impl CexTradesConverter {
                                     symbol.address_pair.1 = USDC_ADDRESS;
                                 }
 
-                                let pair = if &trade.side == "sell" {
-                                    symbol.address_pair.flip()
-                                } else {
-                                    symbol.address_pair
-                                };
-
                                 exchange_symbol_map
-                                    .entry(pair)
+                                    .entry(symbol.address_pair)
                                     .or_insert(Vec::new())
                                     .push(trade.clone().into());
                             }

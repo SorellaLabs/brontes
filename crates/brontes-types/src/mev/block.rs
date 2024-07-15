@@ -333,9 +333,6 @@ impl fmt::Display for PossibleMevTriggers {
 }
 
 impl PossibleMevTriggers {
-    //TODO: Currently we don't check for private transactions because there are too
-    // many of them we might revisit this once we integrate blocknative so we
-    // have a more comprehensive coverage
     pub fn was_triggered(&self) -> bool {
         self.coinbase_transfer || self.high_priority_fee
     }

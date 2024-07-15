@@ -13,10 +13,11 @@ use ::serde::{
 use ahash::HashSet;
 use colored::Colorize;
 use malachite::Rational;
-use redefined::Redefined;
+use redefined::{self_convert_redefined, Redefined};
 use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde_with::serde_as;
+use strum::Display;
 
 use super::{Mev, MevType};
 use crate::{
@@ -68,15 +69,17 @@ impl Serialize for OptimisticTrade {
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDex {
-    pub tx_hash:               B256,
-    pub block_number:          u64,
-    pub swaps:                 Vec<NormalizedSwap>,
+    pub tx_hash:                B256,
+    pub block_number:           u64,
+    #[redefined(same_fields)]
+    pub header_pnl_methodology: CexMethodology,
+    pub swaps:                  Vec<NormalizedSwap>,
     // Represents the arb details, using the cross exchange VMAP quote
-    pub global_vmap_details:   Vec<ArbDetails>,
-    pub global_vmap_pnl:       ArbPnl,
+    pub global_vmap_details:    Vec<ArbDetails>,
+    pub global_vmap_pnl:        ArbPnl,
     // Arb details taking the most optimal route across all exchanges
-    pub optimal_route_details: Vec<ArbDetails>,
-    pub optimal_route_pnl:     ArbPnl,
+    pub optimal_route_details:  Vec<ArbDetails>,
+    pub optimal_route_pnl:      ArbPnl,
 
     pub optimistic_route_details: Vec<ArbDetails>,
     // timestamp of each trade of each exchange that we coside,
@@ -124,6 +127,31 @@ impl Mev for CexDex {
         self.swaps.iter().map(|swap| swap.protocol).collect()
     }
 }
+
+#[derive(
+    Copy,
+    Display,
+    Default,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    rkyv::Archive,
+)]
+pub enum CexMethodology {
+    GlobalWWAP,
+    OptimalRouteVWAP,
+    Optimistic,
+    #[default]
+    None,
+}
+
+self_convert_redefined!(CexMethodology);
 
 impl Serialize for CexDex {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

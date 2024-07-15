@@ -1158,7 +1158,7 @@ impl LibmdbxReadWriter {
     }
 
     #[cfg(not(feature = "cex-dex-quotes"))]
-    fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
+    pub fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
         self.db.view_db(|tx| {
             tx.get::<CexTrades>(block_num)?
                 .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))

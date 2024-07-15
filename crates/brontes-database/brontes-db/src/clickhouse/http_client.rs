@@ -102,7 +102,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 
         let eth_prices = determine_eth_prices(&cex_quotes.value);
 
-        //TODO: Joe please appropriately handle the cex-dex-markout feature
         Ok({
             let metadata = BlockMetadata::new(
                 block_num,

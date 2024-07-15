@@ -9,8 +9,8 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::cex::{
         config::CexDexTradeConfig,
+        optimistic::{ExchangePrice, MakerTaker},
         time_window_vwam::MakerTakerWindowVWAP,
-        vwam::{ExchangePrice, MakerTaker},
         CexExchange, FeeAdjustedQuote,
     },
     display::utils::format_etherscan_url,
@@ -29,6 +29,7 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
+use strum::Display;
 use tracing::trace;
 
 use super::{
@@ -167,7 +168,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 }
 
                 if dex_swaps.is_empty() {
-                    trace!("no dex swaps found");
+                    trace!(    target: "brontes::cex-dex-markout",
+                    "no dex swaps found\n Tx: {}", format_etherscan_url(&tx_info.tx_hash));
                     return None
                 }
 
@@ -194,6 +196,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
+                //TODO: Set methodology enum in data
                 let (profit_usd, cex_dex, trade_prices) =
                     self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
 
@@ -335,7 +338,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                     tx_hash,
                                     path.final_start_time,
                                     path.final_end_time,
-                                    "priec window vwam per ex",
+                                    PriceCalcType::TimeWindowPerEx,
                                 ),
                             )
                         })
@@ -367,7 +370,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         tx_hash,
                         start_time,
                         end_time,
-                        "price window vwam",
+                        PriceCalcType::TimeWindowGlobal,
                     ))
                 })
                 .collect_vec(),
@@ -412,7 +415,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         tx_hash,
                         start_time,
                         end_time,
-                        "optimistic",
+                        PriceCalcType::Optimistic,
                     );
 
                     if profit.is_some() {
@@ -441,14 +444,16 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
         start_time: u64,
         end_time: u64,
-        price_calculation_type: &str,
+        price_calculation_type: PriceCalcType,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
         // If the price difference between the DEX and CEX is greater than 2x, the
         // quote is likely invalid
 
-        let swap_rate = swap.swap_rate();
-        let smaller = min(&swap_rate, &cex_quote.0);
-        let larger = max(&swap_rate, &cex_quote.0);
+        let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
+            (&cex_quote.0 * &swap.amount_out, &cex_quote.1 * &swap.amount_out);
+
+        let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
+        let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
@@ -464,14 +469,16 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
             return None
         }
-        // A positive delta indicates potential profit from buying on DEX
-        // and selling on CEX.
-        let maker_delta = &cex_quote.0 - swap.swap_rate();
-        let taker_delta = &cex_quote.1 - swap.swap_rate();
+        // A positive amount indicates potential profit from selling the token in on the
+        // DEX and buying it on the CEX.
+        let maker_token_delta = &output_of_cex_trade_maker - &swap.amount_in;
+        let taker_token_delta = &output_of_cex_trade_taker - &swap.amount_in;
 
         let vol = Rational::ONE;
 
         let pair = Pair(self.utils.quote, swap.token_in.address);
+
+        //TODO: Pre calculate as we always need token in priced in quote asset
         let token_price = metadata
             .cex_trades
             .as_ref()
@@ -494,13 +501,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             token0: swap.token_in.address,
             price0: token_price.clone(),
             token1: swap.token_out.address,
-            price1: &cex_quote.0 * &token_price.clone(),
+            price1: &token_price / &cex_quote.0,
         };
 
-        let pnl_mid = (
-            &maker_delta * &swap.amount_out * &token_price,
-            &taker_delta * &swap.amount_out * &token_price,
-        );
+        let pnl_mid = (&maker_token_delta * &token_price, &taker_token_delta * &token_price);
 
         let quote = FeeAdjustedQuote {
             timestamp: metadata.block_timestamp,
@@ -574,7 +578,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .get_optimistic_vmap(
                             self.trade_config,
                             &self.cex_exchanges,
-                            &pair,
+                            pair,
                             &swap.amount_out,
                             metadata.microseconds_block_timestamp(),
                             None,
@@ -776,6 +780,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     }
 
     /// Filters out triangular arbitrage
+    //TODO: Check for bug on tx:
+    // https://dashboard.tenderly.co/tx/mainnet/0x310430b40132df960020af330b2e3b6a281751d45786f6b790e1cf1daf9a78bb?trace=0
     pub fn is_triangular_arb(&self, dex_swaps: &[NormalizedSwap]) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if dex_swaps.len() < 2 {
@@ -949,4 +955,11 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+}
+
+#[derive(Debug, Clone, Display, PartialEq, Eq)]
+pub enum PriceCalcType {
+    Optimistic,
+    TimeWindowGlobal,
+    TimeWindowPerEx,
 }
