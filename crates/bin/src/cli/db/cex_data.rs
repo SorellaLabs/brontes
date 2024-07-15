@@ -207,7 +207,10 @@ async fn query_trading_pair_info<D: ClickhouseDBMS>(
     pair: Pair,
 ) -> Result<TradingPairInfo, eyre::Report> {
     let result: TradingPairInfo = clickhouse
-        .query_one(TRADING_PAIR_INFO_QUERY, &(pair.0.to_string(), pair.1.to_string()))
+        .query_one(
+            TRADING_PAIR_INFO_QUERY,
+            &(pair.0.to_string().to_lowercase(), pair.1.to_string().to_lowercase()),
+        )
         .await?;
 
     Ok(result)
