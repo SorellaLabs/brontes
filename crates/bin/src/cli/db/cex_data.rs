@@ -5,7 +5,10 @@ use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_types::{
-    db::cex::{CexExchange, CexTrades},
+    db::{
+        block_times,
+        cex::{CexExchange, CexTrades},
+    },
     init_threadpools,
     pair::Pair,
     FastHashMap, FastHashSet,
@@ -42,6 +45,9 @@ pub struct CexDB {
     #[arg(long)]
     /// The second token in the pair
     pub token_1:      String,
+    /// Time window multiplier (expands it)
+    #[arg(long, short, default_value_t = 1.0)]
+    pub w_multiplier: f64,
     #[arg(long, short)]
     pub volume:       Option<f64>,
 }
@@ -76,8 +82,7 @@ impl CexDB {
             })
         });
 
-        let start_timestamp = block_timestamp - cex_config.time_window.0 as u64 * SECONDS_TO_US;
-        let end_timestamp = block_timestamp + cex_config.time_window.1 as u64 * SECONDS_TO_US;
+        let (start_timestamp, end_timestamp) = self.time_window(cex_config, block_timestamp);
 
         if !pair_exists {
             println!("No direct trading pair found for {:?}", pair);
@@ -100,6 +105,15 @@ impl CexDB {
         .await?;
 
         Ok(())
+    }
+
+    fn time_window(&self, cex_config: CexDownloadConfig, block_timestamp: u64) -> (u64, u64) {
+        let start_timestamp =
+            block_timestamp - (self.w_multiplier * cex_config.time_window.0) as u64 * SECONDS_TO_US;
+        let end_timestamp =
+            block_timestamp + (self.w_multiplier * cex_config.time_window.1) as u64 * SECONDS_TO_US;
+
+        (start_timestamp, end_timestamp)
     }
 }
 
