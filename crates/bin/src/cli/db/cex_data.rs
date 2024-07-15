@@ -84,11 +84,8 @@ impl CexDB {
             process_pair(&clickhouse, pair, start_timestamp, end_timestamp).await?;
         }
 
-        let intermediary_addresses = calculate_intermediary_addresses(
-            &metadata.cex_trades.as_ref().unwrap().lock().0,
-            &cex_config.exchanges_to_use,
-            &pair,
-        );
+        let intermediary_addresses =
+            calculate_intermediary_addresses(cex_trades, &cex_config.exchanges_to_use, &pair);
 
         process_intermediaries(
             &clickhouse,
