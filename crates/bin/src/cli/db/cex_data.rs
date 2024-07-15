@@ -271,14 +271,6 @@ struct TradeStats {
     average_price:      f64,
 }
 
-#[derive(Debug, Clone, Row, Deserialize, Serialize)]
-struct TradingPairInfo {
-    exchange:     String,
-    trading_pair: String,
-    base_asset:   (String, String),
-    quote_asset:  (String, String),
-}
-
 fn print_trade_stats(stats: &[TradeStats]) {
     if stats.is_empty() {
         return;
@@ -329,31 +321,9 @@ fn print_trade_stats(stats: &[TradeStats]) {
     }
 }
 
-// Define the SQL query as a constant
-const TRADING_PAIR_INFO_QUERY: &str = "WITH
-? AS address0,
-? AS address1,
-all_symbols AS (
-    SELECT DISTINCT
-    address,
-    arrayJoin(CASE 
-        WHEN unwrapped_symbol IS NOT NULL THEN [symbol, unwrapped_symbol]
-        ELSE [symbol]
-    END) AS symbol
-    FROM cex.address_symbols WHERE address = address0 or address = address1
-)
-SELECT
-s.exchange AS exchange,
-s.pair AS trading_pair,
-(p1.symbol, toString(p1.address)) AS base_asset,
-(p2.symbol, toString(p2.address)) AS quote_asset
-FROM cex.trading_pairs AS s
-INNER JOIN all_symbols AS p1 ON p1.symbol = s.base_asset
-INNER JOIN all_symbols AS p2 ON p2.symbol = s.quote_asset";
-
 const TRADE_STATS_QUERY: &str = r#"
 WITH 
-    block_time AS (SELECT toUnixTimestamp64Micro(?) AS ts),
+    block_time AS (SELECT ? AS ts),
     intervals AS (
         SELECT number AS sec
         FROM numbers(1, ?)  -- Pass the number of seconds to check before/after
@@ -385,3 +355,31 @@ GROUP BY
 ORDER BY
     exchange, period, seconds_from_block
 "#;
+
+#[derive(Debug, Clone, Row, Deserialize, Serialize)]
+struct TradingPairInfo {
+    exchange:     String,
+    trading_pair: String,
+    base_asset:   (String, String),
+    quote_asset:  (String, String),
+}
+const TRADING_PAIR_INFO_QUERY: &str = "WITH
+? AS address0,
+? AS address1,
+all_symbols AS (
+    SELECT DISTINCT
+    address,
+    arrayJoin(CASE 
+        WHEN unwrapped_symbol IS NOT NULL THEN [symbol, unwrapped_symbol]
+        ELSE [symbol]
+    END) AS symbol
+    FROM cex.address_symbols WHERE address = address0 or address = address1
+)
+SELECT
+s.exchange AS exchange,
+s.pair AS trading_pair,
+(p1.symbol, toString(p1.address)) AS base_asset,
+(p2.symbol, toString(p2.address)) AS quote_asset
+FROM cex.trading_pairs AS s
+INNER JOIN all_symbols AS p1 ON p1.symbol = s.base_asset
+INNER JOIN all_symbols AS p2 ON p2.symbol = s.quote_asset";
