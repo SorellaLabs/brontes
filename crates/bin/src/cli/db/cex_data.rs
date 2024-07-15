@@ -311,7 +311,7 @@ WITH
             symbol,
             exchange,
             IF(timestamp < block_time, 'before', 'after') AS period,
-            CAST(round(ABS(CAST(block_time, 'Int64') - CAST(timestamp, 'Int64') / 1000000)), 'UInt64') AS seconds_from_block,
+            CAST(round(ABS(CAST(block_time AS Int64) - CAST(timestamp AS Int64)) / 1000000), 'UInt64') AS seconds_from_block,
             amount,
             price
         FROM 
