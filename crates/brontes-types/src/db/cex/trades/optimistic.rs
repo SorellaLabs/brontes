@@ -155,6 +155,15 @@ impl<'a> SortedTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
+        let intermediary_pairs = self.calculate_intermediary_addresses(&pair);
+
+        println!(
+            "Intermediary pairs for {}-{} are {:#?}",
+            &dex_swap.token_in_symbol(),
+            &dex_swap.token_out_symbol(),
+            intermediary_pairs
+        );
+
         self.calculate_intermediary_addresses(&pair)
             .into_iter()
             .filter_map(|intermediary| {
@@ -198,8 +207,7 @@ impl<'a> SortedTrades<'a> {
                 );
 
                 let new_vol = volume * &first_leg.0.final_price;
-
-                let second_leg = self.get_optimistic_direct(
+                let second_leg = match self.get_optimistic_direct(
                     config,
                     block_timestamp,
                     pair1,
@@ -207,7 +215,13 @@ impl<'a> SortedTrades<'a> {
                     quality,
                     dex_swap,
                     tx_hash,
-                )?;
+                ) {
+                    Some(leg) => leg,
+                    None => {
+                        println!("No second leg price for this intermediary: {:?}-{}", intermediary, swap.token_out_symbol());
+                        return None;
+                    }
+                };
 
                 println!(
                     "Second price is {} for pair {}-{}",
