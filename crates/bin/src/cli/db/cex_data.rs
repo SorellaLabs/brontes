@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, result::Result::Ok};
 
 use ahash::HashSetExt;
 use alloy_primitives::Address;
@@ -18,6 +18,7 @@ use db_interfaces::{
         config::ClickhouseConfig,
         dbms::{ClickhouseDBMS, NullDBMS},
     },
+    errors::DatabaseError,
     Database,
 };
 use eyre::Ok;
@@ -118,26 +119,14 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
         // Query for the first intermediary pair
         let pair_info_1 = query_trading_pair_info(clickhouse, intermediary_pair_1).await?;
 
-        let stats_1 = query_trade_stats(
-            clickhouse,
-            &pair_info_1.trading_pair,
-            start_timestamp,
-            end_timestamp,
-        )
-        .await?;
-        print_trade_stats(&stats_1);
+        query_trade_stats(clickhouse, &pair_info_1.trading_pair, start_timestamp, end_timestamp)
+            .await;
 
         // Query for the second intermediary pair
         let pair_info_2 = query_trading_pair_info(clickhouse, intermediary_pair_2).await?;
 
-        let stats_2 = query_trade_stats(
-            clickhouse,
-            &pair_info_2.trading_pair,
-            start_timestamp,
-            end_timestamp,
-        )
-        .await?;
-        print_trade_stats(&stats_2);
+        query_trade_stats(clickhouse, &pair_info_2.trading_pair, start_timestamp, end_timestamp)
+            .await;
     }
     println!("-----------------------------------");
     Ok(())
@@ -150,10 +139,9 @@ async fn process_pair<D: ClickhouseDBMS>(
     end_timestamp: u64,
 ) -> Result<(), eyre::Report> {
     let pair_info = query_trading_pair_info(clickhouse, pair).await?;
-    let stats =
-        query_trade_stats(clickhouse, &pair_info.trading_pair, start_timestamp, end_timestamp)
-            .await?;
-    print_trade_stats(&stats);
+
+    query_trade_stats(clickhouse, &pair_info.trading_pair, start_timestamp, end_timestamp).await;
+
     Ok(())
 }
 
@@ -221,15 +209,20 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
     trading_pair: &str,
     start_timestamp: u64,
     end_timestamp: u64,
-) -> Result<TradeStats, eyre::Report> {
+) {
     print!("Querying trade stats for {}...", trading_pair);
     println!("between {} and {}", start_timestamp, end_timestamp);
 
-    let result: TradeStats = clickhouse
+    let result: Result<TradeStats, DatabaseError> = clickhouse
         .query_one(TRADE_STATS_QUERY, &(trading_pair, start_timestamp, end_timestamp))
-        .await?;
+        .await;
 
-    Ok(result)
+    match result {
+        Ok(stats) => print_trade_stats(&stats),
+        Err(e) => {
+            println!("No trades for {} stats: {:?}", trading_pair, e);
+        }
+    }
 }
 
 #[derive(Debug, Clone, Row, Deserialize, Serialize)]
