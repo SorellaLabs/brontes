@@ -87,6 +87,8 @@ impl CexDB {
         let intermediary_addresses =
             calculate_intermediary_addresses(cex_trades, &cex_config.exchanges_to_use, &pair);
 
+        println!("Found {} intermediary addresses", intermediary_addresses.len());
+
         process_intermediaries(
             &clickhouse,
             pair,
