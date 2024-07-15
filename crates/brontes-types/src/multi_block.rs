@@ -8,11 +8,12 @@ use crate::{
 pub struct MultiBlockData {
     pub per_block_data: Vec<BlockData>,
     pub cex_trades:     Arc<CexTradeMap>,
+    /// the amount of blocks in the multi block data.
     pub blocks:         usize,
 }
 
 #[derive(Debug, Clone)]
 pub struct BlockData {
-    pub metadata:   Arc<Metadata>,
-    pub tree: Arc<BlockTree<Action>>,
+    pub metadata: Arc<Metadata>,
+    pub tree:     Arc<BlockTree<Action>>,
 }
