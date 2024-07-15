@@ -17,7 +17,7 @@ use super::{
 };
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
-    db::cex::{CexExchange, CommodityClass},
+    db::cex::{CexExchange, SecuritiesClass},
     normalized_actions::NormalizedSwap,
     pair::Pair,
     FastHashMap, FastHashSet,
