@@ -13,14 +13,11 @@ use malachite::{
 use tracing::trace;
 
 use super::{
-    config::CexDexTradeConfig,
-    utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker},
-    CexTrades,
+    config::CexDexTradeConfig, utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker}, CexTrades
 };
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
-    db::cex::CexExchange,
-    display::utils::format_etherscan_url,
+    db::cex::{CexExchange, SecuritiesClass},
     normalized_actions::NormalizedSwap,
     pair::Pair,
     FastHashMap, FastHashSet,
@@ -311,11 +308,7 @@ impl<'a> TimeWindowTrades<'a> {
             let trades = walker.get_trades_for_window();
             for trade in trades {
                 let trade = trade.get();
-
-                // See explanation of trade representation in the book
-                let adjusted_trade = trade.adjust_for_direction(trade_data.direction);
-
-                let (m_fee, t_fee) = trade.exchange.fees();
+                let (m_fee, t_fee) = trade.exchange.fees(&pair, &SecuritiesClass::Spot);
                 let weight = calculate_weight(block_timestamp, trade.timestamp);
 
                 let (

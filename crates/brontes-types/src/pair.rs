@@ -52,6 +52,11 @@ impl Pair {
         self.0 == other.0 && self.1 == other.1
     }
 
+    pub fn eq_ordered(&self, other: &Self) -> bool {
+        (self.0 == other.0 && self.1 == other.1) ||
+        (self.0 == other.1 && self.1 == other.0)
+    }
+
     pub fn has_base_edge(&self, addr: Address) -> bool {
         self.0 == addr
     }
