@@ -95,6 +95,10 @@ use crate::jit::jit_liquidity::JitInspector;
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
+    /// default is 1
+    fn block_window(&self) -> u64 {
+        1
+    }
     /// Used for log span so we know which errors come from which inspector
     fn get_id(&self) -> &str;
     fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
