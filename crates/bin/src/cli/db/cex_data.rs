@@ -273,7 +273,7 @@ fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
         let table = if stat.period == "before" { &mut before_table } else { &mut after_table };
 
         table.add_row(Row::new(vec![
-            Cell::new(&format!("{}-{}", stat.seconds_from_block - 1, stat.seconds_from_block)),
+            Cell::new(&format!("{}-{}", stat.seconds_from_block, stat.seconds_from_block + 1)),
             Cell::new(&stat.exchange),
             Cell::new(&stat.trade_count.to_string()),
             Cell::new(&format!("{:.8}", stat.total_volume)),
