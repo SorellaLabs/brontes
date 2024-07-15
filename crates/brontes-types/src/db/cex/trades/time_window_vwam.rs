@@ -4,8 +4,8 @@ use std::{
     ops::Mul,
 };
 
+use ahash::HashSetExt;
 use alloy_primitives::{Address, FixedBytes};
-use itertools::Itertools;
 use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
@@ -87,18 +87,20 @@ impl Mul for WindowExchangePrice {
 
 // trades sorted by time-stamp with the index to block time-stamp closest to the
 // block_number
-pub struct TimeWindowTrades<'a>(
-    pub FastHashMap<&'a CexExchange, FastHashMap<&'a Pair, (usize, &'a Vec<CexTrades>)>>,
-);
+pub struct TimeWindowTrades<'a> {
+    pub trades: FastHashMap<&'a CexExchange, FastHashMap<&'a Pair, (usize, &'a Vec<CexTrades>)>>,
+    pub intermediaries: FastHashSet<Address>,
+}
 
 impl<'a> TimeWindowTrades<'a> {
-    //TODO: To optimize we could only calculate the partition point lazily
     pub(crate) fn new_from_cex_trade_map(
         trade_map: &'a mut FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
         block_timestamp: u64,
         exchanges: &'a [CexExchange],
         pair: Pair,
     ) -> Self {
+        let intermediaries = Self::calculate_intermediary_addresses(trade_map, exchanges, &pair);
+
         let map = trade_map
             .iter_mut()
             .filter_map(|(ex, pairs)| {
@@ -111,28 +113,27 @@ impl<'a> TimeWindowTrades<'a> {
                     pairs
                         .iter_mut()
                         .filter_map(|(ex_pair, trades)| {
-                            // Filter out pairs that couldn't be used as intermediaries
-                            if !(pair.0 == ex_pair.0
-                                || pair.0 == ex_pair.1
-                                || pair.1 == ex_pair.0
-                                || pair.1 == ex_pair.1)
+                            if (ex_pair == &pair || ex_pair == &pair.flip())
+                                || (ex_pair.0 == pair.0 && intermediaries.contains(&ex_pair.1))
+                                || (ex_pair.1 == pair.0 && intermediaries.contains(&ex_pair.0))
+                                || (ex_pair.0 == pair.1 && intermediaries.contains(&ex_pair.1))
+                                || (ex_pair.1 == pair.1 && intermediaries.contains(&ex_pair.0))
                             {
-                                return None
+                                // Sorts trades by timestamp & store the partition point
+                                trades.sort_unstable_by_key(|k| k.timestamp);
+                                let idx = trades
+                                    .partition_point(|trades| trades.timestamp < block_timestamp);
+                                Some((ex_pair, (idx, &*trades)))
+                            } else {
+                                None
                             }
-
-                            // Sorts trades by timestamp &
-                            trades.sort_unstable_by_key(|k| k.timestamp);
-
-                            let idx =
-                                trades.partition_point(|trades| trades.timestamp < block_timestamp);
-                            Some((ex_pair, (idx, &*trades)))
                         })
                         .collect(),
                 ))
             })
             .collect::<FastHashMap<&CexExchange, FastHashMap<&Pair, (usize, &Vec<CexTrades>)>>>();
 
-        Self(map)
+        Self { trades: map, intermediaries }
     }
 
     pub(crate) fn get_price(
@@ -181,29 +182,13 @@ impl<'a> TimeWindowTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
-        self.calculate_intermediary_addresses(exchanges, pair)
-            .into_iter()
+        self.intermediaries
+            .iter()
             .filter_map(|intermediary| {
                 trace!(target: "brontes_types::db::cex::time_window_vwam", ?intermediary, "trying intermediary");
 
-                let pair0 = Pair(pair.0, intermediary);
-                let pair1 = Pair(intermediary, pair.1);
-
-                let mut has_pair0 = false;
-                let mut has_pair1 = false;
-
-                for (_, trades) in self.0.iter().filter(|(ex, _)| exchanges.contains(ex)) {
-                    has_pair0 |= trades.contains_key(&pair0) || trades.contains_key(&pair0.flip());
-                    has_pair1 |= trades.contains_key(&pair1) || trades.contains_key(&pair1.flip());
-
-                    if has_pair1 && has_pair0 {
-                        break
-                    }
-                }
-
-                if !(has_pair0 && has_pair1) {
-                    return None
-                }
+                let pair0 = Pair(pair.0, *intermediary);
+                let pair1 = Pair(*intermediary, pair.1);
 
                 let mut bypass_intermediary_vol = false;
 
@@ -492,7 +477,7 @@ impl<'a> TimeWindowTrades<'a> {
         exchanges: &[CexExchange],
         pair: &Pair,
     ) -> (FastHashMap<CexExchange, (usize, usize)>, Vec<(CexExchange, &'a Vec<CexTrades>)>) {
-        self.0
+        self.trades
             .iter()
             .filter(|(e, _)| exchanges.contains(e))
             .filter_map(|(exchange, pairs)| Some((**exchange, pairs.get(pair)?)))
@@ -501,27 +486,50 @@ impl<'a> TimeWindowTrades<'a> {
     }
 
     fn calculate_intermediary_addresses(
-        &self,
+        trade_map: &FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
         exchanges: &[CexExchange],
         pair: &Pair,
     ) -> FastHashSet<Address> {
-        self.0
+        let (token_a, token_b) = (pair.0, pair.1);
+        let mut connected_to_a = FastHashSet::new();
+        let mut connected_to_b = FastHashSet::new();
+
+        trade_map
             .iter()
-            .filter(|(k, _)| exchanges.contains(k))
-            .flat_map(|(_, pairs)| {
-                pairs
-                    .keys()
-                    .filter_map(|trade_pair| {
-                        (trade_pair.0 == pair.0)
-                            .then_some(trade_pair.1)
-                            .or_else(|| (trade_pair.1 == pair.0).then_some(trade_pair.0))
-                            .or_else(|| (trade_pair.1 == pair.1).then_some(trade_pair.0))
-                            .or_else(|| (trade_pair.0 == pair.1).then_some(trade_pair.1))
-                    })
-                    .collect_vec()
-            })
-            .collect::<FastHashSet<_>>()
+            .filter(|(exchange, _)| exchanges.contains(exchange))
+            .flat_map(|(_, pairs)| pairs.keys())
+            .for_each(|trade_pair| {
+                if trade_pair.0 == token_a {
+                    connected_to_a.insert(trade_pair.1);
+                } else if trade_pair.1 == token_a {
+                    connected_to_a.insert(trade_pair.0);
+                }
+
+                if trade_pair.0 == token_b {
+                    connected_to_b.insert(trade_pair.1);
+                } else if trade_pair.1 == token_b {
+                    connected_to_b.insert(trade_pair.0);
+                }
+            });
+
+        connected_to_a
+            .intersection(&connected_to_b)
+            .cloned()
+            .collect()
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Buy,
+    Sell,
+}
+
+#[derive(Debug)]
+pub struct TradeData<'a> {
+    pub indices:   FastHashMap<CexExchange, (usize, usize)>,
+    pub trades:    Vec<(CexExchange, &'a Vec<CexTrades>)>,
+    pub direction: Direction,
 }
 
 /// Calculates the weight for a trade using a bi-exponential decay function
@@ -563,17 +571,4 @@ fn calculate_weight(block_time: u64, trade_time: u64) -> Rational {
         E.powf(POST_DECAY * (trade_time - block_time) as f64)
     })
     .unwrap()
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Direction {
-    Buy,
-    Sell,
-}
-
-#[derive(Debug)]
-pub struct TradeData<'a> {
-    pub indices:   FastHashMap<CexExchange, (usize, usize)>,
-    pub trades:    Vec<(CexExchange, &'a Vec<CexTrades>)>,
-    pub direction: Direction,
 }

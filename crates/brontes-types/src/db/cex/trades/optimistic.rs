@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Mul};
+use std::{f64::consts::E, fmt::Display, ops::Mul};
 
 use alloy_primitives::FixedBytes;
 use itertools::Itertools;
@@ -6,13 +6,14 @@ use malachite::{
     num::basic::traits::{One, Zero},
     Rational,
 };
-use crate::constants::{USDC_ADDRESS, USDT_ADDRESS};
+
 use super::config::CexDexTradeConfig;
 use crate::{
+    constants::{USDC_ADDRESS, USDT_ADDRESS},
     db::cex::{
         time_window_vwam::Direction,
         trades::SortedTrades,
-        utils::{log_missing_trade_data, TimeBasketQueue},
+        utils::{log_insufficient_trade_volume, log_missing_trade_data, TimeBasketQueue},
         CexExchange, CexTrades,
     },
     display::utils::format_etherscan_url,
@@ -30,7 +31,7 @@ const TIME_STEP: u64 = 100_000;
 
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
-const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(10, 100);
+const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(30, 100);
 
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
@@ -158,22 +159,12 @@ impl<'a> SortedTrades<'a> {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
-        let intermediary_pairs = self.calculate_intermediary_addresses(&pair);
-
-        println!(
-            "Intermediary pairs for {}-{} are {:#?}",
-            &dex_swap.token_in_symbol(),
-            &dex_swap.token_out_symbol(),
-            intermediary_pairs
-        );
-
         self.calculate_intermediary_addresses(&pair)
             .into_iter()
             .filter_map(|intermediary| {
                 let pair0 = Pair(pair.0, intermediary);
                 let pair1 = Pair(intermediary, pair.1);
 
-     
                 tracing::debug!(target: "brontes_types::db::cex::trades::optimistic", ?pair, ?intermediary, "trying via intermediary");
 
                 let mut bypass_intermediary_vol = false;
@@ -195,14 +186,6 @@ impl<'a> SortedTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
-
-                println!(
-                    "First leg price is {} for pair {}-{}",
-                    first_leg.0.final_price.clone().to_float(),
-                    dex_swap.token_out_symbol(),
-                    dex_swap.token_in_symbol()
-                );
-
                 let new_vol = volume * &first_leg.0.final_price;
 
                 bypass_intermediary_vol = false;
@@ -211,7 +194,7 @@ impl<'a> SortedTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                let second_leg = match self.get_optimistic_direct(
+                let second_leg = self.get_optimistic_direct(
                     config,
                     block_timestamp,
                     pair1,
@@ -220,31 +203,12 @@ impl<'a> SortedTrades<'a> {
                     quality,
                     dex_swap,
                     tx_hash,
-                ) {
-                    Some(leg) => leg,
-                    None => {
-                        println!("No second leg price for this intermediary: {:?}-{}", intermediary, dex_swap.token_out_symbol());
-                        return None;
-                    }
-                };
-
-                println!(
-                    "Second price is {} for pair {}-{}",
-                    second_leg.0.final_price.clone().to_float(),
-                    dex_swap.token_out_symbol(),
-                    dex_swap.token_in_symbol()
-                );
+                )?;
 
 
                 let maker = first_leg.0  * second_leg.0;
                 let taker = first_leg.1 * second_leg.1;
 
-                println!(
-                    "Price is {} for pair {}-{}",
-                    maker.final_price.clone().to_float(),
-                    dex_swap.token_out_symbol(),
-                    dex_swap.token_in_symbol()
-                );
 
                 Some((maker, taker))
             })
@@ -312,14 +276,18 @@ impl<'a> SortedTrades<'a> {
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
         let mut trade_volume = Rational::ZERO;
+        let mut trade_volume_weight = Rational::ZERO;
 
         let mut optimistic_trades = Vec::with_capacity(trades_used.len());
 
         for trade in trades_used {
+            let weight = calculate_weight(block_timestamp, trade.timestamp);
+
             let (m_fee, t_fee) = trade.exchange.fees();
 
-            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount;
-            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount;
+            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
+            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;
+            trade_volume_weight += &trade.amount * &weight;
             trade_volume += &trade.amount;
 
             optimistic_trades.push(OptimisticTrade {
@@ -331,20 +299,21 @@ impl<'a> SortedTrades<'a> {
             });
         }
 
-        if trade_volume == Rational::ZERO {
+        if &trade_volume < volume && !bypass_vol {
+            log_insufficient_trade_volume(pair, dex_swap, &tx_hash, trade_volume, volume.clone());
             return None
         }
 
         let maker = ExchangePrice {
             trades_used: optimistic_trades.clone(),
             pairs:       vec![pair],
-            final_price: vxp_maker / &trade_volume,
+            final_price: vxp_maker / &trade_volume_weight,
         };
 
         let taker = ExchangePrice {
             trades_used: optimistic_trades,
             pairs:       vec![pair],
-            final_price: vxp_taker / &trade_volume,
+            final_price: vxp_taker / &trade_volume_weight,
         };
 
         Some((maker, taker))
@@ -404,4 +373,48 @@ pub struct OptimisticTradeData {
     pub indices:   (usize, usize),
     pub trades:    Vec<CexTrades>,
     pub direction: Direction,
+}
+
+const PRE_DECAY: f64 = -0.0000003;
+const POST_DECAY: f64 = -0.00000012;
+
+/// Calculates the weight for a trade using a bi-exponential decay function
+/// based on its timestamp relative to a block time.
+///
+/// This function is designed to account for the risk associated with the timing
+/// of trades in relation to block times in the context of cex-dex
+/// arbitrage. This assumption underpins our pricing model: trades that
+/// occur further from the block time are presumed to carry higher uncertainty
+/// and an increased risk of adverse market conditions potentially impacting
+/// arbitrage outcomes. Accordingly, the decay rates (`PRE_DECAY` for pre-block
+/// and `POST_DECAY` for post-block) adjust the weight assigned to each trade
+/// based on its temporal proximity to the block time.
+///
+/// Trades after the block are assumed to be generally preferred by arbitrageurs
+/// as they have confirmation that their DEX swap is executed. However, this
+/// preference can vary for less competitive pairs where the opportunity and
+/// timing of execution might differ.
+///
+/// # Parameters
+/// - `block_time`: The timestamp of the block as seen first on the peer-to-peer
+///   network.
+/// - `trade_time`: The timestamp of the trade to be weighted.
+///
+/// # Returns
+/// Returns a `Rational` representing the calculated weight for the trade. The
+/// weight is determined by:
+/// - `exp(-PRE_DECAY * (block_time - trade_time))` for trades before the block
+///   time.
+/// - `exp(-POST_DECAY * (trade_time - block_time))` for trades after the block
+///   time.
+
+fn calculate_weight(block_time: u64, trade_time: u64) -> Rational {
+    let pre = trade_time < block_time;
+
+    Rational::try_from_float_simplest(if pre {
+        E.powf(PRE_DECAY * (block_time - trade_time) as f64)
+    } else {
+        E.powf(POST_DECAY * (trade_time - block_time) as f64)
+    })
+    .unwrap()
 }

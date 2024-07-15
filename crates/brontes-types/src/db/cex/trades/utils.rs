@@ -235,22 +235,25 @@ impl<'a> SortedTrades<'a> {
         Self(pair_trades)
     }
 
+    // Returns the intermediary addresses, assuming a single hop
     pub fn calculate_intermediary_addresses(&self, pair: &Pair) -> FastHashSet<Address> {
         let (token_a, token_b) = (pair.0, pair.1);
+        let mut connected_to_a = FastHashSet::new();
+        let mut connected_to_b = FastHashSet::new();
 
-        let connected_to_a: FastHashSet<_> = self
-            .0
-            .keys()
-            .filter(|trade_pair| trade_pair.0 == token_a || trade_pair.1 == token_a)
-            .map(|trade_pair| if trade_pair.0 == token_a { trade_pair.1 } else { trade_pair.0 })
-            .collect();
+        self.0.keys().for_each(|trade_pair| {
+            if trade_pair.0 == token_a {
+                connected_to_a.insert(trade_pair.1);
+            } else if trade_pair.1 == token_a {
+                connected_to_a.insert(trade_pair.0);
+            }
 
-        let connected_to_b: FastHashSet<_> = self
-            .0
-            .keys()
-            .filter(|trade_pair| trade_pair.0 == token_b || trade_pair.1 == token_b)
-            .map(|trade_pair| if trade_pair.0 == token_b { trade_pair.1 } else { trade_pair.0 })
-            .collect();
+            if trade_pair.0 == token_b {
+                connected_to_b.insert(trade_pair.1);
+            } else if trade_pair.1 == token_b {
+                connected_to_b.insert(trade_pair.0);
+            }
+        });
 
         connected_to_a
             .intersection(&connected_to_b)
