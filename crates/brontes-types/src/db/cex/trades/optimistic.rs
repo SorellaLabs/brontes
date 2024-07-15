@@ -302,6 +302,8 @@ impl<'a> SortedTrades<'a> {
         if &trade_volume < volume && !bypass_vol {
             log_insufficient_trade_volume(pair, dex_swap, &tx_hash, trade_volume, volume.clone());
             return None
+        } else if trade_volume == Rational::ZERO {
+            return None
         }
 
         let maker = ExchangePrice {
