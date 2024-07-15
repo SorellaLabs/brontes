@@ -166,14 +166,15 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
 ) -> Result<(), eyre::Report> {
     println!("Querying trade stats for {}", trading_pair);
 
-    let result: Vec<TradeStats> = clickhouse
+    let result: Result<Vec<TradeStats>, DatabaseError> = clickhouse
         .query_many(TRADE_STATS_QUERY, &(block_timestamp, tw_size, trading_pair))
-        .await?;
+        .await;
 
-    if result.is_empty() {
-        println!("No trades found for {}", trading_pair);
-    } else {
-        print_trade_stats(&result);
+    match result {
+        Ok(stats) => print_trade_stats(&stats),
+        Err(e) => {
+            println!("No trades for {} stats: {:?}", trading_pair, e);
+        }
     }
 
     Ok(())
@@ -349,21 +350,6 @@ s.pair AS trading_pair,
 FROM cex.trading_pairs AS s
 INNER JOIN all_symbols AS p1 ON p1.symbol = s.base_asset
 INNER JOIN all_symbols AS p2 ON p2.symbol = s.quote_asset";
-
-const TRADE_STATS_SINGLE_QUERY: &str = r#"
-SELECT 
-    symbol,
-    COUNT(*) AS trade_count,
-    SUM(amount) AS total_volume,
-    SUM(price * amount) / SUM(amount) AS average_price
-FROM 
-    cex.normalized_trades
-WHERE 
-    symbol = ?
-    AND timestamp BETWEEN ? AND ?
-GROUP BY 
-    symbol
-"#;
 
 const TRADE_STATS_QUERY: &str = r#"
 WITH 
