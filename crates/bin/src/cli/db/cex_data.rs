@@ -220,6 +220,9 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
     start_timestamp: u64,
     end_timestamp: u64,
 ) -> Result<TradeStats, eyre::Report> {
+    print!("Querying trade stats for {}...", trading_pair);
+    println!("between {} and {}", start_timestamp, end_timestamp);
+
     let result: TradeStats = clickhouse
         .query_one(TRADE_STATS_QUERY, &(trading_pair, start_timestamp, end_timestamp))
         .await?;
@@ -268,7 +271,7 @@ s.exchange AS exchange,
 s.pair AS trading_pair,
 (p1.symbol, toString(p1.address)) AS base_asset,
 (p2.symbol, toString(p2.address)) AS quote_asset
-FROM cex.trading_pairs s
+FROM cex.trading_pairs AS s
 INNER JOIN all_symbols AS p1 ON p1.symbol = s.base_asset
 INNER JOIN all_symbols AS p2 ON p2.symbol = s.quote_asset";
 
