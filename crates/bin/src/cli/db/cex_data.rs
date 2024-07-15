@@ -271,7 +271,11 @@ fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
         *volume_by_exchange.entry(stat.exchange.clone()).or_default() += stat.total_volume;
 
         let table = if stat.period == "before" { &mut before_table } else { &mut after_table };
-        let (start, end) = (stat.seconds_from_block - 1, stat.seconds_from_block);
+        let (start, end) = if stat.period == "before" {
+            (stat.seconds_from_block, stat.seconds_from_block - 1)
+        } else {
+            (stat.seconds_from_block - 1, stat.seconds_from_block)
+        };
 
         table.add_row(Row::new(vec![
             Cell::new(&format!("{}-{}", start, end)),
