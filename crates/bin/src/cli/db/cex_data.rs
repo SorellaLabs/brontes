@@ -64,17 +64,28 @@ impl CexDB {
 
         let block_timestamp = metadata.microseconds_block_timestamp();
 
+        let cex_trades = &metadata.cex_trades.as_ref().unwrap().lock().0;
+        let exchanges_to_use = &cex_config.exchanges_to_use;
+
+        let pair_exists = exchanges_to_use.iter().any(|exchange| {
+            cex_trades.get(exchange).map_or(false, |pairs| {
+                pairs.contains_key(&pair) || pairs.contains_key(&pair.flip())
+            })
+        });
+
+        if !pair_exists {
+            println!("No direct trading pair found for {:?}", pair);
+        }
+
         let intermediary_addresses = calculate_intermediary_addresses(
-            &metadata.cex_trades.unwrap().lock().0,
+            &metadata.cex_trades.as_ref().unwrap().lock().0,
             &cex_config.exchanges_to_use,
             &pair,
         );
 
         let start_timestamp = block_timestamp - cex_config.time_window.0 as u64 * 1000000;
-
         let end_timestamp = block_timestamp + cex_config.time_window.1 as u64 * 1000000;
 
-        process_pair(&clickhouse, pair, start_timestamp, end_timestamp).await?;
         process_intermediaries(
             &clickhouse,
             pair,
