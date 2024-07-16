@@ -43,7 +43,7 @@ impl<DB: LibmdbxReader> Inspector for JitCexDex<'_, DB> {
         self.jit.utils.quote
     }
 
-    fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
+    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
         let block = data.per_block_data.pop().expect("no blocks");
         let BlockData { metadata, tree } = block;
         self.jit
