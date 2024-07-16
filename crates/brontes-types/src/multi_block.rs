@@ -16,6 +16,7 @@ impl MultiBlockData {
             extra = 0
         }
         let extra = extra as usize;
+        tracing::error!(?extra, blocks=?self.blocks, ?size);
 
         let adjusted = self
             .per_block_data
