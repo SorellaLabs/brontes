@@ -486,7 +486,7 @@ impl ClickhouseHandle for Clickhouse {
                     .into_iter()
                     .flat_map(|v| {
                         (v - self.cex_download_config.block_window.0
-                            ..v + self.cex_download_config.block_window.1)
+                            ..=v + self.cex_download_config.block_window.1)
                             .collect_vec()
                     })
                     .unique()
