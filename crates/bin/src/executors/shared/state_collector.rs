@@ -16,6 +16,7 @@ use brontes_types::{
         metadata::Metadata,
         traits::{DBWriter, LibmdbxReader},
     },
+    multi_block,
     normalized_actions::Action,
     structured_trace::TxTrace,
     traits::TracingProvider,
@@ -51,6 +52,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         classifier: &'static Classifier<'static, T, DB>,
         parser: &'static Parser<T, DB>,
         db: &'static DB,
+        multi_block: MultiBlockWindow,
     ) -> Self {
         Self {
             mark_as_finished,
