@@ -14,7 +14,7 @@ use brontes_types::{
     db::{dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::Action,
     traits::TracingProvider,
-    BlockTree,
+    BlockData, BlockTree,
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 
@@ -32,10 +32,11 @@ pub struct MetadataFetcher<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse:            Option<&'static CH>,
     dex_pricer_stream:     WaitingForPricerFuture<T>,
     clickhouse_futures:    ClickhouseMetadataFuture,
-    result_buf:            VecDeque<(BlockTree<Action>, Metadata)>,
+    result_buf:            VecDeque<BlockData>,
     needs_more_data:       Arc<AtomicBool>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
+    cex_window_seconds:    usize,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> Drop for MetadataFetcher<T, CH> {
@@ -51,8 +52,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
+        cex_window_seconds: usize,
     ) -> Self {
         Self {
+            cex_window_seconds,
             clickhouse,
             dex_pricer_stream,
             needs_more_data,
@@ -98,10 +101,13 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
 
         // pull full meta from libmdbx
         if !generate_dex_pricing && self.clickhouse.is_none() {
-            let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {
-                tracing::error!(%err);
-                err
-            }) else {
+            let Ok(mut meta) = libmdbx
+                .get_metadata(block, self.cex_window_seconds)
+                .map_err(|err| {
+                    tracing::error!(%err);
+                    err
+                })
+            else {
                 tracing::error!(?block, "failed to load full metadata from libmdbx");
                 self.dex_pricer_stream.add_failed_tree(block);
                 return;
@@ -111,7 +117,8 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
                 .expect("failed to fetch builder info table in libmdbx");
 
             tracing::debug!(?block, "caching result buf");
-            self.result_buf.push_back((tree, meta));
+            self.result_buf
+                .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
         // pull metadata from clickhouse and generate dex_pricing
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");
@@ -128,10 +135,13 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
             self.clickhouse_futures.push_back(future);
         } else if self.force_no_dex_pricing {
             tracing::debug!(?block, "only cex dex. skipping dex pricing");
-            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
-                tracing::error!(%err);
-                err
-            }) else {
+            let Ok(mut meta) = libmdbx
+                .get_metadata_no_dex_price(block, self.cex_window_seconds)
+                .map_err(|err| {
+                    tracing::error!(%err);
+                    err
+                })
+            else {
                 self.dex_pricer_stream.add_failed_tree(block);
                 tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;
@@ -139,14 +149,19 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
             meta.builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
+
             let meta = meta.into_full_metadata(DexQuotes(vec![]));
-            self.result_buf.push_back((tree, meta));
+            self.result_buf
+                .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
         } else {
             // pull metadata from libmdbx and generate dex_pricing
-            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
-                tracing::error!(%err);
-                err
-            }) else {
+            let Ok(mut meta) = libmdbx
+                .get_metadata_no_dex_price(block, self.cex_window_seconds)
+                .map_err(|err| {
+                    tracing::error!(%err);
+                    err
+                })
+            else {
                 self.dex_pricer_stream.add_failed_tree(block);
                 tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;
@@ -164,7 +179,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataFetcher<T, CH> {
-    type Item = (BlockTree<Action>, Metadata);
+    type Item = BlockData;
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
@@ -187,7 +202,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataFetcher<T, CH>
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some(value)) => Poll::Ready(Some(value)),
+            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
+                metadata: Arc::new(metadata),
+                tree:     Arc::new(tree),
+            })),
             Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
             Poll::Pending => {
                 if let Some(f) = self.result_buf.pop_front() {

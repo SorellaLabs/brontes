@@ -9,12 +9,15 @@ use brontes_inspect::{
 use brontes_types::frontend_prunes::{
     remove_burn_transfers, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::normalized_actions::Action;
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::tree::BlockTree;
 use brontes_types::{
-    db::{block_analysis::BlockAnalysis, metadata::Metadata},
+    db::block_analysis::BlockAnalysis,
     execute_on,
     mev::{Bundle, MevBlock, MevType},
-    normalized_actions::Action,
-    tree::BlockTree,
+    BlockData, MultiBlockData,
 };
 use tracing::debug;
 
@@ -29,9 +32,10 @@ impl Processor for MevProcessor {
     async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &'static DB,
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
-        tree: BlockTree<Action>,
-        metadata: Metadata,
+        data: MultiBlockData,
     ) {
+        let last = data.get_most_recent_block().clone();
+        let BlockData { metadata, tree } = last;
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
@@ -40,20 +44,17 @@ impl Processor for MevProcessor {
         }
 
         #[cfg(feature = "local-clickhouse")]
-        insert_tree(db, tree.clone(), metadata.block_num).await;
+        {
+            let inner_tree = Arc::unwrap_or_clone(tree.clone());
+            insert_tree(db, inner_tree, metadata.block_num).await;
+        }
 
         if tree.tx_roots.is_empty() {
             return
         }
 
-        let tree = Arc::new(tree);
-        let metadata = Arc::new(metadata);
-
         let ComposerResults { block_details, mev_details, block_analysis, .. } =
-            execute_on!(async_inspect, {
-                run_block_inspection(inspectors, tree.clone(), metadata.clone(), db)
-            })
-            .await;
+            execute_on!(async_inspect, { run_block_inspection(inspectors, data, db) }).await;
 
         insert_mev_results(db, block_details, mev_details, block_analysis).await;
     }

@@ -2,9 +2,12 @@ use std::sync::Arc;
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
-use brontes_types::db::{
-    cex::{config::CexDexTradeConfig, CexExchange},
-    metadata::Metadata,
+use brontes_types::{
+    db::{
+        cex::{config::CexDexTradeConfig, CexExchange},
+        metadata::Metadata,
+    },
+    BlockData, MultiBlockData,
 };
 use criterion::{black_box, Criterion};
 
@@ -66,11 +69,14 @@ impl InspectorBenchUtils {
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+
+        let data = BlockData { metadata, tree };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
                     for inspector in &inspectors {
-                        black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
+                        black_box(inspector.inspect_block(multi.clone()));
                     }
                 }
             });
@@ -133,10 +139,13 @@ impl InspectorBenchUtils {
         metadata.dex_quotes = Some(prices);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+
+        let data = BlockData { metadata, tree };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
+                    black_box(inspector.inspect_block(multi.clone()));
                 }
             });
         });
@@ -189,10 +198,13 @@ impl InspectorBenchUtils {
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+        let data = BlockData { metadata, tree };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
+
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
+                    black_box(inspector.inspect_block(multi.clone()));
                 }
             });
         });
@@ -230,10 +242,13 @@ impl InspectorBenchUtils {
         let tree = trees.remove(0);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+        let data = BlockData { metadata, tree };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
+
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(inspector.inspect_block(tree.clone(), metadata.clone()));
+                    black_box(inspector.inspect_block(multi.clone()));
                 }
             });
         });
@@ -285,16 +300,14 @@ impl InspectorBenchUtils {
         metadata.dex_quotes = Some(prices);
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+        let data = BlockData { metadata, tree };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
+
         let db = self.classifier_inspector.trace_loader.libmdbx;
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(run_block_inspection(
-                        inspectors.as_slice(),
-                        tree.clone(),
-                        metadata.clone(),
-                        db,
-                    ));
+                    black_box(run_block_inspection(inspectors.as_slice(), multi.clone(), db));
                 }
             });
         });
@@ -339,16 +352,13 @@ impl InspectorBenchUtils {
         metadata.dex_quotes = prices;
 
         let (tree, metadata) = (Arc::new(tree), Arc::new(metadata));
+        let data = BlockData { metadata, tree };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
         let db = self.classifier_inspector.trace_loader.libmdbx;
         c.bench_function(bench_name, move |b| {
             b.iter(|| {
                 for _ in 0..=iters {
-                    black_box(run_block_inspection(
-                        inspectors.as_slice(),
-                        tree.clone(),
-                        metadata.clone(),
-                        db,
-                    ));
+                    black_box(run_block_inspection(inspectors.as_slice(), multi.clone(), db));
                 }
             });
         });

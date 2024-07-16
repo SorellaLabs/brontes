@@ -33,7 +33,7 @@ use alloy_primitives::Address;
 use brontes_types::{
     db::{block_analysis::BlockAnalysis, traits::LibmdbxReader},
     mev::Mev,
-    FastHashMap,
+    BlockData, FastHashMap, MultiBlockData,
 };
 use itertools::Itertools;
 use tracing::{span, Level};
@@ -69,16 +69,17 @@ pub struct ComposerResults {
 
 pub fn run_block_inspection<DB: LibmdbxReader>(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
-    tree: Arc<BlockTree<Action>>,
-    metadata: Arc<Metadata>,
+    data: MultiBlockData,
     db: &'static DB,
 ) -> ComposerResults {
-    let (possible_mev_txes, classified_mev) =
-        run_inspectors(orchestra, tree.clone(), metadata.clone());
+    let (possible_mev_txes, classified_mev) = run_inspectors(orchestra, data.clone());
 
     let possible_arbs = possible_mev_txes.clone();
 
     let quote_token = orchestra[0].get_quote_token();
+
+    let this_data = data.get_most_recent_block().clone();
+    let BlockData { metadata, tree } = this_data;
 
     let (block_details, mev_details) =
         on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token, db);
@@ -89,18 +90,26 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
 
 fn run_inspectors(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
-    tree: Arc<BlockTree<Action>>,
-    metadata: Arc<Metadata>,
+    data: MultiBlockData,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
+    let this_data = data.get_most_recent_block().clone();
+    let BlockData { metadata, tree } = this_data;
     let mut possible_mev_txes =
         DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree.clone());
 
     let results = orchestra
         .par_iter()
         .flat_map(|inspector| {
+            let window = inspector.block_window();
+            // not sufficient size yet
+            if data.blocks < window {
+                return vec![]
+            };
+            let data = data.split_to_size(window);
             let span =
                 span!(Level::ERROR, "Inspector", inspector = %inspector.get_id(),block=&metadata.block_num);
-            span.in_scope(|| inspector.inspect_block(tree.clone(), metadata.clone()))
+
+            span.in_scope(|| inspector.inspect_block(data))
         })
         .collect::<Vec<_>>();
 

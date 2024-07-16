@@ -12,21 +12,18 @@ use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::{
-    db::{
-        metadata::Metadata,
-        traits::{DBWriter, LibmdbxReader},
-    },
+    db::traits::{DBWriter, LibmdbxReader},
     normalized_actions::Action,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree,
+    BlockTree, MultiBlockData,
 };
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tracing::{span, trace, Instrument, Level};
 
-use super::metadata::MetadataFetcher;
+use super::{metadata::MetadataFetcher, multi_block_window::MultiBlockWindow};
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Action>>> + Send + 'a>>;
 type ExecutionFut<'a> = Pin<Box<dyn Future<Output = Option<(Vec<TxTrace>, Header)>> + Send + 'a>>;
@@ -39,6 +36,7 @@ pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: 
     db:               &'static DB,
 
     collection_future: Option<CollectionFut<'static>>,
+    multi_block:       MultiBlockWindow,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
@@ -50,8 +48,17 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         classifier: &'static Classifier<'static, T, DB>,
         parser: &'static Parser<T, DB>,
         db: &'static DB,
+        multi_block: MultiBlockWindow,
     ) -> Self {
-        Self { mark_as_finished, metadata_fetcher, classifier, parser, db, collection_future: None }
+        Self {
+            mark_as_finished,
+            metadata_fetcher,
+            classifier,
+            parser,
+            db,
+            collection_future: None,
+            multi_block,
+        }
     }
 
     pub fn get_shutdown(&self) -> Arc<AtomicBool> {
@@ -122,7 +129,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Stream
     for StateCollector<T, DB, CH>
 {
-    type Item = (BlockTree<Action>, Metadata);
+    type Item = MultiBlockData;
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
@@ -152,6 +159,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             return Poll::Ready(None)
         }
 
-        self.metadata_fetcher.poll_next_unpin(cx)
+        self.metadata_fetcher
+            .poll_next_unpin(cx)
+            .map(|inner| inner.map(|data| self.multi_block.new_block_data(data)))
     }
 }

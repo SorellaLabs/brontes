@@ -29,24 +29,24 @@ pub struct Init {
     pub tables_to_init:         Option<Vec<Tables>>,
     #[cfg(feature = "cex-dex-quotes")]
     /// The sliding time window (BEFORE) for cex prices relative to the block
-    /// timestamp
-    #[arg(long = "price-tw-before", default_value = "0.5")]
-    pub cex_time_window_before: f64,
+    /// number
+    #[arg(long = "price-tw-before", default_value_t = 3)]
+    pub cex_time_window_before: u64,
     #[cfg(feature = "cex-dex-quotes")]
     /// The sliding time window (AFTER) for cex prices relative to the block
-    /// timestamp
-    #[arg(long = "price-tw-after", default_value = "1.0")]
-    pub cex_time_window_after:  f64,
+    /// number
+    #[arg(long = "price-tw-after", default_value_t = 3)]
+    pub cex_time_window_after:  u64,
     #[cfg(not(feature = "cex-dex-quotes"))]
     /// The sliding time window (BEFORE) for cex trades relative to the block
-    /// timestamp
-    #[arg(long = "trades-tw-before", default_value = "0.5")]
-    pub cex_time_window_before: f64,
+    /// number
+    #[arg(long = "trades-tw-before", default_value_t = 3)]
+    pub cex_time_window_before: u64,
     #[cfg(not(feature = "cex-dex-quotes"))]
     /// The sliding time window (AFTER) for cex trades relative to the block
-    /// timestamp
-    #[arg(long = "trades-tw-after", default_value = "2.0")]
-    pub cex_time_window_after:  f64,
+    /// number
+    #[arg(long = "trades-tw-after", default_value_t = 3)]
+    pub cex_time_window_after:  u64,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(
         long,

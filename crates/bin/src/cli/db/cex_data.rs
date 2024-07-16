@@ -60,7 +60,7 @@ impl CexDB {
 
         let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint)?);
 
-        let metadata = libmdbx.get_metadata(self.block_number)?;
+        let metadata = libmdbx.get_metadata(self.block_number, 12)?;
 
         let clickhouse: ClickhouseClient<NullDBMS> = get_clickhouse_env();
 
@@ -97,7 +97,7 @@ impl CexDB {
             pair,
             intermediary_addresses,
             block_timestamp,
-            (10.0 as f64 * self.w_multiplier) as u64,
+            (10.0_f64 * self.w_multiplier) as u64,
         )
         .await?;
 
@@ -244,7 +244,7 @@ struct TradeStats {
 }
 fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
     if stats.is_empty() {
-        return;
+        return
     }
 
     let symbol = &stats[0].symbol;

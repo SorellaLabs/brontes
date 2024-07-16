@@ -11,7 +11,7 @@ use brontes_database::{
 };
 use brontes_inspect::Inspector;
 use brontes_metrics::range::GlobalRangeMetrics;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
+use brontes_types::MultiBlockData;
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::debug;
@@ -89,7 +89,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         drop(graceful_guard);
     }
 
-    fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
+    fn on_price_finish(&mut self, data: MultiBlockData) {
         debug!(target:"brontes","Completed DEX pricing");
         self.global_metrics
             .as_ref()
@@ -101,12 +101,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
         self.insert_futures.push(Box::pin(async move {
             if let Some(metrics) = metrics {
                 metrics
-                    .meter_processing(|| {
-                        Box::pin(P::process_results(libmdbx, inspectors, tree, meta))
-                    })
+                    .meter_processing(|| Box::pin(P::process_results(libmdbx, inspectors, data)))
                     .await
             } else {
-                P::process_results(libmdbx, inspectors, tree, meta).await
+                P::process_results(libmdbx, inspectors, data).await
             }
         }));
     }
@@ -138,11 +136,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
 
         while let Poll::Ready(result) = self.collector.poll_next_unpin(cx) {
             match result {
-                Some((tree, meta)) => {
+                Some(data) => {
                     self.global_metrics
                         .as_ref()
                         .inspect(|m| m.remove_pending_tree(self.id));
-                    self.on_price_finish(tree, meta);
+                    self.on_price_finish(data);
                 }
                 None if self.insert_futures.is_empty() && self.current_block == self.end_block => {
                     return Poll::Ready(())

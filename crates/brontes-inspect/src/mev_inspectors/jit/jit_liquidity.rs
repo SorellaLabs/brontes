@@ -10,7 +10,8 @@ use brontes_types::{
     normalized_actions::{
         accounting::ActionAccounting, NormalizedBurn, NormalizedCollect, NormalizedMint,
     },
-    ActionIter, FastHashMap, FastHashSet, GasDetails, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, BlockData, FastHashMap, FastHashSet, GasDetails, MultiBlockData, ToFloatNearest,
+    TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -43,7 +44,10 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
+        let block = data.per_block_data.pop().expect("no blocks");
+        let BlockData { metadata, tree } = block;
+
         self.utils
             .get_metrics()
             .map(|m| {

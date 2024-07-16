@@ -6,6 +6,7 @@ pub enum CexTableFlag {
     None,
 }
 
+// all of this info is in timestamps
 #[derive(Debug, Clone, Copy)]
 pub enum CexRangeOrArbitrary {
     Range(u64, u64),

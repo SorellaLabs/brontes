@@ -11,7 +11,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_types::{db::metadata::Metadata, normalized_actions::Action, tree::BlockTree};
+use brontes_types::MultiBlockData;
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tokio::time::{interval, Interval};
@@ -114,13 +114,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         }
     }
 
-    fn on_price_finish(&mut self, tree: BlockTree<Action>, meta: Metadata) {
+    fn on_price_finish(&mut self, data: MultiBlockData) {
         debug!(target:"brontes::tip_inspector","Completed DEX pricing");
         self.processing_futures.push(Box::pin(P::process_results(
             self.database,
             self.inspectors,
-            tree,
-            meta,
+            data,
         )));
     }
 }
@@ -144,7 +143,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
         if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
             match item {
-                Some((tree, meta)) => self.on_price_finish(tree, meta),
+                Some(data) => self.on_price_finish(data),
                 None if self.processing_futures.is_empty() => return Poll::Ready(()),
                 _ => {}
             }

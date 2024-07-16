@@ -15,8 +15,8 @@ use brontes_types::{
     },
     pair::Pair,
     tree::{collect_address_set_for_accounting, BlockTree, GasDetails},
-    ActionIter, FastHashMap, FastHashSet, IntoZipTree, ToFloatNearest, TreeBase, TreeCollector,
-    TreeIter, TreeSearchBuilder, TxInfo, UnzipPadded,
+    ActionIter, BlockData, FastHashMap, FastHashSet, IntoZipTree, MultiBlockData, ToFloatNearest,
+    TreeBase, TreeCollector, TreeIter, TreeSearchBuilder, TxInfo, UnzipPadded,
 };
 use itertools::Itertools;
 use malachite::{
@@ -61,7 +61,10 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result {
+    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
+        let block = data.per_block_data.pop().expect("no blocks");
+        let BlockData { metadata, tree } = block;
+
         self.utils
             .get_metrics()
             .map(|m| {

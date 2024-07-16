@@ -11,8 +11,8 @@ use brontes_types::{
         NormalizedTransfer,
     },
     pair::Pair,
-    tree::BlockTree,
-    FastHashSet, IntoZip, ToFloatNearest, TreeBase, TreeCollector, TreeSearchBuilder, TxInfo,
+    BlockData, FastHashSet, IntoZip, MultiBlockData, ToFloatNearest, TreeBase, TreeCollector,
+    TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{
@@ -49,11 +49,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(
-        &self,
-        tree: Arc<BlockTree<Action>>,
-        meta_data: Arc<Metadata>,
-    ) -> Self::Result {
+    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
+        let block = data.per_block_data.pop().expect("no blocks");
+        let BlockData { metadata, tree } = block;
+
         let execution = || {
             tree.clone()
                 .collect_all(TreeSearchBuilder::default().with_actions([
@@ -80,7 +79,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
 
                     self.process_swaps(
                         info,
-                        meta_data.clone(),
+                        metadata.clone(),
                         actions
                             .into_iter()
                             .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((

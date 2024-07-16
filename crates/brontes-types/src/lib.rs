@@ -6,7 +6,8 @@
 #![feature(const_mut_refs)]
 #![allow(internal_features)]
 #![allow(clippy::type_complexity)]
-
+pub mod multi_block;
+pub use multi_block::*;
 pub mod buf_writer;
 pub mod db_write_trigger;
 pub mod test_limiter;

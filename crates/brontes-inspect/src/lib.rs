@@ -67,8 +67,6 @@ pub use mev_inspectors::*;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
-use std::sync::Arc;
-
 use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
 use brontes_types::{
@@ -80,6 +78,7 @@ use brontes_types::{
     mev::{Bundle, BundleData},
     normalized_actions::Action,
     tree::BlockTree,
+    MultiBlockData,
 };
 #[cfg(not(feature = "cex-dex-quotes"))]
 use cex_dex::CexDexMarkoutInspector;
@@ -95,9 +94,13 @@ use crate::jit::jit_liquidity::JitInspector;
 pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
+    /// default is 1
+    fn block_window(&self) -> usize {
+        1
+    }
     /// Used for log span so we know which errors come from which inspector
     fn get_id(&self) -> &str;
-    fn inspect_block(&self, tree: Arc<BlockTree<Action>>, metadata: Arc<Metadata>) -> Self::Result;
+    fn inspect_block(&self, data: MultiBlockData) -> Self::Result;
     fn get_quote_token(&self) -> Address;
 }
 

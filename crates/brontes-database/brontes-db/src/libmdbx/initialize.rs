@@ -151,7 +151,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     pub(crate) async fn initialize_table_from_clickhouse<T, D>(
         &self,
-        block_range: Option<(u64, u64)>,
+        range: Option<(u64, u64)>,
         clear_table: bool,
         mark_init: Option<u8>,
         cex_table_flag: bool,
@@ -174,7 +174,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             self.libmdbx.db.clear_table::<T>()?;
         }
 
-        let block_range_chunks = if let Some((s, e)) = block_range {
+        let range_chunks = if let Some((s, e)) = range {
             (s..=e).chunks(T::INIT_CHUNK_SIZE.unwrap_or((e - s + 1) as usize))
         } else {
             #[cfg(feature = "local-reth")]
@@ -187,7 +187,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             )
         };
 
-        let pair_ranges = block_range_chunks
+        let pair_ranges = range_chunks
             .into_iter()
             .map(|chk| chk.into_iter().collect_vec())
             .filter_map(

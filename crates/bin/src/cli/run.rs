@@ -153,12 +153,7 @@ impl RunArgs {
 
         let cex_download_config = CexDownloadConfig::new(
             // we want to load the biggest window so both can run and not run out of trades.
-            (
-                self.time_window_before
-                    .max(self.time_window_before_optimistic),
-                self.time_window_after
-                    .max(self.time_window_after_optimistic),
-            ),
+            (5, 5),
             self.cex_exchanges.clone(),
         );
         let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
@@ -221,6 +216,8 @@ impl RunArgs {
                     self.init_crit_tables,
                     self.with_metrics,
                     snapshot_mode,
+                    // todo wire
+                    20,
                 )
                 .build(task_executor, shutdown)
                 .await
