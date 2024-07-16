@@ -61,7 +61,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             parser,
             db,
             collection_future: None,
-            multi_block: MultiBlockWindow::new(0),
+            multi_block,
         }
     }
 

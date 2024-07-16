@@ -63,6 +63,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub init_crit_tables: bool,
     pub metrics: bool,
     pub is_snapshot: bool,
+    pub cex_window: usize,
     _p: PhantomData<P>,
 }
 
@@ -88,6 +89,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         init_crit_tables: bool,
         metrics: bool,
         is_snapshot: bool,
+        cex_window: usize,
     ) -> Self {
         Self {
             clickhouse,
@@ -107,6 +109,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             metrics,
             tip_db,
             is_snapshot,
+            cex_window,
             _p: PhantomData,
         }
     }
@@ -287,12 +290,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             self.force_dex_pricing,
             self.force_no_dex_pricing,
             data_req,
+            self.cex_window,
         );
 
         let block_window_size = self
             .inspectors
             .iter()
-            .max_by(|i| i.block_window())
+            .max_by_key(|i| i.block_window())
+            .map(|v| v.block_window())
             .expect("no inspectors loaded");
 
         let window = MultiBlockWindow::new(block_window_size);

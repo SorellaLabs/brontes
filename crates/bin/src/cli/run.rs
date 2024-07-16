@@ -216,6 +216,8 @@ impl RunArgs {
                     self.init_crit_tables,
                     self.with_metrics,
                     snapshot_mode,
+                    // todo wire
+                    20,
                 )
                 .build(task_executor, shutdown)
                 .await

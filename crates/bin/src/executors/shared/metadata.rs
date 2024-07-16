@@ -117,7 +117,8 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
                 .expect("failed to fetch builder info table in libmdbx");
 
             tracing::debug!(?block, "caching result buf");
-            self.result_buf.push_back(BlockData { metadata: meta.into(), tree: tree.into() });
+            self.result_buf
+                .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
         // pull metadata from clickhouse and generate dex_pricing
         } else if let Some(clickhouse) = self.clickhouse {
             tracing::debug!(?block, "spawning clickhouse fut");

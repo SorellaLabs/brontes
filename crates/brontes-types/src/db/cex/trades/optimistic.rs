@@ -330,10 +330,7 @@ impl<'a> SortedTrades<'a> {
         if let Some((indices, trades)) = self.0.get(&pair) {
             let adjusted_trades = trades
                 .iter()
-                .map(|trade| {
-                    
-                    trade.adjust_for_direction(Direction::Sell)
-                })
+                .map(|trade| trade.adjust_for_direction(Direction::Sell))
                 .collect_vec();
 
             Some(OptimisticTradeData {
@@ -347,10 +344,7 @@ impl<'a> SortedTrades<'a> {
             if let Some((indices, trades)) = self.0.get(&flipped_pair) {
                 let adjusted_trades = trades
                     .iter()
-                    .map(|trade| {
-                        
-                        trade.adjust_for_direction(Direction::Buy)
-                    })
+                    .map(|trade| trade.adjust_for_direction(Direction::Buy))
                     .collect_vec();
 
                 Some(OptimisticTradeData {
