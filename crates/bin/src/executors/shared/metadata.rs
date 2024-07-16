@@ -14,7 +14,7 @@ use brontes_types::{
     db::{dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::Action,
     traits::TracingProvider,
-    BlockTree,
+    BlockData, BlockTree,
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 
@@ -32,10 +32,11 @@ pub struct MetadataFetcher<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse:            Option<&'static CH>,
     dex_pricer_stream:     WaitingForPricerFuture<T>,
     clickhouse_futures:    ClickhouseMetadataFuture,
-    result_buf:            VecDeque<(BlockTree<Action>, Metadata, Vec<CexTradeMap>)>,
+    result_buf:            VecDeque<BlockData>,
     needs_more_data:       Arc<AtomicBool>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
+    cex_window_seconds:    usize,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> Drop for MetadataFetcher<T, CH> {
@@ -51,8 +52,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
+        cex_window_seconds: usize,
     ) -> Self {
         Self {
+            cex_window_seconds,
             clickhouse,
             dex_pricer_stream,
             needs_more_data,
@@ -166,7 +169,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataFetcher<T, CH> {
-    type Item = (BlockTree<Action>, Metadata, Vec<CexTradeMap>);
+    type Item = BlockData;
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
@@ -189,7 +192,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataFetcher<T, CH>
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some(value)) => Poll::Ready(Some(value)),
+            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
+                metadata: Arc::new(metadata),
+                tree:     Arc::new(tree),
+            })),
             Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
             Poll::Pending => {
                 if let Some(f) = self.result_buf.pop_front() {

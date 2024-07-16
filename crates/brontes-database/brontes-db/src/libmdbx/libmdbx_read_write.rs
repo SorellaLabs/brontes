@@ -17,7 +17,7 @@ use brontes_types::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{CexPriceMap, FeeAdjustedQuote},
+        cex::{CexExchange, CexPriceMap, FeeAdjustedQuote},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
@@ -425,13 +425,20 @@ impl LibmdbxReader for LibmdbxReadWriter {
         })
     }
 
-    #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata_no_dex_price")]
-    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
+    #[brontes_macros::metrics_call(ptr=metrics, scope, db_read,"metadata_no_dex_price")]
+    fn get_metadata_no_dex_price(
+        &self,
+        block_num: u64,
+        cex_window: usize,
+    ) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
+
         #[cfg(not(feature = "cex-dex-quotes"))]
-        let trades = self.fetch_trades(block_num).ok();
+        let trades = self
+            .fetch_trades(block_meta.block_timestamp, cex_window)
+            .ok();
 
         Ok(BlockMetadata::new(
             block_num,
@@ -456,14 +463,16 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
-    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+    fn get_metadata(&self, block_num: u64, cex_window: usize) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
 
         #[cfg(not(feature = "cex-dex-quotes"))]
-        let trades = self.fetch_trades(block_num).ok();
+        let trades = self
+            .fetch_trades(block_meta.block_timestamp, cex_window)
+            .ok();
 
         Ok({
             BlockMetadata::new(
@@ -1158,10 +1167,44 @@ impl LibmdbxReadWriter {
     }
 
     #[cfg(not(feature = "cex-dex-quotes"))]
-    pub fn fetch_trades(&self, block_num: u64) -> eyre::Result<CexTradeMap> {
+    pub fn fetch_trades(
+        &self,
+        timestamp_sec: u64,
+        cex_window_sec: usize,
+    ) -> eyre::Result<CexTradeMap> {
+        let window = cex_window_sec as u64;
         self.db.view_db(|tx| {
-            tx.get::<CexTrades>(block_num)?
-                .ok_or_else(|| eyre!("Failed to fetch cex trades's for block {}", block_num))
+            let folded = tx
+                .cursor_read::<CexTrades>()?
+                .walk_range(timestamp_sec - window..timestamp_sec + window)?
+                .filter_map(|v| {
+                    if let Err(e) = v {
+                        tracing::error!(error=%e, "error while fetching cex trades from libmdbx");
+                        return None
+                    }
+
+                    v.ok()
+                })
+                .fold(
+                    FastHashMap::<
+                        CexExchange,
+                        FastHashMap<Pair, Vec<brontes_types::db::cex::CexTrades>>,
+                    >::default(),
+                    |mut acc, trades| {
+                        for (ex, trade) in trades.1 .0 {
+                            for (pair, trades) in trade {
+                                acc.entry(ex)
+                                    .or_default()
+                                    .entry(pair)
+                                    .or_default()
+                                    .extend(trades);
+                            }
+                        }
+                        acc
+                    },
+                );
+
+            Ok(CexTradeMap(folded))
         })
     }
 

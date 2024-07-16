@@ -24,7 +24,7 @@ pub struct WaitingForPricerFuture<T: TracingProvider> {
     receiver: PricingReceiver<T>,
     tx:       PricingSender<T>,
 
-    pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Action>, Metadata, Vec<CexTradeMap>)>,
+    pub(crate) pending_trees: FastHashMap<u64, (BlockTree<Action>, Metadata)>,
     // if metadata fetching fails, we store the block for it here so that we know to not spam load
     // trees and cause memory overflows
     pub tmp_trees:            FastHashSet<u64>,
@@ -84,24 +84,16 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         self.tmp_trees.insert(block);
     }
 
-    pub fn add_pending_inspection(
-        &mut self,
-        block: u64,
-        tree: BlockTree<Action>,
-        meta: Metadata,
-        trades: Vec<CexTradeMap>,
-    ) {
+    pub fn add_pending_inspection(&mut self, block: u64, tree: BlockTree<Action>, meta: Metadata) {
         assert!(
-            self.pending_trees
-                .insert(block, (tree, meta, trades))
-                .is_none(),
+            self.pending_trees.insert(block, (tree, meta)).is_none(),
             "traced a duplicate block"
         );
     }
 }
 
 impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
-    type Item = (BlockTree<Action>, Metadata, Vec<CexTradeMap>);
+    type Item = (BlockTree<Action>, Metadata);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {

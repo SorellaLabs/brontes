@@ -709,6 +709,7 @@ compressed_table!(
 compressed_table!(
     Table CexTrades {
         Data {
+        // timestamp in seconds
         key: u64,
         value: CexTradeMap,
         compressed_value: CexTradeMapRedefined
