@@ -80,7 +80,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
     }
 
     fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
-        let block = data.per_block_data.pop().expect("no blocks");
+        let block = data.get_most_recent_block();
         let BlockData { metadata, tree } = block;
 
         if metadata.cex_trades.is_none() {

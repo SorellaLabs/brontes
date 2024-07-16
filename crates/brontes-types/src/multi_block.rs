@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{isize, sync::Arc};
 
 use crate::{db::metadata::Metadata, normalized_actions::Action, BlockTree};
 
@@ -11,7 +11,12 @@ pub struct MultiBlockData {
 
 impl MultiBlockData {
     pub fn split_to_size(&self, size: usize) -> MultiBlockData {
-        let extra = self.blocks - (self.blocks - size);
+        let mut extra = (self.blocks as isize) - (self.blocks as isize - (size + 1) as isize);
+        if extra < 0 {
+            extra = 0
+        }
+        let extra = extra as usize;
+
         let adjusted = self
             .per_block_data
             .clone()
