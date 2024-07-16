@@ -95,17 +95,19 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
-        cex_window: usize,
     ) {
         let block = tree.header.number;
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
         // pull full meta from libmdbx
         if !generate_dex_pricing && self.clickhouse.is_none() {
-            let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {
-                tracing::error!(%err);
-                err
-            }) else {
+            let Ok(mut meta) = libmdbx
+                .get_metadata(block, self.cex_window_seconds)
+                .map_err(|err| {
+                    tracing::error!(%err);
+                    err
+                })
+            else {
                 tracing::error!(?block, "failed to load full metadata from libmdbx");
                 self.dex_pricer_stream.add_failed_tree(block);
                 return;
@@ -132,10 +134,13 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
             self.clickhouse_futures.push_back(future);
         } else if self.force_no_dex_pricing {
             tracing::debug!(?block, "only cex dex. skipping dex pricing");
-            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
-                tracing::error!(%err);
-                err
-            }) else {
+            let Ok(mut meta) = libmdbx
+                .get_metadata_no_dex_price(block, self.cex_window_seconds)
+                .map_err(|err| {
+                    tracing::error!(%err);
+                    err
+                })
+            else {
                 self.dex_pricer_stream.add_failed_tree(block);
                 tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;
@@ -148,10 +153,13 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
             self.result_buf.push_back((tree, meta));
         } else {
             // pull metadata from libmdbx and generate dex_pricing
-            let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
-                tracing::error!(%err);
-                err
-            }) else {
+            let Ok(mut meta) = libmdbx
+                .get_metadata_no_dex_price(block, self.cex_window_seconds)
+                .map_err(|err| {
+                    tracing::error!(%err);
+                    err
+                })
+            else {
                 self.dex_pricer_stream.add_failed_tree(block);
                 tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
                 return;

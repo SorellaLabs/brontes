@@ -61,7 +61,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             parser,
             db,
             collection_future: None,
-            multi_block: MultiBlockWindow::new(0, 0),
+            multi_block: MultiBlockWindow::new(0),
         }
     }
 
@@ -163,6 +163,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             return Poll::Ready(None)
         }
 
-        self.metadata_fetcher.poll_next_unpin(cx)
+        self.metadata_fetcher.poll_next_unpin(cx).map(|inner| {})
     }
 }
