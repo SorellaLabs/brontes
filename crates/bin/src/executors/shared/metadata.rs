@@ -32,7 +32,7 @@ pub struct MetadataFetcher<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse:            Option<&'static CH>,
     dex_pricer_stream:     WaitingForPricerFuture<T>,
     clickhouse_futures:    ClickhouseMetadataFuture,
-    result_buf:            VecDeque<(BlockTree<Action>, Metadata)>,
+    result_buf:            VecDeque<(BlockTree<Action>, Metadata, Vec<CexTradeMap>)>,
     needs_more_data:       Arc<AtomicBool>,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
@@ -92,6 +92,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
+        cex_window: usize,
     ) {
         let block = tree.header.number;
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
@@ -139,6 +140,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
             meta.builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
+
             let meta = meta.into_full_metadata(DexQuotes(vec![]));
             self.result_buf.push_back((tree, meta));
         } else {
@@ -164,7 +166,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataFetcher<T, CH> {
-    type Item = (BlockTree<Action>, Metadata);
+    type Item = (BlockTree<Action>, Metadata, Vec<CexTradeMap>);
 
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
