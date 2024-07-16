@@ -1,10 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    db::{cex::CexTradeMap, metadata::Metadata},
-    normalized_actions::Action,
-    BlockTree,
-};
+use crate::{db::metadata::Metadata, normalized_actions::Action, BlockTree};
 
 #[derive(Debug, Clone)]
 pub struct MultiBlockData {
@@ -24,6 +20,10 @@ impl MultiBlockData {
             .collect::<Vec<_>>();
 
         Self { per_block_data: adjusted, blocks: size }
+    }
+
+    pub fn get_most_recent_block(&self) -> &BlockData {
+        self.per_block_data.last().unwrap()
     }
 }
 

@@ -7,7 +7,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevType},
     normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     tree::BlockTree,
-    FastHashMap,
+    BlockData, FastHashMap, MultiBlockData,
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};

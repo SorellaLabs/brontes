@@ -95,7 +95,7 @@ pub trait Inspector: Send + Sync {
     type Result: Send + Sync;
 
     /// default is 1
-    fn block_window(&self) -> u64 {
+    fn block_window(&self) -> usize {
         1
     }
     /// Used for log span so we know which errors come from which inspector

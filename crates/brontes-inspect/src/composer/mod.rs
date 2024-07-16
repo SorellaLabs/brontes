@@ -33,7 +33,7 @@ use alloy_primitives::Address;
 use brontes_types::{
     db::{block_analysis::BlockAnalysis, traits::LibmdbxReader},
     mev::Mev,
-    multi_block, FastHashMap, MultiBlockData,
+    multi_block, BlockData, FastHashMap, MultiBlockData,
 };
 use itertools::Itertools;
 use tracing::{span, Level};
@@ -78,6 +78,9 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
 
     let quote_token = orchestra[0].get_quote_token();
 
+    let mut this_data = data.get_most_recent_block().clone();
+    let BlockData { metadata, tree } = this_data;
+
     let (block_details, mev_details) =
         on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token, db);
     let block_analysis = BlockAnalysis::new(&block_details, &mev_details);
@@ -89,6 +92,8 @@ fn run_inspectors(
     orchestra: &[&dyn Inspector<Result = Vec<Bundle>>],
     data: MultiBlockData,
 ) -> (PossibleMevCollection, Vec<Bundle>) {
+    let mut this_data = data.get_most_recent_block().clone();
+    let BlockData { metadata, tree } = this_data;
     let mut possible_mev_txes =
         DiscoveryInspector::new(DISCOVERY_PRIORITY_FEE_MULTIPLIER).find_possible_mev(tree.clone());
 
