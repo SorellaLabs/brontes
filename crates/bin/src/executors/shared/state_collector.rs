@@ -12,11 +12,7 @@ use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::{
-    db::{
-        metadata::Metadata,
-        traits::{DBWriter, LibmdbxReader},
-    },
-    multi_block,
+    db::traits::{DBWriter, LibmdbxReader},
     normalized_actions::Action,
     structured_trace::TxTrace,
     traits::TracingProvider,

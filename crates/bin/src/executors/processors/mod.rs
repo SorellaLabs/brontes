@@ -2,9 +2,7 @@ pub mod mev;
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::Metadata, normalized_actions::Action, tree::BlockTree, MultiBlockData,
-};
+use brontes_types::MultiBlockData;
 use futures::Future;
 pub use mev::*;
 

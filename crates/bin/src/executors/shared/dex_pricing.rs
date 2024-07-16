@@ -8,7 +8,7 @@ use brontes_core::decoding::TracingProvider;
 use brontes_pricing::BrontesBatchPricer;
 use brontes_types::{
     constants::START_OF_CHAINBOUND_MEMPOOL_DATA,
-    db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata},
+    db::{dex::DexQuotes, metadata::Metadata},
     normalized_actions::Action,
     tree::BlockTree,
     BrontesTaskExecutor, FastHashMap, FastHashSet,

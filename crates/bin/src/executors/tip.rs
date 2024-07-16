@@ -11,9 +11,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
-use brontes_types::{
-    db::metadata::Metadata, normalized_actions::Action, tree::BlockTree, MultiBlockData,
-};
+use brontes_types::MultiBlockData;
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tokio::time::{interval, Interval};

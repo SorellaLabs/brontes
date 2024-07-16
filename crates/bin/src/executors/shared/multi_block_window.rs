@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use brontes_types::{db::cex::CexTradeMap, BlockData, MultiBlockData};
+use brontes_types::{BlockData, MultiBlockData};
 use itertools::Itertools;
 
 pub struct MultiBlockWindow {

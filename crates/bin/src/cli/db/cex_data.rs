@@ -97,7 +97,7 @@ impl CexDB {
             pair,
             intermediary_addresses,
             block_timestamp,
-            (10.0 as f64 * self.w_multiplier) as u64,
+            (10.0_f64 * self.w_multiplier) as u64,
         )
         .await?;
 

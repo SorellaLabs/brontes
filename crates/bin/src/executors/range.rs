@@ -11,9 +11,7 @@ use brontes_database::{
 };
 use brontes_inspect::Inspector;
 use brontes_metrics::range::GlobalRangeMetrics;
-use brontes_types::{
-    db::metadata::Metadata, normalized_actions::Action, tree::BlockTree, MultiBlockData,
-};
+use brontes_types::MultiBlockData;
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 use tracing::debug;

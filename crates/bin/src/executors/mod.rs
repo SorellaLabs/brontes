@@ -13,7 +13,7 @@ pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
-use shared::multi_block_window::{self, MultiBlockWindow};
+use shared::multi_block_window::MultiBlockWindow;
 mod tip;
 use std::{
     marker::PhantomData,
@@ -28,7 +28,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap, MultiBlockData, UnboundedYapperReceiver};
+use brontes_types::{BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver};
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;

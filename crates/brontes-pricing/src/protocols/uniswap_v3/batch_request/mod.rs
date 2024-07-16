@@ -208,7 +208,8 @@ mod tests {
 
     #[test]
     fn test_v3_bytecodes() {
-        let (token0, token1, fees, tick_spacing) = extract_uni_v3_immutables(V3_WBTC_ETH.into());
+        let (token0, token1, fees, tick_spacing) =
+            extract_uni_v3_immutables(V3_WBTC_ETH.into()).unwrap();
 
         assert_eq!(
             token0,
@@ -221,7 +222,8 @@ mod tests {
         assert_eq!(fees, 3000);
         assert_eq!(tick_spacing, 60);
 
-        let (token0, token1, fees, tick_spacing) = extract_uni_v3_immutables(V3_USDC_ETH.into());
+        let (token0, token1, fees, tick_spacing) =
+            extract_uni_v3_immutables(V3_USDC_ETH.into()).unwrap();
 
         assert_eq!(
             token0,
@@ -242,7 +244,8 @@ mod tests {
     #[test]
     #[should_panic(expected = "ParseIntError")]
     fn test_fail_v2_bytecode() {
-        let (token0, token1, _fees, _tick_spacing) = extract_uni_v3_immutables(V2_DAI_MKR.into());
+        let (token0, token1, _fees, _tick_spacing) =
+            extract_uni_v3_immutables(V2_DAI_MKR.into()).unwrap();
 
         assert_eq!(
             token0,

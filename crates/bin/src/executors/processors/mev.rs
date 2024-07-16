@@ -10,11 +10,9 @@ use brontes_types::frontend_prunes::{
     remove_burn_transfers, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
 use brontes_types::{
-    db::{block_analysis::BlockAnalysis, metadata::Metadata},
+    db::block_analysis::BlockAnalysis,
     execute_on,
     mev::{Bundle, MevBlock, MevType},
-    normalized_actions::Action,
-    tree::BlockTree,
     BlockData, MultiBlockData,
 };
 use tracing::debug;

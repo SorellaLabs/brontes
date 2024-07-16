@@ -11,7 +11,6 @@ use brontes_types::{
         NormalizedTransfer,
     },
     pair::Pair,
-    tree::BlockTree,
     BlockData, FastHashSet, IntoZip, MultiBlockData, ToFloatNearest, TreeBase, TreeCollector,
     TreeSearchBuilder, TxInfo,
 };
