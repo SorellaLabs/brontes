@@ -163,6 +163,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             return Poll::Ready(None)
         }
 
-        self.metadata_fetcher.poll_next_unpin(cx).map(|inner| {})
+        self.metadata_fetcher
+            .poll_next_unpin(cx)
+            .map(|inner| inner.map(|data| self.multi_block.new_block_data(data)))
     }
 }

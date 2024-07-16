@@ -15,6 +15,7 @@ use brontes_types::{
     mev::{Bundle, MevBlock, MevType},
     normalized_actions::Action,
     tree::BlockTree,
+    BlockData, MultiBlockData,
 };
 use tracing::debug;
 
@@ -29,9 +30,10 @@ impl Processor for MevProcessor {
     async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &'static DB,
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
-        tree: BlockTree<Action>,
-        metadata: Metadata,
+        data: MultiBlockData,
     ) {
+        let last = data.get_most_recent_block().clone();
+        let BlockData { metadata, tree } = last;
         if let Err(e) = db
             .write_dex_quotes(metadata.block_num, metadata.dex_quotes.clone())
             .await
@@ -50,10 +52,7 @@ impl Processor for MevProcessor {
         let metadata = Arc::new(metadata);
 
         let ComposerResults { block_details, mev_details, block_analysis, .. } =
-            execute_on!(async_inspect, {
-                run_block_inspection(inspectors, tree.clone(), metadata.clone(), db)
-            })
-            .await;
+            execute_on!(async_inspect, { run_block_inspection(inspectors, data, db) }).await;
 
         insert_mev_results(db, block_details, mev_details, block_analysis).await;
     }

@@ -13,6 +13,7 @@ pub use processors::*;
 mod shared;
 use brontes_database::{clickhouse::ClickhouseHandle, Tables};
 use futures::pin_mut;
+use shared::multi_block_window::{self, MultiBlockWindow};
 mod tip;
 use std::{
     marker::PhantomData,
@@ -27,7 +28,7 @@ use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver};
+use brontes_types::{BrontesTaskExecutor, FastHashMap, MultiBlockData, UnboundedYapperReceiver};
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
@@ -288,7 +289,15 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             data_req,
         );
 
-        StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx)
+        let block_window_size = self
+            .inspectors
+            .iter()
+            .max_by(|i| i.block_window())
+            .expect("no inspectors loaded");
+
+        let window = MultiBlockWindow::new(block_window_size);
+
+        StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx, window)
     }
 
     async fn init_block_range_tables(
