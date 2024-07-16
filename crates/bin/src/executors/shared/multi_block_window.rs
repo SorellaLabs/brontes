@@ -3,6 +3,8 @@ use std::collections::VecDeque;
 use brontes_types::{BlockData, MultiBlockData};
 use itertools::Itertools;
 
+
+#[derive(Debug)]
 pub struct MultiBlockWindow {
     /// amount of blocks to hold in cache
     pub block_window_size:  usize,
@@ -24,6 +26,8 @@ impl MultiBlockWindow {
         let block_count = self.block_window_queue.len();
         let block_data = self.block_window_queue.clone().into_iter().collect_vec();
 
-        MultiBlockData { blocks: block_count, per_block_data: block_data }
+        let v = MultiBlockData { blocks: block_count, per_block_data: block_data };
+        tracing::error!(?v);
+        v
     }
 }
