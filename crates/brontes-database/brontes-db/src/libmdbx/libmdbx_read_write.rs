@@ -437,7 +437,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         #[cfg(not(feature = "cex-dex-quotes"))]
         let trades = self
-            .fetch_trades(block_meta.block_timestamp, cex_window)
+            .fetch_trades(block_num, cex_window)
             .ok();
 
         Ok(BlockMetadata::new(
@@ -470,9 +470,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let eth_prices = determine_eth_prices(&cex_quotes);
 
         #[cfg(not(feature = "cex-dex-quotes"))]
-        let trades = self
-            .fetch_trades(block_num, cex_window)
-            .ok();
+        let trades = self.fetch_trades(block_num, cex_window).ok();
 
         Ok({
             BlockMetadata::new(
