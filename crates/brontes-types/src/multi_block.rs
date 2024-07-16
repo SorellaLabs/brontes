@@ -15,7 +15,7 @@ pub struct MultiBlockData {
 
 impl MultiBlockData {
     pub fn split_to_size(&self, size: usize) -> MultiBlockData {
-        let extra = self.blocks - size;
+        let extra = self.blocks - (self.blocks - size);
         let adjusted = self
             .per_block_data
             .clone()
@@ -23,7 +23,7 @@ impl MultiBlockData {
             .skip(extra)
             .collect::<Vec<_>>();
 
-        Self { adjusted, blocks: size }
+        Self { per_block_data: adjusted, blocks: size }
     }
 }
 
