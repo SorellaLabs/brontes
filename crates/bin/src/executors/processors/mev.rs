@@ -43,9 +43,11 @@ impl Processor for MevProcessor {
             tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
         }
 
-        let inner_tree = Arc::into_inner(tree.clone()).unwrap();
         #[cfg(feature = "local-clickhouse")]
-        insert_tree(db, inner_tree, metadata.block_num).await;
+        {
+            let inner_tree = Arc::into_inner(tree.clone()).unwrap();
+            insert_tree(db, inner_tree, metadata.block_num).await;
+        }
 
         if tree.tx_roots.is_empty() {
             return
