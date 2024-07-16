@@ -1167,16 +1167,15 @@ impl LibmdbxReadWriter {
     }
 
     #[cfg(not(feature = "cex-dex-quotes"))]
-    pub fn fetch_trades(
-        &self,
-        timestamp_sec: u64,
-        cex_window_sec: usize,
-    ) -> eyre::Result<CexTradeMap> {
-        let window = cex_window_sec as u64;
+    pub fn fetch_trades(&self, block: u64, cex_window_sec: usize) -> eyre::Result<CexTradeMap> {
+        // each block is downloaded -6 + 6 around the block time stamp.
+        // to fetch the proper window we grab all inclusive
+        let window_blocks = (cex_window_sec / 6 + 1) as u64;
+
         self.db.view_db(|tx| {
             let folded = tx
                 .cursor_read::<CexTrades>()?
-                .walk_range(timestamp_sec - window..timestamp_sec + window)?
+                .walk_range(block - window_blocks..=block + window_blocks)?
                 .filter_map(|v| {
                     if let Err(e) = v {
                         tracing::error!(error=%e, "error while fetching cex trades from libmdbx");

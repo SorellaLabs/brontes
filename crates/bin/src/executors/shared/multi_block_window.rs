@@ -20,7 +20,6 @@ impl MultiBlockWindow {
         }
 
         self.block_window_queue.push_back(data);
-        self.cex_trades_window.extend(cex);
 
         let block_count = self.block_window_queue.len();
         let block_data = self.block_window_queue.clone().into_iter().collect_vec();
