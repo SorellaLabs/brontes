@@ -471,7 +471,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         #[cfg(not(feature = "cex-dex-quotes"))]
         let trades = self
-            .fetch_trades(block_meta.block_timestamp, cex_window)
+            .fetch_trades(block_num, cex_window)
             .ok();
 
         Ok({
