@@ -1,3 +1,4 @@
+#[cfg(feature = "local-clickhouse")]
 use std::sync::Arc;
 
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -9,6 +10,10 @@ use brontes_inspect::{
 use brontes_types::frontend_prunes::{
     remove_burn_transfers, remove_collect_transfers, remove_mint_transfers, remove_swap_transfers,
 };
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::normalized_actions::Action;
+#[cfg(feature = "local-clickhouse")]
+use brontes_types::tree::BlockTree;
 use brontes_types::{
     db::block_analysis::BlockAnalysis,
     execute_on,
@@ -45,9 +50,6 @@ impl Processor for MevProcessor {
         if tree.tx_roots.is_empty() {
             return
         }
-
-        let tree = Arc::new(tree);
-        let metadata = Arc::new(metadata);
 
         let ComposerResults { block_details, mev_details, block_analysis, .. } =
             execute_on!(async_inspect, { run_block_inspection(inspectors, data, db) }).await;
