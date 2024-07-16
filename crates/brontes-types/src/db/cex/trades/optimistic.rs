@@ -331,13 +331,13 @@ impl<'a> SortedTrades<'a> {
             let adjusted_trades = trades
                 .iter()
                 .map(|trade| {
-                    let adjusted_trade = trade.adjust_for_direction(Direction::Sell);
-                    adjusted_trade
+                    
+                    trade.adjust_for_direction(Direction::Sell)
                 })
                 .collect_vec();
 
             Some(OptimisticTradeData {
-                indices:   indices.clone(),
+                indices:   *indices,
                 trades:    adjusted_trades,
                 direction: Direction::Sell,
             })
@@ -348,13 +348,13 @@ impl<'a> SortedTrades<'a> {
                 let adjusted_trades = trades
                     .iter()
                     .map(|trade| {
-                        let adjusted_trade = trade.adjust_for_direction(Direction::Buy);
-                        adjusted_trade
+                        
+                        trade.adjust_for_direction(Direction::Buy)
                     })
                     .collect_vec();
 
                 Some(OptimisticTradeData {
-                    indices:   indices.clone(),
+                    indices:   *indices,
                     trades:    adjusted_trades,
                     direction: Direction::Buy,
                 })

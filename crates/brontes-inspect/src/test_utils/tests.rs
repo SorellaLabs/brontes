@@ -34,6 +34,7 @@ use brontes_types::{
     mev::{Bundle, MevType},
     normalized_actions::Action,
     tree::BlockTree,
+    BlockData, MultiBlockData,
 };
 use thiserror::Error;
 
@@ -169,8 +170,10 @@ impl InspectorTestUtils {
             CexDexTradeConfig::default(),
             None,
         );
+        let data = BlockData { metadata: metadata.into(), tree: tree.into() };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
+        let results = inspector.inspect_block(multi);
 
-        let results = inspector.inspect_block(tree.into(), metadata.into());
         assert_eq!(results.len(), 0, "found mev when we shouldn't of {:#?}", results);
 
         Ok(())
@@ -254,7 +257,9 @@ impl InspectorTestUtils {
             None,
         );
 
-        let mut results = inspector.inspect_block(tree.into(), metadata.into());
+        let data = BlockData { metadata: metadata.into(), tree: tree.into() };
+        let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
+        let mut results = inspector.inspect_block(multi);
 
         assert_eq!(
             results.len(),
@@ -365,8 +370,10 @@ impl InspectorTestUtils {
             })
             .collect::<Vec<_>>();
         let db = self.classifier_inspector.trace_loader.libmdbx;
+        let data = BlockData { metadata: metadata.into(), tree: tree.into() };
+        let multi = MultiBlockData { blocks: 1, per_block_data: vec![data] };
 
-        let results = run_block_inspection(inspector.as_slice(), tree.into(), metadata.into(), db);
+        let results = run_block_inspection(inspector.as_slice(), multi, db);
 
         let mut results = results
             .mev_details

@@ -215,7 +215,7 @@ impl<'a> SortedTrades<'a> {
 
                 consolidated_trades
                     .entry(ex_pair)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(trades.iter());
             }
         }
@@ -345,9 +345,8 @@ impl<'a> TimeBasketQueue<'a> {
                     self.quality_pct
                         .as_ref()
                         .map(|map| {
-                            map.get(&CexExchange::Binance)
+                            *map.get(&CexExchange::Binance)
                                 .unwrap_or(&BASE_EXECUTION_QUALITY)
-                                .clone()
                         })
                         .unwrap_or(BASE_EXECUTION_QUALITY),
                     basket_volume,
@@ -393,9 +392,8 @@ impl<'a> TimeBasketQueue<'a> {
                     self.quality_pct
                         .as_ref()
                         .map(|map| {
-                            map.get(&CexExchange::Binance)
+                            *map.get(&CexExchange::Binance)
                                 .unwrap_or(&BASE_EXECUTION_QUALITY)
-                                .clone()
                         })
                         .unwrap_or(BASE_EXECUTION_QUALITY),
                     basket_volume,
