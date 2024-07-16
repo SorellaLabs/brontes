@@ -45,7 +45,7 @@ impl Processor for MevProcessor {
 
         #[cfg(feature = "local-clickhouse")]
         {
-            let inner_tree = Arc::unwrap_or_clone(tree);
+            let inner_tree = Arc::unwrap_or_clone(tree.clone());
             insert_tree(db, inner_tree, metadata.block_num).await;
         }
 
