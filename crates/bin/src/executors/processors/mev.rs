@@ -1,3 +1,4 @@
+use std::sync::Arc;
 #[cfg(feature = "local-clickhouse")]
 use std::sync::Arc;
 
@@ -44,8 +45,9 @@ impl Processor for MevProcessor {
             tracing::error!(err=%e, block_num=metadata.block_num, "failed to insert dex pricing and state into db");
         }
 
+        let tree = Arc::into_inner(tree.clone()).unwrap();
         #[cfg(feature = "local-clickhouse")]
-        insert_tree(db, tree.clone(), metadata.block_num).await;
+        insert_tree(db, tree, metadata.block_num).await;
 
         if tree.tx_roots.is_empty() {
             return
