@@ -87,5 +87,5 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables>;
 
     #[cfg(feature = "local-clickhouse")]
-    fn get_init_crit_tables(&self) -> impl Future<Output = eyre::Result<ClickhouseCritTableCount>> + Send + Sync + Unpin;
+    fn get_init_crit_tables(&self) -> impl Future<Output = eyre::Result<ClickhouseCritTableCount>> + Send;
 }
