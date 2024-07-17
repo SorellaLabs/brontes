@@ -191,6 +191,13 @@ impl RunArgs {
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
+        let load_window = self
+            .time_window_before
+            .max(self.time_window_after)
+            .max(self.time_window_before_optimistic)
+            .max(self.time_window_after_optimistic) as usize
+            * 2;
+
         let executor = task_executor.clone();
         let result = executor
             .clone()
@@ -212,8 +219,7 @@ impl RunArgs {
                     self.cli_only,
                     self.with_metrics,
                     snapshot_mode,
-                    // todo wire
-                    20,
+                    load_window,
                 )
                 .build(task_executor, shutdown)
                 .await
