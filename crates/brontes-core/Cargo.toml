@@ -20,7 +20,7 @@ reth-network-api.workspace = true
 reth-db.workspace = true
 reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
-reth-interfaces.workspace = true
+#reth-interfaces.workspace = true
 reth-metrics.workspace = true
 reth-tracing-ext.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }

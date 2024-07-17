@@ -68,11 +68,11 @@ impl<'a> LogData<'a> {
                         .map(|log_ident| {
                             Ident::new(&(log_ident.to_string() + "_field"), Span::call_site())
                         })
-                        .collect_vec(),
+                        .collect::<Vec<_>>(),
                     vec![log_ident.clone()]
                         .into_iter()
                         .chain(log_fallbacks.clone())
-                        .collect_vec(),
+                        .collect::<Vec<_>>(),
                 )
             })
             .multiunzip();

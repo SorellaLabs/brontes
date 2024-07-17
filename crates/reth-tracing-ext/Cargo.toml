@@ -21,7 +21,7 @@ reth-db.workspace = true
 reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
 reth-revm.workspace = true
-reth-interfaces.workspace = true
+#reth-interfaces.workspace = true
 alloy-primitives.workspace = true
 alloy-sol-types.workspace = true
 alloy-rpc-types-trace= { git = "https://github.com/alloy-rs/alloy", rev = "39b8695" }

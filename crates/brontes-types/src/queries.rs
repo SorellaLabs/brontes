@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, TxKind};
 use alloy_sol_types::SolCall;
 use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
@@ -14,7 +14,7 @@ pub async fn make_call_request<C: SolCall, T: TracingProvider>(
 ) -> eyre::Result<C::Return> {
     let encoded = call.abi_encode();
     let req = TransactionRequest {
-        to: Some(to),
+        to: Some(TxKind::Call(to)),
         input: TransactionInput::new(encoded.into()),
         ..Default::default()
     };
@@ -27,5 +27,5 @@ pub async fn make_call_request<C: SolCall, T: TracingProvider>(
 }
 
 alloy_sol_macro::sol!(
-    function yeet(address babies) returns (bool is_dead);
+    function yeet(address boom) returns (bool bang);
 );

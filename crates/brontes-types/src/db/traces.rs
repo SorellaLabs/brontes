@@ -138,7 +138,7 @@ pub enum ActionRedefined {
 pub struct CallActionRedefined {
     pub from:      AddressRedefined,
     pub call_type: CallTypeRedefined,
-    pub gas:       U64Redefined,
+    pub gas:       u64,
     pub input:     BytesRedefined,
     pub to:        AddressRedefined,
     pub value:     U256Redefined,
@@ -158,7 +158,7 @@ pub struct CallActionRedefined {
 #[redefined(CreateAction)]
 pub struct CreateActionRedefined {
     pub from:  AddressRedefined,
-    pub gas:   U64Redefined,
+    pub gas:   u64,
     pub init:  BytesRedefined,
     pub value: U256Redefined,
 }
@@ -234,6 +234,7 @@ pub enum CallTypeRedefined {
     CallCode,
     DelegateCall,
     StaticCall,
+    AuthCall,
 }
 
 #[derive(
@@ -266,7 +267,7 @@ pub enum TraceOutputRedefined {
 )]
 #[redefined(CallOutput)]
 pub struct CallOutputRedefined {
-    pub gas_used: U64Redefined,
+    pub gas_used: u64,
     pub output:   BytesRedefined,
 }
 
@@ -285,5 +286,5 @@ pub struct CallOutputRedefined {
 pub struct CreateOutputRedefined {
     pub address:  AddressRedefined,
     pub code:     BytesRedefined,
-    pub gas_used: U64Redefined,
+    pub gas_used: u64,
 }
