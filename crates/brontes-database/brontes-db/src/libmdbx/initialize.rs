@@ -6,7 +6,6 @@ use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, ContractInfo, Socials},
         builder::BuilderInfo,
-        clickhouse,
         searcher::SearcherInfo,
         traits::{DBWriter, LibmdbxReader},
     },

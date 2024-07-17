@@ -47,8 +47,10 @@ use super::{
     types::ReturnKV,
     ReadWriteCache,
 };
+#[cfg(feature = "local-clickhouse")]
+use crate::clickhouse::ClickhouseCritTableCount;
 use crate::{
-    clickhouse::{ClickhouseCritTableCount, ClickhouseHandle},
+    clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
     CompressedTable,
 };
