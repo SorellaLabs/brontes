@@ -90,7 +90,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let clickhouse_cnt = self.clickhouse.get_init_crit_tables().await?;
             let libmdbx_cnt = self.libmdbx.get_crit_table_count()?;
 
-            tracing::info!(?clickhouse_cnt, ?libmdbx_cnt);
             if !clickhouse_cnt.all_less(libmdbx_cnt) {
                 return Ok(())
             }
