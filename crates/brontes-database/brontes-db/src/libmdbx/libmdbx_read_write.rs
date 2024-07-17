@@ -47,6 +47,8 @@ use super::{
     types::ReturnKV,
     ReadWriteCache,
 };
+#[cfg(feature = "local-clickhouse")]
+use crate::clickhouse::ClickhouseCritTableCount;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{tables::*, types::LibmdbxData, Libmdbx, LibmdbxInitializer},
@@ -1062,6 +1064,23 @@ impl LibmdbxReadWriter {
 
         tx.commit()?;
         Ok(())
+    }
+
+    #[cfg(feature = "local-clickhouse")]
+    pub fn get_crit_table_count(&self) -> eyre::Result<ClickhouseCritTableCount> {
+        let pool_creation = self.get_table_entry_count::<PoolCreationBlocks>()? as u64;
+        let address_to_protocol = self.get_table_entry_count::<AddressToProtocolInfo>()? as u64;
+        let tokens = self.get_table_entry_count::<TokenDecimals>()? as u64;
+        let builder = self.get_table_entry_count::<Builder>()? as u64;
+        let address_meta = self.get_table_entry_count::<AddressMeta>()? as u64;
+
+        Ok(ClickhouseCritTableCount {
+            pool_creation,
+            address_to_protocol,
+            tokens,
+            builder,
+            address_meta,
+        })
     }
 
     pub fn convert_into_save_bytes<T: CompressedTable>(

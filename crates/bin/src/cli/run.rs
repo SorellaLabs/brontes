@@ -84,9 +84,6 @@ pub struct RunArgs {
     /// Run in CLI only mode (no TUI) - will output progress bars to stdout
     #[arg(long, default_value = "true")]
     pub cli_only: bool,
-    /// Initialize full range database tables
-    #[arg(long, default_value = "false")]
-    pub init_crit_tables: bool,
     /// Metrics will be exported
     #[arg(long, default_value = "true")]
     pub with_metrics: bool,
@@ -213,7 +210,6 @@ impl RunArgs {
                     libmdbx,
                     tip,
                     self.cli_only,
-                    self.init_crit_tables,
                     self.with_metrics,
                     snapshot_mode,
                     // todo wire

@@ -79,7 +79,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
+    fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
         let block = data.get_most_recent_block();
         let BlockData { metadata, tree } = block;
 

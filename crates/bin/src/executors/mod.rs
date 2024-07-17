@@ -60,7 +60,6 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub libmdbx: &'static DB,
     pub tip_db: &'static DB,
     pub cli_only: bool,
-    pub init_crit_tables: bool,
     pub metrics: bool,
     pub is_snapshot: bool,
     pub cex_window: usize,
@@ -86,7 +85,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         libmdbx: &'static DB,
         tip_db: &'static DB,
         cli_only: bool,
-        init_crit_tables: bool,
         metrics: bool,
         is_snapshot: bool,
         cex_window: usize,
@@ -105,7 +103,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             end_block,
             force_no_dex_pricing,
             cli_only,
-            init_crit_tables,
             metrics,
             tip_db,
             is_snapshot,
@@ -358,12 +355,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     /// Verify global tables & initialize them if necessary
     async fn verify_global_tables(&self) -> eyre::Result<()> {
-        if self.init_crit_tables {
-            tracing::info!("Initializing critical range state");
-            self.libmdbx
-                .initialize_full_range_tables(self.clickhouse, self.parser.get_tracer())
-                .await?;
-        }
+        tracing::info!("Initializing critical range state");
+        self.libmdbx
+            .initialize_full_range_tables(self.clickhouse, self.parser.get_tracer())
+            .await?;
 
         Ok(())
     }
