@@ -6,6 +6,7 @@ use brontes_types::{
     db::{
         address_metadata::{AddressMetadata, ContractInfo, Socials},
         builder::BuilderInfo,
+        clickhouse,
         searcher::SearcherInfo,
         traits::{DBWriter, LibmdbxReader},
     },
@@ -89,8 +90,10 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         {
             let clickhouse_cnt = self.clickhouse.get_init_crit_tables().await?;
             let libmdbx_cnt = self.libmdbx.get_crit_table_count()?;
+            tracing::info!(?clickhouse_cnt, ?libmdbx_cnt);
 
-            if clickhouse_cnt.all_less(libmdbx_cnt) {
+            // if all libmdbx tables have more entries, we don't init
+            if libmdbx_cnt.all_greater(clickhouse_cnt) {
                 return Ok(())
             }
         }

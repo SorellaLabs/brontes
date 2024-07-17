@@ -649,12 +649,12 @@ pub struct ClickhouseCritTableCount {
 }
 
 impl ClickhouseCritTableCount {
-    pub fn all_less(&self, libmdbx: ClickhouseCritTableCount) -> bool {
-        self.pool_creation > libmdbx.pool_creation
-            && self.address_to_protocol > libmdbx.address_to_protocol
-            && self.tokens > libmdbx.tokens
-            && self.builder > libmdbx.builder
-            && self.address_meta > libmdbx.address_meta
+    pub fn all_greater(&self, clickhouse: ClickhouseCritTableCount) -> bool {
+        self.pool_creation > clickhouse.pool_creation
+            && self.address_to_protocol > clickhouse.address_to_protocol
+            && self.tokens > clickhouse.tokens
+            && self.builder > clickhouse.builder
+            && self.address_meta > clickhouse.address_meta
     }
 }
 
