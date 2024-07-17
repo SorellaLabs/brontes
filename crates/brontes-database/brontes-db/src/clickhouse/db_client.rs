@@ -31,7 +31,7 @@ use db_interfaces::{
     Database,
 };
 use itertools::Itertools;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{info, warn};
 
@@ -47,7 +47,7 @@ use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 #[cfg(feature = "cex-dex-quotes")]
 use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
-    clickhouse::const_sql::BLOCK_INFO,
+    clickhouse::const_sql::{BLOCK_INFO, CRIT_INIT_TABLES},
     libmdbx::{tables::BlockInfoData, types::LibmdbxData},
     CompressedTable,
 };
@@ -266,6 +266,11 @@ impl Clickhouse {
 }
 
 impl ClickhouseHandle for Clickhouse {
+    async fn get_init_crit_tables(&self) -> eyre::Result<ClickhouseCritTableCount> {
+        let res: ClickhouseCritTableCount = self.client.query_one(CRIT_INIT_TABLES, &()).await?;
+        Ok(res)
+    }
+
     async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self
             .client
@@ -632,6 +637,25 @@ where
     );
 
     query
+}
+
+#[derive(Debug, Serialize, Deserialize, clickhouse::Row)]
+pub struct ClickhouseCritTableCount {
+    pub pool_creation:       u64,
+    pub address_to_protocol: u64,
+    pub tokens:              u64,
+    pub builder:             u64,
+    pub address_meta:        u64,
+}
+
+impl ClickhouseCritTableCount {
+    pub fn all_less(&self, libmdbx: ClickhouseCritTableCount) -> bool {
+        self.pool_creation <= libmdbx.pool_creation
+            && self.address_to_protocol <= libmdbx.address_to_protocol
+            && self.tokens <= libmdbx.tokens
+            && self.builder <= libmdbx.builder
+            && self.address_meta <= libmdbx.address_meta
+    }
 }
 
 #[cfg(test)]

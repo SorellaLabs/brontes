@@ -84,6 +84,17 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             Tables::Builder,
             Tables::AddressMeta,
         ];
+
+        #[cfg(feature = "local-clickhouse")]
+        {
+            let clickhouse_cnt = self.clickhouse.get_init_crit_tables().await?;
+            let libmdbx_cnt = self.libmdbx.get_crit_table_count()?;
+
+            if clickhouse_cnt.all_less(libmdbx_cnt) {
+                return Ok(())
+            }
+        }
+
         let progress_bar = Self::build_critical_state_progress_bar(5).unwrap();
 
         futures::stream::iter(tables.to_vec())
