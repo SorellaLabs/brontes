@@ -650,11 +650,11 @@ pub struct ClickhouseCritTableCount {
 
 impl ClickhouseCritTableCount {
     pub fn all_greater(&self, clickhouse: ClickhouseCritTableCount) -> bool {
-        self.pool_creation > clickhouse.pool_creation
-            && self.address_to_protocol > clickhouse.address_to_protocol
-            && self.tokens > clickhouse.tokens
-            && self.builder > clickhouse.builder
-            && self.address_meta > clickhouse.address_meta
+        self.pool_creation >= clickhouse.pool_creation
+            && self.address_to_protocol >= clickhouse.address_to_protocol
+            && self.tokens >= clickhouse.tokens
+            && self.builder >= clickhouse.builder
+            && self.address_meta >= clickhouse.address_meta
     }
 }
 
