@@ -42,9 +42,10 @@ use crate::{
     FastHashMap,
 };
 
-pub enum SecuritiesClass {
+pub enum CommodityClass {
     Spot,
-    Derivative,
+    Futures,
+    Options
 }
 
 /// Centralized exchange price map organized by exchange.
@@ -334,7 +335,7 @@ impl CexPriceMap {
                     let volume_weighted_bid = volume_price.0 / &cumulative_bbo.0;
                     let volume_weighted_ask = volume_price.1 / &cumulative_bbo.1;
 
-                let fees = exchange.fees(&pair, &SecuritiesClass::Spot);
+                let fees = exchange.fees(&pair, &CommodityClass::Spot);
 
                     let fee_adjusted_maker = (
                         &volume_weighted_bid * (Rational::ONE - &fees.0),
@@ -1021,34 +1022,32 @@ impl CexExchange {
     ///
     /// TODO: Account for special fee pairs & stableswap rates
     /// TODO: Account for futures & spot fee deltas
-    pub fn fees(&self, pair: &Pair, trade_type: &SecuritiesClass) -> (Rational, Rational) {
+    pub fn fees(&self, pair: &Pair, trade_type: &CommodityClass) -> (Rational, Rational) {
         let (maker, taker) = match self {
             CexExchange::Binance => {
                 match trade_type {
-                    SecuritiesClass::Spot =>
+                    CommodityClass::Spot =>
                         if Self::BINANCE_SPOT_PROMO_FEE_TYPE1_PAIRS.iter().any(|p| p.eq_ordered(pair)) {
                             ("0.0", "0.0") // https://www.binance.com/en/fee/tradingPromote
                         } else if Self::BINANCE_SPOT_PROMO_FEE_TYPE2_PAIRS.iter().any(|p| p.eq_ordered(pair)) {
                             ("0.0", "0.00024") // https://www.binance.com/en/fee/tradingPromote
-
                         } else if pair.0 == USDC_ADDRESS || pair.1 == USDC_ADDRESS {
                             ("0.00012", "0.0001425") // https://www.binance.com/en/fee/trading
                         } else {
                             ("0.00012", "0.00024") // https://www.binance.com/en/fee/trading
                         },
-                    SecuritiesClass::Derivative => ("0.0003", "0.0003"), // https://www.binance.com/en/fee/optionsTrading
+                    CommodityClass::Derivative => ("0.0003", "0.0003"), // https://www.binance.com/en/fee/optionsTrading
                 }
             },
             CexExchange::Bitmex =>
                 match trade_type {
-                    SecuritiesClass::Spot => ("0.001", "0.001"), // https://www.bitmex.com/wallet/fees/spot
-                    SecuritiesClass::Derivative => ("-0.000125", "0.000175"), // https://www.bitmex.com/wallet/fees/derivatives
-
+                    CommodityClass::Spot => ("0.001", "0.001"), // https://www.bitmex.com/wallet/fees/spot
+                    CommodityClass::Derivative => ("-0.000125", "0.000175"), // https://www.bitmex.com/wallet/fees/derivatives
                 }
             CexExchange::Deribit =>
                 match trade_type {
-                    SecuritiesClass::Spot => ("0.0", "0.0"), // https://www.deribit.com/kb/fees
-                    SecuritiesClass::Derivative => ("-0.0001", "0.0005"), // https://www.deribit.com/kb/fees
+                    CommodityClass::Spot => ("0.0", "0.0"), // https://www.deribit.com/kb/fees
+                    CommodityClass::Derivative => ("-0.0001", "0.0005"), // https://www.deribit.com/kb/fees
                 }
             CexExchange::Okex => ("-0.0001", "0.00015"), // https://tr.okx.com/fees
             CexExchange::Coinbase =>
@@ -1061,14 +1060,14 @@ impl CexExchange {
                 },
             CexExchange::Kraken =>
                 match trade_type {
-                    SecuritiesClass::Spot => ("0.0", "0.001"), // https://www.kraken.com/features/fee-schedule#spot-crypto
-                    SecuritiesClass::Derivative =>  ("0.0", "0.0001"), // https://www.kraken.com/features/fee-schedule#futures
+                    CommodityClass::Spot => ("0.0", "0.001"), // https://www.kraken.com/features/fee-schedule#spot-crypto
+                    CommodityClass::Derivative =>  ("0.0", "0.0001"), // https://www.kraken.com/features/fee-schedule#futures
                 },
             CexExchange::BybitSpot =>
                 // https://www.bybit.com/en/help-center/article/Trading-Fee-Structure
                 match trade_type {
-                    SecuritiesClass::Spot => ("0.00005", "0.00015"),
-                    SecuritiesClass::Derivative => if USDC_ADDRESS == pair.0 || USDC_ADDRESS == pair.1 {
+                    CommodityClass::Spot => ("0.00005", "0.00015"),
+                    CommodityClass::Derivative => if USDC_ADDRESS == pair.0 || USDC_ADDRESS == pair.1 {
                         ("0.0", "0.0001")
                     } else {
                         ("0.0", "0.00025")
@@ -1077,7 +1076,7 @@ impl CexExchange {
             CexExchange::Kucoin => 
                 // https://www.kucoin.com/vip/privilege
                 match trade_type {
-                    SecuritiesClass::Spot =>
+                    CommodityClass::Spot =>
                         if Self::KUCOIN_CLASS_C_BASE_COINS.iter().any(|a| pair.0 == *a) {
                             ("-0.00005", "0.00075")
                         } else if Self::KUCOIN_CLASS_B_BASE_COINS.iter().any(|a| pair.0 == *a) {
@@ -1089,13 +1088,13 @@ impl CexExchange {
                         } else {
                             ("-0.00005", "0.00025")
                         },
-                    SecuritiesClass::Derivative => ("-0.00008", "0.00025"),
+                    CommodityClass::Derivative => ("-0.00008", "0.00025"),
                 },
             CexExchange::Upbit => ("0.0002", "0.0002"), // https://sg.upbit.com/service_center/guide
             CexExchange::Huobi => 
                 match trade_type {
-                    SecuritiesClass::Spot => ("0.000097", "0.000193"), // https://www.htx.com/zh-cn/support/360000312282
-                    SecuritiesClass::Derivative => ("-0.00005", "0.0002"), // https://www.htx.com/zh-cn/support/360000113122
+                    CommodityClass::Spot => ("0.000097", "0.000193"), // https://www.htx.com/zh-cn/support/360000312282
+                    CommodityClass::Derivative => ("-0.00005", "0.0002"), // https://www.htx.com/zh-cn/support/360000113122
                 }
             CexExchange::GateIo => ("0.0", "0.0002"), // https://www.gate.io/fee (curl, search for spot_feelist)
             CexExchange::Bitstamp => ("0", "0.0003"), // https://www.bitstamp.net/fee-schedule/

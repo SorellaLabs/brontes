@@ -17,7 +17,7 @@ use super::{
 };
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
-    db::cex::{CexExchange, SecuritiesClass},
+    db::cex::{CexExchange, CommodityClass},
     normalized_actions::NormalizedSwap,
     pair::Pair,
     FastHashMap, FastHashSet,
@@ -308,7 +308,7 @@ impl<'a> TimeWindowTrades<'a> {
             let trades = walker.get_trades_for_window();
             for trade in trades {
                 let trade = trade.get();
-                let (m_fee, t_fee) = trade.exchange.fees(&pair, &SecuritiesClass::Spot);
+                let (m_fee, t_fee) = trade.exchange.fees(&pair, &CommodityClass::Spot);
                 let weight = calculate_weight(block_timestamp, trade.timestamp);
 
                 let (
