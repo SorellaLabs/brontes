@@ -51,7 +51,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(|b| CexBlockTimes::add_time_window(b, (6.0,6.0)))
+                .map(|b| CexBlockTimes::add_time_window(b, (6.0, 6.0)))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
