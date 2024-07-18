@@ -10,9 +10,13 @@ use reth_primitives::{
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB};
 use reth_rpc::eth::error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError};
-use reth_rpc_api::EthApiServer;
+use reth_rpc_api::{
+    reth_rpc_eth_api::helpers::{Call, LoadState},
+    EthApiServer,
+};
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
+    state::StateOverride, AccessListItem, BlockOverrides, Log, TransactionReceipt,
+    TransactionRequest,
 };
 use revm::{
     primitives::{
@@ -251,20 +255,15 @@ pub(crate) fn create_txn_env(
         caller: from.unwrap_or_default(),
         gas_price,
         gas_priority_fee: max_priority_fee_per_gas,
-        transact_to: to.map(TransactTo::Call).unwrap_or_else(TransactTo::create),
+        transact_to: to.unwrap_or(TransactTo::Create),
         value: value.unwrap_or_default(),
         data: input.try_into_unique_input()?.unwrap_or_default(),
         chain_id,
-        access_list: access_list
-            .map(reth_rpc_types::AccessList::into_flattened)
-            .unwrap_or_default(),
+        access_list: access_list.map(|a| a.0).unwrap_or_default(),
         // EIP-4844 fields
         blob_hashes: blob_versioned_hashes.unwrap_or_default(),
         max_fee_per_blob_gas,
-        #[cfg(feature = "optimism")]
-        optimism: OptimismFields { enveloped_tx: Some(Bytes::new()), ..Default::default() },
-        authorization_list: todo!(),
-        optimism: todo!(),
+        authorization_list: None,
     };
 
     Ok(env)
