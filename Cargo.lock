@@ -2083,7 +2083,7 @@ dependencies = [
  "eyre",
  "futures",
  "hyper 0.14.29",
- "metrics 0.21.1",
+ "metrics 0.23.0",
  "metrics-exporter-prometheus 0.12.1",
  "metrics-process 1.0.14",
  "metrics-util 0.15.0",
@@ -6330,6 +6330,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 
 [[package]]
+name = "op-alloy-consensus"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d10e10cbbdb3931fed5109bbd570c0a6cf0ce08db1f93401cfb5cefc51998d1"
+dependencies = [
+ "alloy-consensus 0.2.0",
+ "alloy-eips 0.2.0",
+ "alloy-primitives",
+ "alloy-rlp",
+ "alloy-serde 0.2.0",
+ "serde",
+]
+
+[[package]]
+name = "op-alloy-rpc-types"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9978c3d449abb03526d378988ae6d51b049ef36205cc97bf284574df9f578021"
+dependencies = [
+ "alloy-network",
+ "alloy-primitives",
+ "alloy-rpc-types-eth",
+ "alloy-serde 0.2.0",
+ "op-alloy-consensus",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6423,6 +6452,18 @@ name = "owned_chunks"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed71cd6fadba849f9e213dba59ab431d5ef3d4afd8c07966a5aeaebe83555d4e"
+
+[[package]]
+name = "p256"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9863ad85fa8f4460f9c48cb909d38a0d689dba1f6f6988a5e3e0d31071bcd4b"
+dependencies = [
+ "ecdsa",
+ "elliptic-curve",
+ "primeorder",
+ "sha2 0.10.8",
+]
 
 [[package]]
 name = "page_size"
@@ -7276,6 +7317,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "primeorder"
+version = "0.13.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "353e1ca18966c16d9deb1c69278edbc5f194139612772bd9537af60ac231e1e6"
+dependencies = [
+ "elliptic-curve",
+]
+
+[[package]]
 name = "primitive-types"
 version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7960,10 +8010,12 @@ dependencies = [
  "alloy-trie",
  "derive_more",
  "once_cell",
+ "op-alloy-rpc-types",
  "reth-ethereum-forks",
  "reth-network-peers",
  "reth-primitives-traits",
  "reth-trie-common",
+ "serde",
  "serde_json",
 ]
 
@@ -8483,6 +8535,7 @@ name = "reth-execution-types"
 version = "1.0.2"
 source = "git+https://github.com/paradigmxyz/reth?rev=ffb44e6#ffb44e6245eebd0144e8ae62f4f39203f2ea2e5f"
 dependencies = [
+ "reth-chainspec",
  "reth-execution-errors",
  "reth-primitives",
  "reth-trie",
@@ -8993,6 +9046,7 @@ dependencies = [
  "modular-bitfield",
  "once_cell",
  "rayon",
+ "reth-chainspec",
  "reth-codecs",
  "reth-ethereum-forks",
  "reth-primitives-traits",
@@ -9140,6 +9194,7 @@ dependencies = [
  "http-body 1.0.0",
  "hyper 1.3.1",
  "jsonrpsee",
+ "jsonrpsee-types",
  "jsonwebtoken",
  "parking_lot 0.12.3",
  "pin-project",
@@ -9801,6 +9856,7 @@ dependencies = [
  "cfg-if",
  "k256",
  "once_cell",
+ "p256",
  "revm-primitives 7.1.0",
  "ripemd",
  "secp256k1 0.28.2",

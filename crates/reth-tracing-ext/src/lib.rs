@@ -5,14 +5,15 @@ use std::{
 };
 
 use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
-use reth_beacon_consensus::BeaconConsensus;
+use reth_beacon_consensus::EthBeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
 use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::EthEvmConfig;
-use reth_primitives::{BlockId, PruneModes, MAINNET};
+use reth_primitives::{BlockId, optimism::OP_MAINNET};
+use reth_prune_types::PruneModes;
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{inspectors::GasInspector, EvmProcessorFactory};
 use reth_rpc::{
@@ -63,14 +64,14 @@ impl TracingClient {
         task_executor: BrontesTaskExecutor,
         static_files_path: PathBuf,
     ) -> Self {
-        let chain = MAINNET.clone();
+        let chain = OP_MAINNET.clone();
         let provider_factory =
             ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), static_files_path)
                 .expect("failed to start provider factory");
 
         let tree_externals = TreeExternals::new(
             provider_factory.clone(),
-            Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
+            Arc::new(EthBeaconConsensus::new(Arc::clone(&chain))),
             EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
         );
 
@@ -111,7 +112,7 @@ impl TracingClient {
         );
         // blocking task pool
         // fee history cache
-        let api = EthApi::with_spawner(
+        let api = EthApi::new(
             provider.clone(),
             tx_pool.clone(),
             NoopNetwork::default(),
@@ -127,6 +128,7 @@ impl TracingClient {
             fee_history,
             EthEvmConfig::default(),
             None,
+            DEFAULT_PROOF_PERMITS
         );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as usize);

@@ -41,8 +41,8 @@ impl DynamicContractMetrics {
     }
 }
 
-#[derive(Metrics, Clone)]
 #[metrics(scope = "contracts")]
+#[derive(Metrics, Clone)]
 pub(crate) struct ContractMetrics {
     /// The number of times the contract has been called
     pub(crate) times_called: Counter,

@@ -9,10 +9,7 @@ use reth_primitives::{
 };
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB};
-use reth_rpc::eth::{
-    error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError},
-    EthTransactions,
-};
+use reth_rpc::eth::error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError};
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
     state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
@@ -23,7 +20,7 @@ use revm::{
     },
     Database,
 };
-use revm_primitives::ExecutionResult;
+use revm_primitives::{ExecutionResult, TxKind};
 
 use crate::TracingClient;
 
@@ -266,6 +263,8 @@ pub(crate) fn create_txn_env(
         max_fee_per_blob_gas,
         #[cfg(feature = "optimism")]
         optimism: OptimismFields { enveloped_tx: Some(Bytes::new()), ..Default::default() },
+        authorization_list: todo!(),
+        optimism: todo!(),
     };
 
     Ok(env)
