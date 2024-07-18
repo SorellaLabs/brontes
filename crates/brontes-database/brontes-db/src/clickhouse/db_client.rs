@@ -463,12 +463,7 @@ impl ClickhouseHandle for Clickhouse {
             }
         };
 
-        let price_converter = CexQuotesConverter::new(
-            block_times,
-            symbols,
-            data,
-            self.cex_download_config.time_window,
-        );
+        let price_converter = CexQuotesConverter::new(block_times, symbols, data);
         let prices: Vec<CexPriceData> = price_converter
             .convert_to_prices()
             .into_iter()
