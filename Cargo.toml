@@ -39,29 +39,28 @@ brontes-libmdbx= { path = "./crates/brontes-database/libmdbx-rs" }
 # Reth
 reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "ffb44e6" }
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "ffb44e6" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "ffb44e6", features = ["optimism"] }
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "ffb44e6", features = ["optimism"] }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "ffb44e6" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "ffb44e6" }
 reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "ffb44e6" }
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "ffb44e6", features = ["optimism"] }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "ffb44e6", features = ["optimism"] }
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "ffb44e6" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "ffb44e6" }
 reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "ffb44e6" }
 reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "ffb44e6" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", features = ["optimism"], rev = "ffb44e6" }
-reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "ffb44e6", features = ["optimism"] }
-reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "ffb44e6", features = ["optimism"] }
-reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "ffb44e6", features = ["optimism"] }
-reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "ffb44e6", features = ["optimism"] }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "ffb44e6" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "ffb44e6" }
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "ffb44e6" }
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "ffb44e6" }
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "ffb44e6" }
 #reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [
 #  "test-utils",
 #], rev = "ffb44e6" }
 reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
   "test-utils",
-  "optimism",
 ], rev = "ffb44e6" }
-reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "ffb44e6", features = ["optimism"] }
+reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "ffb44e6" }
 reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "ffb44e6" }
-reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "ffb44e6", features = ["optimism"] }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "ffb44e6", features = ["optimism"] }
+reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "ffb44e6" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "ffb44e6" }
 reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "ffb44e6" }
 reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "ffb44e6" }
 reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", rev = "ffb44e6" }
@@ -74,11 +73,9 @@ ruint = "1.9.0"
 revm = { version = "12.1.0", features = [
   "std",
   "secp256k1",
-  "optimism",
 ], default-features = false }
 revm-primitives = { version = "7.1.0", features = [
   "std",
-  "optimism",
 ], default-features = false }
 revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "dc614ee" }
 
@@ -99,7 +96,7 @@ alloy-transport = "0.2"
 alloy-network = "0.2"
 alloy-json-rpc = "0.2"
 alloy-rpc-types = { version = "0.2", features = ["jsonrpsee-types", "eth"] }
-alloy-rpc-types-trace = { version = "0.2", features = ["jsonrpsee-types", "eth"] }
+alloy-rpc-types-trace = "0.2"
 alloy-rpc-client = "0.2"
 
 # Async
