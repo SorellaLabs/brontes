@@ -12,6 +12,8 @@ use reth_blockchain_tree::{
 use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::{EthEvmConfig, EthExecutorProvider};
+use reth_chainspec::MAINNET;
+use reth_rpc_eth_types::{DEFAULT_ETH_PROOF_WINDOW, DEFAULT_PROOF_PERMITS};
 use reth_primitives::{constants::*, BlockId};
 use reth_provider::{
     providers::{BlockchainProvider, StaticFileProvider},
@@ -19,16 +21,10 @@ use reth_provider::{
 };
 use reth_prune_types::PruneModes;
 use reth_revm::inspectors::GasInspector;
-use reth_rpc::{
-    eth::{
-        cache::{EthStateCache, EthStateCacheConfig},
-        error::EthResult,
-        gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
-        EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
-    },
-    EthApi, TraceApi,
+use reth_rpc_eth_types::{
+    EthResult, EthStateCache, EthStateCacheConfig, GasPriceOracle, GasPriceOracleConfig, FeeHistoryCache, FeeHistoryCacheConfig
 };
-use reth_rpc_api::reth_rpc_eth_api::helpers::Trace;
+use reth_rpc::{ EthApi, TraceApi };
 use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
 use reth_tracer::{
     arena::CallTraceArena,
@@ -68,7 +64,7 @@ impl TracingClient {
         task_executor: BrontesTaskExecutor,
         static_files_path: PathBuf,
     ) -> Self {
-        let chain = OP_MAINNET.clone();
+        let chain = MAINNET.clone();
         let provider_factory = ProviderFactory::new(
             Arc::clone(&db),
             Arc::clone(&chain),

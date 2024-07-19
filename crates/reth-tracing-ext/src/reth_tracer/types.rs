@@ -9,7 +9,7 @@ use alloy_rpc_types_trace::{
         TraceOutput, TransactionTrace,
     },
 };
-use revm::interpreter::{opcode, CallContext, CallScheme, CreateScheme, InstructionResult, OpCode};
+use revm::interpreter::{opcode, CallScheme, CreateScheme, InstructionResult, OpCode};
 use serde::{Deserialize, Serialize};
 use utils::{convert_memory, TraceStyle};
 
@@ -56,8 +56,6 @@ pub struct CallTrace {
     pub gas_limit: u64,
     /// The status of the trace's call
     pub status: InstructionResult,
-    /// call context of the runtime
-    pub call_context: Option<Box<CallContext>>,
     /// Opcode-level execution steps
     pub steps: Vec<CallTraceStep>,
 }
@@ -519,7 +517,7 @@ pub struct CallTraceStep {
     pub gas_cost:           u64,
     /// Change of the contract state after step execution (effect of the
     /// SLOAD/SSTORE instructions)
-    pub storage_change:     Option<StorageChange>,
+    pub storage_change:     Option<StorageChanged>,
     /// Final status of the step
     ///
     /// This is set after the step was executed.

@@ -9,13 +9,11 @@ use reth_primitives::{
 };
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB};
-use reth_rpc::eth::error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError};
-use reth_rpc_api::{
-    reth_rpc_eth_api::helpers::{Call, LoadState},
-    EthApiServer,
-};
+use reth_rpc_eth_api::{helpers::{Call, LoadState}, EthApiServer};
+use reth_rpc_eth_types::error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError};
+
 use reth_rpc_types::{
-    state::StateOverride, AccessListItem, BlockOverrides, Log, TransactionReceipt,
+    state::StateOverride, BlockOverrides, Log, TransactionReceipt,
     TransactionRequest,
 };
 use revm::{
@@ -49,7 +47,7 @@ impl TracingProvider for TracingClient {
         block_number: BlockId,
     ) -> eyre::Result<Bytes> {
         let (cfg, block_env, at) = self.api.evm_env_at(block_number).await?;
-        let state = self.api.state_at(at)?;
+        let state = at.as_block_hash().map(|block| self.api.state_at_hash(block));
         let mut db = CacheDB::new(StateProviderDatabase::new(state));
         let env = prepare_call_env(cfg, block_env, request, self.api.call_gas_limit(), &mut db)?;
         let (res, _) = self.api.transact(&mut db, env)?;

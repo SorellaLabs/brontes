@@ -39,8 +39,12 @@ brontes-libmdbx= { path = "./crates/brontes-database/libmdbx-rs" }
 # Reth
 reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "ffb44e6" }
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "ffb44e6" }
+reth-chainspec = { git = "https://github.com/paradigmxyz/reth", package = "reth-chainspec", rev = "ffb44e6" }
+reth-prune-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-prune-types", rev = "ffb44e6" }
 reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "ffb44e6" }
 reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "ffb44e6" }
+reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-api", rev = "ffb44e6" }
+reth-rpc-eth-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-types", rev = "ffb44e6" }
 reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "ffb44e6" }
 reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "ffb44e6" }
 reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "ffb44e6" }

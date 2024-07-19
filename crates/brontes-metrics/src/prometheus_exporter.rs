@@ -120,13 +120,13 @@ fn collect_memory_stats() {
     if let Ok(value) = stats::active::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.active"))
     {
-        gauge!("jemalloc.active", value as f64);
+        gauge!("jemalloc.active", &[], value as f64);
     }
 
     if let Ok(value) = stats::allocated::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.allocated"))
     {
-        gauge!("jemalloc.allocated", value as f64);
+        gauge!("jemalloc.allocated", &[], value as f64);
     }
 
     if let Ok(value) = stats::mapped::read()
