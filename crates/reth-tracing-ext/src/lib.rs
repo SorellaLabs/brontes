@@ -13,12 +13,13 @@ use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::{EthEvmConfig, EthExecutorProvider};
 use reth_chainspec::MAINNET;
-use reth_rpc_eth_types::{DEFAULT_ETH_PROOF_WINDOW, DEFAULT_PROOF_PERMITS};
+use reth_rpc_server_types::constants::{DEFAULT_ETH_PROOF_WINDOW, DEFAULT_PROOF_PERMITS};
 use reth_primitives::{constants::*, BlockId};
 use reth_provider::{
     providers::{BlockchainProvider, StaticFileProvider},
     ProviderFactory,
 };
+use reth_rpc_eth_api::helpers::Trace;
 use reth_prune_types::PruneModes;
 use reth_revm::inspectors::GasInspector;
 use reth_rpc_eth_types::{
@@ -83,7 +84,7 @@ impl TracingClient {
         let tree_config = BlockchainTreeConfig::default();
 
         let blockchain_tree = ShareableBlockchainTree::new(
-            BlockchainTree::new(tree_externals, tree_config, Some(PruneModes::none())).unwrap(),
+            BlockchainTree::new(tree_externals, tree_config, PruneModes::none()).unwrap(),
         );
 
         let provider =
@@ -128,7 +129,7 @@ impl TracingClient {
                 GasPriceOracleConfig::default(),
                 state_cache.clone(),
             ),
-            ETHEREUM_BLOCK_GAS_LIMIT.into(),
+            ETHEREUM_BLOCK_GAS_LIMIT,
             DEFAULT_ETH_PROOF_WINDOW,
             blocking,
             fee_history,

@@ -9583,6 +9583,7 @@ dependencies = [
  "reth-rpc-api",
  "reth-rpc-eth-api",
  "reth-rpc-eth-types",
+ "reth-rpc-server-types",
  "reth-rpc-types",
  "reth-tasks",
  "reth-tracing-ext",
