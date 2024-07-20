@@ -47,7 +47,7 @@ impl TracingProvider for TracingClient {
         block_number: BlockId,
     ) -> eyre::Result<Bytes> {
         let (cfg, block_env, at) = self.api.evm_env_at(block_number).await?;
-        let state = at.as_block_hash().map(|block| self.api.state_at_hash(block));
+        let state = self.api.state_at_block_id(at)?;
         let mut db = CacheDB::new(StateProviderDatabase::new(state));
         let env = prepare_call_env(cfg, block_env, request, self.api.call_gas_limit(), &mut db)?;
         let (res, _) = self.api.transact(&mut db, env)?;

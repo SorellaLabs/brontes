@@ -66,13 +66,11 @@ impl TracingClient {
         static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
+        let msg = format!("could not make 'StaticFileProvider' at '{}'", static_files_path.display());
         let provider_factory = ProviderFactory::new(
             Arc::clone(&db),
             Arc::clone(&chain),
-            StaticFileProvider::read_only(static_files_path).expect(&format!(
-                "could not make 'StaticFileProvider' at '{}'",
-                static_files_path.display()
-            )),
+            StaticFileProvider::read_only(static_files_path).expect(&msg),
         );
 
         let tree_externals = TreeExternals::new(
