@@ -1971,6 +1971,7 @@ dependencies = [
  "reth-primitives",
  "reth-rpc",
  "reth-rpc-types",
+ "reth-storage-errors",
  "reth-tasks",
  "reth-tracing-ext",
  "rkyv",

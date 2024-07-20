@@ -7,7 +7,7 @@ use reth_db::{
     transaction::{DbTx, DbTxMut},
     DatabaseError, DatabaseWriteOperation, TableType,
 };
-use reth_interfaces::db::DatabaseWriteError;
+use reth_storage_errors::db::DatabaseWriteError;
 
 use super::{cursor::LibmdbxCursor, utils::decode_one};
 use crate::libmdbx::{

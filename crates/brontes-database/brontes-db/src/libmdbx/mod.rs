@@ -33,7 +33,7 @@ use reth_db::{
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseError,
 };
-use reth_interfaces::db::LogLevel;
+use reth_storage_errors::db::LogLevel;
 use tables::*;
 use tracing::info;
 
