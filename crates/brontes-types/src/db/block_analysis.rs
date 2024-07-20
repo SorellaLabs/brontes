@@ -1917,11 +1917,11 @@ impl BlockAnalysis {
                 if mev_contract {
                     if let Some(contract) = r.header.mev_contract {
                         *map.entry(contract).or_insert(0.0) +=
-                            r.header.profit_usd + r.header.bribe_usd;
+                            r.header.profit_usd;
                     }
                 } else {
                     *map.entry(r.header.eoa).or_insert(0.0) +=
-                        r.header.profit_usd + r.header.bribe_usd;
+                        r.header.profit_usd;
                 }
             });
 
