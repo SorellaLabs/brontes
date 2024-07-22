@@ -501,13 +501,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .global_exchange_price;
 
         // Amount * base_to_quote = USDT amount
-        let base_to_quote = token_price.reciprocal();
+        let base_to_quote = token_price.clone().reciprocal();
 
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
             price0: base_to_quote.clone(),
             token1: swap.token_out.address,
-            price1: &base_to_quote * cex_quote.0.clone().reciprocal(),
+            price1: (&token_price * cex_quote.0.clone().reciprocal()).reciprocal(),
         };
 
         let pnl_mid = (&maker_token_delta * &base_to_quote, &taker_token_delta * &base_to_quote);

@@ -51,7 +51,7 @@ pub struct RunArgs {
     pub time_window_before: f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-quotes") { "2.0" } else { "8.0" })]
+    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-quotes") { "2.0" } else { "15.0" })]
     pub time_window_after: f64,
     /// The time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
