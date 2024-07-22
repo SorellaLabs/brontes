@@ -4,7 +4,7 @@ use alloy_primitives::{Address, Log, B256, U256};
 use arena::{CallTraceArena, PushTraceKind};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use config::TracingInspectorConfig;
-use reth_primitives::{Bytes, U64};
+use reth_primitives::Bytes;
 use reth_rpc_types::{trace::parity::*, TransactionInfo};
 use revm::{
     inspectors::GasInspector,

@@ -23,7 +23,7 @@ use revm::{
     },
     Database,
 };
-use revm_primitives::{ExecutionResult, TxKind};
+use revm_primitives::ExecutionResult;
 
 use crate::TracingClient;
 
