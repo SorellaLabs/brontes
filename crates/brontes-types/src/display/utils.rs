@@ -802,10 +802,8 @@ pub fn display_optimistic_trades(
             optimistic_route_pnl.maker_taker_ask.0.clone().to_float(),
             optimistic_route_pnl.maker_taker_ask.1.clone().to_float(),
         )?;
-
         if !cex_dex_data.optimistic_trade_details.is_empty() {
             writeln!(f, "\n  - {}: Optimistic Trade Details", "Trades".bright_green())?;
-
             let mut table = Table::new();
             table.add_row(Row::new(vec![
                 Cell::new("Exchange").style_spec("Fb"),
@@ -815,29 +813,24 @@ pub fn display_optimistic_trades(
                 Cell::new("Volume").style_spec("Fb"),
             ]));
 
-            for (hop_index, hop) in cex_dex_data.optimistic_trade_details.iter().enumerate() {
-                let hop_mut = hop.clone();
+            let mut all_trades: Vec<&OptimisticTrade> = cex_dex_data
+                .optimistic_trade_details
+                .iter()
+                .flatten()
+                .collect();
+            all_trades.sort_by_key(|trade| trade.timestamp);
 
-                hop_mut
-                    .clone()
-                    .sort_unstable_by_key(|trade| trade.timestamp);
-
-                for trade in hop_mut {
-                    let relative_time =
-                        (trade.timestamp as i64 - cex_dex_data.block_timestamp as i64) / 1000;
-                    table.add_row(Row::new(vec![
-                        Cell::new(&format!("{:?}", trade.exchange)),
-                        Cell::new(&format!("{:?}", trade.pair)),
-                        Cell::new(&format!("{}", relative_time)),
-                        Cell::new(&format!("{:.8}", trade.price.clone().to_float())),
-                        Cell::new(&format!("{:.8}", trade.volume.clone().to_float())),
-                    ]));
-                }
-                if hop_index < cex_dex_data.optimistic_trade_details.len() - 1 {
-                    table.add_empty_row();
-                }
+            for trade in all_trades {
+                let relative_time =
+                    (trade.timestamp as i64 - cex_dex_data.block_timestamp as i64) / 1000;
+                table.add_row(Row::new(vec![
+                    Cell::new(&format!("{:?}", trade.exchange)),
+                    Cell::new(&format!("{:?}", trade.pair)),
+                    Cell::new(&format!("{}", relative_time)),
+                    Cell::new(&format!("{:.8}", trade.price.clone().to_float())),
+                    Cell::new(&format!("{:.8}", trade.volume.clone().to_float())),
+                ]));
             }
-
             write!(f, "{}", table)?;
         }
     }
