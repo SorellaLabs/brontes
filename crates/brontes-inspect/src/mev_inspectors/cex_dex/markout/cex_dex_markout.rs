@@ -25,7 +25,10 @@ use brontes_types::{
 };
 use itertools::{multizip, Itertools};
 use malachite::{
-    num::basic::traits::{One, Two, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Two, Zero},
+    },
     Rational,
 };
 use reth_primitives::Address;
@@ -209,7 +212,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             acc
                         });
 
-                let header = self.utils.build_bundle_header(
+                let header: brontes_types::mev::BundleHeader = self.utils.build_bundle_header(
                     vec![deltas],
                     vec![tx_info.tx_hash],
                     &tx_info,
@@ -501,7 +504,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             token0: swap.token_in.address,
             price0: token_price.clone(),
             token1: swap.token_out.address,
-            price1: &token_price / &cex_quote.0,
+            price1: &token_price * cex_quote.0.clone().reciprocal(),
         };
 
         let pnl_mid = (&maker_token_delta * &token_price, &taker_token_delta * &token_price);

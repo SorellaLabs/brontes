@@ -122,30 +122,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
         pricing_metrics: Option<DexPricingMetrics>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
-        // calculate the chunk size using min batch size and max_tasks.
-        // max tasks defaults to 25% of physical threads of the system if not set
-        let range = end_block - self.start_block.unwrap();
-        let cpus_min = range / self.min_batch_size + 1;
-
-        let cpus = std::cmp::min(cpus_min, self.max_tasks);
-        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
-
-        let start_block = self.start_block.unwrap();
-
-        let chunks = (start_block..=end_block)
-            .chunks(chunk_size.try_into().unwrap())
-            .into_iter()
-            .map(|mut c| {
-                let start = c.next().unwrap();
-                let end_block = c.last().unwrap_or(start_block);
-                (start, end_block)
-            })
-            .collect_vec();
+        let chunks = self.calculate_chunks(end_block);
 
         let progress_bar = self.initialize_global_progress_bar(self.start_block, self.end_block);
         let state_to_init = Arc::new(
             self.libmdbx
-                .state_to_initialize(start_block, end_block)
+                .state_to_initialize(self.start_block.unwrap(), end_block)
                 .unwrap(),
         );
 
@@ -205,6 +187,27 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             },
         ))
         .buffer_unordered(4)
+    }
+
+    ///Calculate the block chunks using min batch size and max_tasks.
+    /// Max tasks defaults to 50% of physical cores of the system if not set
+    fn calculate_chunks(&self, end_block: u64) -> Vec<(u64, u64)> {
+        let start_block = self.start_block.unwrap();
+        let range = end_block - start_block;
+        let cpus_min = range / self.min_batch_size + 1;
+        let cpus = std::cmp::min(cpus_min, self.max_tasks);
+
+        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
+
+        (start_block..=end_block)
+            .chunks(chunk_size.try_into().unwrap())
+            .into_iter()
+            .map(|mut c| {
+                let start = c.next().unwrap();
+                let end_block = c.last().unwrap_or(start_block);
+                (start, end_block)
+            })
+            .collect_vec()
     }
 
     fn build_tip_inspector(

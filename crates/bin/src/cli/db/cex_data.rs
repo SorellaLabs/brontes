@@ -242,7 +242,7 @@ struct TradeStats {
     total_volume:       f64,
     average_price:      f64,
 }
-fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
+fn print_trade_stats(stats: &[TradeStats]) {
     if stats.is_empty() {
         return
     }
