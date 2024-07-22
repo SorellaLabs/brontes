@@ -126,14 +126,16 @@ impl<'a> PairTradeWalker<'a> {
     }
 }
 
-pub(crate) struct CexTradePtr<'ptr> {
+pub struct CexTradePtr<'ptr> {
     raw: *const CexTrades,
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
     _p:  PhantomData<&'ptr u8>,
 }
 
 pub struct TradeBasket<'a> {
+    #[allow(dead_code)]
     start_time:  u64,
+    #[allow(dead_code)]
     end_time:    u64,
     trade_index: usize,
     trades:      Vec<CexTradePtr<'a>>,

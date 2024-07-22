@@ -391,7 +391,12 @@ impl BrontesTaskExecutor {
             self.on_shutdown.clone(),
             LocalGracefulShutdownGuard::new(Arc::clone(&self.graceful_tasks)),
         );
-        let fut = f(unsafe { std::mem::transmute(on_shutdown) });
+        let fut = f(unsafe {
+            std::mem::transmute::<
+                executor::LocalGracefulShutdown,
+                reth_tasks::shutdown::GracefulShutdown,
+            >(on_shutdown)
+        });
 
         // wrap the task in catch unwind
         let task = std::panic::AssertUnwindSafe(fut)
@@ -438,7 +443,12 @@ impl BrontesTaskExecutor {
             self.on_shutdown.clone(),
             LocalGracefulShutdownGuard::new(Arc::clone(&self.graceful_tasks)),
         );
-        let fut = f(unsafe { std::mem::transmute(on_shutdown) });
+        let fut = f(unsafe {
+            std::mem::transmute::<
+                executor::LocalGracefulShutdown,
+                reth_tasks::shutdown::GracefulShutdown,
+            >(on_shutdown)
+        });
 
         self.handle.spawn(fut)
     }

@@ -154,7 +154,20 @@ impl WriteProgress {
                 file_handle.write_all(&buf_moved).await.unwrap();
                 file_handle
             }) as Pin<Box<dyn Future<Output = File> + Send + 'static>>;
-            let new = Self::Writing(std::mem::transmute(fut));
+            let new = Self::Writing(std::mem::transmute::<
+                std::pin::Pin<
+                    std::boxed::Box<
+                        dyn futures::Future<Output = tokio::fs::File> + std::marker::Send,
+                    >,
+                >,
+                std::pin::Pin<
+                    std::boxed::Box<
+                        dyn futures::Future<Output = tokio::fs::File>
+                            + std::marker::Send
+                            + std::marker::Unpin,
+                    >,
+                >,
+            >(fut));
 
             std::ptr::write(self, new);
         }

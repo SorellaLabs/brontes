@@ -95,7 +95,7 @@ impl CexTradeMap {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
-        SortedTrades::new_from_cex_trade_map(&mut self.0, exchanges, pair, block_timestamp)
+        SortedTrades::new_from_cex_trade_map(&self.0, exchanges, pair, block_timestamp)
             .get_optimistic_price(
                 config,
                 exchanges,

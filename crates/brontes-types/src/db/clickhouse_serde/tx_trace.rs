@@ -116,7 +116,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateAction {
                 Action::Create(c) => {
                     this.trace_idx.push(trace.trace_idx);
                     this.from.push(format!("{:?}", c.from));
-                    this.gas.push(c.gas.into());
+                    this.gas.push(c.gas);
                     this.init.push(format!("{:?}", c.init));
                     this.value.push(c.value.to_le_bytes() as [u8; 32]);
                 }
@@ -151,7 +151,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallAction {
                     this.trace_idx.push(trace.trace_idx);
                     this.from.push(format!("{:?}", c.from));
                     this.call_type.push(format!("{:?}", c.call_type));
-                    this.gas.push(c.gas.into());
+                    this.gas.push(c.gas);
                     this.input.push(format!("{:?}", c.input));
                     this.to.push(format!("{:?}", c.to));
                     this.value.push(c.value.to_le_bytes() as [u8; 32]);
@@ -240,7 +240,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
             .filter_map(|trace| {
                 trace.trace.result.as_ref().and_then(|res| match res {
                     TraceOutput::Call(c) => {
-                        Some((trace.trace_idx, c.gas_used.into(), format!("{:?}", c.output)))
+                        Some((trace.trace_idx, c.gas_used, format!("{:?}", c.output)))
                     }
                     _ => None,
                 })
@@ -276,7 +276,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
                         trace.trace_idx,
                         format!("{:?}", c.address),
                         format!("{:?}", c.code),
-                        c.gas_used.into(),
+                        c.gas_used,
                     )),
                     _ => None,
                 })
@@ -295,7 +295,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
 pub mod tx_traces_inner {
     use std::str::FromStr;
 
-    use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256, U64};
+    use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256};
     use itertools::Itertools;
     use reth_rpc_types::trace::parity::{
         Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction,

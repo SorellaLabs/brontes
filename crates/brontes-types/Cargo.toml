@@ -92,9 +92,10 @@ reth-tracing-ext.workspace = true
 
 
 [features]
+api = []
+cex-dex-quotes = []
 tests = []
 test_pricing = []
-cex-dex-quotes = []
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",

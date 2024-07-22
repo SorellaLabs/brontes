@@ -926,6 +926,7 @@ pub(crate) mod read_transactions {
 unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> ffi::MDBX_hsr_func {
     // Move the callback function to heap and intentionally leak it, so it's not
     // dropped and the MDBX env can use it throughout the whole program.
+
     let callback = Box::leak(Box::new(callback));
 
     // Wrap the callback into an ffi binding. The callback is needed for a nicer UX
@@ -955,10 +956,10 @@ unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> f
     Some(std::mem::transmute::<
         libffi::high::FnPtr8<
             '_,
-            *const cursor::ffi::MDBX_env,
-            *const cursor::ffi::MDBX_txn,
+            *const ffi::MDBX_env,
+            *const ffi::MDBX_txn,
             i32,
-            *mut cursor::ffi::_opaque_pthread_t,
+            *mut ffi::_opaque_pthread_t,
             u64,
             u32,
             usize,
@@ -966,10 +967,10 @@ unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> f
             i32,
         >,
         unsafe extern "C" fn(
-            *const cursor::ffi::MDBX_env,
-            *const cursor::ffi::MDBX_txn,
+            *const ffi::MDBX_env,
+            *const ffi::MDBX_txn,
             i32,
-            *mut cursor::ffi::_opaque_pthread_t,
+            *mut ffi::_opaque_pthread_t,
             u64,
             u32,
             usize,

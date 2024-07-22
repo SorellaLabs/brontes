@@ -31,7 +31,7 @@ const TIME_STEP: u64 = 100_000;
 
 /// The amount of excess volume a trade can do to be considered
 /// as part of execution
-const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(30, 100);
+pub const EXCESS_VOLUME_PCT: Rational = Rational::const_from_unsigneds(30, 100);
 
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
