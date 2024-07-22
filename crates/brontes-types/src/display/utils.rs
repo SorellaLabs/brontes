@@ -824,7 +824,7 @@ pub fn display_optimistic_trades(
 
                 for trade in hop_mut {
                     let relative_time =
-                        trade.timestamp as i64 - cex_dex_data.block_timestamp as i64 / 1000;
+                        (trade.timestamp as i64 - cex_dex_data.block_timestamp as i64) / 1000;
                     table.add_row(Row::new(vec![
                         Cell::new(&format!("{:?}", trade.exchange)),
                         Cell::new(&format!("{:?}", trade.pair)),
