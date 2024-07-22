@@ -54,11 +54,11 @@ pub struct RunArgs {
     pub time_window_after: f64,
     /// The time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-before", default_value = "0.5")]
+    #[arg(long = "op-tw-before", default_value = "3.0")]
     pub time_window_before_optimistic: f64,
     /// The time window (AFTER) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-after", default_value = "2.0")]
+    #[arg(long = "op-tw-after", default_value = "12.0")]
     pub time_window_after_optimistic: f64,
     /// CEX exchanges to consider for cex-dex analysis
     #[arg(
