@@ -164,7 +164,7 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
         .await;
 
     match result {
-        Ok(stats) => print_trade_stats(&stats, block_timestamp),
+        Ok(stats) => print_trade_stats(&stats),
         Err(e) => {
             println!("No trades for {} stats: {:?}", trading_pair, e);
         }
