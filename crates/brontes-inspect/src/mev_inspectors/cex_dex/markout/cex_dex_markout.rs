@@ -479,7 +479,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let vol = Rational::ONE;
 
-        let pair = Pair(self.utils.quote, swap.token_in.address);
+        let pair = Pair(swap.token_in.address, self.utils.quote);
 
         //TODO: Pre calculate as we always need token in priced in quote asset
         let token_price = metadata
@@ -492,7 +492,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &self.cex_exchanges,
                 pair,
                 &vol,
-                metadata.block_timestamp * 1000000,
+                metadata.microseconds_block_timestamp(),
                 true,
                 swap,
                 tx_hash,
@@ -500,14 +500,17 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .0
             .global_exchange_price;
 
+        // Amount * base_to_quote = USDT amount
+        let base_to_quote = token_price.reciprocal();
+
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
-            price0: token_price.clone(),
+            price0: base_to_quote.clone(),
             token1: swap.token_out.address,
-            price1: &token_price * cex_quote.0.clone().reciprocal(),
+            price1: &base_to_quote * cex_quote.0.clone().reciprocal(),
         };
 
-        let pnl_mid = (&maker_token_delta * &token_price, &taker_token_delta * &token_price);
+        let pnl_mid = (&maker_token_delta * &base_to_quote, &taker_token_delta * &base_to_quote);
 
         let quote = FeeAdjustedQuote {
             timestamp: metadata.block_timestamp,
