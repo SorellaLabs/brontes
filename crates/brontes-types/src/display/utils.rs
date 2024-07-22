@@ -6,7 +6,7 @@ use indoc::indoc;
 use prettytable::{Cell, Row, Table};
 
 use crate::{
-    mev::{Bundle, BundleData, CexDex},
+    mev::{Bundle, BundleData, CexDex, OptimisticTrade},
     utils::ToFloatNearest,
 };
 
