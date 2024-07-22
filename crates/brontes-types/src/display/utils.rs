@@ -810,15 +810,21 @@ pub fn display_optimistic_trades(
             table.add_row(Row::new(vec![
                 Cell::new("Exchange").style_spec("Fb"),
                 Cell::new("Pair").style_spec("Fb"),
-                Cell::new("Time from block (microseconds)").style_spec("Fb"),
+                Cell::new("Time from block (ms)").style_spec("Fb"),
                 Cell::new("Price").style_spec("Fb"),
                 Cell::new("Volume").style_spec("Fb"),
             ]));
 
             for (hop_index, hop) in cex_dex_data.optimistic_trade_details.iter().enumerate() {
-                for trade in hop {
+                let hop_mut = hop.clone();
+
+                hop_mut
+                    .clone()
+                    .sort_unstable_by_key(|trade| trade.timestamp);
+
+                for trade in hop_mut {
                     let relative_time =
-                        trade.timestamp as i64 - cex_dex_data.block_timestamp as i64;
+                        trade.timestamp as i64 - cex_dex_data.block_timestamp as i64 / 1000;
                     table.add_row(Row::new(vec![
                         Cell::new(&format!("{:?}", trade.exchange)),
                         Cell::new(&format!("{:?}", trade.pair)),
