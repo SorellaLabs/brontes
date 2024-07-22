@@ -145,9 +145,6 @@ async fn process_pair<D: ClickhouseDBMS>(
     Ok(())
 }
 
-//TODO: So to identify if a token is missing we can:
-// query the -
-
 async fn query_trade_stats<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
     trading_pair: &str,

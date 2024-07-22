@@ -1,7 +1,6 @@
 use std::{path::Path, time::Duration};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
@@ -147,12 +146,7 @@ impl RunArgs {
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
-        let cex_download_config = CexDownloadConfig::new(
-            // we want to load the biggest window so both can run and not run out of trades.
-            (5, 5),
-            self.cex_exchanges.clone(),
-        );
-        let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
+        let clickhouse = static_object(load_clickhouse().await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
         let only_cex_dex = self
@@ -194,8 +188,7 @@ impl RunArgs {
             .time_window_before
             .max(self.time_window_after)
             .max(self.time_window_before_optimistic)
-            .max(self.time_window_after_optimistic) as usize
-            * 2;
+            .max(self.time_window_after_optimistic) as usize;
 
         let executor = task_executor.clone();
         let result = executor

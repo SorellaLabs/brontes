@@ -70,6 +70,7 @@ impl Serialize for OptimisticTrade {
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDex {
     pub tx_hash:                B256,
+    pub block_timestamp:        u64,
     pub block_number:           u64,
     #[redefined(same_fields)]
     pub header_pnl_methodology: CexMethodology,

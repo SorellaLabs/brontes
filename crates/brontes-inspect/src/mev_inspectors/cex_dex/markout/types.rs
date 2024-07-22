@@ -160,6 +160,7 @@ impl CexDexProcessing {
             header_pnl.to_float(),
             BundleData::CexDex(CexDex {
                 block_number: meta.block_num,
+                block_timestamp: meta.microseconds_block_timestamp(),
                 tx_hash: tx_info.tx_hash,
                 header_pnl_methodology,
                 global_vmap_pnl: self.global_vmam_cex_dex.as_ref()?.aggregate_pnl.clone(),

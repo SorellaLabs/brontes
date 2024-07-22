@@ -1,6 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxInit, Tables};
+use brontes_database::{libmdbx::LibmdbxInit, Tables};
 use brontes_types::{db::cex::CexExchange, init_threadpools};
 use clap::Parser;
 use indicatif::MultiProgress;
@@ -74,13 +74,9 @@ impl Init {
         init_threadpools(10);
         let task_executor = ctx.task_executor;
 
-        let cex_download_config = CexDownloadConfig::new(
-            (self.cex_time_window_before, self.cex_time_window_after),
-            self.cex_exchanges.clone(),
-        );
         let libmdbx =
             static_object(load_database(&task_executor, brontes_db_endpoint, None).await?);
-        let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
+        let clickhouse = static_object(load_clickhouse().await?);
 
         let tracer = Arc::new(get_tracing_provider(Path::new(&db_path), 10, task_executor.clone()));
 

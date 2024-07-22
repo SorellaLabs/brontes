@@ -97,21 +97,16 @@ pub fn load_libmdbx(
 
 #[allow(clippy::field_reassign_with_default)]
 #[cfg(feature = "local-clickhouse")]
-pub async fn load_clickhouse(
-    cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
-) -> eyre::Result<Clickhouse> {
-    let mut clickhouse = Clickhouse::new_default().await;
-    clickhouse.cex_download_config = cex_download_config;
+pub async fn load_clickhouse() -> eyre::Result<Clickhouse> {
+    let clickhouse = Clickhouse::new_default().await;
     Ok(clickhouse)
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub async fn load_clickhouse(
-    cex_download_config: brontes_database::clickhouse::cex_config::CexDownloadConfig,
-) -> eyre::Result<ClickhouseHttpClient> {
+pub async fn load_clickhouse() -> eyre::Result<ClickhouseHttpClient> {
     let clickhouse_api = env::var("CLICKHOUSE_API")?;
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
-    Ok(ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key, cex_download_config).await)
+    Ok(ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await)
 }
 
 #[cfg(not(feature = "local-reth"))]

@@ -66,6 +66,7 @@ clap.workspace = true
 brontes-macros.workspace = true
 indicatif.workspace = true
 hyper.workspace = true
+prettytable-rs = "0.10"
 
 # stats
 statrs = "0.16"
@@ -73,6 +74,8 @@ statrs = "0.16"
 # errors
 eyre.workspace = true
 thiserror.workspace = true
+
+
 
 # hashing
 ahash = "0.8.11"

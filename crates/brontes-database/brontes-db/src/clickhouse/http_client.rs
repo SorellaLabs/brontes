@@ -22,18 +22,13 @@ use crate::{
 };
 
 pub struct ClickhouseHttpClient {
-    client:               reqwest::Client,
-    url:                  String,
-    api_key:              String,
-    _cex_download_config: CexDownloadConfig,
+    client:  reqwest::Client,
+    url:     String,
+    api_key: String,
 }
 
 impl ClickhouseHttpClient {
-    pub async fn new(
-        url: String,
-        api_key: Option<String>,
-        cex_download_config: CexDownloadConfig,
-    ) -> Self {
+    pub async fn new(url: String, api_key: Option<String>) -> Self {
         let client = reqwest::Client::new();
         let api_key = if let Some(key) = api_key {
             key
@@ -50,7 +45,7 @@ impl ClickhouseHttpClient {
                 text.split("key: ").collect_vec()[1].to_string()
             }
         };
-        Self { url, api_key, client, _cex_download_config: cex_download_config }
+        Self { url, api_key, client }
     }
 
     fn process_dex_quotes(val: DexPriceData) -> DexQuotes {
