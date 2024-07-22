@@ -53,13 +53,11 @@ reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package =
 reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "ffb44e6" }
 reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "ffb44e6" }
 reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "ffb44e6" }
+reth-db-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-db-api", rev = "ffb44e6" }
 reth-storage-errors = { git = "https://github.com/paradigmxyz/reth", package = "reth-storage-errors", rev = "ffb44e6" }
 reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "ffb44e6" }
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "ffb44e6" }
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "ffb44e6" }
-#reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [
-#  "test-utils",
-#], rev = "ffb44e6" }
 reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
   "test-utils",
 ], rev = "ffb44e6" }

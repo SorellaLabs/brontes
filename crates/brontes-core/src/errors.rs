@@ -1,6 +1,6 @@
 use brontes_metrics::trace::types::TraceParseErrorKind;
 use reth_primitives::B256;
-use reth_rpc::eth::error::EthApiError;
+use reth_rpc_eth_types::error::EthApiError;
 use thiserror::Error;
 
 /// Custom error type
