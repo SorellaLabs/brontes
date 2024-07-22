@@ -9,12 +9,13 @@ use reth_primitives::{
 };
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB};
-use reth_rpc_eth_api::{helpers::{Call, LoadState}, EthApiServer};
+use reth_rpc_eth_api::{
+    helpers::{Call, LoadState},
+    EthApiServer,
+};
 use reth_rpc_eth_types::error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError};
-
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt,
-    TransactionRequest,
+    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
 use revm::{
     primitives::{

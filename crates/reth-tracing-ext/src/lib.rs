@@ -9,23 +9,24 @@ use reth_beacon_consensus::EthBeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
+use reth_chainspec::MAINNET;
 use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::{EthEvmConfig, EthExecutorProvider};
-use reth_chainspec::MAINNET;
-use reth_rpc_server_types::constants::{DEFAULT_ETH_PROOF_WINDOW, DEFAULT_PROOF_PERMITS};
 use reth_primitives::{constants::*, BlockId};
 use reth_provider::{
     providers::{BlockchainProvider, StaticFileProvider},
     ProviderFactory,
 };
-use reth_rpc_eth_api::helpers::Trace;
 use reth_prune_types::PruneModes;
 use reth_revm::inspectors::GasInspector;
+use reth_rpc::{EthApi, TraceApi};
+use reth_rpc_eth_api::helpers::Trace;
 use reth_rpc_eth_types::{
-    EthResult, EthStateCache, EthStateCacheConfig, GasPriceOracle, GasPriceOracleConfig, FeeHistoryCache, FeeHistoryCacheConfig
+    EthResult, EthStateCache, EthStateCacheConfig, FeeHistoryCache, FeeHistoryCacheConfig,
+    GasPriceOracle, GasPriceOracleConfig,
 };
-use reth_rpc::{ EthApi, TraceApi };
+use reth_rpc_server_types::constants::{DEFAULT_ETH_PROOF_WINDOW, DEFAULT_PROOF_PERMITS};
 use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
 use reth_tracer::{
     arena::CallTraceArena,
@@ -66,7 +67,8 @@ impl TracingClient {
         static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
-        let msg = format!("could not make 'StaticFileProvider' at '{}'", static_files_path.display());
+        let msg =
+            format!("could not make 'StaticFileProvider' at '{}'", static_files_path.display());
         let provider_factory = ProviderFactory::new(
             Arc::clone(&db),
             Arc::clone(&chain),

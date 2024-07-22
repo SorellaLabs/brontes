@@ -16,8 +16,8 @@ use revm::{
     Database, EvmContext, Inspector, JournalEntry,
 };
 use types::{
-    CallKind, CallTrace, CallTraceNode, CallTraceStep, LogCallOrder, RecordedMemory, StorageChanged,
-    StorageChangeReason,
+    CallKind, CallTrace, CallTraceNode, CallTraceStep, LogCallOrder, RecordedMemory,
+    StorageChangeReason, StorageChanged,
 };
 use utils::{gas_used, stack_push_count};
 
