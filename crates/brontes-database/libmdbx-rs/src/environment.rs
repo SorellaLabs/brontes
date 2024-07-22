@@ -922,7 +922,7 @@ pub(crate) mod read_transactions {
 /// Caution: this leaks the memory for callbacks, so they're alive throughout
 /// the program. It's fine, because we also expect the database environment to
 /// be alive during this whole time.
-#[cfg(not(windows))]
+#[cfg(not(target_os = "windows"))]
 unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> ffi::MDBX_hsr_func {
     // Move the callback function to heap and intentionally leak it, so it's not
     // dropped and the MDBX env can use it throughout the whole program.
@@ -953,6 +953,7 @@ unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> f
     std::mem::forget(closure);
 
     // Cast the closure to FFI `extern fn` type.
+    #[cfg(target_os = "macos")]
     Some(std::mem::transmute::<
         libffi::high::FnPtr8<
             '_,
