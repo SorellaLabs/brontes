@@ -11,8 +11,7 @@ use std::{
 };
 
 use futures::{
-    future::{select, BoxFuture, FusedFuture, Shared},
-    pin_mut, Future, FutureExt, TryFutureExt,
+    future::{select, BoxFuture, FusedFuture, Shared}, pin_mut, Future, FutureExt, TryFutureExt
 };
 use reth_tasks::{shutdown::GracefulShutdown, TaskSpawner, TaskSpawnerExt};
 use tokio::{
@@ -393,7 +392,7 @@ impl BrontesTaskExecutor {
         );
         let fut = f(unsafe {
             std::mem::transmute::<
-                executor::LocalGracefulShutdown,
+                LocalGracefulShutdown,
                 reth_tasks::shutdown::GracefulShutdown,
             >(on_shutdown)
         });
@@ -445,7 +444,7 @@ impl BrontesTaskExecutor {
         );
         let fut = f(unsafe {
             std::mem::transmute::<
-                executor::LocalGracefulShutdown,
+                LocalGracefulShutdown,
                 reth_tasks::shutdown::GracefulShutdown,
             >(on_shutdown)
         });

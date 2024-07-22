@@ -675,8 +675,12 @@ pub mod option_contract_info {
         }))
     }
 
-    pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
-        (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
+    pub fn serialize<S: Serializer>(u: &Option<ContractInfo>, serializer: S) -> Result<S::Ok, S::Error> {
+        if let Some(ci) = u {
+            (ci.verified_contract, ci.contract_creator, ci.reputation).serialize(serializer)
+        } else {
+            u.serialize(serializer)
+        }
     }
 }
 
