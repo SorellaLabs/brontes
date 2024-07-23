@@ -114,17 +114,15 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         let lookahead = self.cex_window_data.get_block_lookahead() as u64;
         if self.cex_window_data.is_saturated() {
             let block = block + lookahead;
-            let trades = libmdbx
-                .get_cex_trades(block)
-                .expect("couldn't find cex trades");
-            self.cex_window_data.new_block(trades);
+            if let Ok(trades) = libmdbx.get_cex_trades(block) {
+                self.cex_window_data.new_block(trades);
+            }
         } else {
             // load the full window
             for block in block - lookahead..block + lookahead {
-                let trades = libmdbx
-                    .get_cex_trades(block)
-                    .expect("couldn't find cex trades");
-                self.cex_window_data.new_block(trades);
+                if let Ok(trades) = libmdbx.get_cex_trades(block) {
+                    self.cex_window_data.new_block(trades);
+                }
             }
         };
 
