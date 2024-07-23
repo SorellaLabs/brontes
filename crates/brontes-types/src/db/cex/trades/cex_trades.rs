@@ -41,6 +41,53 @@ impl CexTradeMap {
                 .collect(),
         )
     }
+
+    pub fn merge_in_map(
+        &mut self,
+        other: Self,
+    ) -> FastHashMap<CexExchange, FastHashMap<Pair, usize>> {
+        // generate offset list for proper removal of each pair
+        let offset_list =
+            other
+                .0
+                .into_iter()
+                .fold(FastHashMap::default(), |mut acc, (exchange, pairs)| {
+                    // add to accumulator
+                    acc.insert(
+                        exchange,
+                        pairs
+                            .iter()
+                            .map(|(pair, trades)| (*pair, trades.len()))
+                            .collect::<FastHashMap<_, _>>(),
+                    );
+
+                    // extend trades
+                    for (pair, trades) in pairs {
+                        self.0
+                            .entry(exchange)
+                            .or_default()
+                            .entry(pair)
+                            .or_default()
+                            .extend(trades);
+                    }
+
+                    acc
+                });
+
+        offset_list
+    }
+
+    pub fn pop_historical_trades(
+        &mut self,
+        list: FastHashMap<CexExchange, FastHashMap<Pair, usize>>,
+    ) {
+        for (ex, pairs) in list {
+            for (pair, offset) in pairs {
+                let inner = self.0.entry(ex).or_default().entry(pair).or_default();
+                inner.drain(0..offset);
+            }
+        }
+    }
 }
 
 type ClickhouseTradeMap = Vec<(CexExchange, Vec<((String, String), Vec<RawCexTrades>)>)>;
