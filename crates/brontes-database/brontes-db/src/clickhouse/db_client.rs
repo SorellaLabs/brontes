@@ -300,7 +300,7 @@ impl ClickhouseHandle for Clickhouse {
                 max(eth_prices.price_maker.1, eth_prices.price_taker.1),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes.value, None, None, None))
+            .into_metadata(cex_quotes.value, None, None))
         }
 
         #[cfg(not(feature = "cex-dex-quotes"))]
@@ -313,7 +313,7 @@ impl ClickhouseHandle for Clickhouse {
                 .remove(0)
                 .value;
 
-            Ok(BlockMetadata::new(
+            let mut meta = BlockMetadata::new(
                 block_num,
                 block_meta.block_hash,
                 block_meta.block_timestamp,
@@ -324,7 +324,10 @@ impl ClickhouseHandle for Clickhouse {
                 Default::default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(Default::default(), None, None))
+            .into_metadata(Default::default(), None, None);
+            meta.cex_trades = Some(cex_trades);
+
+            Ok(meta)
         }
     }
 

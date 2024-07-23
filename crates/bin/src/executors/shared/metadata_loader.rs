@@ -228,6 +228,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                 .expect("failed to fetch builder info table in libmdbx");
             (block, tree, meta)
         });
+
         self.clickhouse_futures.push_back(future);
     }
 }
