@@ -1,19 +1,26 @@
 //! Prometheus exporter
-use std::{convert::Infallible, net::SocketAddr, sync::Arc};
+use std::{borrow::Borrow, collections::HashSet, convert::Infallible, net::SocketAddr, sync::{Arc, Mutex, OnceLock}};
 
 use eyre::WrapErr;
 use hyper::{
     service::{make_service_fn, service_fn},
-    Body, Request, Response, Server,
+    Body, Method, Request, Response, Server, StatusCode,
 };
 use metrics::describe_gauge;
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use metrics_util::layers::{PrefixLayer, Stack};
 use prometheus::{Encoder, TextEncoder};
 use reth_metrics::metrics::Unit;
+use serde_json;
 
 pub(crate) trait Hook: Fn() + Send + Sync {}
 impl<T: Fn() + Send + Sync> Hook for T {}
+
+static BLOCKS: OnceLock<Arc<HashSet<u64>>> = OnceLock::new();
+
+pub fn get_blocks() -> Arc<HashSet<u64>> {
+    BLOCKS.get_or_init(|| { Arc::new(HashSet::new()) }).clone()
+}
 
 /// Installs Prometheus as the metrics recorder and serves it over HTTP with
 /// hooks.
@@ -48,25 +55,42 @@ pub(crate) async fn initialize_with_hooks<F: Hook + 'static>(
 async fn start_endpoint<F: Hook + 'static>(
     listen_addr: SocketAddr,
     handle: PrometheusHandle,
-    hook: Arc<F>,
+    metrics_hook: Arc<F>,
 ) -> eyre::Result<()> {
     let make_svc = make_service_fn(move |_| {
         let handle = handle.clone();
-        let hook = Arc::clone(&hook);
+        let metrics_hook = Arc::clone(&metrics_hook);
         async move {
-            Ok::<_, Infallible>(service_fn(move |_: Request<Body>| {
-                (hook)();
-                let mut metrics_render = handle.render();
+            Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
+                let result = match (req.method(), req.uri().path()) {
+                    (&Method::GET, "/metrics") => {
+                        (metrics_hook)();
+                        let mut metrics_render = handle.render();
 
-                let mut buffer = Vec::new();
-                let encoder = TextEncoder::new();
-                // Gather the metrics.
-                let metric_families = prometheus::gather();
-                // Encode them to send.
-                encoder.encode(&metric_families, &mut buffer).unwrap();
-                metrics_render += &String::from_utf8(buffer.clone()).unwrap();
+                        let mut buffer = Vec::new();
+                        let encoder = TextEncoder::new();
+                        // Gather the metrics.
+                        let metric_families = prometheus::gather();
+                        // Encode them to send.
+                        encoder.encode(&metric_families, &mut buffer).unwrap();
+                        metrics_render += &String::from_utf8(buffer.clone()).unwrap();
 
-                async move { Ok::<_, Infallible>(Response::new(Body::from(metrics_render))) }
+                        Ok::<_, Infallible>(Response::new(Body::from(metrics_render)))
+                    },
+                    (&Method::GET, "/blocks") => {
+                        let json = serde_json::to_string(&get_blocks()).unwrap();
+                        Ok(Response::builder()
+                            .header("Content-Type", "application/json")
+                            .body(Body::from(json))
+                            .unwrap())
+                    },
+                    _ => {
+                        let mut not_found = Response::default();
+                        *not_found.status_mut() = StatusCode::NOT_FOUND;
+                        Ok(not_found)
+                    }
+                };
+                async move { result }
             }))
         }
     });

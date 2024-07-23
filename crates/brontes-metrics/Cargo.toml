@@ -29,6 +29,8 @@ metrics-process.workspace = true
 metrics.workspace = true
 prometheus = "0.13.4"
 
+serde_json = "1.0"
+
 # errors
 eyre.workspace = true
 

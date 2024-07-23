@@ -2094,6 +2094,7 @@ dependencies = [
  "prometheus",
  "reth-metrics",
  "reth-primitives",
+ "serde_json",
  "tikv-jemalloc-ctl",
  "tokio",
  "tracing",
