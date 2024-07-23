@@ -457,6 +457,7 @@ impl<'a> TimeWindowTrades<'a> {
                 );
                 for (_, trades) in &trades {
                     trace!(
+                    target: "brontes_types::db::cex::time_window_vwam",
                         trade_qty = %trades.len(),
                         "have trades inner(flipped)"
                     );
@@ -469,11 +470,13 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         trace!(
+                    target: "brontes_types::db::cex::time_window_vwam",
             trade_qty = %trades.len(),
             "have trades"
         );
         for (_, trades) in &trades {
             trace!(
+                    target: "brontes_types::db::cex::time_window_vwam",
                 trade_qty = %trades.len(),
                 "have trades inner"
             );
