@@ -33,7 +33,10 @@ impl CexWindow {
         }
     }
 
-    pub fn cex_trade_map(&self) -> &CexTradeMap {
-        &self.global_map
+    pub fn cex_trade_map(&self) -> CexTradeMap {
+        // we gotta clone or else we get a race condition where when
+        // we remove old data. processing might still be occurring thus shifting
+        // the time window from the expected value
+        self.global_map.clone()
     }
 }
