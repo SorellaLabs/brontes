@@ -466,10 +466,10 @@ impl<'a> TimeWindowTrades<'a> {
             trade_qty = %trades.len(),
             "have trades"
         );
-        for (ex, trades) in &trades {
+        for (_, trades) in &trades {
             trace!(
                 trade_qty = %trades.len(),
-                "have trades"
+                "have trades inner"
             );
         }
 
