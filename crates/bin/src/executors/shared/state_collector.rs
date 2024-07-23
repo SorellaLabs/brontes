@@ -23,7 +23,7 @@ use futures::{Future, FutureExt, Stream, StreamExt};
 use reth_primitives::Header;
 use tracing::{span, trace, Instrument, Level};
 
-use super::{metadata::MetadataFetcher, multi_block_window::MultiBlockWindow};
+use super::{metadata_loader::MetadataFetcher, multi_block_window::MultiBlockWindow};
 
 type CollectionFut<'a> = Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Action>>> + Send + 'a>>;
 type ExecutionFut<'a> = Pin<Box<dyn Future<Output = Option<(Vec<TxTrace>, Header)>> + Send + 'a>>;

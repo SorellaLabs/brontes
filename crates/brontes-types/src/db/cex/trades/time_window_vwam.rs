@@ -119,8 +119,6 @@ impl<'a> TimeWindowTrades<'a> {
                                 || (ex_pair.0 == pair.1 && intermediaries.contains(&ex_pair.1))
                                 || (ex_pair.1 == pair.1 && intermediaries.contains(&ex_pair.0))
                             {
-                                // Sorts trades by timestamp & store the partition point
-                                trades.sort_unstable_by_key(|k| k.timestamp);
                                 let idx = trades
                                     .partition_point(|trades| trades.timestamp < block_timestamp);
                                 Some((ex_pair, (idx, &*trades)))

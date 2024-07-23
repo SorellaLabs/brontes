@@ -28,9 +28,7 @@ impl CexWindow {
         self.offset_list.push_back(offsets);
 
         if self.offset_list.len() > self.window_size_blocks {
-            let Some(oldest_trades) = self.offset_list.pop_front() else {
-                return
-            };
+            let Some(oldest_trades) = self.offset_list.pop_front() else { return };
             self.global_map.pop_historical_trades(oldest_trades);
         }
     }

@@ -171,14 +171,14 @@ impl<'a> TradeBasket<'a> {
                 final_trade.amount = remaining_volume;
                 trades_used.push(final_trade);
                 remaining_volume = Rational::ZERO;
-                break;
+                break
             } else {
                 trades_used.push(trade_data.clone());
                 remaining_volume -= &trade_data.amount;
             }
 
             if remaining_volume == Rational::ZERO {
-                break;
+                break
             }
         }
 
@@ -200,7 +200,7 @@ impl<'a> SortedTrades<'a> {
 
         for (ex, pairs) in trade_map.iter() {
             if !exchanges.contains(ex) || pair.0 == pair.1 {
-                continue;
+                continue
             }
 
             for (ex_pair, trades) in pairs.iter() {
@@ -210,7 +210,7 @@ impl<'a> SortedTrades<'a> {
                     || pair.1 == ex_pair.0
                     || pair.1 == ex_pair.1)
                 {
-                    continue;
+                    continue
                 }
 
                 consolidated_trades
@@ -223,7 +223,6 @@ impl<'a> SortedTrades<'a> {
         let pair_trades = consolidated_trades
             .into_iter()
             .map(|(pair, mut trades)| {
-                trades.sort_unstable_by_key(|t| t.timestamp);
                 let partition_point = trades.partition_point(|t| t.timestamp < block_timestamp);
                 let lower_index = if partition_point > 0 { partition_point - 1 } else { 0 };
                 let upper_index = partition_point;
@@ -329,7 +328,7 @@ impl<'a> TimeBasketQueue<'a> {
             while self.indexes.1 < self.trades.len() {
                 let trade = &self.trades[self.indexes.1];
                 if trade.timestamp > self.current_post_time {
-                    break;
+                    break
                 }
                 basket_trades.push(CexTradePtr::new(trade));
                 basket_volume += &trade.amount;
@@ -356,7 +355,7 @@ impl<'a> TimeBasketQueue<'a> {
 
             // Break if we've reached the max timestamp
             if self.current_post_time >= self.max_timestamp {
-                break;
+                break
             }
         }
     }
@@ -376,7 +375,7 @@ impl<'a> TimeBasketQueue<'a> {
             while self.indexes.0 > 0 {
                 let trade = &self.trades[self.indexes.0];
                 if trade.timestamp < self.current_pre_time {
-                    break;
+                    break
                 }
                 basket_trades.push(CexTradePtr::new(trade));
                 basket_volume += &trade.amount;
@@ -403,7 +402,7 @@ impl<'a> TimeBasketQueue<'a> {
 
             // Break if we've reached the min timestamp
             if self.current_pre_time <= self.min_timestamp {
-                break;
+                break
             }
         }
     }
