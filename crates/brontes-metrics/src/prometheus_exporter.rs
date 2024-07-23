@@ -6,7 +6,7 @@ use hyper::{
     service::{make_service_fn, service_fn},
     Body, Method, Request, Response, Server, StatusCode,
 };
-use metrics::describe_gauge;
+use metrics::{describe_gauge, counter};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use metrics_util::layers::{PrefixLayer, Stack};
 use prometheus::{Encoder, TextEncoder};
@@ -221,7 +221,6 @@ fn describe_memory_stats() {}
 
 #[cfg(target_os = "linux")]
 fn collect_io_stats() {
-    use metrics::absolute_counter;
     use tracing::error;
 
     let Ok(process) = procfs::process::Process::myself()
@@ -236,13 +235,13 @@ fn collect_io_stats() {
         return
     };
 
-    absolute_counter!("io.rchar", io.rchar);
-    absolute_counter!("io.wchar", io.wchar);
-    absolute_counter!("io.syscr", io.syscr);
-    absolute_counter!("io.syscw", io.syscw);
-    absolute_counter!("io.read_bytes", io.read_bytes);
-    absolute_counter!("io.write_bytes", io.write_bytes);
-    absolute_counter!("io.cancelled_write_bytes", io.cancelled_write_bytes);
+    counter!("io.rchar").absolute(io.rchar);
+    counter!("io.wchar").absolute(io.wchar);
+    counter!("io.syscr").absolute(io.syscr);
+    counter!("io.syscw").absolute(io.syscw);
+    counter!("io.read_bytes").absolute(io.read_bytes);
+    counter!("io.write_bytes").absolute(io.write_bytes);
+    counter!("io.cancelled_write_bytes").absolute(io.cancelled_write_bytes);
 }
 
 #[cfg(target_os = "linux")]
