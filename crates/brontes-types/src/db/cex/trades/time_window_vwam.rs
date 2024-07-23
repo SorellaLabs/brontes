@@ -445,11 +445,11 @@ impl<'a> TimeWindowTrades<'a> {
     ) -> Option<TradeData<'a>> {
         let (mut indices, mut trades) = self.query_trades(exchanges, &pair);
 
-        if trades.is_empty() {
+        if trades.iter().map(|(_, t)| t.len()).count() == 0 {
             let flipped_pair = pair.flip();
             (indices, trades) = self.query_trades(exchanges, &flipped_pair);
 
-            if !trades.is_empty() {
+            if trades.iter().map(|(_, t)| t.len()).count() != 0 {
                 trace!(
                     target: "brontes_types::db::cex::time_window_vwam",
                     trade_qty = %trades.len(),
@@ -470,13 +470,13 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         trace!(
-                    target: "brontes_types::db::cex::time_window_vwam",
+            target: "brontes_types::db::cex::time_window_vwam",
             trade_qty = %trades.len(),
             "have trades"
         );
         for (_, trades) in &trades {
             trace!(
-                    target: "brontes_types::db::cex::time_window_vwam",
+                target: "brontes_types::db::cex::time_window_vwam",
                 trade_qty = %trades.len(),
                 "have trades inner"
             );
