@@ -463,10 +463,16 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         trace!(
-            target: "brontes_types::db::cex::time_window_vwam",
             trade_qty = %trades.len(),
             "have trades"
         );
+        for (ex, trades) in &trades {
+            trace!(
+                trade_qty = %trades.len(),
+                "have trades"
+            );
+        }
+
         Some(TradeData { indices, trades, direction: Direction::Sell })
     }
 
