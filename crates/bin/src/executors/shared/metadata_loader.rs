@@ -29,7 +29,7 @@ pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
 
 /// deals with all cases on how we get and finalize our metadata
-pub struct MetadataFetcher<T: TracingProvider, CH: ClickhouseHandle> {
+pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse:            Option<&'static CH>,
     dex_pricer_stream:     WaitingForPricerFuture<T>,
     clickhouse_futures:    ClickhouseMetadataFuture,
@@ -40,7 +40,7 @@ pub struct MetadataFetcher<T: TracingProvider, CH: ClickhouseHandle> {
     cex_window_seconds:    usize,
 }
 
-impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
+impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
     pub fn new(
         clickhouse: Option<&'static CH>,
         dex_pricer_stream: WaitingForPricerFuture<T>,
@@ -188,7 +188,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataFetcher<T, CH> {
     }
 }
 
-impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataFetcher<T, CH> {
+impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> {
     type Item = BlockData;
 
     fn poll_next(
