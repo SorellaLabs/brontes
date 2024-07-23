@@ -11,7 +11,7 @@ use std::{
 
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
-    db::{dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
+    db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::Action,
     traits::TracingProvider,
     BlockData, BlockTree,
@@ -50,7 +50,8 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         cex_window_blocks: usize,
     ) -> Self {
         Self {
-            cex_window_data: CexWindow::new(cex_window_blocks),
+            // make symmetric
+            cex_window_data: CexWindow::new(cex_window_blocks * 2),
             clickhouse,
             dex_pricer_stream,
             needs_more_data,
@@ -105,6 +106,31 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
     }
 
+    fn load_cex_trades<DB: LibmdbxReader>(
+        &mut self,
+        libmdbx: &'static DB,
+        block: u64,
+    ) -> CexTradeMap {
+        let lookahead = self.cex_window_data.get_block_lookahead() as u64;
+        if self.cex_window_data.is_saturated() {
+            let block = block + lookahead;
+            let trades = libmdbx
+                .get_cex_trades(block)
+                .expect("couldn't find cex trades");
+            self.cex_window_data.new_block(trades);
+        } else {
+            // load the full window
+            for block in (block - lookahead..block + lookahead) {
+                let trades = libmdbx
+                    .get_cex_trades(block)
+                    .expect("couldn't find cex trades");
+                self.cex_window_data.new_block(trades);
+            }
+        };
+
+        self.cex_window_data.cex_trade_map()
+    }
+
     fn load_metadata_no_dex_pricing<DB: LibmdbxReader>(
         &mut self,
         tree: BlockTree<Action>,
@@ -126,6 +152,8 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         meta.builder_info = libmdbx
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
+
+        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
 
         tracing::debug!(?block, "waiting for dex price");
 
@@ -155,7 +183,9 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
 
-        let meta = meta.into_full_metadata(DexQuotes(vec![]));
+        let mut meta = meta.into_full_metadata(DexQuotes(vec![]));
+        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
+
         self.result_buf
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
     }
@@ -181,6 +211,8 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         meta.builder_info = libmdbx
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
+
+        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
 
         tracing::debug!(?block, "caching result buf");
         self.result_buf
