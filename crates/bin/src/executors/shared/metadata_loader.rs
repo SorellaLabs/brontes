@@ -120,7 +120,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             self.cex_window_data.new_block(trades);
         } else {
             // load the full window
-            for block in (block - lookahead..block + lookahead) {
+            for block in block - lookahead..block + lookahead {
                 let trades = libmdbx
                     .get_cex_trades(block)
                     .expect("couldn't find cex trades");
@@ -138,17 +138,14 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         block: u64,
     ) {
         // pull metadata from libmdbx and generate dex_pricing
-        let Ok(mut meta) = libmdbx
-                .get_metadata_no_dex_price(block)
-                .map_err(|err| {
-                    tracing::error!(%err);
-                    err
-                })
-            else {
-                self.dex_pricer_stream.add_failed_tree(block);
-                tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
-                return;
-            };
+        let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
+            tracing::error!(%err);
+            err
+        }) else {
+            self.dex_pricer_stream.add_failed_tree(block);
+            tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
+            return;
+        };
         meta.builder_info = libmdbx
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
@@ -168,17 +165,14 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         block: u64,
     ) {
         tracing::debug!(?block, "only cex dex. skipping dex pricing");
-        let Ok(mut meta) = libmdbx
-                .get_metadata_no_dex_price(block)
-                .map_err(|err| {
-                    tracing::error!(%err);
-                    err
-                })
-            else {
-                self.dex_pricer_stream.add_failed_tree(block);
-                tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
-                return;
-            };
+        let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
+            tracing::error!(%err);
+            err
+        }) else {
+            self.dex_pricer_stream.add_failed_tree(block);
+            tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
+            return;
+        };
         meta.builder_info = libmdbx
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
@@ -197,17 +191,14 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         libmdbx: &'static DB,
         block: u64,
     ) {
-        let Ok(mut meta) = libmdbx
-                .get_metadata(block)
-                .map_err(|err| {
-                    tracing::error!(%err);
-                    err
-                })
-            else {
-                tracing::error!(?block, "failed to load full metadata from libmdbx");
-                self.dex_pricer_stream.add_failed_tree(block);
-                return;
-            };
+        let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {
+            tracing::error!(%err);
+            err
+        }) else {
+            tracing::error!(?block, "failed to load full metadata from libmdbx");
+            self.dex_pricer_stream.add_failed_tree(block);
+            return;
+        };
         meta.builder_info = libmdbx
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");

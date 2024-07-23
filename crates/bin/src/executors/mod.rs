@@ -38,7 +38,8 @@ pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
 use self::shared::{
-    dex_pricing::WaitingForPricerFuture, metadata::MetadataLoader, state_collector::StateCollector,
+    dex_pricing::WaitingForPricerFuture, metadata_loader::MetadataLoader,
+    state_collector::StateCollector,
 };
 use crate::cli::static_object;
 

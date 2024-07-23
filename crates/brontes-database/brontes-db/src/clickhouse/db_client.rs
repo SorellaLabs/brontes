@@ -324,7 +324,7 @@ impl ClickhouseHandle for Clickhouse {
                 Default::default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(Default::default(), None, None, Some(cex_trades)))
+            .into_metadata(Default::default(), None, None))
         }
     }
 
