@@ -30,9 +30,13 @@ impl CexTradeMap {
                         trades.into_iter().fold(
                             FastHashMap::default(),
                             |mut acc: FastHashMap<Pair, Vec<CexTrades>>, (pair, trades)| {
-                                acc.entry(pair.to_source())
-                                    .or_default()
-                                    .extend(trades.into_iter().map(|t| t.to_source()));
+                                let trades = trades
+                                    .into_iter()
+                                    .map(|t| t.to_source())
+                                    // ensure all trades sorted by timestamp
+                                    .sorted_by_key(|k| k.timestamp);
+
+                                acc.entry(pair.to_source()).or_default().extend(trades);
                                 acc
                             },
                         ),
@@ -42,41 +46,42 @@ impl CexTradeMap {
         )
     }
 
+    /// merges in another map extending each of the pairs trades to the current
+    /// map
     pub fn merge_in_map(
         &mut self,
         other: Self,
     ) -> FastHashMap<CexExchange, FastHashMap<Pair, usize>> {
         // generate offset list for proper removal of each pair
-        let offset_list =
-            other
-                .0
-                .into_iter()
-                .fold(FastHashMap::default(), |mut acc, (exchange, pairs)| {
-                    // add to accumulator
-                    acc.insert(
-                        exchange,
-                        pairs
-                            .iter()
-                            .map(|(pair, trades)| (*pair, trades.len()))
-                            .collect::<FastHashMap<_, _>>(),
-                    );
+        other
+            .0
+            .into_iter()
+            .fold(FastHashMap::default(), |mut acc, (exchange, pairs)| {
+                // add to accumulator
+                acc.insert(
+                    exchange,
+                    pairs
+                        .iter()
+                        .map(|(pair, trades)| (*pair, trades.len()))
+                        .collect::<FastHashMap<_, _>>(),
+                );
 
-                    // extend trades
-                    for (pair, trades) in pairs {
-                        self.0
-                            .entry(exchange)
-                            .or_default()
-                            .entry(pair)
-                            .or_default()
-                            .extend(trades);
-                    }
+                // extend trades
+                for (pair, trades) in pairs {
+                    self.0
+                        .entry(exchange)
+                        .or_default()
+                        .entry(pair)
+                        .or_default()
+                        .extend(trades);
+                }
 
-                    acc
-                });
-
-        offset_list
+                acc
+            })
     }
 
+    /// given the amount of entires per exchange per pair. removes
+    /// the specified amount from the trade vector
     pub fn pop_historical_trades(
         &mut self,
         list: FastHashMap<CexExchange, FastHashMap<Pair, usize>>,

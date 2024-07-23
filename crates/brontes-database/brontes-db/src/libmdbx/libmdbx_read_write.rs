@@ -1185,7 +1185,7 @@ impl LibmdbxReadWriter {
     pub fn fetch_trades(&self, block: u64, cex_window_sec: usize) -> eyre::Result<CexTradeMap> {
         // each block is downloaded -6 + 6 around the block time stamp.
         // to fetch the proper window we grab all inclusive
-        let window_blocks = ((cex_window_sec / 6) + 1) as u64;
+        // let window_blocks = ((cex_window_sec / 6) + 1) as u64;
 
         self.db.view_db(|tx| {
             let folded = tx
