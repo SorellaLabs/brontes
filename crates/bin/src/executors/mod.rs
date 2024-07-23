@@ -38,7 +38,8 @@ pub use tip::TipInspector;
 use tokio::{sync::mpsc::unbounded_channel, task::JoinHandle};
 
 use self::shared::{
-    dex_pricing::WaitingForPricerFuture, metadata::MetadataFetcher, state_collector::StateCollector,
+    dex_pricing::WaitingForPricerFuture, metadata_loader::MetadataLoader,
+    state_collector::StateCollector,
 };
 use crate::cli::static_object;
 
@@ -281,7 +282,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         );
 
         let pricing = WaitingForPricerFuture::new(pricer, executor);
-        let fetcher = MetadataFetcher::new(
+        let fetcher = MetadataLoader::new(
             tip.then_some(self.clickhouse),
             pricing,
             self.force_dex_pricing,

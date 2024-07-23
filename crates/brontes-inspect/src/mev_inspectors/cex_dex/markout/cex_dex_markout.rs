@@ -483,7 +483,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .cex_trades
             .as_ref()
             .unwrap()
-            .lock()
             .calculate_time_window_vwam(
                 self.trade_config,
                 &self.cex_exchanges,
@@ -550,7 +549,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         .cex_trades
                         .as_ref()
                         .unwrap()
-                        .lock()
                         .calculate_time_window_vwam(
                             self.trade_config,
                             &self.cex_exchanges,
@@ -570,22 +568,17 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     .unwrap_or_else(window_fn);
 
                 let optimistic = || {
-                    metadata
-                        .cex_trades
-                        .as_ref()
-                        .unwrap()
-                        .lock()
-                        .get_optimistic_vmap(
-                            self.trade_config,
-                            &self.cex_exchanges,
-                            pair,
-                            &swap.amount_out,
-                            metadata.microseconds_block_timestamp(),
-                            None,
-                            marked_cex_dex,
-                            swap,
-                            tx_hash,
-                        )
+                    metadata.cex_trades.as_ref().unwrap().get_optimistic_vmap(
+                        self.trade_config,
+                        &self.cex_exchanges,
+                        pair,
+                        &swap.amount_out,
+                        metadata.microseconds_block_timestamp(),
+                        None,
+                        marked_cex_dex,
+                        swap,
+                        tx_hash,
+                    )
                 };
 
                 let other = self

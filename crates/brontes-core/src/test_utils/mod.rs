@@ -175,11 +175,11 @@ impl TraceLoader {
     }
 
     pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata(block_num, 15)
+        self.libmdbx.get_metadata(block_num)
     }
 
     pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata_no_dex_price(block_num, 15)
+        self.libmdbx.get_metadata_no_dex_price(block_num)
     }
 
     pub async fn get_block_traces_with_header(

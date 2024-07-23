@@ -94,7 +94,7 @@ pub struct TimeWindowTrades<'a> {
 
 impl<'a> TimeWindowTrades<'a> {
     pub fn new_from_cex_trade_map(
-        trade_map: &'a mut FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
+        trade_map: &'a FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
         block_timestamp: u64,
         exchanges: &'a [CexExchange],
         pair: Pair,
@@ -102,7 +102,7 @@ impl<'a> TimeWindowTrades<'a> {
         let intermediaries = Self::calculate_intermediary_addresses(trade_map, exchanges, &pair);
 
         let map = trade_map
-            .iter_mut()
+            .into_iter()
             .filter_map(|(ex, pairs)| {
                 if !exchanges.contains(ex) || pair.0 == pair.1 {
                     return None
@@ -111,7 +111,7 @@ impl<'a> TimeWindowTrades<'a> {
                 Some((
                     ex,
                     pairs
-                        .iter_mut()
+                        .into_iter()
                         .filter_map(|(ex_pair, trades)| {
                             if (ex_pair == &pair || ex_pair == &pair.flip())
                                 || (ex_pair.0 == pair.0 && intermediaries.contains(&ex_pair.1))
@@ -119,8 +119,6 @@ impl<'a> TimeWindowTrades<'a> {
                                 || (ex_pair.0 == pair.1 && intermediaries.contains(&ex_pair.1))
                                 || (ex_pair.1 == pair.1 && intermediaries.contains(&ex_pair.0))
                             {
-                                // Sorts trades by timestamp & store the partition point
-                                trades.sort_unstable_by_key(|k| k.timestamp);
                                 let idx = trades
                                     .partition_point(|trades| trades.timestamp < block_timestamp);
                                 Some((ex_pair, (idx, &*trades)))
@@ -447,20 +445,27 @@ impl<'a> TimeWindowTrades<'a> {
     ) -> Option<TradeData<'a>> {
         let (mut indices, mut trades) = self.query_trades(exchanges, &pair);
 
-        if trades.is_empty() {
+        if trades.iter().map(|(_, t)| t.len()).sum::<usize>() == 0 {
             let flipped_pair = pair.flip();
             (indices, trades) = self.query_trades(exchanges, &flipped_pair);
 
-            if !trades.is_empty() {
+            if trades.iter().map(|(_, t)| t.len()).sum::<usize>() != 0 {
                 trace!(
                     target: "brontes_types::db::cex::time_window_vwam",
                     trade_qty = %trades.len(),
                     "have trades (flipped pair)"
                 );
-                return Some(TradeData { indices, trades, direction: Direction::Buy });
+                for (_, trades) in &trades {
+                    trace!(
+                    target: "brontes_types::db::cex::time_window_vwam",
+                        trade_qty = %trades.len(),
+                        "have trades inner(flipped)"
+                    );
+                }
+                return Some(TradeData { indices, trades, direction: Direction::Buy })
             } else {
                 log_missing_trade_data(dex_swap, &tx_hash);
-                return None;
+                return None
             }
         }
 
@@ -469,6 +474,14 @@ impl<'a> TimeWindowTrades<'a> {
             trade_qty = %trades.len(),
             "have trades"
         );
+        for (_, trades) in &trades {
+            trace!(
+                target: "brontes_types::db::cex::time_window_vwam",
+                trade_qty = %trades.len(),
+                "have trades inner"
+            );
+        }
+
         Some(TradeData { indices, trades, direction: Direction::Sell })
     }
 
@@ -481,6 +494,7 @@ impl<'a> TimeWindowTrades<'a> {
             .iter()
             .filter(|(e, _)| exchanges.contains(e))
             .filter_map(|(exchange, pairs)| Some((**exchange, pairs.get(pair)?)))
+            .filter(|(_, (_, v))| !v.is_empty())
             .map(|(ex, (idx, trades))| ((ex, (idx.saturating_sub(1), *idx)), (ex, *trades)))
             .unzip()
     }

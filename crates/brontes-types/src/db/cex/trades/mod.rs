@@ -60,7 +60,7 @@ impl CexTradeMap {
     }
 
     pub fn calculate_time_window_vwam(
-        &mut self,
+        &self,
         config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         pair: Pair,
@@ -70,7 +70,7 @@ impl CexTradeMap {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTakerWindowVWAP> {
-        TimeWindowTrades::new_from_cex_trade_map(&mut self.0, block_timestamp, exchanges, pair)
+        TimeWindowTrades::new_from_cex_trade_map(&self.0, block_timestamp, exchanges, pair)
             .get_price(
                 config,
                 exchanges,
@@ -84,7 +84,7 @@ impl CexTradeMap {
     }
 
     pub fn get_optimistic_vmap(
-        &mut self,
+        &self,
         config: CexDexTradeConfig,
         exchanges: &[CexExchange],
         pair: Pair,
@@ -95,7 +95,7 @@ impl CexTradeMap {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
     ) -> Option<MakerTaker> {
-        SortedTrades::new_from_cex_trade_map(&mut self.0, exchanges, pair, block_timestamp)
+        SortedTrades::new_from_cex_trade_map(&self.0, exchanges, pair, block_timestamp)
             .get_optimistic_price(
                 config,
                 exchanges,

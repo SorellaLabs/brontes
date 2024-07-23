@@ -60,7 +60,7 @@ impl CexDB {
 
         let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint)?);
 
-        let metadata = libmdbx.get_metadata(self.block_number, 12)?;
+        let metadata = libmdbx.get_metadata(self.block_number)?;
 
         let clickhouse: ClickhouseClient<NullDBMS> = get_clickhouse_env();
 
@@ -71,7 +71,7 @@ impl CexDB {
 
         let block_timestamp = metadata.microseconds_block_timestamp();
 
-        let cex_trades = &metadata.cex_trades.as_ref().unwrap().lock().0;
+        let cex_trades = &metadata.cex_trades.as_ref().unwrap().0;
         let exchanges_to_use = &cex_config.exchanges_to_use;
 
         let pair_exists = exchanges_to_use.iter().any(|exchange| {

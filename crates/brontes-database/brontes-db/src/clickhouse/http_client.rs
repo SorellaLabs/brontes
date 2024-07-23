@@ -114,11 +114,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 max(eth_prices.price_maker.0, eth_prices.price_maker.1),
                 block_meta.value.private_flow.into_iter().collect(),
             );
-            #[cfg(not(feature = "cex-dex-quotes"))]
-            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
-            #[cfg(feature = "cex-dex-quotes")]
-            let metadata = metadata.into_metadata(cex_quotes.value, dex_quotes, None, None);
-            metadata
+            metadata.into_metadata(cex_quotes.value, dex_quotes, None)
         })
     }
 
