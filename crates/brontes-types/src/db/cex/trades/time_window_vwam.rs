@@ -455,6 +455,12 @@ impl<'a> TimeWindowTrades<'a> {
                     trade_qty = %trades.len(),
                     "have trades (flipped pair)"
                 );
+                for (_, trades) in &trades {
+                    trace!(
+                        trade_qty = %trades.len(),
+                        "have trades inner(flipped)"
+                    );
+                }
                 return Some(TradeData { indices, trades, direction: Direction::Buy })
             } else {
                 log_missing_trade_data(dex_swap, &tx_hash);
