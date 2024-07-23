@@ -113,7 +113,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
     ) {
         // pull metadata from libmdbx and generate dex_pricing
         let Ok(mut meta) = libmdbx
-                .get_metadata_no_dex_price(block, self.cex_window_seconds)
+                .get_metadata_no_dex_price(block)
                 .map_err(|err| {
                     tracing::error!(%err);
                     err
@@ -141,7 +141,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
     ) {
         tracing::debug!(?block, "only cex dex. skipping dex pricing");
         let Ok(mut meta) = libmdbx
-                .get_metadata_no_dex_price(block, self.cex_window_seconds)
+                .get_metadata_no_dex_price(block)
                 .map_err(|err| {
                     tracing::error!(%err);
                     err
@@ -168,7 +168,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         block: u64,
     ) {
         let Ok(mut meta) = libmdbx
-                .get_metadata(block, self.cex_window_seconds)
+                .get_metadata(block)
                 .map_err(|err| {
                     tracing::error!(%err);
                     err

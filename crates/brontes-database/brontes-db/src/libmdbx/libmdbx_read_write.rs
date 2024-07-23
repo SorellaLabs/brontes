@@ -17,7 +17,7 @@ use brontes_types::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{CexExchange, CexPriceMap, FeeAdjustedQuote},
+        cex::{CexPriceMap, FeeAdjustedQuote},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
@@ -383,6 +383,11 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.fetch_dex_quotes(block)
     }
 
+    #[cfg(not(feature = "cex-dex-quotes"))]
+    fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
+        self.fetch_trades(block)
+    }
+
     fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
         self.db.view_db(|tx| {
             let Some(state) = tx.get::<InitializedState>(block_num)? else { return Ok(false) };
@@ -428,11 +433,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     #[brontes_macros::metrics_call(ptr=metrics, scope, db_read,"metadata_no_dex_price")]
-    fn get_metadata_no_dex_price(
-        &self,
-        block_num: u64,
-        cex_window: usize,
-    ) -> eyre::Result<Metadata> {
+    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let eth_prices = determine_eth_prices(&cex_quotes);
@@ -452,7 +453,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
-    fn get_metadata(&self, block_num: u64, cex_window: usize) -> eyre::Result<Metadata> {
+    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;

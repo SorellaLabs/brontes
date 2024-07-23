@@ -9,17 +9,19 @@ use brontes_types::{
 pub struct CexWindow {
     /// a queue of each pairs vec offset. this allows us to quickly trim
     /// out fields from the extended map
-    offset_list:        VecDeque<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
-    global_map:         CexTradeMap,
-    window_size_blocks: usize,
+    offset_list:            VecDeque<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+    global_map:             CexTradeMap,
+    window_size_blocks:     usize,
+    window_block_lookahead: usize,
 }
 
 impl CexWindow {
-    pub fn new(window_size_blocks: usize) -> Self {
+    pub fn new(window_size_blocks: usize, window_block_lookahead: usize) -> Self {
         Self {
             offset_list: VecDeque::new(),
             global_map: CexTradeMap::default(),
             window_size_blocks,
+            window_block_lookahead,
         }
     }
 
