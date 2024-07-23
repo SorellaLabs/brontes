@@ -23,6 +23,10 @@ impl CexWindow {
         }
     }
 
+    pub fn get_window_size(&self) -> usize {
+        self.window_size_blocks
+    }
+
     pub fn new_block(&mut self, new_map: CexTradeMap) {
         let offsets = self.global_map.merge_in_map(new_map);
         self.offset_list.push_back(offsets);

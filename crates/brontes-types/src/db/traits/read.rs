@@ -19,7 +19,6 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(
         &self,
         block_num: u64,
-        cex_window: usize,
     ) -> eyre::Result<Metadata>;
 
     fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool>;
@@ -95,7 +94,7 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
 
     fn fetch_all_builder_info(&self) -> eyre::Result<Vec<(Address, BuilderInfo)>>;
 
-    fn get_metadata(&self, block_num: u64, cex_window: usize) -> eyre::Result<Metadata>;
+    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata>;
 
     fn try_fetch_address_metadata(&self, address: Address)
         -> eyre::Result<Option<AddressMetadata>>;

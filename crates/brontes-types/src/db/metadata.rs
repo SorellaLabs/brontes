@@ -1,9 +1,6 @@
-use std::sync::Arc;
-
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
-use parking_lot::Mutex;
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
@@ -67,8 +64,7 @@ pub struct Metadata {
     pub cex_quotes:     CexPriceMap,
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
-    // only 1 reader but could be multi reader in future
-    pub cex_trades:     Option<Arc<Mutex<CexTradeMap>>>,
+    pub cex_trades:     Option<CexTradeMap>,
 }
 
 impl Metadata {
@@ -101,7 +97,6 @@ impl Metadata {
                                 tracing::debug!("getting eth price");
                                 Some(
                                     trade_map
-                                        .lock()
                                         .get_optimistic_vmap(
                                             CexDexTradeConfig::default(),
                                             &trades,
@@ -148,7 +143,6 @@ impl Metadata {
                             tracing::debug!("getting eth price");
                             Some(
                                 trade_map
-                                    .lock()
                                     .get_optimistic_vmap(
                                         CexDexTradeConfig::default(),
                                         &trades,
@@ -243,14 +237,7 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
-        cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
-        Metadata {
-            block_metadata: self,
-            cex_quotes,
-            dex_quotes,
-            builder_info,
-            cex_trades: cex_trades.map(|c| Arc::new(Mutex::new(c))),
-        }
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades: None }
     }
 }

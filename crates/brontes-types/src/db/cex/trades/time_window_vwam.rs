@@ -94,7 +94,7 @@ pub struct TimeWindowTrades<'a> {
 
 impl<'a> TimeWindowTrades<'a> {
     pub fn new_from_cex_trade_map(
-        trade_map: &'a mut FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
+        trade_map: &'a FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexTrades>>>,
         block_timestamp: u64,
         exchanges: &'a [CexExchange],
         pair: Pair,
@@ -102,7 +102,7 @@ impl<'a> TimeWindowTrades<'a> {
         let intermediaries = Self::calculate_intermediary_addresses(trade_map, exchanges, &pair);
 
         let map = trade_map
-            .iter_mut()
+            .into_iter()
             .filter_map(|(ex, pairs)| {
                 if !exchanges.contains(ex) || pair.0 == pair.1 {
                     return None
@@ -111,7 +111,7 @@ impl<'a> TimeWindowTrades<'a> {
                 Some((
                     ex,
                     pairs
-                        .iter_mut()
+                        .into_iter()
                         .filter_map(|(ex_pair, trades)| {
                             if (ex_pair == &pair || ex_pair == &pair.flip())
                                 || (ex_pair.0 == pair.0 && intermediaries.contains(&ex_pair.1))
@@ -455,10 +455,10 @@ impl<'a> TimeWindowTrades<'a> {
                     trade_qty = %trades.len(),
                     "have trades (flipped pair)"
                 );
-                return Some(TradeData { indices, trades, direction: Direction::Buy });
+                return Some(TradeData { indices, trades, direction: Direction::Buy })
             } else {
                 log_missing_trade_data(dex_swap, &tx_hash);
-                return None;
+                return None
             }
         }
 

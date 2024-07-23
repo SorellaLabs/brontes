@@ -34,7 +34,7 @@ impl CexTradeMap {
                                     .into_iter()
                                     .map(|t| t.to_source())
                                     // ensure all trades sorted by timestamp
-                                    .sorted_by_key(|k| k.timestamp);
+                                    .sorted_unstable_by_key(|k| k.timestamp);
 
                                 acc.entry(pair.to_source()).or_default().extend(trades);
                                 acc

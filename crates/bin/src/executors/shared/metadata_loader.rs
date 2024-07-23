@@ -18,7 +18,7 @@ use brontes_types::{
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 
-use super::dex_pricing::WaitingForPricerFuture;
+use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
@@ -35,9 +35,9 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<BlockData>,
     needs_more_data:       Arc<AtomicBool>,
+    cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
-    cex_window_seconds:    usize,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -47,10 +47,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
-        cex_window_seconds: usize,
+        cex_window_blocks: usize,
     ) -> Self {
         Self {
-            cex_window_seconds,
+            cex_window_data: CexWindow::new(cex_window_blocks),
             clickhouse,
             dex_pricer_stream,
             needs_more_data,
@@ -78,12 +78,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         block: u64,
         libmdbx: &'static DB,
     ) -> bool {
-        (self.always_generate_price
-            || libmdbx
-                .get_dex_quotes(block)
-                .map(|f| f.0.is_empty())
-                .unwrap_or(true))
-            && !self.force_no_dex_pricing
+        !self.force_no_dex_pricing
+            && (self.always_generate_price
+                || libmdbx
+                    .get_dex_quotes(block)
+                    .map(|f| f.0.is_empty())
+                    .unwrap_or(true))
     }
 
     pub fn load_metadata_for_tree<DB: LibmdbxReader>(
@@ -95,17 +95,22 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
         if !generate_dex_pricing && self.clickhouse.is_none() {
-            self.load_metadata_with_dex_prices(block);
+            self.load_metadata_with_dex_prices(tree, libmdbx, block);
         } else if let Some(clickhouse) = self.clickhouse {
-            self.load_metadata_from_clickhouse(clickhouse, block);
+            self.load_metadata_from_clickhouse(tree, libmdbx, clickhouse, block);
         } else if self.force_no_dex_pricing {
-            load_metadata_force_dex_pricing(block);
+            self.load_metadata_force_dex_pricing(tree, libmdbx, block);
         } else {
-            load_metadata_no_dex_pricing(block);
+            self.load_metadata_no_dex_pricing(tree, libmdbx, block);
         }
     }
 
-    fn load_metadata_no_dex_pricing(&mut self, block: u64) {
+    fn load_metadata_no_dex_pricing<DB: LibmdbxReader>(
+        &mut self,
+        tree: BlockTree<Action>,
+        libmdbx: &'static DB,
+        block: u64,
+    ) {
         // pull metadata from libmdbx and generate dex_pricing
         let Ok(mut meta) = libmdbx
                 .get_metadata_no_dex_price(block, self.cex_window_seconds)
@@ -128,7 +133,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .add_pending_inspection(block, tree, meta);
     }
 
-    fn load_metadata_force_dex_pricing(&mut self, block: u64) {
+    fn load_metadata_force_dex_pricing<DB: LibmdbxReader>(
+        &mut self,
+        tree: BlockTree<Action>,
+        libmdbx: &'static DB,
+        block: u64,
+    ) {
         tracing::debug!(?block, "only cex dex. skipping dex pricing");
         let Ok(mut meta) = libmdbx
                 .get_metadata_no_dex_price(block, self.cex_window_seconds)
@@ -151,7 +161,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
     }
 
     /// loads the full metadata including dex pricing from libmdbx
-    fn load_metadata_with_dex_prices(&mut self, block: u64) {
+    fn load_metadata_with_dex_prices<DB: LibmdbxReader>(
+        &mut self,
+        tree: BlockTree<Action>,
+        libmdbx: &'static DB,
+        block: u64,
+    ) {
         let Ok(mut meta) = libmdbx
                 .get_metadata(block, self.cex_window_seconds)
                 .map_err(|err| {
@@ -172,7 +187,13 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
     }
 
-    fn load_metadata_from_clickhouse(&mut self, clickhouse: &CH, block: u64) {
+    fn load_metadata_from_clickhouse<DB: LibmdbxReader>(
+        &mut self,
+        tree: BlockTree<Action>,
+        libmdbx: &'static DB,
+        clickhouse: &'static CH,
+        block: u64,
+    ) {
         tracing::debug!(?block, "spawning clickhouse fut");
         let future = Box::pin(async move {
             let mut meta = clickhouse.get_metadata(block).await.unwrap_or_else(|_| {

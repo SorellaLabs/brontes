@@ -222,7 +222,7 @@ impl<'a> SortedTrades<'a> {
 
         let pair_trades = consolidated_trades
             .into_iter()
-            .map(|(pair, mut trades)| {
+            .map(|(pair, trades)| {
                 let partition_point = trades.partition_point(|t| t.timestamp < block_timestamp);
                 let lower_index = if partition_point > 0 { partition_point - 1 } else { 0 };
                 let upper_index = partition_point;
