@@ -15,7 +15,7 @@ use brontes_database::clickhouse::ClickhouseMiddleware;
 use brontes_database::clickhouse::ReadOnlyMiddleware;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::{dbms::BrontesClickhouseData, ClickhouseBuffered};
-use brontes_database::libmdbx::LibmdbxReadWriter;
+use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxReadWriter};
 use brontes_inspect::{Inspector, Inspectors};
 use brontes_metrics::inspectors::OutlierMetrics;
 #[cfg(feature = "local-clickhouse")]
@@ -97,13 +97,15 @@ pub fn load_libmdbx(
 
 #[allow(clippy::field_reassign_with_default)]
 #[cfg(feature = "local-clickhouse")]
-pub async fn load_clickhouse() -> eyre::Result<Clickhouse> {
-    let clickhouse = Clickhouse::new_default().await;
+pub async fn load_clickhouse(cex_download_config: CexDownloadConfig) -> eyre::Result<Clickhouse> {
+    let mut clickhouse = Clickhouse::new_default().await;
+    clickhouse.cex_download_config = cex_download_config;
+
     Ok(clickhouse)
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub async fn load_clickhouse() -> eyre::Result<ClickhouseHttpClient> {
+pub async fn load_clickhouse(_: CexDownloadConfig) -> eyre::Result<ClickhouseHttpClient> {
     let clickhouse_api = env::var("CLICKHOUSE_API")?;
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
     Ok(ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await)

@@ -27,7 +27,6 @@ pub async fn load_clickhouse() -> crate::clickhouse::ClickhouseHttpClient {
     crate::clickhouse::ClickhouseHttpClient::new(
         clickhouse_api,
         clickhouse_api_key,
-        Default::default(),
     )
     .await
 }
