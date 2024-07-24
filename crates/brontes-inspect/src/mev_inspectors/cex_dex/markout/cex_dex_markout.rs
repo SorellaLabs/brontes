@@ -25,7 +25,10 @@ use brontes_types::{
 };
 use itertools::{multizip, Itertools};
 use malachite::{
-    num::basic::traits::{One, Two, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Two, Zero},
+    },
     Rational,
 };
 use reth_primitives::Address;
@@ -209,7 +212,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             acc
                         });
 
-                let header = self.utils.build_bundle_header(
+                let header: brontes_types::mev::BundleHeader = self.utils.build_bundle_header(
                     vec![deltas],
                     vec![tx_info.tx_hash],
                     &tx_info,
@@ -476,7 +479,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let vol = Rational::ONE;
 
-        let pair = Pair(self.utils.quote, swap.token_in.address);
+        let pair = Pair(swap.token_in.address, self.utils.quote);
 
         //TODO: Pre calculate as we always need token in priced in quote asset
         let token_price = metadata
@@ -488,7 +491,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &self.cex_exchanges,
                 pair,
                 &vol,
-                metadata.block_timestamp * 1000000,
+                metadata.microseconds_block_timestamp(),
                 true,
                 swap,
                 tx_hash,
@@ -496,14 +499,17 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .0
             .global_exchange_price;
 
+        // Amount * base_to_quote = USDT amount
+        let base_to_quote = token_price.clone().reciprocal();
+
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
-            price0: token_price.clone(),
+            price0: base_to_quote.clone(),
             token1: swap.token_out.address,
-            price1: &token_price / &cex_quote.0,
+            price1: (&token_price * cex_quote.0.clone().reciprocal()).reciprocal(),
         };
 
-        let pnl_mid = (&maker_token_delta * &token_price, &taker_token_delta * &token_price);
+        let pnl_mid = (&maker_token_delta * &base_to_quote, &taker_token_delta * &base_to_quote);
 
         let quote = FeeAdjustedQuote {
             timestamp: metadata.block_timestamp,

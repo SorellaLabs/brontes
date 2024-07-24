@@ -469,6 +469,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         let deltas: Vec<TokenBalanceDelta> = token_deltas
                             .into_iter()
                             .map(|(token, amount)| {
+                                //TODO: For cex-dex if we merge swap we won't have the intermediary
+                                //TODO: price so it will be marked as zero in the deltas
                                 let usd_value =
                                     price_f(self, token, amount.clone()).unwrap_or(Rational::ZERO);
                                 TokenBalanceDelta {
