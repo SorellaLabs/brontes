@@ -107,11 +107,7 @@ impl RunArgs {
         brontes_db_endpoint: String,
         ctx: CliContext,
     ) -> eyre::Result<()> {
-        if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
-            if start > end {
-                return Err(eyre::eyre!("start block must be less than end block"))
-            }
-        }
+        self.check_proper_range()?;
 
         let snapshot_mode = !cfg!(feature = "local-clickhouse");
         tracing::info!(%snapshot_mode);
@@ -251,6 +247,15 @@ impl RunArgs {
 
         result.await?;
 
+        Ok(())
+    }
+
+    fn check_proper_range(&self) -> eyre::Result<()> {
+        if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
+            if start > end {
+                return Err(eyre::eyre!("start block must be less than end block"))
+            }
+        }
         Ok(())
     }
 }
