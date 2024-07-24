@@ -1,6 +1,7 @@
 use std::{path::Path, time::Duration};
 
 use brontes_core::decoding::Parser as DParser;
+use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
@@ -150,7 +151,6 @@ impl RunArgs {
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
-<<<<<<< HEAD
         let load_window =
             self.time_window_args
                 .time_window_before
@@ -165,9 +165,6 @@ impl RunArgs {
             self.cex_exchanges.clone(),
         );
         let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
-=======
-        let clickhouse = static_object(load_clickhouse().await?);
->>>>>>> main
         tracing::info!(target: "brontes", "Databases initialized");
 
         let only_cex_dex = self
@@ -206,22 +203,6 @@ impl RunArgs {
             get_tracing_provider(Path::new(&reth_db_path), max_tasks, task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
-
-<<<<<<< HEAD
-        let load_window =
-            self.time_window_args
-                .time_window_before
-                .max(self.time_window_args.time_window_after)
-                .max(self.time_window_args.time_window_before_optimistic)
-                .max(self.time_window_args.time_window_after_optimistic) as usize
-                * 2;
-=======
-        let load_window = self
-            .time_window_before
-            .max(self.time_window_after)
-            .max(self.time_window_before_optimistic)
-            .max(self.time_window_after_optimistic) as usize;
->>>>>>> main
 
         let executor = task_executor.clone();
         let result = executor

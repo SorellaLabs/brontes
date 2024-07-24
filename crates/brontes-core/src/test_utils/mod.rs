@@ -547,5 +547,5 @@ pub async fn load_clickhouse() -> Clickhouse {
 pub async fn load_clickhouse() -> ClickhouseHttpClient {
     let clickhouse_api = env::var("CLICKHOUSE_API").expect("No CLICKHOUSE_API in .env");
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
-    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key, Default::default()).await
+    ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await
 }
