@@ -1,7 +1,6 @@
 use std::{path::Path, time::Duration};
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
@@ -51,15 +50,15 @@ pub struct RunArgs {
     pub time_window_before: f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-quotes") { "2.0" } else { "8.0" })]
+    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-quotes") { "2.0" } else { "15.0" })]
     pub time_window_after: f64,
     /// The time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-before", default_value = "0.5")]
+    #[arg(long = "op-tw-before", default_value = "3.0")]
     pub time_window_before_optimistic: f64,
     /// The time window (AFTER) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-after", default_value = "2.0")]
+    #[arg(long = "op-tw-after", default_value = "12.0")]
     pub time_window_after_optimistic: f64,
     /// CEX exchanges to consider for cex-dex analysis
     #[arg(
@@ -105,7 +104,6 @@ impl RunArgs {
                 return Err(eyre::eyre!("start block must be less than end block"))
             }
         }
-
         let snapshot_mode = !cfg!(feature = "local-clickhouse");
         tracing::info!(%snapshot_mode);
 
@@ -148,12 +146,7 @@ impl RunArgs {
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
-        let cex_download_config = CexDownloadConfig::new(
-            // we want to load the biggest window so both can run and not run out of trades.
-            (5, 5),
-            self.cex_exchanges.clone(),
-        );
-        let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
+        let clickhouse = static_object(load_clickhouse().await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
         let only_cex_dex = self
@@ -195,8 +188,7 @@ impl RunArgs {
             .time_window_before
             .max(self.time_window_after)
             .max(self.time_window_before_optimistic)
-            .max(self.time_window_after_optimistic) as usize
-            * 2;
+            .max(self.time_window_after_optimistic) as usize;
 
         let executor = task_executor.clone();
         let result = executor

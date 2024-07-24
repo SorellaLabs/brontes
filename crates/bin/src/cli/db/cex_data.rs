@@ -145,9 +145,6 @@ async fn process_pair<D: ClickhouseDBMS>(
     Ok(())
 }
 
-//TODO: So to identify if a token is missing we can:
-// query the -
-
 async fn query_trade_stats<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
     trading_pair: &str,
@@ -164,7 +161,7 @@ async fn query_trade_stats<D: ClickhouseDBMS>(
         .await;
 
     match result {
-        Ok(stats) => print_trade_stats(&stats, block_timestamp),
+        Ok(stats) => print_trade_stats(&stats),
         Err(e) => {
             println!("No trades for {} stats: {:?}", trading_pair, e);
         }
@@ -242,7 +239,7 @@ struct TradeStats {
     total_volume:       f64,
     average_price:      f64,
 }
-fn print_trade_stats(stats: &[TradeStats], block_timestamp: u64) {
+fn print_trade_stats(stats: &[TradeStats]) {
     if stats.is_empty() {
         return
     }

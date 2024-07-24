@@ -30,7 +30,8 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct BundleHeader {
-    pub block_number:          u64,
+    pub block_number: u64,
+
     pub tx_index:              u64,
     #[serde(with = "txhash")]
     // For a sandwich this is always the first frontrun tx hash

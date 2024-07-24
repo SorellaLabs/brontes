@@ -3,9 +3,10 @@ use std::fmt::{self};
 use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
+use prettytable::{Cell, Row, Table};
 
 use crate::{
-    mev::{Bundle, BundleData},
+    mev::{Bundle, BundleData, CexDex, OptimisticTrade},
     utils::ToFloatNearest,
 };
 
@@ -696,6 +697,8 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             .to_float(),
     )?;
 
+    display_optimistic_trades(f, cex_dex_data)?;
+
     writeln!(f, "  - {}: Optimal Route PnL", "PnL".bright_blue())?;
     writeln!(
         f,
@@ -784,6 +787,53 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "\n\n{}", tx_delta).expect("Failed to write balance deltas")
     });
 
+    Ok(())
+}
+
+pub fn display_optimistic_trades(
+    f: &mut std::fmt::Formatter<'_>,
+    cex_dex_data: &CexDex,
+) -> std::fmt::Result {
+    if let Some(optimistic_route_pnl) = &cex_dex_data.optimistic_route_pnl {
+        writeln!(f, "  - {}: Optimistic Route PnL", "PnL".bright_blue())?;
+        writeln!(
+            f,
+            "    - Maker: {:.8}, Taker: {:.8}",
+            optimistic_route_pnl.maker_taker_ask.0.clone().to_float(),
+            optimistic_route_pnl.maker_taker_ask.1.clone().to_float(),
+        )?;
+        if !cex_dex_data.optimistic_trade_details.is_empty() {
+            writeln!(f, "\n  - {}: Optimistic Trade Details", "Trades".bright_green())?;
+            let mut table = Table::new();
+            table.add_row(Row::new(vec![
+                Cell::new("Exchange").style_spec("Fb"),
+                Cell::new("Pair").style_spec("Fb"),
+                Cell::new("Time from block (ms)").style_spec("Fb"),
+                Cell::new("Price").style_spec("Fb"),
+                Cell::new("Volume").style_spec("Fb"),
+            ]));
+
+            let mut all_trades: Vec<&OptimisticTrade> = cex_dex_data
+                .optimistic_trade_details
+                .iter()
+                .flatten()
+                .collect();
+            all_trades.sort_by_key(|trade| trade.timestamp);
+
+            for trade in all_trades {
+                let relative_time =
+                    (trade.timestamp as i64 - cex_dex_data.block_timestamp as i64) / 1000;
+                table.add_row(Row::new(vec![
+                    Cell::new(&format!("{:?}", trade.exchange)),
+                    Cell::new(&format!("{:?}", trade.pair)),
+                    Cell::new(&format!("{}", relative_time)),
+                    Cell::new(&format!("{:.8}", trade.price.clone().to_float())),
+                    Cell::new(&format!("{:.8}", trade.volume.clone().to_float())),
+                ]));
+            }
+            write!(f, "{}", table)?;
+        }
+    }
     Ok(())
 }
 
