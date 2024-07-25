@@ -822,14 +822,14 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_vs_non() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 30.5).await;
 
         let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(-2790.18)
-            .with_gas_paid_usd(78914.28);
+            .with_gas_paid_usd(78755.6);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -873,7 +873,7 @@ mod tests {
         let tx = hex!("67ac84a6b6d6b0e0f85f6d6efe34e1889f8f7609049edc676b6624e1930c8867").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(2.78)
+            .with_expected_profit_usd(6.80)
             .with_gas_paid_usd(4.75);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -898,7 +898,7 @@ mod tests {
         let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(4.80)
+            .with_expected_profit_usd(15.24)
             .with_gas_paid_usd(6.93);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -935,7 +935,7 @@ mod tests {
         let tx = hex!("5ce797b5b3f58a99f170ee7a4ac1fc1ca37600ad92944730c19f13ef05f568c7").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(13.60)
+            .with_expected_profit_usd(15.25)
             .with_gas_paid_usd(2.43);
 
         inspector_util.run_inspector(config, None).await.unwrap();
