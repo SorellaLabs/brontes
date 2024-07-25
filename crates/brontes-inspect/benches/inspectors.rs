@@ -180,7 +180,7 @@ fn bench_block_400_tx(c: &mut Criterion) {
 
 fn bench_block_metrics_122(c: &mut Criterion) {
     let bencher = InspectorBenchUtils::new(USDC_ADDRESS);
-    let res = bencher
+    bencher
         .bench_composer_block(
             "block with metrics saying 112",
             16796568,
@@ -188,9 +188,8 @@ fn bench_block_metrics_122(c: &mut Criterion) {
             Inspectors::iter().collect_vec(),
             vec![],
             c,
-        );
-    tracing::info!(?res);
-    res.unwrap();
+        )
+        .unwrap();
 }
 
 fn bench_sandwich_regular_block(c: &mut Criterion) {
