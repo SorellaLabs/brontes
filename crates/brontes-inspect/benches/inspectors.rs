@@ -189,7 +189,7 @@ fn bench_block_metrics_122(c: &mut Criterion) {
             vec![],
             c,
         )
-        .unwrap()
+        .unwrap();
 }
 
 fn bench_sandwich_regular_block(c: &mut Criterion) {

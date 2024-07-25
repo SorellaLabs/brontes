@@ -14,7 +14,6 @@ use itertools::Itertools;
 use reqwest::StatusCode;
 use serde::Deserialize;
 
-use super::cex_config::CexDownloadConfig;
 use crate::{
     clickhouse::ClickhouseHandle,
     libmdbx::{cex_utils::CexRangeOrArbitrary, determine_eth_prices, types::LibmdbxData},

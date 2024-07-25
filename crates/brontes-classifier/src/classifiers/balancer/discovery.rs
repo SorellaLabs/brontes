@@ -49,7 +49,10 @@ mod tests {
             trace_index:  1,
             protocol:     Protocol::BalancerV1,
             pool_address: Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
-            tokens:       vec![],
+            tokens:       vec![
+                hex!("b2b88912edc5f5fece07ed821de80440c0bae618").into(),
+                hex!("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48").into(),
+            ],
         };
 
         utils
@@ -57,8 +60,8 @@ mod tests {
                 tx,
                 Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
                 |mut pool| {
-                    assert_eq!(pool.len(), 1);
-                    let pool = pool.remove(0);
+                    assert_eq!(pool.len(), 2);
+                    let pool = pool.remove(1);
                     assert_eq!(pool.protocol, eq_create.protocol);
                     assert_eq!(pool.pool_address, eq_create.pool_address);
                     assert_eq!(pool.tokens, eq_create.tokens);

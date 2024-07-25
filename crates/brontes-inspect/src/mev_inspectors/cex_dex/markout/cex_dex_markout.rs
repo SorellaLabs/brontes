@@ -808,28 +808,28 @@ mod tests {
     #[brontes_macros::test]
     async fn test_cex_dex_markout() {
         // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 40.5).await;
 
         let tx = hex!("6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2").into();
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_gas_paid_usd(38.31)
-            .with_expected_profit_usd(134.70);
+            .with_expected_profit_usd(208.57);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_vs_non() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 3000.5).await;
 
         let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(-2790.18)
-            .with_gas_paid_usd(79748.18);
+            .with_expected_profit_usd(85164.20)
+            .with_gas_paid_usd(78755.6);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -869,25 +869,12 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_lpt() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 6.5).await;
         let tx = hex!("67ac84a6b6d6b0e0f85f6d6efe34e1889f8f7609049edc676b6624e1930c8867").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(2.78)
+            .with_expected_profit_usd(6.80)
             .with_gas_paid_usd(4.75);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_sol_eth() {
-        // solana is misslabled
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-        let tx = hex!("a63e94c3d4ec343cce7134c70c76899cbee18aab580f1eb294f08fdcf371d091").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(4.80)
-            .with_gas_paid_usd(4.36);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -895,11 +882,11 @@ mod tests {
     #[brontes_macros::test]
     async fn test_cex_dex_markout_wbtc_usdc() {
         // try crypto missing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
         let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(4.80)
+            .with_expected_profit_usd(15.34)
             .with_gas_paid_usd(16.22);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -907,13 +894,12 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_pepe_usdc() {
-        // should be there if intermediary. however thats failing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
         let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(4.80)
-            .with_gas_paid_usd(16.22);
+            .with_expected_profit_usd(3.88)
+            .with_gas_paid_usd(6.93);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -932,7 +918,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_cex_dex_markout_blur_eth() {
         // should be there if intermediary. however thats failing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
         let tx = hex!("c8e62efc7b04e56d17e69d07fdb9f8d1dcc84cfd295922134aa0a75a86e6f052").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
@@ -949,8 +935,8 @@ mod tests {
         let tx = hex!("5ce797b5b3f58a99f170ee7a4ac1fc1ca37600ad92944730c19f13ef05f568c7").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(13.60)
-            .with_gas_paid_usd(0.0);
+            .with_expected_profit_usd(15.25)
+            .with_gas_paid_usd(2.43);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

@@ -18,7 +18,9 @@ use brontes_types::{
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 
-use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
+#[cfg(not(feature = "cex-dex-quotes"))]
+use super::cex_window::CexWindow;
+use super::dex_pricing::WaitingForPricerFuture;
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
@@ -35,6 +37,7 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<BlockData>,
     needs_more_data:       Arc<AtomicBool>,
+    #[cfg(not(feature = "cex-dex-quotes"))]
     cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
@@ -47,10 +50,11 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
-        cex_window_blocks: usize,
+        #[allow(unused)] cex_window_blocks: usize,
     ) -> Self {
         Self {
             // make symmetric
+            #[cfg(not(feature = "cex-dex-quotes"))]
             cex_window_data: CexWindow::new(cex_window_blocks * 2),
             clickhouse,
             dex_pricer_stream,
@@ -106,6 +110,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
     }
 
+    #[cfg(feature = "cex-dex-quotes")]
+    fn load_cex_trades<DB: LibmdbxReader>(&mut self, _: &'static DB, _: u64) -> CexTradeMap {
+        CexTradeMap::default()
+    }
+
+    #[cfg(not(feature = "cex-dex-quotes"))]
     fn load_cex_trades<DB: LibmdbxReader>(
         &mut self,
         libmdbx: &'static DB,

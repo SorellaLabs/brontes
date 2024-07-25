@@ -127,6 +127,20 @@ impl LibmdbxReadWriter {
             cache: ReadWriteCache::new(memory_per_table_mb, metrics),
         })
     }
+
+    pub fn init_db_tests<P: AsRef<Path>>(path: P) -> eyre::Result<Self> {
+        // 5 gb total
+        let memory_per_table_mb = 1_000;
+        let (tx, rx) = unbounded_channel();
+        let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
+        let db = Arc::new(Libmdbx::init_db(path, None)?);
+
+        // start writing task on own thread
+        let writer = LibmdbxWriter::new(db.clone(), yapper);
+        writer.run_no_shutdown();
+
+        Ok(Self { db, tx, metrics: None, cache: ReadWriteCache::new(memory_per_table_mb, false) })
+    }
 }
 
 impl LibmdbxInit for LibmdbxReadWriter {
@@ -481,7 +495,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         self.db
             .view_db(|tx| match self.cache.token_info(true, |lock| lock.get(&address)) {
-                Some(Some(e)) => Ok(TokenInfoWithAddress { inner: e, address }),
+                Some(Some(e)) => {
+                    let mut info = TokenInfoWithAddress { inner: e, address: og_address };
+                    if og_address == ETH_ADDRESS {
+                        info.symbol = "ETH".to_string();
+                    }
+                    Ok(info)
+                }
                 Some(None) => Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
                 None => tx
                     .get::<TokenDecimals>(address)
@@ -491,6 +511,15 @@ impl LibmdbxReader for LibmdbxReadWriter {
                         })
                     })?
                     .map(|inner| TokenInfoWithAddress { inner, address: og_address })
+                    .map(|mut inner| {
+                        // quick patch
+                        if og_address == ETH_ADDRESS {
+                            inner.symbol = "ETH".to_string();
+                            inner
+                        } else {
+                            inner
+                        }
+                    })
                     .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
             })
     }

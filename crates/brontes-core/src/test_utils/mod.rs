@@ -13,7 +13,7 @@ use brontes_database::{
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::metadata::Metadata, init_threadpools, structured_trace::TxTrace, traits::TracingProvider,
-    BrontesTaskManager, FastHashMap,
+    FastHashMap,
 };
 use futures::future::join_all;
 use indicatif::MultiProgress;
@@ -100,6 +100,7 @@ impl TraceLoader {
         } else {
             tracing::info!("test fetching missing metadata no pricing");
             self.fetch_missing_metadata(block).await?;
+            tracing::info!("fetched missing data");
             return self
                 .test_metadata(block)
                 .map_err(|_| TraceLoaderError::NoMetadataFound(block))
@@ -174,12 +175,29 @@ impl TraceLoader {
         Ok(())
     }
 
+    #[cfg(not(feature = "cex-dex-quotes"))]
+    pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
+        let mut meta = self.libmdbx.get_metadata(block_num)?;
+        meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
+        Ok(meta)
+    }
+
+    #[cfg(feature = "cex-dex-quotes")]
     pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
         self.libmdbx.get_metadata(block_num)
     }
 
+    #[cfg(feature = "cex-dex-quotes")]
     pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         self.libmdbx.get_metadata_no_dex_price(block_num)
+    }
+
+    #[cfg(not(feature = "cex-dex-quotes"))]
+    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        let mut meta = self.libmdbx.get_metadata_no_dex_price(block_num)?;
+        meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
+
+        Ok(meta)
     }
 
     pub async fn get_block_traces_with_header(
@@ -378,14 +396,11 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             init_tracing();
             let brontes_db_endpoint =
                 env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
-            let manager = BrontesTaskManager::new(handle.clone(), true);
-            let ex = manager.executor();
-            handle.spawn(manager);
 
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db(&brontes_db_endpoint, None, &ex, false).unwrap_or_else(
-                    |e| panic!("failed to open db path {}, err={}", brontes_db_endpoint, e),
-                ),
+                LibmdbxReadWriter::init_db_tests(&brontes_db_endpoint).unwrap_or_else(|e| {
+                    panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
+                }),
             ));
 
             let (tx, _rx) = unbounded_channel();

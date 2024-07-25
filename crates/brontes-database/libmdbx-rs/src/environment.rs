@@ -203,7 +203,7 @@ impl Environment {
     /// environment.
     ///
     /// ```
-    /// # use brontes_libmbdx::Environment;
+    /// # use brontes_libmdbx::Environment;
     /// let dir = tempfile::tempdir().unwrap();
     /// let env = Environment::builder().open(dir.path()).unwrap();
     /// let info = env.info().unwrap();

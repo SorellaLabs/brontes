@@ -2,6 +2,7 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
 (
     `tx_hash` String,
     `block_number` UInt64,
+    `trigger_tx` String,
     `swaps` Nested(
         `trace_idx` UInt64,
         `from` String,

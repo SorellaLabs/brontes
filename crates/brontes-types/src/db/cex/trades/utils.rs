@@ -126,33 +126,25 @@ impl<'a> PairTradeWalker<'a> {
     }
 }
 
-pub(crate) struct CexTradePtr<'ptr> {
+pub struct CexTradePtr<'ptr> {
     raw: *const CexTrades,
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
     _p:  PhantomData<&'ptr u8>,
 }
 
 pub struct TradeBasket<'a> {
-    start_time:  u64,
-    end_time:    u64,
     trade_index: usize,
     trades:      Vec<CexTradePtr<'a>>,
     pub volume:  Rational,
 }
 
 impl<'a> TradeBasket<'a> {
-    pub fn new(
-        start_time: u64,
-        end_time: u64,
-        mut trades: Vec<CexTradePtr<'a>>,
-        quality_pct: usize,
-        volume: Rational,
-    ) -> Self {
+    pub fn new(mut trades: Vec<CexTradePtr<'a>>, quality_pct: usize, volume: Rational) -> Self {
         let length = trades.len() - 1;
         let trade_index = length - (length * quality_pct / 100);
         trades.sort_unstable_by_key(|k| k.get().price.clone());
 
-        Self { start_time, end_time, trade_index, trades, volume }
+        Self { trade_index, trades, volume }
     }
 
     pub fn get_trades_used(&self, volume_to_fill: &Rational) -> (Vec<CexTrades>, Rational) {
@@ -338,8 +330,6 @@ impl<'a> TimeBasketQueue<'a> {
             if !basket_trades.is_empty() {
                 self.volume += &basket_volume;
                 let basket = TradeBasket::new(
-                    self.current_post_time - TIME_BASKET_SIZE,
-                    self.current_post_time,
                     basket_trades,
                     self.quality_pct
                         .as_ref()
@@ -385,8 +375,6 @@ impl<'a> TimeBasketQueue<'a> {
             if !basket_trades.is_empty() {
                 self.volume += &basket_volume;
                 let basket = TradeBasket::new(
-                    self.current_pre_time,
-                    self.current_pre_time + TIME_BASKET_SIZE,
                     basket_trades,
                     self.quality_pct
                         .as_ref()

@@ -1,9 +1,11 @@
 use alloy_primitives::Address;
 
+#[cfg(not(feature = "cex-dex-quotes"))]
+use crate::db::cex::CexTradeMap;
 use crate::{
     db::{
         address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo, cex::CexTradeMap, dex::DexQuotes, metadata::Metadata,
+        builder::BuilderInfo, dex::DexQuotes, metadata::Metadata,
         mev_block::MevBlockWithClassified, searcher::SearcherInfo,
         token_info::TokenInfoWithAddress,
     },

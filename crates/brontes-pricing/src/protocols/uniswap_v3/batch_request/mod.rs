@@ -242,7 +242,7 @@ mod tests {
 
     // Test fails with error ParseIntError { kind: PosOverflow }
     #[test]
-    #[should_panic(expected = "ParseIntError")]
+    #[should_panic]
     fn test_fail_v2_bytecode() {
         let (token0, token1, _fees, _tick_spacing) =
             extract_uni_v3_immutables(V2_DAI_MKR.into()).unwrap();

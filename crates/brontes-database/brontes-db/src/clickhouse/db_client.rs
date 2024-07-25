@@ -33,7 +33,7 @@ use db_interfaces::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{info, warn};
+use tracing::info;
 
 #[cfg(feature = "cex-dex-quotes")]
 use super::RAW_CEX_QUOTES;
@@ -281,7 +281,7 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(feature = "cex-dex-quotes")]
         {
-            tracing::info!("not markout");
+            info!("not markout");
             let mut cex_quotes_for_block = self
                 .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
                 .await?;
@@ -305,7 +305,7 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(not(feature = "cex-dex-quotes"))]
         {
-            tracing::info!("markout");
+            info!("markout");
             let cex_trades = self
                 .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
                 .await
@@ -394,7 +394,7 @@ impl ClickhouseHandle for Clickhouse {
                 let mut query = BLOCK_TIMES.to_string();
 
                 let vals = vals
-                    .into_iter()
+                    .iter()
                     .flat_map(|v| {
                         (v - self.cex_download_config.block_window.0
                             ..=v + self.cex_download_config.block_window.1)
@@ -514,7 +514,7 @@ impl ClickhouseHandle for Clickhouse {
         info!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
-            warn!("No block times found, returning empty result");
+            tracing::warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
 
@@ -948,60 +948,5 @@ mod tests {
         test_db
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
             .await;
-    }
-
-    #[cfg(not(feature = "cex-dex-quotes"))]
-    #[brontes_macros::test]
-    async fn test_db_trades() {
-        use reth_primitives::TxHash;
-
-        let db_client = Clickhouse::new_default().await;
-
-        let db_cex_trades = db_client
-            .get_cex_trades(CexRangeOrArbitrary::Arbitrary(&[18700684]))
-            .await
-            .unwrap();
-
-        let cex_trade_map = &db_cex_trades.first().unwrap().value;
-
-        let pair = Pair(
-            hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
-            hex!("2260fac5e5542a773aa44fbcfedf7c193bc2c599").into(),
-        );
-
-        println!("ORDERED PAIR: {:?}", pair.ordered());
-
-        cex_trade_map.get_vwam_via_intermediary_spread(
-            brontes_types::db::cex::config::CexDexTradeConfig::default(),
-            &[CexExchange::Okex],
-            1701543803 * 1_000_000,
-            &pair,
-            &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
-            None,
-            &NormalizedSwap::default(),
-            TxHash::default(),
-        );
-
-        let trades = cex_trade_map
-            .0
-            .get(&CexExchange::Okex)
-            .unwrap()
-            .get(&pair.ordered())
-            .unwrap();
-
-        for t in trades {
-            println!("ORDERED: {:?}", t);
-        }
-
-        let trades = cex_trade_map
-            .0
-            .get(&CexExchange::Okex)
-            .unwrap()
-            .get(&pair)
-            .unwrap();
-
-        for t in trades {
-            println!("UNORDERED: {:?}", t);
-        }
     }
 }

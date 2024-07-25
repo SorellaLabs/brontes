@@ -4,6 +4,7 @@ use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 use prettytable::{Cell, Row, Table};
+use reth_primitives::B256;
 
 use crate::{
     mev::{Bundle, BundleData, CexDex, OptimisticTrade},
@@ -350,6 +351,12 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
 
     let tx_url = format!("https://etherscan.io/tx/{:?}", bundle.header.tx_hash).underline();
     writeln!(f, "   - Etherscan: {}", tx_url)?;
+
+    if atomic_backrun_data.trigger_tx != B256::ZERO {
+        let tx_url =
+            format!("https://etherscan.io/tx/{:?}", atomic_backrun_data.trigger_tx).underline();
+        writeln!(f, "   - Trigger Tx: {}", tx_url)?;
+    }
 
     // Arb Section
     writeln!(

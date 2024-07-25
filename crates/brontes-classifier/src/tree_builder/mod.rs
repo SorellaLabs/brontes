@@ -643,12 +643,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         {
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
         } else {
-            info!(
-                "Discovered new {} pool:
-                            \nAddress:{}
-                            ",
-                pool.protocol, pool.pool_address
-            );
+            info!("Discovered new {} pool: Address:{}", pool.protocol, pool.pool_address);
         }
     }
 
