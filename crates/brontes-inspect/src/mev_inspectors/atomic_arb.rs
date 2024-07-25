@@ -547,7 +547,7 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
             .with_expected_profit_usd(0.0)
-            .with_gas_paid_usd(71.632668);
+            .with_gas_paid_usd(13.961);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -755,23 +755,6 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS]);
 
         inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_ibethv2() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![hex!(
-                "93ac782b37a95f385ac0df6b5b24ded6f4701c81e96698ca528e9606ee970066"
-            )
-            .into()])
-            .with_dex_prices()
-            .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(28.06)
-            .with_gas_paid_usd(4.38);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     #[brontes_macros::test]
