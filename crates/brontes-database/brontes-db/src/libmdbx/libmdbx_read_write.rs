@@ -435,7 +435,9 @@ impl LibmdbxReader for LibmdbxReadWriter {
     #[brontes_macros::metrics_call(ptr=metrics, scope, db_read,"metadata_no_dex_price")]
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
+        tracing::trace!("got block meta");
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        tracing::trace!("got cex quotes");
         let eth_prices = determine_eth_prices(&cex_quotes);
 
         Ok(BlockMetadata::new(
