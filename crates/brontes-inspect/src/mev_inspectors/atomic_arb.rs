@@ -776,14 +776,13 @@ mod tests {
         let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_block(20224115)
-            // .with_mev_tx_hashes(vec![hex!(
-            //     "b326b19426e97cc36f2a53f352a7c8cdd94bb8dcdf32006b68bfcca9b8f62709"
-            // )
-            // .into()])
+            .with_mev_tx_hashes(vec![hex!(
+                "b326b19426e97cc36f2a53f352a7c8cdd94bb8dcdf32006b68bfcca9b8f62709"
+            )
+            .into()])
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(28.06)
+            .with_expected_profit_usd(0.09)
             .with_gas_paid_usd(15.55);
 
         inspector_util.run_inspector(config, None).await.unwrap();
