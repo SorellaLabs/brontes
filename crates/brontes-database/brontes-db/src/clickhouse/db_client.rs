@@ -394,7 +394,7 @@ impl ClickhouseHandle for Clickhouse {
                 let mut query = BLOCK_TIMES.to_string();
 
                 let vals = vals
-                    .into_iter()
+                    .iter()
                     .flat_map(|v| {
                         (v - self.cex_download_config.block_window.0
                             ..=v + self.cex_download_config.block_window.1)
