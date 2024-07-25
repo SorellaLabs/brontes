@@ -1,12 +1,17 @@
+use std::panic::AssertUnwindSafe;
+
 use brontes_types::constants::USDC_ADDRESS;
 use criterion::Criterion;
 use pricing_test_utils::bench::BrontesPricingBencher;
 
 pub fn bench_block_pricing(c: &mut Criterion) {
-    let bencher = BrontesPricingBencher::new(USDC_ADDRESS);
-    let r = bencher.bench_pricing_block("block 18500018", 18500018, c);
-    tracing::info!(err=?r, "result");
-    r.unwrap();
+    let task = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let bencher = BrontesPricingBencher::new(USDC_ADDRESS);
+        let r = bencher.bench_pricing_block("block 18500018", 18500018, c);
+        tracing::info!(err=?r, "result");
+        r.unwrap();
+    }));
+    tracing::error!("{:#?}", task);
 }
 
 pub fn bench_block_pricing_after_5_blocks(c: &mut Criterion) {
