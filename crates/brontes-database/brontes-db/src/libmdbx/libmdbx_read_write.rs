@@ -127,6 +127,20 @@ impl LibmdbxReadWriter {
             cache: ReadWriteCache::new(memory_per_table_mb, metrics),
         })
     }
+
+    pub fn init_db_tests<P: AsRef<Path>>(path: P) -> eyre::Result<Self> {
+        // 5 gb total
+        let memory_per_table_mb = 1_000;
+        let (tx, rx) = unbounded_channel();
+        let yapper = UnboundedYapperReceiver::new(rx, 1500, "libmdbx write channel".to_string());
+        let db = Arc::new(Libmdbx::init_db(path, None)?);
+
+        // start writing task on own thread
+        let writer = LibmdbxWriter::new(db.clone(), yapper);
+        writer.run_no_shutdown();
+
+        Ok(Self { db, tx, metrics: None, cache: ReadWriteCache::new(memory_per_table_mb, false) })
+    }
 }
 
 impl LibmdbxInit for LibmdbxReadWriter {
