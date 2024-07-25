@@ -473,7 +473,7 @@ impl LibmdbxWriter {
         });
     }
 
-    /// used for testing to avoid random drops 
+    /// used for testing to avoid random drops
     pub fn run_no_shutdown(self) {
         std::thread::spawn(move || {
             tokio::runtime::Builder::new_multi_thread()
@@ -481,9 +481,7 @@ impl LibmdbxWriter {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(async move {
-                    self.await
-                });
+                .block_on(async move { self.await });
         });
     }
 

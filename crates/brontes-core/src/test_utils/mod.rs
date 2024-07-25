@@ -13,7 +13,7 @@ use brontes_database::{
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     db::metadata::Metadata, init_threadpools, structured_trace::TxTrace, traits::TracingProvider,
-    BrontesTaskManager, FastHashMap,
+    FastHashMap,
 };
 use futures::future::join_all;
 use indicatif::MultiProgress;

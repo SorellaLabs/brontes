@@ -976,8 +976,8 @@ mod tests {
     //         &[CexExchange::Okex],
     //         1701543803 * 1_000_000,
     //         &pair,
-    //         &malachite::Rational::try_from_float_simplest(100000000000000.0).unwrap(),
-    //         None,
+    //         &malachite::Rational::try_from_float_simplest(100000000000000.0).
+    // unwrap(),         None,
     //         &NormalizedSwap::default(),
     //         TxHash::default(),
     //     );
