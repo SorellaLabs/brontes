@@ -26,46 +26,6 @@ impl BrontesPricingBencher {
         Self { inner, quote_asset, rt }
     }
 
-    pub fn bench_pricing_block(
-        &self,
-        bench_name: &str,
-        block_number: u64,
-        c: &mut Criterion,
-    ) -> Result<(), ClassifierTestUtilsError> {
-        c.bench_function(bench_name, move |b| {
-            b.to_async(&self.rt).iter_batched(
-                || {
-                    let inner = self.inner.clone();
-                    let quote_asset = self.quote_asset;
-                    // annoying but otherwise blockin in blockin
-                    std::thread::spawn(move || {
-                        tracing::info!("starting to collect setup");
-                        let t = tokio::runtime::Builder::new_multi_thread()
-                            .enable_all()
-                            .build()
-                            .inspect_err(|e| tracing::error!(err=%e))
-                            .unwrap()
-                            .block_on(inner.clone().setup_pricing_for_bench(
-                                block_number,
-                                quote_asset,
-                                vec![],
-                            ));
-                        tracing::info!(is_err = t.is_err(), "got t");
-                        t.inspect_err(|e| tracing::error!(err=%e))
-                            .expect("failed to setup pricing for bench")
-                    })
-                    .join()
-                    .inspect_err(|_| tracing::error!("thread problemo"))
-                    .expect("thread join unwrap")
-                },
-                |(mut data, _tx)| async move { black_box(data.next().await) },
-                criterion::BatchSize::LargeInput,
-            )
-        });
-
-        Ok(())
-    }
-
     /// benches price generation after n amount of blocks
     #[allow(clippy::await_holding_lock)]
     pub fn bench_pricing_post_init(

@@ -481,7 +481,7 @@ impl LibmdbxWriter {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(async move { self.await });
+                .block_on(self);
         });
     }
 
