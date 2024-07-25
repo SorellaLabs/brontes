@@ -175,22 +175,27 @@ impl TraceLoader {
         Ok(())
     }
 
+    #[cfg(not(feature = "cex-dex-quotes"))]
     pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
         let mut meta = self.libmdbx.get_metadata(block_num)?;
-        #[cfg(not(feature = "cex-dex-quotes"))]
-        {
-            meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
-        }
+        meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
         Ok(meta)
     }
 
+    #[cfg(feature = "cex-dex-quotes")]
+    pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
+        Ok(self.libmdbx.get_metadata(block_num)?)
+    }
+
+    #[cfg(feature = "cex-dex-quotes")]
+    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        Ok(self.libmdbx.get_metadata_no_dex_price(block_num)?)
+    }
+
+    #[cfg(not(feature = "cex-dex-quotes"))]
     pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
         let mut meta = self.libmdbx.get_metadata_no_dex_price(block_num)?;
-
-        #[cfg(not(feature = "cex-dex-quotes"))]
-        {
-            meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
-        }
+        meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
 
         Ok(meta)
     }
