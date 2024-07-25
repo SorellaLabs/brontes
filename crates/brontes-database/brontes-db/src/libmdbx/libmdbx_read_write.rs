@@ -495,7 +495,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
         self.db
             .view_db(|tx| match self.cache.token_info(true, |lock| lock.get(&address)) {
-                Some(Some(e)) => Ok(TokenInfoWithAddress { inner: e, address }),
+                Some(Some(e)) => {
+                    let mut info = TokenInfoWithAddress { inner: e, address };
+                    if og_address == ETH_ADDRESS {
+                        info.symbol = "ETH".to_string();
+                    }
+                    Ok(info)
+                }
                 Some(None) => Err(eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
                 None => tx
                     .get::<TokenDecimals>(address)
