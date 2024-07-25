@@ -14,4 +14,4 @@ criterion_group!(
 criterion_group!(v3, state::bench_v3_price_requests, state::bench_v3_state_loads);
 criterion_group!(v2, state::bench_v2_price_requests, state::bench_v2_state_loads);
 
-criterion_main!(v2, v3, it_runs);
+criterion_main!(it_runs, v2, v3);

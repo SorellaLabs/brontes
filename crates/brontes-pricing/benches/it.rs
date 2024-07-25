@@ -5,7 +5,7 @@ use pricing_test_utils::bench::BrontesPricingBencher;
 pub fn bench_block_pricing(c: &mut Criterion) {
     let bencher = BrontesPricingBencher::new(USDC_ADDRESS);
     let r = bencher.bench_pricing_block("block 18500018", 18500018, c);
-    tracing::info!(?r);
+    tracing::info!(err=?r, "result");
     r.unwrap();
 }
 
