@@ -79,7 +79,6 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Action>,
     ) -> Option<Bundle> {
-        let total_val = info.get_total_eth_value();
         let (swaps, liqs): (Vec<_>, Vec<_>) = actions
             .clone()
             .into_iter()
