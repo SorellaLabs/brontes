@@ -184,12 +184,12 @@ impl TraceLoader {
 
     #[cfg(feature = "cex-dex-quotes")]
     pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata(block_num)?
+        self.libmdbx.get_metadata(block_num)
     }
 
     #[cfg(feature = "cex-dex-quotes")]
     pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata_no_dex_price(block_num)?
+        self.libmdbx.get_metadata_no_dex_price(block_num)
     }
 
     #[cfg(not(feature = "cex-dex-quotes"))]
