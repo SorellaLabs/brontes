@@ -33,7 +33,7 @@ use db_interfaces::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{info, warn};
+use tracing::{info};
 
 #[cfg(feature = "cex-dex-quotes")]
 use super::RAW_CEX_QUOTES;
@@ -281,7 +281,7 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(feature = "cex-dex-quotes")]
         {
-            tracing::info!("not markout");
+            info!("not markout");
             let mut cex_quotes_for_block = self
                 .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
                 .await?;
@@ -305,7 +305,7 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(not(feature = "cex-dex-quotes"))]
         {
-            tracing::info!("markout");
+            info!("markout");
             let cex_trades = self
                 .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
                 .await
@@ -514,7 +514,7 @@ impl ClickhouseHandle for Clickhouse {
         info!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
-            warn!("No block times found, returning empty result");
+            tracing::warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
 
