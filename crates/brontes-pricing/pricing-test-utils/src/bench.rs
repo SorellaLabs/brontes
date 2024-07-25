@@ -50,9 +50,8 @@ impl BrontesPricingBencher {
                                 quote_asset,
                                 vec![],
                             ));
-                        tracing::info!("got t");
-                        t
-                            .inspect_err(|e| tracing::error!(err=%e))
+                        tracing::info!("got t" ?t);
+                        t.inspect_err(|e| tracing::error!(err=%e))
                             .expect("failed to setup pricing for bench")
                     })
                     .join()
