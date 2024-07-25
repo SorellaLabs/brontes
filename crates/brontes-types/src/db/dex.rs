@@ -84,7 +84,6 @@ pub enum BlockPrice {
 
 impl DexPrices {
     pub fn get_price(self, post: PriceAt) -> Rational {
-        tracing::info!(?self);
         match post {
             PriceAt::After => self.post_state,
             PriceAt::Before => self.pre_state,
