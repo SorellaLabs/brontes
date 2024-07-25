@@ -18,7 +18,9 @@ use brontes_types::{
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 
-use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
+#[cfg(not(feature = "cex-dex-quotes"))]
+use super::cex_window::CexWindow;
+use super::dex_pricing::WaitingForPricerFuture;
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
