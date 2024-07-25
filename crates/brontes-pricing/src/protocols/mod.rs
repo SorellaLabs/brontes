@@ -64,7 +64,8 @@ impl LoadState for Protocol {
         fp: PairWithFirstPoolHop,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
-            Self::UniswapV2 | Self::SushiSwapV2 | Self::PancakeSwapV2 => {
+            Self::PancakeSwapV2 => {
+                //Self::UniswapV2 | Self::SushiSwapV2 |
                 let (pool, res) = if let Ok(pool) =
                     UniswapV2Pool::new_load_on_block(address, provider.clone(), block_number - 1)
                         .await
@@ -92,7 +93,8 @@ impl LoadState for Protocol {
                     res,
                 ))
             }
-            Self::UniswapV3 | Self::SushiSwapV3 | Self::PancakeSwapV3 => {
+            Self::PancakeSwapV3 => {
+                // Self::UniswapV3 | Self::SushiSwapV3 |
                 let (pool, res) = if let Ok(pool) =
                     UniswapV3Pool::new_from_address(address, block_number - 1, provider.clone())
                         .await
