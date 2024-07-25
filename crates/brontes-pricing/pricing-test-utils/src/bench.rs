@@ -48,10 +48,11 @@ impl BrontesPricingBencher {
                                 quote_asset,
                                 vec![],
                             ))
-                            .unwrap()
+                            .inspect_err(|e| tracing::error!(err=%e))
+                            .expect("failed to setup pricing for bench")
                     })
                     .join()
-                    .unwrap()
+                    .expect("thread join unwrap")
                 },
                 |(mut data, _tx)| async move { black_box(data.next().await) },
                 criterion::BatchSize::LargeInput,
