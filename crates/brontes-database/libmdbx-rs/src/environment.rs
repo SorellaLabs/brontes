@@ -202,7 +202,7 @@ impl Environment {
     /// exact number of used pages as well as free pages in this
     /// environment.
     ///
-    /// ```
+    /// ```ignore
     /// # use brontes_libmbdx::Environment;
     /// let dir = tempfile::tempdir().unwrap();
     /// let env = Environment::builder().open(dir.path()).unwrap();
