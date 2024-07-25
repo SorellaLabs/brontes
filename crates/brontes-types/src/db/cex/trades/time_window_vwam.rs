@@ -121,7 +121,7 @@ impl<'a> TimeWindowTrades<'a> {
                             {
                                 let idx = trades
                                     .partition_point(|trades| trades.timestamp < block_timestamp);
-                                Some((ex_pair, (idx, &*trades)))
+                                Some((ex_pair, (idx, trades)))
                             } else {
                                 None
                             }
