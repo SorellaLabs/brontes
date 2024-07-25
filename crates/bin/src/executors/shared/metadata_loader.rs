@@ -107,11 +107,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
     }
 
     #[cfg(feature = "cex-dex-quotes")]
-    fn load_cex_trades<DB: LibmdbxReader>(
-        &mut self,
-        _: &'static DB,
-        _: u64,
-    ) -> CexTradeMap {
+    fn load_cex_trades<DB: LibmdbxReader>(&mut self, _: &'static DB, _: u64) -> CexTradeMap {
         CexTradeMap::default()
     }
 
