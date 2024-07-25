@@ -546,7 +546,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![tx])
             .with_dex_prices()
-            .with_expected_profit_usd(0.0)
+            .with_expected_profit_usd(0.126)
             .with_gas_paid_usd(13.961);
 
         inspector_util.run_inspector(config, None).await.unwrap();
