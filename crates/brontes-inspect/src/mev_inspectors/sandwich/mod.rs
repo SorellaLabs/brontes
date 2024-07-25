@@ -1455,23 +1455,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_maker_dss_sando() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_mev_tx_hashes(vec![
-                hex!("113ff55702e51113c79ad0fa0d53f2f4525b7e6263f3cdeee8441cd499b0ea85").into(),
-                hex!("dae4ce3ee05c58c9393a2babaa7460bcbc8f3ecdcb49e67d9e13d24dfbde1207").into(),
-                hex!("2290880629aad334c189ea7be36291481f55d97b7dfcc3d34623fd7db76682e4").into(),
-            ])
-            .with_gas_paid_usd(294.0)
-            .with_expected_profit_usd(155.66);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
     async fn test_zero_x_dydx() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
 

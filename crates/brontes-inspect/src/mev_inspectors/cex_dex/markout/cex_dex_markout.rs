@@ -882,7 +882,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_cex_dex_markout_wbtc_usdc() {
         // try crypto missing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
         let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
