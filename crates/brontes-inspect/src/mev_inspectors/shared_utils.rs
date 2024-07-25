@@ -73,6 +73,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .map(|price| price.get_price(at))?
                         .clone()
                 } else {
+                    tracing::info!(?pair);
                     metadata
                         .dex_quotes
                         .as_ref()?
