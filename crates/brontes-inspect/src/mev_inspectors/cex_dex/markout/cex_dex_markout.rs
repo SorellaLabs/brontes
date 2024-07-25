@@ -894,7 +894,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_pepe_usdc() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
         let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
