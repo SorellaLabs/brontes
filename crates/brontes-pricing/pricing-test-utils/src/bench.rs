@@ -50,11 +50,12 @@ impl BrontesPricingBencher {
                                 quote_asset,
                                 vec![],
                             ));
-                        tracing::info!(is_err=t.is_err(), "got t");
+                        tracing::info!(is_err = t.is_err(), "got t");
                         t.inspect_err(|e| tracing::error!(err=%e))
                             .expect("failed to setup pricing for bench")
                     })
                     .join()
+                    .inspect_err(|_| tracing::error!("thread problemo"))
                     .expect("thread join unwrap")
                 },
                 |(mut data, _tx)| async move { black_box(data.next().await) },
