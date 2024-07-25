@@ -128,6 +128,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .chain(eth_transfers.into_iter().map(Action::from))
             .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
             .account_for_actions();
+        tracing::debug!(?account_deltas);
 
         let mut has_dex_price = self.valid_pricing(
             metadata.clone(),
@@ -218,7 +219,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             |this, token, amount| {
                 this.get_token_value_dex(
                     info.tx_index as usize,
-                    PriceAt::Lowest,
+                    PriceAt::Average,
                     token,
                     &amount,
                     &metadata,
@@ -454,7 +455,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                 "to big of a pricing delta on atomic arbs"
                             );
                         } else {
-                            tracing::debug!(?effective_price, ?dex_pricing_rate, ?swap, ?pct, "valid");
+                            tracing::debug!(
+                                ?effective_price,
+                                ?dex_pricing_rate,
+                                ?swap,
+                                ?pct,
+                                "valid"
+                            );
                         }
 
                         Some(pct)
