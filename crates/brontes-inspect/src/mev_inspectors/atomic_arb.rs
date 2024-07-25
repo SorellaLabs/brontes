@@ -453,6 +453,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                 ?swap,
                                 "to big of a pricing delta on atomic arbs"
                             );
+                        } else {
+                            tracing::debug!(?effective_price, ?dex_pricing_rate, ?swap, ?pct, "valid");
                         }
 
                         Some(pct)
