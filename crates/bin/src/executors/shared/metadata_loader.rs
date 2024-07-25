@@ -35,6 +35,7 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     clickhouse_futures:    ClickhouseMetadataFuture,
     result_buf:            VecDeque<BlockData>,
     needs_more_data:       Arc<AtomicBool>,
+    #[cfg(not(feature = "cex-dex-quotes"))]
     cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
@@ -47,10 +48,11 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         always_generate_price: bool,
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
-        cex_window_blocks: usize,
+        #[allow(unused)] cex_window_blocks: usize,
     ) -> Self {
         Self {
             // make symmetric
+            #[cfg(not(feature = "cex-dex-quotes"))]
             cex_window_data: CexWindow::new(cex_window_blocks * 2),
             clickhouse,
             dex_pricer_stream,
