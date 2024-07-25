@@ -129,6 +129,10 @@ impl<V: NormalizedAction> BlockTree<V> {
         self.tx_roots.push(root);
     }
 
+    pub fn roots(&self) -> &[Root<V>] {
+        &self.tx_roots
+    }
+
     pub fn finalize_tree(&mut self) {
         self.run_in_span_mut(|this| {
             // in case the block is empty

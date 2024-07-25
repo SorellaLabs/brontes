@@ -19,9 +19,9 @@ use malachite::{
     num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
-use reth_primitives::Address;
+use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata, MAX_PROFIT};
+use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT};
 
 const MAX_PRICE_DIFF: Rational = Rational::const_from_signed(3);
 
@@ -78,6 +78,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                     let actions = action?;
 
                     self.process_swaps(
+                        tree.clone(),
                         info,
                         metadata.clone(),
                         actions
@@ -102,6 +103,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
 impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     fn process_swaps(
         &self,
+        tree: Arc<BlockTree<Action>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
         data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
@@ -190,8 +192,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 .then_some(profit),
         }?;
 
+        // given we have a atomic arb now, we will go and try to find the trigger
+        // transaction that lead to this arb.
+        let trigger_tx = self.find_trigger_tx(&info, tree, &swaps);
+
         let backrun = AtomicArb {
             block_number: metadata.block_num,
+            trigger_tx,
             tx_hash: info.tx_hash,
             gas_details: info.gas_details,
             swaps,
@@ -220,6 +227,73 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         );
 
         Some(Bundle { header, data })
+    }
+
+    /// goes back through the tree until it finds a transaction that occured
+    /// before the atomic arb that use the same liquidity pool for a swap.
+    fn find_trigger_tx(
+        &self,
+        arb_info: &TxInfo,
+        tree: Arc<BlockTree<Action>>,
+        swaps: &[NormalizedSwap],
+    ) -> B256 {
+        tree.roots()
+            .into_iter()
+            .take(arb_info.tx_index as usize)
+            .rev()
+            .find(|root| {
+                // grab all the victim swaps and transactions and use the same
+                // method to convert transfers into swaps thus align the searcher
+                // swaps and victim swaps
+                let actions = root.collect(
+                    &TreeSearchBuilder::default()
+                        .with_actions([Action::is_swap, Action::is_transfer]),
+                );
+
+                if actions.is_empty() {
+                    return false
+                }
+
+                // collect actions and transform into raw swaps
+                let (mut trigger_swaps, transfers): (Vec<_>, Vec<_>) = actions
+                    .into_iter()
+                    .split_actions((Action::try_swap, Action::try_transfer));
+
+                let Ok(vic_info) = root.get_tx_info(arb_info.block_number, self.utils.db) else {
+                    return false
+                };
+                let accounting_addr: FastHashSet<Address> =
+                    vic_info.collect_address_set_for_accounting();
+
+                let mut ignore_addresses = accounting_addr.clone();
+                trigger_swaps.iter().for_each(|s| {
+                    ignore_addresses.insert(s.pool);
+                });
+                trigger_swaps.extend(self.utils.try_create_swaps(&transfers, ignore_addresses));
+
+                // look for  a intersection of trigger swaps and arb swaps where the pool is the
+                // same and the assets are going in a different direction. if we find 1, we have
+                // our trigger transaction
+
+                // could hashmap and key but given that there are on average only 1 -3 victim
+                // swaps iter is faster.
+                trigger_swaps.into_iter().any(|trigger_swap| {
+                    let NormalizedSwap { protocol, pool, token_in, token_out, .. } = trigger_swap;
+                    swaps
+                        .iter()
+                        .find(|searcher_swap| {
+                            searcher_swap.protocol == protocol
+                            && searcher_swap.pool == pool
+                            // only have to check 1
+                            && searcher_swap.token_in == token_out
+                            && searcher_swap.token_out == token_in
+                        })
+                        .map(|_| true)
+                        .unwrap_or(false)
+                })
+            })
+            .map(|root| root.tx_hash)
+            .unwrap_or_default()
     }
 
     fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {

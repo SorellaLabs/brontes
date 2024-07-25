@@ -26,6 +26,7 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct AtomicArb {
     pub tx_hash:      B256,
+    pub trigger_tx:   B256,
     pub block_number: u64,
     pub swaps:        Vec<NormalizedSwap>,
     #[redefined(same_fields)]
@@ -103,10 +104,11 @@ impl Serialize for AtomicArb {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("AtomicArb", 35)?;
+        let mut ser_struct = serializer.serialize_struct("AtomicArb", 36)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
+        ser_struct.serialize_field("trigger_tx", &self.trigger_tx)?;
 
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps
@@ -140,6 +142,7 @@ impl DbRow for AtomicArb {
     const COLUMN_NAMES: &'static [&'static str] = &[
         "tx_hash",
         "block_number",
+        "trigger_tx",
         "swaps.trace_idx",
         "swaps.from",
         "swaps.recipient",
