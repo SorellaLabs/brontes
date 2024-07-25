@@ -822,7 +822,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_vs_non() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 30.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 3000.5).await;
 
         let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
 
@@ -869,7 +869,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_lpt() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 3.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 6.5).await;
         let tx = hex!("67ac84a6b6d6b0e0f85f6d6efe34e1889f8f7609049edc676b6624e1930c8867").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
