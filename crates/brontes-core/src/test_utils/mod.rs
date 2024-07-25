@@ -175,11 +175,23 @@ impl TraceLoader {
     }
 
     pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata(block_num)
+        let mut meta = self.libmdbx.get_metadata(block_num)?;
+        #[cfg(not(feature = "cex-dex-quotes"))]
+        {
+            meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
+        }
+        Ok(meta)
     }
 
     pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata_no_dex_price(block_num)
+        let mut meta = self.libmdbx.get_metadata_no_dex_price(block_num)?;
+
+        #[cfg(not(feature = "cex-dex-quotes"))]
+        {
+            meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
+        }
+
+        Ok(meta)
     }
 
     pub async fn get_block_traces_with_header(
