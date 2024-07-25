@@ -39,7 +39,8 @@ impl BrontesPricingBencher {
                     let quote_asset = self.quote_asset;
                     // annoying but otherwise blockin in blockin
                     std::thread::spawn(move || {
-                        tokio::runtime::Builder::new_multi_thread()
+                        tracing::info!("starting to collect setup");
+                        let t = tokio::runtime::Builder::new_multi_thread()
                             .enable_all()
                             .build()
                             .inspect_err(|e| tracing::error!(err=%e))
@@ -48,7 +49,9 @@ impl BrontesPricingBencher {
                                 block_number,
                                 quote_asset,
                                 vec![],
-                            ))
+                            ));
+                        tracing::info!("got t");
+                        t
                             .inspect_err(|e| tracing::error!(err=%e))
                             .expect("failed to setup pricing for bench")
                     })
