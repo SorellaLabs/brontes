@@ -238,7 +238,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         swaps: &[NormalizedSwap],
     ) -> B256 {
         tree.roots()
-            .into_iter()
+            .iter()
             .take(arb_info.tx_index as usize)
             .rev()
             .find(|root| {

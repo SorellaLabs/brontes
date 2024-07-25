@@ -102,7 +102,7 @@ impl<'a> TimeWindowTrades<'a> {
         let intermediaries = Self::calculate_intermediary_addresses(trade_map, exchanges, &pair);
 
         let map = trade_map
-            .into_iter()
+            .iter()
             .filter_map(|(ex, pairs)| {
                 if !exchanges.contains(ex) || pair.0 == pair.1 {
                     return None
@@ -111,7 +111,7 @@ impl<'a> TimeWindowTrades<'a> {
                 Some((
                     ex,
                     pairs
-                        .into_iter()
+                        .iter()
                         .filter_map(|(ex_pair, trades)| {
                             if (ex_pair == &pair || ex_pair == &pair.flip())
                                 || (ex_pair.0 == pair.0 && intermediaries.contains(&ex_pair.1))
