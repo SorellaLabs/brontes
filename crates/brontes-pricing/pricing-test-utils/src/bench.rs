@@ -42,6 +42,7 @@ impl BrontesPricingBencher {
                         tokio::runtime::Builder::new_multi_thread()
                             .enable_all()
                             .build()
+                            .inspect_err(|e| tracing::error!(err=%e))
                             .unwrap()
                             .block_on(inner.clone().setup_pricing_for_bench(
                                 block_number,
