@@ -100,6 +100,7 @@ impl TraceLoader {
         } else {
             tracing::info!("test fetching missing metadata no pricing");
             self.fetch_missing_metadata(block).await?;
+            tracing::info!("fetched missing data");
             return self
                 .test_metadata(block)
                 .map_err(|_| TraceLoaderError::NoMetadataFound(block))
