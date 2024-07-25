@@ -218,7 +218,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             |this, token, amount| {
                 this.get_token_value_dex(
                     info.tx_index as usize,
-                    PriceAt::Average,
+                    PriceAt::Lowest,
                     token,
                     &amount,
                     &metadata,
