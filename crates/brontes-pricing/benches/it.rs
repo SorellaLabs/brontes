@@ -11,7 +11,17 @@ pub fn bench_block_pricing(c: &mut Criterion) {
         tracing::info!(err=?r, "result");
         r.unwrap();
     }));
-    tracing::error!("{:#?}", task);
+    if let Err(error) = task {
+        let error = match error.downcast::<String>() {
+            Ok(value) => Some(*value),
+            Err(error) => match error.downcast::<&str>() {
+                Ok(value) => Some(value.to_string()),
+                Err(_) => None,
+            },
+        };
+
+        tracing::error!("{:#?}", error);
+    }
 }
 
 pub fn bench_block_pricing_after_5_blocks(c: &mut Criterion) {
