@@ -108,7 +108,7 @@ impl Serialize for AtomicArb {
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
-        ser_struct.serialize_field("trigger_tx", &self.trigger_tx)?;
+        ser_struct.serialize_field("trigger_tx", &format!("{:?}", self.trigger_tx))?;
 
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps

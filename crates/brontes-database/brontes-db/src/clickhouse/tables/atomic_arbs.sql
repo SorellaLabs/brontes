@@ -2,6 +2,7 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
 (
     `tx_hash` String,
     `block_number` UInt64,
+    `trigger_tx` String,
     `swaps` Nested(
         `trace_idx` UInt64,
         `from` String,
@@ -20,6 +21,6 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
     ),
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/atomic_arbs', '{replica}', `run_id`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/atomic_arb', '{replica}', `run_id`)
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
