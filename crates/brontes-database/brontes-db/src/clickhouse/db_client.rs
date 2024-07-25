@@ -33,7 +33,7 @@ use db_interfaces::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{info};
+use tracing::info;
 
 #[cfg(feature = "cex-dex-quotes")]
 use super::RAW_CEX_QUOTES;
