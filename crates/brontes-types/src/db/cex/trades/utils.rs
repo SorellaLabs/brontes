@@ -126,7 +126,7 @@ impl<'a> PairTradeWalker<'a> {
     }
 }
 
-pub(crate) struct CexTradePtr<'ptr> {
+pub struct CexTradePtr<'ptr> {
     raw: *const CexTrades,
     /// used to bound the raw ptr so we can't use it if it goes out of scope.
     _p:  PhantomData<&'ptr u8>,
