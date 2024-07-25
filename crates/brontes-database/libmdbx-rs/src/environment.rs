@@ -953,29 +953,5 @@ unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> f
     std::mem::forget(closure);
 
     // Cast the closure to FFI `extern fn` type.
-    #[cfg(target_os = "macos")]
-    Some(std::mem::transmute::<
-        libffi::high::FnPtr8<
-            '_,
-            *const ffi::MDBX_env,
-            *const ffi::MDBX_txn,
-            i32,
-            *mut ffi::_opaque_pthread_t,
-            u64,
-            u32,
-            usize,
-            i32,
-            i32,
-        >,
-        unsafe extern "C" fn(
-            *const ffi::MDBX_env,
-            *const ffi::MDBX_txn,
-            i32,
-            *mut ffi::_opaque_pthread_t,
-            u64,
-            u32,
-            usize,
-            i32,
-        ) -> i32,
-    >(closure_ptr))
+    Some(std::mem::transmute(closure_ptr))
 }
