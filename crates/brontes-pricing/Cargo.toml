@@ -92,6 +92,7 @@ eyre.workspace = true
 
 [features]
 default = []
+sorella-server = ["local-reth", "local-clickhouse"]
 tests = ["criterion"]
 uni-v3-ticks = []
 local-reth = [
