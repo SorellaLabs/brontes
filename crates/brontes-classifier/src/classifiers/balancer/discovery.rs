@@ -58,7 +58,7 @@ mod tests {
                 Address::new(hex!("1FA0d58e663017cdd80B87fd24C46818364fc9B6")),
                 |mut pool| {
                     assert_eq!(pool.len(), 2);
-                    let pool = pool.remove(0);
+                    let pool = pool.remove(1);
                     assert_eq!(pool.protocol, eq_create.protocol);
                     assert_eq!(pool.pool_address, eq_create.pool_address);
                     assert_eq!(pool.tokens, eq_create.tokens);
