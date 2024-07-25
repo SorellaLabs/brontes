@@ -505,6 +505,15 @@ impl LibmdbxReader for LibmdbxReadWriter {
                         })
                     })?
                     .map(|inner| TokenInfoWithAddress { inner, address: og_address })
+                    .map(|mut inner| {
+                        // quick patch
+                        if og_address == ETH_ADDRESS {
+                            inner.symbol = "ETH".to_string();
+                            inner
+                        } else {
+                            inner
+                        }
+                    })
                     .ok_or_else(|| eyre::eyre!("entry for key {:?} in TokenDecimals", address)),
             })
     }
