@@ -10,15 +10,11 @@ use brontes_types::{
         accounting::ActionAccounting, Action, NormalizedEthTransfer, NormalizedSwap,
         NormalizedTransfer,
     },
-    pair::Pair,
     BlockData, FastHashSet, IntoZip, MultiBlockData, ToFloatNearest, TreeBase, TreeCollector,
     TreeSearchBuilder, TxInfo,
 };
 use itertools::Itertools;
-use malachite::{
-    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT};
@@ -129,7 +125,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
             .account_for_actions();
 
-        let mut has_dex_price = self.valid_pricing(
+        let mut has_dex_price = self.utils.valid_pricing(
             metadata.clone(),
             &swaps,
             account_deltas
@@ -141,6 +137,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 })
                 .unique(),
             info.tx_index as usize,
+            MAX_PRICE_DIFF,
+            MevType::AtomicArb,
         );
 
         let rev = if let Some(rev) = self.utils.get_deltas_usd(
@@ -377,96 +375,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
 
         res
-    }
-
-    /// Evaluates the validity of swap prices against DEX quoted prices within a
-    /// given metadata context.
-    ///
-    /// This function iterates over each token involved in the provided swaps
-    /// and compares the effective swap rates against the DEX quoted prices
-    /// for corresponding token pairs. It computes the difference
-    /// between the effective price and the DEX pricing rate. If any swap
-    /// exhibits a price difference exceeding `MAX_PRICE_DIFF`, it logs a
-    /// warning and captures relevant metrics. The function returns `true`
-    /// if all evaluated swaps have price differences within the acceptable
-    /// range.
-    fn valid_pricing<'a>(
-        &self,
-        metadata: Arc<Metadata>,
-        swaps: &[NormalizedSwap],
-        tokens: impl Iterator<Item = &'a Address>,
-        idx: usize,
-    ) -> bool {
-        if swaps.is_empty() {
-            return true
-        }
-
-        let pcts = tokens
-            .flat_map(|token| {
-                swaps
-                    .iter()
-                    .filter(move |swap| {
-                        &swap.token_in.address == token || &swap.token_out.address == token
-                    })
-                    .filter_map(|swap| {
-                        let effective_price = swap.swap_rate();
-
-                        let am_in_price = metadata
-                            .dex_quotes
-                            .as_ref()?
-                            .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
-
-                        let am_out_price = metadata
-                            .dex_quotes
-                            .as_ref()?
-                            .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
-
-                        // we reciprocal amount out because we won't have pricing for quote <> token
-                        // out but we will have flipped
-                        let dex_pricing_rate =
-                            (am_out_price.get_price(PriceAt::Average).reciprocal()
-                                * am_in_price.get_price(PriceAt::Average))
-                            .reciprocal();
-
-                        let pct = if effective_price > dex_pricing_rate {
-                            if dex_pricing_rate == Rational::ZERO {
-                                return None
-                            }
-                            &effective_price / &dex_pricing_rate
-                        } else {
-                            if effective_price == Rational::ZERO {
-                                return None
-                            }
-                            &dex_pricing_rate / &effective_price
-                        };
-
-                        if pct > MAX_PRICE_DIFF {
-                            self.utils.get_metrics().inspect(|m| {
-                                m.bad_dex_pricing(
-                                    MevType::AtomicArb,
-                                    Pair(swap.token_in.address, swap.token_out.address),
-                                )
-                            });
-                            tracing::warn!(
-                                ?effective_price,
-                                ?dex_pricing_rate,
-                                ?swap,
-                                "to big of a pricing delta on atomic arbs"
-                            );
-                        }
-                        Some(pct)
-                    })
-            })
-            .collect_vec();
-
-        if pcts.is_empty() {
-            return true
-        }
-
-        pcts.into_iter()
-            .max()
-            .filter(|delta| delta.le(&MAX_PRICE_DIFF))
-            .is_some()
     }
 }
 

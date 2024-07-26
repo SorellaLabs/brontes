@@ -18,8 +18,12 @@ use brontes_types::{
     utils::ToFloatNearest,
     ActionIter, FastHashMap, FastHashSet, GasDetails, TxInfo,
 };
+use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{One, Zero},
+    },
     Rational,
 };
 use reth_primitives::TxHash;
@@ -525,5 +529,100 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .and_then(|metadata| metadata.map(|info| info.describe()))?
                 })
         })
+    }
+
+    /// Evaluates the validity of swap prices against DEX quoted prices within a
+    /// given metadata context.
+    ///
+    /// This function iterates over each token involved in the provided swaps
+    /// and compares the effective swap rates against the DEX quoted prices
+    /// for corresponding token pairs. It computes the difference
+    /// between the effective price and the DEX pricing rate. If any swap
+    /// exhibits a price difference exceeding `MAX_PRICE_DIFF`, it logs a
+    /// warning and captures relevant metrics. The function returns `true`
+    /// if all evaluated swaps have price differences within the acceptable
+    /// range.
+    pub fn valid_pricing<'a>(
+        &self,
+        metadata: Arc<Metadata>,
+        swaps: &[NormalizedSwap],
+        tokens: impl Iterator<Item = &'a Address>,
+        idx: usize,
+        max_price_diff: Rational,
+        mev_type: MevType,
+    ) -> bool {
+        if swaps.is_empty() {
+            return true
+        }
+
+        let pcts = tokens
+            .flat_map(|token| {
+                swaps
+                    .iter()
+                    .filter(move |swap| {
+                        &swap.token_in.address == token || &swap.token_out.address == token
+                    })
+                    .filter_map(|swap| {
+                        let effective_price = swap.swap_rate();
+
+                        let am_in_price = metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(Pair(swap.token_in.address, self.quote), idx)?;
+
+                        let am_out_price = metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(Pair(swap.token_out.address, self.quote), idx)?;
+
+                        // we reciprocal amount out because we won't have pricing for quote <> token
+                        // out but we will have flipped
+                        let dex_pricing_rate =
+                            (am_out_price.get_price(PriceAt::Average).reciprocal()
+                                * am_in_price.get_price(PriceAt::Average))
+                            .reciprocal();
+
+                        let pct = if effective_price > dex_pricing_rate {
+                            if effective_price == Rational::ZERO {
+                                return None
+                            }
+                            (&effective_price - &dex_pricing_rate) / &effective_price
+                        } else {
+                            if dex_pricing_rate == Rational::ZERO {
+                                return None
+                            }
+                            (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
+                        };
+
+                        if pct > max_price_diff {
+                            self.get_metrics().inspect(|m| {
+                                m.bad_dex_pricing(
+                                    mev_type,
+                                    Pair(swap.token_in.address, swap.token_out.address),
+                                )
+                            });
+
+                            tracing::warn!(
+                                mev_type=?mev_type,
+                                ?effective_price,
+                                ?dex_pricing_rate,
+                                ?swap,
+                                "to big of a delta for pricing"
+                            );
+                        }
+
+                        Some(pct)
+                    })
+            })
+            .collect_vec();
+
+        if pcts.is_empty() {
+            return true
+        }
+
+        pcts.into_iter()
+            .max()
+            .filter(|delta| delta.le(&max_price_diff))
+            .is_some()
     }
 }
