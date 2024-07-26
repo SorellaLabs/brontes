@@ -283,7 +283,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 // collect actions and transform into raw swaps
                 let (mut trigger_swaps, transfers): (Vec<_>, Vec<_>) = actions
                     .into_iter()
-                    .split_actions((Action::try_swap, Action::try_transfer));
+                    .split_actions((Action::try_swaps_merged, Action::try_transfer));
 
                 let Ok(vic_info) = root.get_tx_info(arb_info.block_number, self.utils.db) else {
                     return false
