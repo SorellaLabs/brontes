@@ -54,7 +54,11 @@ macro_rules! define_mev_precedence {
 }
 
 pub type FilterFn = Option<
-    Box<dyn Fn(Arc<BlockTree<Action>>, Arc<Box<dyn LibmdbxReader>>, [&Bundle; 2]) -> bool + Send + Sync>,
+    Box<
+        dyn Fn(Arc<BlockTree<Action>>, Arc<Box<dyn LibmdbxReader>>, [&Bundle; 2]) -> bool
+            + Send
+            + Sync,
+    >,
 >;
 
 pub fn get_filter_fn(mev_type: MevType) -> FilterFn {
