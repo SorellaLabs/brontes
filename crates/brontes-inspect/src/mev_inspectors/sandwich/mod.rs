@@ -713,15 +713,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|was_victim| was_victim as usize)
             .sum();
 
+        let victim_pct = (was_victims as f64) / (amount as f64);
+        tracing::trace!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich);
         // if we had more than 50% victims, then we say this was valid. This
         // wiggle room is to deal with unknowns
-        if (was_victims as f64) / (amount as f64) < 0.5 || !has_sandwich {
-            let victim_pct = (was_victims as f64) / (amount as f64);
-            tracing::debug!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich, "sandwich no victims\n\n\n\n\n\n\n");
-            return false
-        }
+        !(victim_pct < 0.5 || !has_sandwich) 
 
-        true
     }
 
     fn check_for_overlap(
