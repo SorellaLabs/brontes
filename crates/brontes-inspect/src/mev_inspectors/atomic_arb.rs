@@ -257,6 +257,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .rev()
             .find(|root| {
+                if root.tx_hash
+                    == alloy_primitives::hex!("e821b29c891ab5728dba82a8034c89928cec5eec73f841ade65b4d415c83f0f3")
+                        .into()
+                {
+                    tracing::info!("trigger is being searched");
+                }
                 // grab all the victim swaps and transactions and use the same
                 // method to convert transfers into swaps thus align the searcher
                 // swaps and victim swaps
