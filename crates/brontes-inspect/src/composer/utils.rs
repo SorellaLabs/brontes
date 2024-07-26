@@ -10,6 +10,8 @@ use brontes_types::{
 };
 use malachite::{num::conversion::traits::RoundingFrom, rounding_modes::RoundingMode};
 
+use crate::composer::FilterFn;
+
 pub(crate) fn build_mev_header<DB: LibmdbxReader>(
     metadata: &Arc<Metadata>,
     tree: Arc<BlockTree<Action>>,
@@ -108,12 +110,33 @@ pub(crate) fn find_mev_with_matching_tx_hashes<'a>(
     mev_data_list
         .iter()
         .enumerate()
-        .filter_map(|(index, bundle)| {
+        .filter_map(move |(index, bundle)| {
             let tx_hashes_in_mev = bundle.data.mev_transaction_hashes();
             tx_hashes_in_mev
                 .iter()
                 .any(|hash| tx_hashes.contains(hash))
                 .then_some(index)
+        })
+}
+
+/// Finds the index of the first classified mev in the list whose transaction
+/// hashes match any of the provided hashes.
+pub(crate) fn try_deduping_mev<'a>(
+    dominate: &'a Bundle,
+    mev_data_list: &'a [Bundle],
+    extra_filter_function: &'a FilterFn,
+    tx_hashes: &'a [FixedBytes<32>],
+) -> impl Iterator<Item = usize> + 'a {
+    mev_data_list
+        .iter()
+        .enumerate()
+        .filter_map(move |(index, bundle)| {
+            let tx_hashes_in_mev = bundle.data.mev_transaction_hashes();
+
+            let tx_hash_overlap = tx_hashes_in_mev.iter().any(|hash| tx_hashes.contains(hash));
+            let extra_args =
+                if let Some(f) = extra_filter_function { f([dominate, bundle]) } else { true };
+            (tx_hash_overlap && extra_args).then_some(index)
         })
 }
 
