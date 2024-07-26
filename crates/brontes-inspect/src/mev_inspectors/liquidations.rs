@@ -79,9 +79,6 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         metadata: Arc<Metadata>,
         actions: Vec<Action>,
     ) -> Option<Bundle> {
-        tracing::debug!("trying liquidation\n{actions:#?}");
-        let total_val = info.get_total_eth_value();
-        tracing::debug!(other_eth_transfers=?total_val);
         let (swaps, liqs): (Vec<_>, Vec<_>) = actions
             .clone()
             .into_iter()
@@ -154,7 +151,6 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             liquidations:        liqs,
             gas_details:         info.gas_details,
         };
-        tracing::debug!("{:#?}\n {:#?}", new_liquidation, header);
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
