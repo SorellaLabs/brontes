@@ -48,6 +48,11 @@ impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    // we use a 2 block window so that we can always have a trigger tx
+    fn block_window(&self) -> usize {
+        2
+    }
+
     fn get_id(&self) -> &str {
         "Sandwich"
     }
