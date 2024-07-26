@@ -257,26 +257,30 @@ impl GraphManager {
         span.in_scope(|| {
             let state = self.graph_state.finalized_state();
 
-            let (start_price, start_addr) = self
-                .sub_graph_registry
-                .get_subgraph_extends(pair)
-                .map(|jump_pair| {
-                    (
-                        self.sub_graph_registry
-                            .get_price_all(jump_pair.flip(), &state)
-                            .unwrap_or(Rational::ONE),
-                        jump_pair.0,
-                    )
-                })
-                .unwrap_or_else(|| (Rational::ONE, quote));
+            // let (start_price, start_addr) = self
+            self.sub_graph_registry
+                .get_subgraph_extends_iter(pair)
+                .into_iter()
+                .for_each(|(epair, jump_pair)| {
+                    let (start_price, start_addr) = jump_pair
+                        .map(|jump_pair| {
+                            (
+                                self.sub_graph_registry
+                                    .get_price_all(jump_pair.flip(), &state)
+                                    .unwrap_or(Rational::ONE),
+                                jump_pair.0,
+                            )
+                        })
+                        .unwrap_or_else(|| (Rational::ONE, quote));
 
-            self.sub_graph_registry.verify_current_subgraphs(
-                pair,
-                start_addr,
-                start_price,
-                &state,
-                current_block,
-            );
+                    self.sub_graph_registry.verify_current_subgraphs(
+                        epair,
+                        start_addr,
+                        start_price,
+                        &state,
+                        current_block,
+                    );
+                });
         });
     }
 

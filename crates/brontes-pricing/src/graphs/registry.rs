@@ -126,6 +126,24 @@ impl SubGraphRegistry {
         }
     }
 
+    pub fn get_subgraph_extends_iter(
+        &self,
+        pair: PairWithFirstPoolHop,
+    ) -> Vec<(PairWithFirstPoolHop, Option<Pair>)> {
+        let pair = pair.get_pair();
+
+        self.sub_graphs
+            .get(&pair.ordered())
+            .map(|graph| {
+                graph
+                    .iter()
+                    .map(|(gt, inner)| (gt, inner.extends_to()))
+                    .map(|(gt, ex)| (PairWithFirstPoolHop::from_pair_gt(pair, *gt), ex))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| vec![])
+    }
+
     pub fn get_subgraph_extends(&self, pair: PairWithFirstPoolHop) -> Option<Pair> {
         let (pair, gt) = pair.pair_gt();
         self.sub_graphs
@@ -232,15 +250,17 @@ impl SubGraphRegistry {
         state: &FastHashMap<Address, &T>,
         block: u64,
     ) {
-        let pair = pair.get_pair();
+        let (pair, gt) = pair.pair_gt();
         self.sub_graphs.iter_mut().for_each(|(g_pair, sub)| {
             // wrong pair, then retain
             if *g_pair != pair.ordered() {
                 return
             }
 
-            sub.values_mut().for_each(|graph| {
-                graph.has_valid_liquidity(start, start_price.clone(), state, block)
+            sub.iter_mut().for_each(|(goes_through, graph)| {
+                if *goes_through == gt {
+                    graph.has_valid_liquidity(start, start_price.clone(), state, block)
+                }
             });
         });
     }
