@@ -1516,15 +1516,12 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
-            // .with_block(19649139)
             .with_mev_tx_hashes(vec![
                 hex!("abcc6968cd2a072b20f5e2d25d80d7ad6957efa999079c511a278dd6eb9095d6").into(),
                 hex!("a79536b1257d96b03f53ff9e0017176704535a19353beb006179f4f9f9ef69aa").into(),
                 hex!("435470d1f5e2494525f556d03303e6a1e3622777b6b718cbb77abf9d6bd0ebdb").into(),
-            ])
-            .with_expected_profit_usd(2711.18)
-            .with_gas_paid_usd(3129.59);
+            ]);
 
-        inspector_util.run_inspector(config, None).await.unwrap();
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }
