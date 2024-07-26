@@ -48,7 +48,6 @@ impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
-
     fn get_id(&self) -> &str {
         "Sandwich"
     }
@@ -57,9 +56,8 @@ impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
-        let block = data.per_block_data.pop().expect("no blocks");
-        let BlockData { metadata, tree } = block;
+    fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
+        let BlockData { metadata, tree } = data.get_most_recent_block();
 
         self.utils
             .get_metrics()
