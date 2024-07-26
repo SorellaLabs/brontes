@@ -141,7 +141,7 @@ impl SubGraphRegistry {
                     .map(|(gt, ex)| (PairWithFirstPoolHop::from_pair_gt(pair, *gt), ex))
                     .collect::<Vec<_>>()
             })
-            .unwrap_or_else(|| vec![])
+            .unwrap_or_default()
     }
 
     pub fn get_subgraph_extends(&self, pair: PairWithFirstPoolHop) -> Option<Pair> {
