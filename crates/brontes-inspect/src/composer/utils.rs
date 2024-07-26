@@ -122,6 +122,8 @@ pub(crate) fn find_mev_with_matching_tx_hashes<'a>(
 /// Finds the index of the first classified mev in the list whose transaction
 /// hashes match any of the provided hashes.
 pub(crate) fn try_deduping_mev<'a>(
+    tree: Arc<BlockTree<Action>>,
+    db: Box<dyn LibmdbxReader>,
     dominate: &'a Bundle,
     mev_data_list: &'a [Bundle],
     extra_filter_function: &'a FilterFn,
@@ -134,8 +136,11 @@ pub(crate) fn try_deduping_mev<'a>(
             let tx_hashes_in_mev = bundle.data.mev_transaction_hashes();
 
             let tx_hash_overlap = tx_hashes_in_mev.iter().any(|hash| tx_hashes.contains(hash));
-            let extra_args =
-                if let Some(f) = extra_filter_function { f([dominate, bundle]) } else { true };
+            let extra_args = if let Some(f) = extra_filter_function {
+                f(tree, db, [dominate, bundle])
+            } else {
+                true
+            };
             (tx_hash_overlap && extra_args).then_some(index)
         })
 }

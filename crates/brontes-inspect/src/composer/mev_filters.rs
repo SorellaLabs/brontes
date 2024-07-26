@@ -1,4 +1,11 @@
-use brontes_types::mev::{Bundle, BundleData, MevType};
+use std::sync::Arc;
+
+use brontes_core::LibmdbxReader;
+use brontes_types::{
+    mev::{Bundle, BundleData, MevType},
+    normalized_actions::Action,
+    BlockTree,
+};
 use lazy_static::lazy_static;
 
 /// Defines precedence rules among different MEV types for the purpose of
@@ -46,7 +53,9 @@ macro_rules! define_mev_precedence {
     };
 }
 
-pub type FilterFn = Option<Box<dyn Fn([&Bundle; 2]) -> bool + Send + Sync>>;
+pub type FilterFn = Option<
+    Box<dyn Fn(Arc<BlockTree<Action>>, Box<dyn LibmdbxReader>, [&Bundle; 2]) -> bool + Send + Sync>,
+>;
 
 pub fn get_filter_fn(mev_type: MevType) -> FilterFn {
     match mev_type {
@@ -56,7 +65,11 @@ pub fn get_filter_fn(mev_type: MevType) -> FilterFn {
 }
 
 /// returns true if should dedup.
-pub fn atomic_dedup_fn(bundles: [&Bundle; 2]) -> bool {
+pub fn atomic_dedup_fn(
+    _tree: Arc<BlockTree<Action>>,
+    _db: Box<dyn LibmdbxReader>,
+    bundles: [&Bundle; 2],
+) -> bool {
     let [atomic, other] = bundles;
 
     if matches!(other.data, BundleData::CexDex(_)) {

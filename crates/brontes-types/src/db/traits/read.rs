@@ -16,7 +16,7 @@ use crate::{
 pub type AllSearcherInfo = (Vec<(Address, SearcherInfo)>, Vec<(Address, SearcherInfo)>);
 pub type ProtocolCreatedRange = FastHashMap<u64, Vec<(Address, Protocol, Pair)>>;
 
-#[auto_impl::auto_impl(&)]
+#[auto_impl::auto_impl(&, Box)]
 pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata>;
 

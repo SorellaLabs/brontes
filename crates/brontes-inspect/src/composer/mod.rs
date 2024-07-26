@@ -152,6 +152,8 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     MEV_DEDUPLICATION_FILTER.iter().for_each(
         |(dominant_mev_type, extra_filter_fn, subordinate_mev_type)| {
             deduplicate_mev(
+                tree.clone(),
+                db,
                 dominant_mev_type,
                 extra_filter_fn,
                 subordinate_mev_type,
@@ -177,7 +179,9 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     (header, filtered_bundles)
 }
 
-fn deduplicate_mev(
+fn deduplicate_mev<DB: LibmdbxReader>(
+    tree: Arc<BlockTree<Action>>,
+    db: &'static DB,
     dominant_mev_type: &MevType,
     extra_filter_function: &FilterFn,
     subordinate_mev_types: &[MevType],
@@ -195,8 +199,15 @@ fn deduplicate_mev(
                 continue;
             };
             indexes.extend(
-                try_deduping_mev(dominate_mev, sub_mev_list, extra_filter_function, &hashes)
-                    .zip(vec![sub_mev_type].into_iter().cycle()),
+                try_deduping_mev(
+                    tree.clone(),
+                    Box::new(db),
+                    dominate_mev,
+                    sub_mev_list,
+                    extra_filter_function,
+                    &hashes,
+                )
+                .zip(vec![sub_mev_type].into_iter().cycle()),
             )
         }
     }
