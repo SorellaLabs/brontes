@@ -51,7 +51,6 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     }
 
     fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
-        tracing::info!(data_len=?data.blocks, ack=?data.per_block_data.len());
         let BlockData { metadata, tree } = data.get_most_recent_block();
 
         let execution = || {
@@ -277,6 +276,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     .split_actions((Action::try_swap, Action::try_transfer));
 
                 let Ok(vic_info) = root.get_tx_info(arb_info.block_number, self.utils.db) else {
+                    tracing::info!("diff block");
                     return false
                 };
                 let accounting_addr: FastHashSet<Address> =
