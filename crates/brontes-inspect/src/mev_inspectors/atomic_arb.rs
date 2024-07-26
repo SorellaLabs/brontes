@@ -244,14 +244,14 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> B256 {
         let this_tree = trees.pop().unwrap();
 
-        // go from most recent to last
         trees
             .into_iter()
-            .flat_map(|tree| tree.roots().clone().into_iter().rev().collect_vec())
+            .flat_map(|tree| tree.tx_roots.clone().into_iter().rev().collect_vec())
             .chain(
                 this_tree
-                    .roots()
-                    .iter()
+                    .tx_roots
+                    .clone()
+                    .into_iter()
                     .take(arb_info.tx_index as usize)
                     .rev(),
             )
