@@ -13,16 +13,12 @@ use brontes_types::{
     normalized_actions::{
         accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
     },
-    pair::Pair,
     tree::{collect_address_set_for_accounting, BlockTree, GasDetails},
     ActionIter, BlockData, FastHashMap, FastHashSet, IntoZipTree, MultiBlockData, ToFloatNearest,
     TreeBase, TreeCollector, TreeIter, TreeSearchBuilder, TxInfo, UnzipPadded,
 };
 use itertools::Itertools;
-use malachite::{
-    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
-    Rational,
-};
+use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
 use types::{PossibleSandwich, PossibleSandwichWithTxInfo};
 
@@ -39,7 +35,6 @@ type VictimSetActions = Option<Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTrans
 const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
 const MAX_NON_SWAP_FRONTRUN: Rational = Rational::const_from_unsigned(5000);
 
-//TODO: Add support for this type of flashloan sandwich
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,
 }
@@ -311,7 +306,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         // ensure valid pricing
         let mut has_dex_price = true;
         for (swaps, info) in front_run_swaps.iter().zip(&possible_front_runs_info) {
-            has_dex_price &= self.valid_pricing(
+            has_dex_price &= self.utils.valid_pricing(
                 metadata.clone(),
                 swaps,
                 searcher_deltas
@@ -323,9 +318,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     })
                     .unique(),
                 info.tx_index as usize,
+                MAX_PRICE_DIFF,
+                MevType::Sandwich,
             );
         }
-        has_dex_price &= self.valid_pricing(
+        has_dex_price &= self.utils.valid_pricing(
             metadata.clone(),
             &back_run_swaps,
             searcher_deltas
@@ -337,6 +334,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 })
                 .unique(),
             backrun_info.tx_index as usize,
+            MAX_PRICE_DIFF,
+            MevType::Sandwich,
         );
 
         let mut mev_addresses: FastHashSet<Address> =
@@ -431,86 +430,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!("{:#?}\n{:#?}", header, sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
-    }
-
-    fn valid_pricing<'a>(
-        &self,
-        metadata: Arc<Metadata>,
-        swaps: &[NormalizedSwap],
-        tokens: impl Iterator<Item = &'a Address>,
-        idx: usize,
-    ) -> bool {
-        if swaps.is_empty() {
-            return true
-        }
-
-        let pcts = tokens
-            .flat_map(|token| {
-                swaps
-                    .iter()
-                    .filter(move |swap| {
-                        &swap.token_in.address == token || &swap.token_out.address == token
-                    })
-                    .filter_map(|swap| {
-                        let effective_price = swap.swap_rate();
-
-                        let am_in_price = metadata
-                            .dex_quotes
-                            .as_ref()?
-                            .price_at(Pair(swap.token_in.address, self.utils.quote), idx)?;
-
-                        let am_out_price = metadata
-                            .dex_quotes
-                            .as_ref()?
-                            .price_at(Pair(swap.token_out.address, self.utils.quote), idx)?;
-
-                        // we reciprocal amount out because we won't have pricing for quote <> token
-                        // out but we will have flipped
-                        let dex_pricing_rate =
-                            (am_out_price.get_price(PriceAt::Average).reciprocal()
-                                * am_in_price.get_price(PriceAt::Average))
-                            .reciprocal();
-
-                        let pct = if effective_price > dex_pricing_rate {
-                            if effective_price == Rational::ZERO {
-                                return None
-                            }
-                            (&effective_price - &dex_pricing_rate) / &effective_price
-                        } else {
-                            if dex_pricing_rate == Rational::ZERO {
-                                return None
-                            }
-                            (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
-                        };
-
-                        if pct > MAX_PRICE_DIFF {
-                            self.utils.get_metrics().inspect(|m| {
-                                m.bad_dex_pricing(
-                                    MevType::Sandwich,
-                                    Pair(swap.token_in.address, swap.token_out.address),
-                                )
-                            });
-                            tracing::warn!(
-                                ?effective_price,
-                                ?dex_pricing_rate,
-                                ?swap,
-                                "to big of a delta for pricing on sandwiches"
-                            );
-                        }
-
-                        Some(pct)
-                    })
-            })
-            .collect_vec();
-
-        if pcts.is_empty() {
-            return true
-        }
-
-        pcts.into_iter()
-            .max()
-            .filter(|delta| delta.le(&MAX_PRICE_DIFF))
-            .is_some()
     }
 
     /// Because of the recursive split nature of the search,
