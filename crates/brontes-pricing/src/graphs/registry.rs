@@ -232,17 +232,15 @@ impl SubGraphRegistry {
         state: &FastHashMap<Address, &T>,
         block: u64,
     ) {
-        let (pair, goes_through) = pair.pair_gt();
+        let pair = pair.get_pair();
         self.sub_graphs.iter_mut().for_each(|(g_pair, sub)| {
             // wrong pair, then retain
             if *g_pair != pair.ordered() {
                 return
             }
 
-            sub.iter_mut().for_each(|(gt, graph)| {
-                if &goes_through.ordered() == gt {
-                    graph.has_valid_liquidity(start, start_price.clone(), state, block)
-                }
+            sub.values_mut().for_each(|graph| {
+                graph.has_valid_liquidity(start, start_price.clone(), state, block)
             });
         });
     }
