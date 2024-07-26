@@ -9,7 +9,7 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::dex::PriceAt,
-    mev::{Bundle, BundleData, Mev, MevType, Sandwich},
+    mev::{Bundle, BundleData, MevType, Sandwich},
     normalized_actions::{
         accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
     },
@@ -84,7 +84,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             Action::is_nested_action,
         ]);
 
-        Self::dedup_bundles(
+        self.utils.dedup_bundles(
             self.get_possible_sandwich(tree.clone())
                 .into_iter()
                 .filter_map(|ps| {
@@ -437,62 +437,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::debug!("{:#?}\n{:#?}", header, sandwich);
 
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
-    }
-
-    /// Because of the recursive split nature of the search,
-    /// we can sometimes get overlap which leads to double counting and
-    /// false positives that are unwanted. to combat this
-    /// we check all hashes and will check for duplicates.
-    /// when a duplicate arises, we will always take the bundle
-    /// with more transactions as it is the most correct
-    #[allow(clippy::comparison_chain)]
-    fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
-        let mut bundles = bundles
-            .into_iter()
-            .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
-            .collect_vec();
-
-        let len = bundles.len();
-        let mut removals = Vec::new();
-
-        for i in 0..len {
-            if removals.contains(&i) {
-                continue
-            }
-
-            for j in 0..len {
-                if i == j || removals.contains(&j) {
-                    continue
-                }
-
-                let i_hash = &bundles[i].0;
-                let j_hash = &bundles[j].0;
-                if i_hash.iter().any(|hash| j_hash.contains(hash)) {
-                    if i_hash.len() > j_hash.len() {
-                        removals.push(j);
-                    } else if i_hash.len() < j_hash.len() {
-                        removals.push(i);
-                    } else {
-                        // if same, take bundle with lower profit as it is most
-                        // likey, more correct
-                        if bundles[i].1.header.profit_usd > bundles[j].1.header.profit_usd {
-                            removals.push(i);
-                        } else {
-                            removals.push(j);
-                        }
-                    }
-                }
-            }
-        }
-
-        removals.sort_unstable_by(|a, b| b.cmp(a));
-        removals.dedup();
-
-        removals.into_iter().for_each(|idx| {
-            bundles.remove(idx);
-        });
-
-        bundles.into_iter().map(|res| res.1).collect_vec()
     }
 
     /// for the given set of possible sandwich data.
