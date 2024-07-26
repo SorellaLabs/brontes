@@ -242,6 +242,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         mut trees: Vec<Arc<BlockTree<Action>>>,
         swaps: &[NormalizedSwap],
     ) -> B256 {
+        tracing::info!(tress=?trees.len());
         let this_tree = trees.pop().unwrap();
 
         trees
