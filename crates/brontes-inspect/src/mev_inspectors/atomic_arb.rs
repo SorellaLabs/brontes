@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -258,13 +257,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .rev()
             .find(|root| {
-                let bytes: FixedBytes<32> = alloy_primitives::hex!(
-                    "e821b29c891ab5728dba82a8034c89928cec5eec73f841ade65b4d415c83f0f3"
-                )
-                .into();
-                if root.tx_hash == bytes {
-                    tracing::info!("trigger is being searched");
-                }
                 // grab all the victim swaps and transactions and use the same
                 // method to convert transfers into swaps thus align the searcher
                 // swaps and victim swaps
@@ -275,9 +267,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
                 if actions.is_empty() {
                     return false
-                }
-                if root.tx_hash == bytes {
-                    tracing::info!("trigger is has swaps");
                 }
 
                 // collect actions and transform into raw swaps
@@ -296,10 +285,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     ignore_addresses.insert(s.pool);
                 });
                 trigger_swaps.extend(self.utils.try_create_swaps(&transfers, ignore_addresses));
-
-                if root.tx_hash == bytes {
-                    tracing::info!("{:#?}\n\n\n {:#?}", swaps, trigger_swaps);
-                }
 
                 // look for  a intersection of trigger swaps and arb swaps where the pool is the
                 // same and the assets are going in a different direction. if we find 1, we have
