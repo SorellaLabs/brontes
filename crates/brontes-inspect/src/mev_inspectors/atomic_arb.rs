@@ -257,7 +257,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .rev()
             .find(|root| {
-                tracing::info!(num = root.header.number);
                 // grab all the victim swaps and transactions and use the same
                 // method to convert transfers into swaps thus align the searcher
                 // swaps and victim swaps
