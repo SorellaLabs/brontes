@@ -695,26 +695,37 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let was_victims: usize = grouped_victims
             .into_values()
             .map(|v| {
-                let front_run =
+                let (front_run_pools_overlap, front_run_token_overlaps) =
                     Self::check_for_overlap(&v, &front_run_tokens, &front_run_pools, true);
-                let back_run =
+
+                let (back_run_pools_overlap, back_run_token_overlaps) =
                     Self::check_for_overlap(&v, &back_run_tokens, &back_run_pools, false);
+
+                let pools_overlap = front_run_pools_overlap
+                    .intersection(&back_run_pools_overlap)
+                    .count()
+                    != 0;
+                let token_overlap = front_run_token_overlaps
+                    .intersection(&back_run_token_overlaps)
+                    .count()
+                    != 0;
+
+                tracing::trace!(?pools_overlap, ?token_overlap);
 
                 let generated_pool_overlap = Self::generate_possible_pools_from_transfers(
                     v.into_iter().flat_map(|(_, t)| t),
                     black_list,
                 )
                 .any(|pool| {
-                    let fp = front_run_pools.contains(&pool);
-                    let bp = back_run_pools.contains(&pool);
+                    has_sandwich |= front_run_pools
+                        .intersection(&back_run_pools)
+                        .contains(&pool);
 
-                    has_sandwich |= fp && bp;
-
-                    fp || bp
+                    front_run_pools.contains(&pool) || back_run_pools.contains(&pool)
                 });
-                has_sandwich |= front_run && back_run;
+                has_sandwich |= pools_overlap || token_overlap;
 
-                front_run || back_run || generated_pool_overlap
+                pools_overlap || token_overlap || generated_pool_overlap
             })
             .map(|was_victim| was_victim as usize)
             .sum();
@@ -726,27 +737,43 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         !(victim_pct < 0.5 || !has_sandwich)
     }
 
+    /// returns pool address, and token_address
     fn check_for_overlap(
         victim_actions: &[&(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)],
         tokens: &FastHashSet<(Address, Address, bool)>,
         pools: &FastHashSet<Address>,
         is_frontrun: bool,
-    ) -> bool {
+    ) -> (FastHashSet<Address>, FastHashSet<(Address, Address)>) {
+        let mut matched_pools = FastHashSet::default();
+        let mut matched_tokens = FastHashSet::default();
+
         victim_actions
             .iter()
             .cloned()
             .filter(|(swap, transfer)| !(swap.is_empty() && transfer.is_empty()))
-            .any(|(swaps, transfers)| {
-                swaps.iter().any(|s| pools.contains(&s.pool))
-                    || transfers.iter().any(|t| {
-                        // victim has a transfer from the pool that was a token in for
-                        // the sandwich
-                        tokens.contains(&(t.token.address, t.to, is_frontrun))
-                            // victim has a transfer to the pool that was a token out for the
-                            // sandwich 
-                                || tokens.contains(&(t.token.address, t.from, !is_frontrun))
-                    })
-            })
+            .for_each(|(swaps, transfers)| {
+                matched_pools.extend(
+                    swaps
+                        .iter()
+                        .filter(|s| pools.contains(&s.pool))
+                        .map(|p| p.pool),
+                );
+                matched_tokens.extend(transfers.iter().filter_map(|t| {
+                    // victim has a transfer from the pool that was a token in for
+                    // the sandwich
+                    if tokens.contains(&(t.token.address, t.to, is_frontrun)) {
+                        return Some((t.token.address, t.to))
+                    }
+                    // victim has a transfer to the pool that was a token out for the
+                    // sandwich
+                    if tokens.contains(&(t.token.address, t.from, !is_frontrun)) {
+                        return Some((t.token.address, t.from))
+                    }
+                    None
+                }))
+            });
+
+        (matched_pools, matched_tokens)
     }
 
     // collect all addresses that have exactly two transfers two and from.
