@@ -11,7 +11,7 @@ pub struct MultiBlockData {
 
 impl MultiBlockData {
     pub fn split_to_size(&self, size: usize) -> MultiBlockData {
-        let mut extra = (self.blocks as isize) - (self.blocks as isize - (size as isize - 1));
+        let mut extra = (self.blocks as isize) - (size as isize);
         if extra < 0 {
             extra = 0
         }
