@@ -51,7 +51,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     }
 
     fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
-        tracing::info!(?data);
+        tracing::info!(data_len=?data.blocks);
         let BlockData { metadata, tree } = data.get_most_recent_block();
 
         let execution = || {
