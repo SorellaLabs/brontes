@@ -242,7 +242,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         mut trees: Vec<Arc<BlockTree<Action>>>,
         swaps: &[NormalizedSwap],
     ) -> B256 {
-        tracing::info!(tress=?trees.len());
         let this_tree = trees.pop().unwrap();
 
         trees
@@ -258,6 +257,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .rev()
             .find(|root| {
+                tracing::info!(num = root.header.number);
                 // grab all the victim swaps and transactions and use the same
                 // method to convert transfers into swaps thus align the searcher
                 // swaps and victim swaps
