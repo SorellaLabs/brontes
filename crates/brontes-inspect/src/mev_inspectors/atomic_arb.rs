@@ -37,6 +37,11 @@ impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
+    // we use a 2 block window so that we can always have a trigger tx
+    fn block_window(&self) -> usize {
+        2
+    }
+
     fn get_id(&self) -> &str {
         "AtomicArb"
     }
@@ -45,9 +50,8 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
-        let block = data.per_block_data.pop().expect("no blocks");
-        let BlockData { metadata, tree } = block;
+    fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
+        let BlockData { metadata, tree } = data.get_most_recent_block();
 
         let execution = || {
             tree.clone()
@@ -74,7 +78,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                     let actions = action?;
 
                     self.process_swaps(
-                        tree.clone(),
+                        data.per_block_data
+                            .iter()
+                            .map(|inner| inner.tree.clone())
+                            .collect_vec(),
                         info,
                         metadata.clone(),
                         actions
@@ -99,7 +106,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
 impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     fn process_swaps(
         &self,
-        tree: Arc<BlockTree<Action>>,
+        trees: Vec<Arc<BlockTree<Action>>>,
         info: TxInfo,
         metadata: Arc<Metadata>,
         data: (Vec<NormalizedSwap>, Vec<NormalizedTransfer>, Vec<NormalizedEthTransfer>),
@@ -192,7 +199,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         // given we have a atomic arb now, we will go and try to find the trigger
         // transaction that lead to this arb.
-        let trigger_tx = self.find_trigger_tx(&info, tree, &swaps);
+        let trigger_tx = self.find_trigger_tx(&info, trees, &swaps);
 
         let backrun = AtomicArb {
             block_number: metadata.block_num,
@@ -227,17 +234,27 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         Some(Bundle { header, data })
     }
 
-    /// goes back through the tree until it finds a transaction that occured
+    /// goes back through the tree until it finds a transaction that occurred
     /// before the atomic arb that use the same liquidity pool for a swap.
     fn find_trigger_tx(
         &self,
         arb_info: &TxInfo,
-        tree: Arc<BlockTree<Action>>,
+        mut trees: Vec<Arc<BlockTree<Action>>>,
         swaps: &[NormalizedSwap],
     ) -> B256 {
-        tree.roots()
-            .iter()
-            .take(arb_info.tx_index as usize)
+        let this_tree = trees.pop().unwrap();
+
+        trees
+            .into_iter()
+            .flat_map(|tree| tree.tx_roots.clone().into_iter().rev().collect_vec())
+            .chain(
+                this_tree
+                    .tx_roots
+                    .clone()
+                    .into_iter()
+                    .take(arb_info.tx_index as usize)
+                    .rev(),
+            )
             .rev()
             .find(|root| {
                 // grab all the victim swaps and transactions and use the same
@@ -255,7 +272,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 // collect actions and transform into raw swaps
                 let (mut trigger_swaps, transfers): (Vec<_>, Vec<_>) = actions
                     .into_iter()
-                    .split_actions((Action::try_swap, Action::try_transfer));
+                    .split_actions((Action::try_swaps_merged, Action::try_transfer));
 
                 let Ok(vic_info) = root.get_tx_info(arb_info.block_number, self.utils.db) else {
                     return false

@@ -6,7 +6,7 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
-    mev::{Bundle, JitLiquidity, Mev, MevType},
+    mev::{Bundle, JitLiquidity, MevType},
     normalized_actions::{
         accounting::ActionAccounting, NormalizedBurn, NormalizedCollect, NormalizedMint,
     },
@@ -44,9 +44,8 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
         self.utils.quote
     }
 
-    fn inspect_block(&self, mut data: MultiBlockData) -> Self::Result {
-        let block = data.per_block_data.pop().expect("no blocks");
-        let BlockData { metadata, tree } = block;
+    fn inspect_block(&self, data: MultiBlockData) -> Self::Result {
+        let BlockData { metadata, tree } = data.get_most_recent_block();
 
         self.utils
             .get_metrics()
@@ -55,7 +54,7 @@ impl<DB: LibmdbxReader> Inspector for JitInspector<'_, DB> {
                     self.inspect_block_inner(tree.clone(), metadata.clone())
                 })
             })
-            .unwrap_or_else(|| self.inspect_block_inner(tree, metadata))
+            .unwrap_or_else(|| self.inspect_block_inner(tree.clone(), metadata.clone()))
     }
 }
 
@@ -65,7 +64,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        Self::dedup_bundles(
+        self.utils.dedup_bundles(
             self.possible_jit_set(tree.clone())
                 .into_iter()
                 .filter_map(
@@ -656,55 +655,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         }
 
         results
-    }
-
-    #[allow(clippy::comparison_chain)]
-    fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
-        let mut bundles = bundles
-            .into_iter()
-            .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
-            .collect_vec();
-
-        let len = bundles.len();
-        let mut removals = Vec::new();
-
-        for i in 0..len {
-            if removals.contains(&i) {
-                continue
-            }
-
-            for j in 0..len {
-                if i == j || removals.contains(&j) {
-                    continue
-                }
-
-                let i_hash = &bundles[i].0;
-                let j_hash = &bundles[j].0;
-                if i_hash.iter().any(|hash| j_hash.contains(hash)) {
-                    if i_hash.len() > j_hash.len() {
-                        removals.push(j);
-                    } else if i_hash.len() < j_hash.len() {
-                        removals.push(i);
-                    } else {
-                        // if same, take bundle with lower profit as it is most
-                        // likey, more correct
-                        if bundles[i].1.header.profit_usd > bundles[j].1.header.profit_usd {
-                            removals.push(i);
-                        } else {
-                            removals.push(j);
-                        }
-                    }
-                }
-            }
-        }
-        removals.sort_unstable_by(|a, b| b.cmp(a));
-        removals.dedup();
-
-        removals.into_iter().for_each(|idx| {
-            bundles.remove(idx);
-        });
-
-        bundles.into_iter().map(|res| res.1).collect_vec()
     }
 
     fn get_victim_actions(
