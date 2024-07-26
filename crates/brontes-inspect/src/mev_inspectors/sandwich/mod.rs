@@ -150,6 +150,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .collect::<Vec<_>>();
 
+        let black_list: FastHashSet<Address> =
+            collect_address_set_for_accounting(&possible_frontruns_info);
+
         self.calculate_sandwich(
             tree.clone(),
             metadata.clone(),
@@ -158,6 +161,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             searcher_actions,
             victims_info,
             victim_swaps_transfers,
+            black_list,
             0,
         )
     }
@@ -171,6 +175,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         mut searcher_actions: Vec<Vec<Action>>,
         victim_info: Vec<Vec<TxInfo>>,
         victim_actions: Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>,
+        black_list: FastHashSet<Address>,
         recusive: u8,
     ) -> Option<Vec<Bundle>> {
         // if all of the sandwichers have the same eoa or the to address is an mev
@@ -228,6 +233,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             &back_run_actions,
             &victim_actions,
             &victim_info,
+            &black_list,
         ) {
             // if the current set of front-run victim back-runs is not classified
             // as a sandwich, we will recursively remove orders in both directions
@@ -242,6 +248,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 &searcher_actions,
                 &victim_info,
                 &victim_actions,
+                black_list,
                 recusive,
             )
         }
@@ -504,6 +511,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         searcher_actions: &[Vec<Action>],
         victim_info: &[Vec<TxInfo>],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
+        black_list: FastHashSet<Address>,
         mut recursive: u8,
     ) -> Option<Vec<Bundle>> {
         let mut res = vec![];
@@ -547,6 +555,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions.to_vec(),
                     victim_info,
                     victim_actions,
+                    black_list.clone(),
                     recursive,
                 )
             };
@@ -584,6 +593,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     searcher_actions,
                     victim_info,
                     victim_actions,
+                    black_list,
                     recursive,
                 )
             };
@@ -604,6 +614,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         back_run_swaps: &[Action],
         victim_actions: &[Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>],
         victim_info: &[Vec<TxInfo>],
+        black_list: &FastHashSet<Address>,
     ) -> bool {
         let f_swap_len = front_run_swaps.len();
         for (i, (chunk_victim_actions, chunk_victim_info)) in
@@ -620,10 +631,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             };
 
             let (front_run_pools, front_run_tokens) =
-                Self::collect_frontrun_data(chunk_front_run_swaps);
+                Self::collect_frontrun_data(chunk_front_run_swaps, black_list);
 
             let (back_run_pools, back_run_tokens) =
-                Self::collect_backrun_data(chunk_back_run_swaps);
+                Self::collect_backrun_data(chunk_back_run_swaps, black_list);
 
             // ensure the intersection of frontrun and backrun pools exists
             if front_run_pools.intersection(&back_run_pools).count() == 0 {
@@ -647,6 +658,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 front_run_tokens,
                 back_run_pools,
                 back_run_tokens,
+                black_list,
             ) {
                 return false
             }
@@ -664,6 +676,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         front_run_tokens: FastHashSet<(Address, Address, bool)>,
         back_run_pools: FastHashSet<Address>,
         back_run_tokens: FastHashSet<(Address, Address, bool)>,
+        black_list: &FastHashSet<Address>,
     ) -> bool {
         tracing::debug!(?grouped_victims, ?front_run_pools, ?back_run_pools);
         let amount = grouped_victims.len();
@@ -683,6 +696,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
                 let generated_pool_overlap = Self::generate_possible_pools_from_transfers(
                     v.into_iter().flat_map(|(_, t)| t),
+                    black_list,
                 )
                 .any(|pool| {
                     let fp = front_run_pools.contains(&pool);
@@ -737,6 +751,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     // this should cover all pools that we didn't have classified
     fn collect_frontrun_data(
         front_run: &[Vec<Action>],
+        black_list: &FastHashSet<Address>,
     ) -> (FastHashSet<Address>, FastHashSet<(Address, Address, bool)>) {
         let front_run: Vec<(Vec<NormalizedSwap>, Vec<NormalizedTransfer>)> = front_run
             .iter()
@@ -748,11 +763,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             })
             .collect_vec();
 
+        // this is currently grabbing a eoa
         let (front_pools, front_tokens): (Vec<_>, Vec<_>) = front_run
             .into_iter()
             .map(|(swaps, transfers)| {
                 let front_run_pools =
-                    Self::generate_possible_pools_from_transfers(transfers.iter())
+                    Self::generate_possible_pools_from_transfers(transfers.iter(), &black_list)
                         .chain(swaps.iter().map(|s| s.pool))
                         .collect::<Vec<_>>();
 
@@ -779,14 +795,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     // this should cover all pools that we didn't have classified
     fn collect_backrun_data(
         details: Vec<Action>,
+        black_list: &FastHashSet<Address>,
     ) -> (FastHashSet<Address>, FastHashSet<(Address, Address, bool)>) {
         let (back_swap, back_transfer): (Vec<NormalizedSwap>, Vec<NormalizedTransfer>) = details
             .into_iter()
             .split_actions((Action::try_swaps_merged, Action::try_transfer));
 
-        let back_run_pools = Self::generate_possible_pools_from_transfers(back_transfer.iter())
-            .chain(back_swap.iter().map(|s| s.pool))
-            .collect::<FastHashSet<_>>();
+        let back_run_pools =
+            Self::generate_possible_pools_from_transfers(back_transfer.iter(), &black_list)
+                .chain(back_swap.iter().map(|s| s.pool))
+                .collect::<FastHashSet<_>>();
 
         let back_run_tokens = Self::generate_tokens(back_swap.iter(), back_transfer.iter());
 
@@ -811,13 +829,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
     fn generate_possible_pools_from_transfers<'a>(
         transfers: impl Iterator<Item = &'a NormalizedTransfer>,
-    ) -> impl Iterator<Item = Address> {
+        black_list: &'a FastHashSet<Address>,
+    ) -> impl Iterator<Item = Address> + 'a {
         itertools::Itertools::into_group_map(
             transfers.flat_map(|t| [(t.to, t.clone()), (t.from, t.clone())]),
         )
         .into_iter()
-        .filter(|(_, v)| {
-            if v.len() != 2 {
+        .filter(|(address, v)| {
+            if v.len() != 2 || black_list.contains(address) {
                 return false
             }
             let first = v.first().unwrap();
