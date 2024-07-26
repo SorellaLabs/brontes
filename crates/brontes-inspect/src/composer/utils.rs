@@ -129,6 +129,7 @@ pub(crate) fn try_deduping_mev<'a>(
     extra_filter_function: &'a FilterFn,
     tx_hashes: &'a [FixedBytes<32>],
 ) -> impl Iterator<Item = usize> + 'a {
+    let arc = Arc::new(db);
     mev_data_list
         .iter()
         .enumerate()
@@ -137,7 +138,7 @@ pub(crate) fn try_deduping_mev<'a>(
 
             let tx_hash_overlap = tx_hashes_in_mev.iter().any(|hash| tx_hashes.contains(hash));
             let extra_args = if let Some(f) = extra_filter_function {
-                f(tree, db, [dominate, bundle])
+                f(tree.clone(), arc.clone(), [dominate, bundle])
             } else {
                 true
             };

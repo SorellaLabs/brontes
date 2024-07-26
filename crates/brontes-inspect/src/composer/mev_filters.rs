@@ -54,7 +54,7 @@ macro_rules! define_mev_precedence {
 }
 
 pub type FilterFn = Option<
-    Box<dyn Fn(Arc<BlockTree<Action>>, Box<dyn LibmdbxReader>, [&Bundle; 2]) -> bool + Send + Sync>,
+    Box<dyn Fn(Arc<BlockTree<Action>>, Arc<Box<dyn LibmdbxReader>>, [&Bundle; 2]) -> bool + Send + Sync>,
 >;
 
 pub fn get_filter_fn(mev_type: MevType) -> FilterFn {
@@ -67,7 +67,7 @@ pub fn get_filter_fn(mev_type: MevType) -> FilterFn {
 /// returns true if should dedup.
 pub fn atomic_dedup_fn(
     _tree: Arc<BlockTree<Action>>,
-    _db: Box<dyn LibmdbxReader>,
+    _db: Arc<Box<dyn LibmdbxReader>>,
     bundles: [&Bundle; 2],
 ) -> bool {
     let [atomic, other] = bundles;
