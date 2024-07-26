@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -257,10 +258,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             )
             .rev()
             .find(|root| {
-                if root.tx_hash
-                    == alloy_primitives::hex!("e821b29c891ab5728dba82a8034c89928cec5eec73f841ade65b4d415c83f0f3")
-                        .into()
-                {
+                let bytes: FixedBytes<32> = alloy_primitives::hex!(
+                    "e821b29c891ab5728dba82a8034c89928cec5eec73f841ade65b4d415c83f0f3"
+                )
+                .into();
+                if root.tx_hash == bytes {
                     tracing::info!("trigger is being searched");
                 }
                 // grab all the victim swaps and transactions and use the same
