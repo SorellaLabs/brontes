@@ -734,7 +734,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::trace!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich);
         // if we had more than 50% victims, then we say this was valid. This
         // wiggle room is to deal with unknowns
-        !(victim_pct < 0.5 || !has_sandwich)
+        victim_pct >= 0.5 && has_sandwich
     }
 
     /// returns pool address, and token_address
@@ -797,7 +797,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .into_iter()
             .map(|(swaps, transfers)| {
                 let front_run_pools =
-                    Self::generate_possible_pools_from_transfers(transfers.iter(), &black_list)
+                    Self::generate_possible_pools_from_transfers(transfers.iter(), black_list)
                         .chain(swaps.iter().map(|s| s.pool))
                         .collect::<Vec<_>>();
 
@@ -831,7 +831,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .split_actions((Action::try_swaps_merged, Action::try_transfer));
 
         let back_run_pools =
-            Self::generate_possible_pools_from_transfers(back_transfer.iter(), &black_list)
+            Self::generate_possible_pools_from_transfers(back_transfer.iter(), black_list)
                 .chain(back_swap.iter().map(|s| s.pool))
                 .collect::<FastHashSet<_>>();
 
