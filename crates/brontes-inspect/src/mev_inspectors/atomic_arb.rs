@@ -454,7 +454,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                                 "to big of a pricing delta on atomic arbs"
                             );
                         }
-
                         Some(pct)
                     })
             })
