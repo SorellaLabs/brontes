@@ -48,10 +48,6 @@ impl<'db, DB: LibmdbxReader> SandwichInspector<'db, DB> {
 impl<DB: LibmdbxReader> Inspector for SandwichInspector<'_, DB> {
     type Result = Vec<Bundle>;
 
-    // we use a 2 block window so that we can always have a trigger tx
-    fn block_window(&self) -> usize {
-        2
-    }
 
     fn get_id(&self) -> &str {
         "Sandwich"
@@ -82,6 +78,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
+        tracing::trace!("starting sandwich");
         let search_args = TreeSearchBuilder::default().with_actions([
             Action::is_swap,
             Action::is_transfer,
