@@ -276,6 +276,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 if actions.is_empty() {
                     return false
                 }
+                if root.tx_hash == bytes {
+                    tracing::info!("trigger is has swaps");
+                }
 
                 // collect actions and transform into raw swaps
                 let (mut trigger_swaps, transfers): (Vec<_>, Vec<_>) = actions
@@ -293,6 +296,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     ignore_addresses.insert(s.pool);
                 });
                 trigger_swaps.extend(self.utils.try_create_swaps(&transfers, ignore_addresses));
+
+                if root.tx_hash == bytes {
+                    tracing::info!("{:#?}\n\n\n {:#?}", swaps, trigger_swaps);
+                }
 
                 // look for  a intersection of trigger swaps and arb swaps where the pool is the
                 // same and the assets are going in a different direction. if we find 1, we have
