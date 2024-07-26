@@ -678,7 +678,13 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         back_run_tokens: FastHashSet<(Address, Address, bool)>,
         black_list: &FastHashSet<Address>,
     ) -> bool {
-        tracing::debug!(?grouped_victims, ?front_run_pools, ?back_run_pools);
+        tracing::debug!(
+            ?grouped_victims,
+            ?front_run_tokens,
+            ?back_run_tokens,
+            ?front_run_pools,
+            ?back_run_pools
+        );
         let amount = grouped_victims.len();
         if amount == 0 {
             tracing::debug!(" no grouped victims");
@@ -717,8 +723,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::trace!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich);
         // if we had more than 50% victims, then we say this was valid. This
         // wiggle room is to deal with unknowns
-        !(victim_pct < 0.5 || !has_sandwich) 
-
+        !(victim_pct < 0.5 || !has_sandwich)
     }
 
     fn check_for_overlap(
