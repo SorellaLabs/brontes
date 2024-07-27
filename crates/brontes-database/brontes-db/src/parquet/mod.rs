@@ -77,7 +77,7 @@ where
         let (
             blocks,
             bundle_headers,
-            cex_dex_arbs,
+            _cex_dex_arbs,
             atomic_arbs,
             jit,
             sandwich,
@@ -146,7 +146,8 @@ where
             }));
         }
 
-        if !cex_dex_arbs.is_empty() {
+        #[cfg(not(feature = "cex-dex-quotes"))]
+        if !_cex_dex_arbs.is_empty() {
             bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {

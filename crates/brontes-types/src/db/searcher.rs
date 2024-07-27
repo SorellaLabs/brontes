@@ -66,6 +66,7 @@ impl SearcherInfo {
         match mev_type {
             MevType::Sandwich => self.mev_count.sandwich_count,
             MevType::CexDex => self.mev_count.cex_dex_count,
+            MevType::RfqCexDex => self.mev_count.cex_dex_count,
             MevType::Jit => self.mev_count.jit_count,
             MevType::JitSandwich => self.mev_count.jit_sandwich_count,
             MevType::AtomicArb => self.mev_count.atomic_backrun_count,

@@ -163,6 +163,9 @@ impl Clickhouse {
                         tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
                     BundleData::Jit(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
+                    #[cfg(not(feature = "cex-dex-quotes"))]
+                    BundleData::CexDex(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
+                    #[cfg(not(feature = "cex-dex-quotes"))]
                     BundleData::CexDex(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::Liquidation(s) => {
                         tx.send(vec![(s, self.tip, self.run_id).into()])?

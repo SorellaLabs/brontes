@@ -3,14 +3,16 @@ use std::fmt::{self};
 use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
+#[cfg(not(feature = "cex-dex-quotes"))]
 use prettytable::{Cell, Row, Table};
 use reth_primitives::B256;
 
+use crate::mev::{Bundle, BundleData};
+#[cfg(not(feature = "cex-dex-quotes"))]
 use crate::{
-    mev::{Bundle, BundleData, CexDex, OptimisticTrade},
+    mev::{CexDex, OptimisticTrade},
     utils::ToFloatNearest,
 };
-
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
@@ -624,6 +626,7 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     Ok(())
 }
 
+#[cfg(not(feature = "cex-dex-quotes"))]
 pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
@@ -797,6 +800,52 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     Ok(())
 }
 
+#[cfg(feature = "cex-dex-quotes")]
+pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
+    let ascii_header = indoc! {r#"
+        ██████╗███████╗██╗  ██╗    ██████╗ ███████╗██╗  ██╗
+        ██╔════╝██╔════╝╚██╗██╔╝    ██╔══██╗██╔════╝╚██╗██╔╝
+        ██║     █████╗   ╚███╔╝     ██║  ██║█████╗   ╚███╔╝ 
+        ██║     ██╔══╝   ██╔██╗     ██║  ██║██╔══╝   ██╔██╗ 
+        ╚██████╗███████╗██╔╝ ██╗    ██████╔╝███████╗██╔╝ ██╗
+        ╚═════╝╚══════╝╚═╝  ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═╝
+    "#};
+
+    writeln!(f, "{}", ascii_header.purple())?;
+
+    let cex_dex_data = match &bundle.data {
+        BundleData::CexDex(data) => data,
+        _ => return Err(fmt::Error),
+    };
+
+    writeln!(f, "\n{}", "Transaction Details".bold().underline().bright_yellow())?;
+    writeln!(f, "   - Tx Hash: {}", format_etherscan_url(&bundle.header.tx_hash))?;
+    writeln!(f, "   - Block Number: {}", bundle.header.block_number)?;
+    writeln!(f, "   - Block Timestamp: {}", cex_dex_data.block_timestamp)?;
+
+    writeln!(f, "\n{}", "Quote Details".bold().underline().bright_yellow())?;
+    writeln!(f, "   - Exchange: {}", cex_dex_data.exchange.to_string().green())?;
+    writeln!(f, "   - PnL (USD): {}", format!("{:.6}", cex_dex_data.pnl).cyan())?;
+
+    writeln!(f, "\n{}", "Swaps".bold().underline().bright_yellow())?;
+    for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
+        writeln!(f, "   Swap {}: {}", i + 1, swap)?;
+        if i < cex_dex_data.mid_price.len() {
+            writeln!(f, "      - Mid Price: {:.6}", cex_dex_data.mid_price[i])?;
+        }
+    }
+
+    writeln!(f, "\n{}", "Gas Details".bold().underline().bright_yellow())?;
+    writeln!(f, "   - Gas Used: {}", cex_dex_data.gas_details.gas_used)?;
+    writeln!(f, "   - Effective Gas Price: {}", cex_dex_data.gas_details.effective_gas_price)?;
+    if let Some(coinbase_transfer) = cex_dex_data.gas_details.coinbase_transfer {
+        writeln!(f, "   - Coinbase Transfer: {}", coinbase_transfer)?;
+    }
+
+    Ok(())
+}
+
+#[cfg(not(feature = "cex-dex-quotes"))]
 pub fn display_optimistic_trades(
     f: &mut std::fmt::Formatter<'_>,
     cex_dex_data: &CexDex,

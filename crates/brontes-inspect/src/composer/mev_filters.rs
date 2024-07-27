@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use brontes_core::LibmdbxReader;
 use brontes_types::{
+    db::traits::LibmdbxReader,
     mev::{Bundle, BundleData, MevType},
     normalized_actions::Action,
     BlockTree,

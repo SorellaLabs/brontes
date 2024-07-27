@@ -8,6 +8,8 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize, Serializer};
 use strum::{Display, EnumIter};
 
+#[cfg(feature = "cex-dex-quotes")]
+use crate::mev::cex_dex_quotes::CexDexQuote;
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,
@@ -28,6 +30,9 @@ pub enum BundleData {
     AtomicArb(AtomicArb),
     JitSandwich(JitLiquiditySandwich),
     Jit(JitLiquidity),
+    #[cfg(feature = "cex-dex-quotes")]
+    CexDex(CexDexQuote),
+    #[cfg(not(feature = "cex-dex-quotes"))]
     CexDex(CexDex),
     Liquidation(Liquidation),
     Unknown(SearcherTx),
@@ -137,8 +142,16 @@ impl From<JitLiquidity> for BundleData {
     }
 }
 
+#[cfg(not(feature = "cex-dex-quotes"))]
 impl From<CexDex> for BundleData {
     fn from(value: CexDex) -> Self {
+        Self::CexDex(value)
+    }
+}
+
+#[cfg(feature = "cex-dex-quotes")]
+impl From<CexDexQuote> for BundleData {
+    fn from(value: CexDexQuote) -> Self {
         Self::CexDex(value)
     }
 }
