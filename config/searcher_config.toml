@@ -6,6 +6,22 @@
 fund = "Symbolic Capital Partners"
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
+[searcher_eoas."0xeCa2e2D894D19778939bD4DfC34D2a3C45E96456"]
+fund = "Symbolic Capital Partners"
+builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
+
+[searcher_eoas."0x43e4715ae093a4C86B5eCdDb52216c4f879e9672"]
+fund = "Symbolic Capital Partners"
+builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
+
+[searcher_eoas."0x76e40D0a69Fd81826B5eb7D18145626d46EAFdef"]
+fund = "Symbolic Capital Partners"
+builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
+
+[searcher_eoas."0x065e3DbaFCb2C26A978720f9eB4Bce6aD9D644a1"]
+fund = "Symbolic Capital Partners"
+builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
+
 [searcher_eoas."0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9"]
 fund = "Symbolic Capital Partners"
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
@@ -120,7 +136,7 @@ builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [searcher_contracts."0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
 fund = "Tokka Labs"
-mev_types = ["CexDex"] 
+mev_types = ["CexDex", "RfqCexDex"] 
 builder = "0xdcca982701a264e8d629a6e8cfba9c1a27912623"
 
 [searcher_contracts."0xeeaa83b2d581a3a790774d4dae7bf354fffe3376"]

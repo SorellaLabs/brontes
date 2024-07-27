@@ -64,6 +64,7 @@ impl SearcherInfo {
 
     pub fn get_bundle_count_for_type(&self, mev_type: MevType) -> Option<u64> {
         match mev_type {
+            MevType::RfqCexDex => self.mev_count.rfq_cex_dex_count,
             MevType::Sandwich => self.mev_count.sandwich_count,
             MevType::CexDex => self.mev_count.cex_dex_count,
             MevType::Jit => self.mev_count.jit_count,
