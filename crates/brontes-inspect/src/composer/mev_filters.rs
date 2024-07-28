@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use brontes_types::{
+    db::traits::LibmdbxReader,
     mev::{Bundle, BundleData, MevType},
     normalized_actions::Action,
-    BlockTree, db::traits::LibmdbxReader,
+    BlockTree,
 };
 use lazy_static::lazy_static;
 

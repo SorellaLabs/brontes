@@ -1,8 +1,8 @@
 use std::{fmt::Debug, hash::Hash};
 
 use strum::Display;
-pub mod cex_symbols;
 pub mod best_cex_per_pair;
+pub mod cex_symbols;
 pub mod quotes;
 pub mod trades;
 
