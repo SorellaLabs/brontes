@@ -118,7 +118,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexQuotesInspector<'_, DB> {
         let block = data.get_most_recent_block();
         let BlockData { metadata, tree } = block;
 
-        if metadata.cex_quotes.is_none() {
+        if metadata.cex_quotes.0.is_empty() {
             tracing::warn!("no cex quotes for this block");
             return vec![]
         }
