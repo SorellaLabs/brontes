@@ -379,6 +379,7 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
+
     #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,

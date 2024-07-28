@@ -2,9 +2,11 @@ use std::{fmt::Debug, hash::Hash};
 
 use strum::Display;
 pub mod cex_symbols;
+pub mod best_cex_per_pair;
 pub mod quotes;
 pub mod trades;
 
+pub use best_cex_per_pair::*;
 pub use cex_symbols::*;
 pub use quotes::*;
 pub use trades::*;
