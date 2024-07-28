@@ -114,23 +114,10 @@ impl CexQuotesConverter {
                             exchange_symbol_map
                                 .entry(symbol.address_pair)
                                 .or_insert(Vec::new())
-                                .push(quote);
+                                .push(quote.into());
                         });
 
-                        let symbol_price_map = exchange_symbol_map
-                            .into_iter()
-                            .map(|(pair, quotes)| {
-                                (
-                                    pair.ordered(),
-                                    quotes
-                                        .into_iter()
-                                        .map(|quote| (pair, quote).into())
-                                        .collect_vec(),
-                                )
-                            })
-                            .collect::<FastHashMap<_, _>>();
-
-                        (exch, symbol_price_map)
+                        (exch, exchange_symbol_map)
                     })
                     .collect::<FastHashMap<_, _>>();
 
