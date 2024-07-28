@@ -24,7 +24,7 @@ impl CexWindow {
     }
 
     pub fn get_block_lookahead(&self) -> usize {
-        self.window_size_blocks / 2
+        self.window_size_blocks
     }
 
     /// lets us know if the window is saturated with the nessacary data.
