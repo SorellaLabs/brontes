@@ -305,7 +305,7 @@ impl<'a> TimeBasketQueue<'a> {
     }
 
     fn construct_forward_baskets(&mut self) {
-        while self.current_post_time < self.max_timestamp && self.indexes.1 < self.trades.len() - 1
+        while self.current_post_time < self.max_timestamp && self.indexes.1 + 1 < self.trades.len()
         {
             self.current_post_time += TIME_BASKET_SIZE;
 
