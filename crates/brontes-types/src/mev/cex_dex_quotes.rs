@@ -14,7 +14,7 @@ use serde_with::serde_as;
 use super::{Mev, MevType};
 use crate::{
     db::{cex::CexExchange, redefined_types::primitives::*},
-    normalized_actions::{NormalizedSwap, *},
+    normalized_actions::*,
     GasDetails, Protocol,
 };
 

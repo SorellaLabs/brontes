@@ -8,8 +8,6 @@ use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize, Serializer};
 use strum::{Display, EnumIter};
 
-#[cfg(feature = "cex-dex-quotes")]
-use crate::mev::cex_dex_quotes::CexDexQuote;
 #[allow(unused_imports)]
 use crate::{
     display::utils::display_sandwich,

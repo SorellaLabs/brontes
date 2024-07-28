@@ -46,6 +46,7 @@ use std::{
     sync::Arc,
 };
 
+use alloy_primitives::{Address, TxHash};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -64,7 +65,6 @@ use malachite::{
     num::{arithmetic::traits::Reciprocal, basic::traits::Two},
     Rational,
 };
-use reth_primitives::{Address, TxHash};
 use tracing::{debug, trace};
 
 use super::types::{
@@ -260,7 +260,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         //TODO: Add smiths map to query most liquid dex for given pair
         let swaps = self.merge_possible_swaps(dex_swaps);
 
-        let quotes = self.cex_quotes_for_swap(&swaps, metadata, &CexExchange::Binance, tx_hash);
+        let quotes = self.cex_quotes_for_swap(&swaps, metadata, &CexExchange::Binance);
         let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_hash)?;
         let cex_dex_processing = CexDexProcessing { dex_swaps: swaps, pnl: cex_dex };
         Some(cex_dex_processing)
@@ -319,11 +319,12 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         if smaller * Rational::TWO < *larger {
             log_price_delta(
+                tx_hash.to_string(),
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
                 &cex_quote.exchange,
                 swap.swap_rate().clone().to_float(),
-                cex_quote.price_maker.1.clone().to_float(),
+                cex_quote.price_maker.0.clone().to_float(),
                 &swap.token_in.address,
                 &swap.token_out.address,
             );
@@ -337,11 +338,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         let token_price = metadata
             .cex_quotes
-            .get_quote_direct_or_via_intermediary(
+            .get_quote_at(
                 &Pair(swap.token_in.address, self.utils.quote),
                 &CexExchange::Binance,
-                None,
-                Some(tx_hash),
+                metadata.microseconds_block_timestamp(),
             )?
             .maker_taker_mid()
             .0;
@@ -375,7 +375,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
         exchange: &CexExchange,
-        tx_hash: &TxHash,
     ) -> Vec<Option<FeeAdjustedQuote>> {
         dex_swaps
             .iter()
@@ -384,12 +383,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
                 metadata
                     .cex_quotes
-                    .get_quote_direct_or_via_intermediary(
-                        &pair,
-                        exchange,
-                        Some(dex_swap),
-                        Some(tx_hash),
-                    )
+                    .get_quote_at(&pair, exchange, metadata.microseconds_block_timestamp())
                     .or_else(|| {
                         debug!(
                             "No CEX quote found for pair: {}, {} at exchange: {:?}",

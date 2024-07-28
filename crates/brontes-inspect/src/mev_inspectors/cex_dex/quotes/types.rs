@@ -77,6 +77,7 @@ pub struct ExchangeLeg {
 }
 
 pub fn log_price_delta(
+    tx_hash: String,
     token_in_symbol: &str,
     token_out_symbol: &str,
     exchange: &CexExchange,
@@ -91,14 +92,16 @@ pub fn log_price_delta(
          - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
          - Token Contracts:\n\
            * Token In: https://etherscan.io/address/{}\n\
-           * Token Out: https://etherscan.io/address/{}",
+           * Token Out: https://etherscan.io/address/{}\n\
+           * Tx Hash: https://etherscan.io/tx/{}\n",
         token_in_symbol,
         token_out_symbol,
         exchange,
         dex_swap_rate,
         cex_price,
         token_in_address,
-        token_out_address
+        token_out_address,
+        tx_hash
     );
 }
 

@@ -12,12 +12,7 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-use std::{
-    cmp::{max, min},
-    default::Default,
-    fmt,
-    ops::MulAssign,
-};
+use std::{cmp::min, default::Default, fmt, ops::MulAssign};
 
 use ahash::HashSetExt;
 use alloy_primitives::{Address, TxHash};
@@ -101,7 +96,17 @@ impl CexPriceMap {
         Self(FastHashMap::default())
     }
 
-    pub fn get_exchange_quote_at(
+    pub fn get_quote_at(
+        &self,
+        pair: &Pair,
+        exchange: &CexExchange,
+        timestamp: u64,
+    ) -> Option<FeeAdjustedQuote> {
+        self.get_exchange_quote_at_direct(pair, exchange, timestamp)
+            .or_else(|| self.get_exchange_quote_at_via_intermediary(pair, exchange, timestamp))
+    }
+
+    pub fn get_exchange_quote_at_direct(
         &self,
         pair: &Pair,
         exchange: &CexExchange,
@@ -114,7 +119,7 @@ impl CexPriceMap {
         self.0
             .get(exchange)
             .and_then(|quotes| {
-                if let Some(exchange_quotes) = quotes.get(&pair) {
+                if let Some(exchange_quotes) = quotes.get(pair) {
                     Some((
                         exchange_quotes
                             .iter()
@@ -188,8 +193,8 @@ impl CexPriceMap {
                 let pair1 = Pair(intermediary, pair.1);
 
                 if let (Some(quote1), Some(quote2)) = (
-                    self.get_exchange_quote_at(&pair0, exchange, timestamp),
-                    self.get_exchange_quote_at(&pair1, exchange, timestamp),
+                    self.get_exchange_quote_at_direct(&pair0, exchange, timestamp),
+                    self.get_exchange_quote_at_direct(&pair1, exchange, timestamp),
                 ) {
                     let combined_price_maker = (
                         &quote1.price_maker.0 * &quote2.price_maker.0,
@@ -250,7 +255,7 @@ impl CexPriceMap {
         self.0
             .get(exchange)
             .and_then(|quotes| {
-                if let Some(exchange_quotes) = quotes.get(&pair) {
+                if let Some(exchange_quotes) = quotes.get(pair) {
                     Some(
                         exchange_quotes
                             .iter()
@@ -269,7 +274,7 @@ impl CexPriceMap {
             })
             .and_then(|adjusted_quotes| {
                 if adjusted_quotes.is_empty() {
-                    return None;
+                    None
                 } else {
                     let mut cumulative_bbo = (Rational::ZERO, Rational::ZERO);
                     let mut volume_price = (Rational::ZERO, Rational::ZERO);

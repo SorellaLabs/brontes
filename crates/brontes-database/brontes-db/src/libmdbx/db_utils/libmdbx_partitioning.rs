@@ -14,7 +14,7 @@ use tokio::sync::Notify;
 use super::rclone_wrapper::BlockRangeList;
 use crate::{
     libmdbx::{types::LibmdbxData, LibmdbxInit, LibmdbxReadWriter},
-    CompressedTable, DexPrice, *,
+    *,
 };
 
 pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
