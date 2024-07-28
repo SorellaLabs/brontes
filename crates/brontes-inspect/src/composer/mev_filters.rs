@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use brontes_core::LibmdbxReader;
+use brontes_types::LibmdbxReader;
 use brontes_types::{
     mev::{Bundle, BundleData, MevType},
     normalized_actions::Action,
