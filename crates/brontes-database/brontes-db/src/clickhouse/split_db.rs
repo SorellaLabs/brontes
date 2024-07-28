@@ -104,6 +104,26 @@ impl ClickhouseBuffered {
             };
         }
 
+        #[cfg(feature = "cex-dex-quotes")]
+        inserts!(
+            (MevBundle_Header, BundleHeader),
+            (MevMev_Blocks, MevBlock),
+            (MevCex_Dex_Quotes, CexDexQuote),
+            (MevSearcher_Tx, SearcherTx),
+            (MevJit, JitLiquidity),
+            (MevJit_Sandwich, JitLiquiditySandwich),
+            (MevSandwiches, Sandwich),
+            (MevAtomic_Arbs, AtomicArb),
+            (MevLiquidations, Liquidation),
+            (BrontesDex_Price_Mapping, DexQuotesWithBlockNumber),
+            (BrontesToken_Info, TokenInfoWithAddress),
+            (EthereumPools, ProtocolInfoClickhouse),
+            (BrontesTree, TransactionRoot),
+            (BrontesBlock_Analysis, BlockAnalysis),
+            (BrontesRun_Id, RunId)
+        );
+
+        #[cfg(not(feature = "cex-dex-quotes"))]
         inserts!(
             (MevBundle_Header, BundleHeader),
             (MevMev_Blocks, MevBlock),

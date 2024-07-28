@@ -151,7 +151,7 @@ where
             bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
-                    let cex_dex_batch = cex_dex_to_record_batch(cex_dex_arbs)
+                    let cex_dex_batch = cex_dex_to_record_batch(_cex_dex_arbs)
                         .wrap_err("Failed to convert CEX-DEX data to record batch")?;
                     sync_write_parquet(
                         cex_dex_batch,
