@@ -15,6 +15,7 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
         builder::BuilderInfo,
+        cex::BestCexPerPair,
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         normalized_actions::TransactionRoot,
@@ -39,7 +40,7 @@ use tracing::info;
 use super::RAW_CEX_QUOTES;
 #[cfg(not(feature = "cex-dex-quotes"))]
 use super::RAW_CEX_TRADES;
-use super::{cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle};
+use super::{cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE};
 #[cfg(feature = "local-clickhouse")]
 use super::{BLOCK_TIMES, CEX_SYMBOLS};
 #[cfg(feature = "local-clickhouse")]
@@ -379,7 +380,6 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
-
     #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
@@ -428,6 +428,10 @@ impl ClickhouseHandle for Clickhouse {
             .collect::<Vec<_>>()
             .join(" OR ");
 
+        let symbol_rank = self
+            .fetch_symbol_rank(&block_times, &range_or_arbitrary)
+            .await?;
+
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
@@ -467,7 +471,7 @@ impl ClickhouseHandle for Clickhouse {
             }
         };
 
-        let price_converter = CexQuotesConverter::new(block_times, symbols, data);
+        let price_converter = CexQuotesConverter::new(block_times, symbols, data, symbol_rank);
         let prices: Vec<CexPriceData> = price_converter
             .convert_to_prices()
             .into_iter()
@@ -595,6 +599,56 @@ impl ClickhouseHandle for Clickhouse {
         info!("Converted {} CexTradesData entries", trades.len());
 
         Ok(trades)
+    }
+}
+
+impl Clickhouse {
+    async fn fetch_symbol_rank(
+        &self,
+        block_times: &[BlockTimes],
+        range_or_arbitrary: &CexRangeOrArbitrary,
+    ) -> eyre::Result<Vec<BestCexPerPair>> {
+        Ok(match range_or_arbitrary {
+            CexRangeOrArbitrary::Range(..) => {
+                let start_time = block_times
+                    .iter()
+                    .min_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap() as f64
+                    * SECONDS_TO_US;
+                let end_time = block_times
+                    .iter()
+                    .max_by_key(|b| b.timestamp)
+                    .map(|b| b.timestamp)
+                    .unwrap() as f64
+                    * SECONDS_TO_US;
+
+                self.client
+                    .query_many(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
+                    .await?
+            }
+            CexRangeOrArbitrary::Arbitrary(_) => {
+                let mut query = MOST_VOLUME_PAIR_EXCHANGE.to_string();
+
+                let times = block_times
+                    .iter()
+                    .map(|block| {
+                        format!(
+                            "toStartOfMonth(toDateTime({} /  1000000) - INTERVAL 1 MONTH)",
+                            block.timestamp
+                        )
+                    })
+                    .collect::<Vec<String>>();
+
+                query = query.replace(
+                    "month >= toStartOfMonth(toDateTime(? /  1000000) - INTERVAL 1 MONTH) and \
+                     month <= toStartOfMonth(toDateTime(? /  1000000) - INTERVAL 1 MONTH)",
+                    &format!("month in (select arrayJoin({:?}) as month))", times),
+                );
+
+                self.client.query_many(query, &()).await?
+            }
+        })
     }
 }
 

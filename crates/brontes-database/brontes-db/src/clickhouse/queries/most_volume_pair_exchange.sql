@@ -1,17 +1,14 @@
-WITH ranked_symbols AS (
-  SELECT
-    CASE 
-      WHEN upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) LIKE '%USD' and c.exchange = 'coinbase'
-      THEN replace(upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')), 'USD', 'USDT') 
-      ELSE upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) 
-    END AS symbol,
-      c.exchange as ex,
-      sum(c.amount) as amount,
-      ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY amount DESC) as rn
-  FROM cex.normalized_trades as c 
-  where c.timestamp < ? and c.timestamp > ?
-  group by symbol, ex
+with ranked_symbols as (
+  select 
+    month,
+    symbol,
+    exchange,
+    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY sum_volume DESC) as rn
+    from cex.ranked_symbol_exchange
+    where month >= toStartOfMonth(toDateTime(? /  1000000) - INTERVAL 1 MONTH) 
+    and month <= toStartOfMonth(toDateTime(? /  1000000) - INTERVAL 1 MONTH)
 )
-SELECT symbol, ex as exchange
+SELECT symbol, exchange, toUnixTimestamp(month) * 1000000 as timestamp
 FROM ranked_symbols
 WHERE rn = 1
+

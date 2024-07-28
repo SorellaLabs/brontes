@@ -7,7 +7,7 @@ use crate::{
     constants::USDC_ADDRESS,
     db::{
         block_times::{BlockTimes, CexBlockTimes},
-        cex::{CexExchange, CexPriceMap, CexSymbols},
+        cex::{BestCexPerPair, CexExchange, CexPriceMap, CexSymbols},
     },
     serde_utils::cex_exchange,
     FastHashMap,
@@ -27,9 +27,10 @@ pub struct RawCexQuotes {
 
 #[derive(Debug)]
 pub struct CexQuotesConverter {
-    pub block_times: Vec<CexBlockTimes>,
-    pub symbols:     FastHashMap<(CexExchange, String), CexSymbols>,
-    pub quotes:      Vec<RawCexQuotes>,
+    pub block_times:       Vec<CexBlockTimes>,
+    pub symbols:           FastHashMap<(CexExchange, String), CexSymbols>,
+    pub quotes:            Vec<RawCexQuotes>,
+    pub best_cex_per_pair: Vec<BestCexPerPair>,
 }
 
 impl CexQuotesConverter {
@@ -37,6 +38,7 @@ impl CexQuotesConverter {
         block_times: Vec<BlockTimes>,
         symbols: Vec<CexSymbols>,
         quotes: Vec<RawCexQuotes>,
+        best_cex_per_pair: Vec<BestCexPerPair>,
     ) -> Self {
         let symbols = symbols
             .into_iter()
@@ -56,6 +58,7 @@ impl CexQuotesConverter {
                 .collect(),
             symbols,
             quotes,
+            best_cex_per_pair,
         }
     }
 
@@ -77,6 +80,32 @@ impl CexQuotesConverter {
                     .push(quote)
             });
 
+        let mut pairs_map: FastHashMap<u64, Vec<BestCexPerPair>> = self
+            .block_times
+            .iter()
+            .map(|block| {
+                let time = block.start_timestamp as i64;
+                // we want to choose the pairs that are closest timestamp
+                let mut map = FastHashMap::default();
+                self.best_cex_per_pair.iter().for_each(|pair| {
+                    match map.entry(pair.symbol.clone()) {
+                        std::collections::hash_map::Entry::Vacant(v) => {
+                            v.insert(pair);
+                        }
+                        std::collections::hash_map::Entry::Occupied(mut o) => {
+                            let entry = o.get();
+                            let entry_time = (time - entry.timestamp as i64).abs();
+                            let this_time = (time - pair.timestamp as i64).abs();
+                            if this_time < entry_time {
+                                o.insert(pair);
+                            }
+                        }
+                    }
+                });
+                (block.block_number, map.into_values().cloned().collect::<Vec<_>>())
+            })
+            .collect();
+
         block_num_map
             .into_iter()
             .map(|(block_num, quotes)| {
@@ -88,6 +117,33 @@ impl CexQuotesConverter {
                         .or_insert(Vec::new())
                         .push(quote);
                 });
+
+                let cex_best_venue = pairs_map
+                    .remove(&block_num)
+                    .expect("should never be missing");
+
+                let pair_exchanges = cex_best_venue
+                    .into_iter()
+                    .map(|pair_ex| {
+                        let symbol = self
+                            .symbols
+                            .get_mut(&(pair_ex.exchange, pair_ex.symbol.clone()))
+                            .unwrap();
+
+                        //TODO: Joe, please fix USDC to not be dollar lmao
+                        if symbol.address_pair.1 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
+                        {
+                            symbol.address_pair.1 = USDC_ADDRESS;
+                        } else if symbol.address_pair.0
+                            == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
+                        {
+                            symbol.address_pair.0 = USDC_ADDRESS;
+                        }
+                        (symbol.address_pair, pair_ex.exchange)
+                        // because we know there will only be 1 entry per
+                        // address pair. this is ok todo
+                    })
+                    .collect::<FastHashMap<_, _>>();
 
                 let cex_price_map = exchange_map
                     .into_iter()
@@ -134,7 +190,7 @@ impl CexQuotesConverter {
                     })
                     .collect::<FastHashMap<_, _>>();
 
-                (block_num, CexPriceMap(cex_price_map))
+                (block_num, CexPriceMap { quotes: cex_price_map, most_liquid_ex: pair_exchanges })
             })
             .collect()
     }
