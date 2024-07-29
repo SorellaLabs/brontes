@@ -80,7 +80,7 @@ impl CexQuotesConverter {
                     .push(quote)
             });
 
-        tracing::info!(?block_num_map, "block num map");
+        tracing::info!(this=?self.best_cex_per_pair);
         let mut pairs_map: FastHashMap<u64, Vec<BestCexPerPair>> = self
             .block_times
             .iter()
