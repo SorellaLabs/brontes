@@ -32,6 +32,8 @@ const BUILDER_CONFIG_FILE: &str = "config/builder_config.toml";
 const METADATA_CONFIG_FILE: &str = "config/metadata_config.toml";
 const DEFAULT_START_BLOCK: u64 = 0;
 
+type FnOutput<D> = Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>;
+
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
     pub(crate) libmdbx: &'static LibmdbxReadWriter,
     clickhouse:         &'static CH,
@@ -160,10 +162,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         range: Option<(u64, u64)>,
         clear_table: bool,
         pb: ProgressBar,
-        d: impl Fn(u64, u64, &'static CH) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
-            + Send
-            + Clone
-            + 'static,
+        d: impl Fn(u64, u64, &'static CH) -> FnOutput<D> + Send + Clone + 'static,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
@@ -248,13 +247,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         block_range: &'static [u64],
         pb: ProgressBar,
-        d: impl Fn(
-                &'static [u64],
-                &'static CH,
-            ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
-            + Send
-            + Clone
-            + 'static,
+        d: impl Fn(&'static [u64], &'static CH) -> FnOutput<D> + Send + Clone + 'static,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where

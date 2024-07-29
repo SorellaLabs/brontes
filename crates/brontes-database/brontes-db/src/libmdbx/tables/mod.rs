@@ -222,8 +222,8 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
-                        true,
                         self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_range_quotes,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await?;
@@ -303,7 +303,7 @@ impl Tables {
                         block_range,
                         Some(CEX_QUOTES_FLAG),
                         self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_arbitrary,
+                        Self::fetch_download_fn_arbitrary_quotes,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
@@ -434,6 +434,7 @@ impl Tables {
         })
     }
 
+    #[cfg(feature = "cex-dex-quotes")]
     pub fn fetch_download_fn_range_quotes<CH: ClickhouseHandle, T, D>(
         start: u64,
         end: u64,
@@ -454,7 +455,7 @@ impl Tables {
         Box::pin(async move {
             unsafe {
                 std::mem::transmute(
-                    ch.get_cex_trades(super::cex_utils::CexRangeOrArbitrary::Range(start, end))
+                    ch.get_cex_prices(super::cex_utils::CexRangeOrArbitrary::Range(start, end))
                         .await,
                 )
             }
@@ -506,6 +507,7 @@ impl Tables {
         })
     }
 
+    #[cfg(feature = "cex-dex-quotes")]
     fn fetch_download_fn_arbitrary_quotes<CH: ClickhouseHandle, T, D>(
         range: &'static [u64],
         ch: &'static CH,
@@ -525,7 +527,8 @@ impl Tables {
         Box::pin(async move {
             unsafe {
                 std::mem::transmute(
-                    ch.get_cex_trades(super::cex_utils::CexRangeOrArbitrary::Arbitrary(range))
+                    ch.ch
+                        .get_cex_prices(super::cex_utils::CexRangeOrArbitrary::Arbitrary(range))
                         .await,
                 )
             }

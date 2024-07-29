@@ -23,16 +23,6 @@ where
     }
 }
 
-pub trait LibmdbxClickhouseDownload
-where
-    <<Self as LibmdbxClickhouseDownload>::Table as Table>::Value:
-    From<<<Self as LibmdbxClickhouseDownload>::Table as CompressedTable>::DecompressedValue>
-        + Into<<<Self as LibmdbxClickhouseDownload>::Table as CompressedTable>::DecompressedValue>,
-{
-    type Table: CompressedTable;
-    type Data: LibmdbxData<Self::Table>;
-}
-
 pub trait LibmdbxData<T: CompressedTable>: Sized + Send + Sync
 where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -65,5 +55,4 @@ where
     const INIT_QUERY: Option<&'static str>;
     const HTTP_ENDPOINT: Option<&'static str>;
     const INIT_FLAG: Option<u8>;
-
 }
