@@ -124,11 +124,10 @@ impl CexQuotesConverter {
 
                 let pair_exchanges = cex_best_venue
                     .into_iter()
-                    .map(|pair_ex| {
+                    .filter_map(|pair_ex| {
                         let symbol = self
                             .symbols
-                            .get_mut(&(pair_ex.exchange, pair_ex.symbol.clone()))
-                            .unwrap();
+                            .get_mut(&(pair_ex.exchange, pair_ex.symbol.clone()))?;
 
                         //TODO: Joe, please fix USDC to not be dollar lmao
                         if symbol.address_pair.1 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
@@ -139,7 +138,7 @@ impl CexQuotesConverter {
                         {
                             symbol.address_pair.0 = USDC_ADDRESS;
                         }
-                        (symbol.address_pair, pair_ex.exchange)
+                        Some((symbol.address_pair, pair_ex.exchange))
                         // because we know there will only be 1 entry per
                         // address pair. this is ok todo
                     })
