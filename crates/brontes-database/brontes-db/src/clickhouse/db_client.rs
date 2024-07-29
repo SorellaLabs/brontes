@@ -622,14 +622,12 @@ impl Clickhouse {
                     .iter()
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap() as f64
-                    * SECONDS_TO_US;
+                    .unwrap() as f64;
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
-                    .unwrap() as f64
-                    * SECONDS_TO_US;
+                    .unwrap() as f64;
 
                 tracing::info!(?start_time, ?end_time);
                 self.client
@@ -644,7 +642,7 @@ impl Clickhouse {
                     .map(|block| {
                         format!(
                             "toStartOfMonth(toDateTime({} /  1000000) - INTERVAL 1 MONTH)",
-                            block.timestamp as f64 * SECONDS_TO_US
+                            block.timestamp as f64 
                         )
                     })
                     .fold(String::new(), |mut acc, x| {
