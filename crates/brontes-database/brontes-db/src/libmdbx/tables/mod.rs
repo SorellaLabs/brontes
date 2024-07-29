@@ -406,6 +406,7 @@ impl Tables {
         Box::pin(async move { ch.query_many_range::<T, D>(start, end).await })
     }
 
+    #[cfg(not(feature = "cex-dex-quotes"))]
     fn fetch_download_fn_range_trades<CH: ClickhouseHandle, T, D>(
         start: u64,
         end: u64,
@@ -480,6 +481,7 @@ impl Tables {
         Box::pin(async move { ch.query_many_arbitrary::<T, D>(range).await })
     }
 
+    #[cfg(not(feature = "cex-dex-quotes"))]
     fn fetch_download_fn_arbitrary_trades<CH: ClickhouseHandle, T, D>(
         range: &'static [u64],
         ch: &'static CH,
