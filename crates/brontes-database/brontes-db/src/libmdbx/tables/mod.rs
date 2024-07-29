@@ -1,5 +1,7 @@
 use std::{
     fmt::{Debug, Display},
+    future::Future,
+    pin::Pin,
     str::FromStr,
     sync::Arc,
 };
@@ -12,7 +14,10 @@ use brontes_types::{
         cex::{CexPriceMap, CexPriceMapRedefined, CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
+            TRACE_FLAG,
+        },
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -24,6 +29,7 @@ use brontes_types::{
     serde_utils::*,
     traits::TracingProvider,
 };
+use clickhouse::DbRow;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use reth_db::table::Table;
 use serde::{Deserialize, Serialize};
@@ -36,10 +42,10 @@ use crate::{
 };
 mod const_sql;
 use alloy_primitives::Address;
-#[cfg(feature = "cex-dex-quotes")]
-use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
-#[cfg(not(feature = "cex-dex-quotes"))]
-use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
+// #[cfg(feature = "cex-dex-quotes")]
+// use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
+// #[cfg(not(feature = "cex-dex-quotes"))]
+// use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
@@ -161,7 +167,6 @@ impl Tables {
             Tables::TokenDecimals => {
                 initializer
                     .clickhouse_init_no_args::<TokenDecimals, TokenDecimalsData>(
-                        false,
                         crit_progress,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -170,7 +175,6 @@ impl Tables {
             Tables::AddressToProtocolInfo => {
                 initializer
                     .clickhouse_init_no_args::<AddressToProtocolInfo, AddressToProtocolInfoData>(
-                        false,
                         crit_progress,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -179,7 +183,6 @@ impl Tables {
             Tables::PoolCreationBlocks => {
                 initializer
                     .clickhouse_init_no_args::<PoolCreationBlocks, PoolCreationBlocksData>(
-                        false,
                         crit_progress,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -187,17 +190,14 @@ impl Tables {
             }
             Tables::Builder => {
                 initializer
-                    .clickhouse_init_no_args::<Builder, BuilderData>(
-                        false,
-                        crit_progress,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
-                    )
+                    .clickhouse_init_no_args::<Builder, BuilderData>(crit_progress, |f, not| {
+                        handle.send_message(WriterMessage::Init(f.into(), not))
+                    })
                     .await
             }
             Tables::AddressMeta => {
                 initializer
                     .clickhouse_init_no_args::<AddressMeta, AddressMetaData>(
-                        false,
                         crit_progress,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -222,13 +222,8 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
-                        Some(CEX_QUOTES_FLAG),
-                        true,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b))
-                            .cloned()
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_range_quotes,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await?;
@@ -241,12 +236,8 @@ impl Tables {
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
                         block_range,
                         clear_table,
-                        Some(META_FLAG),
-                        false,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_range,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
@@ -256,12 +247,8 @@ impl Tables {
                     .initialize_table_from_clickhouse::<DexPrice, DexPriceData>(
                         block_range,
                         clear_table,
-                        Some(DEX_PRICE_FLAG),
-                        false,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::DexPrice).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_range,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
@@ -272,35 +259,25 @@ impl Tables {
                     .initialize_table_from_clickhouse::<TxTraces, TxTracesData>(
                         block_range,
                         clear_table,
-                        Some(TRACE_FLAG),
-                        false,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_range,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
-            Tables::SearcherEOAs => Ok(()),
-            Tables::SearcherContracts => Ok(()),
-            Tables::InitializedState => Ok(()),
             #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
                         block_range,
                         clear_table,
-                        Some(CEX_TRADES_FLAG),
-                        true,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_range_trades,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
+            Tables::SearcherEOAs | Tables::SearcherContracts | Tables::InitializedState => Ok(()),
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexTrades => Ok(()),
 
@@ -319,32 +296,13 @@ impl Tables {
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
-            Tables::TokenDecimals => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for token decimals"
-                );
-            }
-            Tables::AddressToProtocolInfo => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for AddressToProtocolInfo"
-                );
-            }
-            Tables::PoolCreationBlocks => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for PoolCreationBlocks"
-                );
-            }
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
-                        Some(CEX_QUOTES_FLAG),
-                        true,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_arbitrary_quotes,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
@@ -355,12 +313,8 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
-                        Some(META_FLAG),
-                        false,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
@@ -369,60 +323,51 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<DexPrice, DexPriceData>(
                         block_range,
-                        Some(DEX_PRICE_FLAG),
-                        false,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::DexPrice).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
-            Tables::MevBlocks => Ok(()),
             Tables::TxTraces => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
-                        Some(TRACE_FLAG),
-                        false,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
-            Tables::Builder => {
-                unimplemented!("'initialize_table_arbitrary_state' not implemented for Builder");
-            }
-            Tables::AddressMeta => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for AddressMeta"
-                );
-            }
-            Tables::SearcherEOAs => Ok(()),
-            Tables::SearcherContracts => Ok(()),
-            Tables::InitializedState => Ok(()),
             #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
                         block_range,
-                        Some(CEX_TRADES_FLAG),
-                        true,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexTrades).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_arbitrary_trades,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexTrades => Ok(()),
+            table @ (Tables::TokenDecimals
+            | Tables::AddressToProtocolInfo
+            | Tables::PoolCreationBlocks
+            | Tables::Builder
+            | Tables::AddressMeta) => {
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for {}", table);
+            }
+            _ => Ok(()),
         }
+    }
+
+    fn fetch_progress_bar(&self, progress_bar: Arc<Vec<(Tables, ProgressBar)>>) -> ProgressBar {
+        progress_bar
+            .iter()
+            .find_map(|(t, b)| (t == self).then_some(b.clone()))
+            .unwrap()
     }
 
     pub async fn export_to_parquet<DB>(
@@ -439,6 +384,155 @@ impl Tables {
             Self::Builder => exporter.export_builder_info().await,
             _ => unreachable!("Parquet export not yet supported for this table"),
         }
+    }
+
+    fn fetch_download_fn_range<CH: ClickhouseHandle, T, D>(
+        start: u64,
+        end: u64,
+        ch: &'static CH,
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
+    {
+        Box::pin(async move { ch.query_many_range::<T, D>(start, end).await })
+    }
+
+    #[cfg(not(feature = "cex-dex-quotes"))]
+    fn fetch_download_fn_range_trades<CH: ClickhouseHandle, T, D>(
+        start: u64,
+        end: u64,
+        ch: &'static CH,
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
+    {
+        Box::pin(async move {
+            unsafe {
+                std::mem::transmute(
+                    ch.get_cex_trades(super::cex_utils::CexRangeOrArbitrary::Range(start, end))
+                        .await,
+                )
+            }
+        })
+    }
+
+    #[cfg(feature = "cex-dex-quotes")]
+    pub fn fetch_download_fn_range_quotes<CH: ClickhouseHandle, T, D>(
+        start: u64,
+        end: u64,
+        ch: &'static CH,
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
+    {
+        Box::pin(async move {
+            unsafe {
+                std::mem::transmute(
+                    ch.get_cex_prices(super::cex_utils::CexRangeOrArbitrary::Range(start, end))
+                        .await,
+                )
+            }
+        })
+    }
+
+    fn fetch_download_fn_arbitrary<CH: ClickhouseHandle, T, D>(
+        range: &'static [u64],
+        ch: &'static CH,
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
+    {
+        Box::pin(async move { ch.query_many_arbitrary::<T, D>(range).await })
+    }
+
+    #[cfg(not(feature = "cex-dex-quotes"))]
+    fn fetch_download_fn_arbitrary_trades<CH: ClickhouseHandle, T, D>(
+        range: &'static [u64],
+        ch: &'static CH,
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
+    {
+        Box::pin(async move {
+            unsafe {
+                std::mem::transmute(
+                    ch.get_cex_trades(super::cex_utils::CexRangeOrArbitrary::Arbitrary(range))
+                        .await,
+                )
+            }
+        })
+    }
+
+    #[cfg(feature = "cex-dex-quotes")]
+    fn fetch_download_fn_arbitrary_quotes<CH: ClickhouseHandle, T, D>(
+        range: &'static [u64],
+        ch: &'static CH,
+    ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>
+            + DbRow
+            + for<'de> Deserialize<'de>
+            + Send
+            + Sync
+            + Debug
+            + Unpin
+            + 'static,
+    {
+        Box::pin(async move {
+            unsafe {
+                std::mem::transmute(
+                    ch.get_cex_prices(super::cex_utils::CexRangeOrArbitrary::Arbitrary(range))
+                        .await,
+                )
+            }
+        })
     }
 }
 
@@ -604,7 +698,7 @@ macro_rules! compressed_table {
     };
     ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
      { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Clickhouse,
-                              http_endpoint: $http_endpoint:expr },
+                              http_endpoint: $http_endpoint:expr, init_flag: $init_flag:expr },
 
      $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
@@ -614,6 +708,7 @@ macro_rules! compressed_table {
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = Some(paste! {[<$table_name InitQuery>]});
             const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
+            const INIT_FLAG: Option<u8> = $init_flag;
         }
         } $($tail)*);
     };
@@ -628,6 +723,7 @@ macro_rules! compressed_table {
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = None;
             const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
+            const INIT_FLAG: Option<u8> = None;
         }
         } $($tail)*);
     };
@@ -680,7 +776,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: Some("dex-pricing")
+            http_endpoint: Some("dex-pricing"),
+            init_flag: Some(DEX_PRICE_FLAG)
         },
         CLI {
             can_insert: False
@@ -698,7 +795,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: Some("cex-price")
+            http_endpoint: Some("cex-price"),
+            init_flag: Some(CEX_QUOTES_FLAG)
         },
         CLI {
             can_insert: False
@@ -717,7 +815,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: None
+            http_endpoint: None,
+            init_flag: Some(CEX_TRADES_FLAG)
         },
         CLI {
             can_insert: False
@@ -736,7 +835,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: Some("block-info")
+            http_endpoint: Some("block-info"),
+                init_flag: Some(META_FLAG)
         },
         CLI {
             can_insert: False
@@ -756,7 +856,8 @@ compressed_table!(
         Init {
             init_size: Some(350),
             init_method: Clickhouse,
-            http_endpoint: Some("tx-traces")
+            http_endpoint: Some("tx-traces"),
+            init_flag: Some(TRACE_FLAG)
         },
         CLI {
             can_insert: False
@@ -775,7 +876,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("address-meta")
+            http_endpoint: Some("address-meta"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -794,7 +896,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: None
+            http_endpoint: None,
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -813,7 +916,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: None
+            http_endpoint: None,
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -833,7 +937,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("builder")
+            http_endpoint: Some("builder"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -854,7 +959,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("protocol-info")
+            http_endpoint: Some("protocol-info"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -873,7 +979,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("token-decimals")
+            http_endpoint: Some("token-decimals"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -911,7 +1018,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("pool-creation-blocks")
+            http_endpoint: Some("pool-creation-blocks"),
+            init_flag:None
         },
         CLI {
             can_insert: False
