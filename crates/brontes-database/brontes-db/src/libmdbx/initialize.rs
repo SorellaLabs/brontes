@@ -1,4 +1,4 @@
-use std::{fmt::Debug, path, sync::Arc};
+use std::{fmt::Debug, path, pin::Pin, sync::Arc};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -13,7 +13,7 @@ use brontes_types::{
     unordered_buffer_map::BrontesStreamExt,
     FastHashMap, Protocol,
 };
-use futures::{join, stream::iter, StreamExt};
+use futures::{join, stream::iter, Future, StreamExt};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -24,9 +24,7 @@ use tracing::{error, info};
 use super::{libmdbx_writer::WriterMessage, tables::Tables};
 use crate::{
     clickhouse::ClickhouseHandle,
-    libmdbx::{
-        cex_utils::CexRangeOrArbitrary, types::CompressedTable, LibmdbxData, LibmdbxReadWriter,
-    },
+    libmdbx::{types::CompressedTable, LibmdbxData, LibmdbxReadWriter},
 };
 const CLASSIFIER_CONFIG_FILE: &str = "config/classifier_config.toml";
 const SEARCHER_CONFIG_FILE: &str = "config/searcher_config.toml";
@@ -125,7 +123,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
-        clear_table: bool,
         progress_bar: ProgressBar,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
@@ -141,10 +138,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             + Unpin
             + 'static,
     {
-        if clear_table {
-            self.libmdbx.db.clear_table::<T>()?;
-        }
-
         let data = self.clickhouse.query_many::<T, D>().await;
 
         match data {
@@ -167,8 +160,11 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         range: Option<(u64, u64)>,
         clear_table: bool,
         mark_init: Option<u8>,
-        cex_table_flag: bool,
         pb: ProgressBar,
+        d: impl Fn(u64, u64, &'static CH) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+            + Send
+            + Clone
+            + 'static,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
@@ -214,71 +210,28 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let pb = pb.clone();
             let count = end - start;
             let f = f.clone();
+            let d = d.clone();
 
             async move {
-                if cex_table_flag {
-                    #[cfg(feature = "cex-dex-quotes")]
-                    {
-                        let data = clickhouse
-                            .get_cex_prices(CexRangeOrArbitrary::Range(start, end + 1))
-                            .await;
-                        match data {
-                            Ok(d) => {
-                                pb.inc(count);
-                                let not = Arc::new(Notify::new());
-                                unsafe {
-                                    f(std::mem::transmute(d), not.clone())?;
-                                }
-                                not.notified().await;
-                            }
-                            Err(e) => {
-                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                            }
-                        }
+                let data = (d(start, end + 1, clickhouse)).await;
+                match data {
+                    Ok(d) => {
+                        pb.inc(count);
+                        let not = Arc::new(Notify::new());
+                        f(d, not.clone())?;
+                        not.notified().await;
                     }
-
-                    #[cfg(not(feature = "cex-dex-quotes"))]
-                    {
-                        let data = clickhouse
-                            .get_cex_trades(CexRangeOrArbitrary::Range(start, end + 1))
-                            .await;
-                        match data {
-                            Ok(d) => {
-                                pb.inc(count);
-                                let not = Arc::new(Notify::new());
-                                unsafe {
-                                    f(std::mem::transmute(d), not.clone())?;
-                                }
-                                not.notified().await;
-
-                            }
-                            Err(e) => {
-                                error!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                            }
-                        }
-                    }
-                } else {
-                    let data = clickhouse.query_many_range::<T, D>(start, end + 1).await;
-                    match data {
-                        Ok(d) => {
-                            pb.inc(count);
-                                let not = Arc::new(Notify::new());
-                                f(d, not.clone())?;
-                                not.notified().await;
-                        }
-                        Err(e) => {
-                            info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                        }
+                    Err(e) => {
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                     }
                 }
 
                 if let Some(flag) = mark_init {
                     let ranges = libmdbx.inited_range_items(start..=end, flag)?;
                     let not = Arc::new(Notify::new());
-                    libmdbx.send_message(WriterMessage::Init(ranges.into(),not.clone()))?;
+                    libmdbx.send_message(WriterMessage::Init(ranges.into(), not.clone()))?;
                     not.notified().await;
                 }
-
 
                 Ok::<(), eyre::Report>(())
             }
@@ -296,8 +249,14 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         block_range: &'static [u64],
         mark_init: Option<u8>,
-        cex_table_flag: bool,
         pb: ProgressBar,
+        d: impl Fn(
+                &'static [u64],
+                &'static CH,
+            ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
+            + Send
+            + Clone
+            + 'static,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
@@ -320,69 +279,28 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let pb = pb.clone();
             let count = inner_range.len() as u64;
             let f = f.clone();
+            let d = d.clone();
 
             async move {
-                if cex_table_flag {
-                    #[cfg(feature = "cex-dex-quotes")]
-                    {
-                        let data = clickhouse
-                            .get_cex_prices(CexRangeOrArbitrary::Arbitrary(inner_range))
-                            .await;
-                        match data {
-                            Ok(d) => {
-                                pb.inc(count);
-                                let not = Arc::new(Notify::new());
-                                unsafe {
-                                    f(std::mem::transmute(d), not.clone())?;
-                                }
-                                not.notified().await;
-
-                            }
-                            Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                            }
-                        }
+                let data = d(inner_range, clickhouse).await;
+                match data {
+                    Ok(d) => {
+                        pb.inc(count);
+                        let not = Arc::new(Notify::new());
+                        f(d, not.clone())?;
+                        not.notified().await;
                     }
-
-                    #[cfg(not(feature = "cex-dex-quotes"))]
-                    {
-                        let data = clickhouse
-                            .get_cex_trades(CexRangeOrArbitrary::Arbitrary(inner_range))
-                            .await;
-                        match data {
-                            Ok(d) => {
-                                pb.inc(count);
-                                let not = Arc::new(Notify::new());
-                                unsafe {
-                                    f(std::mem::transmute(d), not.clone())?;
-                                }
-                                not.notified().await;
-                            }
-                            Err(e) => {
-                                info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                            }
-                        }
-                    }
-                } else {
-                    let data = clickhouse.query_many_arbitrary::<T, D>(inner_range).await;
-                    match data {
-                        Ok(d) => {
-                            pb.inc(count);
-                            let not = Arc::new(Notify::new());
-                            f(d, not.clone())?;
-                            not.notified().await;
-                        }
-                        Err(e) => {
-                            info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
-                        }
+                    Err(e) => {
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
                     }
                 }
 
                 if let Some(flag) = mark_init {
-                    let ranges = libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
+                    let ranges =
+                        libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
 
                     let not = Arc::new(Notify::new());
-                    libmdbx.send_message(WriterMessage::Init(ranges.into(),not.clone()))?;
+                    libmdbx.send_message(WriterMessage::Init(ranges.into(), not.clone()))?;
                     not.notified().await;
                 }
 
