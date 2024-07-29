@@ -69,26 +69,40 @@ use crate::{
 /// interpret the price in the correct direction & reciprocate the price (which
 /// is stored as a malachite rational) if need be.
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
-pub struct CexPriceMap(pub FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>);
+pub struct CexPriceMap {
+    pub quotes:         FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
+    pub most_liquid_ex: FastHashMap<Pair, CexExchange>,
+}
 
 #[derive(
     Debug, PartialEq, Clone, serde::Serialize, rSerialize, rDeserialize, Archive, Redefined,
 )]
 #[redefined(CexPriceMap)]
 #[redefined_attr(
-    to_source = "CexPriceMap(self.map.into_iter().collect::<FastHashMap<_,_>>().to_source())",
-    from_source = "CexPriceMapRedefined::new(src.0)"
+    to_source = "CexPriceMap {
+        quotes: self.map.into_iter().collect::<FastHashMap<_,_>>().to_source(),
+        most_liquid_ex: self.most_liquid_ex.into_iter().collect::<FastHashMap<_,_>>().to_source(),
+    }",
+    from_source = "CexPriceMapRedefined::new(src.quotes, src.most_liquid_ex)"
 )]
 pub struct CexPriceMapRedefined {
-    pub map: Vec<(CexExchange, FastHashMap<PairRedefined, Vec<CexQuoteRedefined>>)>,
+    pub map:            Vec<(CexExchange, FastHashMap<PairRedefined, Vec<CexQuoteRedefined>>)>,
+    pub most_liquid_ex: Vec<(PairRedefined, CexExchange)>,
 }
 
 impl CexPriceMapRedefined {
-    fn new(map: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>) -> Self {
+    fn new(
+        map: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
+        most_liquid_ex: FastHashMap<Pair, CexExchange>,
+    ) -> Self {
         Self {
-            map: map
+            map:            map
                 .into_iter()
                 .map(|(exch, inner_map)| (exch, FastHashMap::from_source(inner_map)))
+                .collect::<Vec<_>>(),
+            most_liquid_ex: most_liquid_ex
+                .into_iter()
+                .map(|(pair, ex)| (PairRedefined::from_source(pair), ex))
                 .collect::<Vec<_>>(),
         }
     }
@@ -104,7 +118,7 @@ impl Default for CexPriceMap {
 
 impl CexPriceMap {
     pub fn new() -> Self {
-        Self(FastHashMap::default())
+        Self { quotes: FastHashMap::default(), most_liquid_ex: FastHashMap::default() }
     }
 
     /// Retrieves a volume weighted CEX quote for a specified token pair from a
@@ -137,7 +151,7 @@ impl CexPriceMap {
             })
         }
 
-        self.0
+        self.quotes
             .get(exchange)
             .and_then(|quotes| quotes.get(&pair.ordered()))
             .map(|quotes| {

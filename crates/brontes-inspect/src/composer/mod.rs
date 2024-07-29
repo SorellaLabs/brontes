@@ -48,10 +48,11 @@ use brontes_types::{
     tree::BlockTree,
 };
 use composer_filters::{ComposeFunction, MEV_COMPOSABILITY_FILTER};
-use mev_filters::MEV_DEDUPLICATION_FILTER;
+use mev_filters::{FilterFn, MEV_DEDUPLICATION_FILTER};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use utils::{
     build_mev_header, filter_and_count_bundles, find_mev_with_matching_tx_hashes, sort_mev_by_type,
+    try_deduping_mev,
 };
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
@@ -148,11 +149,18 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
             try_compose_mev(parent_mev_type, child_mev_type, compose_fn, &mut sorted_mev);
         });
 
-    MEV_DEDUPLICATION_FILTER
-        .iter()
-        .for_each(|(dominant_mev_type, subordinate_mev_type)| {
-            deduplicate_mev(dominant_mev_type, subordinate_mev_type, &mut sorted_mev);
-        });
+    MEV_DEDUPLICATION_FILTER.iter().for_each(
+        |(dominant_mev_type, extra_filter_fn, subordinate_mev_type)| {
+            deduplicate_mev(
+                tree.clone(),
+                db,
+                dominant_mev_type,
+                extra_filter_fn,
+                subordinate_mev_type,
+                &mut sorted_mev,
+            );
+        },
+    );
 
     let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
 
@@ -171,8 +179,11 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     (header, filtered_bundles)
 }
 
-fn deduplicate_mev(
+fn deduplicate_mev<DB: LibmdbxReader>(
+    tree: Arc<BlockTree<Action>>,
+    db: &'static DB,
     dominant_mev_type: &MevType,
+    extra_filter_function: &FilterFn,
     subordinate_mev_types: &[MevType],
     sorted_mev: &mut FastHashMap<MevType, Vec<Bundle>>,
 ) {
@@ -188,8 +199,15 @@ fn deduplicate_mev(
                 continue;
             };
             indexes.extend(
-                find_mev_with_matching_tx_hashes(sub_mev_list, &hashes)
-                    .zip(vec![sub_mev_type].into_iter().cycle()),
+                try_deduping_mev(
+                    tree.clone(),
+                    Box::new(db),
+                    dominate_mev,
+                    sub_mev_list,
+                    extra_filter_function,
+                    &hashes,
+                )
+                .zip(vec![sub_mev_type].into_iter().cycle()),
             )
         }
     }
