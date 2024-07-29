@@ -822,6 +822,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(f, "   - Tx Hash: {}", format_etherscan_url(&bundle.header.tx_hash))?;
     writeln!(f, "   - Block Number: {}", bundle.header.block_number)?;
     writeln!(f, "   - Block Timestamp: {}", cex_dex_data.block_timestamp)?;
+    writeln!(f, "   - Bribe USD: {}", bundle.header.bribe_usd)?;
 
     writeln!(f, "\n{}", "Quote Details".bold().underline().bright_yellow())?;
     writeln!(f, "   - Exchange: {}", cex_dex_data.exchange.to_string().green())?;
@@ -834,13 +835,10 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             writeln!(f, "      - Mid Price: {:.6}", cex_dex_data.mid_price[i])?;
         }
     }
+    // Gas Details
+    writeln!(f, "\n{}: \n", "Gas Details".underline().bright_yellow())?;
 
-    writeln!(f, "\n{}", "Gas Details".bold().underline().bright_yellow())?;
-    writeln!(f, "   - Gas Used: {}", cex_dex_data.gas_details.gas_used)?;
-    writeln!(f, "   - Effective Gas Price: {}", cex_dex_data.gas_details.effective_gas_price)?;
-    if let Some(coinbase_transfer) = cex_dex_data.gas_details.coinbase_transfer {
-        writeln!(f, "   - Coinbase Transfer: {}", coinbase_transfer)?;
-    }
+    cex_dex_data.gas_details.pretty_print_with_spaces(f, 8)?;
 
     Ok(())
 }
