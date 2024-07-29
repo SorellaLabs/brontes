@@ -1199,7 +1199,9 @@ impl LibmdbxReadWriter {
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         self.db.view_db(|tx| {
-            let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default().0;
+            let res = tx
+                .get::<CexPrice>(block_num)?
+                .expect("Failed to fetch Cex Quotes");
             Ok(CexPriceMap(res))
         })
     }
