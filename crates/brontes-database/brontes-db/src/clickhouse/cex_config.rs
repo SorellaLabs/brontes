@@ -3,7 +3,6 @@ use brontes_types::db::cex::CexExchange;
 #[derive(Debug, Clone)]
 pub struct CexDownloadConfig {
     pub run_time_window: (u64, u64),
-
     pub exchanges_to_use: Vec<CexExchange>,
 }
 
