@@ -643,7 +643,7 @@ impl Clickhouse {
                     .map(|block| {
                         format!(
                             "toStartOfMonth(toDateTime({} /  1000000) - INTERVAL 1 MONTH)",
-                            block.timestamp * SECONDS_TO_US
+                            block.timestamp as f64 * SECONDS_TO_US
                         )
                     })
                     .fold(String::new(), |mut acc, x| {
