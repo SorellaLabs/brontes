@@ -145,12 +145,7 @@ impl RunArgs {
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
-        let load_window =
-            self.time_window_args
-                .time_window_before
-                .max(self.time_window_args.time_window_after)
-                .max(self.time_window_args.time_window_before_optimistic)
-                .max(self.time_window_args.time_window_after_optimistic) as usize;
+        let load_window = self.load_time_window();
 
         let cex_download_config = CexDownloadConfig::new(
             // the run time window. notiably we downlaod the max window
@@ -248,6 +243,15 @@ impl RunArgs {
         } else {
             None
         }
+    }
+
+    /// the time window in seconds for downloading
+    fn load_time_window(&self) -> usize {
+        self.time_window_args
+            .time_window_before
+            .max(self.time_window_args.time_window_after)
+            .max(self.time_window_args.time_window_before_optimistic)
+            .max(self.time_window_args.time_window_after_optimistic) as usize
     }
 
     fn check_proper_range(&self) -> eyre::Result<()> {
