@@ -110,6 +110,19 @@ impl CexPriceMap {
         Self { quotes: FastHashMap::default(), most_liquid_ex: FastHashMap::default() }
     }
 
+    /// Retrieves the quote closest to the specified timestamp for the given
+    /// pair on the exchange with the highest trading volume in that month.
+    pub fn get_quote_from_most_liquid_exchange(
+        &self,
+        pair: &Pair,
+        timestamp: u64,
+    ) -> Option<FeeAdjustedQuote> {
+        self.most_liquid_ex
+            .get(pair)
+            .or_else(|| self.most_liquid_ex.get(&pair.flip()))
+            .and_then(|exchange| self.get_quote_at(pair, exchange, timestamp))
+    }
+
     pub fn get_quote_at(
         &self,
         pair: &Pair,

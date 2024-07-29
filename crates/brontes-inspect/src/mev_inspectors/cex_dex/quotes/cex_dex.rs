@@ -343,9 +343,8 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         let token_price = metadata
             .cex_quotes
-            .get_quote_at(
+            .get_quote_from_most_liquid_exchange(
                 &Pair(swap.token_in.address, self.utils.quote),
-                &CexExchange::Binance,
                 metadata.microseconds_block_timestamp(),
             )?
             .maker_taker_mid()
@@ -388,7 +387,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
                 metadata
                     .cex_quotes
-                    .get_quote_at(&pair, exchange, metadata.microseconds_block_timestamp())
+                    .get_quote_from_most_liquid_exchange(
+                        &pair,
+                        metadata.microseconds_block_timestamp(),
+                    )
                     .or_else(|| {
                         debug!(
                             "No CEX quote found for pair: {}, {} at exchange: {:?}",
