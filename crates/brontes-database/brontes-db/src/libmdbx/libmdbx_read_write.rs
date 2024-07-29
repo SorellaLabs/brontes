@@ -31,7 +31,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree, BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver,
+    BlockTree, BrontesTaskExecutor, FastHashMap, ToFloatNearest, UnboundedYapperReceiver,
 };
 use eyre::{eyre, ErrReport};
 use futures::Future;
@@ -458,6 +458,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
+        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
+
         Ok(BlockMetadata::new(
             block_num,
             block_meta.block_hash,
@@ -479,6 +481,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
+
+        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
 
         Ok({
             BlockMetadata::new(

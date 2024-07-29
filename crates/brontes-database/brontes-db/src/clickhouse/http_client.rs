@@ -101,6 +101,8 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             quote_asset,
         );
 
+        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
+
         Ok({
             let metadata = BlockMetadata::new(
                 block_num,
