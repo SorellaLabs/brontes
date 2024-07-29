@@ -661,8 +661,6 @@ impl Clickhouse {
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
-                tracing::info!(?query);
-
                 self.client.query_many(query, &()).await?
             }
         })
