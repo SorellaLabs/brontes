@@ -646,12 +646,19 @@ impl Clickhouse {
                             block.timestamp
                         )
                     })
-                    .collect::<Vec<String>>();
+                    .fold(String::new(), |mut acc, x| {
+                        if !&acc == "" {
+                            acc += ",";
+                        }
+
+                        acc += x;
+                        acc
+                    });
 
                 query = query.replace(
                     "month >= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH) and \
                      month <= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH)",
-                    &format!("month in (select arrayJoin({:?}) as month))", times),
+                    &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
                 tracing::info!(?query);
