@@ -191,6 +191,8 @@ pub struct MevCount {
     pub bundle_count:         u64,
     pub sandwich_count:       Option<u64>,
     pub cex_dex_count:        Option<u64>,
+    pub rfq_cex_dex_count:    Option<u64>,
+    pub jit_cex_dex_count:    Option<u64>,
     pub jit_count:            Option<u64>,
     pub jit_sandwich_count:   Option<u64>,
     pub atomic_backrun_count: Option<u64>,
@@ -222,7 +224,13 @@ impl MevCount {
             MevType::SearcherTx => {
                 self.searcher_tx_count = Some(self.searcher_tx_count.unwrap_or_default().add(1))
             }
-            _ => (),
+            MevType::JitCexDex => {
+                self.jit_cex_dex_count = Some(self.jit_cex_dex_count.unwrap_or_default().add(1))
+            }
+            MevType::RfqCexDex => {
+                self.rfq_cex_dex_count = Some(self.rfq_cex_dex_count.unwrap_or_default().add(1))
+            }
+            _ => {}
         }
     }
 }
@@ -238,8 +246,14 @@ impl fmt::Display for MevCount {
         if let Some(count) = self.cex_dex_count {
             writeln!(f, "    - Cex-Dex: {}", count.to_string().bold())?;
         }
+        if let Some(count) = self.rfq_cex_dex_count {
+            writeln!(f, "    - RFQ Cex-Dex: {}", count.to_string().bold())?;
+        }
         if let Some(count) = self.jit_count {
             writeln!(f, "    - Jit: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.jit_cex_dex_count {
+            writeln!(f, "    - Jit Cex-Dex: {}", count.to_string().bold())?;
         }
         if let Some(count) = self.jit_sandwich_count {
             writeln!(f, "    - Jit Sandwich: {}", count.to_string().bold())?;
