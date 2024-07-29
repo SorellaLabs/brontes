@@ -3,6 +3,7 @@ use clickhouse::Row;
 use itertools::Itertools;
 use serde::Deserialize;
 
+use super::CexQuote;
 use crate::{
     constants::USDC_ADDRESS,
     db::{
@@ -171,6 +172,9 @@ impl CexQuotesConverter {
                                 .or_insert(Vec::new())
                                 .push(quote.into());
                         });
+                        for quotes in exchange_symbol_map.values_mut() {
+                            quotes.sort_unstable_by_key(|k: &CexQuote| k.timestamp);
+                        }
 
                         (exch, exchange_symbol_map)
                     })
