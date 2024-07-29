@@ -629,7 +629,6 @@ impl Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64;
 
-                tracing::info!(?start_time, ?end_time);
                 self.client
                     .query_many(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
