@@ -458,7 +458,7 @@ impl ClickhouseHandle for Clickhouse {
                     .join(" OR ");
 
                 query = query.replace(
-                    "timestamp >= ? AND timestamp < ?",
+                    "c.timestamp >= ? AND c.timestamp < ?",
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
 
