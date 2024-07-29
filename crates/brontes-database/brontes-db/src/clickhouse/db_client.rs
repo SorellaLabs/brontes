@@ -436,7 +436,7 @@ impl ClickhouseHandle for Clickhouse {
             .fetch_symbol_rank(&block_times, &range_or_arbitrary)
             .await?;
 
-        tracing::info!("got symbol ranks"):
+        tracing::info!("got symbol ranks");
 
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
