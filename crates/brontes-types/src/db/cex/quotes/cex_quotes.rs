@@ -118,7 +118,7 @@ impl Default for CexPriceMap {
 
 impl CexPriceMap {
     pub fn new() -> Self {
-        Self { ..Default::default() }
+        Self { quotes: FastHashMap::default(), most_liquid_ex: FastHashMap::default() }
     }
 
     /// Retrieves a volume weighted CEX quote for a specified token pair from a
@@ -764,7 +764,7 @@ impl<'de> serde::Deserialize<'de> for CexExchange {
 impl CexExchange {
     pub fn to_clickhouse_filter(&self) -> &str {
         match self {
-            CexExchange::Binance => "(exchange = 'binance' or exchange = 'binance-futures')",
+            CexExchange::Binance => "(c.exchange = 'binance' or c.exchange = 'binance-futures')",
             CexExchange::Bitmex => "c.exchange = 'bitmex'",
             CexExchange::Deribit => "c.exchange = 'deribit'",
             CexExchange::Okex => "(c.exchange = 'okex' or c.exchange = 'okex-swap')",
