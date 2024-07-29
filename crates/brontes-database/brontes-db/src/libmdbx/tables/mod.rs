@@ -14,7 +14,10 @@ use brontes_types::{
         cex::{CexPriceMap, CexPriceMapRedefined, CexTradeMap, CexTradeMapRedefined},
         clickhouse_serde::tx_trace::tx_traces_inner,
         dex::{DexKey, DexQuoteWithIndex, DexQuoteWithIndexRedefined},
-        initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
+            TRACE_FLAG,
+        },
         metadata::{BlockMetadataInner, BlockMetadataInnerRedefined},
         mev_block::{MevBlockWithClassified, MevBlockWithClassifiedRedefined},
         pool_creation_block::{PoolsToAddresses, PoolsToAddressesRedefined},
@@ -39,10 +42,10 @@ use crate::{
 };
 mod const_sql;
 use alloy_primitives::Address;
-#[cfg(feature = "cex-dex-quotes")]
-use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
-#[cfg(not(feature = "cex-dex-quotes"))]
-use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
+// #[cfg(feature = "cex-dex-quotes")]
+// use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
+// #[cfg(not(feature = "cex-dex-quotes"))]
+// use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use const_sql::*;
 use paste::paste;
 use reth_db::TableType;
@@ -717,7 +720,7 @@ macro_rules! compressed_table {
     };
     ($(#[$attrs:meta])* $table_name:ident, $c_val:ident, $decompressed_value:ident, $key:ident
      { $($acc:tt)* } Init { init_size: $init_chunk_size:expr, init_method: Clickhouse,
-                              http_endpoint: $http_endpoint:expr },
+                              http_endpoint: $http_endpoint:expr, init_flag: $init_flag:expr },
 
      $($tail:tt)*) => {
         compressed_table!($(#[$attrs])* $table_name, $c_val, $decompressed_value, $key {
@@ -727,6 +730,7 @@ macro_rules! compressed_table {
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = Some(paste! {[<$table_name InitQuery>]});
             const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
+            const INIT_FLAG: Option<u8> = $init_flag;
         }
         } $($tail)*);
     };
@@ -741,6 +745,7 @@ macro_rules! compressed_table {
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = None;
             const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
+            const INIT_FLAG: Option<u8> = None;
         }
         } $($tail)*);
     };
@@ -793,7 +798,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: Some("dex-pricing")
+            http_endpoint: Some("dex-pricing"),
+            init_flag: Some(DEX_PRICE_FLAG)
         },
         CLI {
             can_insert: False
@@ -811,7 +817,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: Some("cex-price")
+            http_endpoint: Some("cex-price"),
+            init_flag: Some(CEX_QUOTES_FLAG)
         },
         CLI {
             can_insert: False
@@ -830,7 +837,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: None
+            http_endpoint: None,
+            init_flag: Some(CEX_TRADES_FLAG)
         },
         CLI {
             can_insert: False
@@ -849,7 +857,8 @@ compressed_table!(
         Init {
             init_size: Some(1000),
             init_method: Clickhouse,
-            http_endpoint: Some("block-info")
+            http_endpoint: Some("block-info"),
+                init_flag: Some(META_FLAG)
         },
         CLI {
             can_insert: False
@@ -869,7 +878,8 @@ compressed_table!(
         Init {
             init_size: Some(350),
             init_method: Clickhouse,
-            http_endpoint: Some("tx-traces")
+            http_endpoint: Some("tx-traces"),
+            init_flag: Some(TRACE_FLAG)
         },
         CLI {
             can_insert: False
@@ -888,7 +898,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("address-meta")
+            http_endpoint: Some("address-meta"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -907,7 +918,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: None
+            http_endpoint: None,
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -926,7 +938,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: None
+            http_endpoint: None,
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -946,7 +959,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("builder")
+            http_endpoint: Some("builder"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -967,7 +981,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("protocol-info")
+            http_endpoint: Some("protocol-info"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -986,7 +1001,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("token-decimals")
+            http_endpoint: Some("token-decimals"),
+            init_flag:None
         },
         CLI {
             can_insert: False
@@ -1024,7 +1040,8 @@ compressed_table!(
         Init {
             init_size: None,
             init_method: Clickhouse,
-            http_endpoint: Some("pool-creation-blocks")
+            http_endpoint: Some("pool-creation-blocks"),
+            init_flag:None
         },
         CLI {
             can_insert: False
