@@ -8,7 +8,7 @@ use serde_with::serde_as;
 
 use super::{
     builder::BuilderInfo,
-    cex::{CexPriceMap, CexTradeMap},
+    cex::{cex_trades, CexPriceMap, CexTradeMap},
     dex::DexQuotes,
 };
 use crate::{
@@ -158,7 +158,8 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
+        cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
-        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades: None }
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades }
     }
 }

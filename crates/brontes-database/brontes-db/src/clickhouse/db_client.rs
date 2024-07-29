@@ -2,10 +2,6 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
-#[cfg(feature = "cex-dex-quotes")]
-use brontes_types::db::cex::{CexQuotesConverter, RawCexQuotes};
-#[cfg(not(feature = "cex-dex-quotes"))]
-use brontes_types::db::cex::{CexTradesConverter, RawCexTrades};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
 use brontes_types::{
@@ -13,7 +9,7 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
         builder::BuilderInfo,
-        cex::BestCexPerPair,
+        cex::{BestCexPerPair, CexQuotesConverter, CexTradesConverter, RawCexQuotes, RawCexTrades},
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         normalized_actions::TransactionRoot,
@@ -32,23 +28,23 @@ use db_interfaces::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-#[cfg(not(feature = "cex-dex-quotes"))]
 use tracing::debug;
 
-#[cfg(feature = "cex-dex-quotes")]
-use super::RAW_CEX_QUOTES;
-#[cfg(not(feature = "cex-dex-quotes"))]
-use super::RAW_CEX_TRADES;
-use super::{cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE};
+use super::{
+    cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE,
+    RAW_CEX_QUOTES, RAW_CEX_TRADES,
+};
 #[cfg(feature = "local-clickhouse")]
 use super::{BLOCK_TIMES, CEX_SYMBOLS};
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
-#[cfg(feature = "cex-dex-quotes")]
-use crate::libmdbx::{determine_eth_prices, tables::CexPriceData};
 use crate::{
     clickhouse::const_sql::{BLOCK_INFO, CRIT_INIT_TABLES},
-    libmdbx::{tables::BlockInfoData, types::LibmdbxData},
+    libmdbx::{
+        determine_eth_prices,
+        tables::{BlockInfoData, CexPriceData},
+        types::LibmdbxData,
+    },
     CompressedTable,
 };
 
@@ -279,8 +275,7 @@ impl ClickhouseHandle for Clickhouse {
             .unwrap()
             .value;
 
-        #[cfg(feature = "cex-dex-quotes")]
-        {
+        
             let mut cex_quotes_for_block = self
                 .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
                 .await?;
@@ -293,22 +288,6 @@ impl ClickhouseHandle for Clickhouse {
             );
             println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
 
-            Ok(BlockMetadata::new(
-                block_num,
-                block_meta.block_hash,
-                block_meta.block_timestamp,
-                block_meta.relay_timestamp,
-                block_meta.p2p_timestamp,
-                block_meta.proposer_fee_recipient,
-                block_meta.proposer_mev_reward,
-                eth_price.unwrap_or_default(),
-                block_meta.private_flow.into_iter().collect(),
-            )
-            .into_metadata(cex_quotes.value, None, None))
-        }
-
-        #[cfg(not(feature = "cex-dex-quotes"))]
-        {
             let mut cex_trades = self
                 .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
                 .await
@@ -316,8 +295,7 @@ impl ClickhouseHandle for Clickhouse {
                 .remove(0)
                 .value;
 
-            let eth_price =
-                cex_trades.get_eth_price(block_meta.block_timestamp * 1_000_000, quote_asset);
+
 
             println!("Cex Price from Trades: {}", eth_price.clone().unwrap().to_float());
 
@@ -332,8 +310,7 @@ impl ClickhouseHandle for Clickhouse {
                 eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(Default::default(), None, None);
-            meta.cex_trades = Some(cex_trades);
+            .into_metadata(cex_quotes.value, None, None, Some(cex_trades));
 
             Ok(meta)
         }

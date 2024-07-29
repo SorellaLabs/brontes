@@ -109,15 +109,12 @@ pub trait Inspector: Send + Sync {
 )]
 pub enum Inspectors {
     AtomicArb,
-    #[cfg(feature = "cex-dex-quotes")]
     CexDex,
     Jit,
     Liquidations,
     Sandwich,
     SearcherActivity,
-    #[cfg(not(feature = "cex-dex-quotes"))]
     CexDexMarkout,
-    #[cfg(not(feature = "cex-dex-quotes"))]
     JitCexDex,
 }
 
@@ -154,7 +151,6 @@ impl Inspectors {
             Self::SearcherActivity => {
                 static_object(SearcherActivity::new(quote_token, db, metrics)) as DynMevInspector
             }
-            #[cfg(not(feature = "cex-dex-quotes"))]
             Self::CexDexMarkout => static_object(CexDexMarkoutInspector::new(
                 quote_token,
                 db,
@@ -162,7 +158,6 @@ impl Inspectors {
                 _trade_config,
                 metrics,
             )) as DynMevInspector,
-            #[cfg(not(feature = "cex-dex-quotes"))]
             Self::JitCexDex => static_object(JitCexDex {
                 cex_dex: CexDexMarkoutInspector::new(
                     quote_token,

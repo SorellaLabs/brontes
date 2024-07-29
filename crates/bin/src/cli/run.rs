@@ -180,7 +180,6 @@ impl RunArgs {
             .map(|f| {
                 #[cfg(feature = "cex-dex-quotes")]
                 let cmp = Inspectors::CexDex;
-                #[cfg(not(feature = "cex-dex-quotes"))]
                 let cmp = Inspectors::CexDexMarkout;
                 f.len() == 1 && f.contains(&cmp)
             })

@@ -3,12 +3,6 @@ use std::{ops::RangeInclusive, path::Path, sync::Arc};
 use alloy_primitives::Address;
 use brontes_metrics::db_reads::LibmdbxMetrics;
 use brontes_pricing::Protocol;
-#[cfg(not(feature = "cex-dex-quotes"))]
-use brontes_types::db::cex::cex_trades::CexTradeMap;
-#[cfg(feature = "cex-dex-quotes")]
-use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
-#[cfg(not(feature = "cex-dex-quotes"))]
-use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 #[cfg(not(feature = "local-reth"))]
 use brontes_types::db::initialized_state::TRACE_FLAG;
 use brontes_types::{
@@ -17,9 +11,14 @@ use brontes_types::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{CexExchange, CexPriceMap},
+        cex::{
+            cex_trades::{self, CexTradeMap},
+            CexExchange, CexPriceMap,
+        },
         dex::{make_filter_key_range, DexPrices, DexQuotes},
-        initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
+        },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         searcher::SearcherInfo,
@@ -398,7 +397,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.fetch_dex_quotes(block)
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
         self.fetch_trades(block)
     }
@@ -455,6 +453,8 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        let cex_trades = self.get_cex_trades(block_num).ok();
+
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
@@ -471,7 +471,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             eth_price.unwrap_or_default(),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None))
+        .into_metadata(cex_quotes, None, None, Some(cex_trades)))
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
@@ -479,6 +479,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
+        let cex_trades = self.get_cex_trades(block_num)?;
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
@@ -496,7 +497,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None)
+            .into_metadata(cex_quotes, Some(dex_quotes), None, Some(cex_trades))
         })
     }
 

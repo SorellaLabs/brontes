@@ -15,7 +15,7 @@ use crate::{
 pub struct Init {
     /// Initialize the local Libmdbx DB
     #[arg(long, short)]
-    pub init_libmdbx:           bool,
+    pub init_libmdbx:              bool,
     /// Libmdbx tables to init:
     ///     TokenDecimals
     ///     AddressToTokens
@@ -26,27 +26,23 @@ pub struct Init {
     ///     DexPrice
     ///     CexTrades
     #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
-    pub tables_to_init:         Option<Vec<Tables>>,
-    #[cfg(feature = "cex-dex-quotes")]
+    pub tables_to_init:            Option<Vec<Tables>>,
     /// The sliding time window (BEFORE) for cex prices relative to the block
     /// number
     #[arg(long = "price-tw-before", default_value_t = 3)]
-    pub cex_time_window_before: u64,
-    #[cfg(feature = "cex-dex-quotes")]
+    pub quotes_time_window_before: u64,
     /// The sliding time window (AFTER) for cex prices relative to the block
     /// number
     #[arg(long = "price-tw-after", default_value_t = 3)]
-    pub cex_time_window_after:  u64,
-    #[cfg(not(feature = "cex-dex-quotes"))]
+    pub quotes_time_window_after:  u64,
     /// The sliding time window (BEFORE) for cex trades relative to the block
     /// number
     #[arg(long = "trades-tw-before", default_value_t = 3)]
-    pub cex_time_window_before: u64,
-    #[cfg(not(feature = "cex-dex-quotes"))]
+    pub trades_time_window_before: u64,
     /// The sliding time window (AFTER) for cex trades relative to the block
     /// number
     #[arg(long = "trades-tw-after", default_value_t = 3)]
-    pub cex_time_window_after:  u64,
+    pub trades_time_window_after:  u64,
     /// Centralized exchanges to consider for cex-dex inspector
     #[arg(
         long,
@@ -54,17 +50,17 @@ pub struct Init {
         default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
         value_delimiter = ','
     )]
-    pub cex_exchanges:          Vec<CexExchange>,
+    pub cex_exchanges:             Vec<CexExchange>,
     /// Start Block to download metadata from Sorella's MEV DB
     #[arg(long, short)]
-    pub start_block:            Option<u64>,
+    pub start_block:               Option<u64>,
     /// End Block to download metadata from Sorella's MEV DB
     #[arg(long, short)]
-    pub end_block:              Option<u64>,
+    pub end_block:                 Option<u64>,
     /// Download Dex Prices from Sorella's MEV DB for the given block range. If
     /// false it will run the dex pricing locally using raw on-chain data
     #[arg(long, short, default_value = "false")]
-    pub download_dex_pricing:   bool,
+    pub download_dex_pricing:      bool,
 }
 
 impl Init {
@@ -91,10 +87,6 @@ impl Init {
             task_executor
                 .spawn_critical("init", async move {
                     let mut tables = Tables::ALL.to_vec();
-                    #[cfg(feature = "cex-dex-quotes")]
-                    tables.retain(|t| !matches!(t, Tables::CexTrades));
-                    #[cfg(not(feature = "cex-dex-quotes"))]
-                    tables.retain(|t| !matches!(t, Tables::CexPrice));
 
                     let multi = MultiProgress::default();
                     let tables_with_progress = Arc::new(

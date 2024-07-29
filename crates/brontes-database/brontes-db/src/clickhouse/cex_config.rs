@@ -13,23 +13,6 @@ impl CexDownloadConfig {
     }
 }
 
-#[cfg(not(feature = "cex-dex-quotes"))]
-impl Default for CexDownloadConfig {
-    fn default() -> Self {
-        Self {
-            block_window:     (3, 3),
-            exchanges_to_use: vec![
-                CexExchange::Binance,
-                CexExchange::Coinbase,
-                CexExchange::Okex,
-                CexExchange::BybitSpot,
-                CexExchange::Kucoin,
-            ],
-        }
-    }
-}
-
-#[cfg(feature = "cex-dex-quotes")]
 impl Default for CexDownloadConfig {
     fn default() -> Self {
         Self {

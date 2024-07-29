@@ -1,11 +1,9 @@
 use alloy_primitives::Address;
 
-#[cfg(not(feature = "cex-dex-quotes"))]
-use crate::db::cex::CexTradeMap;
 use crate::{
     db::{
         address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo, dex::DexQuotes, metadata::Metadata,
+        builder::BuilderInfo, cex::CexTradeMap, dex::DexQuotes, metadata::Metadata,
         mev_block::MevBlockWithClassified, searcher::SearcherInfo,
         token_info::TokenInfoWithAddress,
     },
@@ -99,7 +97,6 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
 
     fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata>;
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap>;
 
     fn try_fetch_address_metadata(&self, address: Address)

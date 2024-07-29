@@ -119,7 +119,6 @@ impl CexPriceMap {
     ) -> Option<FeeAdjustedQuote> {
         self.most_liquid_ex
             .get(pair)
-            .or_else(|| self.most_liquid_ex.get(&pair.flip()))
             .and_then(|exchange| self.get_quote_at(pair, exchange, timestamp))
     }
 
