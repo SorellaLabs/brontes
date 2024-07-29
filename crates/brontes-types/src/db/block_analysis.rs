@@ -2022,7 +2022,7 @@ impl BlockAnalysis {
             bundles
                 .iter()
                 .filter(|b| mev_type(b.data.mev_type()) && b.header.bribe_usd != 0.0)
-                .map(|s| s.header.profit_usd / s.header.bribe_usd.abs())
+                .map(|s| s.header.profit_usd / (s.header.profit_usd + s.header.bribe_usd).abs())
                 .sum::<f64>()
                 / Some(
                     bundles
