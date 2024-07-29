@@ -642,7 +642,7 @@ impl Clickhouse {
                     .map(|block| {
                         format!(
                             "toStartOfMonth(toDateTime({} /  1000000) - INTERVAL 1 MONTH)",
-                            block.timestamp as f64 
+                            block.timestamp as f64
                         )
                     })
                     .fold(String::new(), |mut acc, x| {
@@ -659,7 +659,6 @@ impl Clickhouse {
                      month <= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH)",
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
-                tracing::info!("{}", query);
 
                 self.client.query_many(query, &()).await?
             }
