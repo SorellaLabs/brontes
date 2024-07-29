@@ -168,6 +168,12 @@ impl Protocol {
             "curve.ficryptoswap" => Protocol::CurveCryptoSwapPool,
             "curve.fitricrypto" => Protocol::CurveTriCryptoPool,
             "propellerlabssolver" => Protocol::PropellerLabsSolver,
+            "balancerv1" => Protocol::BalancerV1,
+            "balancerv1smartpool" => Protocol::BalancerV1CRP,
+            "balancerv2" => Protocol::BalancerV2,
+            "dodov1/v2" => Protocol::Dodo,
+            "pancakeswapv2" => Protocol::PancakeSwapV2,
+            "pancakeswapv3" => Protocol::PancakeSwapV3,
             _ => Protocol::Unknown,
         }
     }
