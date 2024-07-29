@@ -141,17 +141,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
 
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
-        let window = self.cex_window_data.get_window_lookahead();
 
-        let offsets = (window / 12) as u64;
-
-        for block in last_block..last_block + offsets {
-            tracing::info!(?block, "new block");
-            if let Ok(res) = libmdbx.get_cex_trades(block) {
-                self.cex_window_data.new_block(res);
-            }
-            self.cex_window_data.set_last_block(block);
+        tracing::info!(?last_block, "new block");
+        if let Ok(res) = libmdbx.get_cex_trades(last_block) {
+            self.cex_window_data.new_block(res);
         }
+        self.cex_window_data.set_last_block(last_block);
 
         self.cex_window_data.cex_trade_map()
     }
