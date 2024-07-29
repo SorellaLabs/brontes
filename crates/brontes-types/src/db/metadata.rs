@@ -88,7 +88,8 @@ impl Metadata {
                             CexExchange::Okex,
                             CexExchange::Kucoin,
                         ];
-                        let baseline_for_tokeprice = Rational::from_unsigneds(1u32, 10u32);
+                        let baseline_for_tokeprice: Rational =
+                            Rational::from_unsigneds(1u32, 10u32);
                         let pair = Pair(quote_token, WETH_ADDRESS);
 
                         self.cex_trades
@@ -135,7 +136,7 @@ impl Metadata {
                         CexExchange::Kucoin,
                     ];
                     let baseline_for_tokeprice = Rational::from_unsigneds(1u32, 10u32);
-                    let pair = Pair(quote_token, WETH_ADDRESS);
+                    let pair = Pair(WETH_ADDRESS, quote_token);
 
                     self.cex_trades
                         .as_ref()

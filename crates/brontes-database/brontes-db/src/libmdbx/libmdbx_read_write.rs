@@ -26,7 +26,7 @@ use brontes_types::{
         token_info::{TokenInfo, TokenInfoWithAddress},
         traits::{DBWriter, LibmdbxReader},
     },
-    mev::{Bundle, MevBlock},
+    mev::{block, Bundle, MevBlock},
     normalized_actions::Action,
     pair::Pair,
     structured_trace::TxTrace,
@@ -1260,14 +1260,10 @@ impl LibmdbxReadWriter {
     }
 }
 
-pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> FeeAdjustedQuote {
-    if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
-        eth_usdt
-    } else {
-        cex_quotes
-            .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-            .unwrap_or_default()
-    }
+pub fn determine_eth_prices(cex_quotes: &CexPriceMap, block_timestamp: u64) -> FeeAdjustedQuote {
+    cex_quotes
+        .get_quote_at(&Pair(WETH_ADDRESS, USDT_ADDRESS), CexExchange::Binance, block_timestamp)
+        .expect("Failed to fetch Binance ETH/USDT price for Block Metadata")
 }
 
 fn default_tables_to_init() -> Vec<Tables> {

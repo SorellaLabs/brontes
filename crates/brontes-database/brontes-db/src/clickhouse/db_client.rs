@@ -282,13 +282,12 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(feature = "cex-dex-quotes")]
         {
-            info!("not markout");
             let mut cex_quotes_for_block = self
                 .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
                 .await?;
 
             let cex_quotes = cex_quotes_for_block.remove(0);
-            let eth_prices = determine_eth_prices(&cex_quotes.value);
+            let eth_prices = determine_eth_prices(&cex_quotes.value, block_timestamp * 1_000_000);
 
             Ok(BlockMetadata::new(
                 block_num,
@@ -298,7 +297,7 @@ impl ClickhouseHandle for Clickhouse {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-                max(eth_prices.price_maker.1, eth_prices.price_taker.1),
+                eth_prices.maker_taker_mid().0,
                 block_meta.private_flow.into_iter().collect(),
             )
             .into_metadata(cex_quotes.value, None, None))
@@ -314,6 +313,10 @@ impl ClickhouseHandle for Clickhouse {
                 .remove(0)
                 .value;
 
+            cex_trades.calculate
+
+
+
             let mut meta = BlockMetadata::new(
                 block_num,
                 block_meta.block_hash,
@@ -322,7 +325,7 @@ impl ClickhouseHandle for Clickhouse {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-                Default::default(),
+
                 block_meta.private_flow.into_iter().collect(),
             )
             .into_metadata(Default::default(), None, None);

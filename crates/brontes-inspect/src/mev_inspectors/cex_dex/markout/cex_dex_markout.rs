@@ -517,7 +517,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             price_maker: (cex_quote.0.clone(), cex_quote.0.clone()),
             price_taker: (cex_quote.1.clone(), cex_quote.1.clone()),
             amount: (Rational::ONE, Rational::ONE),
-            token0: Address::ZERO,
             exchange,
         };
 

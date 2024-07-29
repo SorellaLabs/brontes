@@ -15,7 +15,12 @@ use self::{
     config::CexDexTradeConfig, time_window_vwam::MakerTakerWindowVWAP, utils::SortedTrades,
 };
 use super::{optimistic::MakerTaker, CexExchange};
-use crate::{normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
+use crate::{
+    constants::{USDT_ADDRESS, WETH_ADDRESS},
+    normalized_actions::NormalizedSwap,
+    pair::Pair,
+    FastHashMap,
+};
 
 impl CexTradeMap {
     /// Calculate the price of a pair with a given volume using both the dynamic
@@ -81,6 +86,12 @@ impl CexTradeMap {
                 dex_swap,
                 tx_hash,
             )
+    }
+
+    pub fn get_eth_price(&self, block_timestamp: u64) -> Option<Rational> {
+        self.0
+            .get(&CexExchange::Binance)?
+            .get(&Pair(WETH_ADDRESS, USDT_ADDRESS)).
     }
 
     pub fn get_optimistic_vmap(
