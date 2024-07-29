@@ -649,8 +649,8 @@ impl Clickhouse {
                     .collect::<Vec<String>>();
 
                 query = query.replace(
-                    "month >= toStartOfMonth(toDateTime(? /  1000000) - INTERVAL 1 MONTH) and \
-                     month <= toStartOfMonth(toDateTime(? /  1000000) - INTERVAL 1 MONTH)",
+                    "month >= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH) and \
+                     month <= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH)",
                     &format!("month in (select arrayJoin({:?}) as month))", times),
                 );
 
