@@ -272,16 +272,13 @@ impl Tables {
                         Some(TRACE_FLAG),
                         progress_bar
                             .iter()
-                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
+                            .find_map(|(t, b)| (t == self).then_some(b.clone()))
                             .unwrap(),
                         Self::fetch_download_fn_range,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
-            Tables::SearcherEOAs => Ok(()),
-            Tables::SearcherContracts => Ok(()),
-            Tables::InitializedState => Ok(()),
             #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexTrades => {
                 initializer
@@ -298,15 +295,13 @@ impl Tables {
                     )
                     .await
             }
+            Tables::SearcherEOAs | Tables::SearcherContracts | Tables::InitializedState => Ok(()),
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexTrades => Ok(()),
 
             _ => unimplemented!("'initialize_table' not implemented for {:?}", self),
         }
     }
-
-    // pub async fn fetch_data_range<CH: ClickhouseHandle, D>(&self, impl Fn(u64,
-    // u64, &CH)
 
     pub(crate) async fn initialize_table_arbitrary_state<
         T: TracingProvider,
@@ -319,20 +314,12 @@ impl Tables {
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
-            Tables::TokenDecimals => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for token decimals"
-                );
-            }
-            Tables::AddressToProtocolInfo => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for AddressToProtocolInfo"
-                );
-            }
-            Tables::PoolCreationBlocks => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for PoolCreationBlocks"
-                );
+            table @ (Tables::TokenDecimals
+            | Tables::AddressToProtocolInfo
+            | Tables::PoolCreationBlocks
+            | Tables::Builder
+            | Tables::AddressMeta) => {
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for {}", table);
             }
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexPrice => {
@@ -340,11 +327,8 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
                         Some(CEX_QUOTES_FLAG),
-                        true,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
+                        Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
@@ -356,10 +340,7 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
                         Some(META_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::BlockInfo).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -370,51 +351,30 @@ impl Tables {
                     .initialize_table_from_clickhouse_arbitrary_state::<DexPrice, DexPriceData>(
                         block_range,
                         Some(DEX_PRICE_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::DexPrice).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
-            Tables::MevBlocks => Ok(()),
             Tables::TxTraces => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
                         Some(TRACE_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::TxTraces).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await
             }
-            Tables::Builder => {
-                unimplemented!("'initialize_table_arbitrary_state' not implemented for Builder");
-            }
-            Tables::AddressMeta => {
-                unimplemented!(
-                    "'initialize_table_arbitrary_state' not implemented for AddressMeta"
-                );
-            }
-            Tables::SearcherEOAs => Ok(()),
-            Tables::SearcherContracts => Ok(()),
-            Tables::InitializedState => Ok(()),
             #[cfg(not(feature = "cex-dex-quotes"))]
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
                         block_range,
                         Some(CEX_TRADES_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (t == self).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary_trades,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -422,7 +382,15 @@ impl Tables {
             }
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexTrades => Ok(()),
+            _ => Ok(()),
         }
+    }
+
+    fn fetch_progress_bar(&self, progress_bar: Arc<Vec<(Tables, ProgressBar)>>) -> ProgressBar {
+        progress_bar
+            .iter()
+            .find_map(|(t, b)| (t == self).then_some(b.clone()))
+            .unwrap()
     }
 
     pub async fn export_to_parquet<DB>(
@@ -441,7 +409,7 @@ impl Tables {
         }
     }
 
-    pub fn fetch_download_fn_range<CH: ClickhouseHandle, T, D>(
+    fn fetch_download_fn_range<CH: ClickhouseHandle, T, D>(
         start: u64,
         end: u64,
         ch: &'static CH,
@@ -461,7 +429,7 @@ impl Tables {
         Box::pin(async move { ch.query_many_range::<T, D>(start, end).await })
     }
 
-    pub fn fetch_download_fn_range_trades<CH: ClickhouseHandle, T, D>(
+    fn fetch_download_fn_range_trades<CH: ClickhouseHandle, T, D>(
         start: u64,
         end: u64,
         ch: &'static CH,
@@ -515,7 +483,7 @@ impl Tables {
         })
     }
 
-    pub fn fetch_download_fn_arbitrary<CH: ClickhouseHandle, T, D>(
+    fn fetch_download_fn_arbitrary<CH: ClickhouseHandle, T, D>(
         range: &'static [u64],
         ch: &'static CH,
     ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
@@ -534,7 +502,7 @@ impl Tables {
         Box::pin(async move { ch.query_many_arbitrary::<T, D>(range).await })
     }
 
-    pub fn fetch_download_fn_arbitrary_trades<CH: ClickhouseHandle, T, D>(
+    fn fetch_download_fn_arbitrary_trades<CH: ClickhouseHandle, T, D>(
         range: &'static [u64],
         ch: &'static CH,
     ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
@@ -560,7 +528,7 @@ impl Tables {
         })
     }
 
-    pub fn fetch_download_fn_arbitrary_quotes<CH: ClickhouseHandle, T, D>(
+    fn fetch_download_fn_arbitrary_quotes<CH: ClickhouseHandle, T, D>(
         range: &'static [u64],
         ch: &'static CH,
     ) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
