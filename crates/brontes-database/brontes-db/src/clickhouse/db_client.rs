@@ -631,6 +631,7 @@ impl Clickhouse {
                     .unwrap() as f64
                     * SECONDS_TO_US;
 
+                tracing::info!(?start_time, ?end_time);
                 self.client
                     .query_many(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
