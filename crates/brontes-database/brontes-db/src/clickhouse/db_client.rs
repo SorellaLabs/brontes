@@ -647,11 +647,11 @@ impl Clickhouse {
                         )
                     })
                     .fold(String::new(), |mut acc, x| {
-                        if !&acc == "" {
+                        if &acc != "" {
                             acc += ",";
                         }
 
-                        acc += x;
+                        acc += &x;
                         acc
                     });
 
