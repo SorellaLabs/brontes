@@ -124,7 +124,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let window = self.cex_window_data.get_window_lookahead();
             // given every download is -6 + 6 around the block
             // we calculate the offset from the current block that we need
-            let offsets = (window / 6) as u64;
+            let offsets = (window / 12) as u64;
             let mut trades = Vec::new();
             for block in block - offsets..=block + offsets {
                 if let Ok(res) = libmdbx.get_cex_trades(block) {
@@ -138,7 +138,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
 
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
         let window = self.cex_window_data.get_window_lookahead();
-        let offsets = (window / 6) as u64;
+        let offsets = (window / 12) as u64;
 
         for block in last_block..=last_block + offsets {
             if let Ok(res) = libmdbx.get_cex_trades(block) {
