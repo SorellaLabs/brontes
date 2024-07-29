@@ -74,6 +74,9 @@ pub struct RunArgs {
     /// Metrics will be exported
     #[arg(long, default_value = "true")]
     pub with_metrics:         bool,
+    /// wether or not to use a fallback server.
+    #[arg(long, default_value_t = false)]
+    pub enable_fallback:      bool,
     /// the address of the fallback server. if the socket breaks,
     /// the fallback server will trigger db writes to ensure we
     /// don't lose data
@@ -131,18 +134,22 @@ impl RunArgs {
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        let hr = if let Some(fallback_server) = self.fallback_server {
-            tracing::info!("starting heartbeat");
-            backup_server_heartbeat(fallback_server, Duration::from_secs(4)).await;
-            None
-        } else {
-            tracing::info!("starting monitor");
-            let (tx, rx) = tokio::sync::mpsc::channel(10);
-            if let Err(e) = start_hr_monitor(tx).await {
-                tracing::error!(err=%e);
+        let hr = if self.enable_fallback {
+            if let Some(fallback_server) = self.fallback_server {
+                tracing::info!("starting heartbeat");
+                backup_server_heartbeat(fallback_server, Duration::from_secs(4)).await;
+                None
+            } else {
+                tracing::info!("starting monitor");
+                let (tx, rx) = tokio::sync::mpsc::channel(10);
+                if let Err(e) = start_hr_monitor(tx).await {
+                    tracing::error!(err=%e);
+                }
+                tracing::info!("monitor server started");
+                Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
             }
-            tracing::info!("monitor server started");
-            Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
+        } else {
+            None
         };
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
