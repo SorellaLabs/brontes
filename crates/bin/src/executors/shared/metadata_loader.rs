@@ -128,7 +128,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let offsets = (window / 12) as u64;
             let mut trades = Vec::new();
             for block in block - offsets..=block + offsets {
-                tracing::info!(?block,"init block"):
+                tracing::info!(?block,"init block");
                 if let Ok(res) = libmdbx.get_cex_trades(block) {
                     trades.push(res);
                 }
