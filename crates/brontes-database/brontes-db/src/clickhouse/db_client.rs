@@ -432,6 +432,7 @@ impl ClickhouseHandle for Clickhouse {
             .collect::<Vec<_>>()
             .join(" OR ");
 
+        tracing::info!("fetching symbol ranks");
         let symbol_rank = self
             .fetch_symbol_rank(&block_times, &range_or_arbitrary)
             .await?;
