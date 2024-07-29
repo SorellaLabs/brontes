@@ -1202,7 +1202,7 @@ impl LibmdbxReadWriter {
             let res = tx
                 .get::<CexPrice>(block_num)?
                 .expect("Failed to fetch Cex Quotes");
-            Ok(CexPriceMap(res))
+            Ok(res)
         })
     }
 
