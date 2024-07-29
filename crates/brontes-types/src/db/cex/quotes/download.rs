@@ -80,6 +80,7 @@ impl CexQuotesConverter {
                     .push(quote)
             });
 
+        tracing::info!(?block_num_map, "block num map");
         let mut pairs_map: FastHashMap<u64, Vec<BestCexPerPair>> = self
             .block_times
             .iter()
@@ -143,6 +144,7 @@ impl CexQuotesConverter {
                         // address pair. this is ok todo
                     })
                     .collect::<FastHashMap<_, _>>();
+                tracing::info!(?pair_exchanges, "pair ex");
 
                 let cex_price_map = exchange_map
                     .into_iter()
