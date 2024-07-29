@@ -2,14 +2,14 @@ use brontes_types::db::cex::CexExchange;
 
 #[derive(Debug, Clone)]
 pub struct CexDownloadConfig {
-    pub block_window: (u64, u64),
+    pub run_time_window: (u64, u64),
 
     pub exchanges_to_use: Vec<CexExchange>,
 }
 
 impl CexDownloadConfig {
-    pub fn new(block_window: (u64, u64), exchanges_to_use: Vec<CexExchange>) -> Self {
-        Self { block_window, exchanges_to_use }
+    pub fn new(run_time_window: (u64, u64), exchanges_to_use: Vec<CexExchange>) -> Self {
+        Self { run_time_window, exchanges_to_use }
     }
 }
 
@@ -17,7 +17,7 @@ impl CexDownloadConfig {
 impl Default for CexDownloadConfig {
     fn default() -> Self {
         Self {
-            block_window:     (3, 3),
+            run_time_window:  (6, 6),
             exchanges_to_use: vec![
                 CexExchange::Binance,
                 CexExchange::Coinbase,
@@ -33,7 +33,7 @@ impl Default for CexDownloadConfig {
 impl Default for CexDownloadConfig {
     fn default() -> Self {
         Self {
-            block_window:     (3, 3),
+            run_time_window:  (6, 6),
             exchanges_to_use: vec![
                 CexExchange::Binance,
                 CexExchange::Coinbase,
