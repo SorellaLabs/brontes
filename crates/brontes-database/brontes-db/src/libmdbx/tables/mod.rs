@@ -222,13 +222,8 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
                         block_range,
                         clear_table,
-                        Some(CEX_QUOTES_FLAG),
                         true,
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (*t == Tables::CexPrice).then_some(b))
-                            .cloned()
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
                     .await?;
@@ -241,11 +236,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
                         block_range,
                         clear_table,
-                        Some(META_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (t == self).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_range,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -256,11 +247,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<DexPrice, DexPriceData>(
                         block_range,
                         clear_table,
-                        Some(DEX_PRICE_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (t == self).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_range,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -272,11 +259,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<TxTraces, TxTracesData>(
                         block_range,
                         clear_table,
-                        Some(TRACE_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (t == self).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_range,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -288,11 +271,7 @@ impl Tables {
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
                         block_range,
                         clear_table,
-                        Some(CEX_TRADES_FLAG),
-                        progress_bar
-                            .iter()
-                            .find_map(|(t, b)| (t == self).then_some(b.clone()))
-                            .unwrap(),
+                        self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_range_trades,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
@@ -317,13 +296,6 @@ impl Tables {
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
-            table @ (Tables::TokenDecimals
-            | Tables::AddressToProtocolInfo
-            | Tables::PoolCreationBlocks
-            | Tables::Builder
-            | Tables::AddressMeta) => {
-                unimplemented!("'initialize_table_arbitrary_state' not implemented for {}", table);
-            }
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexPrice => {
                 initializer
@@ -342,7 +314,6 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
                         block_range,
-                        Some(META_FLAG),
                         self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
@@ -353,7 +324,6 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<DexPrice, DexPriceData>(
                         block_range,
-                        Some(DEX_PRICE_FLAG),
                         self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
@@ -364,7 +334,6 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<TxTraces, TxTracesData>(
                         block_range,
-                        Some(TRACE_FLAG),
                         self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
@@ -376,7 +345,6 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
                         block_range,
-                        Some(CEX_TRADES_FLAG),
                         self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary_trades,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
@@ -385,6 +353,13 @@ impl Tables {
             }
             #[cfg(feature = "cex-dex-quotes")]
             Tables::CexTrades => Ok(()),
+            table @ (Tables::TokenDecimals
+            | Tables::AddressToProtocolInfo
+            | Tables::PoolCreationBlocks
+            | Tables::Builder
+            | Tables::AddressMeta) => {
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for {}", table);
+            }
             _ => Ok(()),
         }
     }

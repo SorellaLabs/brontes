@@ -159,7 +159,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         range: Option<(u64, u64)>,
         clear_table: bool,
-        mark_init: Option<u8>,
         pb: ProgressBar,
         d: impl Fn(u64, u64, &'static CH) -> Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>
             + Send
@@ -226,7 +225,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     }
                 }
 
-                if let Some(flag) = mark_init {
+                if let Some(flag) = T::INIT_FLAG {
                     let ranges = libmdbx.inited_range_items(start..=end, flag)?;
                     let not = Arc::new(Notify::new());
                     libmdbx.send_message(WriterMessage::Init(ranges.into(), not.clone()))?;
@@ -248,7 +247,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
         &self,
         block_range: &'static [u64],
-        mark_init: Option<u8>,
         pb: ProgressBar,
         d: impl Fn(
                 &'static [u64],
@@ -295,7 +293,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     }
                 }
 
-                if let Some(flag) = mark_init {
+                if let Some(flag) = T::INIT_FLAG {
                     let ranges =
                         libmdbx.inited_range_arbitrary(inner_range.iter().copied(), flag)?;
 
