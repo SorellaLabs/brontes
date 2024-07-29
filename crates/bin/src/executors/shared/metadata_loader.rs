@@ -53,9 +53,8 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         #[allow(unused)] cex_window_sec: usize,
     ) -> Self {
         Self {
-            // make symmetric
             #[cfg(not(feature = "cex-dex-quotes"))]
-            cex_window_data: CexWindow::new(cex_window_sec / 12 + 1),
+            cex_window_data: CexWindow::new(cex_window_sec),
             clickhouse,
             dex_pricer_stream,
             needs_more_data,
@@ -121,20 +120,31 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         libmdbx: &'static DB,
         block: u64,
     ) -> CexTradeMap {
-        let lookahead = self.cex_window_data.get_block_lookahead() as u64;
-        if self.cex_window_data.is_saturated() {
-            let block = block + lookahead;
-            if let Ok(trades) = libmdbx.get_cex_trades(block) {
-                self.cex_window_data.new_block(trades);
-            }
-        } else {
-            // load the full window
-            for block in block - lookahead..block + lookahead {
-                if let Ok(trades) = libmdbx.get_cex_trades(block) {
-                    self.cex_window_data.new_block(trades);
+        if !self.cex_window_data.is_loaded() {
+            let window = self.cex_window_data.get_window_lookahead();
+            // given every download is -6 + 6 around the block
+            // we calculate the offset from the current block that we need
+            let offsets = (window / 6) as u64;
+            let mut trades = Vec::new();
+            for block in block - offsets..=block + offsets {
+                if let Ok(res) = libmdbx.get_cex_trades(block) {
+                    trades.push(res);
                 }
             }
-        };
+            self.cex_window_data.init(block + offsets, trades);
+
+            return self.cex_window_data.cex_trade_map()
+        }
+
+        let block = self.cex_window_data.get_last_end_block_loaded();
+        let window = self.cex_window_data.get_window_lookahead();
+        let offsets = (window / 6) as u64;
+
+        for block in block..=block + offsets {
+            if let Ok(res) = libmdbx.get_cex_trades(block) {
+                self.cex_window_data.new_block(res);
+            }
+        }
 
         self.cex_window_data.cex_trade_map()
     }

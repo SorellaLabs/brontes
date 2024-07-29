@@ -96,7 +96,7 @@ pub trait LibmdbxReader: Send + Sync + Unpin + 'static {
     fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata>;
 
     #[cfg(not(feature = "cex-dex-quotes"))]
-    fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap>;
+    fn get_cex_trades(&self, block: u64,) -> eyre::Result<CexTradeMap>;
 
     fn try_fetch_address_metadata(&self, address: Address)
         -> eyre::Result<Option<AddressMetadata>>;
