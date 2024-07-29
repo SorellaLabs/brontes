@@ -79,7 +79,7 @@ impl CexQuotesConverter {
                     .or_insert(Vec::new())
                     .push(quote)
             });
-            tracing::info!(?block_num_map);
+        tracing::info!(?block_num_map);
 
         let mut pairs_map: FastHashMap<u64, Vec<BestCexPerPair>> = self
             .block_times
