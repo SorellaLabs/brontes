@@ -414,6 +414,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) {
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
+
         cex_dex.pnl.adjust_for_gas_cost(gas_cost);
     }
 
