@@ -130,7 +130,7 @@ impl CexPriceMap {
             return Some(FeeAdjustedQuote::default_one_to_one());
         }
 
-        self.0
+        self.quotes
             .get(exchange)
             .and_then(|quotes| {
                 if let Some(exchange_quotes) = quotes.get(pair) {
@@ -473,7 +473,7 @@ impl CexPriceMap {
         let mut connected_to_a = FastHashSet::new();
         let mut connected_to_b = FastHashSet::new();
 
-        self.0
+        self.quotes
             .iter()
             .filter(|(venue, _)| *venue == exchange)
             .flat_map(|(_, pairs)| pairs.keys())

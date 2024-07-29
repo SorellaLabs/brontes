@@ -303,7 +303,15 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         let window = MultiBlockWindow::new(block_window_size);
 
-        StateCollector::new(shutdown, fetcher, classifier, self.parser, self.libmdbx, window)
+        StateCollector::new(
+            shutdown,
+            fetcher,
+            classifier,
+            self.parser,
+            self.libmdbx,
+            window,
+            self.quote_asset,
+        )
     }
 
     async fn init_block_range_tables(

@@ -9,6 +9,7 @@ use std::{
     task::Poll,
 };
 
+use alloy_primitives::Address;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
@@ -95,18 +96,19 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
+        quote_asset: Address,
     ) {
         let block = tree.header.number;
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
         if !generate_dex_pricing && self.clickhouse.is_none() {
-            self.load_metadata_with_dex_prices(tree, libmdbx, block);
+            self.load_metadata_with_dex_prices(tree, libmdbx, block, quote_asset);
         } else if let Some(clickhouse) = self.clickhouse {
-            self.load_metadata_from_clickhouse(tree, libmdbx, clickhouse, block);
+            self.load_metadata_from_clickhouse(tree, libmdbx, clickhouse, block, quote_asset);
         } else if self.force_no_dex_pricing {
-            self.load_metadata_force_dex_pricing(tree, libmdbx, block);
+            self.load_metadata_force_dex_pricing(tree, libmdbx, block, quote_asset);
         } else {
-            self.load_metadata_no_dex_pricing(tree, libmdbx, block);
+            self.load_metadata_no_dex_pricing(tree, libmdbx, block, quote_asset);
         }
     }
 
@@ -144,12 +146,16 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
         block: u64,
+        quote_asset: Address,
     ) {
         // pull metadata from libmdbx and generate dex_pricing
-        let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
-            tracing::error!(%err);
-            err
-        }) else {
+        let Ok(mut meta) = libmdbx
+            .get_metadata_no_dex_price(block, quote_asset)
+            .map_err(|err| {
+                tracing::error!(%err);
+                err
+            })
+        else {
             self.dex_pricer_stream.add_failed_tree(block);
             tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
             return;
@@ -171,12 +177,16 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
         block: u64,
+        quote_asset: Address,
     ) {
         tracing::debug!(?block, "only cex dex. skipping dex pricing");
-        let Ok(mut meta) = libmdbx.get_metadata_no_dex_price(block).map_err(|err| {
-            tracing::error!(%err);
-            err
-        }) else {
+        let Ok(mut meta) = libmdbx
+            .get_metadata_no_dex_price(block, quote_asset)
+            .map_err(|err| {
+                tracing::error!(%err);
+                err
+            })
+        else {
             self.dex_pricer_stream.add_failed_tree(block);
             tracing::error!(?block, "failed to load metadata no dex price from libmdbx");
             return;
@@ -198,8 +208,9 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
         block: u64,
+        quote_asset: Address,
     ) {
-        let Ok(mut meta) = libmdbx.get_metadata(block).map_err(|err| {
+        let Ok(mut meta) = libmdbx.get_metadata(block, quote_asset).map_err(|err| {
             tracing::error!(%err);
             err
         }) else {
@@ -224,12 +235,16 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         libmdbx: &'static DB,
         clickhouse: &'static CH,
         block: u64,
+        quote_asset: Address,
     ) {
         tracing::debug!(?block, "spawning clickhouse fut");
         let future = Box::pin(async move {
-            let mut meta = clickhouse.get_metadata(block).await.unwrap_or_else(|_| {
-                panic!("missing metadata for clickhouse.get_metadata request {block}")
-            });
+            let mut meta = clickhouse
+                .get_metadata(block, quote_asset)
+                .await
+                .unwrap_or_else(|_| {
+                    panic!("missing metadata for clickhouse.get_metadata request {block}")
+                });
 
             meta.builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)

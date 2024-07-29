@@ -13,13 +13,13 @@ use super::{
 };
 use crate::{
     constants::WETH_ADDRESS,
-    db::redefined_types::primitives::*,
+    db::{dex::BlockPrice, redefined_types::primitives::*},
     implement_table_value_codecs_with_zc,
     pair::Pair,
     serde_utils::{option_addresss, u256, vec_txhash},
     FastHashSet,
 };
-#[cfg(not(feature = "cex-dex-quotes"))]
+#[allow(unused_imports)]
 use crate::{
     db::cex::{config::CexDexTradeConfig, CexExchange},
     normalized_actions::NormalizedSwap,
@@ -75,101 +75,21 @@ impl Metadata {
         gas_used_rational * eth_price
     }
 
+    /// Retrieves the ETH price in terms of the given quote token.
+    ///
+    /// First checks the block metadata for a pre-stored price. If that's zero,
+    /// falls back to DEX quotes using the average block price.
     pub fn get_eth_price(&self, quote_token: Address) -> Rational {
-        let eth_price = if self.block_metadata.eth_prices == Rational::ZERO {
-            if let Some(dex_quotes) = &self.dex_quotes {
-                if dex_quotes.0.is_empty() {
-                    #[cfg(not(feature = "cex-dex-quotes"))]
-                    {
-                        let trades = [
-                            CexExchange::Binance,
-                            CexExchange::Coinbase,
-                            CexExchange::BybitSpot,
-                            CexExchange::Okex,
-                            CexExchange::Kucoin,
-                        ];
-                        let baseline_for_tokeprice: Rational =
-                            Rational::from_unsigneds(1u32, 10u32);
-                        let pair = Pair(quote_token, WETH_ADDRESS);
+        if self.block_metadata.eth_prices != Rational::ZERO {
+            return self.block_metadata.eth_prices.clone();
+        }
 
-                        self.cex_trades
-                            .as_ref()
-                            .and_then(|trade_map| {
-                                tracing::debug!("getting eth price");
-                                Some(
-                                    trade_map
-                                        .get_optimistic_vmap(
-                                            CexDexTradeConfig::default(),
-                                            &trades,
-                                            pair,
-                                            &baseline_for_tokeprice,
-                                            self.microseconds_block_timestamp(),
-                                            None,
-                                            true,
-                                            &NormalizedSwap::default(),
-                                            TxHash::default(),
-                                        )?
-                                        .0
-                                        .final_price,
-                                )
-                            })
-                            .unwrap_or(Rational::ZERO)
-                    }
-                    #[cfg(feature = "cex-dex-quotes")]
-                    Rational::ZERO
-                } else {
-                    dex_quotes
-                        .price_for_block(
-                            Pair(WETH_ADDRESS, quote_token),
-                            crate::db::dex::BlockPrice::Average,
-                        )
-                        .unwrap_or(Rational::ZERO)
-                }
-            } else {
-                #[cfg(not(feature = "cex-dex-quotes"))]
-                {
-                    let trades = [
-                        CexExchange::Binance,
-                        CexExchange::Coinbase,
-                        CexExchange::BybitSpot,
-                        CexExchange::Okex,
-                        CexExchange::Kucoin,
-                    ];
-                    let baseline_for_tokeprice = Rational::from_unsigneds(1u32, 10u32);
-                    let pair = Pair(WETH_ADDRESS, quote_token);
-
-                    self.cex_trades
-                        .as_ref()
-                        .and_then(|trade_map| {
-                            tracing::debug!("getting eth price");
-                            Some(
-                                trade_map
-                                    .get_optimistic_vmap(
-                                        CexDexTradeConfig::default(),
-                                        &trades,
-                                        pair,
-                                        &baseline_for_tokeprice,
-                                        self.microseconds_block_timestamp(),
-                                        None,
-                                        true,
-                                        &NormalizedSwap::default(),
-                                        TxHash::default(),
-                                    )?
-                                    .0
-                                    .final_price,
-                            )
-                        })
-                        .unwrap_or(Rational::ZERO)
-                }
-                #[cfg(feature = "cex-dex-quotes")]
-                Rational::ZERO
-            }
-        } else {
-            self.block_metadata.eth_prices.clone()
-        };
-        tracing::debug!(?eth_price);
-
-        eth_price
+        self.dex_quotes
+            .as_ref()
+            .and_then(|dex_quotes| {
+                dex_quotes.price_for_block(Pair(WETH_ADDRESS, quote_token), BlockPrice::Average)
+            })
+            .unwrap_or(Rational::ZERO)
     }
 
     pub fn into_full_metadata(mut self, dex_quotes: DexQuotes) -> Self {

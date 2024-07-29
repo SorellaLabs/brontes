@@ -1,4 +1,4 @@
-use std::{cmp::max, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_metrics::db_reads::LibmdbxMetrics;
@@ -12,12 +12,12 @@ use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 #[cfg(not(feature = "local-reth"))]
 use brontes_types::db::initialized_state::TRACE_FLAG;
 use brontes_types::{
-    constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    constants::{ETH_ADDRESS, WETH_ADDRESS},
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{CexPriceMap, FeeAdjustedQuote},
+        cex::{CexExchange, CexPriceMap},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG},
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
@@ -26,7 +26,7 @@ use brontes_types::{
         token_info::{TokenInfo, TokenInfoWithAddress},
         traits::{DBWriter, LibmdbxReader},
     },
-    mev::{block, Bundle, MevBlock},
+    mev::{Bundle, MevBlock},
     normalized_actions::Action,
     pair::Pair,
     structured_trace::TxTrace,
@@ -37,6 +37,7 @@ use eyre::{eyre, ErrReport};
 use futures::Future;
 use indicatif::ProgressBar;
 use itertools::Itertools;
+use malachite::Rational;
 use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
@@ -447,10 +448,15 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     #[brontes_macros::metrics_call(ptr=metrics, scope, db_read,"metadata_no_dex_price")]
-    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
+    fn get_metadata_no_dex_price(
+        &self,
+        block_num: u64,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        let eth_prices = determine_eth_prices(&cex_quotes);
+        let eth_price =
+            determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
         Ok(BlockMetadata::new(
             block_num,
@@ -460,18 +466,19 @@ impl LibmdbxReader for LibmdbxReadWriter {
             block_meta.p2p_timestamp,
             block_meta.proposer_fee_recipient,
             block_meta.proposer_mev_reward,
-            max(eth_prices.price_maker.0, eth_prices.price_maker.1),
+            eth_price.unwrap_or_default(),
             block_meta.private_flow.into_iter().collect(),
         )
         .into_metadata(cex_quotes, None, None))
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
-    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+    fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
-        let eth_prices = determine_eth_prices(&cex_quotes);
+        let eth_price =
+            determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
         Ok({
             BlockMetadata::new(
@@ -482,7 +489,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-                max(eth_prices.price_maker.0, eth_prices.price_maker.1),
+                eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
             .into_metadata(cex_quotes, Some(dex_quotes), None)
@@ -1260,10 +1267,17 @@ impl LibmdbxReadWriter {
     }
 }
 
-pub fn determine_eth_prices(cex_quotes: &CexPriceMap, block_timestamp: u64) -> FeeAdjustedQuote {
-    cex_quotes
-        .get_quote_at(&Pair(WETH_ADDRESS, USDT_ADDRESS), CexExchange::Binance, block_timestamp)
-        .expect("Failed to fetch Binance ETH/USDT price for Block Metadata")
+pub fn determine_eth_prices(
+    cex_quotes: &CexPriceMap,
+    block_timestamp: u64,
+    quote_asset: Address,
+) -> Option<Rational> {
+    Some(
+        cex_quotes
+            .get_quote_at(&Pair(WETH_ADDRESS, quote_asset), &CexExchange::Binance, block_timestamp)?
+            .maker_taker_mid()
+            .0,
+    )
 }
 
 fn default_tables_to_init() -> Vec<Tables> {

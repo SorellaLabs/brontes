@@ -1,5 +1,3 @@
-#[cfg(feature = "cex-dex-quotes")]
-use std::cmp::max;
 use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
@@ -34,7 +32,8 @@ use db_interfaces::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+#[cfg(not(feature = "cex-dex-quotes"))]
+use tracing::debug;
 
 #[cfg(feature = "cex-dex-quotes")]
 use super::RAW_CEX_QUOTES;
@@ -272,7 +271,7 @@ impl ClickhouseHandle for Clickhouse {
         Ok(res)
     }
 
-    async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+    async fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
         let block_meta = self
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
@@ -287,7 +286,11 @@ impl ClickhouseHandle for Clickhouse {
                 .await?;
 
             let cex_quotes = cex_quotes_for_block.remove(0);
-            let eth_prices = determine_eth_prices(&cex_quotes.value, block_timestamp * 1_000_000);
+            let eth_price = determine_eth_prices(
+                &cex_quotes.value,
+                block_meta.block_timestamp * 1_000_000,
+                quote_asset,
+            );
 
             Ok(BlockMetadata::new(
                 block_num,
@@ -297,7 +300,7 @@ impl ClickhouseHandle for Clickhouse {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-                eth_prices.maker_taker_mid().0,
+                eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
             .into_metadata(cex_quotes.value, None, None))
@@ -305,17 +308,15 @@ impl ClickhouseHandle for Clickhouse {
 
         #[cfg(not(feature = "cex-dex-quotes"))]
         {
-            info!("markout");
-            let cex_trades = self
+            let mut cex_trades = self
                 .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
                 .await
                 .unwrap()
                 .remove(0)
                 .value;
 
-            cex_trades.calculate
-
-
+            let eth_price =
+                cex_trades.get_eth_price(block_meta.block_timestamp * 1_000_000, quote_asset);
 
             let mut meta = BlockMetadata::new(
                 block_num,
@@ -325,7 +326,7 @@ impl ClickhouseHandle for Clickhouse {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-
+                eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
             .into_metadata(Default::default(), None, None);
@@ -489,13 +490,13 @@ impl ClickhouseHandle for Clickhouse {
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexTradesData>> {
-        info!("Starting get_cex_trades function");
+        debug!("Starting get_cex_trades function");
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(mut s, mut e) => {
                 s -= self.cex_download_config.block_window.0;
                 e += self.cex_download_config.block_window.1;
 
-                info!("Querying block times for range: start={}, end={}", s, e);
+                debug!("Querying block times for range: start={}, end={}", s, e);
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
@@ -509,7 +510,7 @@ impl ClickhouseHandle for Clickhouse {
                     .unique()
                     .collect::<Vec<_>>();
 
-                info!("Querying block times for arbitrary values: {:?}", vals);
+                debug!("Querying block times for arbitrary values: {:?}", vals);
                 let mut query = BLOCK_TIMES.to_string();
                 query = query.replace(
                     "block_number >= ? AND block_number < ?",
@@ -519,16 +520,16 @@ impl ClickhouseHandle for Clickhouse {
             }
         };
 
-        info!("Retrieved {} block times", block_times.len());
+        debug!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
             tracing::warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
 
-        info!("Querying CEX symbols");
+        debug!("Querying CEX symbols");
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
-        info!("Retrieved {} CEX symbols", symbols.len());
+        debug!("Retrieved {} CEX symbols", symbols.len());
 
         let exchanges_str = self
             .cex_download_config
@@ -538,7 +539,7 @@ impl ClickhouseHandle for Clickhouse {
             .map(|s| s.to_clickhouse_filter().to_string())
             .collect::<Vec<String>>()
             .join(" OR ");
-        info!("Using exchanges filter: {}", exchanges_str);
+        debug!("Using exchanges filter: {}", exchanges_str);
 
         let data: Vec<RawCexTrades> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
@@ -555,7 +556,7 @@ impl ClickhouseHandle for Clickhouse {
                     .unwrap() as f64
                     + (6.0 * SECONDS_TO_US);
 
-                info!(
+                debug!(
                     "Querying raw CEX trades for time range: start={}, end={}",
                     start_time, end_time
                 );
@@ -578,7 +579,7 @@ impl ClickhouseHandle for Clickhouse {
                     .collect::<Vec<String>>()
                     .join(" OR ");
 
-                info!("Querying raw CEX trades for arbitrary block times");
+                debug!("Querying raw CEX trades for arbitrary block times");
 
                 query = query.replace(
                     "c.timestamp >= ? AND c.timestamp < ?",
@@ -588,24 +589,25 @@ impl ClickhouseHandle for Clickhouse {
             }
         };
 
-        info!("Retrieved {} raw CEX trades", data.len());
+        debug!("Retrieved {} raw CEX trades", data.len());
 
         let trades_converter = CexTradesConverter::new(block_times, symbols, data);
 
-        info!("Converting raw trades to CexTradesData");
+        debug!("Converting raw trades to CexTradesData");
         let trades: Vec<crate::CexTradesData> = trades_converter
             .convert_to_trades()
             .into_iter()
             .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
             .collect();
 
-        info!("Converted {} CexTradesData entries", trades.len());
+        debug!("Converted {} CexTradesData entries", trades.len());
 
         Ok(trades)
     }
 }
 
 impl Clickhouse {
+    #[allow(dead_code)]
     async fn fetch_symbol_rank(
         &self,
         block_times: &[BlockTimes],

@@ -1,5 +1,6 @@
-use std::{cmp::max, fmt::Debug};
+use std::fmt::Debug;
 
+use alloy_primitives::Address;
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
@@ -72,7 +73,7 @@ impl ClickhouseHttpClient {
 }
 
 impl ClickhouseHandle for ClickhouseHttpClient {
-    async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+    async fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
         let block_meta = self
             .query_many_range::<BlockInfo, BlockInfoData>(block_num, block_num + 1)
             .await?
@@ -94,7 +95,11 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             .flatten()
             .map(Self::process_dex_quotes);
 
-        let eth_prices = determine_eth_prices(&cex_quotes.value);
+        let eth_price = determine_eth_prices(
+            &cex_quotes.value,
+            block_meta.value.block_timestamp * 1_000_000,
+            quote_asset,
+        );
 
         Ok({
             let metadata = BlockMetadata::new(
@@ -105,7 +110,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 block_meta.value.p2p_timestamp,
                 block_meta.value.proposer_fee_recipient,
                 block_meta.value.proposer_mev_reward,
-                max(eth_prices.price_maker.0, eth_prices.price_maker.1),
+                eth_price.unwrap_or_default(),
                 block_meta.value.private_flow.into_iter().collect(),
             );
             metadata.into_metadata(cex_quotes.value, dex_quotes, None)

@@ -232,8 +232,12 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.get_cex_trades(block)
     }
 
-    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.inner.get_metadata_no_dex_price(block_num)
+    fn get_metadata_no_dex_price(
+        &self,
+        block_num: u64,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
+        self.inner.get_metadata_no_dex_price(block_num, quote_asset)
     }
 
     fn try_fetch_searcher_eoa_info(
@@ -305,8 +309,8 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         todo!("Joe");
     }
 
-    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.inner.get_metadata(block_num)
+    fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
+        self.inner.get_metadata(block_num, quote_asset)
     }
 
     fn try_fetch_address_metadata(
@@ -532,8 +536,12 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         self.inner.get_cex_trades(block)
     }
 
-    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.inner.get_metadata_no_dex_price(block_num)
+    fn get_metadata_no_dex_price(
+        &self,
+        block_num: u64,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
+        self.inner.get_metadata_no_dex_price(block_num, quote_asset)
     }
 
     fn fetch_all_searcher_eoa_info(&self) -> eyre::Result<Vec<(Address, SearcherInfo)>> {
@@ -599,8 +607,8 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         todo!("Joe");
     }
 
-    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.inner.get_metadata(block_num)
+    fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
+        self.inner.get_metadata(block_num, quote_asset)
     }
 
     fn try_fetch_address_metadata(
