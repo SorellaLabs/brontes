@@ -528,8 +528,7 @@ impl Tables {
         Box::pin(async move {
             unsafe {
                 std::mem::transmute(
-                    ch
-                        .get_cex_prices(super::cex_utils::CexRangeOrArbitrary::Arbitrary(range))
+                    ch.get_cex_prices(super::cex_utils::CexRangeOrArbitrary::Arbitrary(range))
                         .await,
                 )
             }
