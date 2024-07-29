@@ -301,7 +301,6 @@ impl Tables {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
                         block_range,
-                        Some(CEX_QUOTES_FLAG),
                         self.fetch_progress_bar(progress_bar),
                         Self::fetch_download_fn_arbitrary_quotes,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
