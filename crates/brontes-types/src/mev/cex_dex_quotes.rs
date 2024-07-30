@@ -65,18 +65,15 @@ impl Serialize for CexDexQuote {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("CexDexQuote", 13)?;
-
+        let mut ser_struct = serializer.serialize_struct("CexDexQuote", 15)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("block_timestamp", &self.block_timestamp)?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
-
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps
             .clone()
             .try_into()
             .map_err(serde::ser::Error::custom)?;
-
         ser_struct.serialize_field("swaps.trace_idx", &swaps.trace_index)?;
         ser_struct.serialize_field("swaps.from", &swaps.from)?;
         ser_struct.serialize_field("swaps.recipient", &swaps.recipient)?;
@@ -85,22 +82,18 @@ impl Serialize for CexDexQuote {
         ser_struct.serialize_field("swaps.token_out", &swaps.token_out)?;
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
-
         ser_struct.serialize_field("pnl", &self.pnl)?;
         ser_struct.serialize_field("mid_price", &self.mid_price)?;
         ser_struct.serialize_field("exchange", &self.exchange.to_string())?;
-
         ser_struct.serialize_field(
-            "gas_details.coinbase_transfer",
-            &self.gas_details.coinbase_transfer,
+            "gas_details",
+            &(
+                self.gas_details.coinbase_transfer,
+                self.gas_details.priority_fee,
+                self.gas_details.gas_used,
+                self.gas_details.effective_gas_price,
+            ),
         )?;
-        ser_struct.serialize_field("gas_details.priority_fee", &self.gas_details.priority_fee)?;
-        ser_struct.serialize_field("gas_details.gas_used", &self.gas_details.gas_used)?;
-        ser_struct.serialize_field(
-            "gas_details.effective_gas_price",
-            &self.gas_details.effective_gas_price,
-        )?;
-
         ser_struct.end()
     }
 }
@@ -121,9 +114,6 @@ impl DbRow for CexDexQuote {
         "pnl",
         "mid_price",
         "exchange",
-        "gas_details.coinbase_transfer",
-        "gas_details.priority_fee",
-        "gas_details.gas_used",
-        "gas_details.effective_gas_price",
+        "gas_details",
     ];
 }
