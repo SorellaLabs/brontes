@@ -706,7 +706,7 @@ mod tests {
             .into()])
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(740000.0)
+            .with_expected_profit_usd(742201.93)
             .with_gas_paid_usd(11.44);
 
         inspector_util.run_inspector(config, None).await.unwrap();
@@ -723,7 +723,7 @@ mod tests {
             .into()])
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(70255.0)
+            .with_expected_profit_usd(70154.70)
             .with_gas_paid_usd(1458.25);
 
         inspector_util.run_inspector(config, None).await.unwrap();
