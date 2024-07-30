@@ -275,45 +275,32 @@ impl ClickhouseHandle for Clickhouse {
             .unwrap()
             .value;
 
-        
-            let mut cex_quotes_for_block = self
-                .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
-                .await?;
+        let mut cex_quotes_for_block = self
+            .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+            .await?;
 
-            let cex_quotes = cex_quotes_for_block.remove(0);
-            let eth_price = determine_eth_prices(
-                &cex_quotes.value,
-                block_meta.block_timestamp * 1_000_000,
-                quote_asset,
-            );
-            println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
+        let cex_quotes = cex_quotes_for_block.remove(0);
+        let eth_price = determine_eth_prices(
+            &cex_quotes.value,
+            block_meta.block_timestamp * 1_000_000,
+            quote_asset,
+        );
+        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
 
-            let mut cex_trades = self
-                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
-                .await
-                .unwrap()
-                .remove(0)
-                .value;
+        let mut meta = BlockMetadata::new(
+            block_num,
+            block_meta.block_hash,
+            block_meta.block_timestamp,
+            block_meta.relay_timestamp,
+            block_meta.p2p_timestamp,
+            block_meta.proposer_fee_recipient,
+            block_meta.proposer_mev_reward,
+            eth_price.unwrap_or_default(),
+            block_meta.private_flow.into_iter().collect(),
+        )
+        .into_metadata(cex_quotes.value, None, None);
 
-
-
-            println!("Cex Price from Trades: {}", eth_price.clone().unwrap().to_float());
-
-            let mut meta = BlockMetadata::new(
-                block_num,
-                block_meta.block_hash,
-                block_meta.block_timestamp,
-                block_meta.relay_timestamp,
-                block_meta.p2p_timestamp,
-                block_meta.proposer_fee_recipient,
-                block_meta.proposer_mev_reward,
-                eth_price.unwrap_or_default(),
-                block_meta.private_flow.into_iter().collect(),
-            )
-            .into_metadata(cex_quotes.value, None, None, Some(cex_trades));
-
-            Ok(meta)
-        }
+        Ok(meta)
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
@@ -364,7 +351,6 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -468,7 +454,6 @@ impl ClickhouseHandle for Clickhouse {
         Ok(prices)
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     async fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -590,7 +575,6 @@ impl ClickhouseHandle for Clickhouse {
 }
 
 impl Clickhouse {
-    #[allow(dead_code)]
     async fn fetch_symbol_rank(
         &self,
         block_times: &[BlockTimes],

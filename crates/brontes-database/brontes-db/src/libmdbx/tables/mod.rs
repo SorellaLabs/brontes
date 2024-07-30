@@ -42,9 +42,9 @@ use crate::{
 };
 mod const_sql;
 use alloy_primitives::Address;
-// #[cfg(feature = "cex-dex-quotes")]
+//
 // use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
-// #[cfg(not(feature = "cex-dex-quotes"))]
+//
 // use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
 use const_sql::*;
 use paste::paste;
@@ -216,7 +216,6 @@ impl Tables {
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
-            #[cfg(feature = "cex-dex-quotes")]
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse::<CexPrice, CexPriceData>(
@@ -226,11 +225,8 @@ impl Tables {
                         Self::fetch_download_fn_range_quotes,
                         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                     )
-                    .await?;
-                Ok(())
+                    .await
             }
-            #[cfg(not(feature = "cex-dex-quotes"))]
-            Tables::CexPrice => Ok(()),
             Tables::BlockInfo => {
                 initializer
                     .initialize_table_from_clickhouse::<BlockInfo, BlockInfoData>(
@@ -265,7 +261,7 @@ impl Tables {
                     )
                     .await
             }
-            #[cfg(not(feature = "cex-dex-quotes"))]
+
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
@@ -278,9 +274,6 @@ impl Tables {
                     .await
             }
             Tables::SearcherEOAs | Tables::SearcherContracts | Tables::InitializedState => Ok(()),
-            #[cfg(feature = "cex-dex-quotes")]
-            Tables::CexTrades => Ok(()),
-
             _ => unimplemented!("'initialize_table' not implemented for {:?}", self),
         }
     }
@@ -296,7 +289,6 @@ impl Tables {
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
-            #[cfg(feature = "cex-dex-quotes")]
             Tables::CexPrice => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexPrice, CexPriceData>(
@@ -307,8 +299,6 @@ impl Tables {
                     )
                     .await
             }
-            #[cfg(not(feature = "cex-dex-quotes"))]
-            Tables::CexPrice => Ok(()),
             Tables::BlockInfo => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<BlockInfo, BlockInfoData>(
@@ -339,7 +329,7 @@ impl Tables {
                     )
                     .await
             }
-            #[cfg(not(feature = "cex-dex-quotes"))]
+
             Tables::CexTrades => {
                 initializer
                     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
@@ -350,8 +340,6 @@ impl Tables {
                     )
                     .await
             }
-            #[cfg(feature = "cex-dex-quotes")]
-            Tables::CexTrades => Ok(()),
             table @ (Tables::TokenDecimals
             | Tables::AddressToProtocolInfo
             | Tables::PoolCreationBlocks
@@ -406,7 +394,6 @@ impl Tables {
         Box::pin(async move { ch.query_many_range::<T, D>(start, end).await })
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     fn fetch_download_fn_range_trades<CH: ClickhouseHandle, T, D>(
         start: u64,
         end: u64,
@@ -434,7 +421,6 @@ impl Tables {
         })
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
     pub fn fetch_download_fn_range_quotes<CH: ClickhouseHandle, T, D>(
         start: u64,
         end: u64,
@@ -481,7 +467,6 @@ impl Tables {
         Box::pin(async move { ch.query_many_arbitrary::<T, D>(range).await })
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     fn fetch_download_fn_arbitrary_trades<CH: ClickhouseHandle, T, D>(
         range: &'static [u64],
         ch: &'static CH,
@@ -508,7 +493,6 @@ impl Tables {
         })
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
     fn fetch_download_fn_arbitrary_quotes<CH: ClickhouseHandle, T, D>(
         range: &'static [u64],
         ch: &'static CH,

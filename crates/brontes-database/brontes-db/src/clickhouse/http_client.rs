@@ -115,7 +115,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 eth_price.unwrap_or_default(),
                 block_meta.value.private_flow.into_iter().collect(),
             );
-            metadata.into_metadata(cex_quotes.value, dex_quotes, None)
+            metadata.into_metadata(cex_quotes.value, dex_quotes, None, None)
         })
     }
 
@@ -262,7 +262,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         Ok(res)
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
@@ -270,7 +269,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         unimplemented!()
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     async fn get_cex_trades(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
@@ -282,12 +280,14 @@ impl ClickhouseHandle for ClickhouseHttpClient {
 #[cfg(test)]
 pub mod test {
 
+    use brontes_types::constants::USDT_ADDRESS;
+
     use crate::{clickhouse::ClickhouseHandle, libmdbx::test_utils::load_clickhouse};
 
     #[brontes_macros::test]
     async fn test_metadata_query() {
         let click_house = load_clickhouse().await;
-        let res = click_house.get_metadata(18500000).await;
+        let res = click_house.get_metadata(18500000, USDT_ADDRESS).await;
 
         assert!(res.is_ok());
     }

@@ -28,9 +28,7 @@ pub enum BundleData {
     AtomicArb(AtomicArb),
     JitSandwich(JitLiquiditySandwich),
     Jit(JitLiquidity),
-    #[cfg(feature = "cex-dex-quotes")]
-    CexDex(CexDexQuote),
-    #[cfg(not(feature = "cex-dex-quotes"))]
+    CexDexQuote(CexDexQuote),
     CexDex(CexDex),
     Liquidation(Liquidation),
     Unknown(SearcherTx),
@@ -50,6 +48,7 @@ impl Mev for BundleData {
             BundleData::JitSandwich(m) => m.mev_type(),
             BundleData::Jit(m) => m.mev_type(),
             BundleData::CexDex(m) => m.mev_type(),
+            BundleData::CexDexQuote(m) => m.mev_type(),
             BundleData::Liquidation(m) => m.mev_type(),
             BundleData::Unknown(m) => m.mev_type(),
         }
@@ -62,6 +61,7 @@ impl Mev for BundleData {
             BundleData::JitSandwich(m) => m.total_gas_paid(),
             BundleData::Jit(m) => m.total_gas_paid(),
             BundleData::CexDex(m) => m.total_gas_paid(),
+            BundleData::CexDexQuote(m) => m.total_gas_paid(),
             BundleData::Liquidation(m) => m.total_gas_paid(),
             BundleData::Unknown(s) => s.total_gas_paid(),
         }
@@ -74,6 +74,7 @@ impl Mev for BundleData {
             BundleData::JitSandwich(m) => m.total_priority_fee_paid(base_fee),
             BundleData::Jit(m) => m.total_priority_fee_paid(base_fee),
             BundleData::CexDex(m) => m.total_priority_fee_paid(base_fee),
+            BundleData::CexDexQuote(m) => m.total_priority_fee_paid(base_fee),
             BundleData::Liquidation(m) => m.total_priority_fee_paid(base_fee),
             BundleData::Unknown(s) => s.total_priority_fee_paid(base_fee),
         }
@@ -86,6 +87,7 @@ impl Mev for BundleData {
             BundleData::JitSandwich(m) => m.bribe(),
             BundleData::Jit(m) => m.bribe(),
             BundleData::CexDex(m) => m.bribe(),
+            BundleData::CexDexQuote(m) => m.bribe(),
             BundleData::Liquidation(m) => m.bribe(),
             BundleData::Unknown(s) => s.bribe(),
         }
@@ -98,6 +100,7 @@ impl Mev for BundleData {
             BundleData::JitSandwich(m) => m.mev_transaction_hashes(),
             BundleData::Jit(m) => m.mev_transaction_hashes(),
             BundleData::CexDex(m) => m.mev_transaction_hashes(),
+            BundleData::CexDexQuote(m) => m.mev_transaction_hashes(),
             BundleData::Liquidation(m) => m.mev_transaction_hashes(),
             BundleData::Unknown(s) => s.mev_transaction_hashes(),
         }
@@ -110,6 +113,7 @@ impl Mev for BundleData {
             BundleData::JitSandwich(m) => m.protocols(),
             BundleData::Jit(m) => m.protocols(),
             BundleData::CexDex(m) => m.protocols(),
+            BundleData::CexDexQuote(m) => m.protocols(),
             BundleData::Liquidation(m) => m.protocols(),
             BundleData::Unknown(s) => s.protocols(),
         }
@@ -140,17 +144,15 @@ impl From<JitLiquidity> for BundleData {
     }
 }
 
-#[cfg(not(feature = "cex-dex-quotes"))]
 impl From<CexDex> for BundleData {
     fn from(value: CexDex) -> Self {
         Self::CexDex(value)
     }
 }
 
-#[cfg(feature = "cex-dex-quotes")]
 impl From<CexDexQuote> for BundleData {
     fn from(value: CexDexQuote) -> Self {
-        Self::CexDex(value)
+        Self::CexDexQuote(value)
     }
 }
 
@@ -171,6 +173,7 @@ impl Serialize for BundleData {
             BundleData::JitSandwich(jit_sandwich) => jit_sandwich.serialize(serializer),
             BundleData::Jit(jit) => jit.serialize(serializer),
             BundleData::CexDex(cex_dex) => cex_dex.serialize(serializer),
+            BundleData::CexDexQuote(cex_dex) => cex_dex.serialize(serializer),
             BundleData::Liquidation(liquidation) => liquidation.serialize(serializer),
             BundleData::Unknown(s) => s.serialize(serializer),
         }
@@ -185,6 +188,7 @@ impl InsertRow for BundleData {
             BundleData::JitSandwich(jit_sandwich) => jit_sandwich.get_column_names(),
             BundleData::Jit(jit) => jit.get_column_names(),
             BundleData::CexDex(cex_dex) => cex_dex.get_column_names(),
+            BundleData::CexDexQuote(cex_dex) => cex_dex.get_column_names(),
             BundleData::Liquidation(liquidation) => liquidation.get_column_names(),
             BundleData::Unknown(s) => s.get_column_names(),
         }

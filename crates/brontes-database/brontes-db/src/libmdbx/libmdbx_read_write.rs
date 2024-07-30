@@ -453,7 +453,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        let cex_trades = self.get_cex_trades(block_num).ok();
 
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
@@ -471,7 +470,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             eth_price.unwrap_or_default(),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None, Some(cex_trades)))
+        .into_metadata(cex_quotes, None, None))
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
@@ -479,7 +478,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
-        let cex_trades = self.get_cex_trades(block_num)?;
+
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
@@ -497,7 +496,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None, Some(cex_trades))
+            .into_metadata(cex_quotes, Some(dex_quotes), None)
         })
     }
 
@@ -1201,7 +1200,6 @@ impl LibmdbxReadWriter {
         })
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     pub fn fetch_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
         self.db.view_db(|tx| {
             tx.get::<CexTrades>(block)?
@@ -1286,13 +1284,10 @@ pub fn determine_eth_prices(
 }
 
 fn default_tables_to_init() -> Vec<Tables> {
-    let mut tables_to_init = vec![Tables::BlockInfo, Tables::DexPrice];
+    let mut tables_to_init =
+        vec![Tables::BlockInfo, Tables::DexPrice, Tables::CexPrice, Tables::CexTrades];
     #[cfg(not(feature = "local-reth"))]
     tables_to_init.push(Tables::TxTraces);
-    #[cfg(feature = "cex-dex-quotes")]
-    tables_to_init.push(Tables::CexPrice);
-    #[cfg(not(feature = "cex-dex-quotes"))]
-    tables_to_init.push(Tables::CexTrades);
 
     tables_to_init
 }
@@ -1306,14 +1301,12 @@ pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
         let mut tables = vec![
             (Tables::BlockInfo, data.is_initialized(META_FLAG)),
             (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
+            (Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)),
+            (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
         ];
 
         #[cfg(not(feature = "local-reth"))]
         tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
-        #[cfg(feature = "cex-dex-quotes")]
-        tables.push((Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)));
-        #[cfg(not(feature = "cex-dex-quotes"))]
-        tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
 
         tables
     }

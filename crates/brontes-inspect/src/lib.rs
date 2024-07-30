@@ -80,11 +80,7 @@ use brontes_types::{
     tree::BlockTree,
     MultiBlockData,
 };
-#[cfg(not(feature = "cex-dex-quotes"))]
-use cex_dex::CexDexMarkoutInspector;
-#[cfg(feature = "cex-dex-quotes")]
-use cex_dex::CexDexQuotesInspector;
-#[cfg(not(feature = "cex-dex-quotes"))]
+use cex_dex::{CexDexMarkoutInspector, CexDexQuotesInspector};
 use jit::JitCexDex;
 use liquidations::LiquidationInspector;
 use sandwich::SandwichInspector;
@@ -136,7 +132,7 @@ impl Inspectors {
             Self::Jit => {
                 static_object(JitInspector::new(quote_token, db, metrics)) as DynMevInspector
             }
-            #[cfg(feature = "cex-dex-quotes")]
+
             Self::CexDex => {
                 static_object(CexDexQuotesInspector::new(quote_token, db, cex_exchanges, metrics))
                     as DynMevInspector

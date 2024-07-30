@@ -8,7 +8,7 @@ use serde_with::serde_as;
 
 use super::{
     builder::BuilderInfo,
-    cex::{cex_trades, CexPriceMap, CexTradeMap},
+    cex::{CexPriceMap, CexTradeMap},
     dex::DexQuotes,
 };
 use crate::{
@@ -81,7 +81,7 @@ impl Metadata {
     /// falls back to DEX quotes using the average block price.
     pub fn get_eth_price(&self, quote_token: Address) -> Rational {
         if self.block_metadata.eth_prices != Rational::ZERO {
-            return self.block_metadata.eth_prices.clone();
+            return self.block_metadata.eth_prices.clone()
         }
 
         self.dex_quotes
@@ -158,8 +158,7 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
-        cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
-        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades }
+        Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades: None }
     }
 }

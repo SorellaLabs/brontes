@@ -184,7 +184,6 @@ impl TraceLoader {
         self.libmdbx.get_metadata(block_num, quote_asset)
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
     pub fn test_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
         self.libmdbx
             .get_metadata_no_dex_price(block_num, quote_asset)

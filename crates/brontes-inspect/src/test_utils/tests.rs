@@ -222,12 +222,9 @@ impl InspectorTestUtils {
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
 
-            #[cfg(feature = "cex-dex-quotes")]
-            let cmp = Inspectors::CexDex;
-            #[cfg(not(feature = "cex-dex-quotes"))]
-            let cmp = Inspectors::CexDexMarkout;
-
-            if config.expected_mev_type == cmp {
+            if config.expected_mev_type == Inspectors::CexDexMarkout
+                || config.expected_mev_type == Inspectors::CexDex
+            {
                 res?
             } else {
                 res.unwrap_or_else(|_| Metadata::default())
@@ -336,12 +333,9 @@ impl InspectorTestUtils {
         } else {
             let res = self.classifier_inspector.get_metadata(block, false).await;
 
-            #[cfg(feature = "cex-dex-quotes")]
-            let cmp = Inspectors::CexDex;
-            #[cfg(not(feature = "cex-dex-quotes"))]
-            let cmp = Inspectors::CexDexMarkout;
-
-            if config.inspectors.contains(&cmp) {
+            if config.inspectors.contains(&Inspectors::CexDex)
+                || config.inspectors.contains(&Inspectors::CexDexMarkout)
+            {
                 res?
             } else {
                 res.unwrap_or_else(|_| Metadata::default())

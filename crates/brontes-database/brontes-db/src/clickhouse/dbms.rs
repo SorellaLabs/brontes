@@ -8,7 +8,6 @@ use brontes_types::{
 };
 use db_interfaces::{clickhouse_dbms, remote_clickhouse_table};
 
-#[cfg(feature = "cex-dex-quotes")]
 clickhouse_dbms!(
     BrontesClickhouseTables,
     "eth_cluster0",
@@ -19,28 +18,6 @@ clickhouse_dbms!(
         MevBundle_Header,
         MevSearcher_Tx,
         MevCex_Dex_Quotes,
-        MevLiquidations,
-        MevJit_Sandwich,
-        MevJit,
-        MevSandwiches,
-        MevAtomic_Arbs,
-        BrontesToken_Info,
-        EthereumPools,
-        BrontesTree,
-        BrontesRun_Id
-    ]
-);
-
-#[cfg(not(feature = "cex-dex-quotes"))]
-clickhouse_dbms!(
-    BrontesClickhouseTables,
-    "eth_cluster0",
-    [
-        BrontesDex_Price_Mapping,
-        BrontesBlock_Analysis,
-        MevMev_Blocks,
-        MevBundle_Header,
-        MevSearcher_Tx,
         MevCex_Dex,
         MevLiquidations,
         MevJit_Sandwich,
@@ -99,7 +76,6 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-#[cfg(not(feature = "cex-dex-quotes"))]
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Cex_Dex],
@@ -107,7 +83,6 @@ remote_clickhouse_table!(
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
-#[cfg(feature = "cex-dex-quotes")]
 remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Cex_Dex_Quotes],
@@ -253,31 +228,12 @@ macro_rules! db_types {
     }
 }
 
-#[cfg(not(feature = "cex-dex-quotes"))]
 db_types!(
     (DexQuotesWithBlockNumber, BrontesDex_Price_Mapping, false),
     (MevBlock, MevMev_Blocks, true),
     (BundleHeader, MevBundle_Header, true),
     (SearcherTx, MevSearcher_Tx, true),
     (CexDex, MevCex_Dex, true),
-    (Liquidation, MevLiquidations, true),
-    (JitLiquiditySandwich, MevJit_Sandwich, true),
-    (JitLiquidity, MevJit, true),
-    (Sandwich, MevSandwiches, true),
-    (AtomicArb, MevAtomic_Arbs, true),
-    (TokenInfoWithAddress, BrontesToken_Info, false),
-    (ProtocolInfoClickhouse, EthereumPools, false),
-    (TransactionRoot, BrontesTree, true),
-    (BlockAnalysis, BrontesBlock_Analysis, true),
-    (RunId, BrontesRun_Id, false)
-);
-
-#[cfg(feature = "cex-dex-quotes")]
-db_types!(
-    (DexQuotesWithBlockNumber, BrontesDex_Price_Mapping, false),
-    (MevBlock, MevMev_Blocks, true),
-    (BundleHeader, MevBundle_Header, true),
-    (SearcherTx, MevSearcher_Tx, true),
     (CexDexQuote, MevCex_Dex_Quotes, true),
     (Liquidation, MevLiquidations, true),
     (JitLiquiditySandwich, MevJit_Sandwich, true),
@@ -290,3 +246,4 @@ db_types!(
     (BlockAnalysis, BrontesBlock_Analysis, true),
     (RunId, BrontesRun_Id, false)
 );
+

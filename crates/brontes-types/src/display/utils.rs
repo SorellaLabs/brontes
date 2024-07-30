@@ -3,14 +3,11 @@ use std::fmt::{self};
 use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
-#[cfg(not(feature = "cex-dex-quotes"))]
 use prettytable::{Cell, Row, Table};
 use reth_primitives::B256;
 
-use crate::mev::{Bundle, BundleData};
-#[cfg(not(feature = "cex-dex-quotes"))]
 use crate::{
-    mev::{CexDex, OptimisticTrade},
+    mev::{Bundle, BundleData, CexDex, OptimisticTrade},
     utils::ToFloatNearest,
 };
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
@@ -626,7 +623,6 @@ pub fn display_jit_liquidity(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Re
     Ok(())
 }
 
-#[cfg(not(feature = "cex-dex-quotes"))]
 pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
@@ -800,8 +796,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     Ok(())
 }
 
-#[cfg(feature = "cex-dex-quotes")]
-pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
+pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
         ██████╗███████╗██╗  ██╗    ██████╗ ███████╗██╗  ██╗
         ██╔════╝██╔════╝╚██╗██╔╝    ██╔══██╗██╔════╝╚██╗██╔╝
@@ -814,7 +809,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(f, "{}", ascii_header.purple())?;
 
     let cex_dex_data = match &bundle.data {
-        BundleData::CexDex(data) => data,
+        BundleData::CexDexQuote(data) => data,
         _ => return Err(fmt::Error),
     };
 
@@ -843,7 +838,6 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     Ok(())
 }
 
-#[cfg(not(feature = "cex-dex-quotes"))]
 pub fn display_optimistic_trades(
     f: &mut std::fmt::Formatter<'_>,
     cex_dex_data: &CexDex,
