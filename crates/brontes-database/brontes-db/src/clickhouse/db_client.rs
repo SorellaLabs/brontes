@@ -472,7 +472,7 @@ impl ClickhouseHandle for Clickhouse {
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let vals = vals
-                    .into_iter()
+                    .iter()
                     .flat_map(|v| {
                         (v - self.cex_download_config.run_time_window.0
                             ..=v + self.cex_download_config.run_time_window.1)
@@ -613,7 +613,7 @@ impl Clickhouse {
                         )
                     })
                     .fold(String::new(), |mut acc, x| {
-                        if &acc != "" {
+                        if !acc.is_empty() {
                             acc += ",";
                         }
 
