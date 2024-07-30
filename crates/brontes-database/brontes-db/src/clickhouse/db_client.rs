@@ -19,7 +19,7 @@ use brontes_types::{
     mev::{Bundle, BundleData, MevBlock},
     normalized_actions::Action,
     structured_trace::TxTrace,
-    BlockTree, Protocol, ToFloatNearest,
+    BlockTree, Protocol,
 };
 use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
@@ -288,7 +288,6 @@ impl ClickhouseHandle for Clickhouse {
             block_meta.block_timestamp * 1_000_000,
             quote_asset,
         );
-        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
 
         let meta = BlockMetadata::new(
             block_num,
