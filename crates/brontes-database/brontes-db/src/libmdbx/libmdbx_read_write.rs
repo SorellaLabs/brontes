@@ -3,8 +3,6 @@ use std::{ops::RangeInclusive, path::Path, sync::Arc};
 use alloy_primitives::Address;
 use brontes_metrics::db_reads::LibmdbxMetrics;
 use brontes_pricing::Protocol;
-#[cfg(not(feature = "local-reth"))]
-use brontes_types::db::initialized_state::TRACE_FLAG;
 use brontes_types::{
     constants::{ETH_ADDRESS, WETH_ADDRESS},
     db::{
