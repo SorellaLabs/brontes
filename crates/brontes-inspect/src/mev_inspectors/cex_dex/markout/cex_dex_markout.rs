@@ -95,7 +95,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         self.utils
             .get_metrics()
             .map(|m| {
-                m.run_inspector(MevType::CexDex, || {
+                m.run_inspector(MevType::CexDexTrades, || {
                     self.inspect_block_inner(tree.clone(), metadata.clone())
                 })
             })
@@ -147,9 +147,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     contract_type,
                     format_etherscan_url(&tx_info.tx_hash)
                 );
-                self.utils
-                    .get_metrics()
-                    .inspect(|m| m.branch_filtering_trigger(MevType::CexDex, "is_defi_automation"));
+                self.utils.get_metrics().inspect(|m| {
+                    m.branch_filtering_trigger(MevType::CexDexTrades, "is_defi_automation")
+                });
                 return true
             }
         }
@@ -193,9 +193,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 "Filtered out CexDex because it is a triangular arb\n Tx: {}",
                 format_etherscan_url(&tx_info.tx_hash)
             );
-            self.utils
-                .get_metrics()
-                .inspect(|m| m.branch_filtering_trigger(MevType::CexDex, "is_triangular_arb"));
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::CexDexTrades, "is_triangular_arb")
+            });
             return None
         }
 
@@ -252,8 +252,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
             dex_swaps,
             &metadata,
-            tx_info.is_searcher_of_type(MevType::CexDex)
-                || tx_info.is_labelled_searcher_of_type(MevType::CexDex)
+            tx_info.is_searcher_of_type(MevType::CexDexTrades)
+                || tx_info.is_labelled_searcher_of_type(MevType::CexDexTrades)
                 || tx_info.is_labelled_searcher_of_type(MevType::RfqCexDex)
                 || tx_info.is_searcher_of_type(MevType::JitCexDex),
             tx_info.tx_hash,
@@ -279,7 +279,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             profit_usd,
             &[tx_info.gas_details],
             metadata.clone(),
-            if batch_swap { MevType::RfqCexDex } else { MevType::CexDex },
+            if batch_swap { MevType::RfqCexDex } else { MevType::CexDexTrades },
             false,
             |_, token, amount| Some(price_map.get(&token)? * amount),
         );
@@ -750,9 +750,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let sanity_check_arb = possible_cex_dex.arb_sanity_check();
         let is_profitable_outlier = sanity_check_arb.is_profitable_outlier();
 
-        let is_cex_dex_bot_with_significant_activity =
-            info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 2);
-        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDex);
+        let is_cex_dex_bot_with_significant_activity = info
+            .is_searcher_of_type_with_count_threshold(MevType::CexDexTrades, FILTER_THRESHOLD * 2);
+        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexTrades);
 
         let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges_ask.len() == 1
             || sanity_check_arb.profitable_exchanges_mid.len() == 1;
@@ -770,7 +770,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let tx_attributes_meet_cex_dex_criteria = !info.is_classified
             && info.is_private
-            && (info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD)
+            && (info
+                .is_searcher_of_type_with_count_threshold(MevType::CexDexTrades, FILTER_THRESHOLD)
                 || info
                     .contract_type
                     .as_ref()
@@ -788,7 +789,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             possible_cex_dex.into_bundle(info, &self.trade_config, metadata)
         } else {
             self.utils.get_metrics().inspect(|m| {
-                m.branch_filtering_trigger(MevType::CexDex, "filter_possible_cex_dex")
+                m.branch_filtering_trigger(MevType::CexDexTrades, "filter_possible_cex_dex")
             });
             None
         }
@@ -814,7 +815,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         mut transfers: Vec<NormalizedTransfer>,
         info: &TxInfo,
     ) -> Option<NormalizedSwap> {
-        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDex)) {
+        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDexTrades)) {
             return None
         }
 

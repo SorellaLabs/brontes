@@ -9,6 +9,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 use strum::AsRefStr;
 
+use super::cex::cex_trades;
 use crate::{
     db::redefined_types::primitives::AddressRedefined,
     implement_table_value_codecs_with_zc,
@@ -67,6 +68,7 @@ impl SearcherInfo {
             MevType::RfqCexDex => self.mev_count.rfq_cex_dex_count,
             MevType::Sandwich => self.mev_count.sandwich_count,
             MevType::CexDex => self.mev_count.cex_dex_count,
+            MevType::RfqCexDex => self.mev_count.cex_dex_count,
             MevType::Jit => self.mev_count.jit_count,
             MevType::JitSandwich => self.mev_count.jit_sandwich_count,
             MevType::AtomicArb => self.mev_count.atomic_backrun_count,
@@ -101,7 +103,7 @@ impl SearcherInfo {
 
     pub fn describe(&self) -> String {
         if self.name.is_some() {
-            return self.name.clone().unwrap();
+            return self.name.clone().unwrap()
         }
         let mut parts: Vec<String> = Vec::new();
 
@@ -179,7 +181,8 @@ implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
 pub struct TollByType {
     pub total:          f64,
     pub sandwich:       Option<f64>,
-    pub cex_dex:        Option<f64>,
+    pub cex_dex_quotes: Option<f64>,
+    pub cex_dex_trades: Option<f64>,
     pub jit:            Option<f64>,
     pub jit_sandwich:   Option<f64>,
     pub atomic_backrun: Option<f64>,
@@ -193,8 +196,19 @@ impl TollByType {
     pub fn account_pnl(&mut self, header: &BundleHeader) {
         self.total += header.profit_usd;
         match header.mev_type {
-            MevType::CexDex => {
-                self.cex_dex = Some(self.cex_dex.unwrap_or_default().add(header.profit_usd))
+            MevType::CexDexTrades => {
+                self.cex_dex_trades = Some(
+                    self.cex_dex_trades
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                )
+            }
+            MevType::CexDexQuotes => {
+                self.cex_dex_quotes = Some(
+                    self.cex_dex_quotes
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                )
             }
             MevType::Sandwich => {
                 self.sandwich = Some(self.sandwich.unwrap_or_default().add(header.profit_usd))
@@ -224,8 +238,16 @@ impl TollByType {
     pub fn account_gas(&mut self, header: &BundleHeader) {
         self.total += header.bribe_usd;
         match header.mev_type {
-            MevType::CexDex => {
-                self.cex_dex = Some(self.cex_dex.unwrap_or_default().add(header.bribe_usd))
+            MevType::CexDexQuotes => {
+                self.cex_dex_quotes = Some(
+                    self.cex_dex_quotes
+                        .unwrap_or_default()
+                        .add(header.bribe_usd),
+                )
+            }
+            MevType::CexDexTrades => {
+                self.cex_dex_trades =
+                    Some(self.cex_trades.unwrap_or_default().add(header.bribe_usd))
             }
             MevType::Sandwich => {
                 self.sandwich = Some(self.sandwich.unwrap_or_default().add(header.bribe_usd))

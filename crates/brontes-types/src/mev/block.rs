@@ -190,8 +190,8 @@ fn format_profit(value: f64) -> String {
 pub struct MevCount {
     pub bundle_count:         u64,
     pub sandwich_count:       Option<u64>,
-    pub cex_dex_count:        Option<u64>,
-    pub rfq_cex_dex_count:    Option<u64>,
+    pub cex_dex_trade_count:  Option<u64>,
+    pub cex_dex_quote_count:  Option<u64>,
     pub jit_cex_dex_count:    Option<u64>,
     pub jit_count:            Option<u64>,
     pub jit_sandwich_count:   Option<u64>,
@@ -204,8 +204,11 @@ impl MevCount {
     pub fn increment_count(&mut self, mev_type: MevType) {
         self.bundle_count += 1;
         match mev_type {
-            MevType::CexDex => {
-                self.cex_dex_count = Some(self.cex_dex_count.unwrap_or_default().add(1))
+            MevType::CexDexTrades => {
+                self.cex_dex_trade_count = Some(self.cex_dex_trade_count.unwrap_or_default().add(1))
+            }
+            MevType::CexDexQuotes => {
+                self.cex_dex_quote_count = Some(self.cex_dex_quote_count.unwrap_or_default().add(1))
             }
             MevType::Sandwich => {
                 self.sandwich_count = Some(self.sandwich_count.unwrap_or_default().add(1))
@@ -227,9 +230,6 @@ impl MevCount {
             MevType::JitCexDex => {
                 self.jit_cex_dex_count = Some(self.jit_cex_dex_count.unwrap_or_default().add(1))
             }
-            MevType::RfqCexDex => {
-                self.rfq_cex_dex_count = Some(self.rfq_cex_dex_count.unwrap_or_default().add(1))
-            }
             _ => {}
         }
     }
@@ -243,11 +243,11 @@ impl fmt::Display for MevCount {
         if let Some(count) = self.sandwich_count {
             writeln!(f, "    - Sandwich: {}", count.to_string().bold())?;
         }
-        if let Some(count) = self.cex_dex_count {
-            writeln!(f, "    - Cex-Dex: {}", count.to_string().bold())?;
+        if let Some(count) = self.cex_dex_trade_count {
+            writeln!(f, "    - Trade Cex-Dex: {}", count.to_string().bold())?;
         }
-        if let Some(count) = self.rfq_cex_dex_count {
-            writeln!(f, "    - RFQ Cex-Dex: {}", count.to_string().bold())?;
+        if let Some(count) = self.cex_dex_quote_count {
+            writeln!(f, "    - Quote Cex-Dex: {}", count.to_string().bold())?;
         }
         if let Some(count) = self.jit_count {
             writeln!(f, "    - Jit: {}", count.to_string().bold())?;

@@ -54,14 +54,8 @@ impl fmt::Display for Bundle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.header.mev_type {
             MevType::Sandwich => display_sandwich(self, f)?,
-            MevType::CexDex | MevType::JitCexDex | MevType::RfqCexDex
-                if matches!(self.data, BundleData::CexDex(_)) =>
-            {
-                display_cex_dex(self, f)?
-            }
-            MevType::CexDex | MevType::JitCexDex | MevType::RfqCexDex => {
-                display_cex_dex_quotes(self, f)?
-            }
+            MevType::CexDexTrades | MevType::JitCexDex => display_cex_dex(self, f)?,
+            MevType::CexDexQuotes => display_cex_dex_quotes(self, f)?,
             MevType::Jit => display_jit_liquidity(self, f)?,
             MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
@@ -91,8 +85,8 @@ impl fmt::Display for Bundle {
     AsRefStr,
 )]
 pub enum MevType {
-    CexDex,
-    RfqCexDex,
+    CexDexTrades,
+    CexDexQuotes,
     Sandwich,
     Jit,
     JitCexDex,
@@ -114,13 +108,13 @@ impl MevType {
             | MevType::Liquidation
             | MevType::SearcherTx
             | MevType::Unknown => false,
-            MevType::RfqCexDex | MevType::CexDex | MevType::JitCexDex => true,
+            MevType::CexDexTrades | MevType::CexDexQuotes | MevType::JitCexDex => true,
         }
     }
 
     pub fn get_parquet_path(&self) -> &'static str {
         match self {
-            MevType::CexDex | MevType::JitCexDex | MevType::RfqCexDex => "cex-dex",
+            MevType::CexDexQuotes | MevType::JitCexDex | MevType::CexDexTrades => "cex-dex",
             MevType::AtomicArb => "atomic-arb",
             MevType::Jit => "jit",
             MevType::Sandwich => "sandwich",
@@ -137,8 +131,8 @@ impl From<String> for MevType {
         let val = value.as_str();
 
         match val {
-            "RfqCexDex" => MevType::RfqCexDex,
-            "CexDex" => MevType::CexDex,
+            "CexDexQuotes" => MevType::CexDexQuotes,
+            "CexDexTrades" => MevType::CexDexTrades,
             "Sandwich" => MevType::Sandwich,
             "Jit" => MevType::Jit,
             "Liquidation" => MevType::Liquidation,

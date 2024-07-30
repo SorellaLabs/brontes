@@ -126,7 +126,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexQuotesInspector<'_, DB> {
         self.utils
             .get_metrics()
             .map(|m| {
-                m.run_inspector(MevType::CexDex, || {
+                m.run_inspector(MevType::CexDexQuotes, || {
                     self.inspect_block_inner(tree.clone(), metadata.clone())
                 })
             })
@@ -213,7 +213,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                         format_etherscan_url(&tx_info.tx_hash)
                     );
                     self.utils.get_metrics().inspect(|m| {
-                        m.branch_filtering_trigger(MevType::CexDex, "is_triangular_arb")
+                        m.branch_filtering_trigger(MevType::CexDexQuotes, "is_triangular_arb")
                     });
 
                     return None
@@ -246,7 +246,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     profit_usd,
                     &[tx_info.gas_details],
                     metadata.clone(),
-                    MevType::CexDex,
+                    MevType::CexDexQuotes,
                     false,
                     |_, token, amount| Some(price_map.get(&token)? * amount),
                 );
@@ -434,15 +434,16 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         info: &TxInfo,
         block_timestamp: u64,
     ) -> Option<(f64, BundleData)> {
-        let is_cex_dex_bot_with_significant_activity =
-            info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 2);
-        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDex);
+        let is_cex_dex_bot_with_significant_activity = info
+            .is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD * 2);
+        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexQuotes);
 
         let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 0.0;
 
         let tx_attributes_meet_cex_dex_criteria = !info.is_classified
             && info.is_private
-            && (info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD)
+            && (info
+                .is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD)
                 || info
                     .contract_type
                     .as_ref()
@@ -480,7 +481,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         mut transfers: Vec<NormalizedTransfer>,
         info: &TxInfo,
     ) -> Option<NormalizedSwap> {
-        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDex)) {
+        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDexQuotes)) {
             return None
         }
 
