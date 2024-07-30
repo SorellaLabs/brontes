@@ -36,11 +36,11 @@ const PRE_SCALING_DIFF: u64 = 300_000;
 const TIME_STEP: u64 = 10_000;
 
 pub type PriceWithVolume = (Rational, Rational);
-pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
 
 #[derive(Debug, Clone, Default)]
 pub struct ExchangePath {
-    pub price:            Rational,
+    pub price_maker:      Rational,
+    pub price_taker:      Rational,
     pub volume:           Rational,
     // window results
     pub final_start_time: u64,
@@ -49,13 +49,14 @@ pub struct ExchangePath {
 
 #[derive(Debug, Clone, Default)]
 pub struct WindowExchangePrice {
-    /// the price for this exchange with the volume
+    /// The price & volume of each exchange
     pub exchange_price_with_volume_direct: FastHashMap<CexExchange, ExchangePath>,
     /// the pairs that were traded through in order to get this price.
     /// in the case of a intermediary, this will be 2, otherwise, 1
     pub pairs: Vec<Pair>,
-    /// weighted combined price.
-    pub global_exchange_price: Rational,
+    /// Volume weighted average price across all exchanges
+    pub global_exchange_price_maker: Rational,
+    pub global_exchange_price_taker: Rational,
 }
 
 impl Mul for WindowExchangePrice {
@@ -67,7 +68,8 @@ impl Mul for WindowExchangePrice {
             .into_iter()
             .filter_map(|(exchange, mut first_leg)| {
                 let second_leg = rhs.exchange_price_with_volume_direct.remove(&exchange)?;
-                first_leg.price *= second_leg.price;
+                first_leg.price_maker *= second_leg.price_maker;
+                first_leg.price_taker *= second_leg.price_taker;
 
                 first_leg.final_start_time =
                     min(first_leg.final_start_time, second_leg.final_start_time);
@@ -79,7 +81,8 @@ impl Mul for WindowExchangePrice {
             .collect();
 
         self.pairs.extend(rhs.pairs);
-        self.global_exchange_price *= rhs.global_exchange_price;
+        self.global_exchange_price_maker *= rhs.global_exchange_price_maker;
+        self.global_exchange_price_taker *= rhs.global_exchange_price_taker;
 
         self
     }
@@ -144,12 +147,13 @@ impl<'a> TimeWindowTrades<'a> {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTakerWindowVWAP> {
+    ) -> Option<WindowExchangePrice> {
         if pair.0 == pair.1 {
-            return Some((
-                WindowExchangePrice { global_exchange_price: Rational::ONE, ..Default::default() },
-                WindowExchangePrice { global_exchange_price: Rational::ONE, ..Default::default() },
-            ))
+            return Some(WindowExchangePrice {
+                global_exchange_price_maker: Rational::ONE,
+                global_exchange_price_taker: Rational::ONE,
+                ..Default::default()
+            })
         }
 
         let res = self
@@ -179,7 +183,7 @@ impl<'a> TimeWindowTrades<'a> {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTakerWindowVWAP> {
+    ) -> Option<WindowExchangePrice> {
         self.intermediaries
             .iter()
             .filter_map(|intermediary| {
@@ -209,7 +213,7 @@ impl<'a> TimeWindowTrades<'a> {
                 )?;
 
                 // Volume of second leg
-                let second_leg_volume = &first_leg.1.global_exchange_price * volume;
+                let second_leg_volume = &first_leg.global_exchange_price_maker * volume;
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -228,13 +232,12 @@ impl<'a> TimeWindowTrades<'a> {
                     tx_hash,
                 )?;
 
-                let maker = first_leg.0 * second_leg.0;
-                let taker = first_leg.1 * second_leg.1;
+                let price = first_leg * second_leg;
 
 
-                Some((maker, taker))
+                Some(price)
             })
-            .max_by_key(|a| a.0.global_exchange_price.clone())
+            .max_by_key(|a| a.global_exchange_price_maker.clone())
     }
 
     #[allow(clippy::type_complexity)]
@@ -293,7 +296,7 @@ impl<'a> TimeWindowTrades<'a> {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTakerWindowVWAP> {
+    ) -> Option<WindowExchangePrice> {
         let trade_data = self.get_trades(exchanges, pair, dex_swap, tx_hash)?;
 
         //TODO: Extend time window if vol is cleared by 1.5
@@ -373,8 +376,7 @@ impl<'a> TimeWindowTrades<'a> {
             return None
         }
 
-        let mut maker = FastHashMap::default();
-        let mut taker = FastHashMap::default();
+        let mut per_exchange_price = FastHashMap::default();
 
         let mut global_maker = Rational::ZERO;
         let mut global_taker = Rational::ZERO;
@@ -391,21 +393,15 @@ impl<'a> TimeWindowTrades<'a> {
             global_maker += &maker_price * &trade_vol;
             global_taker += &taker_price * &trade_vol;
 
-            let maker_path = ExchangePath {
+            let exchange_price = ExchangePath {
                 volume:           trade_vol.clone(),
-                price:            maker_price,
-                final_end_time:   end_time,
-                final_start_time: start_time,
-            };
-            let taker_path = ExchangePath {
-                volume:           trade_vol.clone(),
-                price:            taker_price,
+                price_maker:      maker_price,
+                price_taker:      taker_price,
                 final_end_time:   end_time,
                 final_start_time: start_time,
             };
 
-            maker.insert(ex, maker_path);
-            taker.insert(ex, taker_path);
+            per_exchange_price.insert(ex, exchange_price);
         }
 
         if trade_volume_global == Rational::ZERO {
@@ -422,18 +418,15 @@ impl<'a> TimeWindowTrades<'a> {
         let global_maker = global_maker / &trade_volume_global;
         let global_taker = global_taker / &trade_volume_global;
 
-        let maker_ret = WindowExchangePrice {
-            exchange_price_with_volume_direct: maker,
-            global_exchange_price: global_maker,
+        let window_exchange_prices = WindowExchangePrice {
+            exchange_price_with_volume_direct: per_exchange_price
+            global_exchange_price_maker: global_maker,
+            global_exchange_price_taker: global_taker,
             pairs: vec![pair],
-        };
-        let taker_ret = WindowExchangePrice {
-            exchange_price_with_volume_direct: taker,
-            pairs: vec![pair],
-            global_exchange_price: global_taker,
         };
 
-        Some((maker_ret, taker_ret))
+
+        Some(window_exchange_prices)
     }
 
     pub fn get_trades(

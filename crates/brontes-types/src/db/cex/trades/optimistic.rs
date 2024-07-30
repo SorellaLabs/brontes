@@ -3,7 +3,7 @@ use std::{f64::consts::E, fmt::Display, ops::Mul};
 use alloy_primitives::FixedBytes;
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::basic::traits::{One, Two, Zero},
     Rational,
 };
 
@@ -32,35 +32,37 @@ const TIME_STEP: u64 = 100_000;
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
 #[derive(Debug, Clone)]
-pub struct ExchangePrice {
+pub struct OptimisticPrice {
     // cex exchange with amount of volume executed on it
-    pub trades_used: Vec<OptimisticTrade>,
+    pub trades_used:       Vec<OptimisticTrade>,
     /// the pairs that were traded through in order to get this price.
     /// in the case of a intermediary, this will be 2, otherwise, 1
-    pub pairs:       Vec<Pair>,
-    pub final_price: Rational,
+    pub pairs:             Vec<Pair>,
+    pub final_price_maker: Rational,
+    pub final_price_taker: Rational,
 }
 
-impl Mul for ExchangePrice {
-    type Output = ExchangePrice;
+impl Mul for OptimisticPrice {
+    type Output = OptimisticPrice;
 
     fn mul(mut self, rhs: Self) -> Self::Output {
         self.pairs.extend(rhs.pairs);
-        self.final_price *= rhs.final_price;
+        self.final_price_maker *= rhs.final_price_maker;
+        self.final_price_taker *= rhs.final_price_taker;
         self.trades_used.extend(rhs.trades_used);
 
         self
     }
 }
 
-impl Display for ExchangePrice {
+impl Display for OptimisticPrice {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{:#?}", self.trades_used)?;
-        writeln!(f, "{}", self.final_price.clone().to_float())
+        writeln!(f, "{}", self.final_price_maker.clone().to_float())?;
+        writeln!(f, "{}", self.final_price_taker.clone().to_float())?;
+        Ok(())
     }
 }
-
-pub type MakerTaker = (ExchangePrice, ExchangePrice);
 
 impl<'a> SortedTrades<'a> {
     // Calculates VWAPs for the given pair across all provided exchanges - this
@@ -97,20 +99,14 @@ impl<'a> SortedTrades<'a> {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<OptimisticPrice> {
         if pair.0 == pair.1 {
-            return Some((
-                ExchangePrice {
-                    trades_used: vec![],
-                    pairs:       vec![pair],
-                    final_price: Rational::ONE,
-                },
-                ExchangePrice {
-                    trades_used: vec![],
-                    pairs:       vec![pair],
-                    final_price: Rational::ONE,
-                },
-            ))
+            return Some(OptimisticPrice {
+                trades_used:       vec![],
+                pairs:             vec![pair],
+                final_price_maker: Rational::ONE,
+                final_price_taker: Rational::ONE,
+            })
         }
 
         let res = self
@@ -154,7 +150,7 @@ impl<'a> SortedTrades<'a> {
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<OptimisticPrice> {
         self.calculate_intermediary_addresses(&pair)
             .into_iter()
             .filter_map(|intermediary| {
@@ -182,7 +178,7 @@ impl<'a> SortedTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
-                let new_vol = volume * &first_leg.0.final_price;
+                let new_vol = volume * ((&first_leg.final_price_maker + &first_leg.final_price_taker) / Rational::TWO);
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -202,11 +198,9 @@ impl<'a> SortedTrades<'a> {
                 )?;
 
 
-                let maker = first_leg.0  * second_leg.0;
-                let taker = first_leg.1 * second_leg.1;
+                let price = first_leg * second_leg;
 
-
-                Some((maker, taker))
+                Some(price)
             })
             .max_by_key(|a| a.0.final_price.clone())
     }
@@ -221,7 +215,7 @@ impl<'a> SortedTrades<'a> {
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<OptimisticPrice> {
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
         //   markout for each pair on each exchange.
@@ -302,19 +296,14 @@ impl<'a> SortedTrades<'a> {
             return None
         }
 
-        let maker = ExchangePrice {
-            trades_used: optimistic_trades.clone(),
-            pairs:       vec![pair],
-            final_price: vxp_maker / &trade_volume_weight,
+        let price = OptimisticPrice {
+            trades_used:       optimistic_trades,
+            pairs:             vec![pair],
+            final_price_maker: vxp_maker / &trade_volume_weight,
+            final_price_taker: vxp_taker / &trade_volume_weight,
         };
 
-        let taker = ExchangePrice {
-            trades_used: optimistic_trades,
-            pairs:       vec![pair],
-            final_price: vxp_taker / &trade_volume_weight,
-        };
-
-        Some((maker, taker))
+        Some(price)
     }
 
     pub fn get_trades(

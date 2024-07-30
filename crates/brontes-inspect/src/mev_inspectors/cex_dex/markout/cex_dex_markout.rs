@@ -8,10 +8,8 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::cex::{
-        config::CexDexTradeConfig,
-        optimistic::{ExchangePrice, MakerTaker},
-        time_window_vwam::MakerTakerWindowVWAP,
-        CexExchange, FeeAdjustedQuote,
+        config::CexDexTradeConfig, optimistic::OptimisticPrice,
+        time_window_vwam::WindowExchangePrice, CexExchange, FeeAdjustedQuote,
     },
     display::utils::format_etherscan_url,
     mev::{ArbPnl, Bundle, BundleData, MevType},
@@ -49,6 +47,22 @@ use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 type CexDexTradesForSwap =
     (Vec<NormalizedSwap>, Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)>);
+
+struct CexTradesForSwap {
+    dex_swaps:        Vec<NormalizedSwap>,
+    time_window_vwam: Vec<Option<WindowExchangePrice>>,
+    optimistic:       Vec<Option<OptimisticPrice>>,
+}
+
+impl CexTradesForSwap {
+    fn new(
+        dex_swaps: Vec<NormalizedSwap>,
+        time_window_vwam: Vec<Option<MakerTakerWindowVWAP>>,
+        optimistic: Vec<Option<MakerTaker>>,
+    ) -> Self {
+        Self { dex_swaps, time_window_vwam, optimistic }
+    }
+}
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     pub utils:     SharedInspectorUtils<'db, DB>,
@@ -498,7 +512,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let pair = Pair(swap.token_in.address, self.utils.quote);
 
-        //TODO: Pre calculate as we always need token in priced in quote asset
         let token_price = metadata
             .cex_trades
             .as_ref()
@@ -603,13 +616,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                     )
                 };
 
-                let other = self
+                let optimistic = self
                     .utils
                     .get_metrics()
                     .map(|m| m.run_cex_price_vol(optimistic))
                     .unwrap_or_else(optimistic);
 
-                if (window.is_none() || other.is_none()) && marked_cex_dex {
+                if (window.is_none() || optimistic.is_none()) && marked_cex_dex {
                     self.utils
                         .get_metrics()
                         .inspect(|m| m.missing_cex_pair(pair));
