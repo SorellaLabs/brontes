@@ -33,7 +33,7 @@ use eyre::{eyre, ErrReport};
 use futures::Future;
 use indicatif::ProgressBar;
 use itertools::Itertools;
-use malachite::Rational;
+use malachite::{num::basic::traits::One, Rational};
 use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
@@ -1273,10 +1273,14 @@ pub fn determine_eth_prices(
     quote_asset: Address,
 ) -> Option<Rational> {
     Some(
-        cex_quotes
-            .get_quote_from_most_liquid_exchange(&Pair(WETH_ADDRESS, quote_asset), block_timestamp)?
-            .maker_taker_mid()
-            .0,
+        Rational::ONE
+            / cex_quotes
+                .get_quote_from_most_liquid_exchange(
+                    &Pair(WETH_ADDRESS, quote_asset),
+                    block_timestamp,
+                )?
+                .maker_taker_mid()
+                .0,
     )
 }
 

@@ -87,7 +87,6 @@ impl Metadata {
         self.dex_quotes
             .as_ref()
             .and_then(|dex_quotes| {
-                tracing::info!("dex quotes");
                 dex_quotes.price_for_block(Pair(WETH_ADDRESS, quote_token), BlockPrice::Average)
             })
             .unwrap_or(Rational::ZERO)
