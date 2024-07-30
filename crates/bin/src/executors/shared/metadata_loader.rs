@@ -7,12 +7,17 @@ use std::{
         Arc,
     },
     task::Poll,
+    time::Duration,
 };
 
 use alloy_primitives::Address;
+use brontes_core::DBWriter;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
-    db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
+    db::{
+        builder::BuilderInfo, cex::CexTradeMap, dex::DexQuotes, metadata::Metadata,
+        traits::LibmdbxReader,
+    },
     normalized_actions::Action,
     traits::TracingProvider,
     BlockData, BlockTree,
@@ -26,8 +31,18 @@ use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 /// of processed trees
 const MAX_PENDING_TREES: usize = 5;
 
-pub type ClickhouseMetadataFuture =
-    FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
+pub type ClickhouseMetadataFuture = FuturesOrdered<
+    Pin<
+        Box<
+            dyn Future<
+                    Output = Result<
+                        (u64, BlockTree<Action>, Metadata, Option<BuilderInfo>),
+                        (u64, Address, BlockTree<Action>, Option<BuilderInfo>),
+                    >,
+                > + Send,
+        >,
+    >,
+>;
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
@@ -87,7 +102,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                     .unwrap_or(true))
     }
 
-    pub fn load_metadata_for_tree<DB: LibmdbxReader>(
+    pub fn load_metadata_for_tree<DB: LibmdbxReader + DBWriter>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
@@ -227,7 +242,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
     }
 
-    fn load_metadata_from_clickhouse<DB: LibmdbxReader>(
+    fn load_metadata_from_clickhouse<DB: LibmdbxReader + DBWriter>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
@@ -237,17 +252,40 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
     ) {
         tracing::debug!(?block, "spawning clickhouse fut");
         let future = Box::pin(async move {
-            let mut meta = clickhouse
-                .get_metadata(block, quote_asset)
-                .await
-                .unwrap_or_else(|_| {
-                    panic!("missing metadata for clickhouse.get_metadata request {block}")
-                });
-
-            meta.builder_info = libmdbx
+            let builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
-            (block, tree, meta)
+
+            let meta = clickhouse
+                .get_metadata(block, quote_asset)
+                .await
+                .map_err(|_| (block, quote_asset, tree.clone(), builder_info.clone()))?;
+
+            Ok((block, tree, meta, builder_info))
+        });
+
+        self.clickhouse_futures.push_back(future);
+    }
+
+    fn on_clickhouse_failure(
+        &mut self,
+        tree: BlockTree<Action>,
+        builder_info: Option<BuilderInfo>,
+        block: u64,
+        quote_asset: Address,
+    ) {
+        tracing::debug!(?block, "retrying failed clickhouse future");
+        let clickhouse = self.clickhouse.unwrap();
+
+        let future = Box::pin(async move {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+
+            let meta = clickhouse
+                .get_metadata(block, quote_asset)
+                .await
+                .map_err(|_| (block, quote_asset, tree.clone(), builder_info.clone()))?;
+
+            Ok((block, tree, meta, builder_info))
         });
 
         self.clickhouse_futures.push_back(future);
@@ -269,12 +307,18 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
             return Poll::Pending
         }
 
-        while let Poll::Ready(Some((block, tree, meta))) =
-            self.clickhouse_futures.poll_next_unpin(cx)
-        {
-            tracing::info!("clickhouse future resolved");
-            self.dex_pricer_stream
-                .add_pending_inspection(block, tree, meta)
+        while let Poll::Ready(Some(results)) = self.clickhouse_futures.poll_next_unpin(cx) {
+            match results {
+                Ok((block, tree, mut meta, builder)) => {
+                    meta.builder_info = builder;
+                    tracing::info!("clickhouse future resolved");
+                    self.dex_pricer_stream
+                        .add_pending_inspection(block, tree, meta)
+                }
+                Err((block, quote_asset, tree, builder)) => {
+                    self.on_clickhouse_failure(tree, builder, block, quote_asset);
+                }
+            }
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
