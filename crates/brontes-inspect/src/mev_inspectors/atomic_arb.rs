@@ -19,7 +19,7 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT};
 
-const MAX_PRICE_DIFF: Rational = Rational::const_from_signed(3);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_signed(2);
 
 //TODO: If price diff exceeds max price diff, attempt to find the trigger
 //TODO: We are missing a good amount of arbs in block 18264694, let's try and
