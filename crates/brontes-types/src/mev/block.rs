@@ -192,6 +192,7 @@ pub struct MevCount {
     pub sandwich_count:       Option<u64>,
     pub cex_dex_trade_count:  Option<u64>,
     pub cex_dex_quote_count:  Option<u64>,
+    pub cex_dex_rfq_count:    Option<u64>,
     pub jit_cex_dex_count:    Option<u64>,
     pub jit_count:            Option<u64>,
     pub jit_sandwich_count:   Option<u64>,
@@ -357,7 +358,7 @@ impl Serialize for MevBlock {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("MevBlock", 31)?;
+        let mut ser_struct = serializer.serialize_struct("MevBlock", 33)?;
 
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
@@ -368,8 +369,16 @@ impl Serialize for MevBlock {
             &vec![self.mev_count.sandwich_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
-            "mev_count.cex_dex_count",
-            &vec![self.mev_count.cex_dex_count.unwrap_or_default()],
+            "mev_count.cex_dex_trades_count",
+            &vec![self.mev_count.cex_dex_trade_count.unwrap_or_default()],
+        )?;
+        ser_struct.serialize_field(
+            "mev_count.cex_dex_quotes_count",
+            &vec![self.mev_count.cex_dex_quote_count.unwrap_or_default()],
+        )?;
+        ser_struct.serialize_field(
+            "mev_count.cex_dex_rfq_count",
+            &vec![self.mev_count.cex_dex_rfq_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
             "mev_count.jit_count",

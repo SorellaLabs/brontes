@@ -182,9 +182,10 @@ pub fn filter_and_count_bundles(
 fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
     match mev_type {
         MevType::Sandwich => mev_count.sandwich_count = Some(count),
-        MevType::CexDex => mev_count.cex_dex_count = Some(count),
+        MevType::CexDexTrades => mev_count.cex_dex_trade_count = Some(count),
+        MevType::CexDexQuotes => mev_count.cex_dex_quote_count = Some(count),
         MevType::JitCexDex => mev_count.jit_cex_dex_count = Some(count),
-        MevType::RfqCexDex => mev_count.rfq_cex_dex_count = Some(count),
+        MevType::CexDexRfq => mev_count.cex_dex_rfq_count = Some(count),
         MevType::Jit => mev_count.jit_count = Some(count),
         MevType::JitSandwich => mev_count.jit_sandwich_count = Some(count),
         MevType::AtomicArb => mev_count.atomic_backrun_count = Some(count),

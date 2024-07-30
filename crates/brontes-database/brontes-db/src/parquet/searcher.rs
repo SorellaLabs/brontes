@@ -110,7 +110,7 @@ pub fn searcher_info_to_record_batch(
         let mev_count = &info.1.mev_count;
         bundle_count_builder.append_value(mev_count.bundle_count);
         sandwich_count_builder.append_option(mev_count.sandwich_count);
-        cex_dex_count_builder.append_option(mev_count.cex_dex_count);
+        cex_dex_count_builder.append_option(mev_count.cex_dex_trade_count);
         jit_count_builder.append_option(mev_count.jit_count);
         jit_sandwich_count_builder.append_option(mev_count.jit_sandwich_count);
         atomic_backrun_count_builder.append_option(mev_count.atomic_backrun_count);
@@ -120,7 +120,7 @@ pub fn searcher_info_to_record_batch(
         let pnl = &info.1.pnl;
         pnl_total_builder.append_value(pnl.total);
         pnl_sandwich_builder.append_option(pnl.sandwich);
-        pnl_cex_dex_builder.append_option(pnl.cex_dex);
+        pnl_cex_dex_builder.append_option(pnl.cex_dex_trades);
         pnl_jit_builder.append_option(pnl.jit);
         pnl_jit_sandwich_builder.append_option(pnl.jit_sandwich);
         pnl_atomic_backrun_builder.append_option(pnl.atomic_backrun);
@@ -130,7 +130,7 @@ pub fn searcher_info_to_record_batch(
         let gas_bids = &info.1.gas_bids;
         gas_bids_total_builder.append_value(gas_bids.total);
         gas_bids_sandwich_builder.append_option(gas_bids.sandwich);
-        gas_bids_cex_dex_builder.append_option(gas_bids.cex_dex);
+        gas_bids_cex_dex_builder.append_option(gas_bids.cex_dex_trades);
         gas_bids_jit_builder.append_option(gas_bids.jit);
         gas_bids_jit_sandwich_builder.append_option(gas_bids.jit_sandwich);
         gas_bids_atomic_backrun_builder.append_option(gas_bids.atomic_backrun);

@@ -56,6 +56,13 @@ impl fmt::Display for Bundle {
             MevType::Sandwich => display_sandwich(self, f)?,
             MevType::CexDexTrades | MevType::JitCexDex => display_cex_dex(self, f)?,
             MevType::CexDexQuotes => display_cex_dex_quotes(self, f)?,
+            MevType::CexDexRfq => {
+                if matches!(self.data, BundleData::CexDex(_)) {
+                    display_cex_dex(self, f)?
+                } else {
+                    display_cex_dex_quotes(self, f)?
+                }
+            }
             MevType::Jit => display_jit_liquidity(self, f)?,
             MevType::AtomicArb => display_atomic_backrun(self, f)?,
             MevType::Liquidation => display_liquidation(self, f)?,
@@ -87,6 +94,7 @@ impl fmt::Display for Bundle {
 pub enum MevType {
     CexDexTrades,
     CexDexQuotes,
+    CexDexRfq,
     Sandwich,
     Jit,
     JitCexDex,
@@ -108,13 +116,19 @@ impl MevType {
             | MevType::Liquidation
             | MevType::SearcherTx
             | MevType::Unknown => false,
-            MevType::CexDexTrades | MevType::CexDexQuotes | MevType::JitCexDex => true,
+            MevType::CexDexRfq
+            | MevType::CexDexTrades
+            | MevType::CexDexQuotes
+            | MevType::JitCexDex => true,
         }
     }
 
     pub fn get_parquet_path(&self) -> &'static str {
         match self {
-            MevType::CexDexQuotes | MevType::JitCexDex | MevType::CexDexTrades => "cex-dex",
+            MevType::CexDexRfq
+            | MevType::CexDexQuotes
+            | MevType::JitCexDex
+            | MevType::CexDexTrades => "cex-dex",
             MevType::AtomicArb => "atomic-arb",
             MevType::Jit => "jit",
             MevType::Sandwich => "sandwich",
@@ -133,6 +147,7 @@ impl From<String> for MevType {
         match val {
             "CexDexQuotes" => MevType::CexDexQuotes,
             "CexDexTrades" => MevType::CexDexTrades,
+            "CexDexRfq" => MevType::CexDexRfq,
             "Sandwich" => MevType::Sandwich,
             "Jit" => MevType::Jit,
             "Liquidation" => MevType::Liquidation,

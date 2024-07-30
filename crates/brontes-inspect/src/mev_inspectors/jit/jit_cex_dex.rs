@@ -82,7 +82,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                 let details = [jit.backrun_burn_gas_details, jit.frontrun_mint_gas_details];
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
-                if !tx_info.is_searcher_of_type_with_count_threshold(MevType::CexDex, 10) {
+                if !tx_info.is_searcher_of_type_with_count_threshold(MevType::JitCexDex, 10) {
                     return None
                 }
 

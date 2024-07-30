@@ -254,7 +254,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             &metadata,
             tx_info.is_searcher_of_type(MevType::CexDexTrades)
                 || tx_info.is_labelled_searcher_of_type(MevType::CexDexTrades)
-                || tx_info.is_labelled_searcher_of_type(MevType::RfqCexDex)
+                || tx_info.is_labelled_searcher_of_type(MevType::CexDexRfq)
                 || tx_info.is_searcher_of_type(MevType::JitCexDex),
             tx_info.tx_hash,
         )?;
@@ -279,7 +279,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             profit_usd,
             &[tx_info.gas_details],
             metadata.clone(),
-            if batch_swap { MevType::RfqCexDex } else { MevType::CexDexTrades },
+            if batch_swap { MevType::CexDexRfq } else { MevType::CexDexTrades },
             false,
             |_, token, amount| Some(price_map.get(&token)? * amount),
         );

@@ -135,7 +135,7 @@ fn get_mev_count_array(mev_blocks: &Vec<MevBlock>) -> StructArray {
         sandwich_count_builder.append_option(block.mev_count.sandwich_count);
         liquidation_count_builder.append_option(block.mev_count.liquidation_count);
         atomic_backrun_count_builder.append_option(block.mev_count.atomic_backrun_count);
-        cex_dex_count_builder.append_option(block.mev_count.cex_dex_count);
+        cex_dex_count_builder.append_option(block.mev_count.cex_dex_trade_count);
         jit_count_builder.append_option(block.mev_count.jit_count);
         jit_sandwich_count_builder.append_option(block.mev_count.jit_sandwich_count);
         searcher_tx_count_builder.append_option(block.mev_count.searcher_tx_count);

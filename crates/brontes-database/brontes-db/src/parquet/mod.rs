@@ -155,7 +155,7 @@ where
                         .wrap_err("Failed to convert CEX-DEX data to record batch")?;
                     sync_write_parquet(
                         cex_dex_batch,
-                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::CexDex))?,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::CexDexTrades))?,
                     )
                 }
             }));
