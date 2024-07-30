@@ -557,7 +557,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         if swaps.is_empty() {
             return true
         }
-
         let pcts = tokens
             .flat_map(|token| {
                 swaps
@@ -610,6 +609,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                 ?effective_price,
                                 ?dex_pricing_rate,
                                 ?swap,
+                                ?pct,
                                 "to big of a delta for pricing"
                             );
                         }

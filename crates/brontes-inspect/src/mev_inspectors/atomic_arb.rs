@@ -19,7 +19,7 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT};
 
-const MAX_PRICE_DIFF: Rational = Rational::const_from_signed(3);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
 
 //TODO: If price diff exceeds max price diff, attempt to find the trigger
 //TODO: We are missing a good amount of arbs in block 18264694, let's try and
@@ -693,5 +693,39 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS]);
 
         inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_very_big_atomic_arb() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "358f46381b464f0195c0e39acdaa223fbf44a716e177b04febf01e3691247626"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(742_201.93)
+            .with_gas_paid_usd(11.44);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_very_big_atomic_arb_2() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "ed3248d5386237cfe12963e0d35e1541707cad4fdca43801f3799861e8adb9b5"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(70154.70)
+            .with_gas_paid_usd(1458.25);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }

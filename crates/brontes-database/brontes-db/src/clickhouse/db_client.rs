@@ -575,6 +575,7 @@ impl ClickhouseHandle for Clickhouse {
 }
 
 impl Clickhouse {
+    #[allow(unused)]
     async fn fetch_symbol_rank(
         &self,
         block_times: &[BlockTimes],
