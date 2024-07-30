@@ -16,7 +16,8 @@ use brontes_types::{
     display::utils::format_etherscan_url,
     mev::{ArbPnl, Bundle, BundleData, MevType},
     normalized_actions::{
-        accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
+        accounting::{ActionAccounting, AddressDeltas},
+        Action, NormalizedBatch, NormalizedSwap, NormalizedTransfer,
     },
     pair::Pair,
     tree::{BlockTree, GasDetails},
@@ -94,7 +95,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         self.utils
             .get_metrics()
             .map(|m| {
-                m.run_inspector(MevType::CexDex, || {
+                m.run_inspector(MevType::CexDexTrades, || {
                     self.inspect_block_inner(tree.clone(), metadata.clone())
                 })
             })
@@ -108,166 +109,182 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        let (hashes, swaps): (Vec<_>, Vec<_>) = tree
+        let (hashes, actions): (Vec<_>, Vec<_>) = tree
             .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
                 Action::is_transfer,
                 Action::is_eth_transfer,
                 Action::is_aggregator,
+                Action::is_batch,
             ]))
             .unzip();
 
         let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);
 
-        multizip((swaps, tx_info))
-            .filter_map(|(swaps, tx_info)| {
+        multizip((actions, tx_info))
+            .filter_map(|(actions, tx_info)| {
                 let tx_info = tx_info?;
-
-                // Return early if the tx is a solver settling trades
-                if let Some(contract_type) = tx_info.contract_type.as_ref() {
-                    if contract_type.is_solver_settlement() || contract_type.is_defi_automation() {
-                        trace!(
-                            target: "brontes::cex-dex-markout",
-                            "Filtered out CexDex tx because it is a contract of type {:?}\n Tx: {}",
-                            contract_type,
-                            format_etherscan_url(&tx_info.tx_hash)
-                        );
-                        self.utils.get_metrics().inspect(|m| {
-                            m.branch_filtering_trigger(
-                                MevType::CexDex,
-                                "is_solver_settlement_or_defi_automation",
-                            )
-                        });
-                        return None
-                    }
-                }
-
-                let deltas = swaps
-                    .clone()
-                    .into_iter()
-                    .chain(
-                        tx_info
-                            .get_total_eth_value()
-                            .iter()
-                            .cloned()
-                            .map(Action::from),
-                    )
-                    .account_for_actions();
-
-                let (mut dex_swaps, rem): (Vec<_>, _) = self
-                    .utils
-                    .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
-                    .split_return_rem(Action::try_swaps_merged);
-
-                let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
-
-                // TODO: Convert transfers to swaps even if we have swaps, but do it in a more
-                // robust way & deduplicate the swaps post
-                if dex_swaps.is_empty() {
-                    if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
-                        dex_swaps.push(extra);
-                    }
-                }
-
-                if dex_swaps.is_empty() {
-                    trace!(    target: "brontes::cex-dex-markout",
-                    "no dex swaps found\n Tx: {}", format_etherscan_url(&tx_info.tx_hash));
+                if self.should_filter_tx(&tx_info) {
                     return None
                 }
 
-                if self.is_triangular_arb(&dex_swaps) {
-                    trace!(
-                        target: "brontes::cex-dex-markout",
-                        "Filtered out CexDex because it is a triangular arb\n Tx: {}",
-                        format_etherscan_url(&tx_info.tx_hash)
-                    );
-                    self.utils.get_metrics().inspect(|m| {
-                        m.branch_filtering_trigger(MevType::CexDex, "is_triangular_arb")
-                    });
-
-                    return None
+                if actions.iter().any(Action::is_batch) {
+                    self.process_batch_swaps(actions, tx_info, metadata.clone())
+                } else {
+                    self.process_dex_swaps(actions, tx_info, metadata.clone())
                 }
-
-                let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
-                    dex_swaps,
-                    &metadata,
-                    tx_info.is_searcher_of_type(MevType::CexDex)
-                        || tx_info.is_labelled_searcher_of_type(MevType::CexDex),
-                    tx_info.tx_hash,
-                )?;
-
-                self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
-
-                //TODO: Set methodology enum in data
-                let (profit_usd, cex_dex, trade_prices) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
-
-                let price_map =
-                    trade_prices
-                        .into_iter()
-                        .fold(FastHashMap::default(), |mut acc, x| {
-                            acc.insert(x.token0, x.price0);
-                            acc.insert(x.token1, x.price1);
-                            acc
-                        });
-
-                let header: brontes_types::mev::BundleHeader = self.utils.build_bundle_header(
-                    vec![deltas],
-                    vec![tx_info.tx_hash],
-                    &tx_info,
-                    profit_usd,
-                    &[tx_info.gas_details],
-                    metadata.clone(),
-                    MevType::CexDex,
-                    false,
-                    |_, token, amount| Some(price_map.get(&token)? * amount),
-                );
-
-                Some(Bundle { header, data: cex_dex })
             })
-            .collect::<Vec<_>>()
+            .collect()
     }
 
-    fn try_convert_transfer_to_swap(
+    fn should_filter_tx(&self, tx_info: &TxInfo) -> bool {
+        if let Some(contract_type) = tx_info.contract_type.as_ref() {
+            if contract_type.is_defi_automation() {
+                trace!(
+                    target: "brontes::cex-dex-markout",
+                    "Filtered out CexDex tx because it is a contract of type {:?}\n Tx: {}",
+                    contract_type,
+                    format_etherscan_url(&tx_info.tx_hash)
+                );
+                self.utils.get_metrics().inspect(|m| {
+                    m.branch_filtering_trigger(MevType::CexDexTrades, "is_defi_automation")
+                });
+                return true
+            }
+        }
+        false
+    }
+
+    fn process_dex_swaps(
         &self,
-        mut transfers: Vec<NormalizedTransfer>,
-        info: &TxInfo,
-    ) -> Option<NormalizedSwap> {
-        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDex)) {
+        actions: Vec<Action>,
+        tx_info: TxInfo,
+        metadata: Arc<Metadata>,
+    ) -> Option<Bundle> {
+        let deltas = actions
+            .clone()
+            .into_iter()
+            .chain(
+                tx_info
+                    .get_total_eth_value()
+                    .iter()
+                    .cloned()
+                    .map(Action::from),
+            )
+            .account_for_actions();
+
+        let (mut dex_swaps, rem): (Vec<_>, _) = self
+            .utils
+            .flatten_nested_actions(actions.into_iter(), &|action| action.is_swap())
+            .split_return_rem(Action::try_swaps_merged);
+
+        let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
+
+        if dex_swaps.is_empty() {
+            if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
+                dex_swaps.push(extra);
+            }
+        }
+
+        if self.is_triangular_arb(&dex_swaps) {
+            trace!(
+                target: "brontes::cex-dex-markout",
+                "Filtered out CexDex because it is a triangular arb\n Tx: {}",
+                format_etherscan_url(&tx_info.tx_hash)
+            );
+            self.utils.get_metrics().inspect(|m| {
+                m.branch_filtering_trigger(MevType::CexDexTrades, "is_triangular_arb")
+            });
             return None
         }
 
-        let t0 = transfers.remove(0);
-        let t1 = transfers.remove(0);
+        self.process_swaps(dex_swaps, tx_info, metadata, deltas, false)
+    }
 
-        if t0.to == t1.from && Some(t0.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t0.trace_index,
-                amount_out: t1.amount,
-                token_out: t1.token,
-                amount_in: t0.amount,
-                token_in: t0.token,
-                from: t0.from,
-                pool: t0.to,
-                recipient: t0.from,
-                ..Default::default()
+    fn process_batch_swaps(
+        &self,
+        actions: Vec<Action>,
+        tx_info: TxInfo,
+        metadata: Arc<Metadata>,
+    ) -> Option<Bundle> {
+        let deltas = actions
+            .clone()
+            .into_iter()
+            .chain(
+                tx_info
+                    .get_total_eth_value()
+                    .iter()
+                    .cloned()
+                    .map(Action::from),
+            )
+            .account_for_actions();
+
+        let dex_swaps: Vec<_> = actions
+            .into_iter()
+            .filter_map(|action| match action {
+                Action::Batch(NormalizedBatch { user_swaps, .. }) => Some(user_swaps),
+                _ => None,
             })
-        } else if t1.to == t0.from && Some(t1.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t1.trace_index,
-                amount_out: t0.amount,
-                token_out: t0.token,
-                amount_in: t1.amount,
-                token_in: t1.token,
-                from: t1.from,
-                pool: t1.to,
-                recipient: t1.from,
-                ..Default::default()
-            })
-        } else {
-            None
+            .flatten()
+            .collect();
+
+        self.process_swaps(dex_swaps, tx_info, metadata, deltas, true)
+    }
+
+    fn process_swaps(
+        &self,
+        dex_swaps: Vec<NormalizedSwap>,
+        tx_info: TxInfo,
+        metadata: Arc<Metadata>,
+        deltas: AddressDeltas,
+        batch_swap: bool,
+    ) -> Option<Bundle> {
+        if dex_swaps.is_empty() {
+            trace!(
+                target: "brontes::cex-dex-markout",
+                "no dex swaps found\n Tx: {}",
+                format_etherscan_url(&tx_info.tx_hash)
+            );
+            return None
         }
+
+        let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
+            dex_swaps,
+            &metadata,
+            tx_info.is_searcher_of_type(MevType::CexDexTrades)
+                || tx_info.is_labelled_searcher_of_type(MevType::CexDexTrades)
+                || tx_info.is_labelled_searcher_of_type(MevType::CexDexRfq)
+                || tx_info.is_searcher_of_type(MevType::JitCexDex),
+            tx_info.tx_hash,
+        )?;
+
+        self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
+
+        let (profit_usd, cex_dex, trade_prices) =
+            self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
+
+        let price_map = trade_prices
+            .into_iter()
+            .fold(FastHashMap::default(), |mut acc, x| {
+                acc.insert(x.token0, x.price0);
+                acc.insert(x.token1, x.price1);
+                acc
+            });
+
+        let header: brontes_types::mev::BundleHeader = self.utils.build_bundle_header(
+            vec![deltas],
+            vec![tx_info.tx_hash],
+            &tx_info,
+            profit_usd,
+            &[tx_info.gas_details],
+            metadata.clone(),
+            if batch_swap { MevType::CexDexRfq } else { MevType::CexDexTrades },
+            false,
+            |_, token, amount| Some(price_map.get(&token)? * amount),
+        );
+
+        Some(Bundle { header, data: cex_dex })
     }
 
     pub fn detect_cex_dex(
@@ -517,7 +534,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             price_maker: (cex_quote.0.clone(), cex_quote.0.clone()),
             price_taker: (cex_quote.1.clone(), cex_quote.1.clone()),
             amount: (Rational::ONE, Rational::ONE),
-            token0: Address::ZERO,
             exchange,
         };
 
@@ -734,9 +750,9 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let sanity_check_arb = possible_cex_dex.arb_sanity_check();
         let is_profitable_outlier = sanity_check_arb.is_profitable_outlier();
 
-        let is_cex_dex_bot_with_significant_activity =
-            info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD * 2);
-        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDex);
+        let is_cex_dex_bot_with_significant_activity = info
+            .is_searcher_of_type_with_count_threshold(MevType::CexDexTrades, FILTER_THRESHOLD * 2);
+        let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexTrades);
 
         let is_profitable_on_one_exchange = sanity_check_arb.profitable_exchanges_ask.len() == 1
             || sanity_check_arb.profitable_exchanges_mid.len() == 1;
@@ -754,7 +770,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let tx_attributes_meet_cex_dex_criteria = !info.is_classified
             && info.is_private
-            && (info.is_searcher_of_type_with_count_threshold(MevType::CexDex, FILTER_THRESHOLD)
+            && (info
+                .is_searcher_of_type_with_count_threshold(MevType::CexDexTrades, FILTER_THRESHOLD)
                 || info
                     .contract_type
                     .as_ref()
@@ -772,7 +789,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             possible_cex_dex.into_bundle(info, &self.trade_config, metadata)
         } else {
             self.utils.get_metrics().inspect(|m| {
-                m.branch_filtering_trigger(MevType::CexDex, "filter_possible_cex_dex")
+                m.branch_filtering_trigger(MevType::CexDexTrades, "filter_possible_cex_dex")
             });
             None
         }
@@ -791,6 +808,47 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let final_token = dex_swaps.last().unwrap().token_out.address;
 
         original_token == final_token
+    }
+
+    fn try_convert_transfer_to_swap(
+        &self,
+        mut transfers: Vec<NormalizedTransfer>,
+        info: &TxInfo,
+    ) -> Option<NormalizedSwap> {
+        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDexTrades)) {
+            return None
+        }
+
+        let t0 = transfers.remove(0);
+        let t1 = transfers.remove(0);
+
+        if t0.to == t1.from && Some(t0.to) != info.mev_contract {
+            Some(NormalizedSwap {
+                trace_index: t0.trace_index,
+                amount_out: t1.amount,
+                token_out: t1.token,
+                amount_in: t0.amount,
+                token_in: t0.token,
+                from: t0.from,
+                pool: t0.to,
+                recipient: t0.from,
+                ..Default::default()
+            })
+        } else if t1.to == t0.from && Some(t1.to) != info.mev_contract {
+            Some(NormalizedSwap {
+                trace_index: t1.trace_index,
+                amount_out: t0.amount,
+                token_out: t0.token,
+                amount_in: t1.amount,
+                token_in: t1.token,
+                from: t1.from,
+                pool: t1.to,
+                recipient: t1.from,
+                ..Default::default()
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -902,17 +960,6 @@ mod tests {
             .with_gas_paid_usd(6.93);
 
         inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_woo_usdc() {
-        // no swap so can't calc
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-        let tx = hex!("157d7a1279b6eba0ce1491fe9cb8eb657036506888facd2e8ae420ce5aa19f2c").into();
-        let config =
-            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
-
-        inspector_util.assert_no_mev(config).await.unwrap();
     }
 
     #[brontes_macros::test]

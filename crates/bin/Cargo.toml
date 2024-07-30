@@ -93,8 +93,8 @@ fdlimit = "0.3.0"
 dhat = "0.3.3"
 
 serde = { workspace = true, features = ["derive"] }
-db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces",  features = [
-  "test-utils"
+db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", features = [
+  "test-utils",
 ] }
 clickhouse.workspace = true
 
@@ -115,24 +115,13 @@ tikv-jemallocator = { version = "0.5.0", features = [
 ] }
 
 [features]
-default = [
-  "brontes-core/default",
-  "brontes-classifier/default",
-  "jemalloc"
-]
+default = ["brontes-core/default", "brontes-classifier/default", "jemalloc"]
 
 jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
 dhat-heap = []
 
 sorella-server = ["local-reth", "local-clickhouse"]
-
-cex-dex-quotes = [
-  "brontes-types/cex-dex-quotes",
-  "brontes-database/cex-dex-quotes",
-  "brontes-inspect/cex-dex-quotes",
-]
-
 
 tests = [
   "brontes-core/tests",
@@ -161,3 +150,4 @@ local-clickhouse = [
 
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]
+

@@ -2,6 +2,7 @@
 use std::sync::OnceLock;
 use std::{collections::hash_map::Entry, env, fs::OpenOptions, io::Write, sync::Arc};
 
+use alloy_primitives::Address;
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
@@ -12,8 +13,8 @@ use brontes_database::{
 };
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
-    db::metadata::Metadata, init_threadpools, structured_trace::TxTrace, traits::TracingProvider,
-    FastHashMap,
+    constants::USDT_ADDRESS, db::metadata::Metadata, init_threadpools, structured_trace::TxTrace,
+    traits::TracingProvider, FastHashMap,
 };
 use futures::future::join_all;
 use indicatif::MultiProgress;
@@ -87,22 +88,22 @@ impl TraceLoader {
         pricing: bool,
     ) -> Result<Metadata, TraceLoaderError> {
         if pricing {
-            if let Ok(res) = self.test_metadata_with_pricing(block) {
+            if let Ok(res) = self.test_metadata_with_pricing(block, USDT_ADDRESS) {
                 Ok(res)
             } else {
                 tracing::info!("test fetching missing metadata with pricing");
                 self.fetch_missing_metadata(block).await?;
-                self.test_metadata_with_pricing(block)
+                self.test_metadata_with_pricing(block, USDT_ADDRESS)
                     .map_err(|_| TraceLoaderError::NoMetadataFound(block))
             }
-        } else if let Ok(res) = self.test_metadata(block) {
+        } else if let Ok(res) = self.test_metadata(block, USDT_ADDRESS) {
             Ok(res)
         } else {
             tracing::info!("test fetching missing metadata no pricing");
             self.fetch_missing_metadata(block).await?;
             tracing::info!("fetched missing data");
             return self
-                .test_metadata(block)
+                .test_metadata(block, USDT_ADDRESS)
                 .map_err(|_| TraceLoaderError::NoMetadataFound(block))
         }
     }
@@ -175,29 +176,17 @@ impl TraceLoader {
         Ok(())
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
-    pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
-        let mut meta = self.libmdbx.get_metadata(block_num)?;
-        meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
-        Ok(meta)
+    pub fn test_metadata_with_pricing(
+        &self,
+        block_num: u64,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
+        self.libmdbx.get_metadata(block_num, quote_asset)
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
-    pub fn test_metadata_with_pricing(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata(block_num)
-    }
-
-    #[cfg(feature = "cex-dex-quotes")]
-    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata_no_dex_price(block_num)
-    }
-
-    #[cfg(not(feature = "cex-dex-quotes"))]
-    pub fn test_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        let mut meta = self.libmdbx.get_metadata_no_dex_price(block_num)?;
-        meta.cex_trades = self.libmdbx.get_cex_trades(block_num).ok();
-
-        Ok(meta)
+    pub fn test_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
+        self.libmdbx
+            .get_metadata_no_dex_price(block_num, quote_asset)
     }
 
     pub async fn get_block_traces_with_header(

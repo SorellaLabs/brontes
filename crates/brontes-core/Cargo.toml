@@ -84,10 +84,6 @@ criterion = { version = "0.5", features = ["async", "async_tokio"] }
 default = []
 dyn-decode = []
 tests = []
-cex-dex-quotes = [
-  "brontes-types/cex-dex-quotes",
-  "brontes-database/cex-dex-quotes",
-]
 local-reth = [
   "brontes-types/local-reth",
   "reth-tracing-ext/local-reth",

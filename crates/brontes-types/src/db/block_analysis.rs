@@ -1025,55 +1025,55 @@ impl BlockAnalysis {
 
         // Cex Dex
         let (cex_dex_searcher_prof_addr, cex_dex_searcher_prof) =
-            Self::top_searcher_by_profit(|b| b == MevType::CexDex, bundles).unzip();
+            Self::top_searcher_by_profit(|b| b == MevType::CexDexTrades, bundles).unzip();
         let (cex_dex_searcher_rev_addr, cex_dex_searcher_rev) =
-            Self::top_searcher_by_rev(|b| b == MevType::CexDex, bundles).unzip();
+            Self::top_searcher_by_rev(|b| b == MevType::CexDexTrades, bundles).unzip();
 
         let (cex_dex_biggest_tx_prof, cex_dex_biggest_prof) =
-            Self::biggest_arb_profit(|b| b == MevType::CexDex, bundles).unzip();
+            Self::biggest_arb_profit(|b| b == MevType::CexDexTrades, bundles).unzip();
 
         let (cex_dex_biggest_tx_rev, cex_dex_biggest_rev) =
-            Self::biggest_arb_revenue(|b| b == MevType::CexDex, bundles).unzip();
+            Self::biggest_arb_revenue(|b| b == MevType::CexDexTrades, bundles).unzip();
 
         let (cex_dex_all_funds_rev_addr, cex_dex_all_funds_rev) =
-            Self::all_funds_by_type_rev(|b| b == MevType::CexDex, bundles)
+            Self::all_funds_by_type_rev(|b| b == MevType::CexDexTrades, bundles)
                 .into_iter()
                 .unzip();
         let (cex_dex_all_funds_profit_addr, cex_dex_all_funds_profit) =
-            Self::all_funds_by_type_profit(|b| b == MevType::CexDex, bundles)
+            Self::all_funds_by_type_profit(|b| b == MevType::CexDexTrades, bundles)
                 .into_iter()
                 .unzip();
 
         let (cex_dex_all_searcher_prof_addr_eoa, cex_dex_all_searcher_prof_eoa) =
-            Self::all_searchers_by_profit(|b| b == MevType::CexDex, bundles, false)
+            Self::all_searchers_by_profit(|b| b == MevType::CexDexTrades, bundles, false)
                 .into_iter()
                 .unzip();
         let (cex_dex_all_searcher_rev_addr_eoa, cex_dex_all_searcher_rev_eoa) =
-            Self::all_searchers_by_rev(|b| b == MevType::CexDex, bundles, false)
+            Self::all_searchers_by_rev(|b| b == MevType::CexDexTrades, bundles, false)
                 .into_iter()
                 .unzip();
         let (cex_dex_all_searcher_prof_addr_contract, cex_dex_all_searcher_prof_contract) =
-            Self::all_searchers_by_profit(|b| b == MevType::CexDex, bundles, true)
+            Self::all_searchers_by_profit(|b| b == MevType::CexDexTrades, bundles, true)
                 .into_iter()
                 .unzip();
         let (cex_dex_all_searcher_rev_addr_contract, cex_dex_all_searcher_rev_contract) =
-            Self::all_searchers_by_rev(|b| b == MevType::CexDex, bundles, true)
+            Self::all_searchers_by_rev(|b| b == MevType::CexDexTrades, bundles, true)
                 .into_iter()
                 .unzip();
 
         let (cex_dex_fund_rev_addr, cex_dex_fund_rev) =
-            Self::top_fund_by_type_rev(|b| b == MevType::CexDex, bundles).unzip();
+            Self::top_fund_by_type_rev(|b| b == MevType::CexDexTrades, bundles).unzip();
         let (cex_dex_fund_profit_addr, cex_dex_fund_profit) =
-            Self::top_fund_by_type_profit(|b| b == MevType::CexDex, bundles).unzip();
+            Self::top_fund_by_type_profit(|b| b == MevType::CexDexTrades, bundles).unzip();
 
         let (cex_dex_pool_addr_prof, cex_dex_pool_addr_rev, cex_dex_pool_prof, cex_dex_pool_rev) =
-            Self::most_transacted_pool(|b| b == MevType::CexDex, bundles, Self::get_pool_fn)
+            Self::most_transacted_pool(|b| b == MevType::CexDexTrades, bundles, Self::get_pool_fn)
                 .four_unzip();
         let (cex_dex_pair_addr_prof, cex_dex_pair_addr_rev, cex_dex_pair_prof, cex_dex_pair_rev) =
-            Self::most_transacted_pair(|b| b == MevType::CexDex, bundles, Self::get_pair_fn)
+            Self::most_transacted_pair(|b| b == MevType::CexDexTrades, bundles, Self::get_pair_fn)
                 .unwrap_or_default();
         let (cex_dex_dex_addr_prof, cex_dex_dex_addr_rev, cex_dex_dex_prof, cex_dex_dex_rev) =
-            Self::most_transacted_dex(|b| b == MevType::CexDex, bundles, Self::get_dex_fn)
+            Self::most_transacted_dex(|b| b == MevType::CexDexTrades, bundles, Self::get_dex_fn)
                 .four_unzip();
 
         let (
@@ -1081,7 +1081,7 @@ impl BlockAnalysis {
             cex_dex_all_pools_prof,
             cex_dex_all_pools_addr_rev,
             cex_dex_all_pools_rev,
-        ) = Self::all_transacted_pools(|b| b == MevType::CexDex, bundles, Self::get_pool_fn)
+        ) = Self::all_transacted_pools(|b| b == MevType::CexDexTrades, bundles, Self::get_pool_fn)
             .four_unzip();
 
         let (
@@ -1089,7 +1089,7 @@ impl BlockAnalysis {
             cex_dex_all_pairs_prof,
             cex_dex_all_pairs_addr_rev,
             cex_dex_all_pairs_rev,
-        ) = Self::all_transacted_pairs(|b| b == MevType::CexDex, bundles, Self::get_pair_fn)
+        ) = Self::all_transacted_pairs(|b| b == MevType::CexDexTrades, bundles, Self::get_pair_fn)
             .four_unzip();
 
         let (
@@ -1097,7 +1097,7 @@ impl BlockAnalysis {
             cex_dex_all_dexes_prof,
             cex_dex_all_dexes_addr_rev,
             cex_dex_all_dexes_rev,
-        ) = Self::all_transacted_dexes(|b| b == MevType::CexDex, bundles, Self::get_dex_fn)
+        ) = Self::all_transacted_dexes(|b| b == MevType::CexDexTrades, bundles, Self::get_dex_fn)
             .four_unzip();
 
         // liquidation
@@ -1519,23 +1519,23 @@ impl BlockAnalysis {
 
             // cex dex
             cex_dex_bundle_count:                 Self::total_count_by_type(
-                |b| b == MevType::CexDex,
+                |b| b == MevType::CexDexTrades,
                 bundles,
             ),
             cex_dex_fund_count:                   Self::unique_funds(
-                |b| b == MevType::CexDex,
+                |b| b == MevType::CexDexTrades,
                 bundles,
             ),
             cex_dex_total_profit:                 Self::total_profit_by_type(
-                |f| f == MevType::CexDex,
+                |f| f ==MevType::CexDexTrades,
                 bundles,
             ),
             cex_dex_total_revenue:                Self::total_revenue_by_type(
-                |f| f == MevType::CexDex,
+                |f| f ==MevType::CexDexTrades,
                 bundles,
             ),
             cex_dex_average_profit_margin:        Self::average_profit_margin(
-                |f| f == MevType::CexDex,
+                |f| f ==MevType::CexDexTrades,
                 bundles,
             )
             .unwrap_or_default(),
@@ -1568,7 +1568,7 @@ impl BlockAnalysis {
             cex_dex_searcher_eoa_all_revenue:     cex_dex_all_searcher_rev_addr_eoa,
             cex_dex_searcher_eoa_all_revenue_amt: cex_dex_all_searcher_rev_eoa,
             cex_dex_searcher_eoa_count:           Self::unique_eoa(
-                |b| b == MevType::CexDex,
+                |b| b == MevType::CexDexTrades,
                 bundles,
             ),
             cex_dex_mev_contract_all_profit:      cex_dex_all_searcher_prof_addr_contract,
@@ -1576,7 +1576,7 @@ impl BlockAnalysis {
             cex_dex_mev_contract_all_revenue:     cex_dex_all_searcher_rev_addr_contract,
             cex_dex_mev_contract_all_revenue_amt: cex_dex_all_searcher_rev_contract,
             cex_dex_mev_contract_count:           Self::unique_contract(
-                |b| b == MevType::CexDex,
+                |b| b == MevType::CexDexTrades,
                 bundles,
             ),
             cex_dex_fund_all_profit:              cex_dex_all_funds_profit_addr,

@@ -5,6 +5,7 @@ use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_types::{
+    constants::USDT_ADDRESS,
     db::cex::{CexExchange, CexTrades},
     init_threadpools,
     pair::Pair,
@@ -60,7 +61,7 @@ impl CexDB {
 
         let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint)?);
 
-        let metadata = libmdbx.get_metadata(self.block_number)?;
+        let metadata = libmdbx.get_metadata(self.block_number, USDT_ADDRESS)?;
 
         let clickhouse: ClickhouseClient<NullDBMS> = get_clickhouse_env();
 

@@ -146,7 +146,6 @@ alloy-primitives.workspace = true
 
 [features]
 sorella-server = ["local-reth", "local-clickhouse"]
-cex-dex-quotes = ["brontes-types/cex-dex-quotes"]
 tests = ["brontes-pricing/tests"]
 local-reth = [
   "brontes-core/local-reth",

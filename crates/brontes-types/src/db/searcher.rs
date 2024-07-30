@@ -64,14 +64,17 @@ impl SearcherInfo {
 
     pub fn get_bundle_count_for_type(&self, mev_type: MevType) -> Option<u64> {
         match mev_type {
+            MevType::CexDexTrades => self.mev_count.cex_dex_trade_count,
+            MevType::CexDexQuotes => self.mev_count.cex_dex_quote_count,
+            MevType::CexDexRfq => self.mev_count.cex_dex_rfq_count,
+            MevType::JitCexDex => self.mev_count.jit_cex_dex_count,
             MevType::Sandwich => self.mev_count.sandwich_count,
-            MevType::CexDex => self.mev_count.cex_dex_count,
             MevType::Jit => self.mev_count.jit_count,
             MevType::JitSandwich => self.mev_count.jit_sandwich_count,
             MevType::AtomicArb => self.mev_count.atomic_backrun_count,
             MevType::Liquidation => self.mev_count.liquidation_count,
             MevType::SearcherTx => self.mev_count.searcher_tx_count,
-            MevType::Unknown | MevType::JitCexDex => None,
+            MevType::Unknown => None,
         }
     }
 
@@ -100,7 +103,7 @@ impl SearcherInfo {
 
     pub fn describe(&self) -> String {
         if self.name.is_some() {
-            return self.name.clone().unwrap();
+            return self.name.clone().unwrap()
         }
         let mut parts: Vec<String> = Vec::new();
 
@@ -111,7 +114,18 @@ impl SearcherInfo {
 
         let mev_type: Option<String> = vec![
             ("Sandwich", self.mev_count.sandwich_count, self.pnl.sandwich, self.gas_bids.sandwich),
-            ("CexDex", self.mev_count.cex_dex_count, self.pnl.cex_dex, self.gas_bids.cex_dex),
+            (
+                "CexDexTrades",
+                self.mev_count.cex_dex_trade_count,
+                self.pnl.cex_dex_trades,
+                self.gas_bids.cex_dex_quotes,
+            ),
+            (
+                "CexDexQuotes",
+                self.mev_count.cex_dex_quote_count,
+                self.pnl.cex_dex_quotes,
+                self.gas_bids.cex_dex_trades,
+            ),
             ("Jit", self.mev_count.jit_count, self.pnl.jit, self.gas_bids.jit),
             (
                 "JitSandwich",
@@ -178,7 +192,8 @@ implement_table_value_codecs_with_zc!(SearcherInfoRedefined);
 pub struct TollByType {
     pub total:          f64,
     pub sandwich:       Option<f64>,
-    pub cex_dex:        Option<f64>,
+    pub cex_dex_quotes: Option<f64>,
+    pub cex_dex_trades: Option<f64>,
     pub jit:            Option<f64>,
     pub jit_sandwich:   Option<f64>,
     pub atomic_backrun: Option<f64>,
@@ -192,8 +207,19 @@ impl TollByType {
     pub fn account_pnl(&mut self, header: &BundleHeader) {
         self.total += header.profit_usd;
         match header.mev_type {
-            MevType::CexDex => {
-                self.cex_dex = Some(self.cex_dex.unwrap_or_default().add(header.profit_usd))
+            MevType::CexDexTrades => {
+                self.cex_dex_trades = Some(
+                    self.cex_dex_trades
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                )
+            }
+            MevType::CexDexQuotes => {
+                self.cex_dex_quotes = Some(
+                    self.cex_dex_quotes
+                        .unwrap_or_default()
+                        .add(header.profit_usd),
+                )
             }
             MevType::Sandwich => {
                 self.sandwich = Some(self.sandwich.unwrap_or_default().add(header.profit_usd))
@@ -223,8 +249,19 @@ impl TollByType {
     pub fn account_gas(&mut self, header: &BundleHeader) {
         self.total += header.bribe_usd;
         match header.mev_type {
-            MevType::CexDex => {
-                self.cex_dex = Some(self.cex_dex.unwrap_or_default().add(header.bribe_usd))
+            MevType::CexDexQuotes => {
+                self.cex_dex_quotes = Some(
+                    self.cex_dex_quotes
+                        .unwrap_or_default()
+                        .add(header.bribe_usd),
+                )
+            }
+            MevType::CexDexTrades => {
+                self.cex_dex_trades = Some(
+                    self.cex_dex_trades
+                        .unwrap_or_default()
+                        .add(header.bribe_usd),
+                )
             }
             MevType::Sandwich => {
                 self.sandwich = Some(self.sandwich.unwrap_or_default().add(header.bribe_usd))

@@ -80,11 +80,7 @@ use brontes_types::{
     tree::BlockTree,
     MultiBlockData,
 };
-#[cfg(not(feature = "cex-dex-quotes"))]
-use cex_dex::CexDexMarkoutInspector;
-//#[cfg(feature = "cex-dex-quotes")]
-//use cex_dex::CexDexQuotesInspector;
-#[cfg(not(feature = "cex-dex-quotes"))]
+use cex_dex::{markout::CexDexMarkoutInspector, quotes::CexDexQuotesInspector};
 use jit::JitCexDex;
 use liquidations::LiquidationInspector;
 use sandwich::SandwichInspector;
@@ -109,15 +105,12 @@ pub trait Inspector: Send + Sync {
 )]
 pub enum Inspectors {
     AtomicArb,
-    #[cfg(feature = "cex-dex-quotes")]
     CexDex,
     Jit,
     Liquidations,
     Sandwich,
     SearcherActivity,
-    #[cfg(not(feature = "cex-dex-quotes"))]
     CexDexMarkout,
-    #[cfg(not(feature = "cex-dex-quotes"))]
     JitCexDex,
 }
 
@@ -128,8 +121,8 @@ impl Inspectors {
         &self,
         quote_token: Address,
         db: &'static DB,
-        _cex_exchanges: &[CexExchange],
-        _trade_config: CexDexTradeConfig,
+        cex_exchanges: &[CexExchange],
+        trade_config: CexDexTradeConfig,
         metrics: Option<OutlierMetrics>,
     ) -> DynMevInspector {
         match &self {
@@ -139,12 +132,14 @@ impl Inspectors {
             Self::Jit => {
                 static_object(JitInspector::new(quote_token, db, metrics)) as DynMevInspector
             }
-            #[cfg(feature = "cex-dex-quotes")]
-            Self::CexDex => {
-                todo!();
-                //static_object(CexDexQuotesInspector::new(quote_token, db,
-                // cex_exchanges, metrics)) as DynMevInspector
-            }
+
+            Self::CexDex => static_object(CexDexQuotesInspector::new(
+                quote_token,
+                db,
+                cex_exchanges,
+                trade_config.quotes_fetch_time,
+                metrics,
+            )) as DynMevInspector,
             Self::Sandwich => {
                 static_object(SandwichInspector::new(quote_token, db, metrics)) as DynMevInspector
             }
@@ -155,21 +150,19 @@ impl Inspectors {
             Self::SearcherActivity => {
                 static_object(SearcherActivity::new(quote_token, db, metrics)) as DynMevInspector
             }
-            #[cfg(not(feature = "cex-dex-quotes"))]
             Self::CexDexMarkout => static_object(CexDexMarkoutInspector::new(
                 quote_token,
                 db,
-                _cex_exchanges,
-                _trade_config,
+                cex_exchanges,
+                trade_config,
                 metrics,
             )) as DynMevInspector,
-            #[cfg(not(feature = "cex-dex-quotes"))]
             Self::JitCexDex => static_object(JitCexDex {
                 cex_dex: CexDexMarkoutInspector::new(
                     quote_token,
                     db,
-                    _cex_exchanges,
-                    _trade_config,
+                    cex_exchanges,
+                    trade_config,
                     metrics.clone(),
                 ),
                 jit:     JitInspector::new(quote_token, db, metrics),

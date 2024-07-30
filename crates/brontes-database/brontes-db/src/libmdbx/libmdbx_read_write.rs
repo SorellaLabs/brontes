@@ -1,25 +1,19 @@
-use std::{cmp::max, ops::RangeInclusive, path::Path, sync::Arc};
+use std::{ops::RangeInclusive, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 use brontes_metrics::db_reads::LibmdbxMetrics;
 use brontes_pricing::Protocol;
-#[cfg(not(feature = "cex-dex-quotes"))]
-use brontes_types::db::cex::cex_trades::CexTradeMap;
-#[cfg(feature = "cex-dex-quotes")]
-use brontes_types::db::initialized_state::CEX_QUOTES_FLAG;
-#[cfg(not(feature = "cex-dex-quotes"))]
-use brontes_types::db::initialized_state::CEX_TRADES_FLAG;
-#[cfg(not(feature = "local-reth"))]
-use brontes_types::db::initialized_state::TRACE_FLAG;
 use brontes_types::{
-    constants::{ETH_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+    constants::{ETH_ADDRESS, WETH_ADDRESS},
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{CexPriceMap, FeeAdjustedQuote},
+        cex::{cex_trades::CexTradeMap, CexPriceMap},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
-        initialized_state::{InitializedStateMeta, DEX_PRICE_FLAG, META_FLAG},
+        initialized_state::{
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
+        },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
         searcher::SearcherInfo,
@@ -37,6 +31,7 @@ use eyre::{eyre, ErrReport};
 use futures::Future;
 use indicatif::ProgressBar;
 use itertools::Itertools;
+use malachite::{num::basic::traits::One, Rational};
 use reth_db::table::{Compress, Encode};
 use reth_interfaces::db::LogLevel;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
@@ -397,7 +392,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
         self.fetch_dex_quotes(block)
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
         self.fetch_trades(block)
     }
@@ -447,10 +441,17 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     #[brontes_macros::metrics_call(ptr=metrics, scope, db_read,"metadata_no_dex_price")]
-    fn get_metadata_no_dex_price(&self, block_num: u64) -> eyre::Result<Metadata> {
+    fn get_metadata_no_dex_price(
+        &self,
+        block_num: u64,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        let eth_prices = determine_eth_prices(&cex_quotes);
+        let cex_trades = self.fetch_trades(block_num).ok();
+
+        let eth_price =
+            determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
         Ok(BlockMetadata::new(
             block_num,
@@ -460,18 +461,21 @@ impl LibmdbxReader for LibmdbxReadWriter {
             block_meta.p2p_timestamp,
             block_meta.proposer_fee_recipient,
             block_meta.proposer_mev_reward,
-            max(eth_prices.price_maker.0, eth_prices.price_maker.1),
+            eth_price.unwrap_or_default(),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None))
+        .into_metadata(cex_quotes, None, None, cex_trades))
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
-    fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+    fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
-        let eth_prices = determine_eth_prices(&cex_quotes);
+        let cex_trades = self.fetch_trades(block_num).ok();
+
+        let eth_price =
+            determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
         Ok({
             BlockMetadata::new(
@@ -482,10 +486,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 block_meta.p2p_timestamp,
                 block_meta.proposer_fee_recipient,
                 block_meta.proposer_mev_reward,
-                max(eth_prices.price_maker.0, eth_prices.price_maker.1),
+                eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None)
+            .into_metadata(cex_quotes, Some(dex_quotes), None, cex_trades)
         })
     }
 
@@ -1189,7 +1193,6 @@ impl LibmdbxReadWriter {
         })
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     pub fn fetch_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
         self.db.view_db(|tx| {
             tx.get::<CexTrades>(block)?
@@ -1200,6 +1203,7 @@ impl LibmdbxReadWriter {
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         self.db.view_db(|tx| {
             let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default();
+
             Ok(res)
         })
     }
@@ -1258,26 +1262,25 @@ impl LibmdbxReadWriter {
     }
 }
 
-pub fn determine_eth_prices(cex_quotes: &CexPriceMap) -> FeeAdjustedQuote {
-    if let Some(eth_usdt) = cex_quotes.get_binance_quote(&Pair(WETH_ADDRESS, USDT_ADDRESS)) {
-        eth_usdt
-    } else {
-        cex_quotes
-            .get_binance_quote(&Pair(WETH_ADDRESS, USDC_ADDRESS))
-            .unwrap_or_default()
-    }
+pub fn determine_eth_prices(
+    cex_quotes: &CexPriceMap,
+    block_timestamp: u64,
+    quote_asset: Address,
+) -> Option<Rational> {
+    Some(
+        Rational::ONE
+            / cex_quotes
+                .get_quote_from_most_liquid_exchange(
+                    &Pair(WETH_ADDRESS, quote_asset),
+                    block_timestamp,
+                )?
+                .maker_taker_mid()
+                .0,
+    )
 }
 
 fn default_tables_to_init() -> Vec<Tables> {
-    let mut tables_to_init = vec![Tables::BlockInfo, Tables::DexPrice];
-    #[cfg(not(feature = "local-reth"))]
-    tables_to_init.push(Tables::TxTraces);
-    #[cfg(feature = "cex-dex-quotes")]
-    tables_to_init.push(Tables::CexPrice);
-    #[cfg(not(feature = "cex-dex-quotes"))]
-    tables_to_init.push(Tables::CexTrades);
-
-    tables_to_init
+    vec![Tables::BlockInfo, Tables::DexPrice, Tables::CexPrice, Tables::CexTrades]
 }
 pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
     if data.should_ignore() {
@@ -1286,18 +1289,11 @@ pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
             .map(|t| (t, true))
             .collect_vec()
     } else {
-        let mut tables = vec![
+        vec![
             (Tables::BlockInfo, data.is_initialized(META_FLAG)),
             (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
-        ];
-
-        #[cfg(not(feature = "local-reth"))]
-        tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
-        #[cfg(feature = "cex-dex-quotes")]
-        tables.push((Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)));
-        #[cfg(not(feature = "cex-dex-quotes"))]
-        tables.push((Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)));
-
-        tables
+            (Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)),
+            (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
+        ]
     }
 }

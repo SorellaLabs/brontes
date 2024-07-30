@@ -35,7 +35,7 @@ use crate::{
         types::{LibmdbxData, ReturnKV},
         Libmdbx,
     },
-    CompressedTable, Tables,
+    CompressedTable,
 };
 
 // how often we will append data

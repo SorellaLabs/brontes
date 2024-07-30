@@ -92,7 +92,7 @@ pub struct TimeWindowArgs {
     pub time_window_before:            f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = "25.0")]
+    #[arg(long = "tw-after", short = 'a', default_value = "20.0")]
     pub time_window_after:             f64,
     /// The time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
@@ -103,8 +103,8 @@ pub struct TimeWindowArgs {
     #[arg(long = "op-tw-after", default_value = "10.0")]
     pub time_window_after_optimistic:  f64,
     /// Cex Dex Quotes price time
-    #[arg(long = "mk-time", default_value = "2.0")]
-    pub price_time:                    f64,
+    #[arg(long = "mk-time", default_value = "0.2")]
+    pub quotes_price_time:             f64,
 }
 
 impl RunArgs {
@@ -160,11 +160,8 @@ impl RunArgs {
             .inspectors
             .as_ref()
             .map(|f| {
-                #[cfg(feature = "cex-dex-quotes")]
-                let cmp = Inspectors::CexDex;
-                #[cfg(not(feature = "cex-dex-quotes"))]
-                let cmp = Inspectors::CexDexMarkout;
-                f.len() == 1 && f.contains(&cmp)
+                f.len() == 1 && f.contains(&Inspectors::CexDex)
+                    || f.contains(&Inspectors::CexDexMarkout)
             })
             .unwrap_or(false);
 
@@ -271,6 +268,7 @@ impl RunArgs {
                 * SECONDS_TO_US,
             optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
                 * SECONDS_TO_US,
+            quotes_fetch_time:     self.time_window_args.quotes_price_time * 1000000.0,
         }
     }
 }

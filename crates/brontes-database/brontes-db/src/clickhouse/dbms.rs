@@ -17,6 +17,7 @@ clickhouse_dbms!(
         MevMev_Blocks,
         MevBundle_Header,
         MevSearcher_Tx,
+        MevCex_Dex_Quotes,
         MevCex_Dex,
         MevLiquidations,
         MevJit_Sandwich,
@@ -79,6 +80,13 @@ remote_clickhouse_table!(
     BrontesClickhouseTables,
     [Mev, Cex_Dex],
     DbDataWithRunId<CexDex>,
+    "crates/brontes-database/brontes-db/src/clickhouse/tables/"
+);
+
+remote_clickhouse_table!(
+    BrontesClickhouseTables,
+    [Mev, Cex_Dex_Quotes],
+    DbDataWithRunId<CexDexQuote>,
     "crates/brontes-database/brontes-db/src/clickhouse/tables/"
 );
 
@@ -226,6 +234,7 @@ db_types!(
     (BundleHeader, MevBundle_Header, true),
     (SearcherTx, MevSearcher_Tx, true),
     (CexDex, MevCex_Dex, true),
+    (CexDexQuote, MevCex_Dex_Quotes, true),
     (Liquidation, MevLiquidations, true),
     (JitLiquiditySandwich, MevJit_Sandwich, true),
     (JitLiquidity, MevJit, true),

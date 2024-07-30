@@ -3,6 +3,7 @@ use clickhouse::Row;
 use itertools::Itertools;
 use serde::Deserialize;
 
+use super::CexQuote;
 use crate::{
     constants::USDC_ADDRESS,
     db::{
@@ -124,11 +125,10 @@ impl CexQuotesConverter {
 
                 let pair_exchanges = cex_best_venue
                     .into_iter()
-                    .map(|pair_ex| {
+                    .filter_map(|pair_ex| {
                         let symbol = self
                             .symbols
-                            .get_mut(&(pair_ex.exchange, pair_ex.symbol.clone()))
-                            .unwrap();
+                            .get_mut(&(pair_ex.exchange, pair_ex.symbol.clone()))?;
 
                         //TODO: Joe, please fix USDC to not be dollar lmao
                         if symbol.address_pair.1 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
@@ -139,7 +139,7 @@ impl CexQuotesConverter {
                         {
                             symbol.address_pair.0 = USDC_ADDRESS;
                         }
-                        (symbol.address_pair, pair_ex.exchange)
+                        Some((symbol.address_pair, pair_ex.exchange))
                         // because we know there will only be 1 entry per
                         // address pair. this is ok todo
                     })
@@ -170,23 +170,13 @@ impl CexQuotesConverter {
                             exchange_symbol_map
                                 .entry(symbol.address_pair)
                                 .or_insert(Vec::new())
-                                .push(quote);
+                                .push(quote.into());
                         });
+                        for quotes in exchange_symbol_map.values_mut() {
+                            quotes.sort_unstable_by_key(|k: &CexQuote| k.timestamp);
+                        }
 
-                        let symbol_price_map = exchange_symbol_map
-                            .into_iter()
-                            .map(|(pair, quotes)| {
-                                (
-                                    pair.ordered(),
-                                    quotes
-                                        .into_iter()
-                                        .map(|quote| (pair, quote).into())
-                                        .collect_vec(),
-                                )
-                            })
-                            .collect::<FastHashMap<_, _>>();
-
-                        (exch, symbol_price_map)
+                        (exch, exchange_symbol_map)
                     })
                     .collect::<FastHashMap<_, _>>();
 
