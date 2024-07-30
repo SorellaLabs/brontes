@@ -706,7 +706,7 @@ mod tests {
             .into()])
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(742201.93)
+            .with_expected_profit_usd(742_201.93)
             .with_gas_paid_usd(11.44);
 
         inspector_util.run_inspector(config, None).await.unwrap();

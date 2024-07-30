@@ -545,9 +545,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// warning and captures relevant metrics. The function returns `true`
     /// if all evaluated swaps have price differences within the acceptable
     /// range.
-    ///
-    /// If a given pair has both tokens that are listed on a centralized
-    /// exchange. we
     pub fn valid_pricing<'a>(
         &self,
         metadata: Arc<Metadata>,
