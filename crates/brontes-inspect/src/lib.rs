@@ -122,7 +122,7 @@ impl Inspectors {
         quote_token: Address,
         db: &'static DB,
         cex_exchanges: &[CexExchange],
-        _trade_config: CexDexTradeConfig,
+        trade_config: CexDexTradeConfig,
         metrics: Option<OutlierMetrics>,
     ) -> DynMevInspector {
         match &self {
@@ -133,10 +133,13 @@ impl Inspectors {
                 static_object(JitInspector::new(quote_token, db, metrics)) as DynMevInspector
             }
 
-            Self::CexDex => {
-                static_object(CexDexQuotesInspector::new(quote_token, db, cex_exchanges, metrics))
-                    as DynMevInspector
-            }
+            Self::CexDex => static_object(CexDexQuotesInspector::new(
+                quote_token,
+                db,
+                cex_exchanges,
+                trade_config.quotes_fetch_time,
+                metrics,
+            )) as DynMevInspector,
             Self::Sandwich => {
                 static_object(SandwichInspector::new(quote_token, db, metrics)) as DynMevInspector
             }
@@ -151,7 +154,7 @@ impl Inspectors {
                 quote_token,
                 db,
                 cex_exchanges,
-                _trade_config,
+                trade_config,
                 metrics,
             )) as DynMevInspector,
             Self::JitCexDex => static_object(JitCexDex {
@@ -159,7 +162,7 @@ impl Inspectors {
                     quote_token,
                     db,
                     cex_exchanges,
-                    _trade_config,
+                    trade_config,
                     metrics.clone(),
                 ),
                 jit:     JitInspector::new(quote_token, db, metrics),
