@@ -37,8 +37,8 @@ use strum::Display;
 use tracing::trace;
 
 use super::{
-    log_price_delta, CexDexProcessing, ExchangeLeg, ExchangeLegCexPrice, OptimisticDetails,
-    PossibleCexDex,
+    log_cex_trade_price_delta, CexDexProcessing, ExchangeLeg, ExchangeLegCexPrice,
+    OptimisticDetails, PossibleCexDex,
 };
 
 // The threshold for the number of CEX-DEX trades an address is required to make
@@ -466,9 +466,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         end_time: u64,
         price_calculation_type: PriceCalcType,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
-        // If the price difference between the DEX and CEX is greater than 2x, the
-        // quote is likely invalid
-
         let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
             (&cex_quote.0 * &swap.amount_out, &cex_quote.1 * &swap.amount_out);
 
@@ -476,7 +473,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
 
         if smaller * Rational::TWO < *larger {
-            log_price_delta(
+            log_cex_trade_price_delta(
                 &tx_hash,
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
@@ -485,8 +482,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &swap.token_in.address,
                 &swap.token_out.address,
                 price_calculation_type,
+                &swap.amount_in,
+                &swap.amount_out,
+                &output_of_cex_trade_maker,
             );
-
             return None
         }
         // A positive amount indicates potential profit from selling the token in on the
