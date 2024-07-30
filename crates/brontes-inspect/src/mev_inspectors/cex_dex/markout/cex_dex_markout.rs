@@ -308,8 +308,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> Option<CexDexProcessing> {
-        let (dex_swaps, pricing) =
-            self.cex_trades_for_swap(dex_swaps, metadata, marked_cex_dex, tx_hash);
+        let cex_prices = self.cex_prices_for_swaps(dex_swaps, metadata, marked_cex_dex, tx_hash);
 
         // pricing window
         let pricing_window_vwam = pricing
@@ -420,7 +419,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         trades: &[NormalizedSwap],
         metadata: &Metadata,
         tx_hash: FixedBytes<32>,
-        window: Vec<Option<(ExchangePrice, ExchangePrice)>>,
+        window: Vec<Option<OptimisticPrice>>,
     ) -> Option<OptimisticDetails> {
         let mut trade_details = vec![];
         let possible = PossibleCexDex::from_exchange_legs(
@@ -562,76 +561,84 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         ))
     }
 
-    /// Retrieves CEX quotes for a DEX swap, analyzing both direct and
-    /// intermediary token pathways.
-    fn cex_trades_for_swap(
+    fn cex_prices_for_swaps(
         &self,
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
-    ) -> CexDexTradesForSwap {
+    ) -> CexTradesForSwap {
         let dex_swaps = self.merge_possible_swaps(dex_swaps);
 
-        let res: Vec<(Option<MakerTakerWindowVWAP>, Option<MakerTaker>)> = dex_swaps
+        let (time_window_vwam, optimistic): (Vec<_>, Vec<_>) = dex_swaps
             .iter()
             .filter(|swap| swap.amount_out != Rational::ZERO)
-            .map(|swap| {
-                let pair = Pair(swap.token_in.address, swap.token_out.address);
+            .map(|swap| self.calculate_cex_price(swap, metadata, marked_cex_dex, tx_hash))
+            .unzip();
 
-                let window_fn = || {
-                    metadata
-                        .cex_trades
-                        .as_ref()
-                        .unwrap()
-                        .calculate_time_window_vwam(
-                            self.trade_config,
-                            &self.cex_exchanges,
-                            pair,
-                            &swap.amount_out,
-                            metadata.microseconds_block_timestamp(),
-                            marked_cex_dex,
-                            swap,
-                            tx_hash,
-                        )
-                };
+        CexTradesForSwap { dex_swaps, time_window_vwam, optimistic }
+    }
 
-                let window = self
-                    .utils
-                    .get_metrics()
-                    .map(|m| m.run_cex_price_window(window_fn))
-                    .unwrap_or_else(window_fn);
+    fn calculate_cex_price(
+        &self,
+        swap: &NormalizedSwap,
+        metadata: &Metadata,
+        marked_cex_dex: bool,
+        tx_hash: FixedBytes<32>,
+    ) -> (Option<WindowExchangePrice>, Option<OptimisticPrice>) {
+        let pair = Pair(swap.token_in.address, swap.token_out.address);
+        let block_timestamp = metadata.microseconds_block_timestamp();
 
-                let optimistic = || {
-                    metadata.cex_trades.as_ref().unwrap().get_optimistic_vmap(
-                        self.trade_config,
-                        &self.cex_exchanges,
-                        pair,
-                        &swap.amount_out,
-                        metadata.microseconds_block_timestamp(),
-                        None,
-                        marked_cex_dex,
-                        swap,
-                        tx_hash,
-                    )
-                };
+        let window_fn = || {
+            metadata
+                .cex_trades
+                .as_ref()
+                .unwrap()
+                .calculate_time_window_vwam(
+                    self.trade_config,
+                    &self.cex_exchanges,
+                    pair,
+                    &swap.amount_out,
+                    metadata.microseconds_block_timestamp(),
+                    marked_cex_dex,
+                    swap,
+                    tx_hash,
+                )
+        };
 
-                let optimistic = self
-                    .utils
-                    .get_metrics()
-                    .map(|m| m.run_cex_price_vol(optimistic))
-                    .unwrap_or_else(optimistic);
+        let window = self
+            .utils
+            .get_metrics()
+            .map(|m| m.run_cex_price_window(window_fn))
+            .unwrap_or_else(window_fn);
 
-                if (window.is_none() || optimistic.is_none()) && marked_cex_dex {
-                    self.utils
-                        .get_metrics()
-                        .inspect(|m| m.missing_cex_pair(pair));
-                }
-                (window, other)
-            })
-            .collect();
+        let optimistic = || {
+            metadata.cex_trades.as_ref().unwrap().get_optimistic_vmap(
+                self.trade_config,
+                &self.cex_exchanges,
+                pair,
+                &swap.amount_out,
+                metadata.microseconds_block_timestamp(),
+                None,
+                marked_cex_dex,
+                swap,
+                tx_hash,
+            )
+        };
 
-        (dex_swaps, res)
+        let optimistic = self
+            .utils
+            .get_metrics()
+            .map(|m| m.run_cex_price_vol(optimistic))
+            .unwrap_or_else(optimistic);
+
+        if (window.is_none() || optimistic.is_none()) && marked_cex_dex {
+            self.utils
+                .get_metrics()
+                .inspect(|m| m.missing_cex_pair(pair));
+        }
+
+        (window, optimistic)
     }
 
     //TODO: This should likely be done on the pricing side instead of here, so that
