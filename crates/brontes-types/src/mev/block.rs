@@ -369,11 +369,11 @@ impl Serialize for MevBlock {
             &vec![self.mev_count.sandwich_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
-            "mev_count.cex_dex_trades_count",
+            "mev_count.cex_dex_trade_count",
             &vec![self.mev_count.cex_dex_trade_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
-            "mev_count.cex_dex_quotes_count",
+            "mev_count.cex_dex_quote_count",
             &vec![self.mev_count.cex_dex_quote_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
@@ -508,7 +508,9 @@ impl DbRow for MevBlock {
         "block_number",
         "mev_count.mev_count",
         "mev_count.sandwich_count",
-        "mev_count.cex_dex_count",
+        "mev_count.cex_dex_quotes_count",
+        "mev_count.cex_dex_trades_count",
+        "mev_count.cex_dex_rfq_count",
         "mev_count.jit_count",
         "mev_count.jit_sandwich_count",
         "mev_count.atomic_backrun_count",

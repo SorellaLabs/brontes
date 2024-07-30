@@ -5,8 +5,8 @@ CREATE TABLE mev.mev_blocks ON CLUSTER eth_cluster0
     `mev_count` Nested (
         `mev_count` UInt64,
         `sandwich_count` UInt64,
-        `cex_dex_trades_count` UInt64,
-        `cex_dex_quotes_count` UInt64,
+        `cex_dex_trade_count` UInt64,
+        `cex_dex_quote_count` UInt64,
         `cex_dex_rfq_count` UInt64,
         `jit_count` UInt64,
         `jit_sandwich_count` UInt64,
