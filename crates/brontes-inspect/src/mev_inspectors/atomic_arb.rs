@@ -711,4 +711,21 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_very_big_atomic_arb_2() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "ed3248d5386237cfe12963e0d35e1541707cad4fdca43801f3799861e8adb9b5"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(70255.0)
+            .with_gas_paid_usd(1459.0);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
