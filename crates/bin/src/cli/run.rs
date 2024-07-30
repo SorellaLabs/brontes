@@ -88,11 +88,11 @@ pub struct RunArgs {
 pub struct TimeWindowArgs {
     /// The sliding time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp
-    #[arg(long = "tw-before", short = 'b', default_value = if cfg!(feature = "cex-dex-quotes") { "0.5" } else { "10.0" })]
+    #[arg(long = "tw-before", short = 'b', default_value = "10.0")]
     pub time_window_before:            f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = if cfg!(feature = "cex-dex-quotes") { "2.0" } else { "25.0" })]
+    #[arg(long = "tw-after", short = 'a', default_value = "25.0")]
     pub time_window_after:             f64,
     /// The time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
@@ -102,6 +102,9 @@ pub struct TimeWindowArgs {
     /// the block timestamp for fully optimistic calculations
     #[arg(long = "op-tw-after", default_value = "10.0")]
     pub time_window_after_optimistic:  f64,
+    /// Cex Dex Quotes price time
+    #[arg(long = "mk-time", default_value = "2.0")]
+    pub price_time:                    f64,
 }
 
 impl RunArgs {
@@ -134,23 +137,7 @@ impl RunArgs {
 
         task_executor.spawn_critical("metrics", metrics_listener);
 
-        let hr = if self.enable_fallback {
-            if let Some(fallback_server) = self.fallback_server {
-                tracing::info!("starting heartbeat");
-                backup_server_heartbeat(fallback_server, Duration::from_secs(4)).await;
-                None
-            } else {
-                tracing::info!("starting monitor");
-                let (tx, rx) = tokio::sync::mpsc::channel(10);
-                if let Err(e) = start_hr_monitor(tx).await {
-                    tracing::error!(err=%e);
-                }
-                tracing::info!("monitor server started");
-                Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
-            }
-        } else {
-            None
-        };
+        let hr = self.try_start_fallback_server().await;
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
         let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint, hr).await?);
@@ -158,19 +145,14 @@ impl RunArgs {
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
-        let load_window =
-            self.time_window_args
-                .time_window_before
-                .max(self.time_window_args.time_window_after)
-                .max(self.time_window_args.time_window_before_optimistic)
-                .max(self.time_window_args.time_window_after_optimistic) as usize
-                * 2;
+        let load_window = self.load_time_window();
 
         let cex_download_config = CexDownloadConfig::new(
-            // we want to load the biggest window so both can run and not run out of trades.
+            // the run time window. notiably we downlaod the max window
             (load_window as u64, load_window as u64),
             self.cex_exchanges.clone(),
         );
+
         let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
@@ -189,14 +171,8 @@ impl RunArgs {
         if only_cex_dex {
             self.force_no_dex_pricing = true;
         }
-        let trade_config = CexDexTradeConfig {
-            time_window_after_us:  self.time_window_args.time_window_after as u64 * SECONDS_TO_US,
-            time_window_before_us: self.time_window_args.time_window_before as u64 * SECONDS_TO_US,
-            optimistic_before_us:  self.time_window_args.time_window_before_optimistic as u64
-                * SECONDS_TO_US,
-            optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
-                * SECONDS_TO_US,
-        };
+
+        let trade_config = self.trade_config();
 
         let inspectors = init_inspectors(
             quote_asset,
@@ -206,9 +182,9 @@ impl RunArgs {
             trade_config,
             self.with_metrics,
         );
+
         let tracer =
             get_tracing_provider(Path::new(&reth_db_path), max_tasks, task_executor.clone());
-
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         let executor = task_executor.clone();
@@ -249,6 +225,35 @@ impl RunArgs {
         Ok(())
     }
 
+    async fn try_start_fallback_server(&self) -> Option<HeartRateMonitor> {
+        if self.enable_fallback {
+            if let Some(fallback_server) = self.fallback_server.clone() {
+                tracing::info!("starting heartbeat");
+                backup_server_heartbeat(fallback_server, Duration::from_secs(4)).await;
+                None
+            } else {
+                tracing::info!("starting monitor");
+                let (tx, rx) = tokio::sync::mpsc::channel(10);
+                if let Err(e) = start_hr_monitor(tx).await {
+                    tracing::error!(err=%e);
+                }
+                tracing::info!("monitor server started");
+                Some(HeartRateMonitor::new(Duration::from_secs(7), rx))
+            }
+        } else {
+            None
+        }
+    }
+
+    /// the time window in seconds for downloading
+    fn load_time_window(&self) -> usize {
+        self.time_window_args
+            .time_window_before
+            .max(self.time_window_args.time_window_after)
+            .max(self.time_window_args.time_window_before_optimistic)
+            .max(self.time_window_args.time_window_after_optimistic) as usize
+    }
+
     fn check_proper_range(&self) -> eyre::Result<()> {
         if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
             if start > end {
@@ -256,5 +261,16 @@ impl RunArgs {
             }
         }
         Ok(())
+    }
+
+    fn trade_config(&self) -> CexDexTradeConfig {
+        CexDexTradeConfig {
+            time_window_after_us:  self.time_window_args.time_window_after as u64 * SECONDS_TO_US,
+            time_window_before_us: self.time_window_args.time_window_before as u64 * SECONDS_TO_US,
+            optimistic_before_us:  self.time_window_args.time_window_before_optimistic as u64
+                * SECONDS_TO_US,
+            optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
+                * SECONDS_TO_US,
+        }
     }
 }
