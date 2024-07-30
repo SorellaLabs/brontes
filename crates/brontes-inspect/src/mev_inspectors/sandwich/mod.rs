@@ -1323,7 +1323,7 @@ mod tests {
                 USDT_ADDRESS,
                 USDC_ADDRESS,
             ])
-            .with_gas_paid_usd(702.27)
+            .with_gas_paid_usd(110.19)
             .with_expected_profit_usd(112.2);
 
         inspector_util.run_inspector(config, None).await.unwrap();

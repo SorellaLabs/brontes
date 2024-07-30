@@ -27,7 +27,7 @@ use brontes_types::{
     pair::Pair,
     structured_trace::TxTrace,
     traits::TracingProvider,
-    BlockTree, BrontesTaskExecutor, FastHashMap, ToFloatNearest, UnboundedYapperReceiver,
+    BlockTree, BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver,
 };
 use eyre::{eyre, ErrReport};
 use futures::Future;
@@ -450,12 +450,10 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        let cex_trades = self.fetch_trades(block_num)?;
+        let cex_trades = self.fetch_trades(block_num).ok();
 
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
-
-        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
 
         Ok(BlockMetadata::new(
             block_num,
@@ -468,7 +466,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             eth_price.unwrap_or_default(),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None, Some(cex_trades)))
+        .into_metadata(cex_quotes, None, None, cex_trades))
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
@@ -476,7 +474,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
-        let cex_trades = self.fetch_trades(block_num)?;
+        let cex_trades = self.fetch_trades(block_num).ok();
 
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
@@ -493,7 +491,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None, Some(cex_trades))
+            .into_metadata(cex_quotes, Some(dex_quotes), None, cex_trades)
         })
     }
 
@@ -1206,9 +1204,8 @@ impl LibmdbxReadWriter {
 
     fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         self.db.view_db(|tx| {
-            let res = tx
-                .get::<CexPrice>(block_num)?
-                .expect("Failed to fetch Cex Quotes");
+            let res = tx.get::<CexPrice>(block_num)?.unwrap_or_default();
+
             Ok(res)
         })
     }
