@@ -126,7 +126,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .filter_map(|(actions, tx_info)| {
                 let tx_info = tx_info?;
                 if self.should_filter_tx(&tx_info) {
-                    return None;
+                    return None
                 }
 
                 if actions.iter().any(Action::is_batch) {
@@ -150,7 +150,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 self.utils
                     .get_metrics()
                     .inspect(|m| m.branch_filtering_trigger(MevType::CexDex, "is_defi_automation"));
-                return true;
+                return true
             }
         }
         false
@@ -196,7 +196,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             self.utils
                 .get_metrics()
                 .inspect(|m| m.branch_filtering_trigger(MevType::CexDex, "is_triangular_arb"));
-            return None;
+            return None
         }
 
         self.process_swaps(dex_swaps, tx_info, metadata, deltas, false)
@@ -246,7 +246,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 "no dex swaps found\n Tx: {}",
                 format_etherscan_url(&tx_info.tx_hash)
             );
-            return None;
+            return None
         }
 
         let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
@@ -964,7 +964,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_cex_dex_markout_woo_usdc() {
         // no swap so can't calc
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
         let tx = hex!("157d7a1279b6eba0ce1491fe9cb8eb657036506888facd2e8ae420ce5aa19f2c").into();
         let config =
             InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
