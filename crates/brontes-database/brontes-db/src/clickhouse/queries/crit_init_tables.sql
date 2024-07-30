@@ -4,6 +4,7 @@ with
   ),
   address_to_protocol as (
     select cast(count(distinct address), 'UInt64') as address_to_protocol from ethereum.pools 
+    WHERE length(pools.tokens) >= 2
   ),
   tokens as (
     select cast(count(distinct address), 'UInt64') as tokens from brontes.token_info
