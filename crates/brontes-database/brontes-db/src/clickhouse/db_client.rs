@@ -160,6 +160,7 @@ impl Clickhouse {
                     }
                     BundleData::Jit(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::CexDex(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
+                    BundleData::CexDexQuote(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::Liquidation(s) => {
                         tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
