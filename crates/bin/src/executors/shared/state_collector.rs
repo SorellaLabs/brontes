@@ -146,6 +146,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                     let quote_asset = self.quote_asset;
                     self.metadata_fetcher
                         .load_metadata_for_tree(tree, db, quote_asset);
+
                     cx.waker().wake_by_ref();
                 }
                 Poll::Ready(Err(e)) => {

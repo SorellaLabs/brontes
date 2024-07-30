@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     collections::VecDeque,
     pin::Pin,
@@ -7,10 +6,12 @@ use std::{
         Arc,
     },
     task::Poll,
+    time::Duration,
 };
 
 use alloy_primitives::Address;
-use brontes_database::clickhouse::ClickhouseHandle;
+use brontes_core::DBWriter;
+use brontes_database::clickhouse::{ClickhouseHandle};
 use brontes_types::{
     db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::Action,
@@ -18,6 +19,7 @@ use brontes_types::{
     BlockData, BlockTree,
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
+use itertools::Itertools;
 
 use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 
@@ -87,7 +89,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                     .unwrap_or(true))
     }
 
-    pub fn load_metadata_for_tree<DB: LibmdbxReader>(
+    pub fn load_metadata_for_tree<DB: LibmdbxReader + DBWriter>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
@@ -227,7 +229,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
     }
 
-    fn load_metadata_from_clickhouse<DB: LibmdbxReader>(
+    fn load_metadata_from_clickhouse<DB: LibmdbxReader + DBWriter>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
@@ -236,17 +238,58 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         quote_asset: Address,
     ) {
         tracing::debug!(?block, "spawning clickhouse fut");
+        let window = self.cex_window_data.get_window_lookahead();
+        // given every download is -6 + 6 around the block
+        // we calculate the offset from the current block that we need
+        let offsets = (window / 12) as u64;
         let future = Box::pin(async move {
-            let mut meta = clickhouse
-                .get_metadata(block, quote_asset)
-                .await
-                .unwrap_or_else(|_| {
-                    panic!("missing metadata for clickhouse.get_metadata request {block}")
-                });
-
-            meta.builder_info = libmdbx
+            let builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
+
+            //fetch metadata till it works
+            let mut meta = loop {
+                if let Ok(res) = clickhouse.get_metadata(block, quote_asset).await {
+                    break res
+                } else {
+                    tracing::warn!(
+                        ?block,
+                        "failed to load block meta from clickhouse. waiting a second and then \
+                         trying again"
+                    );
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            };
+
+            // fetch trades till it works
+            let trades = loop {
+                if let Ok(ranges) = clickhouse
+                    .get_cex_trades(
+                        brontes_database::libmdbx::cex_utils::CexRangeOrArbitrary::Range(
+                            block - offsets,
+                            block + offsets,
+                        ),
+                    )
+                    .await
+                {
+                    let mut trades = CexTradeMap::default();
+                    for range in ranges.into_iter().sorted_unstable_by_key(|k| k.key) {
+                        trades.merge_in_map(range.value);
+                    }
+
+                    break trades
+                } else {
+                    tracing::warn!(
+                        ?block,
+                        "failed to load trades from clickhouse. waiting a second and then trying \
+                         again"
+                    );
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            };
+
+            meta.cex_trades = Some(trades);
+            meta.builder_info = builder_info;
             (block, tree, meta)
         });
 
