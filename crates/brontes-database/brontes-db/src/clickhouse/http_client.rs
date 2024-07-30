@@ -7,7 +7,7 @@ use brontes_types::{
         metadata::{BlockMetadata, Metadata},
     },
     pair::Pair,
-    FastHashMap, ToFloatNearest,
+    FastHashMap,
 };
 use clickhouse::{remote_cursor::RemoteCursor, DbRow};
 use futures::TryStreamExt;
@@ -100,8 +100,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             block_meta.value.block_timestamp * 1_000_000,
             quote_asset,
         );
-
-        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
 
         Ok({
             let metadata = BlockMetadata::new(
