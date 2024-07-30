@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     collections::VecDeque,
     pin::Pin,
@@ -31,18 +30,8 @@ use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 /// of processed trees
 const MAX_PENDING_TREES: usize = 5;
 
-pub type ClickhouseMetadataFuture = FuturesOrdered<
-    Pin<
-        Box<
-            dyn Future<
-                    Output = Result<
-                        (u64, BlockTree<Action>, Metadata, Option<BuilderInfo>),
-                        (u64, Address, BlockTree<Action>, Option<BuilderInfo>),
-                    >,
-                > + Send,
-        >,
-    >,
->;
+pub type ClickhouseMetadataFuture =
+    FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)>> + Send>>;
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
@@ -256,36 +245,17 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
 
-            let meta = clickhouse
-                .get_metadata(block, quote_asset)
-                .await
-                .map_err(|_| (block, quote_asset, tree.clone(), builder_info.clone()))?;
+            let mut meta = loop {
+                if let Ok(res) = clickhouse.get_metadata(block, quote_asset).await {
+                    break res
+                } else {
+                    tracing::warn!(?block, "failed to load block from clickhouse. waiting a second and then trying again");
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            };
 
-            Ok((block, tree, meta, builder_info))
-        });
-
-        self.clickhouse_futures.push_back(future);
-    }
-
-    fn on_clickhouse_failure(
-        &mut self,
-        tree: BlockTree<Action>,
-        builder_info: Option<BuilderInfo>,
-        block: u64,
-        quote_asset: Address,
-    ) {
-        tracing::debug!(?block, "retrying failed clickhouse future");
-        let clickhouse = self.clickhouse.unwrap();
-
-        let future = Box::pin(async move {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-
-            let meta = clickhouse
-                .get_metadata(block, quote_asset)
-                .await
-                .map_err(|_| (block, quote_asset, tree.clone(), builder_info.clone()))?;
-
-            Ok((block, tree, meta, builder_info))
+            meta.builder_info = builder_info;
+            (block, tree, meta)
         });
 
         self.clickhouse_futures.push_back(future);
@@ -307,18 +277,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
             return Poll::Pending
         }
 
-        while let Poll::Ready(Some(results)) = self.clickhouse_futures.poll_next_unpin(cx) {
-            match results {
-                Ok((block, tree, mut meta, builder)) => {
-                    meta.builder_info = builder;
-                    tracing::info!("clickhouse future resolved");
-                    self.dex_pricer_stream
-                        .add_pending_inspection(block, tree, meta)
-                }
-                Err((block, quote_asset, tree, builder)) => {
-                    self.on_clickhouse_failure(tree, builder, block, quote_asset);
-                }
-            }
+        while let Poll::Ready(Some((block, tree, meta))) =
+            self.clickhouse_futures.poll_next_unpin(cx)
+        {
+            tracing::info!("clickhouse future resolved");
+            self.dex_pricer_stream
+                .add_pending_inspection(block, tree, meta)
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
