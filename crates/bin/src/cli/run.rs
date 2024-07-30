@@ -103,7 +103,7 @@ pub struct TimeWindowArgs {
     #[arg(long = "op-tw-after", default_value = "10.0")]
     pub time_window_after_optimistic:  f64,
     /// Cex Dex Quotes price time
-    #[arg(long = "mk-time", default_value = "0.2")]
+    #[arg(long = "mk-time", default_value = "2.0")]
     pub quotes_price_time:             f64,
 }
 
