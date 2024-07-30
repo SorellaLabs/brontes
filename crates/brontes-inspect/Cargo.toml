@@ -90,11 +90,6 @@ statrs = "0.16"
 
 
 [features]
-
-cex-dex-quotes = [
-  "brontes-types/cex-dex-quotes",
-  "brontes-database/cex-dex-quotes",
-]
 sorella-server = ["local-reth", "local-clickhouse"]
 
 tests = [

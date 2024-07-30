@@ -11,6 +11,7 @@ pub use db_client::*;
 pub mod split_db;
 #[cfg(feature = "local-clickhouse")]
 pub use db_interfaces::clickhouse::config::ClickhouseConfig;
+use reth_primitives::Address;
 #[cfg(feature = "local-clickhouse")]
 pub use split_db::*;
 #[cfg(not(feature = "local-clickhouse"))]
@@ -44,15 +45,17 @@ use crate::{
 
 #[auto_impl::auto_impl(&, &mut)]
 pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
-    fn get_metadata(&self, block_num: u64) -> impl Future<Output = eyre::Result<Metadata>> + Send;
+    fn get_metadata(
+        &self,
+        block_num: u64,
+        quote_asset: Address,
+    ) -> impl Future<Output = eyre::Result<Metadata>> + Send;
 
-    #[cfg(feature = "cex-dex-quotes")]
     fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> impl Future<Output = eyre::Result<Vec<crate::CexPriceData>>> + Send;
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,

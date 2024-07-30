@@ -124,12 +124,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false)
                 .await;
 
-            #[cfg(feature = "cex-dex-quotes")]
-            let cmp = Inspectors::CexDex;
-            #[cfg(not(feature = "cex-dex-quotes"))]
-            let cmp = Inspectors::CexDexMarkout;
-
-            if inspector_type == cmp {
+            if inspector_type == Inspectors::CexDex || inspector_type == Inspectors::CexDexMarkout {
                 res
             } else {
                 Ok(res.unwrap_or_else(|_| Metadata::default()))
@@ -184,12 +179,7 @@ impl InspectorBenchUtils {
                 .get_metadata(tree.header.number, false)
                 .await;
 
-            #[cfg(feature = "cex-dex-quotes")]
-            let cmp = Inspectors::CexDex;
-            #[cfg(not(feature = "cex-dex-quotes"))]
-            let cmp = Inspectors::CexDexMarkout;
-
-            if inspector_type == cmp {
+            if inspector_type == Inspectors::CexDex || inspector_type == Inspectors::CexDexMarkout {
                 res
             } else {
                 Ok(res.unwrap_or_else(|_| Metadata::default()))

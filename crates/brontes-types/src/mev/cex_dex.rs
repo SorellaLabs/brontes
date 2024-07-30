@@ -105,7 +105,7 @@ pub struct CexDex {
 
 impl Mev for CexDex {
     fn mev_type(&self) -> MevType {
-        MevType::CexDex
+        MevType::CexDexTrades
     }
 
     fn total_gas_paid(&self) -> u128 {

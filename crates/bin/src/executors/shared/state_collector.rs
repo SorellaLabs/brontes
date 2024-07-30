@@ -7,6 +7,7 @@ use std::{
     task::{Poll, Waker},
 };
 
+use alloy_primitives::Address;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
@@ -37,6 +38,7 @@ pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: 
 
     collection_future: Option<CollectionFut<'static>>,
     multi_block:       MultiBlockWindow,
+    quote_asset:       Address,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
@@ -49,6 +51,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         parser: &'static Parser<T, DB>,
         db: &'static DB,
         multi_block: MultiBlockWindow,
+        quote_asset: Address,
     ) -> Self {
         Self {
             mark_as_finished,
@@ -58,6 +61,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             db,
             collection_future: None,
             multi_block,
+            quote_asset,
         }
     }
 
@@ -139,7 +143,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             match collection_future.poll_unpin(cx) {
                 Poll::Ready(Ok(tree)) => {
                     let db = self.db;
-                    self.metadata_fetcher.load_metadata_for_tree(tree, db);
+                    let quote_asset = self.quote_asset;
+                    self.metadata_fetcher
+                        .load_metadata_for_tree(tree, db, quote_asset);
                     cx.waker().wake_by_ref();
                 }
                 Poll::Ready(Err(e)) => {

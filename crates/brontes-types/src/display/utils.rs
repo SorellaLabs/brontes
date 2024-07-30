@@ -10,7 +10,6 @@ use crate::{
     mev::{Bundle, BundleData, CexDex, OptimisticTrade},
     utils::ToFloatNearest,
 };
-
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let ascii_header = indoc! {r#"
 
@@ -793,6 +792,48 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     bundle.header.balance_deltas.iter().for_each(|tx_delta| {
         writeln!(f, "\n\n{}", tx_delta).expect("Failed to write balance deltas")
     });
+
+    Ok(())
+}
+
+pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
+    let ascii_header = indoc! {r#"
+        ██████╗███████╗██╗  ██╗    ██████╗ ███████╗██╗  ██╗
+        ██╔════╝██╔════╝╚██╗██╔╝    ██╔══██╗██╔════╝╚██╗██╔╝
+        ██║     █████╗   ╚███╔╝     ██║  ██║█████╗   ╚███╔╝ 
+        ██║     ██╔══╝   ██╔██╗     ██║  ██║██╔══╝   ██╔██╗ 
+        ╚██████╗███████╗██╔╝ ██╗    ██████╔╝███████╗██╔╝ ██╗
+        ╚═════╝╚══════╝╚═╝  ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═╝
+    "#};
+
+    writeln!(f, "{}", ascii_header.purple())?;
+
+    let cex_dex_data = match &bundle.data {
+        BundleData::CexDexQuote(data) => data,
+        _ => return Err(fmt::Error),
+    };
+
+    writeln!(f, "\n{}", "Transaction Details".bold().underline().bright_yellow())?;
+    writeln!(f, "   - Tx Hash: {}", format_etherscan_url(&bundle.header.tx_hash))?;
+    writeln!(f, "   - Block Number: {}", bundle.header.block_number)?;
+    writeln!(f, "   - Block Timestamp: {}", cex_dex_data.block_timestamp)?;
+    writeln!(f, "   - Bribe USD: {}", bundle.header.bribe_usd)?;
+
+    writeln!(f, "\n{}", "Quote Details".bold().underline().bright_yellow())?;
+    writeln!(f, "   - Exchange: {}", cex_dex_data.exchange.to_string().green())?;
+    writeln!(f, "   - PnL (USD): {}", format!("{:.6}", cex_dex_data.pnl).cyan())?;
+
+    writeln!(f, "\n{}", "Swaps".bold().underline().bright_yellow())?;
+    for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
+        writeln!(f, "   Swap {}: {}", i + 1, swap)?;
+        if i < cex_dex_data.mid_price.len() {
+            writeln!(f, "      - Mid Price: {:.6}", cex_dex_data.mid_price[i])?;
+        }
+    }
+    // Gas Details
+    writeln!(f, "\n{}: \n", "Gas Details".underline().bright_yellow())?;
+
+    cex_dex_data.gas_details.pretty_print_with_spaces(f, 8)?;
 
     Ok(())
 }

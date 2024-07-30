@@ -70,14 +70,14 @@ where
 
         if mev_blocks.is_empty() {
             error!("No MEV blocks fetched for the given range.");
-            return Err(Error::msg("No MEV blocks fetched for the given range."));
+            return Err(Error::msg("No MEV blocks fetched for the given range."))
         }
 
         let mev_blocks_iter = mev_blocks.into_iter();
         let (
             blocks,
             bundle_headers,
-            cex_dex_arbs,
+            _cex_dex_arbs,
             atomic_arbs,
             jit,
             sandwich,
@@ -111,6 +111,7 @@ where
                         BundleData::Liquidation(liquidation_data) => {
                             liquidation.push(liquidation_data)
                         }
+                        _ => continue,
                     }
                 }
             }
@@ -146,15 +147,15 @@ where
             }));
         }
 
-        if !cex_dex_arbs.is_empty() {
+        if !_cex_dex_arbs.is_empty() {
             bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
-                    let cex_dex_batch = cex_dex_to_record_batch(cex_dex_arbs)
+                    let cex_dex_batch = cex_dex_to_record_batch(_cex_dex_arbs)
                         .wrap_err("Failed to convert CEX-DEX data to record batch")?;
                     sync_write_parquet(
                         cex_dex_batch,
-                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::CexDex))?,
+                        get_path(base_dir_path, Tables::MevBlocks, Some(MevType::CexDexTrades))?,
                     )
                 }
             }));
@@ -270,7 +271,7 @@ where
 
         if address_metadata.is_empty() {
             error!("No MEV blocks fetched for the given range.");
-            return Err(Error::msg("No MEV blocks fetched for the given range."));
+            return Err(Error::msg("No MEV blocks fetched for the given range."))
         }
 
         let address_meta_batch = address_metadata_to_record_batch(address_metadata)
@@ -294,7 +295,7 @@ where
 
         if eoa_info.is_empty() && contract_info.is_empty() {
             error!("Searcher EOA & Contracts tables are empty.");
-            return Err(Error::msg("No indexed searcher"));
+            return Err(Error::msg("No indexed searcher"))
         }
 
         let searcher_info_batch = searcher_info_to_record_batch(eoa_info, contract_info)
@@ -318,7 +319,7 @@ where
 
         if builder_info.is_empty() {
             error!("Builder table is empty.");
-            return Err(Error::msg("No builder info"));
+            return Err(Error::msg("No builder info"))
         }
 
         let builder_info_batch = builder_info_to_record_batch(builder_info)

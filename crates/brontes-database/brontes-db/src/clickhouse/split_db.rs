@@ -107,6 +107,7 @@ impl ClickhouseBuffered {
         inserts!(
             (MevBundle_Header, BundleHeader),
             (MevMev_Blocks, MevBlock),
+            (MevCex_Dex_Quotes, CexDexQuote),
             (MevCex_Dex, CexDex),
             (MevSearcher_Tx, SearcherTx),
             (MevJit, JitLiquidity),

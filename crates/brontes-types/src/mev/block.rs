@@ -190,7 +190,10 @@ fn format_profit(value: f64) -> String {
 pub struct MevCount {
     pub bundle_count:         u64,
     pub sandwich_count:       Option<u64>,
-    pub cex_dex_count:        Option<u64>,
+    pub cex_dex_trade_count:  Option<u64>,
+    pub cex_dex_quote_count:  Option<u64>,
+    pub cex_dex_rfq_count:    Option<u64>,
+    pub jit_cex_dex_count:    Option<u64>,
     pub jit_count:            Option<u64>,
     pub jit_sandwich_count:   Option<u64>,
     pub atomic_backrun_count: Option<u64>,
@@ -202,8 +205,11 @@ impl MevCount {
     pub fn increment_count(&mut self, mev_type: MevType) {
         self.bundle_count += 1;
         match mev_type {
-            MevType::CexDex => {
-                self.cex_dex_count = Some(self.cex_dex_count.unwrap_or_default().add(1))
+            MevType::CexDexTrades => {
+                self.cex_dex_trade_count = Some(self.cex_dex_trade_count.unwrap_or_default().add(1))
+            }
+            MevType::CexDexQuotes => {
+                self.cex_dex_quote_count = Some(self.cex_dex_quote_count.unwrap_or_default().add(1))
             }
             MevType::Sandwich => {
                 self.sandwich_count = Some(self.sandwich_count.unwrap_or_default().add(1))
@@ -222,7 +228,10 @@ impl MevCount {
             MevType::SearcherTx => {
                 self.searcher_tx_count = Some(self.searcher_tx_count.unwrap_or_default().add(1))
             }
-            _ => (),
+            MevType::JitCexDex => {
+                self.jit_cex_dex_count = Some(self.jit_cex_dex_count.unwrap_or_default().add(1))
+            }
+            _ => {}
         }
     }
 }
@@ -235,11 +244,17 @@ impl fmt::Display for MevCount {
         if let Some(count) = self.sandwich_count {
             writeln!(f, "    - Sandwich: {}", count.to_string().bold())?;
         }
-        if let Some(count) = self.cex_dex_count {
-            writeln!(f, "    - Cex-Dex: {}", count.to_string().bold())?;
+        if let Some(count) = self.cex_dex_trade_count {
+            writeln!(f, "    - Trade Cex-Dex: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.cex_dex_quote_count {
+            writeln!(f, "    - Quote Cex-Dex: {}", count.to_string().bold())?;
         }
         if let Some(count) = self.jit_count {
             writeln!(f, "    - Jit: {}", count.to_string().bold())?;
+        }
+        if let Some(count) = self.jit_cex_dex_count {
+            writeln!(f, "    - Jit Cex-Dex: {}", count.to_string().bold())?;
         }
         if let Some(count) = self.jit_sandwich_count {
             writeln!(f, "    - Jit Sandwich: {}", count.to_string().bold())?;
@@ -343,7 +358,7 @@ impl Serialize for MevBlock {
     where
         S: serde::Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("MevBlock", 31)?;
+        let mut ser_struct = serializer.serialize_struct("MevBlock", 33)?;
 
         ser_struct.serialize_field("block_hash", &format!("{:?}", self.block_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
@@ -354,8 +369,16 @@ impl Serialize for MevBlock {
             &vec![self.mev_count.sandwich_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
-            "mev_count.cex_dex_count",
-            &vec![self.mev_count.cex_dex_count.unwrap_or_default()],
+            "mev_count.cex_dex_trades_count",
+            &vec![self.mev_count.cex_dex_trade_count.unwrap_or_default()],
+        )?;
+        ser_struct.serialize_field(
+            "mev_count.cex_dex_quotes_count",
+            &vec![self.mev_count.cex_dex_quote_count.unwrap_or_default()],
+        )?;
+        ser_struct.serialize_field(
+            "mev_count.cex_dex_rfq_count",
+            &vec![self.mev_count.cex_dex_rfq_count.unwrap_or_default()],
         )?;
         ser_struct.serialize_field(
             "mev_count.jit_count",

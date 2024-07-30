@@ -115,11 +115,7 @@ tikv-jemallocator = { version = "0.5.0", features = [
 ] }
 
 [features]
-default = [
-  "brontes-core/default",
-  "brontes-classifier/default",
-  "jemalloc"
-]
+default = ["brontes-core/default", "brontes-classifier/default", "jemalloc"]
 
 jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
@@ -169,3 +165,4 @@ local-postgres = [
 
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]
+

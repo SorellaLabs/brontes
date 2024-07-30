@@ -4,7 +4,7 @@ use brontes_types::BrontesTaskExecutor;
 use fs_extra::dir::get_dir_content;
 use rayon::iter::*;
 
-use crate::{libmdbx::LibmdbxReadWriter, move_tables_to_partition, DexPrice, *};
+use crate::{libmdbx::LibmdbxReadWriter, move_tables_to_partition, *};
 
 pub fn merge_libmdbx_dbs(
     final_db: LibmdbxReadWriter,

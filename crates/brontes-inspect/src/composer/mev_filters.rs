@@ -92,14 +92,15 @@ pub fn atomic_dedup_fn(
 
 define_mev_precedence!(
     // will filter out unless function says otherwise
-    CexDex => AtomicArb;
+    CexDexTrades => AtomicArb;
     // filter out all atomic arbs that we kept as cex dex
-    AtomicArb => CexDex;
-    Unknown, SearcherTx => CexDex;
+    AtomicArb => CexDexTrades;
+    Unknown, SearcherTx => CexDexQuotes;
+    Unknown, SearcherTx => CexDexTrades;
     Unknown, SearcherTx => AtomicArb;
     Unknown, SearcherTx, AtomicArb => Jit;
-    Unknown, SearcherTx, AtomicArb, CexDex => Liquidation;
-    Unknown, SearcherTx, AtomicArb, CexDex => Sandwich;
-    Unknown, SearcherTx, AtomicArb, Jit, CexDex => JitCexDex;
-    Unknown, SearcherTx, AtomicArb, CexDex, Jit, Sandwich => JitSandwich;
+    Unknown, SearcherTx, AtomicArb, CexDexQuotes,CexDexTrades  => Liquidation;
+    Unknown, SearcherTx, AtomicArb, CexDexQuotes,CexDexTrades  => Sandwich;
+    Unknown, SearcherTx, AtomicArb, Jit, CexDexQuotes, CexDexTrades=> JitCexDex;
+    Unknown, SearcherTx, AtomicArb, CexDexQuotes, CexDexTrades, Jit, Sandwich => JitSandwich;
 );
