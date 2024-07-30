@@ -59,9 +59,7 @@ impl fmt::Display for Bundle {
             {
                 display_cex_dex(self, f)?
             }
-            MevType::CexDex | MevType::JitCexDex | MevType::RfqCexDex
-                if !matches!(self.data, BundleData::CexDex(_)) =>
-            {
+            MevType::CexDex | MevType::JitCexDex | MevType::RfqCexDex => {
                 display_cex_dex_quotes(self, f)?
             }
             MevType::Jit => display_jit_liquidity(self, f)?,
