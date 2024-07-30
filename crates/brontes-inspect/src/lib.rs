@@ -80,7 +80,7 @@ use brontes_types::{
     tree::BlockTree,
     MultiBlockData,
 };
-use cex_dex::{CexDexMarkoutInspector, CexDexQuotesInspector};
+use cex_dex::{markout::CexDexMarkoutInspector, quotes::CexDexQuotesInspector};
 use jit::JitCexDex;
 use liquidations::LiquidationInspector;
 use sandwich::SandwichInspector;

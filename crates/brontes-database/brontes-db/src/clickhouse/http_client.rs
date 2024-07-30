@@ -7,7 +7,7 @@ use brontes_types::{
         metadata::{BlockMetadata, Metadata},
     },
     pair::Pair,
-    FastHashMap,
+    FastHashMap, ToFloatNearest,
 };
 use clickhouse::{remote_cursor::RemoteCursor, DbRow};
 use futures::TryStreamExt;
@@ -115,7 +115,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
                 eth_price.unwrap_or_default(),
                 block_meta.value.private_flow.into_iter().collect(),
             );
-            metadata.into_metadata(cex_quotes.value, dex_quotes, None, None)
+            metadata.into_metadata(cex_quotes.value, dex_quotes, None)
         })
     }
 

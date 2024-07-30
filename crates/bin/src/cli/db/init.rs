@@ -86,7 +86,7 @@ impl Init {
 
             task_executor
                 .spawn_critical("init", async move {
-                    let mut tables = Tables::ALL.to_vec();
+                    let tables = Tables::ALL.to_vec();
 
                     let multi = MultiProgress::default();
                     let tables_with_progress = Arc::new(

@@ -227,7 +227,6 @@ impl<I: LibmdbxInit> LibmdbxReader for ClickhouseMiddleware<I> {
         self.inner.has_dex_quotes(block_num)
     }
 
-    
     fn get_cex_trades(&self, block: u64) -> eyre::Result<brontes_types::db::cex::CexTradeMap> {
         self.inner.get_cex_trades(block)
     }
@@ -531,7 +530,6 @@ impl<I: LibmdbxInit> LibmdbxReader for ReadOnlyMiddleware<I> {
         self.inner.has_dex_quotes(block_num)
     }
 
-    
     fn get_cex_trades(&self, block: u64) -> eyre::Result<brontes_types::db::cex::CexTradeMap> {
         self.inner.get_cex_trades(block)
     }

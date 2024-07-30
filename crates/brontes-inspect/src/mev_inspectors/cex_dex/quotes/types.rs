@@ -50,7 +50,7 @@ impl CexDexProcessing {
     pub fn into_bundle(self, tx_info: &TxInfo, block_timestamp: u64) -> Option<(f64, BundleData)> {
         Some((
             self.pnl.aggregate_pnl,
-            BundleData::CexDex(CexDexQuote {
+            BundleData::CexDexQuote(CexDexQuote {
                 tx_hash: tx_info.tx_hash,
                 block_number: tx_info.block_number,
                 block_timestamp,

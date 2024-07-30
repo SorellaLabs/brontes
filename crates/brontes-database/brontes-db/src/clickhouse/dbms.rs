@@ -246,4 +246,3 @@ db_types!(
     (BlockAnalysis, BrontesBlock_Analysis, true),
     (RunId, BrontesRun_Id, false)
 );
-
