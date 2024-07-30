@@ -160,7 +160,9 @@ impl Clickhouse {
                     }
                     BundleData::Jit(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::CexDex(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
-                    BundleData::CexDexQuote(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
+                    BundleData::CexDexQuote(s) => {
+                        tx.send(vec![(s, self.tip, self.run_id).into()])?
+                    }
                     BundleData::Liquidation(s) => {
                         tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
@@ -288,7 +290,7 @@ impl ClickhouseHandle for Clickhouse {
         );
         println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
 
-        let mut meta = BlockMetadata::new(
+        let meta = BlockMetadata::new(
             block_num,
             block_meta.block_hash,
             block_meta.block_timestamp,

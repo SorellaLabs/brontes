@@ -17,7 +17,7 @@ use crate::{
     implement_table_value_codecs_with_zc,
     pair::Pair,
     serde_utils::{option_addresss, u256, vec_txhash},
-    FastHashSet, ToFloatNearest,
+    FastHashSet,
 };
 #[allow(unused_imports)]
 use crate::{

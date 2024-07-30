@@ -479,8 +479,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
 
-        println!("Cex Price from Quotes: {}", eth_price.clone().unwrap().to_float());
-
         Ok({
             BlockMetadata::new(
                 block_num,
@@ -1285,12 +1283,7 @@ pub fn determine_eth_prices(
 }
 
 fn default_tables_to_init() -> Vec<Tables> {
-    let mut tables_to_init =
-        vec![Tables::BlockInfo, Tables::DexPrice, Tables::CexPrice, Tables::CexTrades];
-    #[cfg(not(feature = "local-reth"))]
-    tables_to_init.push(Tables::TxTraces);
-
-    tables_to_init
+    vec![Tables::BlockInfo, Tables::DexPrice, Tables::CexPrice, Tables::CexTrades]
 }
 pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
     if data.should_ignore() {
@@ -1299,16 +1292,11 @@ pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
             .map(|t| (t, true))
             .collect_vec()
     } else {
-        let mut tables = vec![
+        vec![
             (Tables::BlockInfo, data.is_initialized(META_FLAG)),
             (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
             (Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)),
             (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
-        ];
-
-        #[cfg(not(feature = "local-reth"))]
-        tables.push((Tables::TxTraces, data.is_initialized(TRACE_FLAG)));
-
-        tables
+        ]
     }
 }
