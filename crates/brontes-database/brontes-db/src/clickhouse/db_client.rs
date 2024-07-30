@@ -301,7 +301,7 @@ impl ClickhouseHandle for Clickhouse {
             eth_price.unwrap_or_default(),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes.value, None, None);
+        .into_metadata(cex_quotes.value, None, None, None);
 
         Ok(meta)
     }
