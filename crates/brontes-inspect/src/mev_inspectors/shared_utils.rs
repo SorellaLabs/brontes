@@ -612,14 +612,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                 ?swap,
                                 "to big of a delta for pricing"
                             );
-                        } else {
-                            tracing::info!(
-                                mev_type=?mev_type,
-                                ?effective_price,
-                                ?dex_pricing_rate,
-                                ?swap,
-                                "valid pricing"
-                            );
                         }
 
                         Some(pct)
