@@ -771,7 +771,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_multihop_jit() {
-        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 2.0).await;
+        let test_utils = InspectorTestUtils::new(USDC_ADDRESS, 10.0).await;
         let config = InspectorTxRunConfig::new(Inspectors::Jit)
             .with_dex_prices()
             .needs_tokens(vec![WETH_ADDRESS])

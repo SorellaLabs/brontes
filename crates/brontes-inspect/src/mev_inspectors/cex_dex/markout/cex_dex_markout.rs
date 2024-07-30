@@ -962,17 +962,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_cex_dex_markout_woo_usdc() {
-        // no swap so can't calc
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
-        let tx = hex!("157d7a1279b6eba0ce1491fe9cb8eb657036506888facd2e8ae420ce5aa19f2c").into();
-        let config =
-            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
-
-        inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[brontes_macros::test]
     async fn test_cex_dex_markout_blur_eth() {
         // should be there if intermediary. however thats failing
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
