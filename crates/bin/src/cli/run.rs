@@ -268,7 +268,7 @@ impl RunArgs {
                 * SECONDS_TO_US,
             optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
                 * SECONDS_TO_US,
-            quotes_fetch_time:     self.time_window_args.quotes_price_time * 1000000.0,
+            quotes_fetch_time:     (self.time_window_args.quotes_price_time * 1000000.0) as u64,
         }
     }
 }
