@@ -103,7 +103,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         } else if let Some(clickhouse) = self.clickhouse {
             self.load_metadata_from_clickhouse(tree, libmdbx, clickhouse, block, quote_asset);
         } else if self.force_no_dex_pricing {
-            self.load_metadata_force_dex_pricing(tree, libmdbx, block, quote_asset);
+            self.load_metadata_force_no_dex_pricing(tree, libmdbx, block, quote_asset);
         } else {
             self.load_metadata_no_dex_pricing(tree, libmdbx, block, quote_asset);
         }
