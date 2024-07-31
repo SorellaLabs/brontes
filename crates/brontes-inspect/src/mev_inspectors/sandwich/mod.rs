@@ -554,6 +554,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         None
     }
 
+    //TODO: Prune non victim transactions from the victim list
     fn has_pool_overlap(
         front_run_swaps: &[Vec<Action>],
         back_run_swaps: &[Action],
