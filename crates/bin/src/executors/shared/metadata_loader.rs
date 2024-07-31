@@ -172,7 +172,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .add_pending_inspection(block, tree, meta);
     }
 
-    fn load_metadata_force_dex_pricing<DB: LibmdbxReader>(
+    fn load_metadata_force_no_dex_pricing<DB: LibmdbxReader>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
