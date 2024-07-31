@@ -5,7 +5,6 @@
 #![feature(const_for)]
 #![feature(const_mut_refs)]
 #![feature(is_sorted)]
-
 #![allow(internal_features)]
 #![allow(clippy::type_complexity)]
 pub mod multi_block;
