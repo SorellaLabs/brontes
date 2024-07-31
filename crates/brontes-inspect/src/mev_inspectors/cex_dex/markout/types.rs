@@ -546,7 +546,11 @@ pub fn log_cex_trade_price_delta(
     dex_amount_out: &Rational,
     cex_output: &Rational,
 ) {
-    let arb_ratio = cex_output.clone() / dex_amount_in;
+    let mut arb_ratio = Rational::ZERO;
+    if dex_amount_in != &Rational::ZERO {
+        arb_ratio = cex_output.clone() / dex_amount_in;
+    }
+
     let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
 
     warn!(

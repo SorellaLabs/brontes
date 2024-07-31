@@ -516,7 +516,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .global_exchange_price;
 
         // Amount * base_to_quote = USDT amount
-        let base_to_quote = token_price.clone().reciprocal();
+        let base_to_quote = if token_price == Rational::ZERO {
+            trace!("Token price is zero");
+            return None;
+        } else {
+            token_price.clone().reciprocal()
+        };
 
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
