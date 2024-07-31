@@ -360,7 +360,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         // Amount * base_to_quote = USDT amount
         let base_to_quote = if token_price == Rational::ZERO {
-            println!("Was the reciprocal causing the div by zero");
+            trace!("Token price is zero");
             return None;
         } else {
             token_price.clone().reciprocal()
