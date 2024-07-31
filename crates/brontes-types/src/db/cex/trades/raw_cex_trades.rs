@@ -142,13 +142,10 @@ impl CexTradesConverter {
                             }
                         });
 
-                        for t in exchange_symbol_map.values_mut() {
-                            if !t.is_sorted_by_key(|k: &CexTrades| k.timestamp) {
-                                tracing::error!("shit not naturally sorted");
-                            }
-                        }
                         for trades in exchange_symbol_map.values_mut() {
-                            trades.sort_unstable_by_key(|k: &CexTrades| k.timestamp);
+                            if !trades.is_sorted_by_key(|k: &CexTrades| k.timestamp) {
+                                trades.sort_unstable_by_key(|k: &CexTrades| k.timestamp);
+                            }
                         }
 
                         (exch, exchange_symbol_map)
