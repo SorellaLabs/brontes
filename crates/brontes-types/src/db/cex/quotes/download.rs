@@ -176,6 +176,8 @@ impl CexQuotesConverter {
                         for t in exchange_symbol_map.values_mut() {
                             if !t.is_sorted_by_key(|k: &CexQuote| k.timestamp) {
                                 tracing::error!("shit not naturally sorted");
+                            } else {
+                                tracing::error!("shit is naturally sorted");
                             }
                         }
                         for quotes in exchange_symbol_map.values_mut() {
