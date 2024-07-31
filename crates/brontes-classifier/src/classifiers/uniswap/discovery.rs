@@ -7,8 +7,12 @@ discovery_impl!(
     crate::UniswapV2Factory::createPairCall,
     0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f,
     |deployed_address: Address, trace_index: u64, call_data: createPairCall, _| async move {
-        let token_a = call_data.tokenA;
-        let token_b = call_data.tokenB;
+        let mut token_a = call_data.tokenA;
+        let mut token_b = call_data.tokenB;
+        if token_a > token_b {
+            std::mem::swap(&mut token_a, &mut token_b)
+        }
+
         vec![NormalizedNewPool {
             pool_address: deployed_address,
             trace_index,
@@ -23,8 +27,12 @@ discovery_impl!(
     crate::UniswapV3Factory::createPoolCall,
     0x1F98431c8aD98523631AE4a59f267346ea31F984,
     |deployed_address: Address, trace_index: u64, call_data: createPoolCall, _| async move {
-        let token_a = call_data.tokenA;
-        let token_b = call_data.tokenB;
+        let mut token_a = call_data.tokenA;
+        let mut token_b = call_data.tokenB;
+
+        if token_a > token_b {
+            std::mem::swap(&mut token_a, &mut token_b)
+        }
 
         vec![NormalizedNewPool {
             pool_address: deployed_address,
