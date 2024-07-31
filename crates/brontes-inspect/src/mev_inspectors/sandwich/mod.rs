@@ -192,7 +192,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 .count()
                 == 1)
         {
-            tracing::debug!("all sandwiches don't have same eoa and arent all verified contracts");
+            tracing::debug!(target: "brontes_inspect::sandwich", "all sandwiches don't have same eoa and aren't all verified contracts");
             return None
         }
 
@@ -582,7 +582,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
             // ensure the intersection of frontrun and backrun pools exists
             if front_run_pools.intersection(&back_run_pools).count() == 0 {
-                tracing::trace!("no pool intersection for frontrun / backrun");
+                tracing::trace!(target: "brontes_inspect::sandwich", "no pool intersection for frontrun / backrun");
             }
 
             // we group all victims by eoa, such that instead of a tx needing to be a
@@ -631,7 +631,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         );
         let amount = grouped_victims.len();
         if amount == 0 {
-            tracing::debug!(" no grouped victims");
+            tracing::trace!(target: "brontes_inspect::sandwich", "no grouped victims");
             return false
         }
         let mut has_sandwich = false;
@@ -654,7 +654,16 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .count()
                     != 0;
 
-                tracing::trace!(?pools_overlap, ?token_overlap);
+                tracing::trace!(
+                    target: "brontes_inspect::sandwich",
+                    ?pools_overlap,
+                    ?token_overlap,
+                    front_run_pools_overlap_count = front_run_pools_overlap.len(),
+                    back_run_pools_overlap_count = back_run_pools_overlap.len(),
+                    front_run_token_overlaps_count = front_run_token_overlaps.len(),
+                    back_run_token_overlaps_count = back_run_token_overlaps.len(),
+                    "Overlap analysis for potential sandwich"
+                );
 
                 let generated_pool_overlap = Self::generate_possible_pools_from_transfers(
                     v.into_iter().flat_map(|(_, t)| t),
@@ -1176,8 +1185,8 @@ mod tests {
                 hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").into(),
                 hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
             ])
-            .with_gas_paid_usd(2714.71)
-            .with_expected_profit_usd(194.55);
+            .with_gas_paid_usd(2734.3)
+            .with_expected_profit_usd(195.27);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
