@@ -13,7 +13,11 @@ CREATE TABLE mev.cex_dex_quotes ON CLUSTER eth_cluster0
         `amount_in` Tuple(UInt256, UInt256),
         `amount_out` Tuple(UInt256, UInt256)
     ),
-    `mid_price` Array(Float64),
+    `instant_mid_price` Array(Float64),
+    `t2_mid_price` Array(Float64),
+    `t12_mid_price` Array(Float64),
+    `t60_mid_price` Array(Float64),
+    `t300_mid_price` Array(Float64),
     `exchange` String,
     `pnl` Float64,
     `gas_details` Tuple(
