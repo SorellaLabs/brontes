@@ -4,6 +4,7 @@ use std::{
 };
 
 use alloy_primitives::TxHash;
+use tracing::trace;
 mod types;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
@@ -596,7 +597,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .map(|(info, actions)| (info.eoa, actions)),
             );
 
-            if !Self::is_victim(
+            if !Self::verify_sandwich_victims(
                 grouped_victims,
                 front_run_pools,
                 front_run_tokens,
@@ -614,7 +615,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     // for each victim eoa, ensure they are a victim of a frontrun and a backrun
     // either through a pool or overlapping tokens. We also ensure that
     // there exists at-least one sandwich
-    fn is_victim(
+    fn verify_sandwich_victims(
         grouped_victims: GroupedVictims<'_>,
         front_run_pools: FastHashSet<Address>,
         front_run_tokens: FastHashSet<(Address, Address, bool)>,
@@ -622,16 +623,22 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         back_run_tokens: FastHashSet<(Address, Address, bool)>,
         black_list: &FastHashSet<Address>,
     ) -> bool {
-        tracing::debug!(
-            ?grouped_victims,
-            ?front_run_tokens,
-            ?back_run_tokens,
-            ?front_run_pools,
-            ?back_run_pools
+        trace!(
+            target: "brontes_inspect::sandwich",
+            "\nGrouped victims: {:#?}\n\
+             Front-run tokens: {:#?}\n\
+             Back-run tokens: {:#?}\n\
+             Front-run pools: {:#?}\n\
+             Back-run pools: {:#?}",
+            grouped_victims,
+            front_run_tokens,
+            back_run_tokens,
+            front_run_pools,
+            back_run_pools
         );
         let amount = grouped_victims.len();
         if amount == 0 {
-            tracing::trace!(target: "brontes_inspect::sandwich", "no grouped victims");
+            trace!(target: "brontes_inspect::sandwich", "no grouped victims");
             return false
         }
         let mut has_sandwich = false;
@@ -654,10 +661,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .count()
                     != 0;
 
-                tracing::trace!(
+                trace!(
                     target: "brontes_inspect::sandwich",
-                    ?pools_overlap,
-                    ?token_overlap,
+                    pools_overlap,
+                    token_overlap,
                     front_run_pools_overlap_count = front_run_pools_overlap.len(),
                     back_run_pools_overlap_count = back_run_pools_overlap.len(),
                     front_run_token_overlaps_count = front_run_token_overlaps.len(),
@@ -684,10 +691,11 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum();
 
         let victim_pct = (was_victims as f64) / (amount as f64);
-        tracing::trace!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich);
+        trace!(lt_50pct_victims=%victim_pct, has_sandwich=has_sandwich);
+
         // if we had more than 50% victims, then we say this was valid. This
         // wiggle room is to deal with unknowns
-        victim_pct >= 0.5 && has_sandwich
+        victim_pct >= 0.25 && has_sandwich
     }
 
     /// returns pool address, and token_address
