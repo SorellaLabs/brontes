@@ -728,4 +728,21 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn use_to_find_limit() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "c3f4377e5b348b61e05fa6c64853ca46939b8bfc158360450f1c60f62a99b9f2"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(70154.70)
+            .with_gas_paid_usd(1458.25);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
