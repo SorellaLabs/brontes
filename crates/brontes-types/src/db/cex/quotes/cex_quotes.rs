@@ -206,7 +206,11 @@ impl CexPriceMap {
                         &quote1.price_taker.1 * &quote2.price_taker.1,
                     );
 
-                    let normalized_bbo_amount = (
+                    if quote2.price_maker.0 == Rational::ZERO {
+                        return None;
+                    }
+
+                    let normalized_bbo_amount: (Rational, Rational) = (
                         min(quote1.amount.0.clone(), &quote2.amount.0 / &quote2.price_maker.0),
                         min(&quote1.amount.1 * quote1.price_maker.1, quote2.amount.1.clone()),
                     );

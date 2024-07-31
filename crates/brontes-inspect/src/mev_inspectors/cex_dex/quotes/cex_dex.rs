@@ -62,7 +62,10 @@ use brontes_types::{
     TreeSearchBuilder, TxInfo,
 };
 use malachite::{
-    num::{arithmetic::traits::Reciprocal, basic::traits::Two},
+    num::{
+        arithmetic::traits::Reciprocal,
+        basic::traits::{Two, Zero},
+    },
     Rational,
 };
 use tracing::{debug, trace};
@@ -356,7 +359,12 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             .0;
 
         // Amount * base_to_quote = USDT amount
-        let base_to_quote = token_price.clone().reciprocal();
+        let base_to_quote = if token_price == Rational::ZERO {
+            println!("Was the reciprocal causing the div by zero");
+            return None;
+        } else {
+            token_price.clone().reciprocal()
+        };
 
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
