@@ -11,7 +11,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_core::DBWriter;
-use brontes_database::clickhouse::{ClickhouseHandle};
+use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::Action,
