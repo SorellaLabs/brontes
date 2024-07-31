@@ -141,6 +141,12 @@ impl CexTradesConverter {
                                     .push(trade.clone().into());
                             }
                         });
+
+                        for t in exchange_symbol_map.values_mut() {
+                            if !t.is_sorted_by_key(|k: &CexTrades| k.timestamp) {
+                                tracing::error!("shit not naturally sorted");
+                            }
+                        }
                         for trades in exchange_symbol_map.values_mut() {
                             trades.sort_unstable_by_key(|k: &CexTrades| k.timestamp);
                         }

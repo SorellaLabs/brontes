@@ -172,6 +172,12 @@ impl CexQuotesConverter {
                                 .or_insert(Vec::new())
                                 .push(quote.into());
                         });
+
+                        for t in exchange_symbol_map.values_mut() {
+                            if !t.is_sorted_by_key(|k: &CexQuote| k.timestamp) {
+                                tracing::error!("shit not naturally sorted");
+                            }
+                        }
                         for quotes in exchange_symbol_map.values_mut() {
                             quotes.sort_unstable_by_key(|k: &CexQuote| k.timestamp);
                         }
