@@ -1161,6 +1161,27 @@ mod tests {
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
+    #[brontes_macros::test]
+    async fn test_loan_sandwich() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_mev_tx_hashes(vec![
+                hex!("db9c9f7ecfd33d4856bcd36d7af1228d29be90bfc7301fe7eadb0ddb23c68e3a").into(),
+                hex!("e4b3824c6cc238a1cf402f626c339f66a8cde9834b0dd84864ce82d7472cb763").into(),
+                hex!("152487feea8f726e8e09f2304bc32b0b2937a0386362231542f4e7189d4ac3b8").into(),
+            ])
+            .with_dex_prices()
+            .needs_tokens(vec![
+                hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").into(),
+                hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
+            ])
+            .with_gas_paid_usd(2714.71)
+            .with_expected_profit_usd(194.55);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
     /// this is a jit sandwich
     #[brontes_macros::test]
     async fn test_sandwich_part_of_jit_sandwich_default() {
