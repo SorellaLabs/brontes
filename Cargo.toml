@@ -11,8 +11,11 @@ members = [
   "crates/brontes-database/brontes-db",
   "crates/brontes-macros",
   "crates/brontes-pricing",
-  "crates/brontes-database/libmdbx-rs"
+  "crates/brontes-database/libmdbx-rs",
+  "db-utils",
 ]
+
+exclude = ["db-utils"]
 
 resolver = "2"
 

@@ -2945,6 +2945,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "db-utils"
+version = "0.1.0"
+dependencies = [
+ "clickhouse",
+ "db-interfaces",
+ "dotenv",
+ "eyre",
+ "futures",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "debugid"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
