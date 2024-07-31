@@ -76,8 +76,8 @@ pub struct ExchangeLeg {
     pub exchange:      CexExchange,
 }
 
-pub fn log_price_delta(
-    tx_hash: String,
+pub fn log_cex_dex_quote_delta(
+    tx_hash: &str,
     token_in_symbol: &str,
     token_out_symbol: &str,
     exchange: &CexExchange,
@@ -85,20 +85,38 @@ pub fn log_price_delta(
     cex_price: f64,
     token_in_address: &Address,
     token_out_address: &Address,
+    dex_amount_in: &Rational,
+    dex_amount_out: &Rational,
+    cex_output: &Rational,
 ) {
+    let arb_ratio = cex_output.clone() / dex_amount_in;
+    let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
+
     error!(
-        "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {} on {}:\x1b[0m\n\
-         - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
-         - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
+        "\n\x1b[1;35mSignificant Cex-Dex quote discrepancy detected for {} - {} on {}:\x1b[0m\n\
+         - \x1b[1;36mDEX Swap:\x1b[0m\n\
+           * Rate: {:.7}\n\
+           * Amount In: {}\n\
+           * Amount Out: {}\n\
+         - \x1b[1;36mCEX Quote:\x1b[0m\n\
+           * Rate: {:.7}\n\
+           * Equivalent Output: {}\n\
+         - \x1b[1;33mArbitrage Ratio:\x1b[0m {:.4} ({}%)\n\
          - Token Contracts:\n\
            * Token In: https://etherscan.io/address/{}\n\
            * Token Out: https://etherscan.io/address/{}\n\
-           * Tx Hash: https://etherscan.io/tx/{}\n",
+         - Tx Hash: https://etherscan.io/tx/{}\n\
+         - \x1b[1;31mWarning:\x1b[0m The CEX quote output is more than 2x the DEX input, suggesting a potentially invalid quote or extreme market inefficiency.",
         token_in_symbol,
         token_out_symbol,
         exchange,
         dex_swap_rate,
+        dex_amount_in.clone().to_float(),
+        dex_amount_out.clone().to_float(),
         cex_price,
+        cex_output.clone().to_float(),
+        arb_ratio.to_float(),
+        arb_percent,
         token_in_address,
         token_out_address,
         tx_hash

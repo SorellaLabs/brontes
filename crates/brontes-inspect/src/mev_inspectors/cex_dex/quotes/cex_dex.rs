@@ -68,7 +68,7 @@ use malachite::{
 use tracing::{debug, trace};
 
 use super::types::{
-    log_price_delta, CexDexProcessing, ExchangeLeg, ExchangeLegCexPrice, PossibleCexDex,
+    log_cex_dex_quote_delta, CexDexProcessing, ExchangeLeg, ExchangeLegCexPrice, PossibleCexDex,
 };
 
 pub const FILTER_THRESHOLD: u64 = 20;
@@ -78,7 +78,7 @@ use itertools::Itertools;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 pub struct CexDexQuotesInspector<'db, DB: LibmdbxReader> {
     utils:               SharedInspectorUtils<'db, DB>,
-    quotes_fetch_offset: f64,
+    quotes_fetch_offset: u64,
     _cex_exchanges:      Vec<CexExchange>,
 }
 
@@ -95,7 +95,7 @@ impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
         quote: Address,
         db: &'db DB,
         cex_exchanges: &[CexExchange],
-        quotes_fetch_offset: f64,
+        quotes_fetch_offset: u64,
         metrics: Option<OutlierMetrics>,
     ) -> Self {
         Self {
@@ -326,8 +326,8 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
 
         if smaller * Rational::TWO < *larger {
-            log_price_delta(
-                tx_hash.to_string(),
+            log_cex_dex_quote_delta(
+                &tx_hash.to_string(),
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
                 &cex_quote.exchange,
@@ -335,8 +335,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 cex_quote.price_maker.0.clone().to_float(),
                 &swap.token_in.address,
                 &swap.token_out.address,
+                &swap.amount_in,
+                &swap.amount_out,
+                &output_of_cex_trade_maker,
             );
-
             return None
         }
 
@@ -392,7 +394,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     .cex_quotes
                     .get_quote_from_most_liquid_exchange(
                         &pair,
-                        metadata.microseconds_block_timestamp() + self.quotes_fetch_offset as u64,
+                        metadata.microseconds_block_timestamp() + self.quotes_fetch_offset,
                     )
                     .or_else(|| {
                         debug!(
