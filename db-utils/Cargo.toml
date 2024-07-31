@@ -1,0 +1,24 @@
+[package]
+name = "db-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# sorella-db
+db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces" }
+clickhouse.workspace = true
+
+
+# async
+tokio.workspace = true
+futures.workspace = true
+
+
+# serde
+serde.workspace = true
+serde_json.workspace = true
+
+
+# misc
+eyre.workspace = true
+dotenv.workspace = true
