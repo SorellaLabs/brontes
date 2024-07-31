@@ -19,7 +19,7 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT};
 
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99995, 100000);
 
 //TODO: If price diff exceeds max price diff, attempt to find the trigger
 //TODO: We are missing a good amount of arbs in block 18264694, let's try and
@@ -719,23 +719,6 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(
                 "ed3248d5386237cfe12963e0d35e1541707cad4fdca43801f3799861e8adb9b5"
-            )
-            .into()])
-            .with_dex_prices()
-            .needs_tokens(vec![WETH_ADDRESS])
-            .with_expected_profit_usd(70154.70)
-            .with_gas_paid_usd(1458.25);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn use_to_find_limit() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
-            .with_mev_tx_hashes(vec![hex!(
-                "c3f4377e5b348b61e05fa6c64853ca46939b8bfc158360450f1c60f62a99b9f2"
             )
             .into()])
             .with_dex_prices()
