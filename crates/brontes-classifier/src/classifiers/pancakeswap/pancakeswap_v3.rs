@@ -21,7 +21,7 @@ action_impl!(
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
         let recipient = call_data.recipient;
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
@@ -70,7 +70,7 @@ action_impl!(
      return_data: mintReturn,  db_tx: &DB| {
         let token_0_delta = return_data.amount0;
         let token_1_delta = return_data.amount1;
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
@@ -102,7 +102,7 @@ action_impl!(
     db_tx: &DB| {
         let token_0_delta: U256 = return_data.amount0;
         let token_1_delta: U256 = return_data.amount1;
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
@@ -135,7 +135,7 @@ action_impl!(
     return_data: collectReturn,
     db_tx: &DB
     | {
-        let details = db_tx.get_protocol_details(info.target_address)?;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_0)?;
