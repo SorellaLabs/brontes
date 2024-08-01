@@ -101,7 +101,6 @@ tracing.workspace = true
 eyre.workspace = true
 parking_lot.workspace = true
 dotenv.workspace = true
-owned_chunks = "0.1.1"
 bincode = "2.0.0-rc.3"
 redefined.workspace = true
 derive_more = "0.99.17"

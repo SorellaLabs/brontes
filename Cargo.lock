@@ -1702,7 +1702,6 @@ dependencies = [
  "malachite",
  "modular-bitfield",
  "moka",
- "owned_chunks",
  "page_size",
  "parity-scale-codec",
  "parking_lot 0.12.3",
@@ -6131,12 +6130,6 @@ name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
-
-[[package]]
-name = "owned_chunks"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed71cd6fadba849f9e213dba59ab431d5ef3d4afd8c07966a5aeaebe83555d4e"
 
 [[package]]
 name = "page_size"
