@@ -21,6 +21,8 @@ resolver = "2"
 clickhouse = { git = "https://github.com/SorellaLabs/clickhouse.rs", branch = "master", features = [
   "tls",
 ] }
+sqlx = { version = "0.7.4", features = ["runtime-tokio", "postgres", "macros", "bigdecimal", "time"] }
+sqlxinsert = "0.10.0"
 
 # Brontes
 brontes-core = { path = "./crates/brontes-core" }

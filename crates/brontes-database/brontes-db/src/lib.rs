@@ -4,6 +4,7 @@
 #![feature(noop_waker)]
 
 pub mod clickhouse;
+pub mod postgres;
 pub mod libmdbx;
 pub mod parquet;
 pub use libmdbx::{

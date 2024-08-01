@@ -1,110 +1,103 @@
+#[cfg(feature = "cex-dex-quotes")]
+use std::cmp::max;
 use std::fmt::Debug;
 
-use ::clickhouse::DbRow;
-use alloy_primitives::Address;
-#[cfg(feature = "local-clickhouse")]
-use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
-use brontes_types::{
-    db::{
-        address_to_protocol_info::ProtocolInfoClickhouse,
-        block_analysis::BlockAnalysis,
-        builder::BuilderInfo,
-        cex::{
-            quotes::{CexQuotesConverter, RawCexQuotes},
-            trades::{CexTradesConverter, RawCexTrades},
-            BestCexPerPair,
-        },
-        dex::{DexQuotes, DexQuotesWithBlockNumber},
-        metadata::{BlockMetadata, Metadata},
-        normalized_actions::TransactionRoot,
-        searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress},
-    },
-    mev::{Bundle, BundleData, MevBlock},
-    normalized_actions::Action,
-    structured_trace::TxTrace,
-    BlockTree, Protocol,
-};
-use db_interfaces::{
-    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
-    errors::DatabaseError,
-    Database,
-};
-use eyre::Result;
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::debug;
+use sqlx;
+use tracing::{info, warn};
 
-use super::{
-    cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE,
-    RAW_CEX_QUOTES, RAW_CEX_TRADES,
-};
-#[cfg(feature = "local-clickhouse")]
-use super::{BLOCK_TIMES, CEX_SYMBOLS};
-#[cfg(feature = "local-clickhouse")]
+use serde::{Deserialize, Serialize};
+use db_interfaces::postgres::client::PostgresClient;
+use crate::postgres::cex_config::CexDownloadConfig;
+use tokio::sync::mpsc::UnboundedSender;
+use crate::postgres::BrontesPostgresTables;
+use crate::postgres::dbms::BrontesPostgresData;
+use db_interfaces::postgres::config::PostgresConfig;
+use alloy_primitives::Address;
+use brontes_types::db::searcher::SearcherInfo;
+use brontes_types::db::builder::BuilderInfo;
+use brontes_types::mev::MevBlock;
+use brontes_types::mev::Bundle;
+use brontes_types::mev::BundleData;
+use brontes_types::db::dex::DexQuotes;
+use brontes_types::db::dex::DexQuotesWithBlockNumber;
+use brontes_types::BlockTree;
+use brontes_types::normalized_actions::Action;
+use brontes_types::db::normalized_actions::TransactionRoot;
+use brontes_types::db::token_info::TokenInfoWithAddress;
+use brontes_types::db::token_info::TokenInfo;
+use brontes_types::Protocol;
+use brontes_types::db::block_analysis::BlockAnalysis;
+use brontes_types::structured_trace::TxTrace;
+use crate::postgres::PostgresHandle;
+use brontes_types::db::metadata::Metadata;
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
-use crate::{
-    clickhouse::const_sql::{BLOCK_INFO, CRIT_INIT_TABLES},
-    libmdbx::{
-        determine_eth_prices,
-        tables::{BlockInfoData, CexPriceData},
-        types::LibmdbxData,
-    },
-    CompressedTable,
-};
+use brontes_types::db::metadata::BlockMetadata;
+use crate::CompressedTable;
+use crate::libmdbx::types::LibmdbxData;
+use brontes_types::db::block_times::BlockTimes;
+use brontes_types::db::cex::CexSymbols;
+use brontes_types::db::cex::RawCexTrades;
+use brontes_types::db::cex::CexTradesConverter;
+use itertools::Itertools;
+use brontes_types::pair::Pair;
+use sqlx::types::time::PrimitiveDateTime;
+use std::time::Duration;
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
-const MAX_MARKOUT_TIME: f64 = 300.0;
 
 #[derive(Clone)]
-pub struct Clickhouse {
+pub struct Postgres {
     pub tip:                 bool,
     pub run_id:              u64,
-    pub client:              ClickhouseClient<BrontesClickhouseTables>,
+    pub client:              PostgresClient<sqlx::Postgres>,
     pub cex_download_config: CexDownloadConfig,
-    pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
+    pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesPostgresData>>>,
 }
 
-impl Clickhouse {
+//struct BrontesRun_Id;
+
+impl Postgres {
     pub async fn new(
-        config: ClickhouseConfig,
+        config: PostgresConfig,
         cex_download_config: CexDownloadConfig,
-        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
+        buffered_insert_tx: Option<UnboundedSender<Vec<BrontesPostgresData>>>,
         tip: bool,
     ) -> Self {
         let client = config.build();
         let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0 };
-        this.run_id = this.get_and_inc_run_id().await.unwrap_or_default();
+        this.run_id = this
+            .get_and_inc_run_id()
+            .await
+            .expect("failed to set run_id");
 
         this
     }
 
     pub async fn new_default() -> Self {
-        Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false).await
+        Postgres::new(clickhouse_config(), Default::default(), Default::default(), false).await
     }
 
-    pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
+    pub fn inner(&self) -> &PostgresClient<BrontesPostgresTables> {
         &self.client
     }
 
     pub async fn get_and_inc_run_id(&self) -> eyre::Result<u64> {
-        let id = (self
-            .client
-            .query_one::<u64, _>("select max(run_id) from brontes.run_id", &())
-            .await?
-            + 1)
-        .into();
-
-        // self.client.insert_one::<BrontesRun_Id>(&id).await?;
+        let id = (sqlx::query!("select max(run_id) from brontes.run_id")
+            .execute(self.client.pool)
+            .fetch_one::<u64>()
+            .await?)
+            + 1;
+        
+        
+        self.client.insert_one::<u64>(&id).await?;
 
         Ok(id.run_id)
     }
 
     pub async fn max_traced_block(&self) -> eyre::Result<u64> {
-        Ok(self
-            .client
-            .query_one::<u64, _>("select max(block_number) from brontes_api.tx_traces", &())
+        Ok(sqlx::query!("select max(block_number) from brontes_api.tx_traces")
+            .execute(self.client.pool)
+            .fetch_one::<u64>()
             .await?)
     }
 
@@ -164,9 +157,6 @@ impl Clickhouse {
                     }
                     BundleData::Jit(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
                     BundleData::CexDex(s) => tx.send(vec![(s, self.tip, self.run_id).into()])?,
-                    BundleData::CexDexQuote(s) => {
-                        tx.send(vec![(s, self.tip, self.run_id).into()])?
-                    }
                     BundleData::Liquidation(s) => {
                         tx.send(vec![(s, self.tip, self.run_id).into()])?
                     }
@@ -246,7 +236,7 @@ impl Clickhouse {
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
         let data =
-            ProtocolInfoClickhouse::new(block, address, tokens, curve_lp_token, classifier_name);
+            ProtocolInfoPostgres::new(block, address, tokens, curve_lp_token, classifier_name);
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
             tx.send(vec![(data, self.tip).into()])?
@@ -268,56 +258,77 @@ impl Clickhouse {
     }
 }
 
-impl ClickhouseHandle for Clickhouse {
-    async fn get_init_crit_tables(&self) -> eyre::Result<ClickhouseCritTableCount> {
-        let res: ClickhouseCritTableCount = self.client.query_one(CRIT_INIT_TABLES, &()).await?;
+impl PostgresHandle for Postgres {
+    async fn get_init_crit_tables(&self) -> eyre::Result<PostgresCritTableCount> {
+        let res = sqlx::query_file_as!(PostgresCritTableCount, "src/postgres/queries/crit_init_tables.sql")
+            .fetch_one(&self.client.pool)
+            .await?;
         Ok(res)
     }
 
-    async fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
-        let block_meta = self
-            .client
-            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-            .await
-            .unwrap()
-            .value;
-
-        let mut cex_quotes_for_block = self
-            .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+    async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
+        let block_meta = sqlx::query_file!("src/postgres/queries/block_info.sql", block_num as i64)
+            .fetch_one(&self.client.pool)
             .await?;
 
-        let cex_quotes = cex_quotes_for_block.remove(0);
-        let eth_price = determine_eth_prices(
-            &cex_quotes.value,
-            block_meta.block_timestamp * 1_000_000,
-            quote_asset,
-        );
+        #[cfg(feature = "cex-dex-quotes")]
+        {
+            tracing::info!("not markout");
+            let mut cex_quotes_for_block = self
+                .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+                .await?;
 
-        let meta = BlockMetadata::new(
-            block_num,
-            block_meta.block_hash,
-            block_meta.block_timestamp,
-            block_meta.relay_timestamp,
-            block_meta.p2p_timestamp,
-            block_meta.proposer_fee_recipient,
-            block_meta.proposer_mev_reward,
-            eth_price.unwrap_or_default(),
-            block_meta.private_flow.into_iter().collect(),
-        )
-        .into_metadata(cex_quotes.value, None, None, None);
+            let cex_quotes = cex_quotes_for_block.remove(0);
+            let eth_prices = determine_eth_prices(&cex_quotes.value);
 
-        Ok(meta)
+            Ok(BlockMetadata::new(
+                block_num,
+                block_meta.block_hash,
+                block_meta.block_timestamp,
+                block_meta.relay_timestamp,
+                block_meta.p2p_timestamp,
+                block_meta.proposer_fee_recipient,
+                block_meta.proposer_mev_reward,
+                max(eth_prices.price_maker.1, eth_prices.price_taker.1),
+                block_meta.private_flow.into_iter().collect(),
+            )
+            .into_metadata(cex_quotes.value, None, None, None))
+        }
+
+        #[cfg(not(feature = "cex-dex-quotes"))]
+        {
+            tracing::info!("markout");
+            let cex_trades = self
+                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
+                .await
+                .unwrap()
+                .remove(0)
+                .value;
+
+            Ok(BlockMetadata::new(
+                block_num,
+                block_meta.block_hash,
+                block_meta.block_timestamp,
+                block_meta.relay_timestamp,
+                block_meta.p2p_timestamp,
+                block_meta.proposer_fee_recipient,
+                block_meta.proposer_mev_reward,
+                Default::default(),
+                block_meta.private_flow.into_iter().collect(),
+            )
+            .into_metadata(Default::default(), None, None, Some(cex_trades)))
+        }
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
+        D: LibmdbxData<T> + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         self.client
             .query_many::<D, _>(
-                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                T::INIT_QUERY.expect("no init query found for postgres query"),
                 &(start_block, end_block),
             )
             .await
@@ -328,7 +339,7 @@ impl ClickhouseHandle for Clickhouse {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
+        D: LibmdbxData<T> + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         let query = format_arbitrary_query::<T>(range);
 
@@ -342,34 +353,32 @@ impl ClickhouseHandle for Clickhouse {
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
-        D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
+        D: LibmdbxData<T> + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
         self.client
             .query_many::<D, _>(
-                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                T::INIT_QUERY.expect("no init query found for postgres query"),
                 &(),
             )
             .await
             .map_err(Into::into)
     }
 
-    fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
+    fn inner(&self) -> &PostgresClient<BrontesPostgresTables> {
         &self.client
     }
 
+    #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexPriceData>> {
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
-            CexRangeOrArbitrary::Range(s, e) => {
-                debug!(
-                    target = "b",
-                    "Querying block times to download quotes for range: start={}, end={}", s, e
-                );
+            CexRangeOrArbitrary::Range(mut s, mut e) => {
+                s -= self.cex_download_config.run_time_window.0;
+                e += self.cex_download_config.run_time_window.1;
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
-
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let mut query = BLOCK_TIMES.to_string();
 
@@ -396,7 +405,10 @@ impl ClickhouseHandle for Clickhouse {
             return Ok(vec![])
         }
 
-        let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
+        let symbols: Vec<CexSymbols> = sqlx::query_file!("src/postgres/queries/cex_symbols.sql")
+            .execute(self.client.pool)
+            .await?
+            .fetch_all();
 
         let exchanges_str = self
             .cex_download_config
@@ -407,13 +419,6 @@ impl ClickhouseHandle for Clickhouse {
             .collect::<Vec<_>>()
             .join(" OR ");
 
-        tracing::trace!("Fetching symbol ranks");
-        let symbol_rank = self
-            .fetch_symbol_rank(&block_times, &range_or_arbitrary)
-            .await?;
-
-        tracing::trace!("Successfully fetched symbol ranks");
-
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
@@ -421,38 +426,31 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - (1.0 * SECONDS_TO_US);
+                    - (6.0 * SECONDS_TO_US);
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (MAX_MARKOUT_TIME * SECONDS_TO_US);
+                    + (6.0 * SECONDS_TO_US);
 
-                let mut query = RAW_CEX_QUOTES.to_string();
-                query = query.replace(
-                    "c.timestamp >= ? AND c.timestamp < ?",
-                    &format!(
-                        "c.timestamp >= {} AND c.timestamp < {} AND ({})",
-                        start_time, end_time, exchanges_str
-                    ),
-                );
+                let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
-                self.client.query_many(query, &()).await?
+                self.client
+                    .query_many(query, &(start_time, end_time))
+                    .await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
                 let mut query = RAW_CEX_QUOTES.to_string();
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| {
-                        b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 300.0 * SECONDS_TO_US)
-                    })
+                    .map(|b| b.convert_to_timestamp_query(6.0 * SECONDS_TO_US, 6.0 * SECONDS_TO_US))
                     .collect::<Vec<String>>()
                     .join(" OR ");
 
                 query = query.replace(
-                    "c.timestamp >= ? AND c.timestamp < ?",
+                    "timestamp >= ? AND timestamp < ?",
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
 
@@ -470,245 +468,140 @@ impl ClickhouseHandle for Clickhouse {
         Ok(prices)
     }
 
+    #[cfg(not(feature = "cex-dex-quotes"))]
     async fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexTradesData>> {
-        debug!("Starting get_cex_trades function");
-        let block_times: Vec<BlockTimes> = match range_or_arbitrary {
+        struct BlockTimesPostgres {
+            pub block_number: i32,
+            pub block_timestamp: PrimitiveDateTime,
+        }
+        info!("Starting get_cex_trades function");
+        let block_times = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(mut s, mut e) => {
                 s -= self.cex_download_config.run_time_window.0;
                 e += self.cex_download_config.run_time_window.1;
 
-                debug!(
-                    target = "brontes_db::cex_download",
-                    "Querying block times to download trades for range: start={}, end={}", s, e
-                );
-                self.client.query_many(BLOCK_TIMES, &(s, e)).await?
+                info!("Querying block times for range: start={}, end={}", s, e);
+                sqlx::query_file_as!(BlockTimesPostgres, "src/postgres/queries/block_times.sql", s as i32, e as i32)
+                    .fetch_all(&self.client.pool)
+                    .await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let vals = vals
-                    .iter()
+                    .into_iter()
                     .flat_map(|v| {
-                        (v - self.cex_download_config.run_time_window.0
-                            ..=v + self.cex_download_config.run_time_window.1)
-                            .collect_vec()
+                        (v - self.cex_download_config.run_time_window.0) as i32
+                            ..=(v + self.cex_download_config.run_time_window.1) as i32
                     })
                     .unique()
                     .collect::<Vec<_>>();
 
-                debug!("Querying block times for arbitrary values: {:?}", vals);
-                let mut query = BLOCK_TIMES.to_string();
-                query = query.replace(
-                    "block_number >= ? AND block_number < ?",
-                    &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
-                );
-                self.client.query_many(query, &()).await?
+                info!("Querying block times for arbitrary values: {:?}", vals);
+                sqlx::query_file_as!(BlockTimesPostgres, "src/postgres/queries/block_times_set.sql", &vals[..])
+                    .fetch_all(&self.client.pool)
+                    .await?
             }
         };
 
-        debug!("Retrieved {} block times", block_times.len());
+        info!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
             warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
 
-        debug!("Querying CEX symbols");
-        let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
-        debug!("Retrieved {} CEX symbols", symbols.len());
+        info!("Querying CEX symbols");
+        let symbols = sqlx::query_file!("src/postgres/queries/cex_symbols.sql")
+            .fetch_all(&self.client.pool)
+            .await?
+            .into_iter()
+            .map(|r| CexSymbols{ exchange: r.exchange.into(), symbol_pair: r.symbol_pair.unwrap(), address_pair: Pair(r.address1.unwrap().parse().unwrap(), r.address2.unwrap().parse().unwrap()) })
+            .collect::<Vec<_>>();
+        info!("Retrieved {} CEX symbols", symbols.len());
 
-        let exchanges_str = self
+        let exchanges_vec = self
             .cex_download_config
             .clone()
             .exchanges_to_use
             .into_iter()
-            .map(|s| s.to_clickhouse_filter().to_string())
-            .collect::<Vec<String>>()
-            .join(" OR ");
-        debug!("Using exchanges filter: {}", exchanges_str);
+            .map(|e| format!("{e}"))
+            .collect::<Vec<_>>();
+        info!("Using exchanges vec: {:?}", exchanges_vec);
 
         let data: Vec<RawCexTrades> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
                     .iter()
-                    .min_by_key(|b| b.timestamp)
-                    .map(|b| b.timestamp)
-                    .unwrap() as f64
-                    - (6.0 * SECONDS_TO_US);
+                    .min_by_key(|b| b.block_timestamp)
+                    .map(|b| b.block_timestamp)
+                    .unwrap()
+                    - (Duration::from_secs(6));
                 let end_time = block_times
                     .iter()
-                    .max_by_key(|b| b.timestamp)
-                    .map(|b| b.timestamp)
-                    .unwrap() as f64
-                    + (6.0 * SECONDS_TO_US);
+                    .max_by_key(|b| b.block_timestamp)
+                    .map(|b| b.block_timestamp)
+                    .unwrap()
+                    + (Duration::from_secs(6));
 
-                debug!(
+                info!(
                     "Querying raw CEX trades for time range: start={}, end={}",
                     start_time, end_time
                 );
 
-                let mut query = RAW_CEX_TRADES.to_string();
-                query = query.replace(
-                    "c.timestamp >= ? AND c.timestamp < ?",
-                    &format!(
-                        "c.timestamp >= {start_time} AND c.timestamp < {end_time} 
-                        and ({exchanges_str})"
-                    ),
-                );
-                self.client.query_many(query, &()).await?
+                sqlx::query_file!("src/postgres/queries/raw_cex_trades_range.sql", start_time, end_time, &exchanges_vec[..])
+                    .fetch_all(&self.client.pool)
+                    .await?
+                    .into_iter()
+                    .map(|r| RawCexTrades{
+                        exchange: r.exchange.parse()?,
+                        trade_type: r.trade_type.unwrap().parse()?,
+                        symbol: r.symbol.unwrap(),
+                        timestamp: r.timestamp,
+                        side: r.side,
+                        price: r.price,
+                        amount: r.amount,
+                    })
+                    .collect()
             }
-            CexRangeOrArbitrary::Arbitrary(_) => {
-                let mut query = RAW_CEX_TRADES.to_string();
-                let query_mod = block_times
-                    .iter()
-                    .map(|b| b.convert_to_timestamp_query(6.0 * SECONDS_TO_US, 6.0 * SECONDS_TO_US))
-                    .collect::<Vec<String>>()
-                    .join(" OR ");
+            CexRangeOrArbitrary::Arbitrary(vals) => {
+                info!("Querying raw CEX trades for arbitrary block times");
 
-                debug!("Querying raw CEX trades for arbitrary block times");
-
-                query = query.replace(
-                    "c.timestamp >= ? AND c.timestamp < ?",
-                    &format!("({query_mod}) AND ({exchanges_str})"),
-                );
-                self.client.query_many(query, &()).await?
+                sqlx::query_file!("src/postgres/queries/raw_cex_trades_arbitrary.sql", -6 /* seconds */, 6 /* seconds */, vals, exchanges_vec)
+                    .fetch_all(&self.client.pool)
+                    .await?
+                    .into_iter()
+                    .map(|r| RawCexTrades{
+                        exchange: r.exchange.parse()?,
+                        trade_type: r.trade_type.parse()?,
+                        symbol: r.symbol,
+                        timestamp: r.timestamp,
+                        side: r.side,
+                        price: r.price,
+                        amount: r.amount,
+                    })
             }
         };
 
-        debug!("Retrieved {} raw CEX trades", data.len());
+        info!("Retrieved {} raw CEX trades", data.len());
 
         let trades_converter = CexTradesConverter::new(block_times, symbols, data);
 
-        debug!("Converting raw trades to CexTradesData");
+        info!("Converting raw trades to CexTradesData");
         let trades: Vec<crate::CexTradesData> = trades_converter
             .convert_to_trades()
             .into_iter()
             .map(|(block_num, trade_map)| crate::CexTradesData::new(block_num, trade_map))
             .collect();
 
-        debug!("Converted {} CexTradesData entries", trades.len());
+        info!("Converted {} CexTradesData entries", trades.len());
 
         Ok(trades)
     }
 }
 
-impl Clickhouse {
-    pub async fn fetch_symbol_rank(
-        &self,
-        block_times: &[BlockTimes],
-        range_or_arbitrary: &CexRangeOrArbitrary,
-    ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
-        if block_times.is_empty() {
-            return Err(DatabaseError::from(clickhouse::error::Error::Custom(
-                "Nothing to query, block times are empty".to_string(),
-            )))
-        }
-        Ok(match range_or_arbitrary {
-            CexRangeOrArbitrary::Range(..) => {
-                let start_time = block_times
-                    .iter()
-                    .min_by_key(|b| b.timestamp)
-                    .map(|b| b.timestamp)
-                    .unwrap() as f64;
-                let end_time = block_times
-                    .iter()
-                    .max_by_key(|b| b.timestamp)
-                    .map(|b| b.timestamp)
-                    .unwrap() as f64;
-
-                self.client
-                    .query_many(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
-                    .await?
-            }
-            CexRangeOrArbitrary::Arbitrary(_) => {
-                let mut query = MOST_VOLUME_PAIR_EXCHANGE.to_string();
-
-                let times = block_times
-                    .iter()
-                    .map(|block| {
-                        format!(
-                            "toStartOfMonth(toDateTime({} /  1000000) - INTERVAL 1 MONTH)",
-                            block.timestamp as f64
-                        )
-                    })
-                    .fold(String::new(), |mut acc, x| {
-                        if !acc.is_empty() {
-                            acc += ",";
-                        }
-
-                        acc += &x;
-                        acc
-                    });
-
-                query = query.replace(
-                    "month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND \
-                     (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))",
-                    &format!("month in (select arrayJoin([{}]) as month)", times),
-                );
-
-                self.client.query_many(query, &()).await?
-            }
-        })
-    }
-
-    pub async fn get_block_times_range(
-        &self,
-        range: &CexRangeOrArbitrary,
-    ) -> Result<Vec<BlockTimes>, db_interfaces::errors::DatabaseError> {
-        let (start, end) = match range {
-            CexRangeOrArbitrary::Range(start, end) => (start, end),
-            CexRangeOrArbitrary::Arbitrary(_) => panic!("Arbitrary range not supported"),
-        };
-
-        debug!(target = "b", "Querying block times for range: start={}, end={}", start, end);
-        self.client.query_many(BLOCK_TIMES, &(start, end)).await
-    }
-
-    pub async fn get_cex_symbols(
-        &self,
-    ) -> Result<Vec<CexSymbols>, db_interfaces::errors::DatabaseError> {
-        self.client.query_many(CEX_SYMBOLS, &()).await
-    }
-
-    pub async fn get_raw_cex_quotes_range(
-        &self,
-        start_time: u64,
-        end_time: u64,
-    ) -> Result<Vec<RawCexQuotes>, db_interfaces::errors::DatabaseError> {
-        let exchanges_str = self.get_exchanges_filter_string();
-
-        let query = self.build_range_cex_quotes_query(start_time, end_time, &exchanges_str);
-        self.client.query_many(&query, &()).await
-    }
-
-    fn get_exchanges_filter_string(&self) -> String {
-        self.cex_download_config
-            .exchanges_to_use
-            .iter()
-            .map(|s| s.to_clickhouse_filter().to_string())
-            .collect::<Vec<_>>()
-            .join(" OR ")
-    }
-
-    fn build_range_cex_quotes_query(
-        &self,
-        start_time: u64,
-        end_time: u64,
-        exchanges_str: &str,
-    ) -> String {
-        let query = RAW_CEX_QUOTES.to_string();
-        query.replace(
-            "c.timestamp >= ? AND c.timestamp < ?",
-            &format!(
-                "c.timestamp >= {} AND c.timestamp < {} AND ({})",
-                start_time, end_time, exchanges_str
-            ),
-        )
-    }
-}
-
-pub fn clickhouse_config() -> db_interfaces::clickhouse::config::ClickhouseConfig {
+pub fn clickhouse_config() -> db_interfaces::postgres::config::PostgresConfig {
     let url = format!(
         "{}:{}",
         std::env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not found in .env"),
@@ -717,7 +610,7 @@ pub fn clickhouse_config() -> db_interfaces::clickhouse::config::ClickhouseConfi
     let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
 
-    db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None)
+    db_interfaces::postgres::config::PostgresConfig::new(user, pass, url, true, None)
 }
 
 fn format_arbitrary_query<T>(range: &'static [u64]) -> String
@@ -726,7 +619,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
 {
     let mut query = T::INIT_QUERY
-        .expect("no init query found for clickhouse query")
+        .expect("no init query found for postgres query")
         .to_string();
 
     query = query.replace(
@@ -754,22 +647,22 @@ where
     query
 }
 
-#[derive(Debug, Serialize, Deserialize, clickhouse::Row)]
-pub struct ClickhouseCritTableCount {
-    pub pool_creation:       u64,
-    pub address_to_protocol: u64,
-    pub tokens:              u64,
-    pub builder:             u64,
-    pub address_meta:        u64,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PostgresCritTableCount {
+    pub pool_creation:       Option<i64>,
+    pub address_to_protocol: Option<i64>,
+    pub tokens:              Option<i64>,
+    pub builder:             Option<i64>,
+    pub address_meta:        Option<i64>,
 }
 
-impl ClickhouseCritTableCount {
-    pub fn all_greater(&self, clickhouse: ClickhouseCritTableCount) -> bool {
-        self.pool_creation >= clickhouse.pool_creation
-            && self.address_to_protocol >= clickhouse.address_to_protocol
-            && self.tokens >= clickhouse.tokens
-            && self.builder >= clickhouse.builder
-            && self.address_meta >= clickhouse.address_meta
+impl PostgresCritTableCount {
+    pub fn all_greater(&self, postgres: PostgresCritTableCount) -> bool {
+        self.pool_creation >= postgres.pool_creation
+            && self.address_to_protocol >= postgres.address_to_protocol
+            && self.tokens >= postgres.tokens
+            && self.builder >= postgres.builder
+            && self.address_meta >= postgres.address_meta
     }
 }
 
@@ -777,13 +670,13 @@ impl ClickhouseCritTableCount {
 mod tests {
     use std::sync::Arc;
 
-    use alloy_primitives::{hex, Uint};
+    use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_threadpools,
         mev::{
-            ArbDetails, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
+            ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, JitLiquidity,
             JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
             Sandwich,
         },
@@ -794,16 +687,15 @@ mod tests {
         FastHashMap, GasDetails,
     };
     use db_interfaces::{
-        clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestClient},
+        postgres::{dbms::PostgresDBMS, test_utils::PostgresTestClient},
         test_utils::TestDatabase,
     };
-    use malachite::{num::basic::traits::Zero, Rational};
 
     use super::*;
 
     #[brontes_macros::test]
     async fn test_block_info_query() {
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
+        let test_db = PostgresTestClient { client: Postgres::new_default().await.client };
         let _ = test_db
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
@@ -817,13 +709,13 @@ mod tests {
         classifier_utils.build_tree_tx(tx).await.unwrap().into()
     }
 
-    async fn token_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn token_info(db: &PostgresTestClient<BrontesPostgresTables>) {
         let case0 = TokenInfoWithAddress::default();
 
         db.insert_one::<BrontesToken_Info>(&case0).await.unwrap();
     }
 
-    async fn dex_price_mapping(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn dex_price_mapping(db: &PostgresTestClient<BrontesPostgresTables>) {
         let case0_pair = Pair::default();
         let case0_dex_prices = DexPrices::default();
         let mut case0_map = FastHashMap::default();
@@ -845,7 +737,7 @@ mod tests {
         assert_eq!(queried, case0);
     }
 
-    async fn mev_block(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn mev_block(db: &PostgresTestClient<BrontesPostgresTables>) {
         let case0_possible = PossibleMev::default();
         let case0 = MevBlock {
             possible_mev: PossibleMevCollection(vec![case0_possible]),
@@ -857,20 +749,24 @@ mod tests {
             .unwrap();
     }
 
-    async fn cex_dex(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn cex_dex(db: &PostgresTestClient<BrontesPostgresTables>) {
         let swap = NormalizedSwap::default();
         let arb_detail = ArbDetails::default();
+        let arb_pnl = ArbPnl::default();
         let opt_trade = OptimisticTrade::default();
         let cex_exchange = CexExchange::Binance;
 
         let case0 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
+            global_vmap_pnl: arb_pnl.clone(),
             optimal_route_details: vec![arb_detail.clone()],
+            optimal_route_pnl: arb_pnl.clone(),
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
+            optimistic_route_pnl: Some(arb_pnl.clone()),
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
+            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
             ..CexDex::default()
         };
 
@@ -881,11 +777,14 @@ mod tests {
         let case1 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
+            global_vmap_pnl: arb_pnl.clone(),
             optimal_route_details: vec![arb_detail.clone()],
+            optimal_route_pnl: arb_pnl.clone(),
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
+            optimistic_route_pnl: None,
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
+            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
             ..CexDex::default()
         };
 
@@ -894,53 +793,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn cex_dex_quotes(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let swap = NormalizedSwap {
-            protocol:    Protocol::UniswapV2,
-            from:        hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
-            recipient:   hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
-            pool:        hex!("88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").into(),
-            token_in:    TokenInfoWithAddress::weth(),
-            token_out:   TokenInfoWithAddress::usdc(),
-            amount_in:   Rational::from_unsigneds(
-                3122757495341445439573u128,
-                1000000000000000000u128,
-            ),
-            amount_out:  Rational::from_unsigneds(1254253571443u64, 250000u64),
-            trace_index: 2,
-            msg_value:   Uint::from(0),
-        };
-
-        let case0 = CexDexQuote {
-            tx_hash:           hex!(
-                "ba217d10561a1cd6c52830dcc673886901e69ddb4db5e50c83f39ff0cfd14377"
-            )
-            .into(),
-            block_timestamp:   1694364587,
-            block_number:      18107273,
-            swaps:             vec![swap],
-            instant_mid_price: vec![0.0006263290093187073],
-            t2_mid_price:      vec![0.0006263290093187073],
-            t12_mid_price:     vec![0.0006263290093187073],
-            t30_mid_price:     vec![0.0006263290093187073],
-            t60_mid_price:     vec![0.0006263290093187073],
-            t300_mid_price:    vec![0.0006263290093187073],
-            exchange:          CexExchange::Binance,
-            pnl:               12951.829205242997,
-            gas_details:       GasDetails {
-                coinbase_transfer:   Some(11419369165096275986),
-                priority_fee:        0,
-                gas_used:            271686,
-                effective_gas_price: 8875282233,
-            },
-        };
-
-        db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 42069))
-            .await
-            .unwrap();
-    }
-
-    async fn jit(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn jit(db: &PostgresTestClient<BrontesPostgresTables>) {
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
         let burn = NormalizedBurn::default();
@@ -958,7 +811,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn jit_sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn jit_sandwich(db: &PostgresTestClient<BrontesPostgresTables>) {
         let swap = NormalizedSwap::default();
         let mint = NormalizedMint::default();
         let burn = NormalizedBurn::default();
@@ -976,7 +829,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn liquidations(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn liquidations(db: &PostgresTestClient<BrontesPostgresTables>) {
         let swap = NormalizedSwap::default();
         let liquidation = NormalizedLiquidation::default();
         let gas_details = GasDetails::default();
@@ -992,7 +845,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn bundle_header(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn bundle_header(db: &PostgresTestClient<BrontesPostgresTables>) {
         let case0 = BundleHeader::default();
 
         db.insert_one::<MevBundle_Header>(&DbDataWithRunId::new_with_run_id(case0, 0))
@@ -1000,7 +853,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn sandwich(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn sandwich(db: &PostgresTestClient<BrontesPostgresTables>) {
         let swap0 = NormalizedSwap::default();
         let swap1 = NormalizedSwap::default();
         let swap2 = NormalizedSwap::default();
@@ -1018,7 +871,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn atomic_arb(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn atomic_arb(db: &PostgresTestClient<BrontesPostgresTables>) {
         let swap = NormalizedSwap::default();
         let gas_details = GasDetails::default();
         let case0 = AtomicArb { swaps: vec![swap], gas_details, ..AtomicArb::default() };
@@ -1028,8 +881,8 @@ mod tests {
             .unwrap();
     }
 
-    async fn pools(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let case0 = ProtocolInfoClickhouse {
+    async fn pools(db: &PostgresTestClient<BrontesPostgresTables>) {
+        let case0 = ProtocolInfoPostgres {
             protocol:         "NONE".to_string(),
             protocol_subtype: "NONE".to_string(),
             address:          "0x229b8325bb9Ac04602898B7e8989998710235d5f"
@@ -1049,7 +902,7 @@ mod tests {
         db.insert_one::<EthereumPools>(&case0).await.unwrap();
     }
 
-    async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn block_analysis(db: &PostgresTestClient<BrontesPostgresTables>) {
         let case0 = BlockAnalysis::default();
 
         db.insert_one::<BrontesBlock_Analysis>(&DbDataWithRunId::new_with_run_id(case0, 0))
@@ -1057,7 +910,7 @@ mod tests {
             .unwrap();
     }
 
-    async fn tree(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn tree(db: &PostgresTestClient<BrontesPostgresTables>) {
         let tree = load_tree().await;
 
         let roots: Vec<_> = tree
@@ -1074,7 +927,7 @@ mod tests {
         db.insert_many::<BrontesTree>(&roots).await.unwrap();
     }
 
-    async fn run_all(database: &ClickhouseTestClient<BrontesClickhouseTables>) {
+    async fn run_all(database: &PostgresTestClient<BrontesPostgresTables>) {
         pools(database).await;
         atomic_arb(database).await;
         sandwich(database).await;
@@ -1083,7 +936,6 @@ mod tests {
         jit_sandwich(database).await;
         jit(database).await;
         cex_dex(database).await;
-        cex_dex_quotes(database).await;
         mev_block(database).await;
         dex_price_mapping(database).await;
         token_info(database).await;
@@ -1094,9 +946,9 @@ mod tests {
     #[brontes_macros::test]
     async fn test_all_inserts() {
         init_threadpools(10);
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
+        let test_db = PostgresTestClient { client: Postgres::new_default().await.client };
 
-        let tables = &BrontesClickhouseTables::all_tables();
+        let tables = &BrontesPostgresTables::all_tables();
         test_db
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
             .await;
@@ -1107,7 +959,7 @@ mod tests {
     async fn test_db_trades() {
         use reth_primitives::TxHash;
 
-        let db_client = Clickhouse::new_default().await;
+        let db_client = Postgres::new_default().await;
 
         let db_cex_trades = db_client
             .get_cex_trades(CexRangeOrArbitrary::Arbitrary(&[18700684]))
