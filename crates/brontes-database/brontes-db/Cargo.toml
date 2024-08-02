@@ -68,7 +68,7 @@ ahash = "0.8.11"
 malachite = { workspace = true, features = ["naturals_and_integers"] }
 
 # sorella-db
-db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", optional = true, features = [
+db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", optional = true, branch = "feat/postgres", features = [
   "test-utils",
 ] }
 clickhouse = { workspace = true, features = ["tls"] }
@@ -136,7 +136,6 @@ brontes-database = { workspace = true, features = ["tests"] }
 brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
 
-
 [build-dependencies]
 serde.workspace = true
 toml = "0.8.9"
@@ -157,4 +156,8 @@ local-clickhouse = [
   "db-interfaces",
   "brontes-core/local-clickhouse",
   "brontes-database/local-clickhouse",
+]
+
+local-postgres = [
+  "db-interfaces"
 ]

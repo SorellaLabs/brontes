@@ -93,7 +93,7 @@ fdlimit = "0.3.0"
 dhat = "0.3.3"
 
 serde = { workspace = true, features = ["derive"] }
-db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces",  features = [
+db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", branch = "feat/postgres", features = [
   "test-utils"
 ] }
 clickhouse.workspace = true
@@ -125,7 +125,7 @@ jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
 dhat-heap = []
 
-sorella-server = ["local-reth", "local-clickhouse"]
+sorella-server = ["local-reth", "local-clickhouse", "local-postgres"]
 
 cex-dex-quotes = [
   "brontes-types/cex-dex-quotes",
@@ -157,6 +157,14 @@ local-clickhouse = [
   "brontes-inspect/local-clickhouse",
   "brontes-classifier/local-clickhouse",
   "brontes-types/local-clickhouse",
+]
+
+local-postgres = [
+  "brontes-database/local-postgres",
+#  "brontes-core/local-postgres",
+#  "brontes-inspect/local-postgres",
+#  "brontes-classifier/local-postgres",
+#  "brontes-types/local-postgres",
 ]
 
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
