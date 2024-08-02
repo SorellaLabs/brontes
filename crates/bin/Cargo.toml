@@ -127,7 +127,7 @@ jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
 dhat-heap = []
 
-sorella-server = ["local-reth", "local-clickhouse"]
+sorella-server = ["local-reth", "local-clickhouse", "local-postgres"]
 
 tests = [
   "brontes-core/tests",
