@@ -379,8 +379,8 @@ impl ClickhouseHandle for Clickhouse {
                 let vals = vals
                     .into_iter()
                     .flat_map(|v| {
-                        (v - self.cex_download_config.run_time_window.0
-                            ..=v + self.cex_download_config.run_time_window.1)
+                        (v - self.cex_download_config.block_window.0
+                            ..=v + self.cex_download_config.block_window.1)
                             .collect_vec()
                     })
                     .unique()
@@ -480,8 +480,8 @@ impl ClickhouseHandle for Clickhouse {
         debug!("Starting get_cex_trades function");
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(mut s, mut e) => {
-                s -= self.cex_download_config.run_time_window.0;
-                e += self.cex_download_config.run_time_window.1;
+                s -= self.cex_download_config.block_window.0;
+                e += self.cex_download_config.block_window.1;
 
                 debug!(
                     target = "brontes_db::cex_download",
@@ -493,8 +493,8 @@ impl ClickhouseHandle for Clickhouse {
                 let vals = vals
                     .iter()
                     .flat_map(|v| {
-                        (v - self.cex_download_config.run_time_window.0
-                            ..=v + self.cex_download_config.run_time_window.1)
+                        (v - self.cex_download_config.block_window.0
+                            ..=v + self.cex_download_config.block_window.1)
                             .collect_vec()
                     })
                     .unique()
