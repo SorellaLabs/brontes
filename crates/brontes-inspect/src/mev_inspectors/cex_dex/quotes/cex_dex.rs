@@ -80,9 +80,9 @@ use itertools::Itertools;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 pub struct CexDexQuotesInspector<'db, DB: LibmdbxReader> {
-    utils:               SharedInspectorUtils<'db, DB>,
-    quotes_fetch_offset: u64,
-    _cex_exchanges:      Vec<CexExchange>,
+    utils:                SharedInspectorUtils<'db, DB>,
+    _quotes_fetch_offset: u64,
+    _cex_exchanges:       Vec<CexExchange>,
 }
 
 impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
@@ -102,9 +102,9 @@ impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
         metrics: Option<OutlierMetrics>,
     ) -> Self {
         Self {
-            utils: SharedInspectorUtils::new(quote, db, metrics),
-            quotes_fetch_offset,
-            _cex_exchanges: cex_exchanges.to_owned(),
+            utils:                SharedInspectorUtils::new(quote, db, metrics),
+            _quotes_fetch_offset: quotes_fetch_offset,
+            _cex_exchanges:       cex_exchanges.to_owned(),
         }
     }
 }
@@ -402,7 +402,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     .cex_quotes
                     .get_quote_from_most_liquid_exchange(
                         &pair,
-                        metadata.microseconds_block_timestamp() + self.quotes_fetch_offset,
+                        metadata.microseconds_block_timestamp(),
                     )
                     .or_else(|| {
                         debug!(

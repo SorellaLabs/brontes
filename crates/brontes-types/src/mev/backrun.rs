@@ -104,18 +104,15 @@ impl Serialize for AtomicArb {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("AtomicArb", 36)?;
-
+        let mut ser_struct = serializer.serialize_struct("AtomicArb", 37)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
         ser_struct.serialize_field("trigger_tx", &format!("{:?}", self.trigger_tx))?;
-
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps
             .clone()
             .try_into()
             .map_err(serde::ser::Error::custom)?;
-
         ser_struct.serialize_field("swaps.trace_idx", &swaps.trace_index)?;
         ser_struct.serialize_field("swaps.from", &swaps.from)?;
         ser_struct.serialize_field("swaps.recipient", &swaps.recipient)?;
@@ -124,16 +121,14 @@ impl Serialize for AtomicArb {
         ser_struct.serialize_field("swaps.token_out", &swaps.token_out)?;
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
-
         let gas_details = (
             self.gas_details.coinbase_transfer,
             self.gas_details.priority_fee,
             self.gas_details.gas_used,
             self.gas_details.effective_gas_price,
         );
-
-        ser_struct.serialize_field("gas_details", &(gas_details))?;
-
+        ser_struct.serialize_field("gas_details", &gas_details)?;
+        ser_struct.serialize_field("arb_type", &self.arb_type.to_string())?;
         ser_struct.end()
     }
 }
@@ -152,5 +147,6 @@ impl DbRow for AtomicArb {
         "swaps.amount_in",
         "swaps.amount_out",
         "gas_details",
+        "arb_type",
     ];
 }

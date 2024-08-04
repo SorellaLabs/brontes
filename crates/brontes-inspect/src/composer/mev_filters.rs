@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use brontes_types::{
     db::traits::LibmdbxReader,
-    mev::{Bundle, BundleData, MevType},
+    mev::{AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::Action,
     BlockTree,
 };
@@ -77,6 +77,16 @@ pub fn atomic_dedup_fn(
     let [atomic, other] = bundles;
 
     if matches!(other.data, BundleData::CexDex(_)) {
+        let atomic_data = match &atomic.data {
+            BundleData::AtomicArb(data) => data,
+            _ => {
+                return false;
+            }
+        };
+
+        if atomic_data.arb_type == AtomicArbType::Triangle {
+            return false;
+        }
         // if the cex dex has a higher value. then use that.
         if other.header.profit_usd >= atomic.header.profit_usd {
             return false

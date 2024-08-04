@@ -19,6 +19,7 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
         `gas_used` UInt128,
         `effective_gas_price` UInt128
     ),
+    `arb_type` String,
     `run_id` UInt64
 ) 
 ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/atomic_arbs', '{replica}', `run_id`)

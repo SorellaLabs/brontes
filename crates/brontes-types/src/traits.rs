@@ -20,7 +20,7 @@ pub trait TracingProvider: Send + Sync + 'static {
         block_overrides: Option<Box<BlockOverrides>>,
     ) -> eyre::Result<Bytes>;
 
-    /// eth call that is light in calcuations
+    /// eth call that fetches state and does minimal processing
     /// will bypass threadpool
     async fn eth_call_light(
         &self,
