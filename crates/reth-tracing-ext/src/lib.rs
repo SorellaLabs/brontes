@@ -5,25 +5,28 @@ use std::{
 };
 
 use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
-use reth_beacon_consensus::BeaconConsensus;
+use reth_beacon_consensus::EthBeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
+use reth_chainspec::MAINNET;
 use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
-use reth_node_ethereum::EthEvmConfig;
-use reth_primitives::{BlockId, PruneModes, MAINNET};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory};
-use reth_revm::{inspectors::GasInspector, EvmProcessorFactory};
-use reth_rpc::{
-    eth::{
-        cache::{EthStateCache, EthStateCacheConfig},
-        error::EthResult,
-        gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
-        EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
-    },
-    EthApi, TraceApi,
+use reth_node_ethereum::{EthEvmConfig, EthExecutorProvider};
+use reth_primitives::{constants::*, BlockId};
+use reth_provider::{
+    providers::{BlockchainProvider, StaticFileProvider},
+    ProviderFactory,
 };
+use reth_prune_types::PruneModes;
+use reth_revm::inspectors::GasInspector;
+use reth_rpc::{EthApi, TraceApi};
+use reth_rpc_eth_api::helpers::Trace;
+use reth_rpc_eth_types::{
+    EthResult, EthStateCache, EthStateCacheConfig, FeeHistoryCache, FeeHistoryCacheConfig,
+    GasPriceOracle, GasPriceOracleConfig,
+};
+use reth_rpc_server_types::constants::{DEFAULT_ETH_PROOF_WINDOW, DEFAULT_PROOF_PERMITS};
 use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
 use reth_tracer::{
     arena::CallTraceArena,
@@ -39,7 +42,7 @@ pub mod reth_tracer;
 
 pub type Provider = BlockchainProvider<
     Arc<DatabaseEnv>,
-    ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory<EthEvmConfig>>,
+    //ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory<EthEvmConfig>>,
 >;
 
 pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>;
@@ -64,23 +67,28 @@ impl TracingClient {
         static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), static_files_path)
-                .expect("failed to start provider factory");
+        let msg =
+            format!("could not make 'StaticFileProvider' at '{}'", static_files_path.display());
+        let provider_factory = ProviderFactory::new(
+            Arc::clone(&db),
+            Arc::clone(&chain),
+            StaticFileProvider::read_only(static_files_path).expect(&msg),
+        );
 
         let tree_externals = TreeExternals::new(
             provider_factory.clone(),
-            Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
-            EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
+            Arc::new(EthBeaconConsensus::new(Arc::clone(&chain))),
+            EthExecutorProvider::ethereum(chain.clone()),
         );
 
         let tree_config = BlockchainTreeConfig::default();
 
         let blockchain_tree = ShareableBlockchainTree::new(
-            BlockchainTree::new(tree_externals, tree_config, Some(PruneModes::none())).unwrap(),
+            BlockchainTree::new(tree_externals, tree_config, PruneModes::none()).unwrap(),
         );
 
-        let provider = BlockchainProvider::new(provider_factory.clone(), blockchain_tree).unwrap();
+        let provider =
+            BlockchainProvider::new(provider_factory.clone(), Arc::new(blockchain_tree)).unwrap();
 
         let state_cache = EthStateCache::spawn_with(
             provider.clone(),
@@ -111,7 +119,7 @@ impl TracingClient {
         );
         // blocking task pool
         // fee history cache
-        let api = EthApi::with_spawner(
+        let api = EthApi::new(
             provider.clone(),
             tx_pool.clone(),
             NoopNetwork::default(),
@@ -121,12 +129,13 @@ impl TracingClient {
                 GasPriceOracleConfig::default(),
                 state_cache.clone(),
             ),
-            RPC_DEFAULT_GAS_CAP.into(),
-            Box::new(task_executor.clone()),
+            ETHEREUM_BLOCK_GAS_LIMIT,
+            DEFAULT_ETH_PROOF_WINDOW,
             blocking,
             fee_history,
             EthEvmConfig::default(),
             None,
+            DEFAULT_PROOF_PERMITS,
         );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as usize);
@@ -168,7 +177,7 @@ impl TracingClient {
         };
 
         self.api
-            .trace_block_with_inspector(block_id, insp_setup, move |tx_info, inspector, res, _, _| {
+            .trace_block_inspector(block_id, insp_setup, move |tx_info, inspector, res, _, _| {
                 Ok(inspector.into_trace_results(tx_info, &res))
             })
             .await

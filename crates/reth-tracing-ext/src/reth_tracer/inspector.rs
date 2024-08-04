@@ -4,7 +4,7 @@ use alloy_primitives::{Address, Log, B256, U256};
 use arena::{CallTraceArena, PushTraceKind};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use config::TracingInspectorConfig;
-use reth_primitives::{Bytes, U64};
+use reth_primitives::Bytes;
 use reth_rpc_types::{trace::parity::*, TransactionInfo};
 use revm::{
     inspectors::GasInspector,
@@ -16,8 +16,8 @@ use revm::{
     Database, EvmContext, Inspector, JournalEntry,
 };
 use types::{
-    CallKind, CallTrace, CallTraceNode, CallTraceStep, LogCallOrder, RecordedMemory, StorageChange,
-    StorageChangeReason,
+    CallKind, CallTrace, CallTraceNode, CallTraceStep, LogCallOrder, RecordedMemory,
+    StorageChangeReason, StorageChanged,
 };
 use utils::{gas_used, stack_push_count};
 
@@ -119,7 +119,7 @@ impl BrontesTracingInspector {
         to: &Address,
         value: U256,
     ) -> bool {
-        if context.precompiles.contains_key(to) {
+        if context.precompiles.contains(to) {
             // only if this is _not_ the root call
             return self.is_deep() && value.is_zero()
         }
@@ -291,7 +291,7 @@ impl BrontesTracingInspector {
             depth: context.journaled_state.depth(),
             pc: interp.program_counter(),
             op,
-            contract: interp.contract.address,
+            contract: interp.contract.target_address,
             stack,
             push_stack: None,
             memory_size: memory.len(),
@@ -347,7 +347,7 @@ impl BrontesTracingInspector {
             step.storage_change = match (op, journal_entry) {
                 (
                     opcode::SLOAD | opcode::SSTORE,
-                    Some(JournalEntry::StorageChange { address, key, had_value }),
+                    Some(JournalEntry::StorageChanged { address, key, had_value }),
                 ) => {
                     // SAFETY: (Address,key) exists if part if StorageChange
                     let value = context.journaled_state.state[address].storage[key].present_value();
@@ -356,7 +356,7 @@ impl BrontesTracingInspector {
                         opcode::SSTORE => StorageChangeReason::SSTORE,
                         _ => unreachable!(),
                     };
-                    let change = StorageChange { key: *key, value, had_value: *had_value, reason };
+                    let change = StorageChanged { key: *key, value, had_value: *had_value, reason };
                     Some(change)
                 }
                 _ => None,
@@ -550,20 +550,24 @@ impl BrontesTracingInspector {
 
     pub(crate) fn parity_action(&self, node: &CallTraceNode) -> Action {
         match node.trace.kind {
-            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
-                Action::Call(CallAction {
-                    from:      node.trace.caller,
-                    to:        node.trace.address,
-                    value:     node.trace.value,
-                    gas:       U64::from(node.trace.gas_limit),
-                    input:     node.trace.data.clone(),
-                    call_type: node.trace.kind.into(),
-                })
-            }
+            CallKind::Call
+            | CallKind::StaticCall
+            | CallKind::CallCode
+            | CallKind::DelegateCall
+            | CallKind::ExtCall
+            | CallKind::ExtStaticCall
+            | CallKind::ExtDelegateCall => Action::Call(CallAction {
+                from:      node.trace.caller,
+                to:        node.trace.address,
+                value:     node.trace.value,
+                gas:       node.trace.gas_limit,
+                input:     node.trace.data.clone(),
+                call_type: node.trace.kind.into(),
+            }),
             CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
                 from:  node.trace.caller,
                 value: node.trace.value,
-                gas:   U64::from(node.trace.gas_limit),
+                gas:   node.trace.gas_limit,
                 init:  node.trace.data.clone(),
             }),
         }
@@ -571,14 +575,18 @@ impl BrontesTracingInspector {
 
     pub(crate) fn parity_trace_output(&self, node: &CallTraceNode) -> TraceOutput {
         match node.trace.kind {
-            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
-                TraceOutput::Call(CallOutput {
-                    gas_used: U64::from(node.trace.gas_used),
-                    output:   node.trace.output.clone(),
-                })
-            }
+            CallKind::Call
+            | CallKind::StaticCall
+            | CallKind::CallCode
+            | CallKind::DelegateCall
+            | CallKind::ExtCall
+            | CallKind::ExtStaticCall
+            | CallKind::ExtDelegateCall => TraceOutput::Call(CallOutput {
+                gas_used: node.trace.gas_used,
+                output:   node.trace.output.clone(),
+            }),
             CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
-                gas_used: U64::from(node.trace.gas_used),
+                gas_used: node.trace.gas_used,
                 code:     node.trace.output.clone(),
                 address:  node.trace.address,
             }),
@@ -640,8 +648,8 @@ where
         }
     }
 
-    fn log(&mut self, context: &mut EvmContext<DB>, log: &Log) {
-        self.gas_inspector.log(context, log);
+    fn log(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>, log: &Log) {
+        self.gas_inspector.log(interp, context, log);
 
         let trace_idx = self.last_trace_idx();
         let trace = &mut self.traces.arena[trace_idx];
@@ -660,23 +668,25 @@ where
         self.gas_inspector.call(context, inputs);
 
         // determine correct `from` and `to` based on the call scheme
-        let (from, to) = match inputs.context.scheme {
+        let (from, to) = match inputs.scheme {
             CallScheme::DelegateCall | CallScheme::CallCode => {
-                (inputs.context.address, inputs.context.code_address)
+                (inputs.target_address, inputs.bytecode_address)
             }
-            _ => (inputs.context.caller, inputs.context.address),
+            _ => (inputs.caller, inputs.target_address),
         };
 
-        let value = if matches!(inputs.context.scheme, CallScheme::DelegateCall) {
+        let value = if matches!(inputs.scheme, CallScheme::DelegateCall) {
             // for delegate calls we need to use the value of the top trace
             if let Some(parent) = self.active_trace() {
-                parent.trace.value
+                Some(parent.trace.value)
             } else {
-                inputs.transfer.value
+                inputs.transfer_value()
             }
         } else {
-            inputs.transfer.value
+            inputs.transfer_value()
         };
+
+        let Some(value) = value else { return None };
 
         // if calls to precompiles should be excluded, check whether this is a call to a
         // precompile
@@ -690,7 +700,7 @@ where
             to,
             inputs.input.clone(),
             value,
-            inputs.context.scheme.into(),
+            inputs.scheme.into(),
             from,
             inputs.gas_limit,
             maybe_precompile,
@@ -769,10 +779,10 @@ pub struct StackStep {
 impl From<CallKind> for CallType {
     fn from(item: CallKind) -> Self {
         match item {
-            CallKind::Call => CallType::Call,
-            CallKind::StaticCall => CallType::StaticCall,
+            CallKind::Call | CallKind::ExtCall => CallType::Call,
+            CallKind::StaticCall | CallKind::ExtStaticCall => CallType::StaticCall,
             CallKind::CallCode => CallType::CallCode,
-            CallKind::DelegateCall => CallType::DelegateCall,
+            CallKind::DelegateCall | CallKind::ExtDelegateCall => CallType::DelegateCall,
             CallKind::Create | CallKind::Create2 => CallType::None,
         }
     }

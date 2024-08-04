@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 pub use alloy_primitives::Log;
-use alloy_primitives::{Address, Bytes, LogData, U256, U64};
+use alloy_primitives::{Address, Bytes, LogData, U256};
 use alloy_rpc_types_trace::{
     geth::{CallFrame, CallLogFrame, GethDefaultTracingOptions, StructLog},
     parity::{
@@ -9,7 +9,7 @@ use alloy_rpc_types_trace::{
         TraceOutput, TransactionTrace,
     },
 };
-use revm::interpreter::{opcode, CallContext, CallScheme, CreateScheme, InstructionResult, OpCode};
+use revm::interpreter::{opcode, CallScheme, CreateScheme, InstructionResult, OpCode};
 use serde::{Deserialize, Serialize};
 use utils::{convert_memory, TraceStyle};
 
@@ -56,8 +56,6 @@ pub struct CallTrace {
     pub gas_limit: u64,
     /// The status of the trace's call
     pub status: InstructionResult,
-    /// call context of the runtime
-    pub call_context: Option<Box<CallContext>>,
     /// Opcode-level execution steps
     pub steps: Vec<CallTraceStep>,
 }
@@ -214,14 +212,18 @@ impl CallTraceNode {
     /// Returns the `Output` for a parity trace
     pub fn parity_trace_output(&self) -> TraceOutput {
         match self.kind() {
-            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
-                TraceOutput::Call(CallOutput {
-                    gas_used: U64::from(self.trace.gas_used),
-                    output:   self.trace.output.clone(),
-                })
-            }
+            CallKind::Call
+            | CallKind::StaticCall
+            | CallKind::CallCode
+            | CallKind::DelegateCall
+            | CallKind::ExtCall
+            | CallKind::ExtStaticCall
+            | CallKind::ExtDelegateCall => TraceOutput::Call(CallOutput {
+                gas_used: self.trace.gas_used,
+                output:   self.trace.output.clone(),
+            }),
             CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
-                gas_used: U64::from(self.trace.gas_used),
+                gas_used: self.trace.gas_used,
                 code:     self.trace.output.clone(),
                 address:  self.trace.address,
             }),
@@ -277,20 +279,24 @@ impl CallTraceNode {
     /// action.
     pub fn parity_action(&self) -> Action {
         match self.kind() {
-            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
-                Action::Call(CallAction {
-                    from:      self.trace.caller,
-                    to:        self.trace.address,
-                    value:     self.trace.value,
-                    gas:       U64::from(self.trace.gas_limit),
-                    input:     self.trace.data.clone(),
-                    call_type: self.kind().into(),
-                })
-            }
+            CallKind::Call
+            | CallKind::StaticCall
+            | CallKind::CallCode
+            | CallKind::DelegateCall
+            | CallKind::ExtCall
+            | CallKind::ExtStaticCall
+            | CallKind::ExtDelegateCall => Action::Call(CallAction {
+                from:      self.trace.caller,
+                to:        self.trace.address,
+                value:     self.trace.value,
+                gas:       self.trace.gas_limit,
+                input:     self.trace.data.clone(),
+                call_type: self.kind().into(),
+            }),
             CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
                 from:  self.trace.caller,
                 value: self.trace.value,
-                gas:   U64::from(self.trace.gas_limit),
+                gas:   self.trace.gas_limit,
                 init:  self.trace.data.clone(),
             }),
         }
@@ -343,22 +349,28 @@ impl CallTraceNode {
 }
 
 /// A unified representation of a call.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Hash, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum CallKind {
-    /// Represents a regular call.
     #[default]
+    /// `CALL`.
     Call,
-    /// Represents a static call.
-    StaticCall,
-    /// Represents a call code operation.
+    /// `CALLCODE`
     CallCode,
-    /// Represents a delegate call.
+    /// `DELEGATECALL`
     DelegateCall,
-    /// Represents a contract creation operation.
+    /// `CREATE`
     Create,
-    /// Represents a contract creation operation using the CREATE2 opcode.
+    /// `CREATE2`
     Create2,
+    /// `STATICCALL`
+    StaticCall,
+    /// `EXTCALL`
+    ExtCall,
+    /// `EXTSTATICCALL`
+    ExtStaticCall,
+    /// `EXTDELEGATECALL`
+    ExtDelegateCall,
 }
 
 impl CallKind {
@@ -402,6 +414,15 @@ impl std::fmt::Display for CallKind {
             Self::Create2 => {
                 write!(f, "CREATE2")
             }
+            Self::ExtCall => {
+                write!(f, "EXTCALL")
+            }
+            Self::ExtStaticCall => {
+                write!(f, "EXTSTATICCALL")
+            }
+            Self::ExtDelegateCall => {
+                write!(f, "EXTDELEGATECALL")
+            }
         }
     }
 }
@@ -413,6 +434,9 @@ impl From<CallScheme> for CallKind {
             CallScheme::StaticCall => Self::StaticCall,
             CallScheme::CallCode => Self::CallCode,
             CallScheme::DelegateCall => Self::DelegateCall,
+            CallScheme::ExtCall => Self::ExtCall,
+            CallScheme::ExtStaticCall => Self::ExtStaticCall,
+            CallScheme::ExtDelegateCall => Self::ExtDelegateCall,
         }
     }
 }
@@ -429,9 +453,13 @@ impl From<CreateScheme> for CallKind {
 impl From<CallKind> for ActionType {
     fn from(kind: CallKind) -> Self {
         match kind {
-            CallKind::Call | CallKind::StaticCall | CallKind::DelegateCall | CallKind::CallCode => {
-                Self::Call
-            }
+            CallKind::Call
+            | CallKind::StaticCall
+            | CallKind::DelegateCall
+            | CallKind::CallCode
+            | CallKind::ExtCall
+            | CallKind::ExtStaticCall
+            | CallKind::ExtDelegateCall => Self::Call,
             CallKind::Create => Self::Create,
             CallKind::Create2 => Self::Create,
         }
@@ -489,7 +517,7 @@ pub struct CallTraceStep {
     pub gas_cost:           u64,
     /// Change of the contract state after step execution (effect of the
     /// SLOAD/SSTORE instructions)
-    pub storage_change:     Option<StorageChange>,
+    pub storage_change:     Option<StorageChanged>,
     /// Final status of the step
     ///
     /// This is set after the step was executed.
@@ -593,13 +621,13 @@ pub enum StorageChangeReason {
 /// It is used to track both storage change and warm load of a storage slot. For
 /// warm load in regard to EIP-2929 AccessList had_value will be None.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct StorageChange {
+pub struct StorageChanged {
     /// key of the storage slot
     pub key:       U256,
     /// Current value of the storage slot
     pub value:     U256,
     /// The previous value of the storage slot, if any
-    pub had_value: Option<U256>,
+    pub had_value: U256,
     /// How this storage was accessed
     pub reason:    StorageChangeReason,
 }
