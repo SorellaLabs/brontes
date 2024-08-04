@@ -41,7 +41,6 @@ reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "r
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "390f30a" }
 reth-chainspec = { git = "https://github.com/paradigmxyz/reth", package = "reth-chainspec", rev = "390f30a" }
 reth-prune-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-prune-types", rev = "390f30a" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "390f30a" }
 reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "390f30a" }
 reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-api", rev = "390f30a" }
 reth-rpc-eth-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-types", rev = "390f30a" }

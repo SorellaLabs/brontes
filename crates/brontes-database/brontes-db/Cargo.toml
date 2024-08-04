@@ -35,7 +35,6 @@ reth-libmdbx = { workspace = true, features = [
 ] }
 reth-mdbx-sys = { git = "https://github.com/paradigmxyz/reth", rev = "390f30a" }
 reth-db.workspace = true
-reth-rpc.workspace = true
 reth-rpc-types.workspace = true
 
 # filesystem
