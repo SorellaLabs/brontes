@@ -34,7 +34,7 @@ reth-libmdbx = { workspace = true, features = [
   "return-borrowed",
   "read-tx-timeouts",
 ] }
-reth-mdbx-sys = { git = "https://github.com/paradigmxyz/reth", rev = "ac29b4b" }
+reth-mdbx-sys = { git = "https://github.com/paradigmxyz/reth", rev = "390f30a" }
 reth-db.workspace = true
 reth-rpc.workspace = true
 reth-rpc-types.workspace = true
