@@ -9602,6 +9602,7 @@ dependencies = [
  "reth-provider",
  "reth-prune-types",
  "reth-revm",
+ "reth-rpc",
  "reth-rpc-api",
  "reth-rpc-eth-api",
  "reth-rpc-eth-types",

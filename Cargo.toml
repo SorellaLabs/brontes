@@ -41,6 +41,7 @@ reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "r
 reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "390f30a" }
 reth-chainspec = { git = "https://github.com/paradigmxyz/reth", package = "reth-chainspec", rev = "390f30a" }
 reth-prune-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-prune-types", rev = "390f30a" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "390f30a" }
 reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "390f30a" }
 reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-api", rev = "390f30a" }
 reth-rpc-eth-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-types", rev = "390f30a" }
@@ -94,14 +95,14 @@ alloy-json-abi = "0.7.2"
 alloy-dyn-abi = "0.7.2"
 
 # Alloy core
-alloy-provider = { version = "0.2", default-features = false }
-alloy-transport-http = { version = "0.2", default-features = false }
-alloy-transport = { version = "0.2", default-features = false }
-alloy-network = { version = "0.2", default-features = false }
-alloy-json-rpc = { version = "0.2", default-features = false }
-alloy-rpc-types = { version = "0.2", default-features = false, features = ["jsonrpsee-types", "eth"] }
-alloy-rpc-types-trace = { version = "0.2", default-features = false }
-alloy-rpc-client = { version = "0.2", default-features = false }
+alloy-provider = { version = "0.2.0", default-features = false }
+alloy-transport-http = { version = "0.2.0", default-features = false }
+alloy-transport = { version = "0.2.0", default-features = false }
+alloy-network = { version = "0.2.0", default-features = false }
+alloy-json-rpc = { version = "0.2.0", default-features = false }
+alloy-rpc-types = { version = "0.2.0", default-features = false, features = ["jsonrpsee-types", "eth"] }
+alloy-rpc-types-trace = { version = "0.2.0", default-features = false }
+alloy-rpc-client = { version = "0.2.0", default-features = false }
 
 
 # Async
