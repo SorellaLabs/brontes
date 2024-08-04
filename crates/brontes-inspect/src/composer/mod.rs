@@ -73,17 +73,18 @@ pub fn run_block_inspection<DB: LibmdbxReader>(
     data: MultiBlockData,
     db: &'static DB,
 ) -> ComposerResults {
-    let (possible_mev_txes, classified_mev) = run_inspectors(orchestra, data.clone());
+    let this_data = data.get_most_recent_block().clone();
+    let BlockData { metadata, tree } = this_data;
+
+    let (possible_mev_txes, classified_mev) = run_inspectors(orchestra, data);
 
     let possible_arbs = possible_mev_txes.clone();
 
     let quote_token = orchestra[0].get_quote_token();
 
-    let this_data = data.get_most_recent_block().clone();
-    let BlockData { metadata, tree } = this_data;
-
     let (block_details, mev_details) =
         on_orchestra_resolution(tree, possible_mev_txes, metadata, classified_mev, quote_token, db);
+
     let block_analysis = BlockAnalysis::new(&block_details, &mev_details);
 
     ComposerResults { block_details, mev_details, possible_mev_txes: possible_arbs, block_analysis }

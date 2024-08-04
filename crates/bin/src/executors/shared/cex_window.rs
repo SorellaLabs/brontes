@@ -48,7 +48,7 @@ impl CexWindow {
         self.last_end_block_loaded = block;
     }
 
-    /// lets us know if the window is loaded with the nessacary data.
+    /// lets us know if the window is loaded with the necessary data.
     /// if not, we will init the full window instead of just the next block
     pub fn is_loaded(&self) -> bool {
         self.last_end_block_loaded != 0

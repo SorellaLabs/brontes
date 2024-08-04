@@ -448,7 +448,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
     ) -> eyre::Result<Metadata> {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
-        let cex_trades = self.fetch_trades(block_num).ok();
 
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
@@ -464,7 +463,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
             eth_price.unwrap_or_default(),
             block_meta.private_flow.into_iter().collect(),
         )
-        .into_metadata(cex_quotes, None, None, cex_trades))
+        .into_metadata(cex_quotes, None, None, None))
     }
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"metadata")]
@@ -472,7 +471,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
         let block_meta = self.fetch_block_metadata(block_num)?;
         let cex_quotes = self.fetch_cex_quotes(block_num)?;
         let dex_quotes = self.fetch_dex_quotes(block_num)?;
-        let cex_trades = self.fetch_trades(block_num).ok();
 
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
@@ -489,7 +487,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                 eth_price.unwrap_or_default(),
                 block_meta.private_flow.into_iter().collect(),
             )
-            .into_metadata(cex_quotes, Some(dex_quotes), None, cex_trades)
+            .into_metadata(cex_quotes, Some(dex_quotes), None, None)
         })
     }
 
