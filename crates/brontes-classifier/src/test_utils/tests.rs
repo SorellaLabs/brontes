@@ -327,6 +327,17 @@ impl ClassifierTestUtils {
         .await)
     }
 
+    pub async fn test_pool_token_order(
+        &self,
+        token_0: Address,
+        token_1: Address,
+        pool: Address,
+    ) -> bool {
+        let pool = self.libmdbx.get_protocol_details_sorted(pool).unwrap();
+
+        pool.token0 == token_0 && pool.token1 == token_1
+    }
+
     pub async fn build_tree_txes_with_pricing(
         &self,
         tx_hashes: Vec<TxHash>,

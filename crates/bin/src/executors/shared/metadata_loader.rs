@@ -26,7 +26,7 @@ use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
 /// of processed trees
-const MAX_PENDING_TREES: usize = 5;
+const MAX_PENDING_TREES: usize = 3;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
