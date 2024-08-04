@@ -353,6 +353,7 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
+    //TODO: Change back to -6 + 6 when mem fix
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -414,13 +415,13 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - (6.0 * SECONDS_TO_US);
+                    - (1.0 * SECONDS_TO_US);
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (6.0 * SECONDS_TO_US);
+                    + (1.0 * SECONDS_TO_US);
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -433,7 +434,7 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(6.0 * SECONDS_TO_US, 6.0 * SECONDS_TO_US))
+                    .map(|b| b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 1.0 * SECONDS_TO_US))
                     .collect::<Vec<String>>()
                     .join(" OR ");
 

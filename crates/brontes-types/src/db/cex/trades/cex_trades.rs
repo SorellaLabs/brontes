@@ -80,7 +80,7 @@ impl CexTradeMap {
             })
     }
 
-    /// given the amount of entires per exchange per pair. removes
+    /// given the amount of entries per exchange per pair. removes
     /// the specified amount from the trade vector
     pub fn pop_historical_trades(
         &mut self,
