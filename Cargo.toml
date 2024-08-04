@@ -59,9 +59,7 @@ reth-storage-errors = { git = "https://github.com/paradigmxyz/reth", package = "
 reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "390f30a" }
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "390f30a" }
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "390f30a" }
-reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
-  "test-utils",
-], rev = "390f30a" }
+reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", rev = "390f30a" }
 reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "390f30a" }
 reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "390f30a" }
 reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "390f30a" }
@@ -100,7 +98,7 @@ alloy-transport-http = { version = "0.2.0", default-features = false }
 alloy-transport = { version = "0.2.0", default-features = false }
 alloy-network = { version = "0.2.0", default-features = false }
 alloy-json-rpc = { version = "0.2.0", default-features = false }
-alloy-rpc-types = { version = "0.2.0", default-features = false, features = ["jsonrpsee-types", "eth"] }
+alloy-rpc-types = { version = "0.2.0", default-features = false, features = ["eth"] }
 alloy-rpc-types-trace = { version = "0.2.0", default-features = false }
 alloy-rpc-client = { version = "0.2.0", default-features = false }
 
