@@ -3,7 +3,7 @@ use std::{
     pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, RwLock,
     },
     task::Poll,
     time::Duration,
@@ -41,6 +41,7 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
+    active_block:          u64,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -61,6 +62,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             result_buf: VecDeque::new(),
             always_generate_price,
             force_no_dex_pricing,
+            active_block: 0,
         }
     }
 
@@ -109,11 +111,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
     }
 
+    //TODO: Change this shit to actual before and after instead of the /12 nonsense
     fn load_cex_trades<DB: LibmdbxReader>(
         &mut self,
         libmdbx: &'static DB,
         block: u64,
-    ) -> CexTradeMap {
+    ) -> Arc<RwLock<CexTradeMap>> {
         if !self.cex_window_data.is_loaded() {
             let window = self.cex_window_data.get_window_lookahead();
             // given every download is -6 + 6 around the block
@@ -122,11 +125,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let mut trades = Vec::new();
             for block in block - offsets..=block + offsets {
                 if let Ok(res) = libmdbx.get_cex_trades(block) {
-                    trades.push(res);
+                    trades.push((block, res));
                 }
             }
-            let last_block = block + offsets;
-            self.cex_window_data.init(last_block, trades);
+            self.cex_window_data.init(trades);
 
             return self.cex_window_data.cex_trade_map()
         }
@@ -134,9 +136,9 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
 
         if let Ok(res) = libmdbx.get_cex_trades(last_block) {
-            self.cex_window_data.new_block(res);
+            self.cex_window_data
+                .new_block(block, res, self.active_block);
         }
-        self.cex_window_data.set_last_block(last_block);
 
         self.cex_window_data.cex_trade_map()
     }
@@ -288,7 +290,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                 }
             };
 
-            meta.cex_trades = Some(trades);
+            meta.cex_trades = Some(Arc::new(RwLock::new(trades)));
             meta.builder_info = builder_info;
             (block, tree, meta)
         });
@@ -306,6 +308,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
     ) -> std::task::Poll<Option<Self::Item>> {
         if self.force_no_dex_pricing {
             if let Some(res) = self.result_buf.pop_front() {
+                self.active_block = res.block_number();
                 return Poll::Ready(Some(res))
             }
             cx.waker().wake_by_ref();
@@ -321,14 +324,24 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
-                metadata: Arc::new(metadata),
-                tree:     Arc::new(tree),
-            })),
-            Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
+            Poll::Ready(Some((tree, metadata))) => {
+                let block_data =
+                    BlockData { metadata: Arc::new(metadata), tree: Arc::new(tree) };
+                self.active_block = block_data.block_number();
+                Poll::Ready(Some(block_data))
+            }
+            Poll::Ready(None) => {
+                if let Some(res) = self.result_buf.pop_front() {
+                    self.active_block = res.block_number();
+                    Poll::Ready(Some(res))
+                } else {
+                    Poll::Ready(None)
+                }
+            }
             Poll::Pending => {
-                if let Some(f) = self.result_buf.pop_front() {
-                    Poll::Ready(Some(f))
+                if let Some(res) = self.result_buf.pop_front() {
+                    self.active_block = res.block_number();
+                    Poll::Ready(Some(res))
                 } else {
                     Poll::Pending
                 }
