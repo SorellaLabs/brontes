@@ -37,39 +37,39 @@ brontes-analytics = { path = "./crates/brontes-analytics" }
 brontes-libmdbx= { path = "./crates/brontes-database/libmdbx-rs" }
 
 # Reth
-reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", version = "1.0.3" }
-reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", version = "1.0.3" }
-reth-chainspec = { git = "https://github.com/paradigmxyz/reth", package = "reth-chainspec", version = "1.0.3" }
-reth-prune-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-prune-types", version = "1.0.3" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", version = "1.0.3" }
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", version = "1.0.3" }
-reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-api", version = "1.0.3" }
-reth-rpc-eth-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-types", version = "1.0.3" }
-reth-rpc-server-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-server-types", version = "1.0.3" }
-reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", version = "1.0.3" }
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", version = "1.0.3" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", version = "1.0.3" }
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", version = "1.0.3" }
-reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", version = "1.0.3" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", version = "1.0.3" }
-reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", version = "1.0.3" }
-reth-db-common = { git = "https://github.com/paradigmxyz/reth", package = "reth-db-common", version = "1.0.3" }
-reth-db-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-db-api", version = "1.0.3" }
-reth-storage-errors = { git = "https://github.com/paradigmxyz/reth", package = "reth-storage-errors", version = "1.0.3" }
-reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", version = "1.0.3" }
-reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", version = "1.0.3" }
-reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", version = "1.0.3" }
+reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "390f30a" }
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "390f30a" }
+reth-chainspec = { git = "https://github.com/paradigmxyz/reth", package = "reth-chainspec", rev = "390f30a" }
+reth-prune-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-prune-types", rev = "390f30a" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "390f30a" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "390f30a" }
+reth-rpc-eth-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-api", rev = "390f30a" }
+reth-rpc-eth-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-eth-types", rev = "390f30a" }
+reth-rpc-server-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-server-types", rev = "390f30a" }
+reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "390f30a" }
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "390f30a" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "390f30a" }
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "390f30a" }
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "390f30a" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "390f30a" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "390f30a" }
+reth-db-common = { git = "https://github.com/paradigmxyz/reth", package = "reth-db-common", rev = "390f30a" }
+reth-db-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-db-api", rev = "390f30a" }
+reth-storage-errors = { git = "https://github.com/paradigmxyz/reth", package = "reth-storage-errors", rev = "390f30a" }
+reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "390f30a" }
+reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "390f30a" }
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "390f30a" }
 reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
   "test-utils",
-], version = "1.0.3" }
-reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", version = "1.0.3" }
-reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", version = "1.0.3" }
-reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", version = "1.0.3" }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", version = "1.0.3" }
-reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", version = "1.0.3" }
-reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", version = "1.0.3" }
-reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", version = "1.0.3" }
-reth-prune-type = { git = "https://github.com/paradigmxyz/reth", package = "prune", version = "1.0.3" }
+], rev = "390f30a" }
+reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "390f30a" }
+reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "390f30a" }
+reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "390f30a" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "390f30a" }
+reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "390f30a" }
+reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "390f30a" }
+reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", rev = "390f30a" }
+reth-prune-type = { git = "https://github.com/paradigmxyz/reth", package = "prune", rev = "390f30a" }
 
 # ruint
 ruint = "1.9.0"
