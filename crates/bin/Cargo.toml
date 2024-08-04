@@ -47,7 +47,6 @@ reth-db.workspace = true
 reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
 #reth-revm.workspace = true
-reth-interfaces.workspace = true
 
 # Alloy
 alloy-primitives.workspace = true

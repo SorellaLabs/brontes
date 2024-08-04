@@ -12,7 +12,6 @@ reth-codecs.workspace = true
 reth-tasks.workspace = true
 reth-db.workspace = true
 async-trait.workspace = true
-reth-interfaces.workspace = true
 reth-rpc.workspace = true
 
 # alloy
