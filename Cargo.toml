@@ -95,14 +95,15 @@ alloy-json-abi = "0.7.2"
 alloy-dyn-abi = "0.7.2"
 
 # Alloy core
-alloy-provider = "0.2"
-alloy-transport-http = "0.2"
-alloy-transport = "0.2"
-alloy-network = "0.2"
-alloy-json-rpc = "0.2"
-alloy-rpc-types = { version = "0.2", features = ["jsonrpsee-types", "eth"] }
-alloy-rpc-types-trace = "0.2"
-alloy-rpc-client = "0.2"
+alloy-provider = { version = "0.2", default-features = false }
+alloy-transport-http = { version = "0.2", default-features = false }
+alloy-transport = { version = "0.2", default-features = false }
+alloy-network = { version = "0.2", default-features = false }
+alloy-json-rpc = { version = "0.2", default-features = false }
+alloy-rpc-types = { version = "0.2", default-features = false, features = ["jsonrpsee-types", "eth"] }
+alloy-rpc-types-trace = { version = "0.2", default-features = false }
+alloy-rpc-client = { version = "0.2", default-features = false }
+
 
 # Async
 tokio = { version = "1.13.0", features = ["full", "tracing"] }
