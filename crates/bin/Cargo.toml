@@ -44,6 +44,7 @@ reth-transaction-pool.workspace = true
 reth-network-api.workspace = true
 reth-primitives.workspace = true
 reth-db.workspace = true
+reth-db-common.workspace = true
 reth-blockchain-tree.workspace = true
 reth-beacon-consensus.workspace = true
 #reth-revm.workspace = true
