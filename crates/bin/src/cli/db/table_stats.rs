@@ -37,26 +37,21 @@ impl Stats {
         let db_path = Path::new(&db_path);
         let chain = Arc::new(ChainSpec::default());
 
-        let db = open_db_read_only(&db_path, Default::default())?;
+        let db = Arc::new(open_db_read_only(&db_path, Default::default())?);
 
         let mut statis_files_path = db_path.to_path_buf();
         statis_files_path.push("static_files");
         let provider_factory = ProviderFactory::new(db, chain.clone(), statis_files_path)?;
 
-        let data_dir = DataDirPath::from(&db_path);
         let tool = DbTool::new(provider_factory, chain.clone())?;
 
-        self.run(data_dir, tool)?;
+        self.run(&tool)?;
 
         Ok(())
     }
 
     /// Execute `db stats` command
-    fn run(
-        self,
-        data_dir: ChainPath<DataDirPath>,
-        tool: &DbTool<Arc<DatabaseEnv>>,
-    ) -> eyre::Result<()> {
+    fn run(self, tool: &DbTool<Arc<DatabaseEnv>>) -> eyre::Result<()> {
         let db_stats_table = self.db_stats_table(tool)?;
         println!("{db_stats_table}");
 

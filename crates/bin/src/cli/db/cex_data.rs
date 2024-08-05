@@ -6,7 +6,7 @@ use brontes_core::LibmdbxReader;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_types::{
     constants::USDT_ADDRESS,
-    db::cex::{CexExchange, CexTrades},
+    db::cex::{CexExchange, CexTradeMap, CexTrades},
     init_threadpools,
     pair::Pair,
     FastHashMap, FastHashSet,
@@ -72,7 +72,8 @@ impl CexDB {
 
         let block_timestamp = metadata.microseconds_block_timestamp();
 
-        let cex_trades = &metadata.cex_trades.as_ref().unwrap().0;
+        let cex_trades_meta = metadata.cex_trades.as_ref().unwrap().read().unwrap();
+        let cex_trades = cex_trades_meta.0;
         let exchanges_to_use = &cex_config.exchanges_to_use;
 
         let pair_exists = exchanges_to_use.iter().any(|exchange| {
@@ -89,7 +90,7 @@ impl CexDB {
         }
 
         let intermediary_addresses =
-            calculate_intermediary_addresses(cex_trades, &cex_config.exchanges_to_use, &pair);
+            calculate_intermediary_addresses(&cex_trades, &cex_config.exchanges_to_use, &pair);
 
         println!("Found {} intermediary addresses", intermediary_addresses.len());
 
