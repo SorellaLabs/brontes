@@ -96,7 +96,7 @@ impl Clickhouse {
             + 1)
         .into();
 
-        self.client.insert_one::<BrontesRun_Id>(&id).await?;
+        // self.client.insert_one::<BrontesRun_Id>(&id).await?;
 
         Ok(id.run_id)
     }
@@ -383,8 +383,8 @@ impl ClickhouseHandle for Clickhouse {
     ) -> eyre::Result<Vec<crate::CexPriceData>> {
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(mut s, mut e) => {
-                s -= self.cex_download_config.block_window.0;
-                e += self.cex_download_config.block_window.1;
+                s -= self.cex_download_config.run_time_window.0;
+                e += self.cex_download_config.run_time_window.1;
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
@@ -393,8 +393,8 @@ impl ClickhouseHandle for Clickhouse {
                 let vals = vals
                     .into_iter()
                     .flat_map(|v| {
-                        (v - self.cex_download_config.block_window.0
-                            ..=v + self.cex_download_config.block_window.1)
+                        (v - self.cex_download_config.run_time_window.0
+                            ..=v + self.cex_download_config.run_time_window.1)
                             .collect_vec()
                     })
                     .unique()
@@ -481,8 +481,8 @@ impl ClickhouseHandle for Clickhouse {
         info!("Starting get_cex_trades function");
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(mut s, mut e) => {
-                s -= self.cex_download_config.block_window.0;
-                e += self.cex_download_config.block_window.1;
+                s -= self.cex_download_config.run_time_window.0;
+                e += self.cex_download_config.run_time_window.1;
 
                 info!("Querying block times for range: start={}, end={}", s, e);
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
@@ -491,8 +491,8 @@ impl ClickhouseHandle for Clickhouse {
                 let vals = vals
                     .into_iter()
                     .flat_map(|v| {
-                        (v - self.cex_download_config.block_window.0
-                            ..=v + self.cex_download_config.block_window.1)
+                        (v - self.cex_download_config.run_time_window.0
+                            ..=v + self.cex_download_config.run_time_window.1)
                             .collect_vec()
                     })
                     .unique()

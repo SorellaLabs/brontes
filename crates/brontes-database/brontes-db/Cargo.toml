@@ -72,6 +72,9 @@ db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", optional
   "test-utils",
 ] }
 clickhouse = { workspace = true, features = ["tls"] }
+sqlx.workspace = true
+sqlxinsert.workspace = true
+
 
 # serde
 serde = { workspace = true, features = ["derive"] }
