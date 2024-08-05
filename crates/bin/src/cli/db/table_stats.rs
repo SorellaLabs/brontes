@@ -7,17 +7,8 @@ use eyre::{Result, WrapErr};
 use human_bytes::human_bytes;
 use itertools::Itertools;
 use reth_db::{
-    cursor::{DbCursorRO, DbDupCursorRO},
-    database::Database,
-    mdbx, open_db_read_only,
-    static_file::iter_static_files,
-    table::{Decode, Decompress, DupSort, Table, TableRow},
-    transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError, RawTable, TableRawRow,
+    database::Database, mdbx, open_db_read_only, DatabaseEnv, DatabaseError, RawTable, TableRawRow,
 };
-use reth_node_core::dirs::{ChainPath, DataDirPath};
-/// Re-exported from `reth_node_core`, also to prevent a breaking change. See
-/// the comment on the `reth_node_core::args` re-export for more details.
 use reth_primitives::{fs, ChainSpec};
 use reth_provider::ProviderFactory;
 use tracing::info;
