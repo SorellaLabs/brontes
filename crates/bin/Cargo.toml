@@ -74,6 +74,7 @@ dotenv.workspace = true
 num_cpus.workspace = true
 strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
+human_bytes = "0.4.1"
 
 # http/rpc
 hyper.workspace = true

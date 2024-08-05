@@ -1524,6 +1524,7 @@ dependencies = [
  "fs2",
  "fs_extra",
  "futures",
+ "human_bytes",
  "hyper 0.14.29",
  "indicatif",
  "indoc",
