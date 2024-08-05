@@ -43,22 +43,23 @@ impl Stats {
         statis_files_path.push("static_files");
         let provider_factory = ProviderFactory::new(db, chain.clone(), statis_files_path)?;
 
-        let tool = DbTool::new(provider_factory, chain.clone())?;
-
-        self.run(&tool)?;
+        self.run(&provider_factory)?;
 
         Ok(())
     }
 
     /// Execute `db stats` command
-    fn run(self, tool: &DbTool<Arc<DatabaseEnv>>) -> eyre::Result<()> {
-        let db_stats_table = self.db_stats_table(tool)?;
+    fn run(self, provider_factory: &ProviderFactory<Arc<DatabaseEnv>>) -> eyre::Result<()> {
+        let db_stats_table = self.db_stats_table(provider_factory)?;
         println!("{db_stats_table}");
 
         Ok(())
     }
 
-    fn db_stats_table(&self, tool: &DbTool<Arc<DatabaseEnv>>) -> eyre::Result<ComfyTable> {
+    fn db_stats_table(
+        &self,
+        provider_factory: &ProviderFactory<Arc<DatabaseEnv>>,
+    ) -> eyre::Result<ComfyTable> {
         let mut table = ComfyTable::new();
         table.load_preset(comfy_table::presets::ASCII_MARKDOWN);
         table.set_header([
@@ -70,7 +71,7 @@ impl Stats {
             "Total Size",
         ]);
 
-        tool.provider_factory.db_ref().view(|tx| {
+        provider_factory.db_ref().view(|tx| {
             let mut db_tables = brontes_database::libmdbx::tables::Tables::ALL
                 .iter()
                 .map(|table| table.name())
@@ -142,63 +143,5 @@ impl Stats {
         })??;
 
         Ok(table)
-    }
-}
-
-/// Wrapper over DB that implements many useful DB queries.
-#[derive(Debug)]
-pub struct DbTool<DB: Database> {
-    /// The provider factory that the db tool will use.
-    pub provider_factory: ProviderFactory<DB>,
-    /// The [ChainSpec] that the db tool will use.
-    pub chain:            Arc<ChainSpec>,
-}
-
-impl<DB: Database> DbTool<DB> {
-    /// Takes a DB where the tables have already been created.
-    pub fn new(provider_factory: ProviderFactory<DB>, chain: Arc<ChainSpec>) -> eyre::Result<Self> {
-        Ok(Self { provider_factory, chain })
-    }
-
-    /// Grabs the content of the table for the given key
-    pub fn get<T: Table>(&self, key: T::Key) -> Result<Option<T::Value>> {
-        self.provider_factory
-            .db_ref()
-            .view(|tx| tx.get::<T>(key))?
-            .map_err(|e| eyre::eyre!(e))
-    }
-
-    /// Grabs the content of the DupSort table for the given key and subkey
-    pub fn get_dup<T: DupSort>(&self, key: T::Key, subkey: T::SubKey) -> Result<Option<T::Value>> {
-        self.provider_factory
-            .db_ref()
-            .view(|tx| tx.cursor_dup_read::<T>()?.seek_by_key_subkey(key, subkey))?
-            .map_err(|e| eyre::eyre!(e))
-    }
-
-    /// Drops the database and the static files at the given path.
-    pub fn drop(
-        &mut self,
-        db_path: impl AsRef<Path>,
-        static_files_path: impl AsRef<Path>,
-    ) -> Result<()> {
-        let db_path = db_path.as_ref();
-        info!(target: "reth::cli", "Dropping database at {:?}", db_path);
-        fs::remove_dir_all(db_path)?;
-
-        let static_files_path = static_files_path.as_ref();
-        info!(target: "reth::cli", "Dropping static files at {:?}", static_files_path);
-        fs::remove_dir_all(static_files_path)?;
-        fs::create_dir_all(static_files_path)?;
-
-        Ok(())
-    }
-
-    /// Drops the provided table from the database.
-    pub fn drop_table<T: Table>(&mut self) -> Result<()> {
-        self.provider_factory
-            .db_ref()
-            .update(|tx| tx.clear::<T>())??;
-        Ok(())
     }
 }
