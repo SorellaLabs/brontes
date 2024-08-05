@@ -73,7 +73,7 @@ impl CexDB {
         let block_timestamp = metadata.microseconds_block_timestamp();
 
         let cex_trades_meta = metadata.cex_trades.as_ref().unwrap().read().unwrap();
-        let cex_trades = cex_trades_meta.0;
+        let cex_trades = &cex_trades_meta.0;
         let exchanges_to_use = &cex_config.exchanges_to_use;
 
         let pair_exists = exchanges_to_use.iter().any(|exchange| {
