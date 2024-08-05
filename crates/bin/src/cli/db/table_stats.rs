@@ -13,7 +13,7 @@ use reth_db::{
     static_file::iter_static_files,
     table::{Decode, Decompress, DupSort, Table, TableRow},
     transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError, RawTable, TableRawRow, TableViewer, 
+    DatabaseEnv, DatabaseError, RawTable, TableRawRow, TableViewer,
 };
 use reth_node_core::dirs::{ChainPath, DataDirPath};
 /// Re-exported from `reth_node_core`, also to prevent a breaking change. See
@@ -71,7 +71,7 @@ impl Stats {
         ]);
 
         tool.provider_factory.db_ref().view(|tx| {
-            let mut db_tables = Tables::ALL
+            let mut db_tables = brontes_db::libmdbx::tables::Tables::ALL
                 .iter()
                 .map(|table| table.name())
                 .collect::<Vec<_>>();
