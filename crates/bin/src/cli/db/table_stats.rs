@@ -15,6 +15,7 @@ use reth_db::{
     transaction::{DbTx, DbTxMut},
     DatabaseEnv, DatabaseError, RawTable, TableRawRow, TableViewer, Tables,
 };
+use reth_node_core::dirs::{ChainPath, DataDirPath};
 /// Re-exported from `reth_node_core`, also to prevent a breaking change. See
 /// the comment on the `reth_node_core::args` re-export for more details.
 pub use reth_node_core::utils::*;

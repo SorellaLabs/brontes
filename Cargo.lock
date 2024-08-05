@@ -1523,6 +1523,7 @@ dependencies = [
  "clap",
  "clickhouse",
  "colored",
+ "comfy-table",
  "crossterm",
  "db-interfaces",
  "dhat",
