@@ -75,6 +75,7 @@ num_cpus.workspace = true
 strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 human_bytes = "0.4.1"
+boyer-moore-magiclen = "0.2.16"
 
 # http/rpc
 hyper.workspace = true
