@@ -71,7 +71,7 @@ impl Stats {
         ]);
 
         tool.provider_factory.db_ref().view(|tx| {
-            let mut db_tables = brontes_db::libmdbx::tables::Tables::ALL
+            let mut db_tables = brontes_database::libmdbx::tables::Tables::ALL
                 .iter()
                 .map(|table| table.name())
                 .collect::<Vec<_>>();
