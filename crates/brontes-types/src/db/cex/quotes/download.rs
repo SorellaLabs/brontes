@@ -71,7 +71,7 @@ impl CexQuotesConverter {
             .filter_map(|q| {
                 self.block_times
                     .iter()
-                    .find(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
+                    .find(|b| b.contains_time(q.timestamp))
                     .map(|block_time| (block_time.block_number, q))
             })
             .for_each(|(block_num, quote)| {

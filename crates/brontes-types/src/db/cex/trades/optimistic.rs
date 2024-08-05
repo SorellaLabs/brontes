@@ -11,10 +11,11 @@ use super::config::CexDexTradeConfig;
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
     db::cex::{
-        time_window_vwam::Direction,
-        trades::SortedTrades,
-        utils::{log_insufficient_trade_volume, log_missing_trade_data, TimeBasketQueue},
-        CexExchange, CexTrades,
+        trades::{
+            utils::{log_insufficient_trade_volume, log_missing_trade_data, TimeBasketQueue},
+            CexTrades, Direction, SortedTrades,
+        },
+        CexExchange,
     },
     display::utils::format_etherscan_url,
     mev::OptimisticTrade,

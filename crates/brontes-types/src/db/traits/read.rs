@@ -3,7 +3,7 @@ use alloy_primitives::Address;
 use crate::{
     db::{
         address_metadata::AddressMetadata, address_to_protocol_info::ProtocolInfo,
-        builder::BuilderInfo, cex::CexTradeMap, dex::DexQuotes, metadata::Metadata,
+        builder::BuilderInfo, cex::trades::CexTradeMap, dex::DexQuotes, metadata::Metadata,
         mev_block::MevBlockWithClassified, searcher::SearcherInfo,
         token_info::TokenInfoWithAddress,
     },

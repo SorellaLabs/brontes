@@ -1,6 +1,7 @@
 use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use strum::Display;
 
@@ -9,7 +10,7 @@ use crate::{
     constants::USDC_ADDRESS,
     db::{
         block_times::{BlockTimes, CexBlockTimes},
-        cex::{cex_symbols::CexSymbols, cex_trades::CexTradeMap, CexExchange},
+        cex::{cex_symbols::CexSymbols, trades::CexTradeMap, CexExchange},
     },
     serde_utils::{cex_exchange, trade_type},
     FastHashMap,
@@ -89,7 +90,7 @@ impl CexTradesConverter {
             .filter_map(|t| {
                 self.block_times
                     .iter()
-                    .find(|b| t.timestamp >= b.start_timestamp && t.timestamp < b.end_timestamp)
+                    .find(|b| b.contains_time(t.timestamp))
                     .map(|block_time| (block_time.block_number, t))
             })
             .for_each(|(block_num, trade)| {
@@ -100,7 +101,7 @@ impl CexTradesConverter {
             });
 
         block_num_map
-            .into_iter()
+            .into_par_iter()
             .map(|(block_num, trades)| {
                 let mut exchange_map = FastHashMap::default();
 
