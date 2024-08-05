@@ -1,15 +1,16 @@
-use core::panic;
 use std::{
     collections::VecDeque,
     pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, RwLock,
     },
     task::Poll,
+    time::Duration,
 };
 
 use alloy_primitives::Address;
+use brontes_core::DBWriter;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
@@ -18,13 +19,14 @@ use brontes_types::{
     BlockData, BlockTree,
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
+use itertools::Itertools;
 
 use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
 /// of processed trees
-const MAX_PENDING_TREES: usize = 5;
+const MAX_PENDING_TREES: usize = 3;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
@@ -39,6 +41,7 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
+    active_block:          u64,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -59,6 +62,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             result_buf: VecDeque::new(),
             always_generate_price,
             force_no_dex_pricing,
+            active_block: 0,
         }
     }
 
@@ -87,7 +91,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                     .unwrap_or(true))
     }
 
-    pub fn load_metadata_for_tree<DB: LibmdbxReader>(
+    pub fn load_metadata_for_tree<DB: LibmdbxReader + DBWriter>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
@@ -101,17 +105,18 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         } else if let Some(clickhouse) = self.clickhouse {
             self.load_metadata_from_clickhouse(tree, libmdbx, clickhouse, block, quote_asset);
         } else if self.force_no_dex_pricing {
-            self.load_metadata_force_dex_pricing(tree, libmdbx, block, quote_asset);
+            self.load_metadata_force_no_dex_pricing(tree, libmdbx, block, quote_asset);
         } else {
             self.load_metadata_no_dex_pricing(tree, libmdbx, block, quote_asset);
         }
     }
 
+    //TODO: Change this shit to actual before and after instead of the /12 nonsense
     fn load_cex_trades<DB: LibmdbxReader>(
         &mut self,
         libmdbx: &'static DB,
         block: u64,
-    ) -> CexTradeMap {
+    ) -> Option<Arc<RwLock<CexTradeMap>>> {
         if !self.cex_window_data.is_loaded() {
             let window = self.cex_window_data.get_window_lookahead();
             // given every download is -6 + 6 around the block
@@ -120,23 +125,26 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let mut trades = Vec::new();
             for block in block - offsets..=block + offsets {
                 if let Ok(res) = libmdbx.get_cex_trades(block) {
-                    trades.push(res);
+                    trades.push((block, res));
+                } else {
+                    return None
                 }
             }
-            let last_block = block + offsets;
-            self.cex_window_data.init(last_block, trades);
+            self.cex_window_data.init(trades);
 
-            return self.cex_window_data.cex_trade_map()
+            return Some(self.cex_window_data.cex_trade_map())
         }
 
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
 
         if let Ok(res) = libmdbx.get_cex_trades(last_block) {
-            self.cex_window_data.new_block(res);
+            self.cex_window_data
+                .new_block(block, res, self.active_block);
+        } else {
+            return None
         }
-        self.cex_window_data.set_last_block(last_block);
 
-        self.cex_window_data.cex_trade_map()
+        Some(self.cex_window_data.cex_trade_map())
     }
 
     fn load_metadata_no_dex_pricing<DB: LibmdbxReader>(
@@ -162,7 +170,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
 
-        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
+        meta.cex_trades = self.load_cex_trades(libmdbx, block);
 
         tracing::debug!(?block, "waiting for dex price");
 
@@ -170,7 +178,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .add_pending_inspection(block, tree, meta);
     }
 
-    fn load_metadata_force_dex_pricing<DB: LibmdbxReader>(
+    fn load_metadata_force_no_dex_pricing<DB: LibmdbxReader>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
@@ -194,7 +202,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .expect("failed to fetch builder info table in libmdbx");
 
         let mut meta = meta.into_full_metadata(DexQuotes(vec![]));
-        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
+        meta.cex_trades = self.load_cex_trades(libmdbx, block);
 
         self.result_buf
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
@@ -220,14 +228,14 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
 
-        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
+        meta.cex_trades = self.load_cex_trades(libmdbx, block);
 
         tracing::debug!(?block, "caching result buf");
         self.result_buf
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
     }
 
-    fn load_metadata_from_clickhouse<DB: LibmdbxReader>(
+    fn load_metadata_from_clickhouse<DB: LibmdbxReader + DBWriter>(
         &mut self,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
@@ -236,17 +244,58 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         quote_asset: Address,
     ) {
         tracing::debug!(?block, "spawning clickhouse fut");
+        let window = self.cex_window_data.get_window_lookahead();
+        // given every download is -6 + 6 around the block
+        // we calculate the offset from the current block that we need
+        let offsets = (window / 12) as u64;
         let future = Box::pin(async move {
-            let mut meta = clickhouse
-                .get_metadata(block, quote_asset)
-                .await
-                .unwrap_or_else(|_| {
-                    panic!("missing metadata for clickhouse.get_metadata request {block}")
-                });
-
-            meta.builder_info = libmdbx
+            let builder_info = libmdbx
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
+
+            //fetch metadata till it works
+            let mut meta = loop {
+                if let Ok(res) = clickhouse.get_metadata(block, quote_asset).await {
+                    break res
+                } else {
+                    tracing::warn!(
+                        ?block,
+                        "failed to load block meta from clickhouse. waiting a second and then \
+                         trying again"
+                    );
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            };
+
+            // fetch trades till it works
+            let trades = loop {
+                if let Ok(ranges) = clickhouse
+                    .get_cex_trades(
+                        brontes_database::libmdbx::cex_utils::CexRangeOrArbitrary::Range(
+                            block - offsets,
+                            block + offsets,
+                        ),
+                    )
+                    .await
+                {
+                    let mut trades = CexTradeMap::default();
+                    for range in ranges.into_iter().sorted_unstable_by_key(|k| k.key) {
+                        trades.merge_in_map(range.value);
+                    }
+
+                    break trades
+                } else {
+                    tracing::warn!(
+                        ?block,
+                        "failed to load trades from clickhouse. waiting a second and then trying \
+                         again"
+                    );
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            };
+
+            meta.cex_trades = Some(Arc::new(RwLock::new(trades)));
+            meta.builder_info = builder_info;
             (block, tree, meta)
         });
 
@@ -263,6 +312,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
     ) -> std::task::Poll<Option<Self::Item>> {
         if self.force_no_dex_pricing {
             if let Some(res) = self.result_buf.pop_front() {
+                self.active_block = res.block_number();
                 return Poll::Ready(Some(res))
             }
             cx.waker().wake_by_ref();
@@ -278,14 +328,24 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
-                metadata: Arc::new(metadata),
-                tree:     Arc::new(tree),
-            })),
-            Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
+            Poll::Ready(Some((tree, metadata))) => {
+                let block_data =
+                    BlockData { metadata: Arc::new(metadata), tree: Arc::new(tree) };
+                self.active_block = block_data.block_number();
+                Poll::Ready(Some(block_data))
+            }
+            Poll::Ready(None) => {
+                if let Some(res) = self.result_buf.pop_front() {
+                    self.active_block = res.block_number();
+                    Poll::Ready(Some(res))
+                } else {
+                    Poll::Ready(None)
+                }
+            }
             Poll::Pending => {
-                if let Some(f) = self.result_buf.pop_front() {
-                    Poll::Ready(Some(f))
+                if let Some(res) = self.result_buf.pop_front() {
+                    self.active_block = res.block_number();
+                    Poll::Ready(Some(res))
                 } else {
                     Poll::Pending
                 }

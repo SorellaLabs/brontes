@@ -35,8 +35,8 @@ use strum::Display;
 use tracing::trace;
 
 use super::{
-    log_price_delta, CexDexProcessing, ExchangeLeg, ExchangeLegCexPrice, OptimisticDetails,
-    PossibleCexDex,
+    log_cex_trade_price_delta, CexDexProcessing, ExchangeLeg, ExchangeLegCexPrice,
+    OptimisticDetails, PossibleCexDex,
 };
 
 // The threshold for the number of CEX-DEX trades an address is required to make
@@ -479,9 +479,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         end_time: u64,
         price_calculation_type: PriceCalcType,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
-        // If the price difference between the DEX and CEX is greater than 2x, the
-        // quote is likely invalid
-
         let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
             (&cex_quote.0 * &swap.amount_out, &cex_quote.1 * &swap.amount_out);
 
@@ -489,7 +486,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
 
         if smaller * Rational::TWO < *larger {
-            log_price_delta(
+            log_cex_trade_price_delta(
                 &tx_hash,
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
@@ -498,8 +495,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &swap.token_in.address,
                 &swap.token_out.address,
                 price_calculation_type,
+                &swap.amount_in,
+                &swap.amount_out,
+                &output_of_cex_trade_maker,
             );
-
             return None
         }
         // A positive amount indicates potential profit from selling the token in on the
@@ -515,6 +514,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .cex_trades
             .as_ref()
             .unwrap()
+            .read()
+            .unwrap()
             .calculate_time_window_vwam(
                 self.trade_config,
                 &self.cex_exchanges,
@@ -529,7 +530,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .global_exchange_price;
 
         // Amount * base_to_quote = USDT amount
-        let base_to_quote = token_price.clone().reciprocal();
+        let base_to_quote = if token_price == Rational::ZERO {
+            trace!("Token price is zero");
+            return None;
+        } else {
+            token_price.clone().reciprocal()
+        };
 
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
@@ -594,6 +600,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .cex_trades
                 .as_ref()
                 .unwrap()
+                .read()
+                .unwrap()
                 .calculate_time_window_vwam(
                     self.trade_config,
                     &self.cex_exchanges,
@@ -613,17 +621,23 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .unwrap_or_else(window_fn);
 
         let optimistic = || {
-            metadata.cex_trades.as_ref().unwrap().get_optimistic_vmap(
-                self.trade_config,
-                &self.cex_exchanges,
-                pair,
-                &swap.amount_out,
-                metadata.microseconds_block_timestamp(),
-                None,
-                marked_cex_dex,
-                swap,
-                tx_hash,
-            )
+            metadata
+                .cex_trades
+                .as_ref()
+                .unwrap()
+                .read()
+                .unwrap()
+                .get_optimistic_vmap(
+                    self.trade_config,
+                    &self.cex_exchanges,
+                    pair,
+                    &swap.amount_out,
+                    metadata.microseconds_block_timestamp(),
+                    None,
+                    marked_cex_dex,
+                    swap,
+                    tx_hash,
+                )
         };
 
         let optimistic = self

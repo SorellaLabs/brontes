@@ -4,7 +4,7 @@ pub struct CexDexTradeConfig {
     pub time_window_after_us:  u64,
     pub optimistic_before_us:  u64,
     pub optimistic_after_us:   u64,
-    pub quotes_fetch_time:     f64,
+    pub quotes_fetch_time:     u64,
 }
 
 impl Default for CexDexTradeConfig {
@@ -14,7 +14,7 @@ impl Default for CexDexTradeConfig {
             time_window_before_us: 5_000_000,
             optimistic_before_us:  500_000,
             optimistic_after_us:   2_000_000,
-            quotes_fetch_time:     0.0,
+            quotes_fetch_time:     2_000_000,
         }
     }
 }

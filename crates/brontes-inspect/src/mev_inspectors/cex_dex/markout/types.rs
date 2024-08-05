@@ -533,7 +533,7 @@ pub struct ExchangeLeg {
     pub pnl:        ArbPnl,
 }
 
-pub fn log_price_delta(
+pub fn log_cex_trade_price_delta(
     tx_hash: &FixedBytes<32>,
     token_in_symbol: &str,
     token_out_symbol: &str,
@@ -542,22 +542,46 @@ pub fn log_price_delta(
     token_in_address: &Address,
     token_out_address: &Address,
     price_calculation_type: PriceCalcType,
+    dex_amount_in: &Rational,
+    dex_amount_out: &Rational,
+    cex_output: &Rational,
 ) {
+    let mut arb_ratio = Rational::ZERO;
+    if dex_amount_in != &Rational::ZERO {
+        arb_ratio = cex_output.clone() / dex_amount_in;
+    }
+
+    let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
+
     warn!(
-        "\n\x1b[1;35mDetected significant price delta for direct pair for {} - {}:\x1b[0m\n\
-         - \x1b[1;36mDEX Swap Rate:\x1b[0m {:.7}\n\
-         - \x1b[1;36mCEX Price:\x1b[0m {:.7}\n\
+        "\n\x1b[1;35mSignificant CEX trade price discrepancy detected for {} - {}:\x1b[0m\n\
+         - \x1b[1;36mDEX Swap:\x1b[0m\n\
+           * Rate: {:.7}\n\
+           * Amount In: {}\n\
+           * Amount Out: {}\n\
+         - \x1b[1;36mCEX Trade:\x1b[0m\n\
+           * Rate: {:.7}\n\
+           * Equivalent Output: {}\n\
+         - \x1b[1;33mArbitrage Ratio:\x1b[0m {:.4} ({}%)\n\
          - Token Contracts:\n\
            * Token In: https://etherscan.io/address/{}\n\
-           * Token Out: https://etherscan.io/address/{}\n
-           * Tx Hash: https://etherscan.io/tx/{:?}\ngenerated_from: {price_calculation_type}",
+           * Token Out: https://etherscan.io/address/{}\n\
+         - Tx Hash: https://etherscan.io/tx/{:?}\n\
+         - Price Calculation Type: {}\n\
+         - \x1b[1;31mWarning:\x1b[0m The CEX trade output is more than 2x the DEX input, indicating a potentially invalid trade or extreme market inefficiency.",
         token_in_symbol,
         token_out_symbol,
         dex_swap_rate,
+        dex_amount_in.clone().to_float(),
+        dex_amount_out.clone().to_float(),
         cex_price,
+        cex_output.clone().to_float(),
+        arb_ratio.to_float(),
+        arb_percent,
         token_in_address,
         token_out_address,
-        tx_hash
+        tx_hash,
+        price_calculation_type
     );
 }
 

@@ -42,21 +42,6 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-/// Centralized exchange price map organized by exchange.
-///
-///
-/// Each pair is entered into the map with an ordered `Pair` key whereby:
-///
-/// If: Token0 (base asset) > Token1 (quote asset), then:
-///
-///  Pair key = (token0, token1)
-///
-/// Initially when deserializing the clickhouse data we create `CexQuote`
-/// entries with token0 as the base asset and token1 as the quote asset.
-///
-/// This provides us with the actual token0 when the map is queried so we can
-/// interpret the price in the correct direction & reciprocate the price (which
-/// is stored as a malachite rational) if need be.
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap {
     pub quotes:         FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
@@ -147,24 +132,12 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| {
                 if let Some(exchange_quotes) = quotes.get(pair) {
-                    Some((
-                        exchange_quotes
-                            .iter()
-                            .sorted_unstable_by_key(|q| q.timestamp)
-                            .collect_vec(),
-                        Direction::Sell,
-                    ))
+                    Some((exchange_quotes, Direction::Sell))
                 } else {
                     let flipped_pair = pair.flip();
-                    quotes.get(&flipped_pair).map(|quotes| {
-                        (
-                            quotes
-                                .iter()
-                                .sorted_unstable_by_key(|q| q.timestamp)
-                                .collect_vec(),
-                            Direction::Buy,
-                        )
-                    })
+                    quotes
+                        .get(&flipped_pair)
+                        .map(|quotes| (quotes, Direction::Buy))
                 }
             })
             .and_then(|(adjusted_quotes, direction)| {
@@ -178,7 +151,7 @@ impl CexPriceMap {
                     .get(index.saturating_sub(1))
                     .into_iter()
                     .chain(adjusted_quotes.get(index))
-                    .min_by_key(|&&quote| (quote.timestamp as i64 - timestamp as i64).abs())?;
+                    .min_by_key(|&quote| (quote.timestamp as i64 - timestamp as i64).abs())?;
 
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
 
@@ -233,7 +206,11 @@ impl CexPriceMap {
                         &quote1.price_taker.1 * &quote2.price_taker.1,
                     );
 
-                    let normalized_bbo_amount = (
+                    if quote2.price_maker.0 == Rational::ZERO {
+                        return None;
+                    }
+
+                    let normalized_bbo_amount: (Rational, Rational) = (
                         min(quote1.amount.0.clone(), &quote2.amount.0 / &quote2.price_maker.0),
                         min(&quote1.amount.1 * quote1.price_maker.1, quote2.amount.1.clone()),
                     );

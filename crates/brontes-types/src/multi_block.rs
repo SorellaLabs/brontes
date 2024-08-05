@@ -37,3 +37,9 @@ pub struct BlockData {
     pub metadata: Arc<Metadata>,
     pub tree:     Arc<BlockTree<Action>>,
 }
+
+impl BlockData {
+    pub fn block_number(&self) -> u64 {
+        self.metadata.block_metadata.block_num
+    }
+}

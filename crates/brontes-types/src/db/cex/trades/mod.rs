@@ -5,7 +5,7 @@ pub mod raw_cex_trades;
 pub mod time_window_vwam;
 pub mod utils;
 
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::FixedBytes;
 pub use cex_trades::*;
 use malachite::Rational;
 pub use raw_cex_trades::*;
@@ -79,34 +79,6 @@ impl CexTradeMap {
                 dex_swap,
                 tx_hash,
             )
-    }
-
-    /// Gets the Binance ETH price at the block time. This is used to calculate
-    /// the transaction costs.
-    pub fn get_eth_price(
-        &mut self,
-        block_timestamp: u64,
-        quote_asset: Address,
-    ) -> Option<Rational> {
-        let trades = self
-            .0
-            .get_mut(&CexExchange::Binance)?
-            .get_mut(&Pair(WETH_ADDRESS, quote_asset))?;
-
-        trades.sort_unstable_by_key(|t| t.timestamp);
-
-        let index = trades.partition_point(|t| t.timestamp < block_timestamp);
-
-        let relevant_trades = trades.iter().skip(index).take(5);
-
-        let (sum, count) = relevant_trades
-            .fold((Rational::from(0), 0), |(sum, count), trade| (sum + &trade.price, count + 1));
-
-        if count == 0 {
-            None
-        } else {
-            Some(sum / Rational::from(count))
-        }
     }
 
     pub fn get_optimistic_vmap(

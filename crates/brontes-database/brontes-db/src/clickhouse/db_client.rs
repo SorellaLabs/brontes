@@ -353,6 +353,7 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
+    //TODO: Change back to -6 + 6 when mem fix
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -414,13 +415,13 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - (6.0 * SECONDS_TO_US);
+                    - (1.0 * SECONDS_TO_US);
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (6.0 * SECONDS_TO_US);
+                    + (1.0 * SECONDS_TO_US);
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -433,7 +434,7 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(6.0 * SECONDS_TO_US, 6.0 * SECONDS_TO_US))
+                    .map(|b| b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 1.0 * SECONDS_TO_US))
                     .collect::<Vec<String>>()
                     .join(" OR ");
 
@@ -707,7 +708,7 @@ mod tests {
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_threadpools,
         mev::{
-            ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, JitLiquidity,
+            ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
             JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
             Sandwich,
         },
@@ -820,6 +821,16 @@ mod tests {
         };
 
         db.insert_one::<MevCex_Dex>(&DbDataWithRunId::new_with_run_id(case1, 0))
+            .await
+            .unwrap();
+    }
+
+    async fn cex_dex_quotes(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
+        let swap = NormalizedSwap::default();
+
+        let case0 = CexDexQuote { swaps: vec![swap.clone()], ..CexDexQuote::default() };
+
+        db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 0))
             .await
             .unwrap();
     }
@@ -967,6 +978,7 @@ mod tests {
         jit_sandwich(database).await;
         jit(database).await;
         cex_dex(database).await;
+        cex_dex_quotes(database).await;
         mev_block(database).await;
         dex_price_mapping(database).await;
         token_info(database).await;

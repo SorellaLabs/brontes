@@ -8,5 +8,5 @@ pub mod searcher_activity;
 pub mod shared_utils;
 
 use malachite::Rational;
-/// anything more than this in profit is most likely a false_positive
-pub(crate) const MAX_PROFIT: Rational = Rational::const_from_unsigned(5_000_000);
+/// Jokes for testing cur
+pub(crate) const MAX_PROFIT: Rational = Rational::const_from_unsigned(500_000_000);

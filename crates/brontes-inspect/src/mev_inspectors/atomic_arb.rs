@@ -19,7 +19,7 @@ use reth_primitives::{Address, B256};
 
 use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT};
 
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(9, 10);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99995, 100000);
 
 // figure out why
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {

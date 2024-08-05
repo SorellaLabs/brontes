@@ -1,4 +1,4 @@
-use std::fmt::{self};
+use std::fmt;
 
 use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
@@ -7,7 +7,7 @@ use prettytable::{Cell, Row, Table};
 use reth_primitives::B256;
 
 use crate::{
-    mev::{Bundle, BundleData, CexDex, OptimisticTrade},
+    mev::{AtomicArbType, Bundle, BundleData, CexDex, OptimisticTrade},
     utils::ToFloatNearest,
 };
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
@@ -314,25 +314,76 @@ pub fn display_jit_liquidity_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -
     Ok(())
 }
 
+const STABLE_COIN_HEADER: &str = indoc! {r#"
+ _____ _        _     _                _          ___       _     
+/  ___| |      | |   | |              (_)        / _ \     | |    
+\ `--.| |_ __ _| |__ | | ___  ___ ___  _ _ __   / /_\ \_ __| |__  
+ `--. \ __/ _` | '_ \| |/ _ \/ __/ _ \| | '_ \  |  _  | '__| '_ \ 
+/\__/ / || (_| | |_) | |  __/ (_| (_) | | | | | | | | | |  | |_) |
+\____/ \__\__,_|_.__/|_|\___|\___\___/|_|_| |_| \_| |_/_|  |_.__/                                                       
+                                                                
+"#};
+
+const LONG_TAIL_HEADER: &str = indoc! {r#"
+ _                         _______    _ _                 _     
+| |                       |__   __|  (_) |     /\        | |    
+| |     ___  _ __   __ _     | | __ _ _| |    /  \   _ __| |__  
+| |    / _ \| '_ \ / _` |    | |/ _` | | |   / /\ \ | '__| '_ \ 
+| |___| (_) | | | | (_| |    | | (_| | | |  / ____ \| |  | |_) |
+|______\___/|_| |_|\__, |    |_|\__,_|_|_| /_/    \_\_|  |_.__/ 
+                    __/ |                                       
+                   |___/                                        
+"#};
+
+const CROSS_PAIR: &str = indoc! {r#"
+ _____                    ______     _         ___       _     
+/  __ \                   | ___ \   (_)       / _ \     | |    
+| /  \/_ __ ___  ___ ___  | |_/ /_ _ _ _ __  / /_\ \_ __| |__  
+| |   | '__/ _ \/ __/ __| |  __/ _` | | '__| |  _  | '__| '_ \ 
+| \__/\ | | (_) \__ \__ \ | | | (_| | | |    | | | | |  | |_) |
+ \____/_|  \___/|___/___/ \_|  \__,_|_|_|    \_| |_/_|  |_.__/ 
+                                                               
+"#};
+
+const TRIANGULAR_ARB: &str = indoc! {r#"
+ _____    _                         _               ___       _     
+|_   _|  (_)                       | |             / _ \     | |    
+  | |_ __ _  __ _ _ __   __ _ _   _| | __ _ _ __  / /_\ \_ __| |__  
+  | | '__| |/ _` | '_ \ / _` | | | | |/ _` | '__| |  _  | '__| '_ \ 
+  | | |  | | (_| | | | | (_| | |_| | | (_| | |    | | | | |  | |_) |
+  \_/_|  |_|\__,_|_| |_|\__, |\__,_|_|\__,_|_|    \_| |_/_|  |_.__/ 
+                         __/ |                                      
+                        |___/                                       
+"#};
+
 pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
-    let ascii_header = indoc! {r#"
-          ___  _                  _         ___       _
-         / _ \| |                (_)       / _ \     | |
-        / /_\ \ |_ ___  _ __ ___  _  ___  / /_\ \_ __| |__
-        |  _  | __/ _ \| '_ ` _ \| |/ __| |  _  | '__| '_ \
-        | | | | || (_) | | | | | | | (__  | | | | |  | |_) |
-        \_| |_/\__\___/|_| |_| |_|_|\___| \_| |_/_|  |_.__/
-
-    "#};
-
-    for line in ascii_header.lines() {
-        writeln!(f, "{}", line.bright_red())?;
-    }
-
     let atomic_backrun_data = match &bundle.data {
         BundleData::AtomicArb(data) => data,
         _ => panic!("Wrong bundle type"),
     };
+
+    match atomic_backrun_data.arb_type {
+        AtomicArbType::Triangle => {
+            for line in TRIANGULAR_ARB.lines() {
+                writeln!(f, "{}", line.bright_yellow())?;
+            }
+        }
+        AtomicArbType::CrossPair(_) => {
+            for line in CROSS_PAIR.lines() {
+                writeln!(f, "{}", line.bright_yellow())?;
+            }
+        }
+        AtomicArbType::StablecoinArb => {
+            for line in STABLE_COIN_HEADER.lines() {
+                writeln!(f, "{}", line.bright_blue())?;
+            }
+        }
+        AtomicArbType::LongTail => {
+            for line in LONG_TAIL_HEADER.lines() {
+                writeln!(f, "{}", line.bright_green())?;
+            }
+        }
+    }
 
     // Tx details
     writeln!(f, "{}: \n", "Transaction Details".bold().underline().bright_yellow())?;

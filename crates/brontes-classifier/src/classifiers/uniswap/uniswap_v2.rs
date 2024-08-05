@@ -131,3 +131,26 @@ action_impl!(
         })
     }
 );
+
+#[cfg(test)]
+mod tests {
+
+    use alloy_primitives::hex;
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+
+    #[brontes_macros::test]
+    async fn test_token_order() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+
+        let token0 = hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48").into();
+        let token1 = hex!("BD2F0Cd039E0BFcf88901C98c0bFAc5ab27566e3 ").into();
+
+        let pool = hex!("66e33d2605c5fB25eBb7cd7528E7997b0afA55E8").into();
+
+        let matches = classifier_utils
+            .test_pool_token_order(token0, token1, pool)
+            .await;
+
+        assert_eq!(matches, true);
+    }
+}
