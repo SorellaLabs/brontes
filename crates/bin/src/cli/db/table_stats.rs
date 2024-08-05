@@ -9,7 +9,7 @@ use itertools::Itertools;
 use reth_db::{
     cursor::{DbCursorRO, DbDupCursorRO},
     database::Database,
-    mdbx,
+    mdbx, open_db_read_only,
     static_file::iter_static_files,
     table::{Decode, Decompress, DupSort, Table, TableRow},
     transaction::{DbTx, DbTxMut},
@@ -33,7 +33,26 @@ pub struct Stats {
 
 impl Stats {
     /// Execute `db stats` command
-    pub fn execute(
+    pub fn execute(self, db_path: String) -> eyre::Result<()> {
+        let db_path = Path::new(&db_path);
+        let chain = Arc::new(ChainSpec::default());
+
+        let db = open_db_read_only(&db_path, Default::default())?;
+
+        let mut statis_files_path = db_path.to_path_buf();
+        statis_files_path.push("static_files");
+        let provider_factory = ProviderFactory::new(db, chain.clone(), statis_files_path)?;
+
+        let data_dir = DataDirPath::from(&db_path);
+        let tool = DbTool::new(provider_factory, chain.clone())?;
+
+        self.run(data_dir, tool)?;
+
+        Ok(())
+    }
+
+    /// Execute `db stats` command
+    fn run(
         self,
         data_dir: ChainPath<DataDirPath>,
         tool: &DbTool<Arc<DatabaseEnv>>,
