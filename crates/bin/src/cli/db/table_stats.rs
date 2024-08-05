@@ -13,7 +13,7 @@ use reth_db::{
     static_file::iter_static_files,
     table::{Decode, Decompress, DupSort, Table, TableRow},
     transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError, RawTable, TableRawRow, TableViewer, Tables,
+    DatabaseEnv, DatabaseError, RawTable, TableRawRow, TableViewer, 
 };
 use reth_node_core::dirs::{ChainPath, DataDirPath};
 /// Re-exported from `reth_node_core`, also to prevent a breaking change. See
