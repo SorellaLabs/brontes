@@ -13,12 +13,11 @@ use reth_db::{
     static_file::iter_static_files,
     table::{Decode, Decompress, DupSort, Table, TableRow},
     transaction::{DbTx, DbTxMut},
-    DatabaseEnv, DatabaseError, RawTable, TableRawRow, TableViewer,
+    DatabaseEnv, DatabaseError, RawTable, TableRawRow,
 };
 use reth_node_core::dirs::{ChainPath, DataDirPath};
 /// Re-exported from `reth_node_core`, also to prevent a breaking change. See
 /// the comment on the `reth_node_core::args` re-export for more details.
-pub use reth_node_core::utils::*;
 use reth_primitives::{fs, ChainSpec};
 use reth_provider::ProviderFactory;
 use tracing::info;
