@@ -88,9 +88,6 @@ impl Stats {
                     .db_stat(&table_db)
                     .wrap_err(format!("Could not find table: {db_table}"))?;
 
-                // Defaults to 16KB right now but we should
-                // re-evaluate depending on the DB we end up using
-                // (e.g. REDB does not have these options as configurable intentionally)
                 let page_size = stats.page_size() as usize;
                 let leaf_pages = stats.leaf_pages();
                 let branch_pages = stats.branch_pages();
