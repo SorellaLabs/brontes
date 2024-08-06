@@ -2,7 +2,11 @@ use std::{fmt, sync::Arc};
 
 use alloy_primitives::FixedBytes;
 use brontes_types::{
-    db::cex::{time_window_vwam::ExchangePath, CexExchange},
+    db::cex::{
+        optimistic::OptimisticPrice,
+        time_window_vwam::{ExchangePath, WindowExchangePrice},
+        CexExchange,
+    },
     mev::{ArbDetails, BundleData, CexDex, CexMethodology, OptimisticTrade},
     normalized_actions::NormalizedSwap,
     pair::Pair,
@@ -12,14 +16,56 @@ use colored::Colorize;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
+use strum::Display;
 use tracing::warn;
 
 use crate::atomic_arb::is_stable_pair;
 
 pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000);
 
-use super::cex_dex_markout::PriceCalcType;
 use crate::Metadata;
+type PerExchangePrices<'a> = Vec<(&'a CexExchange, Vec<Option<(&'a ExchangePath, &'a [Pair])>>)>;
+
+pub struct CexPricesForSwaps {
+    pub dex_swaps:        Vec<NormalizedSwap>,
+    pub time_window_vwam: Vec<Option<WindowExchangePrice>>,
+    pub optimistic:       Vec<Option<OptimisticPrice>>,
+}
+
+impl CexPricesForSwaps {
+    pub fn per_exchange_trades<'a>(&'a self, exchanges: &'a [CexExchange]) -> PerExchangePrices {
+        exchanges
+            .iter()
+            .map(|exchange| {
+                let exchange_paths: Vec<Option<(&ExchangePath, &[Pair])>> = self
+                    .time_window_vwam
+                    .iter()
+                    .map(|window| {
+                        window.as_ref().and_then(|w| {
+                            w.exchange_price_with_volume_direct
+                                .get(exchange)
+                                .map(|path| (path, w.pairs.as_slice()))
+                        })
+                    })
+                    .collect();
+                (exchange, exchange_paths)
+            })
+            .collect()
+    }
+
+    pub fn global_price(&self) -> Option<Vec<(&ExchangePath, &[Pair])>> {
+        let global_prices: Vec<(&ExchangePath, &[Pair])> = self
+            .time_window_vwam
+            .iter()
+            .filter_map(|window| window.as_ref().map(|w| (&w.global, w.pairs.as_slice())))
+            .collect();
+        if global_prices.len() == self.dex_swaps.len() {
+            Some(global_prices)
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct CexDexProcessing {
@@ -675,4 +721,11 @@ impl OptimisticDetails {
             })
             .collect::<Vec<_>>()
     }
+}
+
+#[derive(Debug, Clone, Display, PartialEq, Eq)]
+pub enum PriceCalcType {
+    Optimistic,
+    TimeWindowGlobal,
+    TimeWindowPerEx,
 }

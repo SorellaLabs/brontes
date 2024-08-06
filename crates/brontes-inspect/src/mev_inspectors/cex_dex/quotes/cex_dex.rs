@@ -469,7 +469,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 2)
                 .into_iter()
                 .filter_map(|quote_option| {
-                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                    quote_option.map(|quote| quote.maker_taker_mid().0.to_float())
                 })
                 .collect_vec();
 
@@ -477,7 +477,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 12)
                 .into_iter()
                 .filter_map(|quote_option| {
-                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                    quote_option.map(|quote| quote.maker_taker_mid().0.to_float())
                 })
                 .collect_vec();
 
@@ -485,7 +485,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 60)
                 .into_iter()
                 .filter_map(|quote_option| {
-                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                    quote_option.map(|quote| quote.maker_taker_mid().0.to_float())
                 })
                 .collect_vec();
 
@@ -493,7 +493,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 300)
                 .into_iter()
                 .filter_map(|quote_option| {
-                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                    quote_option.map(|quote| quote.maker_taker_mid().0.to_float())
                 })
                 .collect_vec();
 

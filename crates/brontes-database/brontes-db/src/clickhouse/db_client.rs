@@ -722,6 +722,7 @@ mod tests {
         clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestClient},
         test_utils::TestDatabase,
     };
+    use malachite::{num::basic::traits::Zero, Rational};
 
     use super::*;
 
@@ -790,17 +791,17 @@ mod tests {
         let case0 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl_maker: 0.0,
-            global_vmap_pnl_taker: 0.0,
+            global_vmap_pnl_maker: Rational::ZERO,
+            global_vmap_pnl_taker: Rational::ZERO,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl_maker: 0.0,
-            optimal_route_pnl_taker: 0.0,
+            optimal_route_pnl_maker: Rational::ZERO,
+            optimal_route_pnl_taker: Rational::ZERO,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl_maker: 0.0,
-            optimistic_route_pnl_taker: 0.0,
+            optimistic_route_pnl_maker: Rational::ZERO,
+            optimistic_route_pnl_taker: Rational::ZERO,
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, (0.0, 0.0))],
+            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
             ..CexDex::default()
         };
 
@@ -811,17 +812,17 @@ mod tests {
         let case1 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl_maker: 0.0,
-            global_vmap_pnl_taker: 0.0,
+            global_vmap_pnl_maker: Rational::ZERO,
+            global_vmap_pnl_taker: Rational::ZERO,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl_maker: 0.0,
-            optimal_route_pnl_taker: 0.0,
+            optimal_route_pnl_maker: Rational::ZERO,
+            optimal_route_pnl_taker: Rational::ZERO,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl_maker: 0.0,
-            optimistic_route_pnl_taker: 0.0,
+            optimistic_route_pnl_maker: Rational::ZERO,
+            optimistic_route_pnl_taker: Rational::ZERO,
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, (0.0, 0.0))],
+            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
             ..CexDex::default()
         };
 

@@ -33,12 +33,11 @@ use malachite::{
     Rational,
 };
 use reth_primitives::Address;
-use strum::Display;
 use tracing::trace;
 
 use super::{
-    log_cex_trade_price_delta, ArbLeg, CexDexProcessing, ExchangeLegCexPrice, OptimisticDetails,
-    PossibleCexDex,
+    log_cex_trade_price_delta, ArbLeg, CexDexProcessing, CexPricesForSwaps, ExchangeLegCexPrice,
+    OptimisticDetails, PossibleCexDex, PriceCalcType,
 };
 
 // The threshold for the number of CEX-DEX trades an address is required to make
@@ -46,51 +45,6 @@ use super::{
 pub const FILTER_THRESHOLD: u64 = 20;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
-
-pub struct CexPricesForSwaps {
-    dex_swaps:        Vec<NormalizedSwap>,
-    time_window_vwam: Vec<Option<WindowExchangePrice>>,
-    optimistic:       Vec<Option<OptimisticPrice>>,
-}
-
-impl CexPricesForSwaps {
-    #[allow(clippy::type_complexity)]
-    fn per_exchange_trades<'a>(
-        &'a self,
-        exchanges: &'a [CexExchange],
-    ) -> Vec<(&CexExchange, Vec<Option<(&ExchangePath, &[Pair])>>)> {
-        exchanges
-            .iter()
-            .map(|exchange| {
-                let exchange_paths: Vec<Option<(&ExchangePath, &[Pair])>> = self
-                    .time_window_vwam
-                    .iter()
-                    .map(|window| {
-                        window.as_ref().and_then(|w| {
-                            w.exchange_price_with_volume_direct
-                                .get(exchange)
-                                .map(|path| (path, w.pairs.as_slice()))
-                        })
-                    })
-                    .collect();
-                (exchange, exchange_paths)
-            })
-            .collect()
-    }
-
-    fn global_price(&self) -> Option<Vec<(&ExchangePath, &[Pair])>> {
-        let global_prices: Vec<(&ExchangePath, &[Pair])> = self
-            .time_window_vwam
-            .iter()
-            .filter_map(|window| window.as_ref().map(|w| (&w.global, w.pairs.as_slice())))
-            .collect();
-        if global_prices.len() == self.dex_swaps.len() {
-            Some(global_prices)
-        } else {
-            None
-        }
-    }
-}
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
     pub utils:     SharedInspectorUtils<'db, DB>,
@@ -980,11 +934,4 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-}
-
-#[derive(Debug, Clone, Display, PartialEq, Eq)]
-pub enum PriceCalcType {
-    Optimistic,
-    TimeWindowGlobal,
-    TimeWindowPerEx,
 }
