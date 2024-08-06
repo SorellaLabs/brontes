@@ -3,6 +3,7 @@ use std::fmt;
 use alloy_primitives::{Address, FixedBytes};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
+use itertools::Itertools;
 use prettytable::{Cell, Row, Table};
 use reth_primitives::B256;
 
@@ -722,6 +723,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     )?;
     writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
 
+    writeln!(f, "Block Timestamp:\n {}", cex_dex_data.block_timestamp)?;
     // Cex-dex specific details
     writeln!(f, "\n{}", "Cex-Dex Details:\n".bold().bright_yellow().underline())?;
 
@@ -834,9 +836,9 @@ pub fn display_optimistic_trades(
     writeln!(
         f,
         "    - Maker: {:.8}, Taker: {:.8}",
-        cex_dex_data.optimistic_route_pnl_maker, cex_dex_data.optimistic_route_pnl_taker,
+        cex_dex_data.optimistic_route_pnl_maker.clone().to_float(),
+        cex_dex_data.optimistic_route_pnl_taker.clone().to_float(),
     )?;
-
     if !cex_dex_data.optimistic_trade_details.is_empty() {
         writeln!(f, "\n  - {}: Optimistic Trade Details", "Trades".bright_green())?;
         let mut table = Table::new();
@@ -847,13 +849,17 @@ pub fn display_optimistic_trades(
             Cell::new("Price").style_spec("Fb"),
             Cell::new("Volume").style_spec("Fb"),
         ]));
-        let mut all_trades: Vec<&OptimisticTrade> = cex_dex_data
+
+        let all_trades: Vec<&OptimisticTrade> = cex_dex_data
             .optimistic_trade_details
             .iter()
             .flatten()
+            .sorted_by_key(|trade| trade.timestamp)
             .collect();
-        all_trades.sort_by_key(|trade| trade.timestamp);
-        for trade in all_trades {
+
+        let merged_trades = merge_trades(all_trades, 7); // Cap at 7 entries
+
+        for trade in merged_trades {
             let relative_time =
                 (trade.timestamp as i64 - cex_dex_data.block_timestamp as i64) / 1000;
             table.add_row(Row::new(vec![
@@ -866,8 +872,30 @@ pub fn display_optimistic_trades(
         }
         write!(f, "{}", table)?;
     }
-
     Ok(())
+}
+
+fn merge_trades(trades: Vec<&OptimisticTrade>, max_entries: usize) -> Vec<OptimisticTrade> {
+    if trades.len() <= max_entries {
+        return trades.into_iter().cloned().collect();
+    }
+
+    let mut merged = Vec::new();
+    let chunk_size = (trades.len() as f32 / max_entries as f32).ceil() as usize;
+
+    for chunk in trades.chunks(chunk_size) {
+        let mut merged_trade = chunk[0].clone();
+        for trade in chunk.iter().skip(1) {
+            merged_trade.volume += trade.volume.clone();
+            merged_trade.price = (merged_trade.price.clone() * merged_trade.volume.clone()
+                + trade.price.clone() * trade.volume.clone())
+                / (merged_trade.volume.clone() + trade.volume.clone());
+        }
+        merged_trade.exchange = format!("{:?}+", merged_trade.exchange).into();
+        merged.push(merged_trade);
+    }
+
+    merged
 }
 
 pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
