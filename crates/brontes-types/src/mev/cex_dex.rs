@@ -145,7 +145,10 @@ impl Serialize for CexDex {
         let mut ser_struct = serializer.serialize_struct("CexDex", 68)?;
 
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
+        ser_struct.serialize_field("block_timestamp", &self.block_timestamp)?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
+        ser_struct
+            .serialize_field("header_pnl_methodology", &self.header_pnl_methodology.to_string())?;
 
         let swaps: ClickhouseVecNormalizedSwap = self
             .swaps
@@ -431,7 +434,28 @@ impl Serialize for CexDex {
                 .filter_map(|r| rational_to_u256_fraction(r).ok())
                 .collect::<Vec<_>>(),
         )?;
-        ser_struct.serialize_field("optimistic_trade_details", &self.optimistic_trade_details)?;
+        ser_struct.serialize_field(
+            "optimistic_trade_details",
+            &self
+                .optimistic_trade_details
+                .clone()
+                .into_iter()
+                .map(|details| {
+                    details
+                        .into_iter()
+                        .map(|d| {
+                            (
+                                d.exchange.to_string(),
+                                (format!("{}", d.pair.0), format!("{}", d.pair.1)),
+                                d.timestamp,
+                                rational_to_u256_fraction(&d.price).unwrap(),
+                                rational_to_u256_fraction(&d.volume).unwrap(),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        )?;
         ser_struct.serialize_field(
             "optimistic_route_pnl_maker",
             &rational_to_u256_fraction(&self.optimistic_route_pnl_maker).unwrap_or_default(),
@@ -591,7 +615,7 @@ impl Serialize for CexDex {
             self.gas_details.effective_gas_price,
         );
 
-        ser_struct.serialize_field("gas_details", &(gas_details))?;
+        ser_struct.serialize_field("gas_details", &gas_details)?;
 
         ser_struct.end()
     }
