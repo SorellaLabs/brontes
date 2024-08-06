@@ -5,7 +5,7 @@ use brontes_database::{
 };
 use clap::Parser;
 use reth_tracing_ext::TracingClient;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{
     cli::{get_tracing_provider, load_clickhouse, load_libmdbx, static_object},
