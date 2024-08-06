@@ -192,19 +192,26 @@ fn find_closest_to_time_boundries(
     let block_time = block_time as u128 * 1000000;
     exchange_symbol_map
         .into_par_iter()
-        .map(|(pair, quotes)| {
+        .map(|(pair, mut quotes)| {
             (
                 pair,
                 QUOTE_TIME_BOUNDARY
                     .iter()
                     .filter_map(|window| {
-                        quotes.iter().min_by_key(|quote| {
-                            let delta = quote.timestamp as i128 - block_time as i128;
-                            let window = *window as i128 * 1000000;
-                            (delta - window).abs()
-                        })
+                        let this_quote = quotes
+                            .iter()
+                            .min_by_key(|quote| {
+                                let delta = quote.timestamp as i128 - block_time as i128;
+                                let window = *window as i128 * 1000000;
+                                (delta - window).abs()
+                            })
+                            .cloned();
+
+                        if let Some(q) = this_quote.as_ref() {
+                            quotes.retain(|inner_q| q != inner_q);
+                        }
+                        this_quote
                     })
-                    .cloned()
                     .collect::<Vec<_>>(),
             )
         })
