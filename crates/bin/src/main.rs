@@ -30,7 +30,7 @@ fn main() -> eyre::Result<()> {
             Ok(())
         }
         Err(e) => {
-            error!("Error: {:?}", e);
+            error!(target: "brontes", "ERROR: {:?}", e);
 
             let mut source: Option<&dyn Error> = e.source();
             while let Some(err) = source {
