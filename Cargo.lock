@@ -1564,6 +1564,7 @@ dependencies = [
  "reth-tracing-ext",
  "reth-transaction-pool",
  "serde",
+ "serde_json",
  "strum 0.25.0",
  "tar",
  "thiserror",
