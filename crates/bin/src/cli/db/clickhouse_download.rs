@@ -1,8 +1,11 @@
 use std::{path::Path, sync::Arc};
 
 use brontes_database::{
-    clickhouse::cex_config::CexDownloadConfig, libmdbx::initialize::LibmdbxInitializer, Libmdbx,
+    clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
+    libmdbx::initialize::LibmdbxInitializer,
+    Libmdbx,
 };
+use brontes_types::traits::TracingProvider;
 use clap::Parser;
 use reth_tracing_ext::TracingClient;
 
