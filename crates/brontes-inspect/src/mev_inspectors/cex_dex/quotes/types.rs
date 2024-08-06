@@ -53,6 +53,7 @@ impl CexDexProcessing {
         block_timestamp: u64,
         t2_mid_price: Vec<f64>,
         t12_mid_price: Vec<f64>,
+        t30_mid_price: Vec<f64>,
         t60_mid_price: Vec<f64>,
         t300_mid_price: Vec<f64>,
     ) -> Option<(f64, BundleData)> {
@@ -70,6 +71,7 @@ impl CexDexProcessing {
                     .collect(),
                 t2_mid_price,
                 t12_mid_price,
+                t30_mid_price,
                 t60_mid_price,
                 t300_mid_price,
                 pnl: self.pnl.aggregate_pnl,

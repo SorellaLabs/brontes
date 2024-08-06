@@ -42,7 +42,7 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-const MAX_TIME_DIFFERENCE: u64 = 200_000;
+const MAX_TIME_DIFFERENCE: u64 = 250_000;
 
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap {

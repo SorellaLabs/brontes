@@ -29,6 +29,7 @@ pub struct CexDexQuote {
     pub instant_mid_price: Vec<f64>,
     pub t2_mid_price:      Vec<f64>,
     pub t12_mid_price:     Vec<f64>,
+    pub t30_mid_price:     Vec<f64>,
     pub t60_mid_price:     Vec<f64>,
     pub t300_mid_price:    Vec<f64>,
     #[redefined(same_fields)]
@@ -90,6 +91,7 @@ impl Serialize for CexDexQuote {
         ser_struct.serialize_field("instant_mid_price", &self.instant_mid_price)?;
         ser_struct.serialize_field("t2_mid_price", &self.t2_mid_price)?;
         ser_struct.serialize_field("t12_mid_price", &self.t12_mid_price)?;
+        ser_struct.serialize_field("t30_mid_price", &self.t30_mid_price)?;
         ser_struct.serialize_field("t60_mid_price", &self.t60_mid_price)?;
         ser_struct.serialize_field("t300_mid_price", &self.t300_mid_price)?;
         ser_struct.serialize_field("exchange", &self.exchange.to_string())?;
@@ -123,6 +125,7 @@ impl DbRow for CexDexQuote {
         "instant_mid_price",
         "t2_mid_price",
         "t12_mid_price",
+        "t30_mid_price",
         "t60_mid_price",
         "t300_mid_price",
         "exchange",

@@ -399,7 +399,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     .cex_quotes
                     .get_quote_from_most_liquid_exchange(
                         &pair,
-                        metadata.microseconds_block_timestamp() + time_delta,
+                        metadata.microseconds_block_timestamp() + (time_delta * 1_000_000),
                     )
                     .or_else(|| {
                         debug!(
@@ -481,6 +481,14 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 })
                 .collect_vec();
 
+            let t30 = self
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 30)
+                .into_iter()
+                .map(|quote_option| {
+                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
+                })
+                .collect_vec();
+
             let t60 = self
                 .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 60)
                 .into_iter()
@@ -497,7 +505,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 })
                 .collect_vec();
 
-            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t60, t300)
+            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t30, t60, t300)
         } else {
             None
         }
