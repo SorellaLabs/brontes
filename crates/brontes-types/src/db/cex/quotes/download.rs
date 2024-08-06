@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 
 use super::{CexPriceMap, CexQuote};
@@ -12,6 +11,7 @@ use crate::{
         block_times::{BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
     },
+    pair::Pair,
     serde_utils::cex_exchange,
     FastHashMap,
 };
@@ -26,21 +26,6 @@ pub struct RawCexQuotes {
     pub ask_price:  f64,
     pub bid_price:  f64,
     pub bid_amount: f64,
-}
-
-const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
-impl RawCexQuotes {
-    /// finds (closest time, time delta)
-    fn time_boundaries(&self, block_timestamp: u64) -> Vec<(u64, u64)> {
-        // will always be positive
-        let delta = self.timestamp - block_timestamp * 1000000;
-        QUOTE_TIME_BOUNDARY
-            .iter()
-            .map(|b| (*b, delta as i64 - *b as i64))
-            .sorted_by(|a, b| a.1.cmp(&b.1))
-            .map(|(a, b)| (a, b.abs() as u64))
-            .collect()
-    }
 }
 
 #[derive(Debug)]
@@ -175,41 +160,19 @@ impl CexQuotesConverter {
                                 symbol.address_pair.0 = USDC_ADDRESS;
                             }
 
-                            let entry = exchange_symbol_map
+                            exchange_symbol_map
                                 .entry(symbol.address_pair)
-                                .or_insert(HashMap::<u64, (u64, CexQuote)>::new());
-
-                            let window_deltas = quote.time_boundaries(block_time);
-
-                            window_deltas.iter().any(|(window, delta)| {
-                                if let Some(entr) = entry.get_mut(&window) {
-                                    if delta < &entr.0 {
-                                        entr.1 = quote.clone().into();
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                } else {
-                                    entry.insert(*window, (*delta, quote.clone().into()));
-                                    true
-                                }
-                            });
+                                .or_insert(Vec::new())
+                                .push(quote.into());
                         });
 
-                        let mut delta_exchange_symbol_map = exchange_symbol_map
-                            .into_iter()
-                            .map(|(pair, inner)| {
-                                (pair, inner.into_iter().map(|(_, (_, q))| q).collect::<Vec<_>>())
-                            })
-                            .collect::<FastHashMap<_, _>>();
-
-                        for quotes in delta_exchange_symbol_map.values_mut() {
+                        for quotes in exchange_symbol_map.values_mut() {
                             if !quotes.is_sorted_by_key(|k: &CexQuote| k.timestamp) {
                                 quotes.sort_unstable_by_key(|k: &CexQuote| k.timestamp);
                             }
                         }
 
-                        (exch, delta_exchange_symbol_map)
+                        (exch, find_closest_to_time_boundries(block_time, exchange_symbol_map))
                     })
                     .collect::<FastHashMap<_, _>>();
 
@@ -217,4 +180,31 @@ impl CexQuotesConverter {
             })
             .collect()
     }
+}
+
+const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
+fn find_closest_to_time_boundries(
+    block_time: u64,
+    exchange_symbol_map: FastHashMap<Pair, Vec<CexQuote>>,
+) -> FastHashMap<Pair, Vec<CexQuote>> {
+    let block_time = block_time * 1000000;
+    exchange_symbol_map
+        .into_par_iter()
+        .map(|(pair, quotes)| {
+            (
+                pair,
+                QUOTE_TIME_BOUNDARY
+                    .iter()
+                    .filter_map(|window| {
+                        quotes.iter().min_by_key(|quote| {
+                            let delta = quote.timestamp as i64 - block_time as i64;
+                            let window = window * 1000000;
+                            (delta - window as i64).abs()
+                        })
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<FastHashMap<Pair, Vec<CexQuote>>>()
 }
