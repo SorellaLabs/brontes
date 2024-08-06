@@ -53,7 +53,10 @@ impl ClickhouseDownload {
         Ok(())
     }
 
-    async fn run(self, initializer: LibmdbxInitializer) -> eyre::Result<()> {
+    async fn run<TP: TracingProvider, CH: ClickhouseHandle>(
+        self,
+        initializer: LibmdbxInitializer<TP, CH>,
+    ) -> eyre::Result<()> {
         let pre = std::time::Instant::now();
         initializer
             .initialize(
