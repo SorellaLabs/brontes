@@ -66,7 +66,12 @@ impl ClickhouseDownload {
 
         let pre = std::time::Instant::now();
         initializer
-            .initialize(self.table, Some((self.start_block, self.end_block)), Arc::new(vec![]))
+            .initialize(
+                self.table,
+                true,
+                Some((self.start_block, self.end_block)),
+                Arc::new(vec![]),
+            )
             .await;
 
         let time_taken = std::time::Instant::now().duration_since(pre);
