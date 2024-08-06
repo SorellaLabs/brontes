@@ -1,40 +1,20 @@
-use std::{env, path::Path};
+use std::{env, path::Path, sync::Arc};
 
-use ahash::HashSetExt;
-use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
 use brontes_database::{
     clickhouse::cex_config::CexDownloadConfig, libmdbx::initialize::LibmdbxInitializer,
 };
-use brontes_types::{
-    constants::USDT_ADDRESS,
-    db::cex::{trades::CexTrades, CexExchange},
-    init_threadpools,
-    pair::Pair,
-    FastHashMap, FastHashSet,
-};
 use clap::Parser;
 use clickhouse::Row;
-use db_interfaces::{
-    clickhouse::{
-        client::ClickhouseClient,
-        config::ClickhouseConfig,
-        dbms::{ClickhouseDBMS, NullDBMS},
-    },
-    errors::DatabaseError,
-    Database,
+use db_interfaces::clickhouse::{
+    client::ClickhouseClient, config::ClickhouseConfig, dbms::NullDBMS,
 };
-use eyre::Result;
-use prettytable::{Cell, Row, Table};
 use reth_tracing_ext::TracingClient;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     cli::{load_libmdbx, static_object},
     runner::CliContext,
 };
-
-const SECONDS_TO_US: u64 = 1_000_000;
 
 /// downloads a range of data from clickhouse
 #[derive(Debug, Parser)]
