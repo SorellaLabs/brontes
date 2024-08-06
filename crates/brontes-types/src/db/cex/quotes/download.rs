@@ -245,10 +245,6 @@ fn find_closest_to_time_boundary(
                 return None;
             }
 
-            if !quotes.is_sorted_by_key(|q| q.timestamp) {
-                quotes.sort_unstable_by_key(|q| q.timestamp);
-            }
-
             let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
 
             for &time in &QUOTE_TIME_BOUNDARY {
