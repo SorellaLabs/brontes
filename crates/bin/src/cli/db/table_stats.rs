@@ -7,7 +7,8 @@ use eyre::{Result, WrapErr};
 use human_bytes::human_bytes;
 use itertools::Itertools;
 use reth_db::{
-    database::Database, mdbx, open_db_read_only, DatabaseEnv, DatabaseError, RawTable, TableRawRow,
+    database::Database, mdbx, open_db, open_db_read_only, DatabaseEnv, DatabaseError, RawTable,
+    TableRawRow,
 };
 use reth_primitives::{fs, ChainSpec};
 use reth_provider::ProviderFactory;
@@ -27,7 +28,7 @@ impl Stats {
         let db_path = Path::new(&db_path);
         let chain = Arc::new(ChainSpec::default());
 
-        let db = Arc::new(open_db_read_only(&db_path, Default::default())?);
+        let db = Arc::new(open_db(&db_path, Default::default())?);
 
         let mut statis_files_path = db_path.to_path_buf();
         statis_files_path.push("static_files");
