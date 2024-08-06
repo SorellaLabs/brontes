@@ -7,6 +7,7 @@ use brontes_database::{
 use brontes_types::traits::TracingProvider;
 use clap::Parser;
 use reth_tracing_ext::TracingClient;
+use tracing::{error, info};
 
 use crate::{
     cli::{load_clickhouse, load_libmdbx, static_object},
@@ -50,7 +51,7 @@ impl ClickhouseDownload {
             .spawn_critical("download", {
                 async move {
                     if let Err(e) = self.run(initializer).await {
-                        eprintln!("Error downloading data -- {:?}", e);
+                        error!(target: "brontes::db::clickhouse-download", "Error downloading data -- {:?}", e);
                     }
                 }
             })
@@ -74,7 +75,7 @@ impl ClickhouseDownload {
             .await?;
 
         let time_taken = std::time::Instant::now().duration_since(pre);
-        println!("Table: {:?} -- Time Elapsed {}", self.table, time_taken.as_secs());
+        info!(target: "brontes::db::clickhouse-download", "Table: {:?} -- Time Elapsed {}", self.table, time_taken.as_secs());
 
         Ok(())
     }
