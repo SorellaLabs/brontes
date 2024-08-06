@@ -1,10 +1,8 @@
 use std::{path::Path, sync::Arc};
 
 use brontes_database::{
-    clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
-    libmdbx::initialize::LibmdbxInitializer,
+    clickhouse::cex_config::CexDownloadConfig, libmdbx::initialize::LibmdbxInitializer,
 };
-use brontes_types::traits::TracingProvider;
 use clap::Parser;
 use reth_tracing_ext::TracingClient;
 use tracing::{error, info};
@@ -33,6 +31,18 @@ pub struct ClickhouseDownload {
 
 impl ClickhouseDownload {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+        let task = self.run().await;
+
+        if let Err(e) = task.as_ref() {
+            error!(target: "brontes::db::clickhouse-download", "Error downloading data -- {:?}", e);
+        }
+
+        let _ = task?;
+
+        Ok(())
+    }
+
+    async fn run(self) -> eyre::Result<()> {
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
         let cex_config = CexDownloadConfig::default();
         let clickhouse = static_object(load_clickhouse(cex_config).await?);
@@ -47,23 +57,6 @@ impl ClickhouseDownload {
             )),
         );
 
-        ctx.task_executor
-            .spawn_critical("download", {
-                async move {
-                    if let Err(e) = self.run(initializer).await {
-                        error!(target: "brontes::db::clickhouse-download", "Error downloading data -- {:?}", e);
-                    }
-                }
-            })
-            .await?;
-
-        Ok(())
-    }
-
-    async fn run<TP: TracingProvider, CH: ClickhouseHandle>(
-        self,
-        initializer: LibmdbxInitializer<TP, CH>,
-    ) -> eyre::Result<()> {
         let pre = std::time::Instant::now();
         initializer
             .initialize(
