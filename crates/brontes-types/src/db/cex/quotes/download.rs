@@ -166,13 +166,16 @@ impl CexQuotesConverter {
                                 .push(quote.into());
                         });
 
+                        exchange_symbol_map =
+                            find_closest_to_time_boundries(block_time, exchange_symbol_map);
+
                         for quotes in exchange_symbol_map.values_mut() {
                             if !quotes.is_sorted_by_key(|k: &CexQuote| k.timestamp) {
                                 quotes.sort_unstable_by_key(|k: &CexQuote| k.timestamp);
                             }
                         }
 
-                        (exch, find_closest_to_time_boundries(block_time, exchange_symbol_map))
+                        (exch, exchange_symbol_map)
                     })
                     .collect::<FastHashMap<_, _>>();
 
