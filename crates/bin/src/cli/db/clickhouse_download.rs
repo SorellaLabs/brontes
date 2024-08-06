@@ -51,7 +51,11 @@ impl ClickhouseDownload {
         Ok(())
     }
 
-    async fn run(self, initializer: LibmdbxInitializer, libmdbx: Libmdbx) -> eyre::Result<()> {
+    async fn run(
+        self,
+        initializer: LibmdbxInitializer,
+        libmdbx: &'static Libmdbx,
+    ) -> eyre::Result<()> {
         let cex_config = CexDownloadConfig::default();
         let clickhouse = static_object(load_clickhouse(cex_config).await?);
 
