@@ -32,6 +32,8 @@ impl ClickhouseDownload {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
 
+        let clickhouse = static_object(load_clickhouse(cex_config).await?);
+        let cex_config = CexDownloadConfig::default();
         let initializer = LibmdbxInitializer::new(
             libmdbx,
             clickhouse,
@@ -56,9 +58,6 @@ impl ClickhouseDownload {
         initializer: LibmdbxInitializer,
         libmdbx: &'static Libmdbx,
     ) -> eyre::Result<()> {
-        let cex_config = CexDownloadConfig::default();
-        let clickhouse = static_object(load_clickhouse(cex_config).await?);
-
         let pre = std::time::Instant::now();
         initializer
             .initialize(
