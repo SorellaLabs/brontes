@@ -2,7 +2,7 @@ use std::{fmt, fmt::Display, sync::Arc};
 
 use alloy_primitives::FixedBytes;
 use brontes_types::{
-    db::cex::{config::CexDexTradeConfig, CexExchange, FeeAdjustedQuote},
+    db::cex::{quotes::FeeAdjustedQuote, trades::CexDexTradeConfig, CexExchange},
     mev::{ArbDetails, ArbPnl, BundleData, CexDex, CexMethodology, OptimisticTrade},
     normalized_actions::NormalizedSwap,
     pair::Pair,

@@ -50,7 +50,7 @@ use alloy_primitives::{Address, TxHash};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
-    db::cex::{CexExchange, FeeAdjustedQuote},
+    db::cex::{quotes::FeeAdjustedQuote, CexExchange},
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType},
     normalized_actions::{

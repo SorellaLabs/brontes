@@ -1,14 +1,16 @@
+use std::collections::HashMap;
+
 use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
 use serde::Deserialize;
 
-use super::CexQuote;
+use super::{CexPriceMap, CexQuote};
 use crate::{
     constants::USDC_ADDRESS,
     db::{
         block_times::{BlockTimes, CexBlockTimes},
-        cex::{BestCexPerPair, CexExchange, CexPriceMap, CexSymbols},
+        cex::{BestCexPerPair, CexExchange, CexSymbols},
     },
     serde_utils::cex_exchange,
     FastHashMap,
@@ -24,6 +26,21 @@ pub struct RawCexQuotes {
     pub ask_price:  f64,
     pub bid_price:  f64,
     pub bid_amount: f64,
+}
+
+const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
+impl RawCexQuotes {
+    /// finds (closest time, time delta)
+    fn time_boundaries(&self, block_timestamp: u64) -> Vec<(u64, u64)> {
+        // will always be positive
+        let delta = self.timestamp - block_timestamp * 1000000;
+        QUOTE_TIME_BOUNDARY
+            .iter()
+            .map(|b| (*b, delta as i64 - *b as i64))
+            .sorted_by(|a, b| a.1.cmp(&b.1))
+            .map(|(a, b)| (a, b.abs() as u64))
+            .collect()
+    }
 }
 
 #[derive(Debug)]
@@ -54,7 +71,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(|b| CexBlockTimes::add_time_window(b, (6.0, 6.0)))
+                .map(|b| CexBlockTimes::add_time_window(b, (0.0, 300.0)))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
@@ -64,28 +81,20 @@ impl CexQuotesConverter {
     }
 
     pub fn convert_to_prices(mut self) -> Vec<(u64, CexPriceMap)> {
-        let mut block_num_map = FastHashMap::default();
-
-        self.quotes
+        let block_num_map_with_pairs = self
+            .quotes
             .into_iter()
             .filter_map(|q| {
                 self.block_times
                     .iter()
-                    .find(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
-                    .map(|block_time| (block_time.block_number, q))
+                    .find(|b| b.contains_time(q.timestamp))
+                    .map(|block_time| (block_time, q))
             })
-            .for_each(|(block_num, quote)| {
-                block_num_map
-                    .entry(block_num)
-                    .or_insert(Vec::new())
-                    .push(quote)
-            });
-
-        let mut pairs_map: FastHashMap<u64, Vec<BestCexPerPair>> = self
-            .block_times
-            .iter()
-            .map(|block| {
-                let time = block.start_timestamp as i64;
+            .map(|(block_time, quote)| (block_time, quote))
+            .into_group_map()
+            .into_iter()
+            .map(|(block_time, quotes)| {
+                let time = block_time.start_timestamp as i64;
                 // we want to choose the pairs that are closest timestamp
                 let mut map = FastHashMap::default();
                 self.best_cex_per_pair.iter().for_each(|pair| {
@@ -103,13 +112,16 @@ impl CexQuotesConverter {
                         }
                     }
                 });
-                (block.block_number, map.into_values().cloned().collect::<Vec<_>>())
+                (
+                    (block_time.block_number, block_time.precise_timestamp),
+                    (quotes, map.into_values().cloned().collect::<Vec<_>>()),
+                )
             })
-            .collect();
+            .collect::<FastHashMap<_, _>>();
 
-        block_num_map
+        block_num_map_with_pairs
             .into_iter()
-            .map(|(block_num, quotes)| {
+            .map(|((block_num, block_time), (quotes, cex_best_venue))| {
                 let mut exchange_map = FastHashMap::default();
 
                 quotes.into_iter().for_each(|quote| {
@@ -118,10 +130,6 @@ impl CexQuotesConverter {
                         .or_insert(Vec::new())
                         .push(quote);
                 });
-
-                let cex_best_venue = pairs_map
-                    .remove(&block_num)
-                    .expect("should never be missing");
 
                 let pair_exchanges = cex_best_venue
                     .into_iter()
@@ -167,19 +175,41 @@ impl CexQuotesConverter {
                                 symbol.address_pair.0 = USDC_ADDRESS;
                             }
 
-                            exchange_symbol_map
+                            let entry = exchange_symbol_map
                                 .entry(symbol.address_pair)
-                                .or_insert(Vec::new())
-                                .push(quote.into());
+                                .or_insert(HashMap::<u64, (u64, CexQuote)>::new());
+
+                            let window_deltas = quote.time_boundaries(block_time);
+
+                            window_deltas.iter().any(|(window, delta)| {
+                                if let Some(entr) = entry.get_mut(&window) {
+                                    if delta < &entr.0 {
+                                        entr.1 = quote.clone().into();
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                } else {
+                                    entry.insert(*window, (*delta, quote.clone().into()));
+                                    true
+                                }
+                            });
                         });
 
-                        for quotes in exchange_symbol_map.values_mut() {
+                        let mut delta_exchange_symbol_map = exchange_symbol_map
+                            .into_iter()
+                            .map(|(pair, inner)| {
+                                (pair, inner.into_iter().map(|(_, (_, q))| q).collect::<Vec<_>>())
+                            })
+                            .collect::<FastHashMap<_, _>>();
+
+                        for quotes in delta_exchange_symbol_map.values_mut() {
                             if !quotes.is_sorted_by_key(|k: &CexQuote| k.timestamp) {
                                 quotes.sort_unstable_by_key(|k: &CexQuote| k.timestamp);
                             }
                         }
 
-                        (exch, exchange_symbol_map)
+                        (exch, delta_exchange_symbol_map)
                     })
                     .collect::<FastHashMap<_, _>>();
 
