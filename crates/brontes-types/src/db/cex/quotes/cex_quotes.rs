@@ -42,6 +42,8 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
+const MAX_TIME_DIFFERENCE: u64 = 200_000;
+
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap {
     pub quotes:         FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
@@ -152,6 +154,12 @@ impl CexPriceMap {
                     .into_iter()
                     .chain(adjusted_quotes.get(index))
                     .min_by_key(|&quote| (quote.timestamp as i64 - timestamp as i64).abs())?;
+
+                if (closest_quote.timestamp as i64 - timestamp as i64).unsigned_abs()
+                    > MAX_TIME_DIFFERENCE
+                {
+                    return None;
+                }
 
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
 

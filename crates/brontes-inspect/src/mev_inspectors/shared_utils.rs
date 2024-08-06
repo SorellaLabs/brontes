@@ -71,7 +71,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                 let pair = Pair(*token_addr, self.quote);
                 let price = if cex {
-                    metadata.cex_quotes.get_binance_quote(&pair)?.price_maker.1
+                    metadata
+                        .cex_quotes
+                        .get_quote_from_most_liquid_exchange(
+                            &pair,
+                            metadata.microseconds_block_timestamp(),
+                        )?
+                        .price_maker
+                        .1
                 } else if at_or_before {
                     metadata
                         .dex_quotes
