@@ -51,7 +51,10 @@ impl Mul for OptimisticPrice {
     fn mul(mut self, rhs: Self) -> Self::Output {
         self.pairs.extend(rhs.pairs);
         self.global.price_maker *= rhs.global.price_maker;
-        self.global.price_maker *= rhs.global.price_taker;
+        self.global.price_taker *= rhs.global.price_taker;
+        self.global.final_start_time = min(self.global.final_start_time, rhs.global.final_start_time);
+        self.global.final_end_time = max(self.global.final_end_time, rhs.global.final_end_time);
+
         self.trades_used.extend(rhs.trades_used);
 
         self

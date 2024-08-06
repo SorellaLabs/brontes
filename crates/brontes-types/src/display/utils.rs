@@ -731,13 +731,15 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(
         f,
         "    - Maker: {:.6}, Taker: {:.6}",
-        cex_dex_data.global_vmap_pnl_maker, cex_dex_data.global_vmap_pnl_taker
+        cex_dex_data.global_vmap_pnl_maker.clone().to_float(),
+        cex_dex_data.global_vmap_pnl_taker.clone().to_float()
     )?;
     writeln!(f, "  - {}: Optimistic PnL", "PnL".bright_yellow())?;
     writeln!(
         f,
         "    - Maker: {:.6}, Taker: {:.6}",
-        cex_dex_data.optimistic_route_pnl_maker, cex_dex_data.optimistic_route_pnl_taker
+        cex_dex_data.optimistic_route_pnl_maker.clone().to_float(),
+        cex_dex_data.optimistic_route_pnl_taker.clone().to_float()
     )?;
 
     display_optimistic_trades(f, cex_dex_data)?;
@@ -746,13 +748,19 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(
         f,
         "    - Maker: {:.6}, Taker: {:.6}",
-        cex_dex_data.optimal_route_pnl_maker, cex_dex_data.optimal_route_pnl_taker
+        cex_dex_data.optimal_route_pnl_maker.clone().to_float(),
+        cex_dex_data.optimal_route_pnl_taker.clone().to_float()
     )?;
 
     writeln!(f, "  - {}", "Per Exchange PnL:".bold().underline().purple())?;
     for (exchange, pnl) in &cex_dex_data.per_exchange_pnl {
         writeln!(f, "    - {}:", exchange.to_string().bold().underline().green())?;
-        writeln!(f, "      - Maker: {:.6} Taker: {:.6}", pnl.0, pnl.1)?;
+        writeln!(
+            f,
+            "      - Maker: {:.6} Taker: {:.6}",
+            pnl.0.clone().to_float(),
+            pnl.1.clone().to_float()
+        )?;
     }
 
     writeln!(f, "\n----------------------------------------")?;
@@ -784,6 +792,12 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
             writeln!(f, "   - Error: No per exchange arb details available for swap {}", i + 1)?;
         }
     }
+
+    // Gas Details
+    writeln!(f, "\n{}: \n", "Gas Details".underline().bright_yellow())?;
+
+    cex_dex_data.gas_details.pretty_print_with_spaces(f, 8)?;
+
     bundle.header.balance_deltas.iter().for_each(|tx_delta| {
         writeln!(f, "\n\n{}", tx_delta).expect("Failed to write balance deltas")
     });
