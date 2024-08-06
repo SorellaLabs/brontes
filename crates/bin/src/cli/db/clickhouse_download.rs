@@ -56,13 +56,12 @@ impl ClickhouseDownload {
 
         let cex_config = CexDownloadConfig::default();
         let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint)?);
-        let metadata = libmdbx.get_metadata(self.block_number, USDT_ADDRESS)?;
         let clickhouse: ClickhouseClient<NullDBMS> = get_clickhouse_env();
 
         let initializer = LibmdbxInitializer::new(
             libmdbx,
             &clickhouse,
-            TracingClient::new(&Path::new(&brontes_db_endpoint), 10, task_executor),
+            Arc::new(TracingClient::new(&Path::new(&brontes_db_endpoint), 10, task_executor)),
         );
 
         let pre = std::time::Instant::now();
