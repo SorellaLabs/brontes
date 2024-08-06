@@ -249,11 +249,10 @@ fn find_closest_to_time_boundary(
                 quotes.sort_unstable_by_key(|q| q.timestamp);
             }
 
-            let block_time = block_time as i128 * 1_000_000;
             let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
 
             for &time in &QUOTE_TIME_BOUNDARY {
-                let target_time = block_time + (time as i128 * 1_000_000);
+                let target_time = block_time as i128 + (time as i128 * 1_000_000);
                 let idx = quotes.partition_point(|quote| quote.timestamp as i128 <= target_time);
 
                 let closest = if idx > 0 && idx < quotes.len() {
