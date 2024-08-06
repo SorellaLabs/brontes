@@ -31,12 +31,15 @@ pub struct ClickhouseDownload {
 
 impl ClickhouseDownload {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
-        info!(target: "brontes::db::clickhouse-download", "starting download for table: {:?}", self.table);
+        let table = self.table;
+        info!(target: "brontes::db::clickhouse-download", "starting download for table: {:?}", table);
         let task = self.run(brontes_db_endpoint, ctx).await;
 
         if let Err(e) = task.as_ref() {
             error!(target: "brontes::db::clickhouse-download", "Error downloading data -- {:?}", e);
         }
+
+        info!(target: "brontes::db::clickhouse-download", "finished download for table: {:?}", table);
 
         let _ = task?;
 
