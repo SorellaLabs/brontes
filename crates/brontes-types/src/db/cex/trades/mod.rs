@@ -13,7 +13,7 @@ use time_window_vwam::TimeWindowTrades;
 
 use self::{config::CexDexTradeConfig, time_window_vwam::WindowExchangePrice, utils::SortedTrades};
 use super::{optimistic::OptimisticPrice, CexExchange};
-use crate::{constants::WETH_ADDRESS, normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
+use crate::{normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
 
 impl CexTradeMap {
     /// Calculate the price of a pair with a given volume using both the dynamic
@@ -30,7 +30,7 @@ impl CexTradeMap {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
         config: CexDexTradeConfig,
-    ) -> (Option<WindowExchangePriceP>, Option<OptimisticPrice>) {
+    ) -> (Option<WindowExchangePrice>, Option<OptimisticPrice>) {
         let window = self.calculate_time_window_vwam(
             config,
             exchanges,

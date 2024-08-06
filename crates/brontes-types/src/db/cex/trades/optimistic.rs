@@ -6,7 +6,7 @@ use malachite::{
     num::basic::traits::{One, Two, Zero},
     Rational,
 };
-
+use std::cmp::{max, min};
 use super::config::CexDexTradeConfig;
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
@@ -23,11 +23,15 @@ use crate::{
     utils::ToFloatNearest,
     FastHashMap,
 };
+use super::time_window_vwam::ExchangePath;
 
 pub const BASE_EXECUTION_QUALITY: usize = 70;
 
 const PRE_SCALING_DIFF: u64 = 200_000;
 const TIME_STEP: u64 = 100_000;
+
+
+
 
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
@@ -38,8 +42,7 @@ pub struct OptimisticPrice {
     /// the pairs that were traded through in order to get this price.
     /// in the case of a intermediary, this will be 2, otherwise, 1
     pub pairs:             Vec<Pair>,
-    pub final_price_maker: Rational,
-    pub final_price_taker: Rational,
+    pub global: ExchangePath,
 }
 
 impl Mul for OptimisticPrice {
@@ -47,8 +50,8 @@ impl Mul for OptimisticPrice {
 
     fn mul(mut self, rhs: Self) -> Self::Output {
         self.pairs.extend(rhs.pairs);
-        self.final_price_maker *= rhs.final_price_maker;
-        self.final_price_taker *= rhs.final_price_taker;
+        self.global.price_maker *= rhs.global.price_maker;
+        self.global.price_maker *= rhs.global.price_taker;
         self.trades_used.extend(rhs.trades_used);
 
         self
@@ -58,8 +61,8 @@ impl Mul for OptimisticPrice {
 impl Display for OptimisticPrice {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{:#?}", self.trades_used)?;
-        writeln!(f, "{}", self.final_price_maker.clone().to_float())?;
-        writeln!(f, "{}", self.final_price_taker.clone().to_float())?;
+        writeln!(f, "{}", self.global.price_maker.clone().to_float())?;
+        writeln!(f, "{}", self.global.price_taker.clone().to_float())?;
         Ok(())
     }
 }
@@ -102,10 +105,15 @@ impl<'a> SortedTrades<'a> {
     ) -> Option<OptimisticPrice> {
         if pair.0 == pair.1 {
             return Some(OptimisticPrice {
-                trades_used:       vec![],
-                pairs:             vec![pair],
-                final_price_maker: Rational::ONE,
-                final_price_taker: Rational::ONE,
+                trades_used: vec![],
+                pairs: vec![pair],
+                global: ExchangePath {
+                    price_maker: Rational::ONE,
+                    price_taker: Rational::ONE,
+                    volume: Rational::ZERO,
+                    final_start_time: 0,
+                    final_end_time: 0,
+                },
             })
         }
 
@@ -178,7 +186,7 @@ impl<'a> SortedTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
-                let new_vol = volume * ((&first_leg.final_price_maker + &first_leg.final_price_taker) / Rational::TWO);
+                let new_vol = volume * ((&first_leg.global.price_maker + &first_leg.global.price_taker) / Rational::TWO);
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -202,7 +210,7 @@ impl<'a> SortedTrades<'a> {
 
                 Some(price)
             })
-            .max_by_key(|a| a.0.final_price.clone())
+            .max_by_key(|a| a.global.price_maker.clone())
     }
 
     fn get_optimistic_direct(
@@ -270,6 +278,11 @@ impl<'a> SortedTrades<'a> {
 
         let mut optimistic_trades = Vec::with_capacity(trades_used.len());
 
+
+
+        let mut global_start_time = u64::MAX;
+        let mut global_end_time = 0;
+
         for trade in trades_used {
             let weight = calculate_weight(block_timestamp, trade.timestamp);
 
@@ -287,6 +300,13 @@ impl<'a> SortedTrades<'a> {
                 exchange: trade.exchange,
                 timestamp: trade.timestamp,
             });
+
+            global_start_time = min(global_start_time, trade.timestamp);
+            global_end_time = max(global_end_time, trade.timestamp);
+        }
+
+        if global_start_time == u64::MAX {
+            global_start_time = 0;
         }
 
         if &trade_volume < volume && !bypass_vol {
@@ -296,11 +316,18 @@ impl<'a> SortedTrades<'a> {
             return None
         }
 
+        let global = ExchangePath {
+            price_maker:      vxp_maker / &trade_volume_weight,
+            price_taker:      vxp_taker / &trade_volume_weight,
+            volume:           trade_volume,
+            final_start_time: global_start_time, 
+            final_end_time:   global_end_time,
+        };
+
         let price = OptimisticPrice {
             trades_used:       optimistic_trades,
             pairs:             vec![pair],
-            final_price_maker: vxp_maker / &trade_volume_weight,
-            final_price_taker: vxp_taker / &trade_volume_weight,
+            global,    
         };
 
         Some(price)

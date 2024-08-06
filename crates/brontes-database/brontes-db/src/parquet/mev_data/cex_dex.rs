@@ -1,4 +1,4 @@
-use arrow::{
+/*use arrow::{
     array::{
         Array, ArrayBuilder, Float64Builder, ListArray, ListBuilder, StringBuilder, StructBuilder,
     },
@@ -8,7 +8,7 @@ use arrow::{
 };
 use brontes_types::{
     db::cex::CexExchange,
-    mev::{cex_dex::ArbPnl, ArbDetails, CexDex},
+    mev::{ArbDetails, CexDex},
     ToFloatNearest,
 };
 use itertools::Itertools;
@@ -20,8 +20,9 @@ use crate::parquet::{
     },
     utils::{build_float64_array, get_string_array_from_owned},
 };
-
+/*
 pub fn cex_dex_to_record_batch(cex_dex_arbs: Vec<CexDex>) -> Result<RecordBatch, ArrowError> {
+
     let tx_hash_array = get_string_array_from_owned(
         cex_dex_arbs
             .iter()
@@ -165,7 +166,7 @@ pub fn cex_dex_to_record_batch(cex_dex_arbs: Vec<CexDex>) -> Result<RecordBatch,
             Arc::new(gas_details_array),
         ],
     )
-}
+} */
 
 fn get_stat_arb_details_list_array(arb_details_list: Vec<&Vec<ArbDetails>>) -> ListArray {
     let fields = arb_details_fields();
@@ -371,7 +372,7 @@ fn exchange_arb_pnl_struct_builder() -> Vec<Box<dyn ArrayBuilder>> {
         Box::new(Float64Builder::new()),
     ]
 }
-
+/*
 fn get_cex_exchange_list_array(
     exchange_arb_details: Vec<&Vec<(CexExchange, ArbPnl)>>,
 ) -> ListArray {
@@ -413,3 +414,6 @@ fn get_cex_exchange_list_array(
 
     list_builder.finish()
 }
+*/
+
+*/

@@ -26,7 +26,7 @@ use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
 /// of processed trees
-const MAX_PENDING_TREES: usize = 3;
+const MAX_PENDING_TREES: usize = 5;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
@@ -111,12 +111,11 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
     }
 
-    //TODO: Change this shit to actual before and after instead of the /12 nonsense
     fn load_cex_trades<DB: LibmdbxReader>(
         &mut self,
         libmdbx: &'static DB,
         block: u64,
-    ) -> Option<Arc<RwLock<CexTradeMap>>> {
+    ) -> CexTradeMap {
         if !self.cex_window_data.is_loaded() {
             let window = self.cex_window_data.get_window_lookahead();
             // given every download is -6 + 6 around the block
@@ -125,26 +124,23 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let mut trades = Vec::new();
             for block in block - offsets..=block + offsets {
                 if let Ok(res) = libmdbx.get_cex_trades(block) {
-                    trades.push((block, res));
-                } else {
-                    return None
+                    trades.push(res);
                 }
             }
-            self.cex_window_data.init(trades);
+            let last_block = block + offsets;
+            self.cex_window_data.init(last_block, trades);
 
-            return Some(self.cex_window_data.cex_trade_map())
+            return self.cex_window_data.cex_trade_map()
         }
 
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
 
         if let Ok(res) = libmdbx.get_cex_trades(last_block) {
-            self.cex_window_data
-                .new_block(block, res, self.active_block);
-        } else {
-            return None
+            self.cex_window_data.new_block(res);
         }
+        self.cex_window_data.set_last_block(last_block);
 
-        Some(self.cex_window_data.cex_trade_map())
+        self.cex_window_data.cex_trade_map()
     }
 
     fn load_metadata_no_dex_pricing<DB: LibmdbxReader>(
@@ -312,7 +308,6 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
     ) -> std::task::Poll<Option<Self::Item>> {
         if self.force_no_dex_pricing {
             if let Some(res) = self.result_buf.pop_front() {
-                self.active_block = res.block_number();
                 return Poll::Ready(Some(res))
             }
             cx.waker().wake_by_ref();
@@ -328,24 +323,14 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some((tree, metadata))) => {
-                let block_data =
-                    BlockData { metadata: Arc::new(metadata), tree: Arc::new(tree) };
-                self.active_block = block_data.block_number();
-                Poll::Ready(Some(block_data))
-            }
-            Poll::Ready(None) => {
-                if let Some(res) = self.result_buf.pop_front() {
-                    self.active_block = res.block_number();
-                    Poll::Ready(Some(res))
-                } else {
-                    Poll::Ready(None)
-                }
-            }
+            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
+                metadata: Arc::new(metadata),
+                tree:     Arc::new(tree),
+            })),
+            Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
             Poll::Pending => {
-                if let Some(res) = self.result_buf.pop_front() {
-                    self.active_block = res.block_number();
-                    Poll::Ready(Some(res))
+                if let Some(f) = self.result_buf.pop_front() {
+                    Poll::Ready(Some(f))
                 } else {
                     Poll::Pending
                 }

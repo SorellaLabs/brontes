@@ -54,9 +54,8 @@ pub struct WindowExchangePrice {
     /// the pairs that were traded through in order to get this price.
     /// in the case of a intermediary, this will be 2, otherwise, 1
     pub pairs: Vec<Pair>,
-    /// Volume weighted average price across all exchanges
-    pub global_exchange_price_maker: Rational,
-    pub global_exchange_price_taker: Rational,
+    /// Global Exchange Price
+    pub global: ExchangePath,
 }
 
 impl Mul for WindowExchangePrice {
@@ -81,8 +80,13 @@ impl Mul for WindowExchangePrice {
             .collect();
 
         self.pairs.extend(rhs.pairs);
-        self.global_exchange_price_maker *= rhs.global_exchange_price_maker;
-        self.global_exchange_price_taker *= rhs.global_exchange_price_taker;
+
+        self.global.final_start_time =
+            min(self.global.final_start_time, rhs.global.final_start_time);
+        self.global.final_end_time = max(self.global.final_end_time, rhs.global.final_end_time);
+
+        self.global.price_maker *= rhs.global.price_maker;
+        self.global.price_taker *= rhs.global.price_taker;
 
         self
     }
@@ -149,11 +153,7 @@ impl<'a> TimeWindowTrades<'a> {
         tx_hash: FixedBytes<32>,
     ) -> Option<WindowExchangePrice> {
         if pair.0 == pair.1 {
-            return Some(WindowExchangePrice {
-                global_exchange_price_maker: Rational::ONE,
-                global_exchange_price_taker: Rational::ONE,
-                ..Default::default()
-            })
+            return Some(WindowExchangePrice::default())
         }
 
         let res = self
@@ -213,7 +213,7 @@ impl<'a> TimeWindowTrades<'a> {
                 )?;
 
                 // Volume of second leg
-                let second_leg_volume = &first_leg.global_exchange_price_maker * volume;
+                let second_leg_volume = &first_leg.global.price_maker * volume;
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -237,7 +237,7 @@ impl<'a> TimeWindowTrades<'a> {
 
                 Some(price)
             })
-            .max_by_key(|a| a.global_exchange_price_maker.clone())
+            .max_by_key(|a| a.global.price_maker.clone())
     }
 
     #[allow(clippy::type_complexity)]
@@ -298,8 +298,6 @@ impl<'a> TimeWindowTrades<'a> {
         tx_hash: FixedBytes<32>,
     ) -> Option<WindowExchangePrice> {
         let trade_data = self.get_trades(exchanges, pair, dex_swap, tx_hash)?;
-
-        //TODO: Extend time window if vol is cleared by 1.5
 
         let mut walker = PairTradeWalker::new(
             trade_data.trades,
@@ -381,6 +379,9 @@ impl<'a> TimeWindowTrades<'a> {
         let mut global_maker = Rational::ZERO;
         let mut global_taker = Rational::ZERO;
 
+        let mut global_start_time = u64::MAX;
+        let mut global_end_time = 0;
+
         for (ex, (vxp_maker, vxp_taker, trade_vol_weight, trade_vol, start_time, end_time)) in
             exchange_vxp
         {
@@ -401,7 +402,14 @@ impl<'a> TimeWindowTrades<'a> {
                 final_start_time: start_time,
             };
 
+            global_start_time = min(global_start_time, start_time);
+            global_end_time = max(global_end_time, end_time);
+
             per_exchange_price.insert(ex, exchange_price);
+        }
+
+        if global_start_time == u64::MAX {
+            global_start_time = 0;
         }
 
         if trade_volume_global == Rational::ZERO {
@@ -418,13 +426,19 @@ impl<'a> TimeWindowTrades<'a> {
         let global_maker = global_maker / &trade_volume_global;
         let global_taker = global_taker / &trade_volume_global;
 
-        let window_exchange_prices = WindowExchangePrice {
-            exchange_price_with_volume_direct: per_exchange_price
-            global_exchange_price_maker: global_maker,
-            global_exchange_price_taker: global_taker,
-            pairs: vec![pair],
+        let global = ExchangePath {
+            volume:           trade_volume_global,
+            price_maker:      global_maker,
+            price_taker:      global_taker,
+            final_start_time: global_start_time,
+            final_end_time:   global_end_time,
         };
 
+        let window_exchange_prices = WindowExchangePrice {
+            exchange_price_with_volume_direct: per_exchange_price,
+            global,
+            pairs: vec![pair],
+        };
 
         Some(window_exchange_prices)
     }

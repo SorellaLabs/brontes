@@ -687,6 +687,9 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
         "#};
 
+    Ok(())
+    /*
+
     for line in ascii_header.lines() {
         writeln!(f, "{}", line.purple())?;
     }
@@ -845,6 +848,7 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     });
 
     Ok(())
+    */
 }
 
 pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
@@ -893,6 +897,8 @@ pub fn display_optimistic_trades(
     f: &mut std::fmt::Formatter<'_>,
     cex_dex_data: &CexDex,
 ) -> std::fmt::Result {
+    todo!();
+    /*
     if let Some(optimistic_route_pnl) = &cex_dex_data.optimistic_route_pnl {
         writeln!(f, "  - {}: Optimistic Route PnL", "PnL".bright_blue())?;
         writeln!(
@@ -933,6 +939,7 @@ pub fn display_optimistic_trades(
             write!(f, "{}", table)?;
         }
     }
+    */
     Ok(())
 }
 

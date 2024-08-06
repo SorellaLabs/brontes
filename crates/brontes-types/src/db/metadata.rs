@@ -1,4 +1,3 @@
-use std::sync::{Arc, RwLock};
 
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
@@ -66,7 +65,7 @@ pub struct Metadata {
     pub cex_quotes:     CexPriceMap,
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
-    pub cex_trades:     Option<Arc<RwLock<CexTradeMap>>>,
+    pub cex_trades:     Option<CexTradeMap>,
 }
 
 impl Metadata {
@@ -160,7 +159,7 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
-        cex_trades: Option<Arc<RwLock<CexTradeMap>>>,
+        cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
         Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades }
     }

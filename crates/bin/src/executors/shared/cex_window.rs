@@ -1,9 +1,5 @@
-use std::{
-    collections::VecDeque,
-    sync::{Arc, RwLock},
-};
+use std::collections::VecDeque;
 
-use ahash::HashMapExt;
 use brontes_types::{
     db::cex::{CexExchange, CexTradeMap},
     pair::Pair,
@@ -13,39 +9,30 @@ use brontes_types::{
 pub struct CexWindow {
     /// a queue of each pairs vec offset. this allows us to quickly trim
     /// out fields from the extended map
-    offset_list:           VecDeque<(u64, FastHashMap<CexExchange, FastHashMap<Pair, usize>>)>,
-    global_map:            Arc<RwLock<CexTradeMap>>,
+    offset_list:           VecDeque<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
+    global_map:            CexTradeMap,
     /// this is the last block loaded, adjusted for the range lookahead.
     /// this is used so that we don't double load data
     last_end_block_loaded: u64,
     window_size_seconds:   usize,
-    first_block_loaded:    u64,
 }
 
 impl CexWindow {
     pub fn new(window_size_seconds: usize) -> Self {
         Self {
             offset_list: VecDeque::new(),
-            global_map: Arc::new(RwLock::new(CexTradeMap::default())),
+            global_map: CexTradeMap::default(),
             last_end_block_loaded: 0,
             window_size_seconds,
-            first_block_loaded: 0,
         }
     }
 
     /// used to get the initialized range going. Assumes maps are ordered
-    pub fn init(&mut self, maps: Vec<(u64, CexTradeMap)>) {
-        let mut global_map = self
-            .global_map
-            .write()
-            .expect("failed to get write lock on  global cex map");
-
-        self.first_block_loaded = maps.first().expect("No cex maps for Cex Window").0;
-        self.last_end_block_loaded = maps.last().expect("No cex maps for Cex Window").0;
-
+    pub fn init(&mut self, end_block: u64, maps: Vec<CexTradeMap>) {
+        self.last_end_block_loaded = end_block;
         for map in maps {
-            let offsets = global_map.merge_in_map(map.1);
-            self.offset_list.push_back((map.0, offsets));
+            let offsets = self.global_map.merge_in_map(map);
+            self.offset_list.push_back(offsets);
         }
     }
 
@@ -61,51 +48,24 @@ impl CexWindow {
         self.last_end_block_loaded = block;
     }
 
-    /// lets us know if the window is loaded with the necessary data.
+    /// lets us know if the window is loaded with the nessacary data.
     /// if not, we will init the full window instead of just the next block
     pub fn is_loaded(&self) -> bool {
         self.last_end_block_loaded != 0
     }
 
-    pub fn new_block(&mut self, block: u64, new_map: CexTradeMap, active_block: u64) {
-        let mut global_map = self.global_map.write().unwrap();
-        let offsets = global_map.merge_in_map(new_map);
-        self.offset_list.push_back((block, offsets));
-        self.last_end_block_loaded = block;
+    pub fn new_block(&mut self, new_map: CexTradeMap) {
+        let offsets = self.global_map.merge_in_map(new_map);
+        self.offset_list.push_back(offsets);
 
-        let mut accumulated_offsets = FastHashMap::new();
-        let mut blocks_to_remove = 0;
-
-        for (oldest_block, oldest_trades) in self.offset_list.iter() {
-            if *oldest_block >= active_block {
-                break;
-            }
-
-            blocks_to_remove += 1;
-
-            for (ex, pairs) in oldest_trades {
-                for (pair, &offset) in pairs {
-                    accumulated_offsets
-                        .entry(*ex)
-                        .or_insert_with(FastHashMap::default)
-                        .entry(*pair)
-                        .and_modify(|e| *e = offset)
-                        .or_insert(offset);
-                }
-            }
-        }
-
-        self.offset_list.drain(0..blocks_to_remove);
-
-        if !accumulated_offsets.is_empty() {
-            global_map.pop_historical_trades(accumulated_offsets);
-            if let Some((first_block, _)) = self.offset_list.front() {
-                self.first_block_loaded = *first_block;
-            }
-        }
+        let Some(oldest_trades) = self.offset_list.pop_front() else { return };
+        self.global_map.pop_historical_trades(oldest_trades);
     }
 
-    pub fn cex_trade_map(&self) -> Arc<RwLock<CexTradeMap>> {
-        Arc::clone(&self.global_map)
+    pub fn cex_trade_map(&self) -> CexTradeMap {
+        // we gotta clone or else we get a race condition where when
+        // we remove old data. processing might still be occurring thus shifting
+        // the time window from whats expected.
+        self.global_map.clone()
     }
 }
