@@ -1,17 +1,11 @@
-use std::{env, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
-use brontes_core::LibmdbxReader;
 use brontes_database::{
     clickhouse::cex_config::CexDownloadConfig, libmdbx::initialize::LibmdbxInitializer,
 };
 use clap::Parser;
-use clickhouse::Row;
-use db_interfaces::clickhouse::{
-    client::ClickhouseClient, config::ClickhouseConfig, dbms::NullDBMS,
-};
 use reth_tracing_ext::TracingClient;
 
-use super::utils::get_clickhouse_env;
 use crate::{
     cli::{load_clickhouse, load_libmdbx, static_object},
     runner::CliContext,
@@ -56,7 +50,7 @@ impl ClickhouseDownload {
                 Some((self.start_block, self.end_block)),
                 Arc::new(vec![]),
             )
-            .await;
+            .await?;
 
         let time_taken = std::time::Instant::now().duration_since(pre);
         println!("Table: {:?} -- Time Elapsed {}", self.table, time_taken.as_secs());
