@@ -47,28 +47,18 @@ pub const FILTER_THRESHOLD: u64 = 20;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
-type CexDexTradesForSwap =
-    (Vec<NormalizedSwap>, Vec<(Option<WindowExchangePrice>, Option<OptimisticPrice>)>);
-
-struct CexPricesForSwaps {
+pub struct CexPricesForSwaps {
     dex_swaps:        Vec<NormalizedSwap>,
     time_window_vwam: Vec<Option<WindowExchangePrice>>,
     optimistic:       Vec<Option<OptimisticPrice>>,
 }
 
 impl CexPricesForSwaps {
-    fn new(
-        dex_swaps: Vec<NormalizedSwap>,
-        time_window_vwam: Vec<Option<WindowExchangePrice>>,
-        optimistic: Vec<Option<OptimisticPrice>>,
-    ) -> Self {
-        Self { dex_swaps, time_window_vwam, optimistic }
-    }
-
+    #[allow(clippy::type_complexity)]
     fn per_exchange_trades<'a>(
         &'a self,
         exchanges: &'a [CexExchange],
-    ) -> Vec<(&'a CexExchange, Vec<Option<(&'a ExchangePath, &'a [Pair])>>)> {
+    ) -> Vec<(&CexExchange, Vec<Option<(&ExchangePath, &[Pair])>>)> {
         exchanges
             .iter()
             .map(|exchange| {
@@ -88,7 +78,7 @@ impl CexPricesForSwaps {
             .collect()
     }
 
-    fn global_price<'a>(&'a self) -> Option<Vec<(&'a ExchangePath, &'a [Pair])>> {
+    fn global_price(&self) -> Option<Vec<(&ExchangePath, &[Pair])>> {
         let global_prices: Vec<(&ExchangePath, &[Pair])> = self
             .time_window_vwam
             .iter()
@@ -429,7 +419,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let arb_legs_and_trades: Vec<(Option<ArbLeg>, Vec<OptimisticTrade>)> = cex_prices
             .dex_swaps
             .into_iter()
-            .zip(&cex_prices.optimistic)
+            .zip(cex_prices.optimistic)
             .map(|(dex_swap, opt_price)| {
                 opt_price.map_or((None, Vec::new()), |price| {
                     let arb_leg = self.profit_classifier(
@@ -573,7 +563,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
     ) -> (Option<WindowExchangePrice>, Option<OptimisticPrice>) {
         let pair = Pair(swap.token_in.address, swap.token_out.address);
-        let block_timestamp = metadata.microseconds_block_timestamp();
 
         let window_fn = || {
             metadata
@@ -790,7 +779,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             || is_profitable_one_exchange_but_not_stable_swaps
             || is_outlier_but_not_stable_swaps
         {
-            possible_cex_dex.into_bundle(info, &self.trade_config, metadata)
+            possible_cex_dex.into_bundle(info, metadata)
         } else {
             self.utils.get_metrics().inspect(|m| {
                 m.branch_filtering_trigger(MevType::CexDexTrades, "filter_possible_cex_dex")

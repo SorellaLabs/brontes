@@ -1,8 +1,8 @@
-use std::{fmt, fmt::Display, sync::Arc};
+use std::{fmt, sync::Arc};
 
 use alloy_primitives::FixedBytes;
 use brontes_types::{
-    db::cex::{config::CexDexTradeConfig, time_window_vwam::ExchangePath, CexExchange},
+    db::cex::{time_window_vwam::ExchangePath, CexExchange},
     mev::{ArbDetails, BundleData, CexDex, CexMethodology, OptimisticTrade},
     normalized_actions::NormalizedSwap,
     pair::Pair,
@@ -61,21 +61,16 @@ impl CexDexProcessing {
         for possible_cex_dex in self.per_exchange_pnl.iter().flatten() {
             for (i, arb_leg) in possible_cex_dex.arb_legs.iter().enumerate() {
                 if let Some(leg) = arb_leg {
+                    let zero = Rational::ZERO;
                     let current_pnl = &leg.pnl_maker;
-                    let best_pnl = best_legs[i]
-                        .as_ref()
-                        .map_or(Rational::ZERO, |best| best.pnl_maker);
+                    let best_pnl = best_legs[i].as_ref().map_or(&zero, |best| &best.pnl_maker);
 
-                    if current_pnl > &best_pnl {
+                    if current_pnl > best_pnl {
                         best_legs[i] = Some(leg.clone());
-                        aggregate_pnl_maker += &leg.pnl_maker
-                            - best_legs[i]
-                                .as_ref()
-                                .map_or(Rational::ZERO, |l| l.pnl_maker);
-                        aggregate_pnl_taker += &leg.pnl_taker
-                            - best_legs[i]
-                                .as_ref()
-                                .map_or(Rational::ZERO, |l| l.pnl_taker);
+                        aggregate_pnl_maker +=
+                            &leg.pnl_maker - best_legs[i].as_ref().map_or(&zero, |l| &l.pnl_maker);
+                        aggregate_pnl_taker +=
+                            &leg.pnl_taker - best_legs[i].as_ref().map_or(&zero, |l| &l.pnl_taker);
                     }
                 }
             }
@@ -112,7 +107,6 @@ impl CexDexProcessing {
     pub fn into_bundle(
         self,
         tx_info: &TxInfo,
-        config: &CexDexTradeConfig,
         meta: Arc<Metadata>,
     ) -> Option<(f64, BundleData, Vec<ExchangeLegCexPrice>)> {
         let optimistic = self
@@ -162,14 +156,12 @@ impl CexDexProcessing {
                 global_vmap_pnl_maker: self
                     .global_vmam_cex_dex
                     .as_ref()
-                    .map_or(Rational::ZERO, |v| v.aggregate_pnl_maker.clone())
-                    .to_float(),
+                    .map_or(Rational::ZERO, |v| v.aggregate_pnl_maker.clone()),
 
                 global_vmap_pnl_taker: self
                     .global_vmam_cex_dex
                     .as_ref()
-                    .map_or(Rational::ZERO, |v| v.aggregate_pnl_taker.clone())
-                    .to_float(),
+                    .map_or(Rational::ZERO, |v| v.aggregate_pnl_taker.clone()),
 
                 global_vmap_details: self
                     .global_vmam_cex_dex?
@@ -183,12 +175,12 @@ impl CexDexProcessing {
                 optimal_route_pnl_maker: self
                     .max_profit
                     .as_ref()
-                    .map(|v| v.aggregate_pnl_maker.clone().to_float())
+                    .map(|v| v.aggregate_pnl_maker.clone())
                     .unwrap_or_default(),
                 optimal_route_pnl_taker: self
                     .max_profit
                     .as_ref()
-                    .map(|v| v.aggregate_pnl_taker.clone().to_float())
+                    .map(|v| v.aggregate_pnl_taker.clone())
                     .unwrap_or_default(),
 
                 per_exchange_pnl: self
@@ -201,8 +193,8 @@ impl CexDexProcessing {
                                     (
                                         leg.exchange,
                                         (
-                                            p.aggregate_pnl_maker.clone().to_float(),
-                                            p.aggregate_pnl_taker.clone().to_float(),
+                                            p.aggregate_pnl_maker.clone(),
+                                            p.aggregate_pnl_taker.clone(),
                                         ),
                                     )
                                 })
@@ -226,12 +218,12 @@ impl CexDexProcessing {
                 optimistic_route_pnl_maker: self
                     .optimistic_details
                     .as_ref()
-                    .map_or(0.0, |r| r.aggregate_pnl_maker.to_float()),
+                    .map_or(Rational::ZERO, |r| r.aggregate_pnl_maker.clone()),
 
                 optimistic_route_pnl_taker: self
                     .optimistic_details
                     .as_ref()
-                    .map_or(0.0, |r| r.aggregate_pnl_taker.to_float()),
+                    .map_or(Rational::ZERO, |r| r.aggregate_pnl_taker.clone()),
 
                 per_exchange_details: self
                     .per_exchange_pnl
@@ -430,6 +422,39 @@ impl ArbLeg {
         token_price: ExchangeLegCexPrice,
     ) -> Self {
         Self { price, exchange, pnl_maker, pnl_taker, pairs, token_price }
+    }
+}
+impl fmt::Display for ArbLeg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}", "Arbitrage Leg Details:".bold().underline())?;
+        writeln!(f, "  {}: {}", "Exchange".cyan(), self.exchange.to_string().yellow())?;
+        writeln!(f, "  {}: {:.6} USD", "PnL Maker".cyan(), self.pnl_maker.clone().to_float())?;
+        writeln!(f, "  {}: {:.6} USD", "PnL Taker".cyan(), self.pnl_taker.clone().to_float())?;
+
+        writeln!(f, "  {}:", "Trading Pairs".cyan())?;
+        for (index, pair) in self.pairs.iter().enumerate() {
+            writeln!(f, "    {}: {} <-> {}", index + 1, pair.0, pair.1)?;
+        }
+
+        writeln!(f, "  {}:", "Price Details".cyan())?;
+        writeln!(f, "    Maker: {:.8}", self.price.price_maker.clone().to_float())?;
+        writeln!(f, "    Taker: {:.8}", self.price.price_taker.clone().to_float())?;
+
+        writeln!(f, "  {}:", "Token Prices".cyan())?;
+        writeln!(
+            f,
+            "    {}: {:.8} USD",
+            self.token_price.token0,
+            self.token_price.price0.clone().to_float()
+        )?;
+        writeln!(
+            f,
+            "    {}: {:.8} USD",
+            self.token_price.token1,
+            self.token_price.price1.clone().to_float()
+        )?;
+
+        Ok(())
     }
 }
 

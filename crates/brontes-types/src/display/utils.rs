@@ -7,7 +7,7 @@ use prettytable::{Cell, Row, Table};
 use reth_primitives::B256;
 
 use crate::{
-    mev::{AtomicArbType, Bundle, BundleData, CexDex, OptimisticTrade},
+    mev::{ArbDetails, AtomicArbType, Bundle, BundleData, CexDex, OptimisticTrade},
     utils::ToFloatNearest,
 };
 pub fn display_sandwich(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
@@ -687,9 +687,6 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
         "#};
 
-    Ok(())
-    /*
-
     for line in ascii_header.lines() {
         writeln!(f, "{}", line.purple())?;
     }
@@ -718,6 +715,11 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     // Mev section
     writeln!(f, "\n{}", "MEV:\n".bold().underline().bright_yellow())?;
     writeln!(f, "   - Max Profit Route (USD): {}", format_profit(bundle.header.profit_usd))?;
+    writeln!(
+        f,
+        "   - Max Profit Methodology: {}",
+        cex_dex_data.header_pnl_methodology.to_string().red()
+    )?;
     writeln!(f, "   - Bribe (USD): {}", (format_bribe(bundle.header.bribe_usd)).to_string().red())?;
 
     // Cex-dex specific details
@@ -725,36 +727,17 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
     writeln!(f, "  - {}:", "PnL".bright_blue())?;
 
-    // Cex-Dex specific details
-    writeln!(f, "\n{}", "Cex-Dex Details:\n".bold().bright_yellow().underline())?;
     writeln!(f, "  - {}: Global VMAP PnL", "PnL".bright_blue())?;
     writeln!(
         f,
-        "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data
-            .global_vmap_pnl
-            .maker_taker_mid
-            .0
-            .clone()
-            .to_float(),
-        cex_dex_data
-            .global_vmap_pnl
-            .maker_taker_mid
-            .1
-            .clone()
-            .to_float(),
-        cex_dex_data
-            .global_vmap_pnl
-            .maker_taker_ask
-            .0
-            .clone()
-            .to_float(),
-        cex_dex_data
-            .global_vmap_pnl
-            .maker_taker_ask
-            .1
-            .clone()
-            .to_float(),
+        "    - Maker: {:.6}, Taker: {:.6}",
+        cex_dex_data.global_vmap_pnl_maker, cex_dex_data.global_vmap_pnl_taker
+    )?;
+    writeln!(f, "  - {}: Optimistic PnL", "PnL".bright_yellow())?;
+    writeln!(
+        f,
+        "    - Maker: {:.6}, Taker: {:.6}",
+        cex_dex_data.optimistic_route_pnl_maker, cex_dex_data.optimistic_route_pnl_taker
     )?;
 
     display_optimistic_trades(f, cex_dex_data)?;
@@ -762,48 +745,14 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     writeln!(f, "  - {}: Optimal Route PnL", "PnL".bright_blue())?;
     writeln!(
         f,
-        "    - Maker Mid: {}, Maker Ask: {}, Taker Mid: {}, Taker Ask: {}",
-        cex_dex_data
-            .optimal_route_pnl
-            .maker_taker_mid
-            .0
-            .clone()
-            .to_float(),
-        cex_dex_data
-            .optimal_route_pnl
-            .maker_taker_mid
-            .1
-            .clone()
-            .to_float(),
-        cex_dex_data
-            .optimal_route_pnl
-            .maker_taker_ask
-            .0
-            .clone()
-            .to_float(),
-        cex_dex_data
-            .optimal_route_pnl
-            .maker_taker_ask
-            .1
-            .clone()
-            .to_float()
+        "    - Maker: {:.6}, Taker: {:.6}",
+        cex_dex_data.optimal_route_pnl_maker, cex_dex_data.optimal_route_pnl_taker
     )?;
 
     writeln!(f, "  - {}", "Per Exchange PnL:".bold().underline().purple())?;
     for (exchange, pnl) in &cex_dex_data.per_exchange_pnl {
         writeln!(f, "    - {}:", exchange.to_string().bold().underline().green())?;
-        writeln!(
-            f,
-            "      - Maker Mid: {:.6} Taker Mid: {:.6}",
-            pnl.maker_taker_mid.0.clone().to_float(),
-            pnl.maker_taker_mid.1.clone().to_float()
-        )?;
-        writeln!(
-            f,
-            "      - Maker Ask: {:.6} Taker Ask: {:.6}",
-            pnl.maker_taker_ask.0.clone().to_float(),
-            pnl.maker_taker_ask.1.clone().to_float()
-        )?;
+        writeln!(f, "      - Maker: {:.6} Taker: {:.6}", pnl.0, pnl.1)?;
     }
 
     writeln!(f, "\n----------------------------------------")?;
@@ -814,30 +763,22 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
 
         writeln!(f, "   - {}:", "Max Profit Route".purple().bold().underline())?;
         if i < cex_dex_data.optimal_route_details.len() {
-            writeln!(f, "   {}", &cex_dex_data.optimal_route_details[i])?;
+            display_arb_details(f, &cex_dex_data.optimal_route_details[i])?;
         } else {
             writeln!(f, "   - Error: No optimal route detail available for swap {}", i + 1)?;
         }
 
         writeln!(f, "   - {}:", "Global VMAP".purple().bold().underline())?;
         if i < cex_dex_data.global_vmap_details.len() {
-            writeln!(f, "    {}", &cex_dex_data.global_vmap_details[i])?;
+            display_arb_details(f, &cex_dex_data.global_vmap_details[i])?;
         } else {
             writeln!(f, "   - Error: No global VMAP detail available for swap {}", i + 1)?;
         }
 
         writeln!(f, "   {}:", "Per Exchange Arb Details".purple().bold().underline())?;
         if i < cex_dex_data.per_exchange_details.len() {
-            for details in cex_dex_data.per_exchange_details.iter() {
-                if i < details.len() {
-                    writeln!(f, "   {}", details[i])?;
-                } else {
-                    writeln!(
-                        f,
-                        "   - Error: No per exchange arb detail available for swap {}",
-                        i + 1
-                    )?;
-                }
+            for details in cex_dex_data.per_exchange_details[i].iter() {
+                display_arb_details(f, details)?;
             }
         } else {
             writeln!(f, "   - Error: No per exchange arb details available for swap {}", i + 1)?;
@@ -848,7 +789,71 @@ pub fn display_cex_dex(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     });
 
     Ok(())
-    */
+}
+fn display_arb_details(f: &mut fmt::Formatter<'_>, details: &ArbDetails) -> fmt::Result {
+    writeln!(f, "     Pairs: {:?}", details.pairs)?;
+    writeln!(f, "     Trade Window: {} - {}", details.trade_start_time, details.trade_end_time)?;
+    writeln!(f, "     CEX Exchange: {:?}", details.cex_exchange)?;
+    writeln!(
+        f,
+        "     Price (Maker/Taker): {:.8} / {:.8}",
+        details.price_maker.clone().to_float(),
+        details.price_taker.clone().to_float()
+    )?;
+    writeln!(f, "     DEX Exchange: {:?}", details.dex_exchange)?;
+    writeln!(f, "     DEX Price: {:.8}", details.dex_price.clone().to_float())?;
+    writeln!(f, "     DEX Amount: {:.8}", details.dex_amount.clone().to_float())?;
+    writeln!(
+        f,
+        "     PnL (Maker/Taker): {:.8} / {:.8}",
+        details.pnl_maker.clone().to_float(),
+        details.pnl_taker.clone().to_float()
+    )?;
+    Ok(())
+}
+
+pub fn display_optimistic_trades(
+    f: &mut std::fmt::Formatter<'_>,
+    cex_dex_data: &CexDex,
+) -> std::fmt::Result {
+    writeln!(f, "  - {}: Optimistic Route PnL", "PnL".bright_blue())?;
+    writeln!(
+        f,
+        "    - Maker: {:.8}, Taker: {:.8}",
+        cex_dex_data.optimistic_route_pnl_maker, cex_dex_data.optimistic_route_pnl_taker,
+    )?;
+
+    if !cex_dex_data.optimistic_trade_details.is_empty() {
+        writeln!(f, "\n  - {}: Optimistic Trade Details", "Trades".bright_green())?;
+        let mut table = Table::new();
+        table.add_row(Row::new(vec![
+            Cell::new("Exchange").style_spec("Fb"),
+            Cell::new("Pair").style_spec("Fb"),
+            Cell::new("Time from block (ms)").style_spec("Fb"),
+            Cell::new("Price").style_spec("Fb"),
+            Cell::new("Volume").style_spec("Fb"),
+        ]));
+        let mut all_trades: Vec<&OptimisticTrade> = cex_dex_data
+            .optimistic_trade_details
+            .iter()
+            .flatten()
+            .collect();
+        all_trades.sort_by_key(|trade| trade.timestamp);
+        for trade in all_trades {
+            let relative_time =
+                (trade.timestamp as i64 - cex_dex_data.block_timestamp as i64) / 1000;
+            table.add_row(Row::new(vec![
+                Cell::new(&format!("{:?}", trade.exchange)),
+                Cell::new(&format!("{:?}", trade.pair)),
+                Cell::new(&format!("{}", relative_time)),
+                Cell::new(&format!("{:.8}", trade.price.clone().to_float())),
+                Cell::new(&format!("{:.8}", trade.volume.clone().to_float())),
+            ]));
+        }
+        write!(f, "{}", table)?;
+    }
+
+    Ok(())
 }
 
 pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
@@ -890,56 +895,6 @@ pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
 
     cex_dex_data.gas_details.pretty_print_with_spaces(f, 8)?;
 
-    Ok(())
-}
-
-pub fn display_optimistic_trades(
-    f: &mut std::fmt::Formatter<'_>,
-    cex_dex_data: &CexDex,
-) -> std::fmt::Result {
-    todo!();
-    /*
-    if let Some(optimistic_route_pnl) = &cex_dex_data.optimistic_route_pnl {
-        writeln!(f, "  - {}: Optimistic Route PnL", "PnL".bright_blue())?;
-        writeln!(
-            f,
-            "    - Maker: {:.8}, Taker: {:.8}",
-            optimistic_route_pnl.maker_taker_ask.0.clone().to_float(),
-            optimistic_route_pnl.maker_taker_ask.1.clone().to_float(),
-        )?;
-        if !cex_dex_data.optimistic_trade_details.is_empty() {
-            writeln!(f, "\n  - {}: Optimistic Trade Details", "Trades".bright_green())?;
-            let mut table = Table::new();
-            table.add_row(Row::new(vec![
-                Cell::new("Exchange").style_spec("Fb"),
-                Cell::new("Pair").style_spec("Fb"),
-                Cell::new("Time from block (ms)").style_spec("Fb"),
-                Cell::new("Price").style_spec("Fb"),
-                Cell::new("Volume").style_spec("Fb"),
-            ]));
-
-            let mut all_trades: Vec<&OptimisticTrade> = cex_dex_data
-                .optimistic_trade_details
-                .iter()
-                .flatten()
-                .collect();
-            all_trades.sort_by_key(|trade| trade.timestamp);
-
-            for trade in all_trades {
-                let relative_time =
-                    (trade.timestamp as i64 - cex_dex_data.block_timestamp as i64) / 1000;
-                table.add_row(Row::new(vec![
-                    Cell::new(&format!("{:?}", trade.exchange)),
-                    Cell::new(&format!("{:?}", trade.pair)),
-                    Cell::new(&format!("{}", relative_time)),
-                    Cell::new(&format!("{:.8}", trade.price.clone().to_float())),
-                    Cell::new(&format!("{:.8}", trade.volume.clone().to_float())),
-                ]));
-            }
-            write!(f, "{}", table)?;
-        }
-    }
-    */
     Ok(())
 }
 

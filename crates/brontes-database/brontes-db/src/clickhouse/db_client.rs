@@ -708,7 +708,7 @@ mod tests {
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_threadpools,
         mev::{
-            ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
+            ArbDetails, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
             JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
             Sandwich,
         },
@@ -784,21 +784,23 @@ mod tests {
     async fn cex_dex(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let swap = NormalizedSwap::default();
         let arb_detail = ArbDetails::default();
-        let arb_pnl = ArbPnl::default();
         let opt_trade = OptimisticTrade::default();
         let cex_exchange = CexExchange::Binance;
 
         let case0 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl: arb_pnl.clone(),
+            global_vmap_pnl_maker: 0.0,
+            global_vmap_pnl_taker: 0.0,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl: arb_pnl.clone(),
+            optimal_route_pnl_maker: 0.0,
+            optimal_route_pnl_taker: 0.0,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl: Some(arb_pnl.clone()),
+            optimistic_route_pnl_maker: 0.0,
+            optimistic_route_pnl_taker: 0.0,
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            per_exchange_pnl: vec![(cex_exchange, (0.0, 0.0))],
             ..CexDex::default()
         };
 
@@ -809,14 +811,17 @@ mod tests {
         let case1 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl: arb_pnl.clone(),
+            global_vmap_pnl_maker: 0.0,
+            global_vmap_pnl_taker: 0.0,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl: arb_pnl.clone(),
+            optimal_route_pnl_maker: 0.0,
+            optimal_route_pnl_taker: 0.0,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl: None,
+            optimistic_route_pnl_maker: 0.0,
+            optimistic_route_pnl_taker: 0.0,
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            per_exchange_pnl: vec![(cex_exchange, (0.0, 0.0))],
             ..CexDex::default()
         };
 

@@ -3,7 +3,7 @@ use std::{
     pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, RwLock,
+        Arc,
     },
     task::Poll,
     time::Duration,
@@ -41,7 +41,6 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
-    active_block:          u64,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -62,7 +61,6 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             result_buf: VecDeque::new(),
             always_generate_price,
             force_no_dex_pricing,
-            active_block: 0,
         }
     }
 
@@ -111,6 +109,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
     }
 
+    //TODO: return acc option, instead of just returning default
     fn load_cex_trades<DB: LibmdbxReader>(
         &mut self,
         libmdbx: &'static DB,
@@ -166,7 +165,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
 
-        meta.cex_trades = self.load_cex_trades(libmdbx, block);
+        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
 
         tracing::debug!(?block, "waiting for dex price");
 
@@ -198,7 +197,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .expect("failed to fetch builder info table in libmdbx");
 
         let mut meta = meta.into_full_metadata(DexQuotes(vec![]));
-        meta.cex_trades = self.load_cex_trades(libmdbx, block);
+        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
 
         self.result_buf
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
@@ -224,7 +223,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
 
-        meta.cex_trades = self.load_cex_trades(libmdbx, block);
+        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
 
         tracing::debug!(?block, "caching result buf");
         self.result_buf
@@ -290,7 +289,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                 }
             };
 
-            meta.cex_trades = Some(Arc::new(RwLock::new(trades)));
+            meta.cex_trades = Some(trades);
             meta.builder_info = builder_info;
             (block, tree, meta)
         });
