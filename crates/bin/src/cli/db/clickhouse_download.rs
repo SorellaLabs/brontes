@@ -38,13 +38,17 @@ impl ClickhouseDownload {
             Arc::new(TracingClient::new(&Path::new(&brontes_db_endpoint), 10, task_executor)),
         );
 
-        ctx.task_executor.spawn_critical("download", {
-            async move {
-                if let Err(e) = self.run(initializer, libmbdx).await {
-                    eprintln!("Error downloading data -- {:?}", e);
+        ctx.task_executor
+            .spawn_critical("download", {
+                async move {
+                    if let Err(e) = self.run(initializer, libmbdx).await {
+                        eprintln!("Error downloading data -- {:?}", e);
+                    }
                 }
-            }
-        })
+            })
+            .await?;
+
+        Ok(())
     }
 
     async fn run(self, initializer: LibmdbxInitializer, libmdbx: Libmdbx) -> eyre::Result<()> {
