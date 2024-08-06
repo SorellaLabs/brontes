@@ -53,6 +53,7 @@ use crate::{
 };
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
+const MAX_MARKOUT_TIME: f64 = 300.0;
 
 #[derive(Clone)]
 pub struct Clickhouse {
@@ -363,11 +364,14 @@ impl ClickhouseHandle for Clickhouse {
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexPriceData>> {
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
-            CexRangeOrArbitrary::Range(mut s, mut e) => {
-                s -= self.cex_download_config.run_time_window.0;
-                e += self.cex_download_config.run_time_window.1;
+            CexRangeOrArbitrary::Range(s, e) => {
+                debug!(
+                    target = "brontes_db::cex_download",
+                    "Querying block times to download quotes for range: start={}, end={}", s, e
+                );
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
+
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let mut query = BLOCK_TIMES.to_string();
 
@@ -425,7 +429,7 @@ impl ClickhouseHandle for Clickhouse {
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (1.0 * SECONDS_TO_US);
+                    + (MAX_MARKOUT_TIME * SECONDS_TO_US);
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -438,7 +442,9 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 1.0 * SECONDS_TO_US))
+                    .map(|b| {
+                        b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 300.0 * SECONDS_TO_US)
+                    })
                     .collect::<Vec<String>>()
                     .join(" OR ");
 
@@ -471,7 +477,10 @@ impl ClickhouseHandle for Clickhouse {
                 s -= self.cex_download_config.run_time_window.0;
                 e += self.cex_download_config.run_time_window.1;
 
-                debug!("Querying block times for range: start={}, end={}", s, e);
+                debug!(
+                    target = "brontes_db::cex_download",
+                    "Querying block times to download trades for range: start={}, end={}", s, e
+                );
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {

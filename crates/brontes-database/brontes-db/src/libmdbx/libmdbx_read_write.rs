@@ -1267,7 +1267,11 @@ pub fn determine_eth_prices(
 ) -> Option<Rational> {
     Some(
         cex_quotes
-            .get_quote_from_most_liquid_exchange(&Pair(quote_asset, WETH_ADDRESS), block_timestamp)?
+            .get_quote_from_most_liquid_exchange(
+                &Pair(quote_asset, WETH_ADDRESS),
+                block_timestamp,
+                None,
+            )?
             .maker_taker_mid()
             .0,
     )

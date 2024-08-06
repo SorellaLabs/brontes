@@ -76,6 +76,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .get_quote_from_most_liquid_exchange(
                             &pair,
                             metadata.microseconds_block_timestamp(),
+                            Some(1_000_000),
                         )?
                         .price_maker
                         .1

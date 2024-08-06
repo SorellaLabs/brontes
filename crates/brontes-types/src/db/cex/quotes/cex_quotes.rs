@@ -42,7 +42,7 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-const MAX_TIME_DIFFERENCE: u64 = 250_000_000;
+const MAX_TIME_DIFFERENCE: u64 = 250_000;
 
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap {
@@ -103,11 +103,12 @@ impl CexPriceMap {
         &self,
         pair: &Pair,
         timestamp: u64,
+        max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         self.most_liquid_ex
             .get(pair)
             .or_else(|| self.most_liquid_ex.get(&pair.flip()))
-            .and_then(|exchange| self.get_quote_at(pair, exchange, timestamp))
+            .and_then(|exchange| self.get_quote_at(pair, exchange, timestamp, max_time_diff))
     }
 
     pub fn get_quote_at(
@@ -115,9 +116,17 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
+        max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
-        self.get_exchange_quote_at_direct(pair, exchange, timestamp)
-            .or_else(|| self.get_exchange_quote_at_via_intermediary(pair, exchange, timestamp))
+        self.get_exchange_quote_at_direct(pair, exchange, timestamp, max_time_diff)
+            .or_else(|| {
+                self.get_exchange_quote_at_via_intermediary(
+                    pair,
+                    exchange,
+                    timestamp,
+                    max_time_diff,
+                )
+            })
     }
 
     pub fn get_exchange_quote_at_direct(
@@ -125,6 +134,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
+        max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
             return Some(FeeAdjustedQuote::default_one_to_one());
@@ -155,9 +165,10 @@ impl CexPriceMap {
                     .chain(adjusted_quotes.get(index))
                     .min_by_key(|&quote| (quote.timestamp as i64 - timestamp as i64).abs())?;
 
-                if (closest_quote.timestamp as i64 - timestamp as i64).unsigned_abs()
-                    > MAX_TIME_DIFFERENCE
-                {
+                let time_diff = (closest_quote.timestamp as i64 - timestamp as i64).unsigned_abs();
+                let max_allowed_diff = max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
+
+                if time_diff > max_allowed_diff {
                     return None;
                 }
 
@@ -191,6 +202,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
+        max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         let intermediaries = self.calculate_intermediary_addresses(exchange, pair);
 
@@ -201,8 +213,8 @@ impl CexPriceMap {
                 let pair1 = Pair(intermediary, pair.1);
 
                 if let (Some(quote1), Some(quote2)) = (
-                    self.get_exchange_quote_at_direct(&pair0, exchange, timestamp),
-                    self.get_exchange_quote_at_direct(&pair1, exchange, timestamp),
+                    self.get_exchange_quote_at_direct(&pair0, exchange, timestamp, max_time_diff),
+                    self.get_exchange_quote_at_direct(&pair1, exchange, timestamp, max_time_diff),
                 ) {
                     let combined_price_maker = (
                         &quote1.price_maker.0 * &quote2.price_maker.0,

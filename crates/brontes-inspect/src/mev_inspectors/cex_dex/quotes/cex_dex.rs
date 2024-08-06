@@ -268,7 +268,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         //TODO: Add smiths map to query most liquid dex for given pair
         let swaps = self.merge_possible_swaps(dex_swaps);
 
-        let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0);
+        let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0, None);
         let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_hash)?;
         let cex_dex_processing = CexDexProcessing { dex_swaps: swaps, pnl: cex_dex };
         Some(cex_dex_processing)
@@ -351,6 +351,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             .get_quote_from_most_liquid_exchange(
                 &Pair(swap.token_in.address, self.utils.quote),
                 metadata.microseconds_block_timestamp(),
+                None,
             )?
             .maker_taker_mid()
             .0;
@@ -389,6 +390,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
         time_delta: u64,
+        max_time_diff: Option<u64>,
     ) -> Vec<Option<FeeAdjustedQuote>> {
         dex_swaps
             .iter()
@@ -400,6 +402,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     .get_quote_from_most_liquid_exchange(
                         &pair,
                         metadata.microseconds_block_timestamp() + (time_delta * 1_000_000),
+                        max_time_diff,
                     )
                     .or_else(|| {
                         debug!(
@@ -466,7 +469,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             || tx_attributes_meet_cex_dex_criteria
         {
             let t2 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 2)
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 2, None)
                 .into_iter()
                 .map(|quote_option| {
                     quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
@@ -474,7 +477,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .collect_vec();
 
             let t12 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 12)
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 12, Some(500_000))
                 .into_iter()
                 .map(|quote_option| {
                     quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
@@ -482,7 +485,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .collect_vec();
 
             let t30 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 30)
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 30, Some(2_000_000))
                 .into_iter()
                 .map(|quote_option| {
                     quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
@@ -490,7 +493,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .collect_vec();
 
             let t60 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 60)
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 60, Some(4_000_000))
                 .into_iter()
                 .map(|quote_option| {
                     quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
@@ -498,7 +501,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .collect_vec();
 
             let t300 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 300)
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 300, Some(15_000_000))
                 .into_iter()
                 .map(|quote_option| {
                     quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
