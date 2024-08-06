@@ -4,7 +4,7 @@ use brontes_database::{
     clickhouse::cex_config::CexDownloadConfig, libmdbx::initialize::LibmdbxInitializer,
 };
 use clap::Parser;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressDrawTarget};
 use reth_tracing_ext::TracingClient;
 use tracing::{debug, error, info};
 
@@ -63,13 +63,18 @@ impl ClickhouseDownload {
 
         let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracer);
 
+        let bar = ProgressBar::with_draw_target(
+            Some(self.end_block - self.start_block),
+            ProgressDrawTarget::stderr_with_hz(100),
+        );
+
         let pre = std::time::Instant::now();
         initializer
             .initialize(
                 self.table,
                 self.clear_table,
                 Some((self.start_block, self.end_block)),
-                Arc::new(vec![(self.tables, ProgressBar::default())]),
+                Arc::new(vec![(self.table, bar)]),
             )
             .await?;
 
