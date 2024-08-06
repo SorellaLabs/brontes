@@ -22,16 +22,20 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDexQuote {
-    pub tx_hash:         B256,
-    pub block_timestamp: u64,
-    pub block_number:    u64,
-    pub swaps:           Vec<NormalizedSwap>,
-    pub mid_price:       Vec<f64>,
+    pub tx_hash:           B256,
+    pub block_timestamp:   u64,
+    pub block_number:      u64,
+    pub swaps:             Vec<NormalizedSwap>,
+    pub instant_mid_price: Vec<f64>,
+    pub t2_mid_price:      Vec<f64>,
+    pub t12_mid_price:     Vec<f64>,
+    pub t60_mid_price:     Vec<f64>,
+    pub t300_mid_price:    Vec<f64>,
     #[redefined(same_fields)]
-    pub exchange:        CexExchange,
-    pub pnl:             f64,
+    pub exchange:          CexExchange,
+    pub pnl:               f64,
     #[redefined(same_fields)]
-    pub gas_details:     GasDetails,
+    pub gas_details:       GasDetails,
 }
 
 impl Mev for CexDexQuote {
@@ -65,7 +69,7 @@ impl Serialize for CexDexQuote {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("CexDexQuote", 15)?;
+        let mut ser_struct = serializer.serialize_struct("CexDexQuote", 19)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("block_timestamp", &self.block_timestamp)?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
@@ -83,7 +87,11 @@ impl Serialize for CexDexQuote {
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
         ser_struct.serialize_field("pnl", &self.pnl)?;
-        ser_struct.serialize_field("mid_price", &self.mid_price)?;
+        ser_struct.serialize_field("instant_mid_price", &self.instant_mid_price)?;
+        ser_struct.serialize_field("t2_mid_price", &self.t2_mid_price)?;
+        ser_struct.serialize_field("t12_mid_price", &self.t12_mid_price)?;
+        ser_struct.serialize_field("t60_mid_price", &self.t60_mid_price)?;
+        ser_struct.serialize_field("t300_mid_price", &self.t300_mid_price)?;
         ser_struct.serialize_field("exchange", &self.exchange.to_string())?;
         ser_struct.serialize_field(
             "gas_details",
@@ -112,7 +120,11 @@ impl DbRow for CexDexQuote {
         "swaps.amount_in",
         "swaps.amount_out",
         "pnl",
-        "mid_price",
+        "instant_mid_price",
+        "t2_mid_price",
+        "t12_mid_price",
+        "t60_mid_price",
+        "t300_mid_price",
         "exchange",
         "gas_details",
     ];

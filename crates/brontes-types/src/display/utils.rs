@@ -886,8 +886,23 @@ pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
     writeln!(f, "\n{}", "Swaps".bold().underline().bright_yellow())?;
     for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
         writeln!(f, "   Swap {}: {}", i + 1, swap)?;
-        if i < cex_dex_data.mid_price.len() {
-            writeln!(f, "      - Mid Price: {:.6}", cex_dex_data.mid_price[i])?;
+        if i < cex_dex_data.instant_mid_price.len() {
+            writeln!(f, "      - Mid Price: {:.6}", cex_dex_data.instant_mid_price[i])?;
+        }
+        if i < cex_dex_data.t2_mid_price.len() {
+            writeln!(f, "      - Mid Price (T2): {:.6}", cex_dex_data.t2_mid_price[i])?;
+        }
+
+        if i < cex_dex_data.t12_mid_price.len() {
+            writeln!(f, "      - Mid Price (T12): {:.6}", cex_dex_data.t12_mid_price[i])?;
+        }
+
+        if i < cex_dex_data.t60_mid_price.len() {
+            writeln!(f, "      - Mid Price (T60): {:.6}", cex_dex_data.t60_mid_price[i])?;
+        }
+
+        if i < cex_dex_data.t300_mid_price.len() {
+            writeln!(f, "      - Mid Price (T300): {:.6}", cex_dex_data.t300_mid_price[i])?;
         }
     }
     // Gas Details

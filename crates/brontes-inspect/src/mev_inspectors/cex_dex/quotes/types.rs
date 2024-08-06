@@ -47,19 +47,31 @@ pub struct CexDexProcessing {
 }
 
 impl CexDexProcessing {
-    pub fn into_bundle(self, tx_info: &TxInfo, block_timestamp: u64) -> Option<(f64, BundleData)> {
+    pub fn into_bundle(
+        self,
+        tx_info: &TxInfo,
+        block_timestamp: u64,
+        t2_mid_price: Vec<f64>,
+        t12_mid_price: Vec<f64>,
+        t60_mid_price: Vec<f64>,
+        t300_mid_price: Vec<f64>,
+    ) -> Option<(f64, BundleData)> {
         Some((
             self.pnl.aggregate_pnl,
             BundleData::CexDexQuote(CexDexQuote {
                 tx_hash: tx_info.tx_hash,
                 block_number: tx_info.block_number,
                 block_timestamp,
-                mid_price: self
+                instant_mid_price: self
                     .pnl
                     .arb_legs
                     .iter()
                     .map(|l| l.as_ref().unwrap_or(&ExchangeLeg::default()).cex_mid_price)
                     .collect(),
+                t2_mid_price,
+                t12_mid_price,
+                t60_mid_price,
+                t300_mid_price,
                 pnl: self.pnl.aggregate_pnl,
                 exchange: self.pnl.arb_legs[0].as_ref()?.exchange,
                 gas_details: tx_info.gas_details,

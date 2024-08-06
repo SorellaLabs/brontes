@@ -80,9 +80,9 @@ use itertools::Itertools;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 pub struct CexDexQuotesInspector<'db, DB: LibmdbxReader> {
-    utils:               SharedInspectorUtils<'db, DB>,
-    quotes_fetch_offset: u64,
-    _cex_exchanges:      Vec<CexExchange>,
+    utils:                SharedInspectorUtils<'db, DB>,
+    _quotes_fetch_offset: u64,
+    _cex_exchanges:       Vec<CexExchange>,
 }
 
 impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
@@ -102,9 +102,9 @@ impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
         metrics: Option<OutlierMetrics>,
     ) -> Self {
         Self {
-            utils: SharedInspectorUtils::new(quote, db, metrics),
-            quotes_fetch_offset,
-            _cex_exchanges: cex_exchanges.to_owned(),
+            utils:                SharedInspectorUtils::new(quote, db, metrics),
+            _quotes_fetch_offset: quotes_fetch_offset,
+            _cex_exchanges:       cex_exchanges.to_owned(),
         }
     }
 }
@@ -239,11 +239,8 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     },
                 );
 
-                let (profit_usd, cex_dex) = self.filter_possible_cex_dex(
-                    possible_cex_dex,
-                    &tx_info,
-                    metadata.block_timestamp,
-                )?;
+                let (profit_usd, cex_dex) =
+                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata)?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -271,7 +268,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         //TODO: Add smiths map to query most liquid dex for given pair
         let swaps = self.merge_possible_swaps(dex_swaps);
 
-        let quotes = self.cex_quotes_for_swap(&swaps, metadata, &CexExchange::Binance);
+        let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0);
         let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_hash)?;
         let cex_dex_processing = CexDexProcessing { dex_swaps: swaps, pnl: cex_dex };
         Some(cex_dex_processing)
@@ -391,7 +388,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
-        exchange: &CexExchange,
+        time_delta: u64,
     ) -> Vec<Option<FeeAdjustedQuote>> {
         dex_swaps
             .iter()
@@ -402,14 +399,13 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     .cex_quotes
                     .get_quote_from_most_liquid_exchange(
                         &pair,
-                        metadata.microseconds_block_timestamp() + self.quotes_fetch_offset,
+                        metadata.microseconds_block_timestamp() + time_delta,
                     )
                     .or_else(|| {
                         debug!(
-                            "No CEX quote found for pair: {}, {} at exchange: {:?}",
+                            "No CEX quote found for pair: {}-{}",
                             dex_swap.token_in_symbol(),
                             dex_swap.token_out_symbol(),
-                            exchange
                         );
                         None
                     })
@@ -445,7 +441,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         &self,
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
-        block_timestamp: u64,
+        metadata: &Metadata,
     ) -> Option<(f64, BundleData)> {
         let is_cex_dex_bot_with_significant_activity = info
             .is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD * 2);
@@ -469,7 +465,39 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             || is_cex_dex_based_on_historical_activity
             || tx_attributes_meet_cex_dex_criteria
         {
-            possible_cex_dex.into_bundle(info, block_timestamp)
+            let t2 = self
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 2)
+                .into_iter()
+                .filter_map(|quote_option| {
+                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                })
+                .collect_vec();
+
+            let t12 = self
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 12)
+                .into_iter()
+                .filter_map(|quote_option| {
+                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                })
+                .collect_vec();
+
+            let t60 = self
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 60)
+                .into_iter()
+                .filter_map(|quote_option| {
+                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                })
+                .collect_vec();
+
+            let t300 = self
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 300)
+                .into_iter()
+                .filter_map(|quote_option| {
+                    quote_option.and_then(|quote| Some(quote.maker_taker_mid().0.to_float()))
+                })
+                .collect_vec();
+
+            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t60, t300)
         } else {
             None
         }
