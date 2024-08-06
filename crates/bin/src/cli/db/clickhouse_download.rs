@@ -39,7 +39,11 @@ impl ClickhouseDownload {
         let initializer = LibmdbxInitializer::new(
             libmdbx,
             clickhouse,
-            Arc::new(TracingClient::new(&Path::new(&brontes_db_endpoint), 10, ctx.task_executor)),
+            Arc::new(TracingClient::new(
+                &Path::new(&brontes_db_endpoint),
+                10,
+                ctx.task_executor.clone(),
+            )),
         );
 
         ctx.task_executor
