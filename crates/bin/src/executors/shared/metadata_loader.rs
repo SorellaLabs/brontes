@@ -76,8 +76,17 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             && self.clickhouse_futures.is_empty()
     }
 
-    pub fn generate_dex_pricing(&self) -> bool {
-        !self.force_no_dex_pricing && self.always_generate_price
+    pub fn generate_dex_pricing<DB: LibmdbxReader>(
+        &self,
+        block: u64,
+        libmdbx: &'static DB,
+    ) -> bool {
+        !self.force_no_dex_pricing
+            && (self.always_generate_price
+                || libmdbx
+                    .get_dex_quotes(block)
+                    .map(|f| f.0.is_empty())
+                    .unwrap_or(true))
     }
 
     //TODO: remove unecessary dex pricing query
@@ -88,7 +97,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         quote_asset: Address,
     ) {
         let block = tree.header.number;
-        let generate_dex_pricing = self.generate_dex_pricing();
+        let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
         if !generate_dex_pricing && self.clickhouse.is_none() {
             self.load_metadata_with_dex_prices(tree, libmdbx, block, quote_asset);
@@ -106,7 +115,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         &mut self,
         libmdbx: &'static DB,
         block: u64,
-    ) -> CexTradeMap {
+    ) -> Option<CexTradeMap> {
         if !self.cex_window_data.is_loaded() {
             let window = self.cex_window_data.get_window_lookahead();
             // given every download is -6 + 6 around the block
@@ -121,7 +130,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let last_block = block + offsets;
             self.cex_window_data.init(last_block, trades);
 
-            return self.cex_window_data.cex_trade_map()
+            return Some(self.cex_window_data.cex_trade_map())
         }
 
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
@@ -131,7 +140,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
         self.cex_window_data.set_last_block(last_block);
 
-        self.cex_window_data.cex_trade_map()
+        Some(self.cex_window_data.cex_trade_map())
     }
 
     fn load_metadata_no_dex_pricing<DB: LibmdbxReader>(
@@ -157,7 +166,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
 
-        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
+        meta.cex_trades = self.load_cex_trades(libmdbx, block);
 
         tracing::debug!(?block, "waiting for dex price");
 
@@ -189,7 +198,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .expect("failed to fetch builder info table in libmdbx");
 
         let mut meta = meta.into_full_metadata(DexQuotes(vec![]));
-        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
+        meta.cex_trades = self.load_cex_trades(libmdbx, block);
 
         self.result_buf
             .push_back(BlockData { metadata: meta.into(), tree: tree.into() });
@@ -215,7 +224,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             .try_fetch_builder_info(tree.header.beneficiary)
             .expect("failed to fetch builder info table in libmdbx");
 
-        meta.cex_trades = Some(self.load_cex_trades(libmdbx, block));
+        meta.cex_trades = self.load_cex_trades(libmdbx, block);
 
         tracing::debug!(?block, "caching result buf");
         self.result_buf

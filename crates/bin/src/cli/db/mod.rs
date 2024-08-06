@@ -13,6 +13,7 @@ mod discovery;
 mod ensure_test_traces;
 mod export;
 mod init;
+mod table_stats;
 #[cfg(feature = "local-clickhouse")]
 mod tip_tracer;
 mod trace_range;
@@ -44,6 +45,9 @@ pub enum DatabaseCommands {
     /// libmdbx.
     #[command(name = "init")]
     Init(init::Init),
+    /// Libmbdx Table Stats
+    #[command(name = "table-stats")]
+    TableStats(table_stats::Stats),
     /// Export libmbdx data to parquet
     #[command(name = "export")]
     Export(export::Export),
@@ -80,6 +84,7 @@ impl Database {
             DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
             DatabaseCommands::UploadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::TableStats(cmd) => cmd.execute(brontes_db_endpoint),
             DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::CexData(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
