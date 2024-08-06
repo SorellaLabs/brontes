@@ -31,6 +31,7 @@ pub struct ClickhouseDownload {
 
 impl ClickhouseDownload {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+        panic!("here");
         let task = self.run(brontes_db_endpoint, ctx).await;
 
         if let Err(e) = task.as_ref() {
