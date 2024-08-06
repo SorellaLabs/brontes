@@ -48,6 +48,9 @@ pub struct ClickhouseDownload {
     /// table to download
     #[arg(short, long)]
     pub table:       brontes_database::Tables,
+    /// clears the table before downloading
+    #[arg(short, long, default_value = "false")]
+    pub clear_table: bool,
 }
 
 impl ClickhouseDownload {
@@ -68,7 +71,7 @@ impl ClickhouseDownload {
         initializer
             .initialize(
                 self.table,
-                true,
+                self.clear_table,
                 Some((self.start_block, self.end_block)),
                 Arc::new(vec![]),
             )
