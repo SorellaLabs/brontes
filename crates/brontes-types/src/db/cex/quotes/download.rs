@@ -190,7 +190,7 @@ fn find_closest_to_time_boundries(
     block_time: u64,
     exchange_symbol_map: FastHashMap<Pair, Vec<CexQuote>>,
 ) -> FastHashMap<Pair, Vec<CexQuote>> {
-    let block_time = block_time * 1000000;
+    let block_time: u128 = block_time * 1000000;
     exchange_symbol_map
         .into_par_iter()
         .map(|(pair, quotes)| {
@@ -200,9 +200,9 @@ fn find_closest_to_time_boundries(
                     .iter()
                     .filter_map(|window| {
                         quotes.iter().min_by_key(|quote| {
-                            let delta = quote.timestamp as i64 - block_time as i64;
-                            let window = window * 1000000;
-                            (delta - window as i64).abs()
+                            let delta = quote.timestamp as i128 - block_time as i128;
+                            let window = window as i128 * 1000000;
+                            (delta - window as i128).abs()
                         })
                     })
                     .cloned()
