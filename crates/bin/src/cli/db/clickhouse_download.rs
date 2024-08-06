@@ -13,7 +13,7 @@ use reth_tracing_ext::TracingClient;
 
 use super::utils::get_clickhouse_env;
 use crate::{
-    cli::{load_libmdbx, static_object},
+    cli::{load_clickhouse, load_libmdbx, static_object},
     runner::CliContext,
 };
 
@@ -39,8 +39,8 @@ impl ClickhouseDownload {
         let task_executor = ctx.task_executor;
 
         let cex_config = CexDownloadConfig::default();
-        let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint)?);
-        let clickhouse: ClickhouseClient<NullDBMS> = get_clickhouse_env();
+        let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint.clone())?);
+        let clickhouse = static_object(load_clickhouse(cex_config).await?);
 
         let initializer = LibmdbxInitializer::new(
             libmdbx,

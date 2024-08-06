@@ -1,5 +1,3 @@
-use std::env;
-
 use ahash::HashSetExt;
 use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
@@ -16,7 +14,6 @@ use clickhouse::Row;
 use db_interfaces::{
     clickhouse::{
         client::ClickhouseClient,
-        config::ClickhouseConfig,
         dbms::{ClickhouseDBMS, NullDBMS},
     },
     errors::DatabaseError,

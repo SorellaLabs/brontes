@@ -4,6 +4,7 @@ mod r2_uploader;
 mod snapshot;
 use crate::runner::CliContext;
 mod cex_data;
+#[cfg(feature = "local-clickhouse")]
 mod clickhouse_download;
 mod db_clear;
 mod db_insert;
