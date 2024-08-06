@@ -4,6 +4,7 @@ mod r2_uploader;
 mod snapshot;
 use crate::runner::CliContext;
 mod cex_data;
+mod clickhouse_download;
 mod db_clear;
 mod db_insert;
 mod db_query;
@@ -50,6 +51,10 @@ pub enum DatabaseCommands {
     /// downloads a db snapshot from the remote endpoint
     #[command(name = "download-snapshot")]
     DownloadSnapshot(snapshot::Snapshot),
+    #[cfg(feature = "local-clickhouse")]
+    /// downloads a the db data from clickhouse
+    #[command(name = "download-clickhouse")]
+    DownloadClickhouse(clickhouse_download::ClickhouseDownload),
     /// for internal use only. Constantly will upload snapshots
     /// of db every 100k blocks for easy downloads.
     #[command(name = "r2-upload")]
@@ -82,6 +87,10 @@ impl Database {
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::CexData(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            #[cfg(feature = "local-clickhouse")]
+            DatabaseCommands::DownloadClickhouse(cmd) => {
+                cmd.execute(brontes_db_endpoint, ctx).await
+            }
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
