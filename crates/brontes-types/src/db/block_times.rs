@@ -17,7 +17,7 @@ impl BlockTimes {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct CexBlockTimes {
     pub start_timestamp:   u64,
     pub end_timestamp:     u64,

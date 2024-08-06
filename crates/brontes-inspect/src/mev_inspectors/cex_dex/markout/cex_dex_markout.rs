@@ -8,10 +8,9 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::cex::{
-        config::CexDexTradeConfig,
-        optimistic::{ExchangePrice, MakerTaker},
-        time_window_vwam::MakerTakerWindowVWAP,
-        CexExchange, FeeAdjustedQuote,
+        quotes::FeeAdjustedQuote,
+        trades::{CexDexTradeConfig, ExchangePrice, MakerTaker, MakerTakerWindowVWAP},
+        CexExchange,
     },
     display::utils::format_etherscan_url,
     mev::{ArbPnl, Bundle, BundleData, MevType},

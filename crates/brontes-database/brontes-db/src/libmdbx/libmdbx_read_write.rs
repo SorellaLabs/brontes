@@ -9,7 +9,7 @@ use brontes_types::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{cex_trades::CexTradeMap, CexPriceMap},
+        cex::{quotes::CexPriceMap, trades::CexTradeMap},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{
             InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,

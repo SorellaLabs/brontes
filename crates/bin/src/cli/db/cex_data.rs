@@ -6,7 +6,7 @@ use brontes_core::LibmdbxReader;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_types::{
     constants::USDT_ADDRESS,
-    db::cex::{CexExchange, CexTrades},
+    db::cex::{trades::CexTrades, CexExchange},
     init_threadpools,
     pair::Pair,
     FastHashMap, FastHashSet,

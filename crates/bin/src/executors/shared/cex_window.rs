@@ -5,7 +5,7 @@ use std::{
 
 use ahash::HashMapExt;
 use brontes_types::{
-    db::cex::{CexExchange, CexTradeMap},
+    db::cex::{trades::CexTradeMap, CexExchange},
     pair::Pair,
     FastHashMap,
 };

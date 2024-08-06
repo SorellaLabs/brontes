@@ -6,7 +6,7 @@ use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
     constants::USDT_ADDRESS_STRING,
-    db::cex::{config::CexDexTradeConfig, CexExchange},
+    db::cex::{trades::CexDexTradeConfig, CexExchange},
     db_write_trigger::{backup_server_heartbeat, start_hr_monitor, HeartRateMonitor},
     init_threadpools, UnboundedYapperReceiver,
 };
