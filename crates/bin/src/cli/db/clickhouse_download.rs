@@ -4,6 +4,7 @@ use brontes_database::{
     clickhouse::cex_config::CexDownloadConfig, libmdbx::initialize::LibmdbxInitializer,
 };
 use clap::Parser;
+use indicatif::ProgressBar;
 use reth_tracing_ext::TracingClient;
 use tracing::{debug, error, info};
 
@@ -47,7 +48,6 @@ impl ClickhouseDownload {
     }
 
     async fn run(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
-        debug!(target: "brontes::db::clickhouse-download", "MAKING libmdbx");
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
         debug!(target: "brontes::db::clickhouse-download", "made libmdbx");
         let cex_config = CexDownloadConfig::default();
@@ -69,7 +69,7 @@ impl ClickhouseDownload {
                 self.table,
                 self.clear_table,
                 Some((self.start_block, self.end_block)),
-                Arc::new(vec![]),
+                Arc::new(vec![(self.tables, ProgressBar::default())]),
             )
             .await?;
 
