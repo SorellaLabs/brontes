@@ -33,12 +33,12 @@ impl DatabaseQuery {
                 $(
                     Tables::$tables => {
                         println!(
-                            "{}",
-                            serde_json::to_string(&$fn(
+                            "{:#?}",
+                            $fn(
                                 tx.$query::<brontes_database::libmdbx::tables::$tables>(
                                     brontes_database::libmdbx::tables::$tables::into_key($args)
                                     ).unwrap(),
-                            ).unwrap()).unwrap()
+                            ).unwrap()
                         )
                     }
                 )+
@@ -49,10 +49,10 @@ impl DatabaseQuery {
                 $(
                     Tables::$tables => {
                         println!(
-                            "{}",
-                            serde_json::to_string(&$fn(
+                            "{:#?}",
+                            $fn(
                                 tx.$query::<brontes_database::libmdbx::tables::$tables>()?, self
-                            )?).unwrap()
+                            )?
                         )
                     }
                 )+
