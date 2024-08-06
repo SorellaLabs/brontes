@@ -1,18 +1,20 @@
-pub mod cex_trades;
+mod cex_trades;
 pub mod config;
+mod download;
 pub mod optimistic;
-pub mod raw_cex_trades;
 pub mod time_window_vwam;
 pub mod utils;
 
 use alloy_primitives::FixedBytes;
 pub use cex_trades::*;
+pub use config::*;
+pub use download::*;
 use malachite::Rational;
-pub use raw_cex_trades::*;
-use time_window_vwam::TimeWindowTrades;
+pub use optimistic::*;
+pub use time_window_vwam::*;
+use utils::SortedTrades;
 
-use self::{config::CexDexTradeConfig, time_window_vwam::WindowExchangePrice, utils::SortedTrades};
-use super::{optimistic::OptimisticPrice, CexExchange};
+use super::CexExchange;
 use crate::{normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
 
 impl CexTradeMap {

@@ -8,9 +8,11 @@ use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::cex::{
-        config::CexDexTradeConfig,
-        optimistic::OptimisticPrice,
-        time_window_vwam::{ExchangePath, WindowExchangePrice},
+        trades::{
+            config::CexDexTradeConfig,
+            optimistic::OptimisticPrice,
+            time_window_vwam::{ExchangePath, WindowExchangePrice},
+        },
         CexExchange,
     },
     display::utils::format_etherscan_url,

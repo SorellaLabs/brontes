@@ -3,8 +3,10 @@ use std::{fmt, sync::Arc};
 use alloy_primitives::FixedBytes;
 use brontes_types::{
     db::cex::{
-        optimistic::OptimisticPrice,
-        time_window_vwam::{ExchangePath, WindowExchangePrice},
+        trades::{
+            optimistic::OptimisticPrice,
+            time_window_vwam::{ExchangePath, WindowExchangePrice},
+        },
         CexExchange,
     },
     mev::{ArbDetails, BundleData, CexDex, CexMethodology, OptimisticTrade},

@@ -118,7 +118,7 @@ where
 
         tokio::select! {
             _ = ctrl_c => {
-                trace!(target: "reth::cli",  "Received ctrl-c");
+                trace!(target: "brontes::cli",  "Received ctrl-c");
             },
             res = fut => res?,
         }

@@ -1,15 +1,17 @@
 use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 
-use super::CexQuote;
+use super::{CexPriceMap, CexQuote};
 use crate::{
     constants::USDC_ADDRESS,
     db::{
         block_times::{BlockTimes, CexBlockTimes},
-        cex::{BestCexPerPair, CexExchange, CexPriceMap, CexSymbols},
+        cex::{BestCexPerPair, CexExchange, CexSymbols},
     },
+    pair::Pair,
     serde_utils::cex_exchange,
     FastHashMap,
 };
@@ -54,7 +56,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(|b| CexBlockTimes::add_time_window(b, (6.0, 6.0)))
+                .map(|b| CexBlockTimes::add_time_window(b, (0.0, 300.0)))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
@@ -64,28 +66,19 @@ impl CexQuotesConverter {
     }
 
     pub fn convert_to_prices(mut self) -> Vec<(u64, CexPriceMap)> {
-        let mut block_num_map = FastHashMap::default();
-
-        self.quotes
+        let block_num_map_with_pairs = self
+            .quotes
             .into_iter()
             .filter_map(|q| {
                 self.block_times
                     .iter()
-                    .find(|b| q.timestamp >= b.start_timestamp && q.timestamp < b.end_timestamp)
-                    .map(|block_time| (block_time.block_number, q))
+                    .find(|b| b.contains_time(q.timestamp))
+                    .map(|block_time| (block_time, q))
             })
-            .for_each(|(block_num, quote)| {
-                block_num_map
-                    .entry(block_num)
-                    .or_insert(Vec::new())
-                    .push(quote)
-            });
-
-        let mut pairs_map: FastHashMap<u64, Vec<BestCexPerPair>> = self
-            .block_times
-            .iter()
-            .map(|block| {
-                let time = block.start_timestamp as i64;
+            .into_group_map()
+            .into_iter()
+            .map(|(block_time, quotes)| {
+                let time = block_time.start_timestamp as i64;
                 // we want to choose the pairs that are closest timestamp
                 let mut map = FastHashMap::default();
                 self.best_cex_per_pair.iter().for_each(|pair| {
@@ -103,13 +96,16 @@ impl CexQuotesConverter {
                         }
                     }
                 });
-                (block.block_number, map.into_values().cloned().collect::<Vec<_>>())
+                (
+                    (block_time.block_number, block_time.precise_timestamp),
+                    (quotes, map.into_values().cloned().collect::<Vec<_>>()),
+                )
             })
-            .collect();
+            .collect::<FastHashMap<_, _>>();
 
-        block_num_map
+        block_num_map_with_pairs
             .into_iter()
-            .map(|(block_num, quotes)| {
+            .map(|((block_num, block_time), (quotes, cex_best_venue))| {
                 let mut exchange_map = FastHashMap::default();
 
                 quotes.into_iter().for_each(|quote| {
@@ -118,10 +114,6 @@ impl CexQuotesConverter {
                         .or_insert(Vec::new())
                         .push(quote);
                 });
-
-                let cex_best_venue = pairs_map
-                    .remove(&block_num)
-                    .expect("should never be missing");
 
                 let pair_exchanges = cex_best_venue
                     .into_iter()
@@ -173,6 +165,9 @@ impl CexQuotesConverter {
                                 .push(quote.into());
                         });
 
+                        exchange_symbol_map =
+                            find_closest_to_time_boundries(block_time, exchange_symbol_map);
+
                         for quotes in exchange_symbol_map.values_mut() {
                             if !quotes.is_sorted_by_key(|k: &CexQuote| k.timestamp) {
                                 quotes.sort_unstable_by_key(|k: &CexQuote| k.timestamp);
@@ -187,4 +182,31 @@ impl CexQuotesConverter {
             })
             .collect()
     }
+}
+
+const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
+fn find_closest_to_time_boundries(
+    block_time: u64,
+    exchange_symbol_map: FastHashMap<Pair, Vec<CexQuote>>,
+) -> FastHashMap<Pair, Vec<CexQuote>> {
+    let block_time = block_time as u128 * 1000000;
+    exchange_symbol_map
+        .into_par_iter()
+        .map(|(pair, quotes)| {
+            (
+                pair,
+                QUOTE_TIME_BOUNDARY
+                    .iter()
+                    .filter_map(|window| {
+                        quotes.iter().min_by_key(|quote| {
+                            let delta = quote.timestamp as i128 - block_time as i128;
+                            let window = *window as i128 * 1000000;
+                            (delta - window).abs()
+                        })
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<FastHashMap<Pair, Vec<CexQuote>>>()
 }

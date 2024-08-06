@@ -1,12 +1,10 @@
-use std::env;
-
 use ahash::HashSetExt;
 use alloy_primitives::Address;
 use brontes_core::LibmdbxReader;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_types::{
     constants::USDT_ADDRESS,
-    db::cex::{CexExchange, CexTrades},
+    db::cex::{trades::CexTrades, CexExchange},
     init_threadpools,
     pair::Pair,
     FastHashMap, FastHashSet,
@@ -16,7 +14,6 @@ use clickhouse::Row;
 use db_interfaces::{
     clickhouse::{
         client::ClickhouseClient,
-        config::ClickhouseConfig,
         dbms::{ClickhouseDBMS, NullDBMS},
     },
     errors::DatabaseError,
@@ -26,6 +23,7 @@ use eyre::Result;
 use prettytable::{Cell, Row, Table};
 use serde::{Deserialize, Serialize};
 
+use super::utils::get_clickhouse_env;
 use crate::{
     cli::{load_libmdbx, static_object},
     runner::CliContext,
@@ -202,18 +200,6 @@ pub fn calculate_intermediary_addresses(
         .intersection(&connected_to_b)
         .cloned()
         .collect()
-}
-
-fn get_clickhouse_env() -> ClickhouseClient<NullDBMS> {
-    let user = env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not set");
-    let password = env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not set");
-    let url = format!(
-        "{}:{}",
-        env::var("CLICKHOUSE_URL").expect("CLICKHOUSE_URL not set"),
-        env::var("CLICKHOUSE_PORT").expect("CLICKHOUSE_PORT not set")
-    );
-
-    ClickhouseConfig::new(user, password, url, true, None).build()
 }
 
 async fn query_trading_pair_info<D: ClickhouseDBMS>(

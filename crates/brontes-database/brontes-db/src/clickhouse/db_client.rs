@@ -3,13 +3,17 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 #[cfg(feature = "local-clickhouse")]
-use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
+use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
         builder::BuilderInfo,
-        cex::{BestCexPerPair, CexQuotesConverter, CexTradesConverter, RawCexQuotes, RawCexTrades},
+        cex::{
+            quotes::{CexQuotesConverter, RawCexQuotes},
+            trades::{CexTradesConverter, RawCexTrades},
+            BestCexPerPair,
+        },
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         normalized_actions::TransactionRoot,

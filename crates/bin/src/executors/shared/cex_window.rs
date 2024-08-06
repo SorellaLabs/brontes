@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use brontes_types::{
-    db::cex::{CexExchange, CexTradeMap},
+    db::cex::{trades::CexTradeMap, CexExchange},
     pair::Pair,
     FastHashMap,
 };

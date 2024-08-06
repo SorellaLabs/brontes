@@ -32,7 +32,7 @@ use tracing::error;
 use super::types::CexQuote;
 use crate::{
     db::{
-        cex::{time_window_vwam::Direction, CexExchange, CexQuoteRedefined},
+        cex::{quotes::CexQuoteRedefined, trades::Direction, CexExchange},
         redefined_types::malachite::RationalRedefined,
     },
     implement_table_value_codecs_with_zc,

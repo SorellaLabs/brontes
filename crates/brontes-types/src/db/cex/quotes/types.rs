@@ -12,7 +12,7 @@ use serde::Serialize;
 
 use crate::{
     db::{
-        cex::{download::RawCexQuotes, time_window_vwam::Direction, CexExchange},
+        cex::{quotes::download::RawCexQuotes, trades::Direction, CexExchange},
         redefined_types::malachite::RationalRedefined,
     },
     utils::ToFloatNearest,

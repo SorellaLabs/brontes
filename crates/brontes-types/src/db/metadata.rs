@@ -9,7 +9,7 @@ use serde_with::serde_as;
 
 use super::{
     builder::BuilderInfo,
-    cex::{CexPriceMap, CexTradeMap},
+    cex::{quotes::CexPriceMap, trades::CexTradeMap},
     dex::DexQuotes,
 };
 use crate::{
@@ -21,10 +21,7 @@ use crate::{
     FastHashSet,
 };
 #[allow(unused_imports)]
-use crate::{
-    db::cex::{config::CexDexTradeConfig, CexExchange},
-    normalized_actions::NormalizedSwap,
-};
+use crate::{db::cex::CexExchange, normalized_actions::NormalizedSwap};
 
 /// libmdbx type
 #[serde_as]

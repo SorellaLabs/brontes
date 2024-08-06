@@ -5,7 +5,7 @@ use alloy_primitives::{Address, TxHash};
 use malachite::{num::basic::traits::Zero, Rational};
 use tracing::trace;
 
-use crate::{db::cex::optimistic::BASE_EXECUTION_QUALITY, FastHashSet};
+use crate::{db::cex::trades::BASE_EXECUTION_QUALITY, FastHashSet};
 const TIME_BASKET_SIZE: u64 = 100_000;
 
 use super::{optimistic::OptimisticTradeData, CexTrades};
