@@ -189,31 +189,23 @@ fn find_closest_to_time_boundries(
     block_time: u64,
     exchange_symbol_map: FastHashMap<Pair, Vec<CexQuote>>,
 ) -> FastHashMap<Pair, Vec<CexQuote>> {
-    let block_time = block_time as u128 * 1000000;
+    let block_time = block_time as i128 * 1_000_000;
+
     exchange_symbol_map
         .into_par_iter()
-        .map(|(pair, mut quotes)| {
-            (
-                pair,
-                QUOTE_TIME_BOUNDARY
-                    .iter()
-                    .filter_map(|window| {
-                        let this_quote = quotes
-                            .iter()
-                            .min_by_key(|quote| {
-                                let delta = quote.timestamp as i128 - block_time as i128;
-                                let window = *window as i128 * 1000000;
-                                (delta - window).abs()
-                            })
-                            .cloned();
+        .map(|(pair, quotes)| {
+            let result = QUOTE_TIME_BOUNDARY
+                .iter()
+                .filter_map(|&window| {
+                    let target_time = block_time + (window as i128 * 1_000_000);
+                    quotes
+                        .iter()
+                        .min_by_key(|quote| (quote.timestamp as i128 - target_time).abs())
+                        .cloned()
+                })
+                .collect();
 
-                        if let Some(q) = this_quote.as_ref() {
-                            quotes.retain(|inner_q| q != inner_q);
-                        }
-                        this_quote
-                    })
-                    .collect::<Vec<_>>(),
-            )
+            (pair, result)
         })
-        .collect::<FastHashMap<Pair, Vec<CexQuote>>>()
+        .collect()
 }
