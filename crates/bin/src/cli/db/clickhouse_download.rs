@@ -43,7 +43,7 @@ impl ClickhouseDownload {
         ctx.task_executor
             .spawn_critical("download", {
                 async move {
-                    if let Err(e) = self.run(initializer, libmbdx).await {
+                    if let Err(e) = self.run(initializer).await {
                         eprintln!("Error downloading data -- {:?}", e);
                     }
                 }
@@ -53,11 +53,7 @@ impl ClickhouseDownload {
         Ok(())
     }
 
-    async fn run(
-        self,
-        initializer: LibmdbxInitializer,
-        libmdbx: &'static Libmdbx,
-    ) -> eyre::Result<()> {
+    async fn run(self, initializer: LibmdbxInitializer) -> eyre::Result<()> {
         let pre = std::time::Instant::now();
         initializer
             .initialize(
