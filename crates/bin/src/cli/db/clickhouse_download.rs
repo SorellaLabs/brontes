@@ -50,11 +50,11 @@ impl ClickhouseDownload {
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
         let cex_config = CexDownloadConfig::default();
         let clickhouse = static_object(load_clickhouse(cex_config).await?);
-        let tracer = get_tracing_provider(
+        let tracer = Arc::new(get_tracing_provider(
             Path::new(&std::env::var("DB_PATH").expect("DB_PATH not found in .env")),
             10,
             ctx.task_executor.clone(),
-        );
+        ));
 
         let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracer);
 
