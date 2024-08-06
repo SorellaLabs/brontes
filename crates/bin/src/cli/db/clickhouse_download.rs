@@ -3,7 +3,6 @@ use std::{path::Path, sync::Arc};
 use brontes_database::{
     clickhouse::{cex_config::CexDownloadConfig, ClickhouseHandle},
     libmdbx::initialize::LibmdbxInitializer,
-    Libmdbx,
 };
 use brontes_types::traits::TracingProvider;
 use clap::Parser;
@@ -34,9 +33,9 @@ pub struct ClickhouseDownload {
 impl ClickhouseDownload {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
-
-        let clickhouse = static_object(load_clickhouse(cex_config).await?);
         let cex_config = CexDownloadConfig::default();
+        let clickhouse = static_object(load_clickhouse(cex_config).await?);
+
         let initializer = LibmdbxInitializer::new(
             libmdbx,
             clickhouse,
