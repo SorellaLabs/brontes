@@ -17,6 +17,7 @@ mod init;
 #[cfg(feature = "local-clickhouse")]
 mod tip_tracer;
 mod trace_range;
+pub mod utils;
 
 #[derive(Debug, Parser)]
 pub struct Database {

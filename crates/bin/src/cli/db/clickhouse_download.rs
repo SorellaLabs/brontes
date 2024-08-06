@@ -11,6 +11,7 @@ use db_interfaces::clickhouse::{
 };
 use reth_tracing_ext::TracingClient;
 
+use super::utils::get_clickhouse_env;
 use crate::{
     cli::{load_libmdbx, static_object},
     runner::CliContext,
