@@ -48,13 +48,17 @@ impl ClickhouseDownload {
 
     async fn run(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
+        debug!(target: "brontes::db::clickhouse-download", "made libmdbx");
         let cex_config = CexDownloadConfig::default();
         let clickhouse = static_object(load_clickhouse(cex_config).await?);
+        debug!(target: "brontes::db::clickhouse-download", "made clickhouse");
+
         let tracer = Arc::new(get_tracing_provider(
             Path::new(&std::env::var("DB_PATH").expect("DB_PATH not found in .env")),
             10,
             ctx.task_executor.clone(),
         ));
+        debug!(target: "brontes::db::clickhouse-download", "made tracer");
 
         let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracer);
 
