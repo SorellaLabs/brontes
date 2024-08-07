@@ -1,6 +1,5 @@
 CREATE TABLE brontes.run_id (
     run_id BIGINT,
-    last_updated BIGINT DEFAULT EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)
+    last_updated TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (run_id)
 );
-
-CREATE INDEX idx_run_id ON brontes.run_id (run_id);

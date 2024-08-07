@@ -21,7 +21,7 @@ pub use trades::*;
     PartialEq,
     Hash,
     serde::Serialize,
-    // serde::Deserialize,
+    serde::Deserialize,
     rkyv::Serialize,
     rkyv::Deserialize,
     rkyv::Archive,

@@ -30,7 +30,6 @@ use brontes_types::db::block_analysis::BlockAnalysis;
 use brontes_types::structured_trace::TxTrace;
 use crate::postgres::PostgresHandle;
 use brontes_types::db::metadata::Metadata;
-use crate::BlockInfoData;
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 use brontes_types::db::metadata::BlockMetadata;
 use crate::CompressedTable;
@@ -39,7 +38,10 @@ use brontes_types::db::block_times::BlockTimes;
 use brontes_types::db::cex::CexSymbols;
 use brontes_types::db::cex::RawCexTrades;
 use brontes_types::db::cex::CexTradesConverter;
-use crate::CexTradesData;
+use itertools::Itertools;
+use brontes_types::pair::Pair;
+use sqlx::types::time::PrimitiveDateTime;
+use std::time::Duration;
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
 
@@ -47,7 +49,7 @@ const SECONDS_TO_US: f64 = 1_000_000.0;
 pub struct Postgres {
     pub tip:                 bool,
     pub run_id:              u64,
-    pub client:              PostgresClient<BrontesPostgresTables>,
+    pub client:              PostgresClient<sqlx::Postgres>,
     pub cex_download_config: CexDownloadConfig,
     pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesPostgresData>>>,
 }
@@ -258,17 +260,15 @@ impl Postgres {
 
 impl PostgresHandle for Postgres {
     async fn get_init_crit_tables(&self) -> eyre::Result<PostgresCritTableCount> {
-        let res: PostgresCritTableCount = sqlx::query_file!("src/postgres/queries/crit_init_tables.sql")
-            .execute(self.client.pool)
-            .fetch_one::<u64>()
+        let res = sqlx::query_file_as!(PostgresCritTableCount, "src/postgres/queries/crit_init_tables.sql")
+            .fetch_one(&self.client.pool)
             .await?;
         Ok(res)
     }
 
     async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        let block_meta = sqlx::query_file!("src/postgres/queries/block_info.sql", block_num)
-            .execute(self.client.pool)
-            .fetch_one::<BlockInfoData>()
+        let block_meta = sqlx::query_file!("src/postgres/queries/block_info.sql", block_num as i64)
+            .fetch_one(&self.client.pool)
             .await?;
 
         #[cfg(feature = "cex-dex-quotes")]
@@ -473,34 +473,35 @@ impl PostgresHandle for Postgres {
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexTradesData>> {
+        struct BlockTimesPostgres {
+            pub block_number: i32,
+            pub block_timestamp: PrimitiveDateTime,
+        }
         info!("Starting get_cex_trades function");
-        let block_times: Vec<BlockTimes> = match range_or_arbitrary {
+        let block_times = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(mut s, mut e) => {
                 s -= self.cex_download_config.run_time_window.0;
                 e += self.cex_download_config.run_time_window.1;
 
                 info!("Querying block times for range: start={}, end={}", s, e);
-                sqlx::query_file!("src/postgres/queries/block_times.sql", s, e)
-                    .execute(self.client.pool)
+                sqlx::query_file_as!(BlockTimesPostgres, "src/postgres/queries/block_times.sql", s as i32, e as i32)
+                    .fetch_all(&self.client.pool)
                     .await?
-                    .fetch_all::<BlockTimes>()
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let vals = vals
                     .into_iter()
                     .flat_map(|v| {
-                        (v - self.cex_download_config.run_time_window.0
-                            ..=v + self.cex_download_config.run_time_window.1)
-                            .collect_vec()
+                        (v - self.cex_download_config.run_time_window.0) as i32
+                            ..=(v + self.cex_download_config.run_time_window.1) as i32
                     })
                     .unique()
                     .collect::<Vec<_>>();
 
                 info!("Querying block times for arbitrary values: {:?}", vals);
-                sqlx::query_file!("src/postgres/queries/block_times_set.sql", vals)
-                    .execute(self.client.pool)
+                sqlx::query_file_as!(BlockTimesPostgres, "src/postgres/queries/block_times_set.sql", &vals[..])
+                    .fetch_all(&self.client.pool)
                     .await?
-                    .fetch_all::<CexTradesData>()
             }
         };
 
@@ -512,10 +513,12 @@ impl PostgresHandle for Postgres {
         }
 
         info!("Querying CEX symbols");
-        let symbols: Vec<CexSymbols> = sqlx::query_file!("src/postgres/queries/cex_symbols.sql")
-            .execute(self.client.pool)
+        let symbols = sqlx::query_file!("src/postgres/queries/cex_symbols.sql")
+            .fetch_all(&self.client.pool)
             .await?
-            .fetch_all();
+            .into_iter()
+            .map(|r| CexSymbols{ exchange: r.exchange.into(), symbol_pair: r.symbol_pair.unwrap(), address_pair: Pair(r.address1.unwrap().parse().unwrap(), r.address2.unwrap().parse().unwrap()) })
+            .collect::<Vec<_>>();
         info!("Retrieved {} CEX symbols", symbols.len());
 
         let exchanges_vec = self
@@ -523,41 +526,61 @@ impl PostgresHandle for Postgres {
             .clone()
             .exchanges_to_use
             .into_iter()
-            .collect::<Vec<String>>();
+            .map(|e| format!("{e}"))
+            .collect::<Vec<_>>();
         info!("Using exchanges vec: {:?}", exchanges_vec);
 
         let data: Vec<RawCexTrades> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
                     .iter()
-                    .min_by_key(|b| b.timestamp)
-                    .map(|b| b.timestamp)
-                    .unwrap() as f64
-                    - (6.0 * SECONDS_TO_US);
+                    .min_by_key(|b| b.block_timestamp)
+                    .map(|b| b.block_timestamp)
+                    .unwrap()
+                    - (Duration::from_secs(6));
                 let end_time = block_times
                     .iter()
-                    .max_by_key(|b| b.timestamp)
-                    .map(|b| b.timestamp)
-                    .unwrap() as f64
-                    + (6.0 * SECONDS_TO_US);
+                    .max_by_key(|b| b.block_timestamp)
+                    .map(|b| b.block_timestamp)
+                    .unwrap()
+                    + (Duration::from_secs(6));
 
                 info!(
                     "Querying raw CEX trades for time range: start={}, end={}",
                     start_time, end_time
                 );
 
-                sqlx::query_file!("src/postgres/queries/raw_cex_trades_range.sql", start_time, end_time, exchanges_vec)
-                    .execute(self.client.pool)
+                sqlx::query_file!("src/postgres/queries/raw_cex_trades_range.sql", start_time, end_time, &exchanges_vec[..])
+                    .fetch_all(&self.client.pool)
                     .await?
-                    .fetch_all()
+                    .into_iter()
+                    .map(|r| RawCexTrades{
+                        exchange: r.exchange.parse()?,
+                        trade_type: r.trade_type.unwrap().parse()?,
+                        symbol: r.symbol.unwrap(),
+                        timestamp: r.timestamp,
+                        side: r.side,
+                        price: r.price,
+                        amount: r.amount,
+                    })
+                    .collect()
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 info!("Querying raw CEX trades for arbitrary block times");
 
                 sqlx::query_file!("src/postgres/queries/raw_cex_trades_arbitrary.sql", -6 /* seconds */, 6 /* seconds */, vals, exchanges_vec)
-                    .execute(self.client.pool)
+                    .fetch_all(&self.client.pool)
                     .await?
-                    .fetch_all()
+                    .into_iter()
+                    .map(|r| RawCexTrades{
+                        exchange: r.exchange.parse()?,
+                        trade_type: r.trade_type.parse()?,
+                        symbol: r.symbol,
+                        timestamp: r.timestamp,
+                        side: r.side,
+                        price: r.price,
+                        amount: r.amount,
+                    })
             }
         };
 
@@ -626,11 +649,11 @@ where
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PostgresCritTableCount {
-    pub pool_creation:       u64,
-    pub address_to_protocol: u64,
-    pub tokens:              u64,
-    pub builder:             u64,
-    pub address_meta:        u64,
+    pub pool_creation:       Option<i64>,
+    pub address_to_protocol: Option<i64>,
+    pub tokens:              Option<i64>,
+    pub builder:             Option<i64>,
+    pub address_meta:        Option<i64>,
 }
 
 impl PostgresCritTableCount {

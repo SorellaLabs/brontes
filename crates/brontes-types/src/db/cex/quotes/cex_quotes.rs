@@ -751,15 +751,15 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
 
 self_convert_redefined!(CexExchange);
 
-impl<'de> serde::Deserialize<'de> for CexExchange {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let cex_exchange: String = Deserialize::deserialize(deserializer)?;
-        Ok(cex_exchange.as_str().into())
-    }
-}
+// impl<'de> serde::Deserialize<'de> for CexExchange {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: serde::Deserializer<'de>,
+//     {
+//         let cex_exchange: String = Deserialize::deserialize(deserializer)?;
+//         Ok(cex_exchange.as_str().into())
+//     }
+// }
 
 impl CexExchange {
     pub fn to_clickhouse_filter(&self) -> &str {

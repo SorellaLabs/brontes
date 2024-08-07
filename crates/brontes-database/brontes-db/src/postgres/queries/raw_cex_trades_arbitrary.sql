@@ -1,10 +1,10 @@
 WITH
     block_times AS (
         SELECT
-            timestamp_add('seconds', $1, block_timestamp) AS block_start,
-            timestamp_add('seconds', $2, block_timestamp) AS block_end
+            block_timestamp::TIMESTAMP - make_interval(secs => $1) AS block_start,
+            block_timestamp::TIMESTAMP + make_interval(secs => $2) AS block_end
         FROM ethereum.blocks
-        WHERE block_number = ANY(UNNEST($3::BIGINT[]))
+        WHERE block_number = ANY($3)
     )
     SELECT
         c.exchange AS exchange,
@@ -17,4 +17,4 @@ WITH
     FROM cex.normalized_trades AS c
     INNER JOIN block_times AS bt
     ON bt.block_start <= c.timestamp AND c.timestamp <= bt.block_end
-    WHERE c.exchange = ANY(UNNEST($4::STRING[]))
+    WHERE c.exchange = ANY($4);

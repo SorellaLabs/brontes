@@ -13,6 +13,8 @@ pub use db_client::*;
 pub use db_interfaces::postgres::config::PostgresConfig;
 // #[cfg(feature = "local-postgres")]
 // pub use split_db::*;
+#[cfg(feature = "local-postgres")]
+pub mod types;
 #[cfg(not(feature = "local-postgres"))]
 pub mod http_client;
 #[cfg(not(feature = "local-postgres"))]

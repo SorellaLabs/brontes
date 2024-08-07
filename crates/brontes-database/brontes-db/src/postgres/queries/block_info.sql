@@ -1,5 +1,5 @@
 WITH
-    get_block_number AS (SELECT $1 AS block_num),
+    get_block_number AS (SELECT $1::BIGINT AS block_num),
     relay_bids AS (
         SELECT
             block_number,
@@ -50,12 +50,12 @@ WITH
 SELECT
     b.block_number::BIGINT AS block_number,
     b.block_hash::TEXT AS block_hash,
-    b.block_timestamp::BIGINT AS block_timestamp,
-    r.relay_timestamp::BIGINT AS relay_timestamp,
-    o.p2p_timestamp::BIGINT AS p2p_timestamp,
+    b.block_timestamp AS block_timestamp,
+    r.relay_timestamp AS relay_timestamp,
+    o.p2p_timestamp AS p2p_timestamp,
     COALESCE(r.proposer_fee_recipient, p.proposer_fee_recipient)::TEXT AS proposer_fee_recipient,
     COALESCE(r.proposer_mev_reward, p.proposer_mev_reward)::NUMERIC AS proposer_mev_reward,
-    COALESCE(v.private_flow, ARRAY[]::TEXT[]) AS private_flow
+    COALESCE(v.private_flow, ARRAY[]::Hash256[])::Hash256[] AS private_flow
 FROM raw_blocks b
 LEFT JOIN relay_bids r ON b.block_number = r.block_number AND b.block_hash = r.block_hash
 LEFT JOIN relay_payloads p ON b.block_number = p.block_number AND b.block_hash = p.block_hash

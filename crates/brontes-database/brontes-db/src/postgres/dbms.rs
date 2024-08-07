@@ -10,6 +10,7 @@
 
 pub struct BrontesPostgresTables;
 
+
 // clickhouse_dbms!(
 //     BrontesPostgresTables,
 //     "eth_cluster0",
