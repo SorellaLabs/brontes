@@ -366,7 +366,7 @@ impl ClickhouseHandle for Clickhouse {
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(s, e) => {
                 debug!(
-                    target = "brontes_db::cex_download",
+                    target = "b",
                     "Querying block times to download quotes for range: start={}, end={}", s, e
                 );
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
@@ -385,6 +385,10 @@ impl ClickhouseHandle for Clickhouse {
                     .unique()
                     .collect::<Vec<_>>();
 
+                debug!(
+                    target = "b",
+                    "Querying block times to download quotes for arbitrary: start={}, end={}", s, e
+                );
                 query = query.replace(
                     "block_number >= ? AND block_number < ?",
                     &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
