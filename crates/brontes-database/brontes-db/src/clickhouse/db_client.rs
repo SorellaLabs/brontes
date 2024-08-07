@@ -845,8 +845,6 @@ mod tests {
     }
 
     async fn cex_dex_quotes(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let swap = NormalizedSwap::default();
-
         let swap = NormalizedSwap {
             protocol:    Protocol::UniswapV2,
             from:        hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
@@ -1059,8 +1057,9 @@ mod tests {
         init_threadpools(10);
         let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
 
+        let tables = vec![BrontesClickhouseTables::MevCex_Dex_Quotes];
         test_db
-            .run_test_with_test_db(tables, |db| Box::pin(cex_dex_quotes(db)))
+            .run_test_with_test_db(&tables, |db| Box::pin(cex_dex_quotes(db)))
             .await;
     }
 }
