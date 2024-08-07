@@ -9,7 +9,7 @@ use brontes_types::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
-        cex::{cex_trades::CexTradeMap, CexPriceMap},
+        cex::{quotes::CexPriceMap, trades::CexTradeMap},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{
             InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
@@ -1267,7 +1267,11 @@ pub fn determine_eth_prices(
 ) -> Option<Rational> {
     Some(
         cex_quotes
-            .get_quote_from_most_liquid_exchange(&Pair(quote_asset, WETH_ADDRESS), block_timestamp)?
+            .get_quote_from_most_liquid_exchange(
+                &Pair(quote_asset, WETH_ADDRESS),
+                block_timestamp,
+                None,
+            )?
             .maker_taker_mid()
             .0,
     )

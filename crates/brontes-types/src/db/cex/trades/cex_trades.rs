@@ -8,7 +8,7 @@ use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
-use super::{raw_cex_trades::RawCexTrades, time_window_vwam::Direction};
+use super::{download::RawCexTrades, time_window_vwam::Direction};
 use crate::{
     db::{cex::CexExchange, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,

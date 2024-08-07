@@ -22,7 +22,7 @@ use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
     db::{
-        cex::{config::CexDexTradeConfig, CexExchange},
+        cex::{trades::CexDexTradeConfig, CexExchange},
         traits::LibmdbxReader,
     },
     db_write_trigger::HeartRateMonitor,

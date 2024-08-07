@@ -8,3 +8,4 @@ SELECT
     c.bid_amount as bid_amount
 FROM cex.normalized_quotes as c
 WHERE c.timestamp >= ? AND c.timestamp < ?
+ORDER BY c.timestamp

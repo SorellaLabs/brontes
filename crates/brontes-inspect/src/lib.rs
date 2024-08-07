@@ -71,7 +71,7 @@ use alloy_primitives::Address;
 use atomic_arb::AtomicArbInspector;
 use brontes_types::{
     db::{
-        cex::{config::CexDexTradeConfig, CexExchange},
+        cex::{trades::CexDexTradeConfig, CexExchange},
         metadata::Metadata,
         traits::LibmdbxReader,
     },

@@ -3,13 +3,17 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
 #[cfg(feature = "local-clickhouse")]
-use brontes_types::db::{block_times::BlockTimes, cex::cex_symbols::CexSymbols};
+use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
         builder::BuilderInfo,
-        cex::{BestCexPerPair, CexQuotesConverter, CexTradesConverter, RawCexQuotes, RawCexTrades},
+        cex::{
+            quotes::{CexQuotesConverter, RawCexQuotes},
+            trades::{CexTradesConverter, RawCexTrades},
+            BestCexPerPair,
+        },
         dex::{DexQuotes, DexQuotesWithBlockNumber},
         metadata::{BlockMetadata, Metadata},
         normalized_actions::TransactionRoot,
@@ -49,6 +53,7 @@ use crate::{
 };
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
+const MAX_MARKOUT_TIME: f64 = 300.0;
 
 #[derive(Clone)]
 pub struct Clickhouse {
@@ -359,11 +364,14 @@ impl ClickhouseHandle for Clickhouse {
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexPriceData>> {
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
-            CexRangeOrArbitrary::Range(mut s, mut e) => {
-                s -= self.cex_download_config.run_time_window.0;
-                e += self.cex_download_config.run_time_window.1;
+            CexRangeOrArbitrary::Range(s, e) => {
+                debug!(
+                    target = "brontes_db::cex_download",
+                    "Querying block times to download quotes for range: start={}, end={}", s, e
+                );
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
+
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let mut query = BLOCK_TIMES.to_string();
 
@@ -421,7 +429,7 @@ impl ClickhouseHandle for Clickhouse {
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (1.0 * SECONDS_TO_US);
+                    + (MAX_MARKOUT_TIME * SECONDS_TO_US);
 
                 let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
 
@@ -434,7 +442,9 @@ impl ClickhouseHandle for Clickhouse {
 
                 let query_mod = block_times
                     .iter()
-                    .map(|b| b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 1.0 * SECONDS_TO_US))
+                    .map(|b| {
+                        b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 300.0 * SECONDS_TO_US)
+                    })
                     .collect::<Vec<String>>()
                     .join(" OR ");
 
@@ -467,7 +477,10 @@ impl ClickhouseHandle for Clickhouse {
                 s -= self.cex_download_config.run_time_window.0;
                 e += self.cex_download_config.run_time_window.1;
 
-                debug!("Querying block times for range: start={}, end={}", s, e);
+                debug!(
+                    target = "brontes_db::cex_download",
+                    "Querying block times to download trades for range: start={}, end={}", s, e
+                );
                 self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
@@ -708,7 +721,7 @@ mod tests {
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_threadpools,
         mev::{
-            ArbDetails, ArbPnl, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
+            ArbDetails, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
             JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
             Sandwich,
         },
@@ -722,6 +735,7 @@ mod tests {
         clickhouse::{dbms::ClickhouseDBMS, test_utils::ClickhouseTestClient},
         test_utils::TestDatabase,
     };
+    use malachite::{num::basic::traits::Zero, Rational};
 
     use super::*;
 
@@ -784,21 +798,23 @@ mod tests {
     async fn cex_dex(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let swap = NormalizedSwap::default();
         let arb_detail = ArbDetails::default();
-        let arb_pnl = ArbPnl::default();
         let opt_trade = OptimisticTrade::default();
         let cex_exchange = CexExchange::Binance;
 
         let case0 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl: arb_pnl.clone(),
+            global_vmap_pnl_maker: Rational::ZERO,
+            global_vmap_pnl_taker: Rational::ZERO,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl: arb_pnl.clone(),
+            optimal_route_pnl_maker: Rational::ZERO,
+            optimal_route_pnl_taker: Rational::ZERO,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl: Some(arb_pnl.clone()),
+            optimistic_route_pnl_maker: Rational::ZERO,
+            optimistic_route_pnl_taker: Rational::ZERO,
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
             ..CexDex::default()
         };
 
@@ -809,14 +825,17 @@ mod tests {
         let case1 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl: arb_pnl.clone(),
+            global_vmap_pnl_maker: Rational::ZERO,
+            global_vmap_pnl_taker: Rational::ZERO,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl: arb_pnl.clone(),
+            optimal_route_pnl_maker: Rational::ZERO,
+            optimal_route_pnl_taker: Rational::ZERO,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl: None,
+            optimistic_route_pnl_maker: Rational::ZERO,
+            optimistic_route_pnl_taker: Rational::ZERO,
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
             ..CexDex::default()
         };
 

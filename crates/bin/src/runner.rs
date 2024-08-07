@@ -13,7 +13,7 @@ use tracing::{error, info, trace};
 use crate::PROMETHEUS_ENDPOINT_IP;
 
 pub fn run_command_until_exit<F, E>(
-    metrics_port: u16,
+    metrics_port: Option<u16>,
     shutdown_time: Duration,
     command: impl FnOnce(CliContext) -> F,
 ) -> Result<(), E>
@@ -22,8 +22,11 @@ where
     E: Send + Sync + From<std::io::Error> + From<brontes_types::PanickedTaskError> + 'static,
 {
     let AsyncCliRunner { context, task_manager, tokio_runtime } = AsyncCliRunner::new()?;
-    // initalize prometheus if we don't already have a endpoint
-    tokio_runtime.block_on(try_initialize_prometheus(metrics_port));
+
+    if let Some(mp) = metrics_port {
+        // initalize prometheus if we don't already have a endpoint
+        tokio_runtime.block_on(try_initialize_prometheus(mp));
+    }
 
     // Executes the command until it finished or ctrl-c was fired
     let task_manager = tokio_runtime
@@ -115,7 +118,7 @@ where
 
         tokio::select! {
             _ = ctrl_c => {
-                trace!(target: "reth::cli",  "Received ctrl-c");
+                trace!(target: "brontes::cli",  "Received ctrl-c");
             },
             res = fut => res?,
         }

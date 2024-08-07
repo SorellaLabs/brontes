@@ -103,6 +103,7 @@ pub fn atomic_dedup_fn(
 define_mev_precedence!(
     // will filter out unless function says otherwise
     CexDexTrades => AtomicArb;
+
     // filter out all atomic arbs that we kept as cex dex
     AtomicArb => CexDexTrades;
     Unknown, SearcherTx => CexDexQuotes;

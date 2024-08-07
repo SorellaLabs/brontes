@@ -21,8 +21,6 @@ use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, 
 
 const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99995, 100000);
 
-//TODO: If price diff exceeds max price diff, attempt to find the trigger
-//TODO: We are missing a good amount of arbs in block 18264694, let's try and
 // figure out why
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
     utils: SharedInspectorUtils<'db, DB>,

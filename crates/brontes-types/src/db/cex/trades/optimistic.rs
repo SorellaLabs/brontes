@@ -3,18 +3,19 @@ use std::{f64::consts::E, fmt::Display, ops::Mul};
 use alloy_primitives::FixedBytes;
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Zero},
+    num::basic::traits::{One, Two, Zero},
     Rational,
 };
-
+use std::cmp::{max, min};
 use super::config::CexDexTradeConfig;
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
     db::cex::{
-        time_window_vwam::Direction,
-        trades::SortedTrades,
-        utils::{log_insufficient_trade_volume, log_missing_trade_data, TimeBasketQueue},
-        CexExchange, CexTrades,
+        trades::{
+            utils::{log_insufficient_trade_volume, log_missing_trade_data, TimeBasketQueue},
+            CexTrades, Direction, SortedTrades,
+        },
+        CexExchange,
     },
     display::utils::format_etherscan_url,
     mev::OptimisticTrade,
@@ -23,44 +24,52 @@ use crate::{
     utils::ToFloatNearest,
     FastHashMap,
 };
+use super::time_window_vwam::ExchangePath;
 
 pub const BASE_EXECUTION_QUALITY: usize = 70;
 
 const PRE_SCALING_DIFF: u64 = 200_000;
 const TIME_STEP: u64 = 100_000;
 
+
+
+
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
 #[derive(Debug, Clone)]
-pub struct ExchangePrice {
+pub struct OptimisticPrice {
     // cex exchange with amount of volume executed on it
-    pub trades_used: Vec<OptimisticTrade>,
+    pub trades_used:       Vec<OptimisticTrade>,
     /// the pairs that were traded through in order to get this price.
     /// in the case of a intermediary, this will be 2, otherwise, 1
-    pub pairs:       Vec<Pair>,
-    pub final_price: Rational,
+    pub pairs:             Vec<Pair>,
+    pub global: ExchangePath,
 }
 
-impl Mul for ExchangePrice {
-    type Output = ExchangePrice;
+impl Mul for OptimisticPrice {
+    type Output = OptimisticPrice;
 
     fn mul(mut self, rhs: Self) -> Self::Output {
         self.pairs.extend(rhs.pairs);
-        self.final_price *= rhs.final_price;
+        self.global.price_maker *= rhs.global.price_maker;
+        self.global.price_taker *= rhs.global.price_taker;
+        self.global.final_start_time = min(self.global.final_start_time, rhs.global.final_start_time);
+        self.global.final_end_time = max(self.global.final_end_time, rhs.global.final_end_time);
+
         self.trades_used.extend(rhs.trades_used);
 
         self
     }
 }
 
-impl Display for ExchangePrice {
+impl Display for OptimisticPrice {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{:#?}", self.trades_used)?;
-        writeln!(f, "{}", self.final_price.clone().to_float())
+        writeln!(f, "{}", self.global.price_maker.clone().to_float())?;
+        writeln!(f, "{}", self.global.price_taker.clone().to_float())?;
+        Ok(())
     }
 }
-
-pub type MakerTaker = (ExchangePrice, ExchangePrice);
 
 impl<'a> SortedTrades<'a> {
     // Calculates VWAPs for the given pair across all provided exchanges - this
@@ -97,20 +106,19 @@ impl<'a> SortedTrades<'a> {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<OptimisticPrice> {
         if pair.0 == pair.1 {
-            return Some((
-                ExchangePrice {
-                    trades_used: vec![],
-                    pairs:       vec![pair],
-                    final_price: Rational::ONE,
+            return Some(OptimisticPrice {
+                trades_used: vec![],
+                pairs: vec![pair],
+                global: ExchangePath {
+                    price_maker: Rational::ONE,
+                    price_taker: Rational::ONE,
+                    volume: Rational::ZERO,
+                    final_start_time: 0,
+                    final_end_time: 0,
                 },
-                ExchangePrice {
-                    trades_used: vec![],
-                    pairs:       vec![pair],
-                    final_price: Rational::ONE,
-                },
-            ))
+            })
         }
 
         let res = self
@@ -154,7 +162,7 @@ impl<'a> SortedTrades<'a> {
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<OptimisticPrice> {
         self.calculate_intermediary_addresses(&pair)
             .into_iter()
             .filter_map(|intermediary| {
@@ -182,7 +190,7 @@ impl<'a> SortedTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
-                let new_vol = volume * &first_leg.0.final_price;
+                let new_vol = volume * ((&first_leg.global.price_maker + &first_leg.global.price_taker) / Rational::TWO);
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -202,13 +210,11 @@ impl<'a> SortedTrades<'a> {
                 )?;
 
 
-                let maker = first_leg.0  * second_leg.0;
-                let taker = first_leg.1 * second_leg.1;
+                let price = first_leg * second_leg;
 
-
-                Some((maker, taker))
+                Some(price)
             })
-            .max_by_key(|a| a.0.final_price.clone())
+            .max_by_key(|a| a.global.price_maker.clone())
     }
 
     fn get_optimistic_direct(
@@ -221,7 +227,7 @@ impl<'a> SortedTrades<'a> {
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<OptimisticPrice> {
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the stat arber isn't hitting *every* good
         //   markout for each pair on each exchange.
@@ -276,6 +282,11 @@ impl<'a> SortedTrades<'a> {
 
         let mut optimistic_trades = Vec::with_capacity(trades_used.len());
 
+
+
+        let mut global_start_time = u64::MAX;
+        let mut global_end_time = 0;
+
         for trade in trades_used {
             let weight = calculate_weight(block_timestamp, trade.timestamp);
 
@@ -293,6 +304,13 @@ impl<'a> SortedTrades<'a> {
                 exchange: trade.exchange,
                 timestamp: trade.timestamp,
             });
+
+            global_start_time = min(global_start_time, trade.timestamp);
+            global_end_time = max(global_end_time, trade.timestamp);
+        }
+
+        if global_start_time == u64::MAX {
+            global_start_time = 0;
         }
 
         if &trade_volume < volume && !bypass_vol {
@@ -302,19 +320,21 @@ impl<'a> SortedTrades<'a> {
             return None
         }
 
-        let maker = ExchangePrice {
-            trades_used: optimistic_trades.clone(),
-            pairs:       vec![pair],
-            final_price: vxp_maker / &trade_volume_weight,
+        let global = ExchangePath {
+            price_maker:      vxp_maker / &trade_volume_weight,
+            price_taker:      vxp_taker / &trade_volume_weight,
+            volume:           trade_volume,
+            final_start_time: global_start_time, 
+            final_end_time:   global_end_time,
         };
 
-        let taker = ExchangePrice {
-            trades_used: optimistic_trades,
-            pairs:       vec![pair],
-            final_price: vxp_taker / &trade_volume_weight,
+        let price = OptimisticPrice {
+            trades_used:       optimistic_trades,
+            pairs:             vec![pair],
+            global,    
         };
 
-        Some((maker, taker))
+        Some(price)
     }
 
     pub fn get_trades(
@@ -354,11 +374,6 @@ impl<'a> SortedTrades<'a> {
             }
         }
     }
-}
-
-pub struct Trades<'a> {
-    pub trades:    Vec<(CexExchange, Vec<&'a CexTrades>)>,
-    pub direction: Direction,
 }
 
 pub struct OptimisticTradeData {
