@@ -385,10 +385,6 @@ impl ClickhouseHandle for Clickhouse {
                     .unique()
                     .collect::<Vec<_>>();
 
-                debug!(
-                    target = "b",
-                    "Querying block times to download quotes for arbitrary: start={}, end={}", s, e
-                );
                 query = query.replace(
                     "block_number >= ? AND block_number < ?",
                     &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
@@ -435,11 +431,16 @@ impl ClickhouseHandle for Clickhouse {
                     .unwrap() as f64
                     + (MAX_MARKOUT_TIME * SECONDS_TO_US);
 
-                let query = format!("{RAW_CEX_QUOTES} AND ({exchanges_str})");
+                let mut query = RAW_CEX_QUOTES.to_string();
+                query = query.replace(
+                    "c.timestamp >= ? AND c.timestamp < ?",
+                    &format!(
+                        "c.timestamp >= {} AND c.timestamp < {} AND ({})",
+                        start_time, end_time, exchanges_str
+                    ),
+                );
 
-                self.client
-                    .query_many(query, &(start_time, end_time))
-                    .await?
+                self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
                 let mut query = RAW_CEX_QUOTES.to_string();
