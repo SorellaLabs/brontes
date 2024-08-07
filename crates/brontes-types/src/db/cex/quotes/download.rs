@@ -240,7 +240,7 @@ fn find_closest_to_time_boundary(
 ) -> FastHashMap<Pair, Vec<CexQuote>> {
     exchange_symbol_map
         .into_par_iter()
-        .filter_map(|(pair, mut quotes)| {
+        .filter_map(|(pair, quotes)| {
             if quotes.is_empty() {
                 return None;
             }
