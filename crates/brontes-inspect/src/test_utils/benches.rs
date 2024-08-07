@@ -4,7 +4,7 @@ use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::ClassifierTestUtils;
 use brontes_types::{
     db::{
-        cex::{config::CexDexTradeConfig, CexExchange},
+        cex::{trades::CexDexTradeConfig, CexExchange},
         metadata::Metadata,
     },
     BlockData, MultiBlockData,

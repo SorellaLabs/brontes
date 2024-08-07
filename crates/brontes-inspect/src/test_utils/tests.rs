@@ -27,7 +27,7 @@ use brontes_core::TraceLoaderError;
 pub use brontes_types::constants::*;
 use brontes_types::{
     db::{
-        cex::{config::CexDexTradeConfig, CexExchange},
+        cex::{trades::CexDexTradeConfig, CexExchange},
         dex::DexQuotes,
         metadata::Metadata,
     },

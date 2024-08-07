@@ -6,7 +6,7 @@ use brontes_inspect::Inspectors;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
     constants::USDT_ADDRESS_STRING,
-    db::cex::{config::CexDexTradeConfig, CexExchange},
+    db::cex::{trades::CexDexTradeConfig, CexExchange},
     db_write_trigger::{backup_server_heartbeat, start_hr_monitor, HeartRateMonitor},
     init_threadpools, UnboundedYapperReceiver,
 };
@@ -88,19 +88,19 @@ pub struct RunArgs {
 pub struct TimeWindowArgs {
     /// The sliding time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp
-    #[arg(long = "tw-before", short = 'b', default_value = "3.0")]
+    #[arg(long = "tw-before", short = 'b', default_value = "10")]
     pub time_window_before:            f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = "6.0")]
+    #[arg(long = "tw-after", short = 'a', default_value = "20")]
     pub time_window_after:             f64,
     /// The time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-before", default_value = "2.0")]
+    #[arg(long = "op-tw-before", default_value = "5.0")]
     pub time_window_before_optimistic: f64,
     /// The time window (AFTER) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-after", default_value = "5.0")]
+    #[arg(long = "op-tw-after", default_value = "10.0")]
     pub time_window_after_optimistic:  f64,
     /// Cex Dex Quotes price time
     #[arg(long = "mk-time", default_value = "0.0")]

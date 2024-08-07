@@ -1,4 +1,3 @@
-use std::sync::{Arc, RwLock};
 
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
@@ -10,7 +9,7 @@ use serde_with::serde_as;
 
 use super::{
     builder::BuilderInfo,
-    cex::{CexPriceMap, CexTradeMap},
+    cex::{quotes::CexPriceMap, trades::CexTradeMap},
     dex::DexQuotes,
 };
 use crate::{
@@ -22,10 +21,7 @@ use crate::{
     FastHashSet,
 };
 #[allow(unused_imports)]
-use crate::{
-    db::cex::{config::CexDexTradeConfig, CexExchange},
-    normalized_actions::NormalizedSwap,
-};
+use crate::{db::cex::CexExchange, normalized_actions::NormalizedSwap};
 
 /// libmdbx type
 #[serde_as]
@@ -66,7 +62,7 @@ pub struct Metadata {
     pub cex_quotes:     CexPriceMap,
     pub dex_quotes:     Option<DexQuotes>,
     pub builder_info:   Option<BuilderInfo>,
-    pub cex_trades:     Option<Arc<RwLock<CexTradeMap>>>,
+    pub cex_trades:     Option<CexTradeMap>,
 }
 
 impl Metadata {
@@ -160,7 +156,7 @@ impl BlockMetadata {
         cex_quotes: CexPriceMap,
         dex_quotes: Option<DexQuotes>,
         builder_info: Option<BuilderInfo>,
-        cex_trades: Option<Arc<RwLock<CexTradeMap>>>,
+        cex_trades: Option<CexTradeMap>,
     ) -> Metadata {
         Metadata { block_metadata: self, cex_quotes, dex_quotes, builder_info, cex_trades }
     }

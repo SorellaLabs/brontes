@@ -1493,6 +1493,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0d8372f2d5cbac600a260de87877141b42da1e18d2c7a08ccb493a49cbd55c0"
 
 [[package]]
+name = "boyer-moore-magiclen"
+version = "0.2.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95e6233f2d926b5b123caf9d58e3885885255567fbe7776a7fdcae2a4d7241c4"
+dependencies = [
+ "debug-helper",
+]
+
+[[package]]
 name = "brontes"
 version = "0.1.0"
 dependencies = [
@@ -1510,6 +1519,7 @@ dependencies = [
  "ansi-parser",
  "ansi_term",
  "async-scoped",
+ "boyer-moore-magiclen",
  "brontes-classifier",
  "brontes-core",
  "brontes-database",
@@ -1524,6 +1534,7 @@ dependencies = [
  "clap",
  "clickhouse",
  "colored",
+ "comfy-table",
  "crossterm",
  "db-interfaces",
  "dhat",
@@ -1535,6 +1546,7 @@ dependencies = [
  "fs2",
  "fs_extra",
  "futures",
+ "human_bytes",
  "hyper 0.14.29",
  "indicatif",
  "indoc",
@@ -1553,6 +1565,7 @@ dependencies = [
  "reth-db",
  "reth-interfaces",
  "reth-network-api",
+ "reth-node-core",
  "reth-primitives",
  "reth-provider",
  "reth-rpc",
@@ -1562,6 +1575,7 @@ dependencies = [
  "reth-tracing-ext",
  "reth-transaction-pool",
  "serde",
+ "serde_json",
  "strum 0.25.0",
  "tar",
  "thiserror",
@@ -2957,6 +2971,12 @@ dependencies = [
  "regex",
  "syn 2.0.66",
 ]
+
+[[package]]
+name = "debug-helper"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f578e8e2c440e7297e008bb5486a3a8a194775224bbc23729b0dbdfaeebf162e"
 
 [[package]]
 name = "debugid"

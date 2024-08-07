@@ -895,7 +895,7 @@ pub mod trade_type {
         ser::{Serialize, Serializer},
     };
 
-    use crate::db::cex::TradeType;
+    use crate::db::cex::trades::TradeType;
 
     pub fn serialize<S: Serializer>(u: &TradeType, serializer: S) -> Result<S::Ok, S::Error> {
         let st = u.to_string();

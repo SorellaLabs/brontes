@@ -68,11 +68,11 @@ impl<'a> LogData<'a> {
                         .map(|log_ident| {
                             Ident::new(&(log_ident.to_string() + "_field"), Span::call_site())
                         })
-                        .collect_vec(),
+                        .collect::<Vec<_>>(),
                     vec![log_ident.clone()]
                         .into_iter()
                         .chain(log_fallbacks.clone())
-                        .collect_vec(),
+                        .collect::<Vec<_>>(),
                 )
             })
             .multiunzip();
@@ -113,9 +113,9 @@ impl<'a> LogData<'a> {
 
                         quote!([<#field:snake>]: ::eyre::Result<#data_type>)
                     })
-                    .collect_vec()
+                    .collect::<Vec<_>>()
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         let return_struct_build_fields = log_ident
             .iter()
@@ -135,9 +135,9 @@ impl<'a> LogData<'a> {
                                 ::eyre::eyre!("call_info: {:?}, {}",call_info, #message)
                         }))
                     })
-                    .collect_vec()
+                    .collect::<Vec<_>>()
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         let log_field_ty = log_repeating
             .iter()
@@ -152,11 +152,11 @@ impl<'a> LogData<'a> {
                             quote!(#mod_path::#name)
                         }
                     })
-                    .collect_vec()
+                    .collect::<Vec<_>>()
             })
-            .collect_vec();
+            .collect::<Vec<_>>();
 
-        let log_field = log_field.iter().flatten().collect_vec();
+        let log_field = log_field.iter().flatten().collect::<Vec<_>>();
 
         (
             quote!(
@@ -255,7 +255,7 @@ impl<'a> LogData<'a> {
                                     );
                                 )
                             })
-                            .collect_vec(),
+                            .collect::<Vec<_>>(),
                     )
                 }
                 (false, false) => self.parse_default(log_name, log_field_name, indexes),

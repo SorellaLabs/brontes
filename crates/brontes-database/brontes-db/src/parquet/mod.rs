@@ -147,7 +147,7 @@ where
             }));
         }
 
-        if !_cex_dex_arbs.is_empty() {
+        /*if !_cex_dex_arbs.is_empty() {
             bundle_futures.push(tokio::task::spawn_blocking({
                 let base_dir_path = base_dir_path.clone();
                 move || {
@@ -159,7 +159,7 @@ where
                     )
                 }
             }));
-        }
+        }*/
 
         if !atomic_arbs.is_empty() {
             bundle_futures.push(tokio::task::spawn_blocking({

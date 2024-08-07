@@ -51,6 +51,7 @@ reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "ret
 reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "ac29b4b" }
 reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "ac29b4b" }
 reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "ac29b4b" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-core", rev = "ac29b4b" }
 reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "ac29b4b" }
 reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "ac29b4b" }
 reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [

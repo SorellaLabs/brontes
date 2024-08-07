@@ -30,7 +30,7 @@ fn main() -> eyre::Result<()> {
             Ok(())
         }
         Err(e) => {
-            error!("Error: {:?}", e);
+            error!(target: "brontes", "ERROR: {:?}", e);
 
             let mut source: Option<&dyn Error> = e.source();
             while let Some(err) = source {
@@ -51,13 +51,13 @@ fn run() -> eyre::Result<()> {
     init_tracing(opt.verbosity.directive());
 
     match opt.command {
-        Commands::Run(command) => {
-            runner::run_command_until_exit(opt.metrics_port, Duration::from_secs(3600), |ctx| {
-                command.execute(brontes_db_endpoint, ctx)
-            })
-        }
+        Commands::Run(command) => runner::run_command_until_exit(
+            Some(opt.metrics_port),
+            Duration::from_secs(3600),
+            |ctx| command.execute(brontes_db_endpoint, ctx),
+        ),
         Commands::Database(command) => {
-            runner::run_command_until_exit(opt.metrics_port, Duration::from_secs(5), |ctx| {
+            runner::run_command_until_exit(None, Duration::from_secs(5), |ctx| {
                 command.execute(brontes_db_endpoint, ctx)
             })
         }

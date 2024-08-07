@@ -1,20 +1,20 @@
-pub mod cex_trades;
+mod cex_trades;
 pub mod config;
+mod download;
 pub mod optimistic;
-pub mod raw_cex_trades;
 pub mod time_window_vwam;
 pub mod utils;
 
 use alloy_primitives::FixedBytes;
 pub use cex_trades::*;
+pub use config::*;
+pub use download::*;
 use malachite::Rational;
-pub use raw_cex_trades::*;
-use time_window_vwam::TimeWindowTrades;
+pub use optimistic::*;
+pub use time_window_vwam::*;
+use utils::SortedTrades;
 
-use self::{
-    config::CexDexTradeConfig, time_window_vwam::MakerTakerWindowVWAP, utils::SortedTrades,
-};
-use super::{optimistic::MakerTaker, CexExchange};
+use super::CexExchange;
 use crate::{normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
 
 impl CexTradeMap {
@@ -32,7 +32,7 @@ impl CexTradeMap {
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
         config: CexDexTradeConfig,
-    ) -> (Option<MakerTakerWindowVWAP>, Option<MakerTaker>) {
+    ) -> (Option<WindowExchangePrice>, Option<OptimisticPrice>) {
         let window = self.calculate_time_window_vwam(
             config,
             exchanges,
@@ -69,7 +69,7 @@ impl CexTradeMap {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTakerWindowVWAP> {
+    ) -> Option<WindowExchangePrice> {
         TimeWindowTrades::new_from_cex_trade_map(&self.0, block_timestamp, exchanges, pair)
             .get_price(
                 config,
@@ -94,7 +94,7 @@ impl CexTradeMap {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-    ) -> Option<MakerTaker> {
+    ) -> Option<OptimisticPrice> {
         SortedTrades::new_from_cex_trade_map(&self.0, exchanges, pair, block_timestamp)
             .get_optimistic_price(
                 config,

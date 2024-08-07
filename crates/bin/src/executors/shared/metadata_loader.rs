@@ -3,7 +3,7 @@ use std::{
     pin::Pin,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, RwLock,
+        Arc,
     },
     task::Poll,
     time::Duration,
@@ -13,7 +13,7 @@ use alloy_primitives::Address;
 use brontes_core::DBWriter;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
-    db::{cex::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
+    db::{cex::trades::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
     normalized_actions::Action,
     traits::TracingProvider,
     BlockData, BlockTree,
@@ -26,7 +26,7 @@ use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
 /// of processed trees
-const MAX_PENDING_TREES: usize = 3;
+const MAX_PENDING_TREES: usize = 5;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
@@ -41,7 +41,6 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
-    active_block:          u64,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -62,7 +61,6 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             result_buf: VecDeque::new(),
             always_generate_price,
             force_no_dex_pricing,
-            active_block: 0,
         }
     }
 
@@ -91,6 +89,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                     .unwrap_or(true))
     }
 
+    //TODO: remove unecessary dex pricing query
     pub fn load_metadata_for_tree<DB: LibmdbxReader + DBWriter>(
         &mut self,
         tree: BlockTree<Action>,
@@ -111,12 +110,12 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
     }
 
-    //TODO: Change this shit to actual before and after instead of the /12 nonsense
+    //TODO: return acc option, instead of just returning default
     fn load_cex_trades<DB: LibmdbxReader>(
         &mut self,
         libmdbx: &'static DB,
         block: u64,
-    ) -> Option<Arc<RwLock<CexTradeMap>>> {
+    ) -> Option<CexTradeMap> {
         if !self.cex_window_data.is_loaded() {
             let window = self.cex_window_data.get_window_lookahead();
             // given every download is -6 + 6 around the block
@@ -125,12 +124,11 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let mut trades = Vec::new();
             for block in block - offsets..=block + offsets {
                 if let Ok(res) = libmdbx.get_cex_trades(block) {
-                    trades.push((block, res));
-                } else {
-                    return None
+                    trades.push(res);
                 }
             }
-            self.cex_window_data.init(trades);
+            let last_block = block + offsets;
+            self.cex_window_data.init(last_block, trades);
 
             return Some(self.cex_window_data.cex_trade_map())
         }
@@ -138,11 +136,9 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
 
         if let Ok(res) = libmdbx.get_cex_trades(last_block) {
-            self.cex_window_data
-                .new_block(block, res, self.active_block);
-        } else {
-            return None
+            self.cex_window_data.new_block(res);
         }
+        self.cex_window_data.set_last_block(last_block);
 
         Some(self.cex_window_data.cex_trade_map())
     }
@@ -294,7 +290,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                 }
             };
 
-            meta.cex_trades = Some(Arc::new(RwLock::new(trades)));
+            meta.cex_trades = Some(trades);
             meta.builder_info = builder_info;
             (block, tree, meta)
         });
@@ -312,7 +308,6 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
     ) -> std::task::Poll<Option<Self::Item>> {
         if self.force_no_dex_pricing {
             if let Some(res) = self.result_buf.pop_front() {
-                self.active_block = res.block_number();
                 return Poll::Ready(Some(res))
             }
             cx.waker().wake_by_ref();
@@ -328,24 +323,14 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some((tree, metadata))) => {
-                let block_data =
-                    BlockData { metadata: Arc::new(metadata), tree: Arc::new(tree) };
-                self.active_block = block_data.block_number();
-                Poll::Ready(Some(block_data))
-            }
-            Poll::Ready(None) => {
-                if let Some(res) = self.result_buf.pop_front() {
-                    self.active_block = res.block_number();
-                    Poll::Ready(Some(res))
-                } else {
-                    Poll::Ready(None)
-                }
-            }
+            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
+                metadata: Arc::new(metadata),
+                tree:     Arc::new(tree),
+            })),
+            Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
             Poll::Pending => {
-                if let Some(res) = self.result_buf.pop_front() {
-                    self.active_block = res.block_number();
-                    Poll::Ready(Some(res))
+                if let Some(f) = self.result_buf.pop_front() {
+                    Poll::Ready(Some(f))
                 } else {
                     Poll::Pending
                 }
