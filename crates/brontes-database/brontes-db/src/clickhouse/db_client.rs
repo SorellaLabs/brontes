@@ -715,7 +715,7 @@ impl ClickhouseCritTableCount {
 mod tests {
     use std::sync::Arc;
 
-    use alloy_primitives::hex;
+    use alloy_primitives::{hex, Uint};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
@@ -847,9 +847,47 @@ mod tests {
     async fn cex_dex_quotes(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let swap = NormalizedSwap::default();
 
-        let case0 = CexDexQuote { swaps: vec![swap.clone()], ..CexDexQuote::default() };
+        let swap = NormalizedSwap {
+            protocol:    Protocol::UniswapV2,
+            from:        hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
+            recipient:   hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
+            pool:        hex!("88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").into(),
+            token_in:    TokenInfoWithAddress::weth(),
+            token_out:   TokenInfoWithAddress::usdc(),
+            amount_in:   Rational::from_unsigneds(
+                3122757495341445439573u128,
+                1000000000000000000u128,
+            ),
+            amount_out:  Rational::from_unsigneds(1254253571443u64, 250000u64),
+            trace_index: 2,
+            msg_value:   Uint::from(0),
+        };
 
-        db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 0))
+        let case0 = CexDexQuote {
+            tx_hash:           hex!(
+                "ba217d10561a1cd6c52830dcc673886901e69ddb4db5e50c83f39ff0cfd14377"
+            )
+            .into(),
+            block_timestamp:   1694364587,
+            block_number:      18107273,
+            swaps:             vec![swap],
+            instant_mid_price: vec![0.0006263290093187073],
+            t2_mid_price:      vec![0.0006263290093187073],
+            t12_mid_price:     vec![0.0006263290093187073],
+            t30_mid_price:     vec![0.0006263290093187073],
+            t60_mid_price:     vec![0.0006263290093187073],
+            t300_mid_price:    vec![0.0006263290093187073],
+            exchange:          CexExchange::Binance,
+            pnl:               12951.829205242997,
+            gas_details:       GasDetails {
+                coinbase_transfer:   Some(11419369165096275986),
+                priority_fee:        0,
+                gas_used:            271686,
+                effective_gas_price: 8875282233,
+            },
+        };
+
+        db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 42069))
             .await
             .unwrap();
     }
@@ -1013,6 +1051,16 @@ mod tests {
         let tables = &BrontesClickhouseTables::all_tables();
         test_db
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
+            .await;
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_quotes() {
+        init_threadpools(10);
+        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
+
+        test_db
+            .run_test_with_test_db(tables, |db| Box::pin(cex_dex_quotes(db)))
             .await;
     }
 }
