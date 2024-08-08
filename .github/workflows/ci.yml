@@ -64,9 +64,9 @@ jobs:
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
     needs: [clippy, build]
     strategy:
-          fail-fast: false
-          matrix:
-            features: ["sorella-server"]
+      fail-fast: false
+      matrix:
+        features: ["sorella-server"]
     steps:
       - name: Get branch names.
         id: branch-names
@@ -83,14 +83,23 @@ jobs:
       - name: cargo test
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
 
+      - name: Cleanup on cancellation
+        if: cancelled()
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            set -x
+            rm -rf ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+          '"
+
   it-test:
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
     needs: [clippy, build]
     strategy:
-          fail-fast: false
-          matrix:
-            features: ["sorella-server"]
+      fail-fast: false
+      matrix:
+        features: ["sorella-server"]
     steps:
       - name: Get branch names.
         id: branch-names
@@ -106,11 +115,21 @@ jobs:
 
       - name: cargo it test
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}'"
+
+      - name: Cleanup on cancellation
+        if: cancelled()
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            set -x
+            rm -rf ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+          '"
+
   bench:
     strategy:
-          fail-fast: false
-          matrix:
-            features: ["sorella-server"]
+      fail-fast: false
+      matrix:
+        features: ["sorella-server"]
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
     needs: [clippy, build]
@@ -130,3 +149,11 @@ jobs:
       - name: cargo bench
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} bench ${{ matrix.features }} '"
 
+      - name: Cleanup on cancellation
+        if: cancelled()
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            set -x
+            rm -rf ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }}
+            rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }}
+          '"
