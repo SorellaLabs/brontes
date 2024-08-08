@@ -1,4 +1,9 @@
-use std::{f64::consts::E, fmt::Display, ops::Mul};
+use std::{
+    cmp::{max, min},
+    f64::consts::E,
+    fmt::Display,
+    ops::Mul,
+};
 
 use alloy_primitives::FixedBytes;
 use itertools::Itertools;
@@ -6,8 +11,10 @@ use malachite::{
     num::basic::traits::{One, Two, Zero},
     Rational,
 };
-use std::cmp::{max, min};
-use super::config::CexDexTradeConfig;
+
+const R2: Rational = Rational::TWO;
+
+use super::{config::CexDexTradeConfig, time_window_vwam::ExchangePath};
 use crate::{
     constants::{USDC_ADDRESS, USDT_ADDRESS},
     db::cex::{
@@ -24,26 +31,22 @@ use crate::{
     utils::ToFloatNearest,
     FastHashMap,
 };
-use super::time_window_vwam::ExchangePath;
 
 pub const BASE_EXECUTION_QUALITY: usize = 70;
 
 const PRE_SCALING_DIFF: u64 = 200_000;
 const TIME_STEP: u64 = 100_000;
 
-
-
-
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
 #[derive(Debug, Clone)]
 pub struct OptimisticPrice {
     // cex exchange with amount of volume executed on it
-    pub trades_used:       Vec<OptimisticTrade>,
+    pub trades_used: Vec<OptimisticTrade>,
     /// the pairs that were traded through in order to get this price.
     /// in the case of a intermediary, this will be 2, otherwise, 1
-    pub pairs:             Vec<Pair>,
-    pub global: ExchangePath,
+    pub pairs:       Vec<Pair>,
+    pub global:      ExchangePath,
 }
 
 impl Mul for OptimisticPrice {
@@ -53,7 +56,8 @@ impl Mul for OptimisticPrice {
         self.pairs.extend(rhs.pairs);
         self.global.price_maker *= rhs.global.price_maker;
         self.global.price_taker *= rhs.global.price_taker;
-        self.global.final_start_time = min(self.global.final_start_time, rhs.global.final_start_time);
+        self.global.final_start_time =
+            min(self.global.final_start_time, rhs.global.final_start_time);
         self.global.final_end_time = max(self.global.final_end_time, rhs.global.final_end_time);
 
         self.trades_used.extend(rhs.trades_used);
@@ -110,13 +114,13 @@ impl<'a> SortedTrades<'a> {
         if pair.0 == pair.1 {
             return Some(OptimisticPrice {
                 trades_used: vec![],
-                pairs: vec![pair],
-                global: ExchangePath {
-                    price_maker: Rational::ONE,
-                    price_taker: Rational::ONE,
-                    volume: Rational::ZERO,
+                pairs:       vec![pair],
+                global:      ExchangePath {
+                    price_maker:      Rational::ONE,
+                    price_taker:      Rational::ONE,
+                    volume:           Rational::ZERO,
                     final_start_time: 0,
-                    final_end_time: 0,
+                    final_end_time:   0,
                 },
             })
         }
@@ -190,7 +194,8 @@ impl<'a> SortedTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
-                let new_vol = volume * ((&first_leg.global.price_maker + &first_leg.global.price_taker) / Rational::TWO);
+                let new_vol = volume
+                    * ((&first_leg.global.price_maker + &first_leg.global.price_taker) / R2);
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -282,8 +287,6 @@ impl<'a> SortedTrades<'a> {
 
         let mut optimistic_trades = Vec::with_capacity(trades_used.len());
 
-
-
         let mut global_start_time = u64::MAX;
         let mut global_end_time = 0;
 
@@ -324,15 +327,11 @@ impl<'a> SortedTrades<'a> {
             price_maker:      vxp_maker / &trade_volume_weight,
             price_taker:      vxp_taker / &trade_volume_weight,
             volume:           trade_volume,
-            final_start_time: global_start_time, 
+            final_start_time: global_start_time,
             final_end_time:   global_end_time,
         };
 
-        let price = OptimisticPrice {
-            trades_used:       optimistic_trades,
-            pairs:             vec![pair],
-            global,    
-        };
+        let price = OptimisticPrice { trades_used: optimistic_trades, pairs: vec![pair], global };
 
         Some(price)
     }
