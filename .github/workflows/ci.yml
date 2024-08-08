@@ -80,12 +80,23 @@ jobs:
           chmod 600 ~/.ssh/brontes_server
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
-      - name: Diagnose permissions
+      - name: Enhanced Diagnostics
         run: |
-          whoami
-          ls -l /home/data/reth/db
-          df -h /home/data/reth/db
-          id
+          echo "Current user: $(whoami)"
+          echo "Current directory: $(pwd)"
+          echo "Home directory contents:"
+          ls -la ~
+          echo "Content of /home:"
+          sudo ls -la /home
+          echo "Content of /home/data (if exists):"
+          sudo ls -la /home/data || echo "/home/data does not exist"
+          echo "Content of /home/data/reth (if exists):"
+          sudo ls -la /home/data/reth || echo "/home/data/reth does not exist"
+          echo "Permissions of parent directories:"
+          sudo namei -l /home/data/reth/db
+          echo "Available disk space:"
+          df -h
+
       - name: cargo test
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
 
@@ -94,6 +105,7 @@ jobs:
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
+            rm -rf /home/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
           '"
 
@@ -126,6 +138,7 @@ jobs:
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
+            rm -rf /home/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
           '"
 
@@ -156,7 +169,8 @@ jobs:
       - name: Cleanup on cancellation
         if: cancelled()
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc
             set -x
+            rm -rf /home/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }}
           '"
