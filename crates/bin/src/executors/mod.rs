@@ -187,7 +187,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(4)
+        .buffer_unordered(8)
     }
 
     ///Calculate the block chunks using min batch size and max_tasks.
