@@ -1,4 +1,3 @@
-
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
