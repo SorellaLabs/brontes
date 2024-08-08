@@ -81,30 +81,6 @@ jobs:
           chmod 600 ~/.ssh/brontes_server
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
-      - name: Enhanced Diagnostics
-        run: |
-          ssh brontes_server -tt "bash --login -c '
-          set -x
-          echo \"Current user: \$(whoami)\"
-          echo \"Current directory: \$(pwd)\"
-          echo \"Home directory contents:\"
-          ls -la ~
-          echo \"Content of /home:\"
-          ls -la /home
-          echo \"Content of /home/data (if exists):\"
-          ls -la /home/data || echo \"/home/data does not exist\"
-          echo \"Content of /home/data/brontes-ci (if exists):\"
-          ls -la /home/data/brontes-ci || echo \"/home/data/brontes-ci does not exist\"
-          echo \"Permissions of parent directories:\"
-          namei -l /home/data/brontes-ci || echo \"Unable to check permissions of /home/data/brontes-ci\"
-          echo \"Available disk space:\"
-          df -h
-          echo \"Current user groups:\"
-          groups
-          echo \"Sudo capabilities:\"
-          sudo -l || echo \"No sudo access\"
-          '"
-
       - name: cargo test
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
 
