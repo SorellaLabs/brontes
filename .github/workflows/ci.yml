@@ -61,8 +61,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    needs: [clippy, build]
+    if: always()
+    #&& !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
+    #needs: [clippy, build]
     strategy:
       fail-fast: false
       matrix:
@@ -82,21 +83,22 @@ jobs:
 
       - name: Enhanced Diagnostics
         run: |
-          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc 
-          echo "Current user: $(whoami)"
-          echo "Current directory: $(pwd)"
-          echo "Home directory contents:"
-          ls -la ~
-          echo "Content of /home:"
-          sudo ls -la /home
-          echo "Content of /home/data (if exists):"
-          sudo ls -la /home/data || echo "/home/data does not exist"
-          echo "Content of /home/data/reth (if exists):"
-          sudo ls -la /home/data/reth || echo "/home/data/reth does not exist"
-          echo "Permissions of parent directories:"
-          sudo namei -l /home/data/reth/db
-          echo "Available disk space:"
-          df -h
+          ssh brontes_server -tt "bash --login -c '
+            source ~/.bashrc
+            echo \"Current user: \$(whoami)\"
+            echo \"Current directory: \$(pwd)\"
+            echo \"Home directory contents:\"
+            ls -la ~
+            echo \"Content of /home:\"
+            sudo ls -la /home
+            echo \"Content of /home/data (if exists):\"
+            sudo ls -la /home/data || echo \"/home/data does not exist\"
+            echo \"Content of /home/data/reth (if exists):\"
+            sudo ls -la /home/data/reth || echo \"/home/data/reth does not exist\"
+            echo \"Permissions of parent directories:\"
+            sudo namei -l /home/data/reth/db || echo \"Unable to check permissions of /home/data/reth/db\"
+            echo \"Available disk space:\"
+            df -h'"
 
       - name: cargo test
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
