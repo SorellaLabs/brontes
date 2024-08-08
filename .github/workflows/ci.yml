@@ -88,7 +88,6 @@ jobs:
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
-            rm -rf ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
           '"
 
@@ -121,7 +120,6 @@ jobs:
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
-            rm -rf ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
           '"
 
@@ -154,6 +152,5 @@ jobs:
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
-            rm -rf ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }}
           '"
