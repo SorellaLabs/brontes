@@ -149,7 +149,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    #[brontes_macros::test]
     async fn test_curve_v1_metapool_discovery() {
         verify_discovery(
             hex!("49878ff3e5e0de4f45c875c94977c154a4f6bea22640f72e85a18434672e3bb2").into(),
