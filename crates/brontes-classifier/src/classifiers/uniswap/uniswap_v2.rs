@@ -151,6 +151,6 @@ mod tests {
             .test_pool_token_order(token0, token1, pool)
             .await;
 
-        assert_eq!(matches, true);
+        assert!(matches);
     }
 }

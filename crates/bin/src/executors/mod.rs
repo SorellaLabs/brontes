@@ -634,7 +634,7 @@ fn calculate_buffer_size(
 
     // Clamp the buffer size
     let min_buffer = 10;
-    let max_buffer = chunks as usize;
+    let max_buffer = 80;
 
     (adjusted_buffer_size.round() as usize).clamp(min_buffer, max_buffer)
 }
