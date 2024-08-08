@@ -82,6 +82,7 @@ jobs:
 
       - name: Enhanced Diagnostics
         run: |
+          ssh brontes_server -tt "bash --login -c 'source ~/.bashrc 
           echo "Current user: $(whoami)"
           echo "Current directory: $(pwd)"
           echo "Home directory contents:"
