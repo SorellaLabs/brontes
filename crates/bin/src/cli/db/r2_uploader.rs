@@ -23,12 +23,12 @@ impl R2Uploader {
         let start_block = if let Some(b) = self.start_block {
             b
         } else {
-            tracing::info!("grabbing most recent r2 snapshot");
+            tracing::info!("Grabbing most recent r2 snapshot");
             r2wrapper.get_most_recent_partition_block().await?
         };
 
         let db = LibmdbxReadWriter::init_db(database_path, None, &ctx.task_executor, true)?;
-        tracing::info!("partitioning new data into respective files");
+        tracing::info!("Partitioning new data into respective files");
 
         if let Err(e) = LibmdbxPartitioner::new(
             db,
@@ -43,7 +43,7 @@ impl R2Uploader {
         }
 
         tracing::info!(
-            "partitioning complete, uploading files, this will take a while. ~10 min per partition"
+            "Partitioning complete, uploading files, this will take a while. ~10 min per partition"
         );
 
         if let Err(e) = r2wrapper

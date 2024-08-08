@@ -3,6 +3,7 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
+use brontes_database::libmdbx::StateToInitialize;
 use brontes_metrics::{
     pricing::DexPricingMetrics,
     range::{FinishedRange, GlobalRangeMetrics},
@@ -112,11 +113,138 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
     }
 
+    pub async fn build(
+        self,
+        executor: BrontesTaskExecutor,
+        shutdown: GracefulShutdown,
+    ) -> eyre::Result<Brontes> {
+        // we always verify before we allow for any canceling
+        let (had_end_block, end_block) = self.get_end_block().await;
+        self.verify_global_tables().await?;
+        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
+
+        pin_mut!(build_future, shutdown);
+        tokio::select! {
+            res = &mut build_future => {
+                return res
+            },
+            guard = shutdown => {
+                drop(guard)
+            }
+        }
+        tracing::info!(
+            "Received shutdown signal during initialization process, clearing possibly corrupted
+                           full range tables"
+        );
+
+        Err(eyre::eyre!("shutdown"))
+    }
+
+    async fn build_internal(
+        self,
+        executor: BrontesTaskExecutor,
+        had_end_block: bool,
+        end_block: u64,
+    ) -> eyre::Result<Brontes> {
+        let futures = FuturesUnordered::new();
+
+        let pricing_metrics = self.metrics.then(DexPricingMetrics::default);
+
+        if self.is_snapshot {
+            let (start_block, db_end_block) = self.libmdbx.get_db_range()?;
+            if self.start_block.is_none()
+                || !had_end_block
+                || self.start_block < Some(start_block)
+                || end_block > db_end_block
+            {
+                eyre::bail!(
+                    "the current db snapshot block range is {}-{}, please make sure that your set \
+                     range falls within these bounds",
+                    start_block,
+                    db_end_block
+                );
+            }
+        }
+
+        if had_end_block && self.start_block.is_some() {
+            self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
+                .for_each(|block_range| {
+                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                        "Range Executor",
+                        |shutdown| async move {
+                            block_range.run_until_graceful_shutdown(shutdown).await;
+                        },
+                    ));
+                    std::future::ready(())
+                })
+                .await;
+        } else {
+            if self.start_block.is_some() {
+                self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
+                    .for_each(|block_range| {
+                        futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                            "Range Executor",
+                            |shutdown| async move {
+                                block_range.run_until_graceful_shutdown(shutdown).await;
+                            },
+                        ));
+                        std::future::ready(())
+                    })
+                    .await;
+            }
+
+            tracing::info!("starting tip inspector");
+            let tip_inspector = self.build_tip_inspector(
+                usize::MAX,
+                executor.clone(),
+                end_block,
+                self.back_from_tip,
+                pricing_metrics,
+            );
+
+            futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
+                "Tip Inspector",
+                |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },
+            ));
+        }
+
+        let metrics = FinishedRange::default();
+        metrics.running_ranges.increment(futures.len() as f64);
+        metrics
+            .total_set_range
+            .increment(end_block - self.start_block.unwrap_or(end_block));
+
+        Ok(Brontes { futures, metrics })
+    }
+
     //TODO: We currently don't have the ability to stream the query results from
-    // clickhouse because the client is shit, so we have to break up the downloads
-    // into smaller batches & wait for these smaller queries to return to write all
-    // of the data. This uses a lot of memory & is slow. We will switch to using
-    // stream functionality.
+    //TODO: clickhouse because the client is shit, so we have to break up the
+    //TODO: downloads into smaller batches & wait for these smaller queries to
+    //TODO: return to write all of the data. This uses a lot of memory & is slow.
+    //TODO: We will switch to using stream functionality.
+
+    /// Builds a stream of RangeExecutors for processing blocks.
+    ///
+    /// This function creates a stream of RangeExecutors, each responsible for
+    /// processing a chunk of blocks. It handles the initialization of necessary
+    /// components and sets up progress tracking.
+    ///
+    /// # Arguments
+    ///
+    /// * `executor` - The task executor for spawning asynchronous tasks.
+    /// * `end_block` - The final block to process.
+    /// * `pricing_metrics` - Optional metrics for DEX pricing.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Stream` that yields `RangeExecutorWithPricing<T, DB, CH, P>`
+    /// instances.
+    ///
+    /// # Notes
+    ///
+    /// This function uses `buffer_unordered(8)` to limit concurrent
+    /// initialization of RangeExecutors. The actual number of concurrently
+    /// running executors is not limited by this buffer.
     fn build_range_executors(
         &'_ self,
         executor: BrontesTaskExecutor,
@@ -125,12 +253,24 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         let chunks = self.calculate_chunks(end_block);
 
-        let progress_bar = self.initialize_global_progress_bar(self.start_block, self.end_block);
+        let progress_bar =
+            initialize_global_progress_bar(self.cli_only, self.start_block, self.end_block);
+
         let state_to_init = Arc::new(
             self.libmdbx
                 .state_to_initialize(self.start_block.unwrap(), end_block)
                 .unwrap(),
         );
+
+        #[cfg(feature = "sorella-server")]
+        let buffer_size = calculate_buffer_size(
+            &state_to_init,
+            end_block - self.start_block.unwrap(),
+            chunks.len() as f64,
+        );
+
+        #[cfg(not(feature = "sorella-server"))]
+        let buffer_size = 10;
 
         let multi = MultiProgress::default();
         let tables_pb = Arc::new(
@@ -158,7 +298,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
                 #[allow(clippy::async_yields_async)]
                 async move {
-                    tracing::info!(batch_id, start_block, end_block, "Starting batch");
+                    tracing::info!(
+                        "Starting batch {batch_id} for block range {start_block}-{end_block}"
+                    );
 
                     if !self.is_snapshot {
                         self.init_block_range_tables(ranges, tables_pb.clone())
@@ -187,28 +329,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(8)
-    }
-
-    ///Calculate the block chunks using min batch size and max_tasks.
-    /// Max tasks defaults to 50% of physical cores of the system if not set
-    fn calculate_chunks(&self, end_block: u64) -> Vec<(u64, u64)> {
-        let start_block = self.start_block.unwrap();
-        let range = end_block - start_block;
-        let cpus_min = range / self.min_batch_size + 1;
-        let cpus = std::cmp::min(cpus_min, self.max_tasks);
-
-        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
-
-        (start_block..=end_block)
-            .chunks(chunk_size.try_into().unwrap())
-            .into_iter()
-            .map(|mut c| {
-                let start = c.next().unwrap();
-                let end_block = c.last().unwrap_or(start_block);
-                (start, end_block)
-            })
-            .collect_vec()
+        .buffer_unordered(buffer_size)
     }
 
     fn build_tip_inspector(
@@ -237,6 +358,25 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         )
     }
 
+    /// Initializes a StateCollector for a specific range of blocks.
+    ///
+    /// This function sets up the necessary components for collecting state data
+    /// over a range of blocks, including classification, pricing, and metadata
+    /// fetching.
+    ///
+    /// # Arguments
+    ///
+    /// * `range_id` - A unique identifier for this range.
+    /// * `executor` - The task executor for spawning asynchronous tasks.
+    /// * `start_block` - The first block in the range.
+    /// * `end_block` - The last block in the range.
+    /// * `tip` - Boolean flag indicating if this is for tip processing.
+    /// * `pricing_metrics` - Optional metrics for DEX pricing.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `StateCollector<T, DB, CH>` initialized with the specified
+    /// parameters.
     fn init_state_collector(
         &self,
         range_id: usize,
@@ -388,145 +528,115 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }
     }
 
-    async fn build_internal(
-        self,
-        executor: BrontesTaskExecutor,
-        had_end_block: bool,
-        end_block: u64,
-    ) -> eyre::Result<Brontes> {
-        let futures = FuturesUnordered::new();
+    ///Calculate the block chunks using min batch size and max_tasks.
+    /// Max tasks defaults to 50% of physical cores of the system if not set
+    fn calculate_chunks(&self, end_block: u64) -> Vec<(u64, u64)> {
+        let start_block = self.start_block.unwrap();
+        let range = end_block - start_block;
+        let cpus_min = range / self.min_batch_size + 1;
+        let cpus = std::cmp::min(cpus_min, self.max_tasks);
 
-        let pricing_metrics = self.metrics.then(DexPricingMetrics::default);
+        let chunk_size = if cpus == 0 { range + 1 } else { (range / cpus) + 1 };
 
-        if self.is_snapshot {
-            let (start_block, db_end_block) = self.libmdbx.get_db_range()?;
-            if self.start_block.is_none()
-                || !had_end_block
-                || self.start_block < Some(start_block)
-                || end_block > db_end_block
-            {
-                eyre::bail!(
-                    "the current db snapshot block range is {}-{}, please make sure that your set \
-                     range falls within these bounds",
-                    start_block,
-                    db_end_block
-                );
-            }
-        }
-
-        if had_end_block && self.start_block.is_some() {
-            self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
-                .for_each(|block_range| {
-                    futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
-                        "Range Executor",
-                        |shutdown| async move {
-                            block_range.run_until_graceful_shutdown(shutdown).await;
-                        },
-                    ));
-                    std::future::ready(())
-                })
-                .await;
-        } else {
-            if self.start_block.is_some() {
-                self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
-                    .for_each(|block_range| {
-                        futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
-                            "Range Executor",
-                            |shutdown| async move {
-                                block_range.run_until_graceful_shutdown(shutdown).await;
-                            },
-                        ));
-                        std::future::ready(())
-                    })
-                    .await;
-            }
-
-            tracing::info!("starting tip inspector");
-            let tip_inspector = self.build_tip_inspector(
-                usize::MAX,
-                executor.clone(),
-                end_block,
-                self.back_from_tip,
-                pricing_metrics,
-            );
-
-            futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
-                "Tip Inspector",
-                |shutdown| async move { tip_inspector.run_until_graceful_shutdown(shutdown).await },
-            ));
-        }
-
-        let metrics = FinishedRange::default();
-        metrics.running_ranges.increment(futures.len() as f64);
-        metrics
-            .total_set_range
-            .increment(end_block - self.start_block.unwrap_or(end_block));
-
-        Ok(Brontes { futures, metrics })
-    }
-
-    pub async fn build(
-        self,
-        executor: BrontesTaskExecutor,
-        shutdown: GracefulShutdown,
-    ) -> eyre::Result<Brontes> {
-        // we always verify before we allow for any canceling
-        let (had_end_block, end_block) = self.get_end_block().await;
-        self.verify_global_tables().await?;
-        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
-
-        pin_mut!(build_future, shutdown);
-        tokio::select! {
-            res = &mut build_future => {
-                return res
-            },
-            guard = shutdown => {
-                drop(guard)
-            }
-        }
-        tracing::info!(
-            "Received shutdown signal during initialization process, clearing possibly corrupted
-                           full range tables"
-        );
-
-        Err(eyre::eyre!("shutdown"))
-    }
-
-    fn initialize_global_progress_bar(
-        &self,
-        start_block: Option<u64>,
-        end_block: Option<u64>,
-    ) -> Option<ProgressBar> {
-        self.cli_only
-            .then(|| {
-                let start = start_block?;
-                let end = end_block?;
-                // Assuming `had_end_block` and `end_block` should be defined or passed
-                // elsewhere
-                let progress_bar = ProgressBar::with_draw_target(
-                    Some(end - start),
-                    ProgressDrawTarget::stderr_with_hz(100),
-                );
-                let style = ProgressStyle::default_bar()
-                    .template(
-                        "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
-                         ({percent}%) | ETA: {eta}",
-                    )
-                    .expect("Invalid progress bar template")
-                    .progress_chars("█>-")
-                    .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                        write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
-                    })
-                    .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                        write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
-                    });
-                progress_bar.set_style(style);
-                progress_bar.set_message("Processing blocks:");
-
-                Some(progress_bar)
+        (start_block..=end_block)
+            .chunks(chunk_size.try_into().unwrap())
+            .into_iter()
+            .map(|mut c| {
+                let start = c.next().unwrap();
+                let end_block = c.last().unwrap_or(start_block);
+                (start, end_block)
             })
-            .flatten()
+            .collect_vec()
     }
+}
+
+fn initialize_global_progress_bar(
+    cli_only: bool,
+    start_block: Option<u64>,
+    end_block: Option<u64>,
+) -> Option<ProgressBar> {
+    cli_only
+        .then(|| {
+            let start = start_block?;
+            let end = end_block?;
+            // Assuming `had_end_block` and `end_block` should be defined or passed
+            // elsewhere
+            let progress_bar = ProgressBar::with_draw_target(
+                Some(end - start),
+                ProgressDrawTarget::stderr_with_hz(100),
+            );
+            let style = ProgressStyle::default_bar()
+                .template(
+                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
+                     ({percent}%) | ETA: {eta}",
+                )
+                .expect("Invalid progress bar template")
+                .progress_chars("█>-")
+                .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+                })
+                .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                });
+            progress_bar.set_style(style);
+            progress_bar.set_message("Processing blocks:");
+
+            Some(progress_bar)
+        })
+        .flatten()
+}
+
+#[cfg(feature = "sorella-server")]
+fn calculate_buffer_size(
+    state_to_init: &StateToInitialize,
+    total_block_range: u64,
+    chunks: f64,
+) -> usize {
+    const TABLE_WEIGHTS: [(Tables, f64); 3] =
+        [(Tables::DexPrice, 0.2), (Tables::CexTrades, 0.5), (Tables::CexPrice, 1.0)];
+    const REFERENCE_BLOCK_RANGE: f64 = 4_921_227.0;
+
+    let table_ranges: Vec<(Tables, usize)> = TABLE_WEIGHTS
+        .iter()
+        .filter_map(|(table, _)| {
+            state_to_init.ranges_to_init.get(table).map(|ranges| {
+                let total_range: usize = ranges
+                    .iter()
+                    .map(|range| range.end() - range.start() + 1)
+                    .sum();
+                (*table, total_range)
+            })
+        })
+        .collect();
+
+    let weighted_sum: f64 = table_ranges
+        .iter()
+        .map(|(table, range_size)| {
+            let weight = TABLE_WEIGHTS
+                .iter()
+                .find(|(t, _)| t == table)
+                .map(|(_, w)| w)
+                .unwrap();
+            *weight * (*range_size as f64 / REFERENCE_BLOCK_RANGE)
+        })
+        .sum();
+
+    // Normalize weighted_sum to be between 0 and 1
+    let normalized_weight =
+        (weighted_sum / TABLE_WEIGHTS.iter().map(|(_, w)| w).sum::<f64>()).min(1.0);
+
+    // Calculate buffer size
+    let buffer_size = chunks * (1.0 - normalized_weight);
+
+    // Adjust based on total range size relative to reference
+    let size_factor = (total_block_range as f64 / REFERENCE_BLOCK_RANGE).min(1.0);
+    let adjusted_buffer_size = buffer_size * (1.0 - size_factor * normalized_weight);
+
+    // Clamp the buffer size
+    let min_buffer = 10;
+    let max_buffer = 80;
+
+    (adjusted_buffer_size.round() as usize).clamp(min_buffer, max_buffer)
 }
 
 pub struct Brontes {
