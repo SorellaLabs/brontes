@@ -6,6 +6,7 @@ setup() {
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"
 
+
   if cp /home/brontes-ci/.env .env; then :; else return 1;fi
 
   echo "BRONTES_DB_PATH='/home/data/brontes-ci/$2'" >> .env 

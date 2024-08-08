@@ -80,6 +80,12 @@ jobs:
           chmod 600 ~/.ssh/brontes_server
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
+      - name: Diagnose permissions
+        run: |
+          whoami
+          ls -l /home/data/reth/db
+          df -h /home/data/reth/db
+          id
       - name: cargo test
         run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
 
