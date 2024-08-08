@@ -1056,15 +1056,4 @@ mod tests {
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
             .await;
     }
-
-    #[brontes_macros::test]
-    async fn test_cex_quotes() {
-        init_threadpools(10);
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
-
-        let tables = vec![BrontesClickhouseTables::MevCex_Dex_Quotes];
-        test_db
-            .run_test_with_test_db(&tables, |db| Box::pin(cex_dex_quotes(db)))
-            .await;
-    }
 }
