@@ -69,11 +69,11 @@ impl CexQuotesConverter {
         }
     }
 
-    pub fn convert_to_prices(mut self) -> Vec<(u64, CexPriceMap)> {
+    pub fn convert_to_prices(self) -> Vec<(u64, CexPriceMap)> {
         let block_num_map_with_pairs = self.create_block_num_map_with_pairs();
 
         block_num_map_with_pairs
-            .into_iter()
+            .into_par_iter()
             .map(|((block_num, block_time), (quotes, cex_best_venue))| {
                 let most_liquid_exchange_for_pair = self.process_best_cex_venues(cex_best_venue);
 
@@ -91,7 +91,7 @@ impl CexQuotesConverter {
     }
 
     pub fn create_price_map(
-        &mut self,
+        &self,
         exchange_map: FastHashMap<CexExchange, Vec<usize>>,
         block_time: u64,
     ) -> FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>> {
@@ -109,15 +109,12 @@ impl CexQuotesConverter {
 
                     let symbol = self
                         .symbols
-                        .get_mut(&(quote.exchange, quote.symbol.clone()))
+                        .get(&(quote.exchange, quote.symbol.clone()))
                         .unwrap();
 
-                    correct_usdc_address(&mut symbol.address_pair);
+                    let pair = correct_usdc_address(&symbol.address_pair);
 
-                    exchange_pair_index_map
-                        .entry(symbol.address_pair)
-                        .or_default()
-                        .push(index);
+                    exchange_pair_index_map.entry(pair).or_default().push(index);
                 });
 
                 let exchange_symbol_map =
@@ -129,7 +126,7 @@ impl CexQuotesConverter {
     }
 
     pub fn process_best_cex_venues(
-        &mut self,
+        &self,
         cex_best_venue: Vec<BestCexPerPair>,
     ) -> FastHashMap<Pair, CexExchange> {
         cex_best_venue
@@ -137,11 +134,11 @@ impl CexQuotesConverter {
             .filter_map(|pair_ex| {
                 let symbol = self
                     .symbols
-                    .get_mut(&(pair_ex.exchange, pair_ex.symbol.clone()))?;
+                    .get(&(pair_ex.exchange, pair_ex.symbol.clone()))?;
 
-                correct_usdc_address(&mut symbol.address_pair);
+                let pair = correct_usdc_address(&symbol.address_pair);
 
-                Some((symbol.address_pair, pair_ex.exchange))
+                Some((pair, pair_ex.exchange))
             })
             .collect()
     }
@@ -268,12 +265,14 @@ impl CexQuotesConverter {
 
 const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
 
-pub fn correct_usdc_address(pair: &mut Pair) {
-    if pair.0 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3") {
-        pair.0 = USDC_ADDRESS;
-    } else if pair.1 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3") {
-        pair.1 = USDC_ADDRESS;
+pub fn correct_usdc_address(pair: &Pair) -> Pair {
+    let mut corrected_pair = *pair;
+    if corrected_pair.0 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3") {
+        corrected_pair.0 = USDC_ADDRESS;
+    } else if corrected_pair.1 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3") {
+        corrected_pair.1 = USDC_ADDRESS;
     }
+    corrected_pair
 }
 
 #[allow(unused)]

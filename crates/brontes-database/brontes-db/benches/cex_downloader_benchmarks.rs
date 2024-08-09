@@ -277,12 +277,9 @@ fn prepare_test_data(
                         .get_mut(&(quote.exchange, quote.symbol.clone()))
                         .unwrap();
 
-                    correct_usdc_address(&mut symbol.address_pair);
+                    let pair = correct_usdc_address(&symbol.address_pair);
 
-                    exchange_pair_index_map
-                        .entry(symbol.address_pair)
-                        .or_default()
-                        .push(index);
+                    exchange_pair_index_map.entry(pair).or_default().push(index);
                 });
             });
 
