@@ -723,7 +723,7 @@ mod tests {
     use alloy_primitives::{hex, Uint};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId, builder::BuilderInfoWithAddress},
+        db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_threadpools,
         mev::{
             ArbDetails, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
@@ -988,12 +988,6 @@ mod tests {
         };
 
         db.insert_one::<EthereumPools>(&case0).await.unwrap();
-    }
-
-    async fn builder_info(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
-        let case0 = BuilderInfoWithAddress::default();
-
-        db.insert_one::<BrontesBuilder_Info>(&case0).await.unwrap();
     }
 
     async fn block_analysis(db: &ClickhouseTestClient<BrontesClickhouseTables>) {

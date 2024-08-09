@@ -53,9 +53,9 @@ impl DiscoveryFill {
         let start_block = if let Some(s) = self.start_block {
             s
         } else {
-            libmdbx.client.max_traced_block().await.unwrap()
+            libmdbx.client.max_traced_block().await?
         };
-        let end_block = parser.get_latest_block_number().unwrap();
+        let end_block = parser.get_latest_block_number().await?;
 
         let bar = ProgressBar::with_draw_target(
             Some(end_block - start_block),
