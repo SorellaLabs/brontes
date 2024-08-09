@@ -1,6 +1,4 @@
 WITH
-    ? AS start_time,
-    ? AS end_time,
     grouped_time AS (
         SELECT
             c.exchange as exchange,
@@ -12,7 +10,7 @@ WITH
             argMax(c.bid_price, c.timestamp) as bid_price,
             argMax(c.bid_amount, c.timestamp) as bid_amount
         FROM cex.normalized_quotes as c
-        WHERE c.timestamp >= start_time AND c.timestamp < end_time
+        WHERE c.timestamp >= ? AND c.timestamp < ?
         GROUP BY exchange, symbol, timestamp_sec
     )
 SELECT
