@@ -92,7 +92,7 @@ fn bench_get_raw_cex_quotes_range(c: &mut Criterion) {
     let (rt, client) = setup_runtime_and_client();
     let range = CexRangeOrArbitrary::Range(19000000, 19001000);
     let mut group = c.benchmark_group("get_raw_cex_quotes_range");
-    group.sampling_mode(SamplingMode::Linear);
+    group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
     let block_times = rt
@@ -104,16 +104,25 @@ fn bench_get_raw_cex_quotes_range(c: &mut Criterion) {
 
     let quote_count = Arc::new(AtomicUsize::new(0));
     let quote_count_clone = Arc::clone(&quote_count);
+    let iter_count = Arc::new(AtomicUsize::new(0));
 
     group.bench_function("get_raw_cex_quotes_range", |b| {
         b.to_async(&rt).iter(|| async {
             let quotes = black_box(client.get_raw_cex_quotes_range(start, end).await.unwrap());
             quote_count_clone.fetch_add(quotes.len(), Ordering::Relaxed);
-            quotes
+            iter_count.fetch_add(1, Ordering::Relaxed);
+            black_box(quotes);
         })
     });
 
-    println!("Total quote count: {}", quote_count.load(Ordering::Relaxed));
+    println!(
+        "Total quote count: {}",
+        quote_count.load(Ordering::Relaxed) / iter_count.load(Ordering::Relaxed)
+    );
+    println!(
+        "Estimated total size of quotes: {} bytes",
+        quote_count.load(Ordering::Relaxed) * 75 / iter_count.load(Ordering::Relaxed)
+    );
     group.finish();
 }
 
@@ -124,7 +133,7 @@ fn bench_full_conversion_process(c: &mut Criterion) {
         rt.block_on(async { fetch_test_data(&client, range).await.unwrap() });
 
     let mut group = c.benchmark_group("Full Conversion Process");
-    group.sampling_mode(SamplingMode::Linear);
+    group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
     // Benchmark the conversion process
@@ -175,7 +184,7 @@ fn bench_conversion_parts(c: &mut Criterion) {
     let mut converter = CexQuotesConverter::new(block_times, symbols, quotes, best_cex_per_pair);
 
     let mut group = c.benchmark_group("Conversion Parts");
-    group.sampling_mode(SamplingMode::Linear);
+    group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
     group.bench_function("create_block_num_map_with_pairs", |b| {
