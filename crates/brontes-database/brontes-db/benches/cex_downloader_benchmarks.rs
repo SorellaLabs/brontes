@@ -1,4 +1,10 @@
-use std::time::Instant;
+use std::{
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Instant,
+};
 
 use brontes_database::{clickhouse::Clickhouse, libmdbx::cex_utils::CexRangeOrArbitrary};
 use brontes_types::{
@@ -80,15 +86,22 @@ fn bench_fetch_symbol_rank(c: &mut Criterion) {
 fn bench_get_raw_cex_quotes_range(c: &mut Criterion) {
     let (rt, client) = setup_runtime_and_client();
     let range = CexRangeOrArbitrary::Range(19000000, 19030000);
-
     let mut group = c.benchmark_group("get_raw_cex_quotes_range");
     group.sampling_mode(SamplingMode::Linear);
     group.sample_size(10);
+
+    let quote_count = Arc::new(AtomicUsize::new(0));
+    let quote_count_clone = Arc::clone(&quote_count);
+
     group.bench_function("get_raw_cex_quotes_range", |b| {
         b.to_async(&rt).iter(|| async {
-            black_box(client.get_raw_cex_quotes_range(&range).await.unwrap());
-        });
+            let quotes = black_box(client.get_raw_cex_quotes_range(&range).await.unwrap());
+            quote_count_clone.fetch_add(quotes.len(), Ordering::Relaxed);
+            quotes
+        })
     });
+
+    println!("Total quote count: {}", quote_count.load(Ordering::Relaxed));
     group.finish();
 }
 

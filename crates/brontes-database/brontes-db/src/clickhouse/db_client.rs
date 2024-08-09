@@ -694,8 +694,8 @@ impl Clickhouse {
     }
 
     fn get_time_range_from_blocks(&self, start: u64, end: u64) -> (f64, f64) {
-        let start_time = (start as f64 * SECONDS_TO_US) - (1.0 * SECONDS_TO_US);
-        let end_time = (end as f64 * SECONDS_TO_US) + (MAX_MARKOUT_TIME * SECONDS_TO_US);
+        let start_time = (start as f64) - (1.0 * SECONDS_TO_US);
+        let end_time = (end as f64) + (MAX_MARKOUT_TIME * SECONDS_TO_US);
         (start_time, end_time)
     }
 
