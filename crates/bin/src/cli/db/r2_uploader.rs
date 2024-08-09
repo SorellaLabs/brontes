@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use brontes_core::LibmdbxReadWriter;
-use brontes_database::libmdbx::{rclone_wrapper::RCloneWrapper, LibmdbxPartitioner};
+use brontes_database::libmdbx::{
+    rclone_wrapper::RCloneWrapper, LibmdbxPartitioner, FULL_RANGE_NAME,
+};
 use clap::Parser;
 
 use crate::runner::CliContext;
@@ -27,7 +29,7 @@ impl R2Uploader {
             r2wrapper.get_most_recent_partition_block().await?
         };
 
-        let db = LibmdbxReadWriter::init_db(database_path, None, &ctx.task_executor, true)?;
+        let db = LibmdbxReadWriter::init_db(&database_path, None, &ctx.task_executor, true)?;
         tracing::info!("Partitioning new data into respective files");
 
         if let Err(e) = LibmdbxPartitioner::new(
@@ -48,6 +50,15 @@ impl R2Uploader {
 
         if let Err(e) = r2wrapper
             .tar_ball_and_upload_files(self.partition_db_folder, start_block)
+            .await
+        {
+            tracing::error!(error=%e);
+            return Ok(())
+        }
+
+        tracing::info!("uploading full database");
+        if let Err(e) = r2wrapper
+            .tar_ball_dir(&PathBuf::from(database_path), Some(FULL_RANGE_NAME))
             .await
         {
             tracing::error!(error=%e);

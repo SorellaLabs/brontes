@@ -1,12 +1,16 @@
 use std::{env::temp_dir, path::PathBuf, str::FromStr};
 
 use brontes_core::LibmdbxReadWriter;
-use brontes_database::libmdbx::{merge_libmdbx_dbs, rclone_wrapper::BlockRangeList};
+use brontes_database::libmdbx::{
+    merge_libmdbx_dbs, rclone_wrapper::BlockRangeList, FULL_RANGE_NAME,
+};
 use brontes_types::{
     buf_writer::DownloadBufWriterWithProgress, unordered_buffer_map::BrontesStreamExt,
 };
 use clap::Parser;
+use directories::UserDirs;
 use flate2::read::GzDecoder;
+use fs_extra::dir::{move_dir, CopyOptions};
 use futures::{stream::StreamExt, Stream};
 use indicatif::MultiProgress;
 use itertools::Itertools;
@@ -14,9 +18,6 @@ use reqwest::Url;
 use tar::Archive;
 
 use crate::runner::CliContext;
-
-/// endpoint to check size of db snapshot
-// const DOWNLOAD_PATH: &str = "brontes-db-latest.tar.gz";
 
 const NAME: &str = "brontes-db-partition";
 const FIXED_DB: &str = "full-range-tables";
@@ -27,7 +28,7 @@ const BYTES_TO_MB: u64 = 1_000_000;
 #[derive(Debug, Parser)]
 pub struct Snapshot {
     /// endpoint url
-    #[arg(long, short, default_value = "https://pub-d0f2c20688264963b2c4ff2b4baa7c27.r2.dev")]
+    #[arg(long, short, default_value = "https://data.brontes.xyz/")]
     pub endpoint:    Url,
     #[arg(long, short)]
     pub start_block: Option<u64>,
@@ -52,7 +53,7 @@ impl Snapshot {
         // ensure dir exists
         let mut download_dir = temp_dir();
         download_dir.push(format!("{}s", NAME));
-        let cloned_download_dir = download_dir.clone();
+        let mut cloned_download_dir = download_dir.clone();
         fs_extra::dir::create_all(&download_dir, false)?;
 
         ctx.task_executor
@@ -92,36 +93,49 @@ impl Snapshot {
             })
             .await?;
 
-        tracing::info!(
-            "all partitions downloaded, merging into the current db at: {}",
-            brontes_db_endpoint
-        );
+        if self.should_merge() {
+            tracing::info!(
+                "all partitions downloaded, merging into the current db at: {}",
+                brontes_db_endpoint
+            );
 
-        let final_db =
-            LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
+            let final_db =
+                LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
 
-        let db = cloned_download_dir.clone();
-        let ex = ctx.task_executor.clone();
-        ctx.task_executor
-            .spawn_blocking(async move {
-                merge_libmdbx_dbs(final_db, &db, ex).unwrap();
-            })
-            .await?;
+            let db = cloned_download_dir.clone();
+            let ex = ctx.task_executor.clone();
+            ctx.task_executor
+                .spawn_blocking(async move {
+                    merge_libmdbx_dbs(final_db, &db, ex).unwrap();
+                })
+                .await?;
 
-        tracing::info!("cleaning up tmp libmdbx partitions");
-        fs_extra::dir::remove(cloned_download_dir)?;
+            tracing::info!("cleaning up tmp libmdbx partitions");
+            fs_extra::dir::remove(cloned_download_dir)?;
+        } else {
+            let mut home_dir = UserDirs::new()
+                .expect("dirs failure")
+                .home_dir()
+                .to_path_buf();
+
+            home_dir.push(FULL_RANGE_NAME);
+            fs_extra::dir::create_all(&home_dir, true).expect("failed to create home dir folder");
+            cloned_download_dir.push(FULL_RANGE_NAME);
+
+            let opt = CopyOptions::new().overwrite(true);
+            move_dir(cloned_download_dir, &home_dir, &opt)?;
+
+            tracing::info!(download_path=?home_dir,"download of full db is finished");
+        }
 
         Ok(())
     }
 
     // returns a error if the data isn't available.
     // NOTE: assumes r2 data is continuous
-    fn ranges_to_download(
-        &self,
-        ranges_avail: Vec<BlockRangeList>,
-    ) -> eyre::Result<Vec<BlockRangeList>> {
+    fn ranges_to_download(&self, ranges_avail: Vec<BlockRangeList>) -> eyre::Result<RangeOrFull> {
         match (self.start_block, self.end_block) {
-            (None, None) => Ok(ranges_avail),
+            (None, None) => Ok(RangeOrFull::Full),
             (Some(start), None) => {
                 let ranges = ranges_avail
                     .into_iter()
@@ -134,7 +148,7 @@ impl Snapshot {
                         self.end_block
                     )
                 }
-                Ok(ranges)
+                Ok(RangeOrFull::Range(ranges))
             }
             (None, Some(end)) => {
                 let ranges = ranges_avail
@@ -150,7 +164,7 @@ impl Snapshot {
                     )
                 }
 
-                Ok(ranges)
+                Ok(RangeOrFull::Range(ranges))
             }
             (Some(start), Some(end)) => {
                 let ranges = ranges_avail
@@ -168,7 +182,7 @@ impl Snapshot {
                     )
                 }
 
-                Ok(ranges)
+                Ok(RangeOrFull::Range(ranges))
             }
         }
     }
@@ -191,41 +205,60 @@ impl Snapshot {
     async fn meets_space_requirement(
         &self,
         client: &reqwest::Client,
-        ranges: Vec<BlockRangeList>,
+        ranges: RangeOrFull,
         brontes_db_endpoint: &String,
     ) -> eyre::Result<Vec<DbRequestWithBytes>> {
         let mut new_db_size = 0u64;
         let mut res = vec![];
-        for range in ranges {
-            let url = format!(
-                "{}{}-{}-{}-{}",
-                self.endpoint, NAME, range.start_block, range.end_block, SIZE_PATH
-            );
-            let size = client.get(url).send().await?.text().await?;
-            let size = u64::from_str(&size)?;
-            res.push(DbRequestWithBytes {
-                url:        format!(
-                    "{}{}-{}-{}.tar.gz",
-                    self.endpoint, NAME, range.start_block, range.end_block
-                ),
-                file_name:  format!("{}-{}-{}.tar.gz", NAME, range.start_block, range.end_block),
-                size_bytes: size,
-            });
+        match ranges {
+            RangeOrFull::Full => {
+                let url = format!("{}{}-{}", self.endpoint, FULL_RANGE_NAME, SIZE_PATH);
+                let size = client.get(url).send().await?.text().await?;
+                let size = u64::from_str(&size)?;
+                res.push(DbRequestWithBytes {
+                    url:        format!("{}{}.tar.gz", self.endpoint, FULL_RANGE_NAME),
+                    file_name:  format!("{}.tar.gz", FULL_RANGE_NAME),
+                    size_bytes: size,
+                });
 
-            new_db_size += size;
+                new_db_size += size;
+            }
+            RangeOrFull::Range(ranges) => {
+                for range in ranges {
+                    let url = format!(
+                        "{}{}-{}-{}-{}",
+                        self.endpoint, NAME, range.start_block, range.end_block, SIZE_PATH
+                    );
+                    let size = client.get(url).send().await?.text().await?;
+                    let size = u64::from_str(&size)?;
+                    res.push(DbRequestWithBytes {
+                        url:        format!(
+                            "{}{}-{}-{}.tar.gz",
+                            self.endpoint, NAME, range.start_block, range.end_block
+                        ),
+                        file_name:  format!(
+                            "{}-{}-{}.tar.gz",
+                            NAME, range.start_block, range.end_block
+                        ),
+                        size_bytes: size,
+                    });
+
+                    new_db_size += size;
+                }
+
+                // query 1 off table
+                let url = format!("{}{}-{}-{}", self.endpoint, NAME, FIXED_DB, SIZE_PATH);
+                let size = client.get(url).send().await?.text().await?;
+                let size = u64::from_str(&size)?;
+
+                res.push(DbRequestWithBytes {
+                    url:        format!("{}{}-{}.tar.gz", self.endpoint, NAME, FIXED_DB),
+                    file_name:  format!("{}-{}.tar.gz", NAME, FIXED_DB),
+                    size_bytes: size,
+                });
+                new_db_size += size;
+            }
         }
-
-        // query 1 off table
-        let url = format!("{}{}-{}-{}", self.endpoint, NAME, FIXED_DB, SIZE_PATH);
-        let size = client.get(url).send().await?.text().await?;
-        let size = u64::from_str(&size)?;
-
-        res.push(DbRequestWithBytes {
-            url:        format!("{}{}-{}.tar.gz", self.endpoint, NAME, FIXED_DB),
-            file_name:  format!("{}-{}.tar.gz", NAME, FIXED_DB),
-            size_bytes: size,
-        });
-        new_db_size += size;
 
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
         let storage_available = fs2::free_space(brontes_db_endpoint)?;
@@ -253,6 +286,15 @@ impl Snapshot {
 
         Ok(())
     }
+
+    fn should_merge(&self) -> bool {
+        self.start_block.is_some() || self.end_block.is_some()
+    }
+}
+
+pub enum RangeOrFull {
+    Full,
+    Range(Vec<BlockRangeList>),
 }
 
 pub struct DbRequestWithBytes {
