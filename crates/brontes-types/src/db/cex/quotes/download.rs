@@ -73,10 +73,9 @@ impl CexQuotesConverter {
         block_num_map_with_pairs
             .into_iter()
             .map(|((block_num, block_time), (quotes, cex_best_venue))| {
-                let exchange_map = self.group_quotes_by_exchange(quotes);
                 let most_liquid_exchange_for_pair = self.process_best_cex_venues(cex_best_venue);
 
-                let price_map = self.create_price_map(exchange_map, block_time);
+                let price_map = self.create_price_map(quotes, block_time);
 
                 (
                     block_num,
@@ -89,21 +88,23 @@ impl CexQuotesConverter {
             .collect()
     }
 
-    fn create_price_map(
+    pub fn create_price_map(
         &mut self,
-        exchange_map: FastHashMap<CexExchange, Vec<RawCexQuotes>>,
+        exchange_map: FastHashMap<CexExchange, Vec<usize>>,
         block_time: u64,
     ) -> FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>> {
         exchange_map
             .into_iter()
-            .map(|(exch, quotes)| {
-                let mut exchange_symbol_map: std::collections::HashMap<
+            .map(|(exch, quote_indices)| {
+                let mut exchange_pair_index_map: std::collections::HashMap<
                     Pair,
-                    Vec<CexQuote>,
+                    Vec<usize>,
                     ahash::RandomState,
                 > = FastHashMap::default();
 
-                quotes.into_iter().for_each(|quote| {
+                quote_indices.into_iter().for_each(|index| {
+                    let quote = &self.quotes[index];
+
                     let symbol = self
                         .symbols
                         .get_mut(&(quote.exchange, quote.symbol.clone()))
@@ -111,35 +112,21 @@ impl CexQuotesConverter {
 
                     correct_usdc_address(&mut symbol.address_pair);
 
-                    exchange_symbol_map
+                    exchange_pair_index_map
                         .entry(symbol.address_pair)
                         .or_default()
-                        .push(quote.into());
+                        .push(index);
                 });
 
-                exchange_symbol_map =
-                    find_closest_to_time_boundary(block_time, exchange_symbol_map);
+                let exchange_symbol_map =
+                    self.find_closest_to_time_boundary(block_time, exchange_pair_index_map);
 
                 (exch, exchange_symbol_map)
             })
             .collect::<FastHashMap<_, _>>()
     }
 
-    fn group_quotes_by_exchange(
-        &self,
-        quotes: Vec<RawCexQuotes>,
-    ) -> FastHashMap<CexExchange, Vec<RawCexQuotes>> {
-        let mut exchange_map = FastHashMap::default();
-        for quote in quotes {
-            exchange_map
-                .entry(quote.exchange)
-                .or_insert_with(Vec::new)
-                .push(quote);
-        }
-        exchange_map
-    }
-
-    fn process_best_cex_venues(
+    pub fn process_best_cex_venues(
         &mut self,
         cex_best_venue: Vec<BestCexPerPair>,
     ) -> FastHashMap<Pair, CexExchange> {
@@ -157,23 +144,26 @@ impl CexQuotesConverter {
             .collect()
     }
 
-    fn create_block_num_map_with_pairs(
+    pub fn create_block_num_map_with_pairs(
         &self,
-    ) -> FastHashMap<(u64, u64), (Vec<RawCexQuotes>, Vec<BestCexPerPair>)> {
+    ) -> FastHashMap<(u64, u64), (FastHashMap<CexExchange, Vec<usize>>, Vec<BestCexPerPair>)> {
         let mut block_map: FastHashMap<
             (u64, u64),
-            (Vec<RawCexQuotes>, FastHashMap<String, BestCexPerPair>),
+            (FastHashMap<CexExchange, Vec<usize>>, FastHashMap<String, BestCexPerPair>),
         > = FastHashMap::default();
 
         // Process quotes
-        for quote in &self.quotes {
+        for (index, quote) in self.quotes.iter().enumerate() {
             let matching_blocks = self.find_matching_blocks(quote.timestamp);
+            let exchange = quote.exchange;
             for &(block_number, precise_timestamp) in &matching_blocks {
                 block_map
                     .entry((block_number, precise_timestamp))
-                    .or_insert_with(|| (Vec::new(), FastHashMap::default()))
+                    .or_default()
                     .0
-                    .push(quote.clone());
+                    .entry(exchange)
+                    .or_default()
+                    .push(index);
             }
         }
 
@@ -182,7 +172,7 @@ impl CexQuotesConverter {
             let time = block_time.start_timestamp as i64;
             let entry = block_map
                 .entry((block_time.block_number, block_time.precise_timestamp))
-                .or_insert_with(|| (Vec::new(), FastHashMap::default()));
+                .or_default();
 
             for pair in &self.best_cex_per_pair {
                 match entry.1.entry(pair.symbol.clone()) {
@@ -209,7 +199,7 @@ impl CexQuotesConverter {
             .collect()
     }
 
-    fn find_matching_blocks(&self, timestamp: u64) -> Vec<(u64, u64)> {
+    pub fn find_matching_blocks(&self, timestamp: u64) -> Vec<(u64, u64)> {
         let mut matching_blocks = Vec::new();
 
         // Find the first block that contains the timestamp
@@ -230,52 +220,53 @@ impl CexQuotesConverter {
 
         matching_blocks
     }
+
+    pub fn find_closest_to_time_boundary(
+        &self,
+        block_time: u64,
+        exchange_symbol_map: FastHashMap<Pair, Vec<usize>>,
+    ) -> FastHashMap<Pair, Vec<CexQuote>> {
+        exchange_symbol_map
+            .into_par_iter()
+            .filter_map(|(pair, quotes_indices)| {
+                if quotes_indices.is_empty() {
+                    return None;
+                }
+
+                let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
+
+                for &time in &QUOTE_TIME_BOUNDARY {
+                    let target_time = block_time as i128 + (time as i128 * 1_000_000);
+                    let quote_index = quotes_indices.first().unwrap();
+
+                    let closest = if quote_index > &0 && quote_index < &quotes_indices.len() {
+                        let prev = &self.quotes[*quote_index - 1];
+                        let current = &self.quotes[*quote_index];
+                        if (prev.timestamp as i128 - target_time).abs()
+                            <= (current.timestamp as i128 - target_time).abs()
+                        {
+                            prev
+                        } else {
+                            current
+                        }
+                    } else if *quote_index == quotes_indices.len() {
+                        &self.quotes[*quote_index - 1]
+                    } else {
+                        &self.quotes[*quote_index]
+                    };
+
+                    result.push(closest.clone().into());
+                }
+
+                Some((pair, result))
+            })
+            .collect()
+    }
 }
 
 const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
 
-fn find_closest_to_time_boundary(
-    block_time: u64,
-    exchange_symbol_map: FastHashMap<Pair, Vec<CexQuote>>,
-) -> FastHashMap<Pair, Vec<CexQuote>> {
-    exchange_symbol_map
-        .into_par_iter()
-        .filter_map(|(pair, quotes)| {
-            if quotes.is_empty() {
-                return None;
-            }
-
-            let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
-
-            for &time in &QUOTE_TIME_BOUNDARY {
-                let target_time = block_time as i128 + (time as i128 * 1_000_000);
-                let idx = quotes.partition_point(|quote| quote.timestamp as i128 <= target_time);
-
-                let closest = if idx > 0 && idx < quotes.len() {
-                    let prev = &quotes[idx - 1];
-                    let current = &quotes[idx];
-                    if (prev.timestamp as i128 - target_time).abs()
-                        <= (current.timestamp as i128 - target_time).abs()
-                    {
-                        prev
-                    } else {
-                        current
-                    }
-                } else if idx == quotes.len() {
-                    &quotes[idx - 1]
-                } else {
-                    &quotes[idx]
-                };
-
-                result.push(closest.clone());
-            }
-
-            Some((pair, result))
-        })
-        .collect()
-}
-
-fn correct_usdc_address(pair: &mut Pair) {
+pub fn correct_usdc_address(pair: &mut Pair) {
     if pair.0 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3") {
         pair.0 = USDC_ADDRESS;
     } else if pair.1 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3") {

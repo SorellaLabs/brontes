@@ -29,6 +29,7 @@ use db_interfaces::{
     clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     Database,
 };
+use eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
@@ -358,7 +359,6 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
-    //TODO: Change back to -6 + 6 when mem fix
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -597,7 +597,7 @@ impl ClickhouseHandle for Clickhouse {
 
 impl Clickhouse {
     #[allow(unused)]
-    async fn fetch_symbol_rank(
+    pub async fn fetch_symbol_rank(
         &self,
         block_times: &[BlockTimes],
         range_or_arbitrary: &CexRangeOrArbitrary,
@@ -648,6 +648,71 @@ impl Clickhouse {
                 self.client.query_many(query, &()).await?
             }
         })
+    }
+
+    pub async fn get_block_times_range(
+        &self,
+        range: &CexRangeOrArbitrary,
+    ) -> Result<Vec<BlockTimes>, db_interfaces::errors::DatabaseError> {
+        let (start, end) = match range {
+            CexRangeOrArbitrary::Range(start, end) => (start, end),
+            CexRangeOrArbitrary::Arbitrary(_) => panic!("Arbitrary range not supported"),
+        };
+
+        debug!(target = "b", "Querying block times for range: start={}, end={}", start, end);
+        self.client.query_many(BLOCK_TIMES, &(start, end)).await
+    }
+
+    pub async fn get_cex_symbols(
+        &self,
+    ) -> Result<Vec<CexSymbols>, db_interfaces::errors::DatabaseError> {
+        self.client.query_many(CEX_SYMBOLS, &()).await
+    }
+
+    pub async fn get_raw_cex_quotes_range(
+        &self,
+        range: &CexRangeOrArbitrary,
+    ) -> Result<Vec<RawCexQuotes>, db_interfaces::errors::DatabaseError> {
+        let (start, end) = match range {
+            CexRangeOrArbitrary::Range(start, end) => (*start, *end),
+            CexRangeOrArbitrary::Arbitrary(_) => panic!("Arbitrary range not supported"),
+        };
+
+        let exchanges_str = self.get_exchanges_filter_string();
+        let (start_time, end_time) = self.get_time_range_from_blocks(start, end);
+        let query = self.build_range_cex_quotes_query(start_time, end_time, &exchanges_str);
+        self.client.query_many(&query, &()).await
+    }
+
+    fn get_exchanges_filter_string(&self) -> String {
+        self.cex_download_config
+            .exchanges_to_use
+            .iter()
+            .map(|s| s.to_clickhouse_filter().to_string())
+            .collect::<Vec<_>>()
+            .join(" OR ")
+    }
+
+    fn get_time_range_from_blocks(&self, start: u64, end: u64) -> (f64, f64) {
+        let start_time = (start as f64 * SECONDS_TO_US) - (1.0 * SECONDS_TO_US);
+        let end_time = (end as f64 * SECONDS_TO_US) + (MAX_MARKOUT_TIME * SECONDS_TO_US);
+        (start_time, end_time)
+    }
+
+    fn build_range_cex_quotes_query(
+        &self,
+        start_time: f64,
+        end_time: f64,
+        exchanges_str: &str,
+    ) -> String {
+        let query = RAW_CEX_QUOTES.to_string();
+        query.replace(
+            "c.timestamp >= ? AND c.timestamp < ?",
+            &format!(
+                "c.timestamp >= {} AND c.timestamp < {} AND ({})",
+                start_time, end_time, exchanges_str
+            ),
+        )
     }
 }
 

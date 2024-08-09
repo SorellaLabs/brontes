@@ -3,6 +3,7 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
+#[cfg(feature = "sorella-server")]
 use brontes_database::libmdbx::StateToInitialize;
 use brontes_metrics::{
     pricing::DexPricingMetrics,
