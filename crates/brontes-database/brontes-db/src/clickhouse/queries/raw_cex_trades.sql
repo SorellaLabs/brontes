@@ -1,11 +1,10 @@
 SELECT
-    c.exchange as exchange,
-    'Taker' as trade_type,
+    c.exchange AS exchange,
+    'Taker' AS trade_type,
     upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) AS symbol,
-    c.timestamp as timestamp,
-    c.side as side,
+    c.timestamp AS timestamp,
+    c.side AS side,
     c.price AS price,
     c.amount AS amount
-FROM cex.normalized_trades as c 
-where c.timestamp >= ? AND c.timestamp < ?
-ORDER BY c.timestamp
+FROM cex.normalized_trades AS c 
+WHERE c.timestamp >= ? AND c.timestamp < ?
