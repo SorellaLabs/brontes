@@ -94,24 +94,28 @@ impl Snapshot {
             })
             .await?;
 
-        tracing::info!(
-            "all partitions downloaded, merging into the current db at: {}",
-            brontes_db_endpoint
-        );
+        if self.should_merge() {
+            tracing::info!(
+                "all partitions downloaded, merging into the current db at: {}",
+                brontes_db_endpoint
+            );
 
-        let final_db =
-            LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
+            let final_db =
+                LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
 
-        let db = cloned_download_dir.clone();
-        let ex = ctx.task_executor.clone();
-        ctx.task_executor
-            .spawn_blocking(async move {
-                merge_libmdbx_dbs(final_db, &db, ex).unwrap();
-            })
-            .await?;
+            let db = cloned_download_dir.clone();
+            let ex = ctx.task_executor.clone();
+            ctx.task_executor
+                .spawn_blocking(async move {
+                    merge_libmdbx_dbs(final_db, &db, ex).unwrap();
+                })
+                .await?;
 
-        tracing::info!("cleaning up tmp libmdbx partitions");
-        fs_extra::dir::remove(cloned_download_dir)?;
+            tracing::info!("cleaning up tmp libmdbx partitions");
+            fs_extra::dir::remove(cloned_download_dir)?;
+        } else {
+            tracing::info!(download_path=?cloned_download_dir,"download of full db is finished");
+        }
 
         Ok(())
     }
@@ -230,20 +234,20 @@ impl Snapshot {
 
                     new_db_size += size;
                 }
+
+                // query 1 off table
+                let url = format!("{}{}-{}-{}", self.endpoint, NAME, FIXED_DB, SIZE_PATH);
+                let size = client.get(url).send().await?.text().await?;
+                let size = u64::from_str(&size)?;
+
+                res.push(DbRequestWithBytes {
+                    url:        format!("{}{}-{}.tar.gz", self.endpoint, NAME, FIXED_DB),
+                    file_name:  format!("{}-{}.tar.gz", NAME, FIXED_DB),
+                    size_bytes: size,
+                });
+                new_db_size += size;
             }
         }
-
-        // query 1 off table
-        let url = format!("{}{}-{}-{}", self.endpoint, NAME, FIXED_DB, SIZE_PATH);
-        let size = client.get(url).send().await?.text().await?;
-        let size = u64::from_str(&size)?;
-
-        res.push(DbRequestWithBytes {
-            url:        format!("{}{}-{}.tar.gz", self.endpoint, NAME, FIXED_DB),
-            file_name:  format!("{}-{}.tar.gz", NAME, FIXED_DB),
-            size_bytes: size,
-        });
-        new_db_size += size;
 
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
         let storage_available = fs2::free_space(brontes_db_endpoint)?;
@@ -270,6 +274,10 @@ impl Snapshot {
         fs_extra::file::remove(tarball_location)?;
 
         Ok(())
+    }
+
+    fn should_merge(&self) -> bool {
+        self.start_block.is_some() || self.end_block.is_some()
     }
 }
 
