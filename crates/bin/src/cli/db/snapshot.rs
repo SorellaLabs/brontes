@@ -19,9 +19,6 @@ use tar::Archive;
 
 use crate::runner::CliContext;
 
-/// endpoint to check size of db snapshot
-// const DOWNLOAD_PATH: &str = "brontes-db-latest.tar.gz";
-
 const NAME: &str = "brontes-db-partition";
 const FIXED_DB: &str = "full-range-tables";
 const SIZE_PATH: &str = "byte-count.txt";
