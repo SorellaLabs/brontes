@@ -745,6 +745,17 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
+    async fn test_all_inserts() {
+        init_threadpools(10);
+        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
+
+        let tables = &BrontesClickhouseTables::all_tables();
+        test_db
+            .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
+            .await;
+    }
+
+    #[brontes_macros::test]
     async fn test_block_info_query() {
         let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
         let _ = test_db
@@ -1030,17 +1041,6 @@ mod tests {
         token_info(database).await;
         tree(database).await;
         block_analysis(database).await;
-    }
-
-    #[brontes_macros::test]
-    async fn test_all_inserts() {
-        init_threadpools(10);
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
-
-        let tables = &BrontesClickhouseTables::all_tables();
-        test_db
-            .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
-            .await;
     }
 
     #[brontes_macros::test]
