@@ -126,9 +126,9 @@ impl Snapshot {
             cloned_download_dir.push(FULL_RANGE_NAME);
 
             let opt = CopyOptions::new().overwrite(true);
-            move_dir(&cloned_download_dir, home_dir, &opt)?;
+            move_dir(cloned_download_dir, &home_dir, &opt)?;
 
-            tracing::info!(download_path=?cloned_download_dir,"download of full db is finished");
+            tracing::info!(download_path=?home_dir,"download of full db is finished");
         }
 
         Ok(())
