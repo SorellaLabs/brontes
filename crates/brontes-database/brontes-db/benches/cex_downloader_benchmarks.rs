@@ -31,7 +31,12 @@ async fn fetch_test_data(
 ) -> eyre::Result<(Vec<BlockTimes>, Vec<CexSymbols>, Vec<RawCexQuotes>, Vec<BestCexPerPair>)> {
     let block_times = client.get_block_times_range(&range).await?;
     let symbols = client.get_cex_symbols().await?;
-    let raw_quotes = client.get_raw_cex_quotes_range(&range).await?;
+    let start_time = block_times.first().unwrap().timestamp;
+    let end_time = block_times.last().unwrap().timestamp + 300 * 1_000_000;
+
+    let raw_quotes = client
+        .get_raw_cex_quotes_range(start_time, end_time)
+        .await?;
     let symbol_rank = client.fetch_symbol_rank(&block_times, &range).await?;
 
     Ok((block_times, symbols, raw_quotes, symbol_rank))
@@ -90,12 +95,19 @@ fn bench_get_raw_cex_quotes_range(c: &mut Criterion) {
     group.sampling_mode(SamplingMode::Linear);
     group.sample_size(10);
 
+    let block_times = rt
+        .block_on(async { client.get_block_times_range(&range).await })
+        .unwrap();
+
+    let start = block_times.first().unwrap().timestamp;
+    let end = block_times.last().unwrap().timestamp + 300 * 1_000_000;
+
     let quote_count = Arc::new(AtomicUsize::new(0));
     let quote_count_clone = Arc::clone(&quote_count);
 
     group.bench_function("get_raw_cex_quotes_range", |b| {
         b.to_async(&rt).iter(|| async {
-            let quotes = black_box(client.get_raw_cex_quotes_range(&range).await.unwrap());
+            let quotes = black_box(client.get_raw_cex_quotes_range(start, end).await.unwrap());
             quote_count_clone.fetch_add(quotes.len(), Ordering::Relaxed);
             quotes
         })
@@ -119,6 +131,7 @@ fn bench_full_conversion_process(c: &mut Criterion) {
     group.bench_function("full_conversion_process", |b| {
         b.iter_custom(|iters| {
             let start = Instant::now();
+            let mut results = Vec::with_capacity(iters as usize);
             for _ in 0..iters {
                 let converter = CexQuotesConverter::new(
                     block_times.clone(),
@@ -126,8 +139,9 @@ fn bench_full_conversion_process(c: &mut Criterion) {
                     quotes.clone(),
                     best_cex_per_pair.clone(),
                 );
-                black_box(converter.convert_to_prices());
+                results.push(black_box(converter.convert_to_prices()));
             }
+            black_box(results);
             start.elapsed()
         });
     });
@@ -219,7 +233,7 @@ fn bench_find_closest_to_time_boundary(c: &mut Criterion) {
             black_box(
                 converter
                     .find_closest_to_time_boundary(*block_time, exchange_pair_index_map.clone()),
-            );
+            )
         });
     });
     group.finish();

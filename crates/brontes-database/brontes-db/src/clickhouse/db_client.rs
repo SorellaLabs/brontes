@@ -671,15 +671,11 @@ impl Clickhouse {
 
     pub async fn get_raw_cex_quotes_range(
         &self,
-        range: &CexRangeOrArbitrary,
+        start_time: u64,
+        end_time: u64,
     ) -> Result<Vec<RawCexQuotes>, db_interfaces::errors::DatabaseError> {
-        let (start, end) = match range {
-            CexRangeOrArbitrary::Range(start, end) => (*start, *end),
-            CexRangeOrArbitrary::Arbitrary(_) => panic!("Arbitrary range not supported"),
-        };
-
         let exchanges_str = self.get_exchanges_filter_string();
-        let (start_time, end_time) = self.get_time_range_from_blocks(start, end);
+
         let query = self.build_range_cex_quotes_query(start_time, end_time, &exchanges_str);
         self.client.query_many(&query, &()).await
     }
@@ -693,16 +689,10 @@ impl Clickhouse {
             .join(" OR ")
     }
 
-    fn get_time_range_from_blocks(&self, start: u64, end: u64) -> (f64, f64) {
-        let start_time = (start as f64) - (1.0 * SECONDS_TO_US);
-        let end_time = (end as f64) + (MAX_MARKOUT_TIME * SECONDS_TO_US);
-        (start_time, end_time)
-    }
-
     fn build_range_cex_quotes_query(
         &self,
-        start_time: f64,
-        end_time: f64,
+        start_time: u64,
+        end_time: u64,
         exchanges_str: &str,
     ) -> String {
         let query = RAW_CEX_QUOTES.to_string();
