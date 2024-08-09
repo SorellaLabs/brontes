@@ -21,7 +21,7 @@ pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
 pub const FULL_RANGE_NAME: &str = "brontes-full-range";
 
 /// 1 week / 12 seconds
-pub const DEFAULT_PARTITION_SIZE: u64 = 10_400;
+pub const DEFAULT_PARTITION_SIZE: u64 = 50_400;
 
 #[macro_export]
 macro_rules! move_tables_to_partition {
