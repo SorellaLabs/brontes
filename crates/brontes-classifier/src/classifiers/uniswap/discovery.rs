@@ -93,8 +93,8 @@ mod tests {
             protocol:     Protocol::UniswapV3,
             pool_address: Address::new(hex!("602c70f43c7436975aec3113b316e7912d5ee2e3")),
             tokens:       vec![
-                hex!("edB357b55BC2DA1882B629EaDD3DF06202092d69").into(),
                 hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2").into(),
+                hex!("edB357b55BC2DA1882B629EaDD3DF06202092d69").into(),
             ],
         };
 
