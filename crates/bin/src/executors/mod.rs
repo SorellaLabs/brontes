@@ -262,15 +262,15 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .unwrap(),
         );
 
-        #[cfg(feature = "sorella-server")]
-        let buffer_size = calculate_buffer_size(
-            &state_to_init,
-            end_block - self.start_block.unwrap(),
-            chunks.len() as f64,
-        );
-
-        #[cfg(not(feature = "sorella-server"))]
-        let buffer_size = 10;
+        // #[cfg(feature = "sorella-server")]
+        // let buffer_size = calculate_buffer_size(
+        //     &state_to_init,
+        //     end_block - self.start_block.unwrap(),
+        //     chunks.len() as f64,
+        // );
+        //
+        // #[cfg(not(feature = "sorella-server"))]
+        // let buffer_size = 10;
 
         let multi = MultiProgress::default();
         let tables_pb = Arc::new(
@@ -329,7 +329,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(buffer_size)
+        .buffer_unordered(4)
     }
 
     fn build_tip_inspector(
