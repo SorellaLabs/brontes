@@ -10,10 +10,7 @@ use brontes_types::{
 use clap::Parser;
 use directories::UserDirs;
 use flate2::read::GzDecoder;
-use fs_extra::{
-    dir::{move_dir, CopyOptions},
-    move_items,
-};
+use fs_extra::dir::{move_dir, CopyOptions};
 use futures::{stream::StreamExt, Stream};
 use indicatif::MultiProgress;
 use itertools::Itertools;
