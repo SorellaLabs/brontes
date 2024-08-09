@@ -12,7 +12,7 @@
 //! - `CexPriceMap`: A map of CEX prices, organized by exchange and token pairs.
 //! - `CexQuote`: Represents an individual price quote from a CEX.
 //! - `CexExchange`: Enum of supported CEX exchanges.
-use std::{cmp::min, default::Default, fmt, ops::MulAssign};
+use std::{cmp::min, default::Default, fmt, mem, ops::MulAssign};
 
 use ahash::HashSetExt;
 use alloy_primitives::{Address, TxHash};
@@ -20,8 +20,11 @@ use clickhouse::Row;
 use colored::*;
 use itertools::Itertools;
 use malachite::{
-    num::basic::traits::{One, Two, Zero},
-    Rational,
+    num::{
+        basic::traits::{One, Two, Zero},
+        logic::traits::SignificantBits,
+    },
+    Natural, Rational,
 };
 use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -506,6 +509,22 @@ impl CexPriceMap {
             .cloned()
             .collect()
     }
+
+    pub fn quote_count(&self) -> usize {
+        self.quotes
+            .values()
+            .flat_map(|v| v.values())
+            .map(|v| v.len())
+            .sum()
+    }
+
+    pub fn pair_count(&self) -> usize {
+        self.quotes.values().map(|v| v.len()).sum()
+    }
+
+    pub fn total_counts(&self) -> (usize, usize) {
+        (self.quote_count(), self.pair_count())
+    }
 }
 
 #[allow(dead_code)]
@@ -744,4 +763,59 @@ impl MulAssign for FeeAdjustedQuote {
         self.price_taker.0 *= rhs.price_taker.0;
         self.price_taker.1 *= rhs.price_taker.1;
     }
+}
+
+pub fn size_of_cex_price_map(price_map: &CexPriceMap) -> usize {
+    let mut total_size = mem::size_of_val(price_map);
+
+    // Size of quotes
+    total_size += size_of_nested_fast_hash_map(&price_map.quotes);
+
+    // Size of most_liquid_ex
+    total_size += size_of_fast_hash_map(&price_map.most_liquid_ex);
+
+    total_size
+}
+
+fn size_of_nested_fast_hash_map(
+    map: &FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
+) -> usize {
+    let mut size = mem::size_of_val(map);
+
+    for (exchange, inner_map) in map {
+        size += mem::size_of_val(exchange);
+        size += size_of_fast_hash_map(inner_map);
+
+        for (pair, quotes) in inner_map {
+            size += mem::size_of_val(pair);
+            size += mem::size_of_val(quotes);
+            size += quotes.iter().map(size_of_cex_quote).sum::<usize>();
+        }
+    }
+
+    size
+}
+
+fn size_of_fast_hash_map<K, V>(map: &FastHashMap<K, V>) -> usize {
+    mem::size_of_val(map) + (map.capacity() * (mem::size_of::<K>() + mem::size_of::<V>()))
+}
+
+fn size_of_cex_quote(quote: &CexQuote) -> usize {
+    mem::size_of_val(quote)
+        + size_of_rational(&quote.price.0)
+        + size_of_rational(&quote.price.1)
+        + size_of_rational(&quote.amount.0)
+        + size_of_rational(&quote.amount.1)
+        + 8
+}
+
+fn size_of_rational(rational: &Rational) -> usize {
+    let size = mem::size_of::<Rational>();
+    // Add the size of heap-allocated data in Natural
+    size + size_of_natural(rational.numerator_ref()) + size_of_natural(rational.denominator_ref())
+}
+
+fn size_of_natural(natural: &Natural) -> usize {
+    let capacity = (natural.significant_bits() / 64 + 1) as usize;
+    mem::size_of::<Natural>() + capacity * mem::size_of::<usize>()
 }

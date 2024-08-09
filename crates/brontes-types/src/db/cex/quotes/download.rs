@@ -1,3 +1,5 @@
+use std::mem;
+
 use alloy_primitives::hex;
 use clickhouse::Row;
 use itertools::Itertools;
@@ -272,4 +274,48 @@ pub fn correct_usdc_address(pair: &mut Pair) {
     } else if pair.1 == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3") {
         pair.1 = USDC_ADDRESS;
     }
+}
+
+#[allow(unused)]
+pub fn approximate_size_of_converter(converter: &CexQuotesConverter) -> usize {
+    let mut total_size = mem::size_of_val(converter);
+
+    total_size += mem::size_of_val(&converter.block_times);
+    total_size += converter.block_times.len() * mem::size_of::<CexBlockTimes>();
+
+    total_size += mem::size_of_val(&converter.symbols);
+    for ((exchange, symbol), cex_symbols) in &converter.symbols {
+        total_size += mem::size_of_val(exchange);
+        total_size += symbol.capacity();
+        total_size += size_of_cex_symbols(cex_symbols);
+    }
+
+    total_size += mem::size_of_val(&converter.quotes);
+    total_size += converter
+        .quotes
+        .iter()
+        .map(size_of_raw_cex_quotes)
+        .sum::<usize>();
+
+    // Size of best_cex_per_pair
+    total_size += mem::size_of_val(&converter.best_cex_per_pair);
+    total_size += converter
+        .best_cex_per_pair
+        .iter()
+        .map(size_of_best_cex_per_pair)
+        .sum::<usize>();
+
+    total_size
+}
+
+fn size_of_cex_symbols(symbols: &CexSymbols) -> usize {
+    mem::size_of_val(symbols) + symbols.symbol_pair.capacity() + mem::size_of::<Pair>()
+}
+
+fn size_of_raw_cex_quotes(quotes: &RawCexQuotes) -> usize {
+    mem::size_of_val(quotes) + quotes.symbol.capacity()
+}
+
+fn size_of_best_cex_per_pair(best_cex: &BestCexPerPair) -> usize {
+    mem::size_of_val(best_cex) + best_cex.symbol.capacity()
 }

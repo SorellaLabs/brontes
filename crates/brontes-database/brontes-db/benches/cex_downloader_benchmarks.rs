@@ -1,11 +1,14 @@
-use std::mem;
+use std::time::Instant;
 
 use brontes_database::{clickhouse::Clickhouse, libmdbx::cex_utils::CexRangeOrArbitrary};
 use brontes_types::{
     db::{
         block_times::BlockTimes,
         cex::{
-            quotes::{correct_usdc_address, CexQuotesConverter, RawCexQuotes},
+            quotes::{
+                approximate_size_of_converter, correct_usdc_address, size_of_cex_price_map,
+                CexQuotesConverter, RawCexQuotes,
+            },
             BestCexPerPair, CexExchange, CexSymbols,
         },
     },
@@ -83,9 +86,7 @@ fn bench_get_raw_cex_quotes_range(c: &mut Criterion) {
     group.sample_size(10);
     group.bench_function("get_raw_cex_quotes_range", |b| {
         b.to_async(&rt).iter(|| async {
-            let quotes = black_box(client.get_raw_cex_quotes_range(&range).await.unwrap());
-            println!("Raw quotes size: {} bytes", mem::size_of_val(&quotes));
-            quotes
+            black_box(client.get_raw_cex_quotes_range(&range).await.unwrap());
         });
     });
     group.finish();
@@ -101,21 +102,39 @@ fn bench_full_conversion_process(c: &mut Criterion) {
     group.sampling_mode(SamplingMode::Linear);
     group.sample_size(10);
 
+    // Benchmark the conversion process
     group.bench_function("full_conversion_process", |b| {
-        b.iter(|| {
-            let converter = CexQuotesConverter::new(
-                block_times.clone(),
-                symbols.clone(),
-                quotes.clone(),
-                best_cex_per_pair.clone(),
-            );
-            let converter_inital_size = mem::size_of_val(&converter);
-            println!("Initial converter size: {} bytes", converter_inital_size);
-            let result = black_box(converter.convert_to_prices());
-            println!("Full conversion result size: {} bytes", mem::size_of_val(&result));
-            result
+        b.iter_custom(|iters| {
+            let start = Instant::now();
+            for _ in 0..iters {
+                let converter = CexQuotesConverter::new(
+                    block_times.clone(),
+                    symbols.clone(),
+                    quotes.clone(),
+                    best_cex_per_pair.clone(),
+                );
+                black_box(converter.convert_to_prices());
+            }
+            start.elapsed()
         });
     });
+
+    // Collect additional measurements separately
+    let converter = CexQuotesConverter::new(block_times, symbols, quotes, best_cex_per_pair);
+    let converter_size = approximate_size_of_converter(&converter);
+    let quote_count = converter.quotes.len();
+    let result = converter.convert_to_prices();
+
+    let total_result_size: usize = result
+        .iter()
+        .map(|(_, price_map)| size_of_cex_price_map(price_map))
+        .sum();
+    let avg_price_map_size = total_result_size / result.len();
+    let num_blocks = result.len();
+
+    println!("Average price map size: {} bytes", avg_price_map_size);
+    println!("Converter size for {} blocks: {} bytes", num_blocks, converter_size);
+    println!("Quote count: {}", quote_count);
 
     group.finish();
 }
@@ -133,38 +152,29 @@ fn bench_conversion_parts(c: &mut Criterion) {
     group.sample_size(10);
 
     group.bench_function("create_block_num_map_with_pairs", |b| {
-        b.iter(|| {
-            let result = black_box(converter.create_block_num_map_with_pairs());
-            println!(
-                "create_block_num_map_with_pairs result size: {} bytes",
-                mem::size_of_val(&result)
-            );
-            result
-        });
+        b.iter(|| black_box(converter.create_block_num_map_with_pairs()));
     });
 
     let block_num_map = converter.create_block_num_map_with_pairs();
 
     group.bench_function("process_best_cex_venues", |b| {
         b.iter(|| {
-            let result = black_box(
+            black_box(
                 converter.process_best_cex_venues(block_num_map.values().next().unwrap().1.clone()),
-            );
-            println!("process_best_cex_venues result size: {} bytes", mem::size_of_val(&result));
-            result
+            )
         });
     });
 
     group.bench_function("create_price_map", |b| {
         b.iter(|| {
             let (block_num, block_time) = *block_num_map.keys().next().unwrap();
-            let result =
-                black_box(converter.create_price_map(
+
+            black_box(
+                converter.create_price_map(
                     block_num_map[&(block_num, block_time)].0.clone(),
                     block_time,
-                ));
-            println!("create_price_map result size: {} bytes", mem::size_of_val(&result));
-            result
+                ),
+            )
         });
     });
 
@@ -193,15 +203,10 @@ fn bench_find_closest_to_time_boundary(c: &mut Criterion) {
             let (block_time, exchange_pair_index_map) = &test_data[index % data_len];
             index += 1;
 
-            let result = black_box(
+            black_box(
                 converter
                     .find_closest_to_time_boundary(*block_time, exchange_pair_index_map.clone()),
             );
-            println!(
-                "find_closest_to_time_boundary result size: {} bytes",
-                mem::size_of_val(&result)
-            );
-            result
         });
     });
     group.finish();

@@ -588,6 +588,7 @@ fn initialize_global_progress_bar(
 }
 
 #[cfg(feature = "sorella-server")]
+#[allow(unused)]
 fn calculate_buffer_size(
     state_to_init: &StateToInitialize,
     total_block_range: u64,
