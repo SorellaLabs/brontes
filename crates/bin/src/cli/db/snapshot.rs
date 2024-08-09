@@ -8,7 +8,12 @@ use brontes_types::{
     buf_writer::DownloadBufWriterWithProgress, unordered_buffer_map::BrontesStreamExt,
 };
 use clap::Parser;
+use directories::UserDirs;
 use flate2::read::GzDecoder;
+use fs_extra::{
+    dir::{move_dir, CopyOptions},
+    move_items,
+};
 use futures::{stream::StreamExt, Stream};
 use indicatif::MultiProgress;
 use itertools::Itertools;
@@ -54,7 +59,7 @@ impl Snapshot {
         // ensure dir exists
         let mut download_dir = temp_dir();
         download_dir.push(format!("{}s", NAME));
-        let cloned_download_dir = download_dir.clone();
+        let mut cloned_download_dir = download_dir.clone();
         fs_extra::dir::create_all(&download_dir, false)?;
 
         ctx.task_executor
@@ -114,6 +119,18 @@ impl Snapshot {
             tracing::info!("cleaning up tmp libmdbx partitions");
             fs_extra::dir::remove(cloned_download_dir)?;
         } else {
+            let mut home_dir = UserDirs::new()
+                .expect("dirs failure")
+                .home_dir()
+                .to_path_buf();
+
+            home_dir.push(FULL_RANGE_NAME);
+            fs_extra::dir::create_all(&home_dir, true).expect("failed to create home dir folder");
+            cloned_download_dir.push(FULL_RANGE_NAME);
+
+            let opt = CopyOptions::new().overwrite(true);
+            move_dir(&cloned_download_dir, home_dir, &opt)?;
+
             tracing::info!(download_path=?cloned_download_dir,"download of full db is finished");
         }
 
