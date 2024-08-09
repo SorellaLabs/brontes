@@ -90,7 +90,7 @@ fn bench_fetch_symbol_rank(c: &mut Criterion) {
 
 fn bench_get_raw_cex_quotes_range(c: &mut Criterion) {
     let (rt, client) = setup_runtime_and_client();
-    let range = CexRangeOrArbitrary::Range(19000000, 19030000);
+    let range = CexRangeOrArbitrary::Range(19000000, 19001000);
     let mut group = c.benchmark_group("get_raw_cex_quotes_range");
     group.sampling_mode(SamplingMode::Linear);
     group.sample_size(10);
@@ -119,7 +119,7 @@ fn bench_get_raw_cex_quotes_range(c: &mut Criterion) {
 
 fn bench_full_conversion_process(c: &mut Criterion) {
     let (rt, client) = setup_runtime_and_client();
-    let range = CexRangeOrArbitrary::Range(19000000, 19030000);
+    let range = CexRangeOrArbitrary::Range(19000000, 19001000);
     let (block_times, symbols, quotes, best_cex_per_pair) =
         rt.block_on(async { fetch_test_data(&client, range).await.unwrap() });
 
@@ -168,7 +168,7 @@ fn bench_full_conversion_process(c: &mut Criterion) {
 
 fn bench_conversion_parts(c: &mut Criterion) {
     let (rt, client) = setup_runtime_and_client();
-    let range = CexRangeOrArbitrary::Range(19000000, 19030000);
+    let range = CexRangeOrArbitrary::Range(19000000, 19001000);
     let (block_times, symbols, quotes, best_cex_per_pair) =
         rt.block_on(async { fetch_test_data(&client, range).await.unwrap() });
 
@@ -210,7 +210,7 @@ fn bench_conversion_parts(c: &mut Criterion) {
 
 fn bench_find_closest_to_time_boundary(c: &mut Criterion) {
     let (rt, client) = setup_runtime_and_client();
-    let range = CexRangeOrArbitrary::Range(19000000, 19030000);
+    let range = CexRangeOrArbitrary::Range(19000000, 19001000);
     let (block_times, symbols, quotes, best_cex_per_pair) =
         rt.block_on(async { fetch_test_data(&client, range).await.unwrap() });
 
