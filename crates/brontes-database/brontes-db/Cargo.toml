@@ -144,6 +144,15 @@ criterion = "0.5.1"
 [[bench]]
 name = "cex_downloader_benchmarks"
 harness = false
+required-features = ["sorella-server"]
+
+[[bench]]
+name = "cex_quotes_conversion"
+harness = false
+required-features = ["sorella-server"]
+
+
+
 
 [build-dependencies]
 serde.workspace = true
