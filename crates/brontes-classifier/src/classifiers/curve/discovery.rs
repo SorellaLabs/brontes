@@ -283,8 +283,7 @@ mod tests {
         let eq_create = NormalizedNewPool {
             trace_index:  1,
             protocol:     Protocol::CurveCryptoSwapPool,
-            //pool_address: Address::new(hex!("d4092e32b3517ee0daa4da48fdc40cab6058e187")),
-            pool_address: Address::new(hex!("97130cc28e99d13ce1ae41d022268b5cc7409cda")),
+            pool_address: Address::new(hex!("d4092e32b3517ee0daa4da48fdc40cab6058e187")),
             tokens:       vec![
                 hex!("81cb62d2cd9261f63a1ae96df715748dcbc97d46").into(),
                 hex!("dac17f958d2ee523a2206206994597c13d831ec7").into(),
@@ -294,7 +293,7 @@ mod tests {
         utils
             .test_discovery_classification(
                 tx,
-                Address::new(hex!("97130cc28e99d13ce1ae41d022268b5cc7409cda")),
+                Address::new(hex!("d4092e32b3517ee0daa4da48fdc40cab6058e187")),
                 |mut pool| {
                     assert_eq!(pool.len(), 1);
                     let pool = pool.remove(0);
