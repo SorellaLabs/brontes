@@ -723,7 +723,7 @@ mod tests {
     use alloy_primitives::{hex, Uint};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
+        db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId, builder::BuilderInfoWithAddress},
         init_threadpools,
         mev::{
             ArbDetails, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
@@ -813,11 +813,11 @@ mod tests {
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
             per_exchange_details: vec![vec![arb_detail.clone()]],
-            per_exchange_pnl: vec![(cex_exchange, arb_pnl.clone())],
+            per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
             ..CexDex::default()
         };
 
-        db.insert_one::<MevCex_Dex>(&case0).await.unwrap();
+        db.insert_one::<MevCex_Dex>(&DbDataWithRunId<CexDex>(case0, 0)).await.unwrap();
 
         let case1 = CexDex {
             swaps: vec![swap.clone()],
