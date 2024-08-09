@@ -27,6 +27,7 @@ fs_extra.workspace = true
 filesize.workspace = true
 tar.workspace = true
 flate2.workspace = true
+directories = "5.0.1"
 
 # Async
 tokio = { workspace = true }
@@ -155,5 +156,3 @@ local-clickhouse = [
 
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]
-
-

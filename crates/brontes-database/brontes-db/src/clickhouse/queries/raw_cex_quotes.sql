@@ -3,12 +3,12 @@ WITH
         SELECT
             c.exchange as exchange,
             upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) AS symbol,
-            toDateTime(c.timestamp / 1000000, 'UTC') AS timestamp_sec,
-            max(c.timestamp) as timestamp,
-            argMax(c.ask_amount, c.timestamp) as ask_amount,
-            argMax(c.ask_price, c.timestamp) as ask_price,
-            argMax(c.bid_price, c.timestamp) as bid_price,
-            argMax(c.bid_amount, c.timestamp) as bid_amount
+            toUnixTimestamp(toDateTime(c.timestamp / 1000000, 'UTC')) * 1000000 AS timestamp_sec,
+            argMin(c.timestamp, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as timestamp,
+            argMin(c.ask_amount, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as ask_amount,
+            argMin(c.ask_price, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as ask_price,
+            argMin(c.bid_price, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as bid_price,
+            argMin(c.bid_amount, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as bid_amount
         FROM cex.normalized_quotes as c
         WHERE c.timestamp >= ? AND c.timestamp < ?
         GROUP BY exchange, symbol, timestamp_sec

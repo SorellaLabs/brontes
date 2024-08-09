@@ -54,7 +54,10 @@ pub enum DatabaseCommands {
     /// Export libmbdx data to parquet
     #[command(name = "export")]
     Export(export::Export),
-    /// downloads a db snapshot from the remote endpoint
+    /// downloads a db snapshot from the remote endpoint. if no start or
+    /// end block is set. the database for the full range will be downloaded.
+    /// Otherwise it will download the specific block range and then merge
+    /// it into the current libmdbx db.
     #[command(name = "download-snapshot")]
     DownloadSnapshot(snapshot::Snapshot),
     #[cfg(feature = "local-clickhouse")]

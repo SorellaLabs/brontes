@@ -18,6 +18,7 @@ use crate::{
 };
 
 pub const PARTITION_FILE_NAME: &str = "brontes-db-partition";
+pub const FULL_RANGE_NAME: &str = "brontes-complete-range";
 
 /// 1 week / 12 seconds
 pub const DEFAULT_PARTITION_SIZE: u64 = 50_400;
