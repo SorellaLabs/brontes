@@ -119,13 +119,17 @@ impl RCloneWrapper {
                 .expect("no full range table found"),
         );
 
-        self.tar_ball_dir(&directory).await?;
+        self.tar_ball_dir(&directory, None).await?;
 
         Ok(())
     }
 
-    async fn tar_ball_dir(&self, directory: &PathBuf) -> eyre::Result<()> {
-        let directory_name = directory
+    pub async fn tar_ball_dir(
+        &self,
+        directory: &PathBuf,
+        new_name: Option<&str>,
+    ) -> eyre::Result<()> {
+        let mut directory_name = directory
             .components()
             .last()
             .unwrap()
@@ -144,6 +148,12 @@ impl RCloneWrapper {
 
         // copy the data to tmp
         fs_extra::dir::copy(directory, "/tmp/", &copy)?;
+
+        // if we have a name change request,
+        if let Some(new_directory_name) = new_name {
+            std::fs::rename(tmp, format!("/tmp/{new_directory_name}"))?;
+            directory_name = new_directory_name;
+        }
 
         if !Command::new("tar")
             .arg("-czvf")
@@ -235,7 +245,7 @@ impl RCloneWrapper {
                 }),
         )
         .map(|directory| async move {
-            self.tar_ball_dir(&directory)
+            self.tar_ball_dir(&directory, None)
                 .await
                 .expect("failed to tarball dir")
         })

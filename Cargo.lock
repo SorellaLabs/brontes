@@ -1538,6 +1538,7 @@ dependencies = [
  "crossterm",
  "db-interfaces",
  "dhat",
+ "directories",
  "dotenv",
  "eyre",
  "fdlimit",
