@@ -1,7 +1,9 @@
 use std::{env::temp_dir, path::PathBuf, str::FromStr};
 
 use brontes_core::LibmdbxReadWriter;
-use brontes_database::libmdbx::{merge_libmdbx_dbs, rclone_wrapper::BlockRangeList};
+use brontes_database::libmdbx::{
+    merge_libmdbx_dbs, rclone_wrapper::BlockRangeList, FULL_RANGE_NAME,
+};
 use brontes_types::{
     buf_writer::DownloadBufWriterWithProgress, unordered_buffer_map::BrontesStreamExt,
 };
@@ -27,7 +29,7 @@ const BYTES_TO_MB: u64 = 1_000_000;
 #[derive(Debug, Parser)]
 pub struct Snapshot {
     /// endpoint url
-    #[arg(long, short, default_value = "https://data.brontes.xyz")]
+    #[arg(long, short, default_value = "https://data.brontes.xyz/")]
     pub endpoint:    Url,
     #[arg(long, short)]
     pub start_block: Option<u64>,
@@ -116,12 +118,9 @@ impl Snapshot {
 
     // returns a error if the data isn't available.
     // NOTE: assumes r2 data is continuous
-    fn ranges_to_download(
-        &self,
-        ranges_avail: Vec<BlockRangeList>,
-    ) -> eyre::Result<Vec<BlockRangeList>> {
+    fn ranges_to_download(&self, ranges_avail: Vec<BlockRangeList>) -> eyre::Result<RangeOrFull> {
         match (self.start_block, self.end_block) {
-            (None, None) => Ok(ranges_avail),
+            (None, None) => Ok(RangeOrFull::Full),
             (Some(start), None) => {
                 let ranges = ranges_avail
                     .into_iter()
@@ -134,7 +133,7 @@ impl Snapshot {
                         self.end_block
                     )
                 }
-                Ok(ranges)
+                Ok(RangeOrFull::Range(ranges))
             }
             (None, Some(end)) => {
                 let ranges = ranges_avail
@@ -150,7 +149,7 @@ impl Snapshot {
                     )
                 }
 
-                Ok(ranges)
+                Ok(RangeOrFull::Range(ranges))
             }
             (Some(start), Some(end)) => {
                 let ranges = ranges_avail
@@ -168,7 +167,7 @@ impl Snapshot {
                     )
                 }
 
-                Ok(ranges)
+                Ok(RangeOrFull::Range(ranges))
             }
         }
     }
@@ -191,28 +190,47 @@ impl Snapshot {
     async fn meets_space_requirement(
         &self,
         client: &reqwest::Client,
-        ranges: Vec<BlockRangeList>,
+        ranges: RangeOrFull,
         brontes_db_endpoint: &String,
     ) -> eyre::Result<Vec<DbRequestWithBytes>> {
         let mut new_db_size = 0u64;
         let mut res = vec![];
-        for range in ranges {
-            let url = format!(
-                "{}{}-{}-{}-{}",
-                self.endpoint, NAME, range.start_block, range.end_block, SIZE_PATH
-            );
-            let size = client.get(url).send().await?.text().await?;
-            let size = u64::from_str(&size)?;
-            res.push(DbRequestWithBytes {
-                url:        format!(
-                    "{}{}-{}-{}.tar.gz",
-                    self.endpoint, NAME, range.start_block, range.end_block
-                ),
-                file_name:  format!("{}-{}-{}.tar.gz", NAME, range.start_block, range.end_block),
-                size_bytes: size,
-            });
+        match ranges {
+            RangeOrFull::Full => {
+                let url = format!("{}{}-{}", self.endpoint, FULL_RANGE_NAME, SIZE_PATH);
+                let size = client.get(url).send().await?.text().await?;
+                let size = u64::from_str(&size)?;
+                res.push(DbRequestWithBytes {
+                    url:        format!("{}{}.tar.gz", self.endpoint, FULL_RANGE_NAME),
+                    file_name:  format!("{}.tar.gz", FULL_RANGE_NAME),
+                    size_bytes: size,
+                });
 
-            new_db_size += size;
+                new_db_size += size;
+            }
+            RangeOrFull::Range(ranges) => {
+                for range in ranges {
+                    let url = format!(
+                        "{}{}-{}-{}-{}",
+                        self.endpoint, NAME, range.start_block, range.end_block, SIZE_PATH
+                    );
+                    let size = client.get(url).send().await?.text().await?;
+                    let size = u64::from_str(&size)?;
+                    res.push(DbRequestWithBytes {
+                        url:        format!(
+                            "{}{}-{}-{}.tar.gz",
+                            self.endpoint, NAME, range.start_block, range.end_block
+                        ),
+                        file_name:  format!(
+                            "{}-{}-{}.tar.gz",
+                            NAME, range.start_block, range.end_block
+                        ),
+                        size_bytes: size,
+                    });
+
+                    new_db_size += size;
+                }
+            }
         }
 
         // query 1 off table
@@ -253,6 +271,11 @@ impl Snapshot {
 
         Ok(())
     }
+}
+
+pub enum RangeOrFull {
+    Full,
+    Range(Vec<BlockRangeList>),
 }
 
 pub struct DbRequestWithBytes {
