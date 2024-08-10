@@ -37,7 +37,7 @@ impl CexBlockTimes {
 
     /// Returns true if supplied timestamp is within the blocks time window
     pub fn contains_time(&self, timestamp: u64) -> bool {
-        timestamp >= self.start_timestamp && timestamp < self.end_timestamp
+        timestamp >= self.start_timestamp && timestamp <= self.end_timestamp
     }
 
     // pub

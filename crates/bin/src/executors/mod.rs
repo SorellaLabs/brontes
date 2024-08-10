@@ -3,6 +3,7 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
+#[cfg(feature = "sorella-server")]
 use brontes_database::libmdbx::StateToInitialize;
 use brontes_metrics::{
     pricing::DexPricingMetrics,
@@ -329,7 +330,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(4)
+        .buffer_unordered(8)
     }
 
     fn build_tip_inspector(
@@ -587,6 +588,7 @@ fn initialize_global_progress_bar(
 }
 
 #[cfg(feature = "sorella-server")]
+#[allow(unused)]
 fn calculate_buffer_size(
     state_to_init: &StateToInitialize,
     total_block_range: u64,
