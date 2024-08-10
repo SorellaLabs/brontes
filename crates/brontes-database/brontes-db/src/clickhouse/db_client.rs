@@ -872,7 +872,9 @@ mod tests {
             ..CexDex::default()
         };
 
-        db.insert_one::<MevCex_Dex>(&DbDataWithRunId::new_with_run_id(case0, 0)).await.unwrap();
+        db.insert_one::<MevCex_Dex>(&DbDataWithRunId::new_with_run_id(case0, 0))
+            .await
+            .unwrap();
 
         let case1 = CexDex {
             swaps: vec![swap.clone()],
