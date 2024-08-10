@@ -221,7 +221,7 @@ impl CexQuotesConverter {
         exchange_symbol_map: FastHashMap<Pair, Vec<usize>>,
     ) -> FastHashMap<Pair, Vec<CexQuote>> {
         exchange_symbol_map
-            .into_iter()
+            .into_par_iter()
             .filter_map(|(pair, quotes_indices)| {
                 if quotes_indices.is_empty() {
                     return None;

@@ -119,7 +119,7 @@ impl CexTradesConverter {
                         trades.into_iter().for_each(|trade| {
                             let symbols = self.symbols.get(&trade.symbol).unwrap().clone();
 
-                            // there is a case were we cant have multiple addresses for
+                            // there is a case were we have multiple addresses for
                             // same symbol so this covers it.
                             let mut seen = vec![];
                             for mut symbol in symbols {
