@@ -10,4 +10,5 @@ with ranked_symbols as (
 SELECT symbol, exchange, toUnixTimestamp(month) * 1000000 as timestamp
 FROM ranked_symbols
 WHERE rn = 1
+ORDER BY timestamp
 
