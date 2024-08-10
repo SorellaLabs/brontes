@@ -2,6 +2,7 @@
 #![feature(associated_type_defaults)]
 #![feature(const_trait_impl)]
 #![feature(noop_waker)]
+#![feature(diagnostic_namespace)]
 pub mod clickhouse;
 pub mod libmdbx;
 pub mod parquet;

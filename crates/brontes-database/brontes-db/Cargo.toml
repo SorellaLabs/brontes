@@ -133,8 +133,24 @@ reth-tasks.workspace = true
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
+brontes-types = { workspace = true}
 brontes-pricing = { workspace = true, features = ["tests"] }
 brontes-macros.workspace = true
+criterion = "0.5.1"
+
+
+
+[[bench]]
+name = "cex_downloader_benchmarks"
+harness = false
+required-features = ["sorella-server"]
+
+[[bench]]
+name = "cex_quotes_conversion"
+harness = false
+required-features = ["sorella-server"]
+
+
 
 
 [build-dependencies]
