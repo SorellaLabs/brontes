@@ -72,19 +72,17 @@ impl CexQuotesConverter {
     pub fn convert_to_prices(self) -> Vec<(u64, CexPriceMap)> {
         let block_num_map_with_pairs = self.create_block_num_map_with_pairs();
 
+        let most_liquid_exchange_for_pair = self.process_best_cex_venues(&self.best_cex_per_pair);
+
         block_num_map_with_pairs
             .into_par_iter()
             .map(|((block_num, block_time), quotes)| {
-                let most_liquid_exchange_for_pair =
-                    self.process_best_cex_venues(&self.best_cex_per_pair);
-
                 let price_map = self.create_price_map(quotes, block_time);
-
                 (
                     block_num,
                     CexPriceMap {
                         quotes:         price_map,
-                        most_liquid_ex: most_liquid_exchange_for_pair,
+                        most_liquid_ex: most_liquid_exchange_for_pair.clone(),
                     },
                 )
             })
@@ -177,31 +175,27 @@ impl CexQuotesConverter {
         timestamp: u64,
         last_block: usize,
     ) -> (Vec<(u64, u64)>, usize) {
-        let mut matching_blocks = Vec::new();
-
-        let mut last_block = last_block;
-        let mut start_idx = last_block;
+        let mut matching_blocks = Vec::with_capacity(25);
+        let len = self.block_times.len();
 
         // Find the first block that contains the timestamp
-        if last_block != 0 {
-            if let Some(block) = self.block_times.get(last_block) {
-                if block.contains_time(timestamp) {
-                    matching_blocks.push((block.block_number, block.precise_timestamp));
-                    start_idx = last_block + 1;
-                } else {
-                    last_block += 1;
-                }
-            };
+        let start_idx = if last_block != 0 {
+            if self.block_times[last_block].contains_time(timestamp) {
+                matching_blocks.push((
+                    self.block_times[last_block].block_number,
+                    self.block_times[last_block].precise_timestamp,
+                ));
+                last_block + 1
+            } else {
+                last_block
+            }
         } else {
-            start_idx = self
-                .block_times
+            self.block_times
                 .iter()
                 .position(|block| block.contains_time(timestamp))
-                .unwrap_or(self.block_times.len());
-            last_block = start_idx;
-        }
+                .unwrap_or(self.block_times.len())
+        };
 
-        let len = self.block_times.len();
         let end_idx = len.min(start_idx + 26);
 
         for block in &self.block_times[start_idx..end_idx] {
@@ -212,7 +206,7 @@ impl CexQuotesConverter {
             }
         }
 
-        (matching_blocks, last_block)
+        (matching_blocks, last_block.saturating_sub(1))
     }
 
     pub fn find_closest_to_time_boundary(
