@@ -1,5 +1,3 @@
-use std::{self, time::Instant};
-
 use brontes_database::{clickhouse::Clickhouse, libmdbx::cex_utils::CexRangeOrArbitrary};
 use brontes_types::{
     db::{
@@ -110,7 +108,7 @@ fn bench_conversion_parts(c: &mut Criterion) {
     let block_num_map = converter.create_block_num_map_with_pairs();
 
     group.bench_function("process_best_cex_venues", |b| {
-        b.iter(|| black_box(converter.process_best_cex_venues(&converter.best_cex_per_pair)));
+        b.iter(|| black_box(converter.process_best_cex_venues()));
     });
 
     group.bench_function("create_price_map", |b| {
