@@ -42,10 +42,13 @@ alloy-sol-types.workspace = true
 alloy-sol-macro.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
-alloy-dyn-abi = { workspace = true, features = ["default"] }
-alloy-provider.workspace = true
-alloy-transport-http.workspace = true
-alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
+alloy-etherscan.workspace = true
+alloy-dyn-abi.workspace = true
+
+# ethers
+ethers-core.workspace = true
+ethers.workspace = true
+ethers-reth.workspace = true
 
 # Serde 
 serde.workspace = true
@@ -84,12 +87,4 @@ criterion = { version = "0.5", features = ["async", "async_tokio"] }
 default = []
 dyn-decode = []
 tests = []
-local-reth = [
-  "brontes-types/local-reth",
-  "reth-tracing-ext/local-reth",
-  "brontes-database/local-reth",
-]
-local-clickhouse = [
-  "brontes-database/local-clickhouse",
-  "reth-tracing-ext/local-clickhouse",
-]
+local = []

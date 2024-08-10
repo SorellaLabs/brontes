@@ -1,6 +1,6 @@
 use brontes_types::{
     normalized_actions::{
-        Action, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest,
+        Actions, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest, Repayment,
     },
     Protocol, TreeSearchBuilder,
 };
@@ -38,7 +38,7 @@ impl MultiCallFrameClassifier for BalancerV2 {
                             if t.from == this.receiver_contract && this.pool == t.to {
                                 if let Some(i) = this.assets.iter().position(|x| *x == t.token) {
                                     if t.amount >= this.amounts[i] {
-                                        repay_transfers.push(t.clone());
+                                        repay_transfers.push(Repayment::Token(t.clone()));
                                         nodes_to_prune.push(index);
                                         continue
                                     }
