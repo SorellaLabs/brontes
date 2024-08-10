@@ -54,26 +54,19 @@ fn bench_full_conversion_process(c: &mut Criterion) {
         rt.block_on(async { fetch_test_data(&client, range).await.unwrap() });
 
     let mut group = c.benchmark_group("Full Conversion Process");
-    group.sampling_mode(SamplingMode::Flat);
+    group.sampling_mode(SamplingMode::Linear);
     group.sample_size(10);
-
     // Benchmark the conversion process
+
+    let converter = CexQuotesConverter::new(
+        block_times.clone(),
+        symbols.clone(),
+        quotes.clone(),
+        best_cex_per_pair.clone(),
+    );
+
     group.bench_function("full_conversion_process", |b| {
-        b.iter_custom(|iters| {
-            let start = Instant::now();
-            let mut results = Vec::with_capacity(iters as usize);
-            for _ in 0..iters {
-                let converter = CexQuotesConverter::new(
-                    block_times.clone(),
-                    symbols.clone(),
-                    quotes.clone(),
-                    best_cex_per_pair.clone(),
-                );
-                results.push(black_box(converter.convert_to_prices()));
-            }
-            black_box(results);
-            start.elapsed()
-        });
+        b.iter(|| black_box(converter.convert_to_prices()));
     });
 
     // Collect additional measurements separately
@@ -105,7 +98,7 @@ fn bench_conversion_parts(c: &mut Criterion) {
     let converter = CexQuotesConverter::new(block_times, symbols, quotes, best_cex_per_pair);
 
     let mut group = c.benchmark_group("Conversion Parts");
-    group.sampling_mode(SamplingMode::Flat);
+    group.sampling_mode(SamplingMode::Linear);
     group.sample_size(10);
 
     group.bench_function("create_block_num_map_with_pairs", |b| {
