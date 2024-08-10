@@ -120,7 +120,7 @@ async fn parse_meta_pool<T: TracingProvider>(
 
 #[cfg(test)]
 mod tests {
-    use alloy_primitives::{hex, Address, B256, FixedBytes};
+    use alloy_primitives::{hex, Address, FixedBytes, B256};
     use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 
     use super::query_base_pool;
