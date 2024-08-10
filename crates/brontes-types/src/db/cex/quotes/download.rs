@@ -202,7 +202,7 @@ impl CexQuotesConverter {
         }
 
         let len = self.block_times.len();
-        let end_idx = len.min(start_idx + 30);
+        let end_idx = len.min(start_idx + 26);
 
         for block in &self.block_times[start_idx..end_idx] {
             if block.contains_time(timestamp) {
@@ -221,36 +221,57 @@ impl CexQuotesConverter {
         exchange_symbol_map: FastHashMap<Pair, Vec<usize>>,
     ) -> FastHashMap<Pair, Vec<CexQuote>> {
         exchange_symbol_map
-            .into_par_iter()
+            .into_iter()
             .filter_map(|(pair, quotes_indices)| {
                 if quotes_indices.is_empty() {
                     return None;
                 }
 
-                let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
+                let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len() + 2);
+
+                //Push the first and the last as will naturally be the closest to their time
+                //boundary
+                result.push(self.quotes[quotes_indices[0]].clone().into());
+                let quotes_len = quotes_indices.len();
+
+                let mut current_index = 0;
 
                 for &time in &QUOTE_TIME_BOUNDARY {
                     let target_time = block_time as i128 + (time as i128 * 1_000_000);
-                    let quote_index = quotes_indices.first().unwrap();
 
-                    let closest = if quote_index > &0 && quote_index < &quotes_indices.len() {
-                        let prev = &self.quotes[*quote_index - 1];
-                        let current = &self.quotes[*quote_index];
-                        if (prev.timestamp as i128 - target_time).abs()
-                            <= (current.timestamp as i128 - target_time).abs()
-                        {
-                            prev
-                        } else {
-                            current
-                        }
-                    } else if *quote_index == quotes_indices.len() {
-                        &self.quotes[*quote_index - 1]
+                    while current_index < quotes_len - 1
+                        && (self.quotes[quotes_indices[current_index + 1]].timestamp as i128)
+                            <= target_time
+                    {
+                        current_index += 1;
+                    }
+
+                    let closest_quote = if current_index == quotes_len - 1 {
+                        &self.quotes[quotes_indices[current_index]]
                     } else {
-                        &self.quotes[*quote_index]
+                        let current_diff = (target_time
+                            - self.quotes[quotes_indices[current_index]].timestamp as i128)
+                            .abs();
+                        let next_diff = (target_time
+                            - self.quotes[quotes_indices[current_index + 1]].timestamp as i128)
+                            .abs();
+
+                        if current_diff <= next_diff {
+                            &self.quotes[quotes_indices[current_index]]
+                        } else {
+                            current_index += 1;
+                            &self.quotes[quotes_indices[current_index]]
+                        }
                     };
 
-                    result.push(closest.clone().into());
+                    result.push(closest_quote.clone().into());
                 }
+
+                result.push(
+                    self.quotes[quotes_indices[quotes_indices.len() - 1]]
+                        .clone()
+                        .into(),
+                );
 
                 Some((pair, result))
             })
@@ -258,7 +279,7 @@ impl CexQuotesConverter {
     }
 }
 
-const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
+const QUOTE_TIME_BOUNDARY: [u64; 4] = [2, 12, 30, 60];
 
 pub fn correct_usdc_address(pair: &Pair) -> Pair {
     let mut corrected_pair = *pair;
