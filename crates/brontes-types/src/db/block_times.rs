@@ -10,7 +10,7 @@ pub struct BlockTimes {
 impl BlockTimes {
     pub fn convert_to_timestamp_query(&self, before_block: f64, after_block: f64) -> String {
         format!(
-            "(timestamp >= {} AND timestamp < {})",
+            "(c.timestamp >= {} AND c.timestamp < {})",
             self.timestamp as f64 - before_block,
             self.timestamp as f64 + after_block
         )
