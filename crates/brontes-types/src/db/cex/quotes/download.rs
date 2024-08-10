@@ -170,6 +170,52 @@ impl CexQuotesConverter {
         block_map
     }
 
+    /*pub fn create_block_num_map_with_pairs(
+        &self,
+    ) -> FastHashMap<(u64, u64), FastHashMap<CexExchange, Vec<usize>>> {
+        let mut block_map: FastHashMap<(u64, u64), FastHashMap<CexExchange, Vec<usize>>> =
+            FastHashMap::default();
+        let mut block_index = 0;
+
+        for (quote_index, quote) in self.quotes.iter().enumerate() {
+            // Move to the next block if the quote is beyond the current block's window
+            while block_index < self.block_times.len()
+                && quote.timestamp > self.block_times[block_index].end_timestamp
+            {
+                block_index += 1;
+            }
+
+            // If we've processed all blocks, we're done
+            if block_index >= self.block_times.len() {
+                break;
+            }
+
+            // Add the quote to all relevant blocks
+            let mut current_block_index = block_index;
+            while current_block_index < self.block_times.len() {
+                let block = &self.block_times[current_block_index];
+
+                if quote.timestamp + 300 < block.start_timestamp {
+                    // Quote is no longer relevant for this and future blocks
+                    break;
+                }
+
+                if block.contains_time(quote.timestamp) {
+                    block_map
+                        .entry((block.block_number, block.precise_timestamp))
+                        .or_default()
+                        .entry(quote.exchange)
+                        .or_default()
+                        .push(quote_index);
+                }
+
+                current_block_index += 1;
+            }
+        }
+
+        block_map
+    }*/
+
     pub fn find_matching_blocks(
         &self,
         timestamp: u64,

@@ -57,16 +57,18 @@ fn bench_full_conversion_process(c: &mut Criterion) {
     group.sampling_mode(SamplingMode::Linear);
     group.sample_size(10);
     // Benchmark the conversion process
-
-    let converter = CexQuotesConverter::new(
-        block_times.clone(),
-        symbols.clone(),
-        quotes.clone(),
-        best_cex_per_pair.clone(),
-    );
-
     group.bench_function("full_conversion_process", |b| {
-        b.iter(|| black_box(converter.convert_to_prices()));
+        b.iter_with_setup(
+            || {
+                CexQuotesConverter::new(
+                    block_times.clone(),
+                    symbols.clone(),
+                    quotes.clone(),
+                    best_cex_per_pair.clone(),
+                )
+            },
+            |converter| black_box(converter.convert_to_prices()),
+        );
     });
 
     // Collect additional measurements separately
