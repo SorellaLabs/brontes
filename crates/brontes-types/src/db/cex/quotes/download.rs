@@ -152,8 +152,13 @@ impl CexQuotesConverter {
         > = FastHashMap::default();
 
         // Process quotes
+        let mut last_block = 0;
+
         for (index, quote) in self.quotes.iter().enumerate() {
-            let matching_blocks = self.find_matching_blocks(quote.timestamp);
+            let (matching_blocks, latest_block) =
+                self.find_matching_blocks(quote.timestamp, last_block);
+            last_block = latest_block;
+
             let exchange = quote.exchange;
             for &(block_number, precise_timestamp) in &matching_blocks {
                 block_map
@@ -198,26 +203,44 @@ impl CexQuotesConverter {
             .collect()
     }
 
-    pub fn find_matching_blocks(&self, timestamp: u64) -> Vec<(u64, u64)> {
+    pub fn find_matching_blocks(
+        &self,
+        timestamp: u64,
+        last_block: usize,
+    ) -> (Vec<(u64, u64)>, usize) {
         let mut matching_blocks = Vec::new();
 
-        // Find the first block that contains the timestamp
-        let start_idx = self
-            .block_times
-            .iter()
-            .position(|block| block.contains_time(timestamp))
-            .unwrap_or(self.block_times.len());
+        let mut last_block = last_block;
+        let mut start_idx = last_block;
 
-        // Iterate from the starting position
-        for block in &self.block_times[start_idx..] {
-            if block.contains_time(timestamp) || block.start_timestamp <= timestamp {
+        // Find the first block that contains the timestamp
+        if last_block != 0 {
+            self.block_times.get(last_block).map(|block| {
+                if block.contains_time(timestamp) {
+                    matching_blocks.push((block.block_number, block.precise_timestamp));
+                    start_idx = last_block + 1;
+                } else {
+                    last_block += 1;
+                }
+            });
+        } else {
+            start_idx = self
+                .block_times
+                .iter()
+                .position(|block| block.contains_time(timestamp))
+                .unwrap_or(self.block_times.len());
+            last_block = start_idx;
+        }
+
+        for block in &self.block_times[start_idx..start_idx + 26] {
+            if block.contains_time(timestamp) {
                 matching_blocks.push((block.block_number, block.precise_timestamp));
             } else {
                 break;
             }
         }
 
-        matching_blocks
+        (matching_blocks, last_block)
     }
 
     pub fn find_closest_to_time_boundary(
