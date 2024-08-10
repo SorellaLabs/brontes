@@ -5,7 +5,6 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use strum::Display;
 
-use super::cex_trades::CexTrades;
 use crate::{
     constants::USDC_ADDRESS,
     db::{
@@ -142,12 +141,6 @@ impl CexTradesConverter {
                                     .push(trade.clone().into());
                             }
                         });
-
-                        for trades in exchange_symbol_map.values_mut() {
-                            if !trades.is_sorted_by_key(|k: &CexTrades| k.timestamp) {
-                                trades.sort_unstable_by_key(|k: &CexTrades| k.timestamp);
-                            }
-                        }
 
                         (exch, exchange_symbol_map)
                     })

@@ -74,8 +74,9 @@ impl CexQuotesConverter {
 
         block_num_map_with_pairs
             .into_par_iter()
-            .map(|((block_num, block_time), (quotes, cex_best_venue))| {
-                let most_liquid_exchange_for_pair = self.process_best_cex_venues(cex_best_venue);
+            .map(|((block_num, block_time), quotes)| {
+                let most_liquid_exchange_for_pair =
+                    self.process_best_cex_venues(&self.best_cex_per_pair);
 
                 let price_map = self.create_price_map(quotes, block_time);
 
@@ -127,10 +128,10 @@ impl CexQuotesConverter {
 
     pub fn process_best_cex_venues(
         &self,
-        cex_best_venue: Vec<BestCexPerPair>,
+        cex_best_venue: &[BestCexPerPair],
     ) -> FastHashMap<Pair, CexExchange> {
         cex_best_venue
-            .into_iter()
+            .iter()
             .filter_map(|pair_ex| {
                 let symbol = self
                     .symbols
@@ -145,11 +146,9 @@ impl CexQuotesConverter {
 
     pub fn create_block_num_map_with_pairs(
         &self,
-    ) -> FastHashMap<(u64, u64), (FastHashMap<CexExchange, Vec<usize>>, Vec<BestCexPerPair>)> {
-        let mut block_map: FastHashMap<
-            (u64, u64),
-            (FastHashMap<CexExchange, Vec<usize>>, FastHashMap<String, BestCexPerPair>),
-        > = FastHashMap::default();
+    ) -> FastHashMap<(u64, u64), FastHashMap<CexExchange, Vec<usize>>> {
+        let mut block_map: FastHashMap<(u64, u64), FastHashMap<CexExchange, Vec<usize>>> =
+            FastHashMap::default();
 
         // Process quotes
         let mut last_block = 0;
@@ -164,43 +163,13 @@ impl CexQuotesConverter {
                 block_map
                     .entry((block_number, precise_timestamp))
                     .or_default()
-                    .0
                     .entry(exchange)
                     .or_default()
                     .push(index);
             }
         }
 
-        // Process best_cex_per_pair
-        for block_time in &self.block_times {
-            let time = block_time.start_timestamp as i64;
-            let entry = block_map
-                .entry((block_time.block_number, block_time.precise_timestamp))
-                .or_default();
-
-            for pair in &self.best_cex_per_pair {
-                match entry.1.entry(pair.symbol.clone()) {
-                    std::collections::hash_map::Entry::Vacant(v) => {
-                        v.insert(pair.clone());
-                    }
-                    std::collections::hash_map::Entry::Occupied(mut o) => {
-                        let entry_time = (time - o.get().timestamp as i64).abs();
-                        let this_time = (time - pair.timestamp as i64).abs();
-                        if this_time < entry_time {
-                            o.insert(pair.clone());
-                        }
-                    }
-                }
-            }
-        }
-
-        // Convert the FastHashMap of BestCexPerPair to Vec
         block_map
-            .into_iter()
-            .map(|(key, (quotes, best_pairs_map))| {
-                (key, (quotes, best_pairs_map.into_values().collect()))
-            })
-            .collect()
     }
 
     pub fn find_matching_blocks(
@@ -215,14 +184,14 @@ impl CexQuotesConverter {
 
         // Find the first block that contains the timestamp
         if last_block != 0 {
-            self.block_times.get(last_block).map(|block| {
+            if let Some(block) = self.block_times.get(last_block) {
                 if block.contains_time(timestamp) {
                     matching_blocks.push((block.block_number, block.precise_timestamp));
                     start_idx = last_block + 1;
                 } else {
                     last_block += 1;
                 }
-            });
+            };
         } else {
             start_idx = self
                 .block_times
@@ -233,7 +202,7 @@ impl CexQuotesConverter {
         }
 
         let len = self.block_times.len();
-        let end_idx = len.min(start_idx + 26);
+        let end_idx = len.min(start_idx + 27);
 
         for block in &self.block_times[start_idx..end_idx] {
             if block.contains_time(timestamp) {

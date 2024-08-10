@@ -91,7 +91,7 @@ fn bench_full_conversion_process(c: &mut Criterion) {
 
     println!("Average price map size: {} bytes", avg_price_map_size);
     println!("Converter size for {} blocks: {} bytes", num_blocks, converter_size);
-    println!("Quote count: {}", quote_count);
+    println!("Converter Quote count: {}", quote_count);
 
     group.finish();
 }
@@ -115,22 +115,16 @@ fn bench_conversion_parts(c: &mut Criterion) {
     let block_num_map = converter.create_block_num_map_with_pairs();
 
     group.bench_function("process_best_cex_venues", |b| {
-        b.iter(|| {
-            black_box(
-                converter.process_best_cex_venues(block_num_map.values().next().unwrap().1.clone()),
-            )
-        });
+        b.iter(|| black_box(converter.process_best_cex_venues(&converter.best_cex_per_pair)));
     });
 
     group.bench_function("create_price_map", |b| {
         b.iter(|| {
-            let (block_num, block_time) = *block_num_map.keys().next().unwrap();
+            let (_, block_time) = *block_num_map.keys().next().unwrap();
 
             black_box(
-                converter.create_price_map(
-                    block_num_map[&(block_num, block_time)].0.clone(),
-                    block_time,
-                ),
+                converter
+                    .create_price_map(block_num_map.values().next().unwrap().clone(), block_time),
             )
         });
     });
@@ -179,10 +173,10 @@ fn bench_find_closest_to_time_boundary(c: &mut Criterion) {
 
 fn prepare_test_data(
     converter: &mut CexQuotesConverter,
-    data: FastHashMap<(u64, u64), (FastHashMap<CexExchange, Vec<usize>>, Vec<BestCexPerPair>)>,
+    data: FastHashMap<(u64, u64), FastHashMap<CexExchange, Vec<usize>>>,
 ) -> Vec<(u64, FastHashMap<Pair, Vec<usize>>)> {
     data.into_iter()
-        .map(|((_, block_time), (exchange_maps, _))| {
+        .map(|((_, block_time), exchange_maps)| {
             let mut exchange_pair_index_map: std::collections::HashMap<
                 Pair,
                 Vec<usize>,
