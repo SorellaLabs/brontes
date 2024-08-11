@@ -907,7 +907,6 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(3.88)
             .with_gas_paid_usd(6.93);
-
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
