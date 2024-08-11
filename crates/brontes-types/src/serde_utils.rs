@@ -675,8 +675,19 @@ pub mod option_contract_info {
         }))
     }
 
-    pub fn serialize<S: Serializer>(u: &ContractInfo, serializer: S) -> Result<S::Ok, S::Error> {
-        (u.verified_contract, u.contract_creator, u.reputation).serialize(serializer)
+    pub fn serialize<S>(value: &Option<ContractInfo>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match value {
+            Some(contract_info) => (
+                contract_info.verified_contract,
+                contract_info.contract_creator,
+                contract_info.reputation,
+            )
+                .serialize(serializer),
+            None => serializer.serialize_none(),
+        }
     }
 }
 

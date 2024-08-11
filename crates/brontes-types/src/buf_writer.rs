@@ -154,6 +154,7 @@ impl WriteProgress {
                 file_handle.write_all(&buf_moved).await.unwrap();
                 file_handle
             }) as Pin<Box<dyn Future<Output = File> + Send + 'static>>;
+            #[allow(clippy::missing_transmute_annotations)]
             let new = Self::Writing(std::mem::transmute(fut));
 
             std::ptr::write(self, new);
