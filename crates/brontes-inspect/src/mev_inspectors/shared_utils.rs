@@ -612,13 +612,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                 )
                             });
 
+                            let price_delta_pct = pct.clone().to_float() * 100.0;
+
                             tracing::warn!(
-                                mev_type=?mev_type,
-                                ?effective_price,
-                                ?dex_pricing_rate,
-                                ?swap,
-                                ?pct,
-                                "to big of a delta for pricing"
+                                mev_type = ?mev_type,
+                                effective_price = %format!("{:.6}", effective_price.to_float()),
+                                dex_pricing_rate = %format!("{:.6}", dex_pricing_rate.to_float()),
+                                swap = %swap,
+                                price_delta_pct = %format!("{:.2}%", price_delta_pct),
+                                "Price delta of {price_delta_pct:.2}% exceeds threshold for {mev_type:?} MEV"
                             );
                         }
 

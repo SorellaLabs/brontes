@@ -391,6 +391,8 @@ impl BrontesTaskExecutor {
             self.on_shutdown.clone(),
             LocalGracefulShutdownGuard::new(Arc::clone(&self.graceful_tasks)),
         );
+
+        #[allow(clippy::missing_transmute_annotations)]
         let fut = f(unsafe { std::mem::transmute(on_shutdown) });
 
         // wrap the task in catch unwind
@@ -438,6 +440,7 @@ impl BrontesTaskExecutor {
             self.on_shutdown.clone(),
             LocalGracefulShutdownGuard::new(Arc::clone(&self.graceful_tasks)),
         );
+        #[allow(clippy::missing_transmute_annotations)]
         let fut = f(unsafe { std::mem::transmute(on_shutdown) });
 
         self.handle.spawn(fut)

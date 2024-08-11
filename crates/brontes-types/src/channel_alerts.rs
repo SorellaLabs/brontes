@@ -19,7 +19,7 @@ impl<T> UnboundedYapperReceiver<T> {
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
             if len % 100 == 0 {
-                tracing::warn!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
+                tracing::trace!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
             }
         }
 
@@ -31,7 +31,7 @@ impl<T> UnboundedYapperReceiver<T> {
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
             if len % 100 == 0 {
-                tracing::warn!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
+                tracing::trace!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
             }
         }
 
@@ -43,7 +43,7 @@ impl<T> UnboundedYapperReceiver<T> {
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
             if len % 100 == 0 {
-                tracing::warn!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
+                tracing::trace!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
             }
         }
 
@@ -59,7 +59,7 @@ impl<T> UnboundedYapperReceiver<T> {
         if len > self.yap_count {
             let mb = (std::mem::size_of::<T>() * len) / 1_000_000;
             if len % 100 == 0 {
-                tracing::warn!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
+                tracing::trace!(chan=%self.name,pending=len, mb_usage=mb, "unbounded channel is above threshold");
             }
         }
 

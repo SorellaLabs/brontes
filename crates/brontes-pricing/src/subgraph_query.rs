@@ -204,9 +204,8 @@ fn queue_loading_returns(
         let pair = PairWithFirstPoolHop::from_pair_gt(pair, must_include);
 
         let extend_to = actual_extends
-            .map(|actual| {
+            .inspect(|actual| {
                 n_pair.1 = actual.0;
-                actual
             })
             .or(default_extend_to);
 
