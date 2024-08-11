@@ -13,7 +13,7 @@ use brontes_types::{
 use futures::future::join_all;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
-use tracing::{error, info};
+use tracing::{error, trace};
 
 use self::erc20::try_decode_transfer;
 use crate::{
@@ -327,11 +327,12 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         {
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
         } else {
-            info!(
+            trace!(
                 "Discovered new {} pool:
                             \nAddress:{}
                             ",
-                pool.protocol, pool.pool_address
+                pool.protocol,
+                pool.pool_address
             );
         }
     }

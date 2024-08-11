@@ -3,7 +3,6 @@ use types::{CallTrace, CallTraceNode, LogCallOrder};
 use super::types;
 /// An arena of recorded traces.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CallTraceArena {
     /// The arena of recorded trace nodes
     pub(crate) arena: Vec<CallTraceNode>,

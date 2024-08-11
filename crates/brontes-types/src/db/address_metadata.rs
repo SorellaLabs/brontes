@@ -19,11 +19,10 @@ pub struct AddressMetadata {
     #[serde(rename = "type")]
     pub address_type:    Option<String>,
     #[serde(deserialize_with = "option_contract_info::deserialize")]
-    #[cfg_attr(api, serde(serialize_with = "option_contract_info::Serialize"))]
     pub contract_info:   Option<ContractInfo>,
     pub ens:             Option<String>,
     #[serde(deserialize_with = "socials::deserialize")]
-    #[cfg_attr(api, serde(serialize_with = "socials::Serialize"))]
+    #[serde(serialize_with = "socials::serialize")]
     #[redefined(same_fields)]
     pub social_metadata: Socials,
 }

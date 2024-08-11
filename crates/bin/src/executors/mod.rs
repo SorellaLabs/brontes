@@ -291,6 +291,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             move |(batch_id, (start_block, end_block))| {
                 let ranges =
                     state_to_init.get_state_for_ranges(start_block as usize, end_block as usize);
+
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
                 let tables_pb = tables_pb.clone();
@@ -330,7 +331,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(4)
+        .buffer_unordered(2)
     }
 
     fn build_tip_inspector(
@@ -501,7 +502,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }))
         .await
         .into_iter()
-        .collect::<eyre::Result<_>>()?;
+        .collect::<eyre::Result<Vec<()>>>()?;
 
         Ok(())
     }

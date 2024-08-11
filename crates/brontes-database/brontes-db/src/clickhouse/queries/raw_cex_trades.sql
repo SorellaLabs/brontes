@@ -8,4 +8,3 @@ SELECT
     c.amount AS amount
 FROM cex.normalized_trades AS c 
 WHERE c.timestamp >= ? AND c.timestamp < ?
-ORDER BY c.timestamp

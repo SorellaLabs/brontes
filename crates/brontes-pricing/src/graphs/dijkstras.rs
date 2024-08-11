@@ -1,7 +1,7 @@
 //! Compute a shortest path using the [Dijkstra search
 //! algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 
-use std::{cmp::Ordering, collections::BinaryHeap, hash::Hash, usize};
+use std::{cmp::Ordering, collections::BinaryHeap, hash::Hash};
 
 use brontes_types::{FastHashMap, FastHashSet, FastHasher};
 use indexmap::{
@@ -24,11 +24,10 @@ const MAX_OTHER_PATHS: usize = 3;
 ///
 /// - `start` is the starting node.
 /// - `successors` returns a list of successors for a given node, along with the
-///   cost for moving
-/// from the node to the successor. This cost must be non-negative.
+///   cost for moving from the node to the successor. This cost must be
+///   non-negative.
 /// - `success` checks whether the goal has been reached. It is not a node as
-///   some problems require
-/// a dynamic solution instead of a fixed node.
+///   some problems require a dynamic solution instead of a fixed node.
 ///
 /// A node will never be included twice in the path as determined by the `Eq`
 /// relationship.
@@ -75,7 +74,6 @@ const MAX_OTHER_PATHS: usize = 3;
 ///
 /// The second version does not declare a `Pos` type, makes use of more
 /// closures, and is thus shorter.
-///
 /// ```
 /// use pathfinding::prelude::dijkstra;
 ///
@@ -182,7 +180,7 @@ where
     let mut to_see = BinaryHeap::new();
     to_see.push(SmallestHolder { cost: Zero::zero(), index: 0, hops: 0 });
     let mut parents: FxIndexMap<N, (usize, C, E)> = FxIndexMap::default();
-    parents.insert(start.clone(), (usize::max_value(), Zero::zero(), E::default()));
+    parents.insert(start.clone(), (usize::MAX, Zero::zero(), E::default()));
 
     let mut target_reached = None;
 

@@ -26,7 +26,8 @@ use brontes_types::{
     BlockTree, Protocol,
 };
 use db_interfaces::{
-    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
+    errors::DatabaseError,
     Database,
 };
 use eyre::Result;
@@ -409,12 +410,12 @@ impl ClickhouseHandle for Clickhouse {
             .collect::<Vec<_>>()
             .join(" OR ");
 
-        tracing::info!("fetching symbol ranks");
+        tracing::trace!("Fetching symbol ranks");
         let symbol_rank = self
             .fetch_symbol_rank(&block_times, &range_or_arbitrary)
             .await?;
 
-        tracing::info!("got symbol ranks");
+        tracing::trace!("Successfully fetched symbol ranks");
 
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
@@ -601,9 +602,11 @@ impl Clickhouse {
         &self,
         block_times: &[BlockTimes],
         range_or_arbitrary: &CexRangeOrArbitrary,
-    ) -> eyre::Result<Vec<BestCexPerPair>> {
+    ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
         if block_times.is_empty() {
-            return Ok(vec![])
+            return Err(DatabaseError::from(ClickhouseError::QueryError(
+                "Nothing to query, block times are empty".to_string(),
+            )))
         }
         Ok(match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {

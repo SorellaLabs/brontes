@@ -264,8 +264,6 @@ pub(crate) fn create_txn_env(
         // EIP-4844 fields
         blob_hashes: blob_versioned_hashes.unwrap_or_default(),
         max_fee_per_blob_gas,
-        #[cfg(feature = "optimism")]
-        optimism: OptimismFields { enveloped_tx: Some(Bytes::new()), ..Default::default() },
     };
 
     Ok(env)

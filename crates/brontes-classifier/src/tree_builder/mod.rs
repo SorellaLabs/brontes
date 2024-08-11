@@ -29,7 +29,7 @@ use malachite::num::arithmetic::traits::Abs;
 use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info, trace};
+use tracing::{error, trace};
 use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};
 use utils::{decode_transfer, get_coinbase_transfer};
 
@@ -643,7 +643,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         {
             error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
         } else {
-            info!("Discovered new {} pool: Address:{}", pool.protocol, pool.pool_address);
+            trace!("Inserting new {} pool: Address:{}", pool.protocol, pool.pool_address);
         }
     }
 

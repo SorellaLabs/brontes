@@ -1,4 +1,4 @@
-use std::{isize, sync::Arc};
+use std::sync::Arc;
 
 use crate::{db::metadata::Metadata, normalized_actions::Action, BlockTree};
 

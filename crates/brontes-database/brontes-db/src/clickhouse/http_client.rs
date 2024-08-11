@@ -151,11 +151,10 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             self.client
                 .execute(request)
                 .await
-                .map_err(|e| {
+                .inspect_err(|e| {
                     if let Some(status_code) = e.status() {
                         tracing::error!(%status_code, "clickhouse http query")
                     }
-                    e
                 })?
                 .bytes_stream(),
         );
@@ -243,11 +242,10 @@ impl ClickhouseHandle for ClickhouseHttpClient {
             self.client
                 .execute(request)
                 .await
-                .map_err(|e| {
+                .inspect_err(|e| {
                     if let Some(status_code) = e.status() {
                         tracing::error!(%status_code, "clickhouse http query")
                     }
-                    e
                 })?
                 .bytes_stream(),
         );
