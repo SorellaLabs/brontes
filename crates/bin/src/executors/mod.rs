@@ -501,7 +501,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }))
         .await
         .into_iter()
-        .collect::<eyre::Result<_>>()?;
+        .collect::<eyre::Result<Vec<()>>>()?;
 
         Ok(())
     }

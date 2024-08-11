@@ -409,12 +409,12 @@ impl ClickhouseHandle for Clickhouse {
             .collect::<Vec<_>>()
             .join(" OR ");
 
-        tracing::info!("fetching symbol ranks");
+        tracing::trace!("Fetching symbol ranks");
         let symbol_rank = self
             .fetch_symbol_rank(&block_times, &range_or_arbitrary)
             .await?;
 
-        tracing::info!("got symbol ranks");
+        tracing::trace!("Successfully fetched symbol ranks");
 
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {

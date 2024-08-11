@@ -58,3 +58,4 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
   "brontes-types/local-clickhouse",
 ]
+optimism = []
