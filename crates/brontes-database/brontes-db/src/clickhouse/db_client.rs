@@ -602,7 +602,7 @@ impl Clickhouse {
         block_times: &[BlockTimes],
         range_or_arbitrary: &CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<BestCexPerPair>> {
-        if block_times.is_empty {
+        if block_times.is_empty() {
             return Ok(vec![])
         }
         Ok(match range_or_arbitrary {
