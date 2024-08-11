@@ -86,23 +86,30 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo test
+        id: run_tests
+        continue-on-error: true
         run: |
           ssh brontes_server -tt "bash --login -c '
-             source ~/.bashrc
-             cd \$HOME
-             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
-             cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
-             ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}
-           '"
-
-      - name: Cleanup on cancellation
-        if: cancelled()
+            source ~/.bashrc
+            cd \$HOME
+            mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            git clone https://github.com/SorellaLabs/brontes.git
+            cd brontes
+            ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}
+          '"
+      - name: Cleanup
+        if: always()
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
           '"
+
+      - name: Check test result
+        if: steps.run_tests.outcome == 'failure'
+        run: exit 1
 
   it-test:
     runs-on: ubuntu-latest
@@ -126,19 +133,28 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo it test
+        id: run_it_tests
+        continue-on-error: true
         run: |
           ssh brontes_server -tt "bash --login -c '
             source ~/.bashrc
             cd \$HOME
             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            git clone https://github.com/SorellaLabs/brontes.git
+            cd brontes
             ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}
           '"
-      - name: Cleanup on cancellation
-        if: cancelled()
+
+      - name: Cleanup
+        if: always()
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
           '"
+
+      - name: Check integration test result
+        if: steps.run_it_tests.outcome == 'failure'
+        run: exit 1
