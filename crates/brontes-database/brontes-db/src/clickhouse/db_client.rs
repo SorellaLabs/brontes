@@ -26,7 +26,8 @@ use brontes_types::{
     BlockTree, Protocol,
 };
 use db_interfaces::{
-    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
+    errors::DatabaseError,
     Database,
 };
 use eyre::Result;
@@ -601,7 +602,12 @@ impl Clickhouse {
         &self,
         block_times: &[BlockTimes],
         range_or_arbitrary: &CexRangeOrArbitrary,
-    ) -> eyre::Result<Vec<BestCexPerPair>> {
+    ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
+        if block_times.is_empty() {
+            return Err(DatabaseError::from(ClickhouseError::QueryError(
+                "Nothing to query, block times are empty".to_string(),
+            )))
+        }
         Ok(match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
