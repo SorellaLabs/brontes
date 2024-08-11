@@ -26,9 +26,11 @@ use brontes_types::{
     BlockTree, Protocol,
 };
 use db_interfaces::{
-    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
+    errors::DatabaseError,
     Database,
 };
+use eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
@@ -358,7 +360,6 @@ impl ClickhouseHandle for Clickhouse {
         &self.client
     }
 
-    //TODO: Change back to -6 + 6 when mem fix
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -409,12 +410,12 @@ impl ClickhouseHandle for Clickhouse {
             .collect::<Vec<_>>()
             .join(" OR ");
 
-        tracing::info!("fetching symbol ranks");
+        tracing::trace!("Fetching symbol ranks");
         let symbol_rank = self
             .fetch_symbol_rank(&block_times, &range_or_arbitrary)
             .await?;
 
-        tracing::info!("got symbol ranks");
+        tracing::trace!("Successfully fetched symbol ranks");
 
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
@@ -597,11 +598,16 @@ impl ClickhouseHandle for Clickhouse {
 
 impl Clickhouse {
     #[allow(unused)]
-    async fn fetch_symbol_rank(
+    pub async fn fetch_symbol_rank(
         &self,
         block_times: &[BlockTimes],
         range_or_arbitrary: &CexRangeOrArbitrary,
-    ) -> eyre::Result<Vec<BestCexPerPair>> {
+    ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
+        if block_times.is_empty() {
+            return Err(DatabaseError::from(ClickhouseError::QueryError(
+                "Nothing to query, block times are empty".to_string(),
+            )))
+        }
         Ok(match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
                 let start_time = block_times
@@ -648,6 +654,61 @@ impl Clickhouse {
                 self.client.query_many(query, &()).await?
             }
         })
+    }
+
+    pub async fn get_block_times_range(
+        &self,
+        range: &CexRangeOrArbitrary,
+    ) -> Result<Vec<BlockTimes>, db_interfaces::errors::DatabaseError> {
+        let (start, end) = match range {
+            CexRangeOrArbitrary::Range(start, end) => (start, end),
+            CexRangeOrArbitrary::Arbitrary(_) => panic!("Arbitrary range not supported"),
+        };
+
+        debug!(target = "b", "Querying block times for range: start={}, end={}", start, end);
+        self.client.query_many(BLOCK_TIMES, &(start, end)).await
+    }
+
+    pub async fn get_cex_symbols(
+        &self,
+    ) -> Result<Vec<CexSymbols>, db_interfaces::errors::DatabaseError> {
+        self.client.query_many(CEX_SYMBOLS, &()).await
+    }
+
+    pub async fn get_raw_cex_quotes_range(
+        &self,
+        start_time: u64,
+        end_time: u64,
+    ) -> Result<Vec<RawCexQuotes>, db_interfaces::errors::DatabaseError> {
+        let exchanges_str = self.get_exchanges_filter_string();
+
+        let query = self.build_range_cex_quotes_query(start_time, end_time, &exchanges_str);
+        self.client.query_many(&query, &()).await
+    }
+
+    fn get_exchanges_filter_string(&self) -> String {
+        self.cex_download_config
+            .exchanges_to_use
+            .iter()
+            .map(|s| s.to_clickhouse_filter().to_string())
+            .collect::<Vec<_>>()
+            .join(" OR ")
+    }
+
+    fn build_range_cex_quotes_query(
+        &self,
+        start_time: u64,
+        end_time: u64,
+        exchanges_str: &str,
+    ) -> String {
+        let query = RAW_CEX_QUOTES.to_string();
+        query.replace(
+            "c.timestamp >= ? AND c.timestamp < ?",
+            &format!(
+                "c.timestamp >= {} AND c.timestamp < {} AND ({})",
+                start_time, end_time, exchanges_str
+            ),
+        )
     }
 }
 
@@ -809,15 +870,9 @@ mod tests {
         let case0 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl_maker: Rational::ZERO,
-            global_vmap_pnl_taker: Rational::ZERO,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl_maker: Rational::ZERO,
-            optimal_route_pnl_taker: Rational::ZERO,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl_maker: Rational::ZERO,
-            optimistic_route_pnl_taker: Rational::ZERO,
             per_exchange_details: vec![vec![arb_detail.clone()]],
             per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
             ..CexDex::default()
@@ -830,15 +885,9 @@ mod tests {
         let case1 = CexDex {
             swaps: vec![swap.clone()],
             global_vmap_details: vec![arb_detail.clone()],
-            global_vmap_pnl_maker: Rational::ZERO,
-            global_vmap_pnl_taker: Rational::ZERO,
             optimal_route_details: vec![arb_detail.clone()],
-            optimal_route_pnl_maker: Rational::ZERO,
-            optimal_route_pnl_taker: Rational::ZERO,
             optimistic_route_details: vec![arb_detail.clone()],
             optimistic_trade_details: vec![vec![opt_trade.clone()]],
-            optimistic_route_pnl_maker: Rational::ZERO,
-            optimistic_route_pnl_taker: Rational::ZERO,
             per_exchange_details: vec![vec![arb_detail.clone()]],
             per_exchange_pnl: vec![(cex_exchange, (Rational::ZERO, Rational::ZERO))],
             ..CexDex::default()

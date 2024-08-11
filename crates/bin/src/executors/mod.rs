@@ -3,6 +3,7 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
+#[cfg(feature = "sorella-server")]
 use brontes_database::libmdbx::StateToInitialize;
 use brontes_metrics::{
     pricing::DexPricingMetrics,
@@ -262,15 +263,15 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .unwrap(),
         );
 
-        #[cfg(feature = "sorella-server")]
-        let buffer_size = calculate_buffer_size(
-            &state_to_init,
-            end_block - self.start_block.unwrap(),
-            chunks.len() as f64,
-        );
-
-        #[cfg(not(feature = "sorella-server"))]
-        let buffer_size = 10;
+        // #[cfg(feature = "sorella-server")]
+        // let buffer_size = calculate_buffer_size(
+        //     &state_to_init,
+        //     end_block - self.start_block.unwrap(),
+        //     chunks.len() as f64,
+        // );
+        //
+        // #[cfg(not(feature = "sorella-server"))]
+        // let buffer_size = 10;
 
         let multi = MultiProgress::default();
         let tables_pb = Arc::new(
@@ -290,6 +291,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             move |(batch_id, (start_block, end_block))| {
                 let ranges =
                     state_to_init.get_state_for_ranges(start_block as usize, end_block as usize);
+
                 let executor = executor.clone();
                 let prgrs_bar = progress_bar.clone();
                 let tables_pb = tables_pb.clone();
@@ -329,7 +331,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(buffer_size)
+        .buffer_unordered(2)
     }
 
     fn build_tip_inspector(
@@ -500,7 +502,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         }))
         .await
         .into_iter()
-        .collect::<eyre::Result<_>>()?;
+        .collect::<eyre::Result<Vec<()>>>()?;
 
         Ok(())
     }
@@ -587,6 +589,7 @@ fn initialize_global_progress_bar(
 }
 
 #[cfg(feature = "sorella-server")]
+#[allow(unused)]
 fn calculate_buffer_size(
     state_to_init: &StateToInitialize,
     total_block_range: u64,

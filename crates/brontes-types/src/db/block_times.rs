@@ -10,7 +10,7 @@ pub struct BlockTimes {
 impl BlockTimes {
     pub fn convert_to_timestamp_query(&self, before_block: f64, after_block: f64) -> String {
         format!(
-            "(timestamp >= {} AND timestamp < {})",
+            "(c.timestamp >= {} AND c.timestamp < {})",
             self.timestamp as f64 - before_block,
             self.timestamp as f64 + after_block
         )
@@ -37,7 +37,7 @@ impl CexBlockTimes {
 
     /// Returns true if supplied timestamp is within the blocks time window
     pub fn contains_time(&self, timestamp: u64) -> bool {
-        timestamp >= self.start_timestamp && timestamp < self.end_timestamp
+        timestamp >= self.start_timestamp && timestamp <= self.end_timestamp
     }
 
     // pub

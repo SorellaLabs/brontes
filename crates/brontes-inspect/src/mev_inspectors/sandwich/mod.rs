@@ -440,12 +440,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         Some(vec![Bundle { header, data: BundleData::Sandwich(sandwich) }])
     }
 
-    /// for the given set of possible sandwich data.
-    /// will call the main function recursively with two different revisions.
-    /// 1) front shrink.
-    /// 2) back shrink,
-    ///This is done recursively as this will generate
-    /// all possible sets of sandwiches that can occur.
+    /// For the given set of possible sandwich data.
+    /// Calls with two different revisions.
+    ///     1) front shrink
+    ///     2) back shrink
+    /// This is done recursively as this will generate all
+    /// possible sets of sandwiches that can occur.
     fn recursive_possible_sandwiches(
         &self,
         tree: Arc<BlockTree<Action>>,
