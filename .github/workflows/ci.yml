@@ -14,7 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@clippy
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy,rustfmt
+          toolchain: nightly
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -39,12 +42,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt
+          components: clippy,rustfmt
+          toolchain: nightly
       - uses: Swatinem/rust-cache@v2
         with:
           key: "buildfmt-nightly"
           cache-on-failure: true
 
+      - name: Update to latest nightly
+        run: rustup update nightly
       # allow for downloads
       - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
         shell: bash
@@ -82,7 +88,7 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo test
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
+        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && rustup update nightly && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
 
       - name: Cleanup on cancellation
         if: cancelled()
