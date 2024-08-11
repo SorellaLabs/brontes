@@ -2,18 +2,30 @@
 
 setup() {
   if rustup default nightly; then : ; else return 1; fi
-  git checkout $1
+  
+  # Check if directory exists and is not empty
+  if [ -d "brontes" ] && [ "$(ls -A brontes)" ]; then
+    echo "brontes directory exists and is not empty. Removing it..."
+    rm -rf brontes
+  fi
+  
+  # Clone the repository
+  if git clone https://github.com/SorellaLabs/brontes.git; then
+    cd brontes || return 1
+  else
+    echo "Failed to clone repository"
+    return 1
+  fi
+  
+  git checkout "$1"
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"
-
-
   if cp /home/brontes-ci/.env .env; then :; else return 1;fi
-
   echo "BRONTES_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
   echo "BRONTES_TEST_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
   echo "updated .env"
-  
 }
+
 
 # deletes repo and test db
 teardown() {

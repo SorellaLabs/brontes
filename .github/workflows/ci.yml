@@ -86,14 +86,21 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo test
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+             source ~/.bashrc
+             cd \$HOME
+             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+             cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+             ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}
+           '"
 
       - name: Cleanup on cancellation
         if: cancelled()
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
-            rm -rf /home/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
           '"
 
@@ -119,13 +126,19 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo it test
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bas&rc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}'"
-
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            source ~/.bashrc
+            cd \$HOME
+            mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}
+          '"
       - name: Cleanup on cancellation
         if: cancelled()
         run: |
           ssh brontes_server -tt "bash --login -c '
             set -x
-            rm -rf /home/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
           '"
