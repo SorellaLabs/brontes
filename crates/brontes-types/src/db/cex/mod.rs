@@ -1,6 +1,5 @@
 use std::{fmt::Debug, hash::Hash};
 
-use malachite::Rational;
 use strum::Display;
 pub mod cex_symbols;
 pub mod quotes;
@@ -9,8 +8,6 @@ pub mod trades;
 pub use cex_symbols::*;
 pub use quotes::*;
 pub use trades::*;
-
-use crate::pair::Pair;
 
 #[derive(
     Copy,
