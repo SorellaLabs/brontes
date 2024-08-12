@@ -235,7 +235,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 Ok::<(), eyre::Report>(())
             }
         }))
-        .unordered_buffer_map(2, tokio::spawn)
+        .unordered_buffer_map(4, tokio::spawn)
         .collect::<Vec<_>>()
         .await
         .into_iter()
