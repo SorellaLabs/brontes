@@ -120,12 +120,6 @@ impl RunArgs {
         brontes_db_endpoint: String,
         ctx: CliContext,
     ) -> eyre::Result<()> {
-        let logical_cpus = num_cpus::get();
-        println!("logical_cpus: {}", logical_cpus);
-
-        let physical_cpus = num_cpus::get_physical();
-        println!("physical_cpus: {}", physical_cpus);
-
         self.check_proper_range()?;
 
         let snapshot_mode = !cfg!(feature = "local-clickhouse");

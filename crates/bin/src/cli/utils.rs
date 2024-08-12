@@ -139,7 +139,7 @@ pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
     match max_tasks {
         Some(max_tasks) => max_tasks,
         None => {
-            let cpus = num_cpus::get_physical();
+            let cpus = num_cpus::get();
             (cpus as f64 * 0.90) as u64
         }
     }
