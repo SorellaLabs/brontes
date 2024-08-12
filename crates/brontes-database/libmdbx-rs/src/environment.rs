@@ -26,7 +26,7 @@ use crate::{
 
 /// The default maximum duration of a read transaction.
 #[cfg(feature = "read-tx-timeouts")]
-const DEFAULT_MAX_READ_TRANSACTION_DURATION: Duration = Duration::from_secs(60);
+const DEFAULT_MAX_READ_TRANSACTION_DURATION: Duration = Duration::from_secs(120);
 
 /// An environment supports multiple databases, all residing in the same
 /// shared-memory map.
