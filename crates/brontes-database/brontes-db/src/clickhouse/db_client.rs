@@ -642,8 +642,8 @@ impl Clickhouse {
                     });
 
                 query = query.replace(
-                    "month >= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH) and \
-                     month <= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH)",
+                    "month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND \
+                     (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))",
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
