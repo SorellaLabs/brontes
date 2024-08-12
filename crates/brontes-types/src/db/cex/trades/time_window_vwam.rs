@@ -308,6 +308,9 @@ impl<'a> TimeWindowTrades<'a> {
         while trade_volume_global.le(vol) {
             let trades = walker.get_trades_for_window();
             for trade in trades {
+                // See explanation of trade representation in the book
+                let adjusted_trade = trade.adjust_for_direction(trade_data.direction);
+
                 let trade = trade.get();
                 let (m_fee, t_fee) = trade.exchange.fees(&pair, &CommodityClass::Spot);
                 let weight = calculate_weight(block_timestamp, trade.timestamp);

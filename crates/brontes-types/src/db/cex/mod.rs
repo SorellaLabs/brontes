@@ -4,7 +4,12 @@ use strum::Display;
 pub mod cex_symbols;
 pub mod quotes;
 pub mod trades;
+mod best_cex_per_pair;
+mod exchanges;
 
+pub use best_cex_per_pair::*;
+pub use cex_symbols::*;
+pub use exchanges::*;
 pub use cex_symbols::*;
 pub use quotes::*;
 pub use trades::*;

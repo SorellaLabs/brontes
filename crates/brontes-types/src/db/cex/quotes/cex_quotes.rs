@@ -42,14 +42,19 @@ use crate::{
     normalized_actions::NormalizedSwap,
     pair::{Pair, PairRedefined},
     utils::ToFloatNearest,
-    FastHashMap, FastHashSet
+    FastHashMap, FastHashSet,
 };
 use crate::constants::*;
+
+use malachite::num::conversion::traits::FromSciString;
+
+const MAX_TIME_DIFFERENCE: u64 = 250_000;
 
 pub enum CommodityClass {
     Spot,
     Futures,
-    Options
+    Options,
+    Derivative
 }
 
 /// Centralized exchange price map organized by exchange.
@@ -197,7 +202,7 @@ impl CexPriceMap {
 
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
 
-                let fees = exchange.fees();
+                let fees = exchange.fees(pair, &CommodityClass::Spot);
 
                 let fee_adjusted_maker = (
                     &adjusted_quote.price.0 * (Rational::ONE - &fees.0),
@@ -339,7 +344,7 @@ impl CexPriceMap {
                     let volume_weighted_bid = volume_price.0 / &cumulative_bbo.0;
                     let volume_weighted_ask = volume_price.1 / &cumulative_bbo.1;
 
-                let fees = exchange.fees(&pair, &CommodityClass::Spot);
+                    let fees = exchange.fees(&pair, &CommodityClass::Spot);
 
                     let fee_adjusted_maker = (
                         &volume_weighted_bid * (Rational::ONE - &fees.0),
@@ -803,7 +808,8 @@ impl From<(Pair, RawCexQuotes)> for CexQuote {
             exchange: quote.exchange,
             timestamp: quote.timestamp,
             price,
-            token0: pair.0,
+            // token0: pair.0,
+            // token1: pair.1,
             amount,
         }
     }
@@ -1157,7 +1163,7 @@ impl CexExchange {
                 unreachable!("Cannot get fees for VWAP")
             }
         };
-        (Rational::from_sci_string(maker).unwrap(), Rational::from_sci_string(taker).unwrap())
+        (Rational::from_sci_string_simplest(maker).unwrap(), Rational::from_sci_string_simplest(taker).unwrap())
     }
 
     // https://www.binance.com/en/fee/tradingPromote
