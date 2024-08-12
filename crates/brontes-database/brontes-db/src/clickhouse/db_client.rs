@@ -604,7 +604,8 @@ impl Clickhouse {
         range_or_arbitrary: &CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
         if block_times.is_empty() {
-            return Err(DatabaseError::from(ClickhouseError::QueryError(
+
+            return Err(DatabaseError::from(clickhouse::error::Error::Custom(
                 "Nothing to query, block times are empty".to_string(),
             )))
         }
@@ -646,8 +647,8 @@ impl Clickhouse {
                     });
 
                 query = query.replace(
-                    "month >= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH) and \
-                     month <= toStartOfMonth(toDateTime(? / 1000000) - INTERVAL 1 MONTH)",
+                    "month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND \
+                     (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))",
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
