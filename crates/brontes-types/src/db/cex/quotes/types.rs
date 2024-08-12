@@ -4,8 +4,6 @@ use std::{
     ops::MulAssign,
 };
 
-use alloy_primitives::Address;
-use clickhouse::Row;
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
@@ -13,11 +11,11 @@ use serde::Serialize;
 use crate::{
     db::{
         cex::{quotes::download::RawCexQuotes, trades::Direction, CexExchange},
-        redefined_types::{malachite::RationalRedefined, primitives::AddressRedefined}
+        redefined_types::malachite::RationalRedefined
     },
     utils::ToFloatNearest,
 };
-
+use clickhouse::Row;
 
 #[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize, Redefined)]
 #[redefined_attr(derive(

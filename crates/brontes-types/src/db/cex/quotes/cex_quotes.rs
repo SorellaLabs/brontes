@@ -46,8 +46,6 @@ use crate::{
 };
 use crate::constants::*;
 
-use malachite::num::conversion::traits::FromSciString;
-
 const MAX_TIME_DIFFERENCE: u64 = 250_000;
 
 pub enum CommodityClass {
@@ -792,7 +790,7 @@ impl MulAssign for FeeAdjustedQuote {
 
 impl From<(Pair, RawCexQuotes)> for CexQuote {
     fn from(value: (Pair, RawCexQuotes)) -> Self {
-        let (pair, quote) = value;
+        let (_pair, quote) = value;
 
         let price = (
             Rational::try_from_float_simplest(quote.bid_price).unwrap(),
@@ -1093,17 +1091,20 @@ impl CexExchange {
                             ("0.00012", "0.00024") // https://www.binance.com/en/fee/trading
                         },
                     CommodityClass::Derivative => ("0.0003", "0.0003"), // https://www.binance.com/en/fee/optionsTrading
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
                 }
             },
             CexExchange::Bitmex =>
                 match trade_type {
                     CommodityClass::Spot => ("0.001", "0.001"), // https://www.bitmex.com/wallet/fees/spot
                     CommodityClass::Derivative => ("-0.000125", "0.000175"), // https://www.bitmex.com/wallet/fees/derivatives
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
                 }
             CexExchange::Deribit =>
                 match trade_type {
                     CommodityClass::Spot => ("0.0", "0.0"), // https://www.deribit.com/kb/fees
                     CommodityClass::Derivative => ("-0.0001", "0.0005"), // https://www.deribit.com/kb/fees
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
                 }
             CexExchange::Okex => ("-0.0001", "0.00015"), // https://tr.okx.com/fees
             CexExchange::Coinbase =>
@@ -1118,6 +1119,7 @@ impl CexExchange {
                 match trade_type {
                     CommodityClass::Spot => ("0.0", "0.001"), // https://www.kraken.com/features/fee-schedule#spot-crypto
                     CommodityClass::Derivative =>  ("0.0", "0.0001"), // https://www.kraken.com/features/fee-schedule#futures
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
                 },
             CexExchange::BybitSpot =>
                 // https://www.bybit.com/en/help-center/article/Trading-Fee-Structure
@@ -1128,6 +1130,7 @@ impl CexExchange {
                     } else {
                         ("0.0", "0.00025")
                     }
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
                 }
             CexExchange::Kucoin => 
                 // https://www.kucoin.com/vip/privilege
@@ -1145,12 +1148,14 @@ impl CexExchange {
                             ("-0.00005", "0.00025")
                         },
                     CommodityClass::Derivative => ("-0.00008", "0.00025"),
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
                 },
             CexExchange::Upbit => ("0.0002", "0.0002"), // https://sg.upbit.com/service_center/guide
             CexExchange::Huobi => 
                 match trade_type {
                     CommodityClass::Spot => ("0.000097", "0.000193"), // https://www.htx.com/zh-cn/support/360000312282
                     CommodityClass::Derivative => ("-0.00005", "0.0002"), // https://www.htx.com/zh-cn/support/360000113122
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
                 }
             CexExchange::GateIo => ("0.0", "0.0002"), // https://www.gate.io/fee (curl, search for spot_feelist)
             CexExchange::Bitstamp => ("0", "0.0003"), // https://www.bitstamp.net/fee-schedule/

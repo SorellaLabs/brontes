@@ -9,8 +9,6 @@ mod exchanges;
 
 pub use best_cex_per_pair::*;
 pub use cex_symbols::*;
-pub use exchanges::*;
-pub use cex_symbols::*;
 pub use quotes::*;
 pub use trades::*;
 
