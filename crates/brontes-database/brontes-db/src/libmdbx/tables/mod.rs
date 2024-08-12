@@ -761,7 +761,7 @@ compressed_table!(
             compressed_value: DexQuoteWithIndexRedefined
         },
         Init {
-            init_size: Some(1000),
+            init_size: Some(10000),
             init_method: Clickhouse,
             http_endpoint: Some("dex-pricing"),
             init_flag: Some(DEX_PRICE_FLAG)

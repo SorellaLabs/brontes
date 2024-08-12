@@ -22,7 +22,3 @@ SELECT
     bid_price,
     bid_amount
 FROM grouped_time
-
-
-
-
