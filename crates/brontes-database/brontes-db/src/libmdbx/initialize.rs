@@ -104,7 +104,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 let progress_bar = progress_bar.clone();
                 async move { table.initialize_full_range_table(self, progress_bar).await }
             })
-            .buffer_unordered(5)
+            .buffer_unordered(10)
             .collect::<Vec<_>>()
             .await;
         self.load_config().await?;
@@ -235,7 +235,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 Ok::<(), eyre::Report>(())
             }
         }))
-        .unordered_buffer_map(10, tokio::spawn)
+        .unordered_buffer_map(8, tokio::spawn)
         .collect::<Vec<_>>()
         .await
         .into_iter()

@@ -614,7 +614,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                             let price_delta_pct = pct.clone().to_float() * 100.0;
 
-                            tracing::warn!(
+                            tracing::debug!(
                                 mev_type = ?mev_type,
                                 effective_price = %format!("{:.6}", effective_price.to_float()),
                                 dex_pricing_rate = %format!("{:.6}", dex_pricing_rate.to_float()),
