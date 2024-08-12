@@ -604,7 +604,9 @@ impl Clickhouse {
         range_or_arbitrary: &CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
         if block_times.is_empty() {
-            return Err(eyre::eyre!("Nothing to query, block times are empty"))
+            return Err(DatabaseError::from(clickhouse::error::Error::Custom(
+                "Nothing to query, block times are empty".to_string(),
+            )))
         }
         Ok(match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
