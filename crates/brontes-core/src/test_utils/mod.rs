@@ -15,7 +15,7 @@ use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     constants::USDT_ADDRESS,
     db::{cex::trades::CexTradeMap, metadata::Metadata},
-    init_threadpools,
+    init_thread_pools,
     structured_trace::TxTrace,
     traits::TracingProvider,
     FastHashMap,
