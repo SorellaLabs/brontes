@@ -8,7 +8,7 @@ use brontes_types::{
     constants::USDT_ADDRESS_STRING,
     db::cex::{trades::CexDexTradeConfig, CexExchange},
     db_write_trigger::{backup_server_heartbeat, start_hr_monitor, HeartRateMonitor},
-    init_threadpools, UnboundedYapperReceiver,
+    init_thread_pools, UnboundedYapperReceiver,
 };
 use clap::Parser;
 use tokio::sync::mpsc::unbounded_channel;
@@ -56,32 +56,39 @@ pub struct RunArgs {
         value_delimiter = ','
     )]
     pub cex_exchanges:        Vec<CexExchange>,
-    /// Ensures that dex prices are calculated at every block, even if the
-    /// db already contains the price
+    /// Force DEX price calculation for every block, ignoring existing database
+    /// values.
     #[arg(long, short, default_value = "false")]
     pub force_dex_pricing:    bool,
-    /// Turns off dex pricing entirely, inspectors requiring dex pricing won't
-    /// calculate USD pnl if we don't have dex pricing in the db & will only
-    /// calculate token pnl
+    /// Disables DEX pricing. Inspectors needing DEX prices will only calculate
+    /// token PnL, not USD PnL, if DEX pricing is unavailable in the
+    /// database.
     #[arg(long, default_value = "false")]
     pub force_no_dex_pricing: bool,
-    /// How many blocks behind chain tip to run.
+    /// Number of blocks to lag behind the chain tip when processing.
     #[arg(long, default_value = "10")]
     pub behind_tip:           u64,
-    /// Run in CLI only mode (no TUI) - will output progress bars to stdout
+    /// Legacy, run in CLI only mode (no TUI) - will output progress bars to
+    /// stdout
     #[arg(long, default_value = "true")]
     pub cli_only:             bool,
-    /// Metrics will be exported
+    /// Export metrics
     #[arg(long, default_value = "true")]
     pub with_metrics:         bool,
-    /// wether or not to use a fallback server.
+    /// Wether or not to use a fallback server.
     #[arg(long, default_value_t = false)]
     pub enable_fallback:      bool,
-    /// the address of the fallback server. if the socket breaks,
-    /// the fallback server will trigger db writes to ensure we
-    /// don't lose data
+    /// Address of the fallback server.
+    /// Triggers database writes if the main connection fails, preventing data
+    /// loss.
     #[arg(long)]
     pub fallback_server:      Option<String>,
+    /// Set a custom run ID.
+    ///
+    /// If omitted, the ID will be automatically incremented from the last run
+    /// stored in the Clickhouse database.
+    #[arg(long, short)]
+    pub run_id:               Option<u64>,
 }
 
 #[derive(Debug, Parser)]
@@ -113,6 +120,12 @@ impl RunArgs {
         brontes_db_endpoint: String,
         ctx: CliContext,
     ) -> eyre::Result<()> {
+        let logical_cpus = num_cpus::get();
+        println!("logical_cpus: {}", logical_cpus);
+
+        let physical_cpus = num_cpus::get_physical();
+        println!("physical_cpus: {}", physical_cpus);
+
         self.check_proper_range()?;
 
         let snapshot_mode = !cfg!(feature = "local-clickhouse");
@@ -126,7 +139,7 @@ impl RunArgs {
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
-        init_threadpools(max_tasks as usize);
+        init_thread_pools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
         let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
@@ -140,7 +153,8 @@ impl RunArgs {
         let hr = self.try_start_fallback_server().await;
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
-        let libmdbx = static_object(load_database(&task_executor, brontes_db_endpoint, hr).await?);
+        let libmdbx =
+            static_object(load_database(&task_executor, brontes_db_endpoint, hr, None).await?);
 
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
@@ -153,7 +167,7 @@ impl RunArgs {
             self.cex_exchanges.clone(),
         );
 
-        let clickhouse = static_object(load_clickhouse(cex_download_config).await?);
+        let clickhouse = static_object(load_clickhouse(cex_download_config, self.run_id).await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
         let only_cex_dex = self

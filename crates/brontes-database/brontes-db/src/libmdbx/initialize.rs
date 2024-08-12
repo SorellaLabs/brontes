@@ -608,7 +608,7 @@ mod tests {
     use brontes_database::libmdbx::{
         initialize::LibmdbxInitializer, tables::*, test_utils::load_clickhouse,
     };
-    use brontes_types::init_threadpools;
+    use brontes_types::init_thread_pools;
     use indicatif::MultiProgress;
     use itertools::Itertools;
     use tokio::sync::mpsc::unbounded_channel;
@@ -618,7 +618,7 @@ mod tests {
         let block_range = (19000000, 19000010);
 
         let clickhouse = Box::leak(Box::new(load_clickhouse().await));
-        init_threadpools(10);
+        init_thread_pools(10);
         let libmdbx = get_db_handle(tokio::runtime::Handle::current().clone()).await;
         let (tx, _rx) = unbounded_channel();
         let tracing_client =

@@ -17,7 +17,7 @@ use crate::{
 };
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse() -> Clickhouse {
-    Clickhouse::new_default().await
+    Clickhouse::new_default(None).await
 }
 
 #[cfg(not(feature = "local-clickhouse"))]

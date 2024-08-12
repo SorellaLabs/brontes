@@ -50,7 +50,7 @@ impl ClickhouseDownload {
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
         debug!(target: "brontes::db::clickhouse-download", "made libmdbx");
         let cex_config = CexDownloadConfig::default();
-        let clickhouse = static_object(load_clickhouse(cex_config).await?);
+        let clickhouse = static_object(load_clickhouse(cex_config, None).await?);
         debug!(target: "brontes::db::clickhouse-download", "made clickhouse");
 
         let tracer = Arc::new(get_tracing_provider(

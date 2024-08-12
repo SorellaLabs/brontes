@@ -3,7 +3,7 @@ use brontes_database::{
     CompressedTable, IntoTableKey, Tables,
 };
 use brontes_libmdbx::RO;
-use brontes_types::init_threadpools;
+use brontes_types::init_thread_pools;
 use clap::Parser;
 use itertools::Itertools;
 use reth_interfaces::db::DatabaseErrorInfo;
@@ -23,7 +23,7 @@ pub struct DatabaseQuery {
 
 impl DatabaseQuery {
     pub async fn execute(self, brontes_db_endpoint: String) -> eyre::Result<()> {
-        init_threadpools(10);
+        init_thread_pools(10);
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
         db.view_db(|tx| {
