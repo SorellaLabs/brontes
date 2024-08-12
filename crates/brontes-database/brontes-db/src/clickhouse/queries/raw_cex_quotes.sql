@@ -23,3 +23,6 @@ SELECT
     bid_amount
 FROM grouped_time
 
+
+
+
