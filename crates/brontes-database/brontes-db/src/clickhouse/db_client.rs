@@ -75,10 +75,8 @@ impl Clickhouse {
     ) -> Self {
         let client = config.build();
         let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0 };
-        this.run_id = this
-            .get_and_inc_run_id()
-            .await
-            .expect("failed to set run_id");
+        this.run_id = this.get_and_inc_run_id().await.unwrap_or_default();
+        // .expect("failed to set run_id");
 
         this
     }
