@@ -26,7 +26,7 @@ use brontes_types::{
     BlockTree, Protocol,
 };
 use db_interfaces::{
-    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     errors::DatabaseError,
     Database,
 };
