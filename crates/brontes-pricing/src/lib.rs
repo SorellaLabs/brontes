@@ -75,27 +75,6 @@ use crate::types::PoolState;
 /// of the pool would have to end at $350
 const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
 
-/// # Brontes Batch Pricer
-///
-/// [`BrontesBatchPricer`] establishes a token graph with liquidity pools as
-/// edges
-///
-/// ## Workflow
-/// The system operates on a block-by-block basis as follows:
-///
-///     1) Incorporates new pools into the token graph with each new highest
-///        block
-///     from the update channel.
-///
-///     2) Uses a lazy loader to fetch data for all newly involved pools.
-///
-///     3) Collects and buffers state transitions of all pools.
-///
-///     4) After completing lazy loading, applies state transitions
-///        sequentially, updating the price in the state map.
-///
-///     5) Processes and returns formatted data from the applied state
-///        transitions before proceeding to the next block.
 pub struct BrontesBatchPricer<T: TracingProvider> {
     range_id:        usize,
     quote_asset:     Address,
