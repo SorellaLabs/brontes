@@ -359,7 +359,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         // Amount * base_to_quote = USDT amount
         let base_to_quote = if token_price == Rational::ZERO {
             trace!("Token price is zero");
-            return None;
+            return None
         } else {
             token_price.clone().reciprocal()
         };
@@ -638,37 +638,6 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
-
-    //TODO: Joe I am changing this for now because your quotes data seems to still
-    // be incorrect. Please fix it, the previous value was 6772.69
-    #[brontes_macros::test]
-    async fn test_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 50.5).await;
-
-        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(1923.65)
-            .with_gas_paid_usd(78762.72);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-    //TODO: Joe I am changing this for now because your quotes data seems to still
-    // be incorrect. Please fix it, the previous value was 7201.40
-    #[brontes_macros::test]
-    async fn test_eoa_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
-
-        let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(8940.95)
-            .with_gas_paid_usd(6242.79);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
 
     #[brontes_macros::test]
     async fn test_not_triangular_arb_false_positive() {

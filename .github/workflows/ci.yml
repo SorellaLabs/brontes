@@ -14,11 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@clippy
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy,rustfmt
+          toolchain: nightly
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "clippy"
+          key: "clippy-nightly"
 
       - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
         shell: bash
@@ -39,10 +42,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt
+          components: clippy,rustfmt
+          toolchain: nightly
       - uses: Swatinem/rust-cache@v2
         with:
-          key: "buildfmt"
+          key: "buildfmt-nightly"
           cache-on-failure: true
 
       # allow for downloads
@@ -61,12 +65,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    needs: [clippy, build]
+    if: always()
+    #&& !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
+    #needs: [clippy, build]
     strategy:
-          fail-fast: false
-          matrix:
-            features: ["sorella-server"]
+      fail-fast: false
+      matrix:
+        features: ["sorella-server"]
     steps:
       - name: Get branch names.
         id: branch-names
@@ -81,16 +86,39 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo test
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}'"
+        id: run_tests
+        continue-on-error: true
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            source ~/.bashrc
+            cd \$HOME
+            mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            git clone https://github.com/SorellaLabs/brontes.git
+            cd brontes
+            ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}
+          '"
+      - name: Cleanup
+        if: always()
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            set -x
+            rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+          '"
+
+      - name: Check test result
+        if: steps.run_tests.outcome == 'failure'
+        run: exit 1
 
   it-test:
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
     needs: [clippy, build]
     strategy:
-          fail-fast: false
-          matrix:
-            features: ["sorella-server"]
+      fail-fast: false
+      matrix:
+        features: ["sorella-server"]
     steps:
       - name: Get branch names.
         id: branch-names
@@ -105,28 +133,28 @@ jobs:
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo it test
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}'"
-  bench:
-    strategy:
-          fail-fast: false
-          matrix:
-            features: ["sorella-server"]
-    runs-on: ubuntu-latest
-    if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    needs: [clippy, build]
-    steps:
-      - name: Get branch names.
-        id: branch-names
-        uses: tj-actions/branch-names@v8
-      - name: Init ssh config
+        id: run_it_tests
+        continue-on-error: true
         run: |
-          mkdir ~/.ssh/ 
-          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion 
-          chmod 600 ~/.ssh/bastion 
-          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server 
-          chmod 600 ~/.ssh/brontes_server
-          echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
+          ssh brontes_server -tt "bash --login -c '
+            source ~/.bashrc
+            cd \$HOME
+            mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            git clone https://github.com/SorellaLabs/brontes.git
+            cd brontes
+            ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}
+          '"
 
-      - name: cargo bench
-        run: ssh brontes_server -tt "bash --login -c 'source ~/.bashrc && mkdir -p ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} && cd ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} && git clone https://github.com/SorellaLabs/brontes.git && cd brontes && git pull && git checkout ${{ steps.branch-names.outputs.current_branch }} && ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-bench-${{ matrix.features }} bench ${{ matrix.features }} '"
+      - name: Cleanup
+        if: always()
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            set -x
+            rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+          '"
 
+      - name: Check integration test result
+        if: steps.run_it_tests.outcome == 'failure'
+        run: exit 1

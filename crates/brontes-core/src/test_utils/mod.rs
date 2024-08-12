@@ -13,8 +13,12 @@ use brontes_database::{
 };
 use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
-    constants::USDT_ADDRESS, db::metadata::Metadata, init_thread_pools, structured_trace::TxTrace,
-    traits::TracingProvider, FastHashMap,
+    constants::USDT_ADDRESS,
+    db::{cex::trades::CexTradeMap, metadata::Metadata},
+    init_threadpools,
+    structured_trace::TxTrace,
+    traits::TracingProvider,
+    FastHashMap,
 };
 use futures::future::join_all;
 use indicatif::MultiProgress;
@@ -140,7 +144,7 @@ impl TraceLoader {
         let multi = MultiProgress::default();
         let tables = Arc::new(vec![
             (Tables::BlockInfo, Tables::BlockInfo.build_init_state_progress_bar(&multi, 4)),
-            (Tables::CexPrice, Tables::CexPrice.build_init_state_progress_bar(&multi, 4)),
+            (Tables::CexPrice, Tables::CexPrice.build_init_state_progress_bar(&multi, 27)),
             (Tables::CexTrades, Tables::CexTrades.build_init_state_progress_bar(&multi, 4)),
         ]);
 
@@ -158,7 +162,7 @@ impl TraceLoader {
                 self.tracing_provider.get_tracer(),
                 Tables::CexPrice,
                 false,
-                Some((block - 2, block + 2)),
+                Some((block - 2, block + 25)),
                 tables.clone(),
             ),
             self.libmdbx.initialize_tables(
@@ -343,6 +347,10 @@ impl TraceLoader {
         .await
         .into_iter()
         .collect()
+    }
+
+    pub fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
+        self.libmdbx.get_cex_trades(block)
     }
 }
 

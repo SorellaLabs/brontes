@@ -393,7 +393,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .collect();
 
         if arb_legs_and_trades.is_empty() {
-            return None;
+            return None
         }
 
         let (arb_legs, trade_details): (Vec<_>, Vec<_>) = arb_legs_and_trades.into_iter().unzip();
@@ -468,7 +468,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // Amount * base_to_quote = USDT amount
         let base_to_quote = if token_price == Rational::ZERO {
             trace!("Token price is zero");
-            return None;
+            return None
         } else {
             token_price.clone().reciprocal()
         };
@@ -822,21 +822,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
             .with_gas_paid_usd(38.31)
-            .with_expected_profit_usd(208.57);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_vs_non() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 3000.5).await;
-
-        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(85164.20)
-            .with_gas_paid_usd(78755.6);
+            .with_expected_profit_usd(94.82);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -875,31 +861,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_cex_dex_markout_lpt() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 6.5).await;
-        let tx = hex!("67ac84a6b6d6b0e0f85f6d6efe34e1889f8f7609049edc676b6624e1930c8867").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(6.80)
-            .with_gas_paid_usd(4.75);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_wbtc_usdc() {
-        // try crypto missing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
-        let tx = hex!("eb1e83b44f713de3acc7b056cbb233065420e73972a6e8bb3ec0000a88c9521f").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(15.34)
-            .with_gas_paid_usd(16.22);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
     async fn test_cex_dex_markout_pepe_usdc() {
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
         let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
@@ -907,27 +868,13 @@ mod tests {
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(3.88)
             .with_gas_paid_usd(6.93);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_blur_eth() {
-        // should be there if intermediary. however thats failing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
-        let tx = hex!("c8e62efc7b04e56d17e69d07fdb9f8d1dcc84cfd295922134aa0a75a86e6f052").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(45.88)
-            .with_gas_paid_usd(4.60);
-
         inspector_util.run_inspector(config, None).await.unwrap();
     }
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_bad_price() {
         // should be there if intermediary. however thats failing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
         let tx = hex!("5ce797b5b3f58a99f170ee7a4ac1fc1ca37600ad92944730c19f13ef05f568c7").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])

@@ -220,7 +220,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         not.notified().await;
                     }
                     Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e);
+                        return Ok::<(), eyre::Report>(())
                     }
                 }
 
@@ -282,7 +283,8 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                         not.notified().await;
                     }
                     Err(e) => {
-                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e)
+                        info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e);
+                        return Ok::<(), eyre::Report>(())
                     }
                 }
 

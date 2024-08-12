@@ -215,12 +215,13 @@ impl InspectorTestUtils {
             return Err(err())
         };
 
-        let block = tree.header.number;
-
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
         } else {
-            let res = self.classifier_inspector.get_metadata(block, false).await;
+            let res = self
+                .classifier_inspector
+                .get_metadata(tree.header.number, false)
+                .await;
 
             if config.expected_mev_type == Inspectors::CexDexMarkout
                 || config.expected_mev_type == Inspectors::CexDex
@@ -230,6 +231,13 @@ impl InspectorTestUtils {
                 res.unwrap_or_else(|_| Metadata::default())
             }
         };
+
+        let cex_trades = (config.expected_mev_type == Inspectors::CexDexMarkout).then(|| {
+            self.classifier_inspector
+                .get_cex_trades(tree.header.number)
+                .unwrap_or_else(|_| panic!("No CEX Trades found for block {}", tree.header.number))
+        });
+        metadata.cex_trades = cex_trades;
 
         if metadata.dex_quotes.is_none() {
             metadata.dex_quotes = quotes;
@@ -341,6 +349,14 @@ impl InspectorTestUtils {
                 res.unwrap_or_else(|_| Metadata::default())
             }
         };
+
+        let cex_trades = (config.inspectors.contains(&Inspectors::CexDexMarkout)).then(|| {
+            self.classifier_inspector
+                .get_cex_trades(tree.header.number)
+                .unwrap_or_else(|_| panic!("No CEX Trades found for block {}", tree.header.number))
+        });
+
+        metadata.cex_trades = cex_trades;
 
         if let Some(quotes) = quotes {
             metadata.dex_quotes = Some(quotes);
