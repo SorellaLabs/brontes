@@ -2,17 +2,16 @@
 
 setup() {
   if rustup default nightly; then : ; else return 1; fi
-  git checkout $1
+  
+  git checkout "$1"
   echo "setting up db at /home/data/brontes-ci/$2"
   mkdir -p "/home/data/brontes-ci/$2"
-
   if cp /home/brontes-ci/.env .env; then :; else return 1;fi
-
   echo "BRONTES_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
   echo "BRONTES_TEST_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
   echo "updated .env"
-  
 }
+
 
 # deletes repo and test db
 teardown() {
@@ -46,7 +45,7 @@ if [ "$3" = "$IT" ]; then
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  if cargo test -j 20 --features $4 --profile release; then : ;else  teardown $2; exit 1; fi
+  if cargo test -j 20 --features $4 --profile release -- --nocapture; then : ;else  teardown $2; exit 1; fi
 fi
 
 if [ "$3" = "$BENCH" ]; then 

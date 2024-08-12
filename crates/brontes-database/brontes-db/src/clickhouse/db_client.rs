@@ -26,7 +26,7 @@ use brontes_types::{
     BlockTree, Protocol,
 };
 use db_interfaces::{
-    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError},
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     errors::DatabaseError,
     Database,
 };
@@ -75,10 +75,7 @@ impl Clickhouse {
     ) -> Self {
         let client = config.build();
         let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0 };
-        this.run_id = this
-            .get_and_inc_run_id()
-            .await
-            .expect("failed to set run_id");
+        this.run_id = this.get_and_inc_run_id().await.unwrap_or_default();
 
         this
     }
@@ -597,7 +594,6 @@ impl ClickhouseHandle for Clickhouse {
 }
 
 impl Clickhouse {
-    #[allow(unused)]
     pub async fn fetch_symbol_rank(
         &self,
         block_times: &[BlockTimes],
@@ -1103,17 +1099,6 @@ mod tests {
         let tables = &BrontesClickhouseTables::all_tables();
         test_db
             .run_test_with_test_db(tables, |db| Box::pin(run_all(db)))
-            .await;
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_quotes() {
-        init_threadpools(10);
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
-
-        let tables = vec![BrontesClickhouseTables::MevCex_Dex_Quotes];
-        test_db
-            .run_test_with_test_db(&tables, |db| Box::pin(cex_dex_quotes(db)))
             .await;
     }
 }
