@@ -12,7 +12,8 @@ use brontes_types::{
         cex::{quotes::CexPriceMap, trades::CexTradeMap},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG,
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DATA_PRESENT, DEX_PRICE_FLAG,
+            META_FLAG,
         },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
@@ -1105,10 +1106,10 @@ impl LibmdbxReadWriter {
     }
 
     #[instrument(target = "libmdbx_read_write::init_state_updating", skip_all, level = "warn")]
-    fn init_state_updating(&self, block: u64, flag: u8) -> eyre::Result<()> {
+    fn init_state_updating(&self, block: u64, flag: u16) -> eyre::Result<()> {
         self.db.view_db(|tx| {
             let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
-            state.set(flag);
+            state.set(flag, DATA_PRESENT);
             let data = InitializedStateData::new(block, state);
             self.db.write_table(&[data])?;
 
@@ -1119,13 +1120,13 @@ impl LibmdbxReadWriter {
     pub fn inited_range_arbitrary(
         &self,
         range: impl Iterator<Item = u64>,
-        flag: u8,
+        flag: u16,
     ) -> eyre::Result<Vec<InitializedStateData>> {
         self.db.view_db(|tx| {
             let mut res = Vec::new();
             for block in range {
                 let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
-                state.set(flag);
+                state.set(flag, DATA_PRESENT);
                 res.push(InitializedStateData::new(block, state));
             }
             Ok(res)
@@ -1135,7 +1136,7 @@ impl LibmdbxReadWriter {
     pub fn inited_range_items(
         &self,
         range: RangeInclusive<u64>,
-        flag: u8,
+        flag: u16,
     ) -> eyre::Result<Vec<InitializedStateData>> {
         let tx = self.db.ro_tx()?;
         let mut range_cursor = tx.cursor_read::<InitializedState>()?;
@@ -1143,11 +1144,11 @@ impl LibmdbxReadWriter {
 
         for block in range {
             if let Some(mut state) = range_cursor.seek_exact(block)? {
-                state.1.set(flag);
+                state.1.set(flag, DATA_PRESENT);
                 res.push(InitializedStateData::new(block, state.1));
             } else {
                 let mut init_state = InitializedStateMeta::default();
-                init_state.set(flag);
+                init_state.set(flag, DATA_PRESENT);
                 res.push(InitializedStateData::from((block, init_state)));
             }
         }
@@ -1156,20 +1157,20 @@ impl LibmdbxReadWriter {
         Ok(res)
     }
 
-    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u8) -> eyre::Result<()> {
+    pub fn inited_range(&self, range: RangeInclusive<u64>, flag: u16) -> eyre::Result<()> {
         let tx = self.db.ro_tx()?;
         let mut range_cursor = tx.cursor_read::<InitializedState>()?;
         let mut entry = Vec::new();
 
         for block in range {
             if let Some(mut state) = range_cursor.seek_exact(block)? {
-                state.1.set(flag);
+                state.1.set(flag, DATA_PRESENT);
                 let data = InitializedStateData::new(block, state.1).into_key_val();
                 let (key, value) = Self::convert_into_save_bytes(data);
                 entry.push((key.to_vec(), value));
             } else {
                 let mut init_state = InitializedStateMeta::default();
-                init_state.set(flag);
+                init_state.set(flag, DATA_PRESENT);
                 let data = InitializedStateData::from((block, init_state)).into_key_val();
 
                 let (key, value) = Self::convert_into_save_bytes(data);
