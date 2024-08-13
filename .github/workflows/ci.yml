@@ -159,3 +159,26 @@ jobs:
       - name: Check integration test result
         if: steps.run_it_tests.outcome == 'failure'
         run: exit 1
+
+  cleanup:
+    name: "Cleanup"
+    needs: [test, it-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Init ssh config
+        run: |
+          mkdir ~/.ssh/ 
+          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion 
+          chmod 600 ~/.ssh/bastion 
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server 
+          chmod 600 ~/.ssh/brontes_server
+          echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
+
+      - name: Run cleanup
+        run: |
+          ssh brontes_server -tt "bash --login -c '
+            set -x
+            rm -rf \$HOME/*/
+            echo \"Cleanup completed\"
+          '"
