@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::implement_table_value_codecs_with_zc;
 
-/// All these flags are the shift amount of the avaiablilities
+// All these flags are the shift amount of the availabilities
 pub const META_FLAG: u16 = 0;
 pub const CEX_QUOTES_FLAG: u16 = 2;
 pub const CEX_TRADES_FLAG: u16 = 4;
@@ -40,48 +40,35 @@ pub struct InitializedStateMeta(u16);
 
 impl InitializedStateMeta {
     pub fn new(
-        should_skip: bool,
-        has_dex_price: bool,
-        has_traces: bool,
-        has_cex_quotes: bool,
-        has_cex_trades: bool,
-        has_meta: bool,
+        has_dex_price: u16,
+        has_traces: u16,
+        has_cex_quotes: u16,
+        has_cex_trades: u16,
+        has_meta: u16,
     ) -> Self {
         let mut this = 0u16;
-        if has_dex_price {
-            this |= DEX_PRICE_FLAG
-        }
-        if has_traces {
-            this |= TRACE_FLAG
-        }
-        if has_cex_quotes {
-            this |= CEX_QUOTES_FLAG
-        }
-        if has_cex_trades {
-            this |= CEX_TRADES_FLAG
-        }
-        if has_meta {
-            this |= META_FLAG
-        }
+        this |= has_dex_price << DEX_PRICE_FLAG;
+        this |= has_traces << TRACE_FLAG;
+        this |= has_cex_quotes << CEX_QUOTES_FLAG;
+        this |= has_cex_trades << CEX_TRADES_FLAG;
+        this |= has_meta << META_FLAG;
 
         Self(this)
     }
 
     #[inline(always)]
-    pub fn set(&mut self, this: u16) {
-        self.0 |= this
-    }
-
-    #[inline(always)]
-    pub fn should_ignore(&self) -> bool {
-        // self.0 & SKIP_FLAG != 0
-        //kjkj
-        false
+    pub fn set(&mut self, this: u16, availability: u16) {
+        // reset the data at the given offset
+        self.0 &= u16::MAX ^ (DATA_PRESENT << this);
+        // set availability
+        self.0 |= availability << this
     }
 
     #[inline(always)]
     pub fn is_initialized(&self, flag: u16) -> bool {
-        (self.0 & flag) == flag
+        (self.0 & (DATA_PRESENT << flag)) == (DATA_PRESENT << flag)
+            || (self.0 & (DATA_NOT_PRESENT_NOT_AVAILABLE << flag))
+                == (DATA_NOT_PRESENT_NOT_AVAILABLE << flag)
     }
 
     #[inline(always)]
