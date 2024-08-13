@@ -65,9 +65,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    if: always()
-    #&& !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    #needs: [clippy, build]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
+    needs: [clippy, build]
     strategy:
       fail-fast: false
       matrix:
@@ -104,7 +103,7 @@ jobs:
           ssh brontes_server -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
-            rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
+            rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
           '"
 
       - name: Check test result
@@ -152,7 +151,7 @@ jobs:
           ssh brontes_server -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
-            rm -rf /home/data/brontes-ci/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
+            rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
           '"
 
       - name: Check integration test result
