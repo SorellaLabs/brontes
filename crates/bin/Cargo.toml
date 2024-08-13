@@ -129,12 +129,6 @@ dhat-heap = []
 
 sorella-server = ["local-reth", "local-clickhouse", "local-postgres"]
 
-cex-dex-quotes = [
-  "brontes-types/cex-dex-quotes",
-  "brontes-database/cex-dex-quotes",
-  "brontes-inspect/cex-dex-quotes",
-]
-
 
 tests = [
   "brontes-core/tests",

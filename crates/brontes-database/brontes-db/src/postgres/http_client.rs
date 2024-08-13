@@ -255,7 +255,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         Ok(res)
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,
@@ -263,7 +262,6 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         unimplemented!()
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     async fn get_cex_trades(
         &self,
         _range_or_arbitrary: CexRangeOrArbitrary,

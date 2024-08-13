@@ -1,4 +1,3 @@
-#[cfg(feature = "cex-dex-quotes")]
 use std::cmp::max;
 use std::fmt::Debug;
 
@@ -266,58 +265,39 @@ impl PostgresHandle for Postgres {
         Ok(res)
     }
 
-    async fn get_metadata(&self, block_num: u64) -> eyre::Result<Metadata> {
-        let block_meta = sqlx::query_file!("src/postgres/queries/block_info.sql", block_num as i64)
-            .fetch_one(&self.client.pool)
+    async fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
+        let block_meta = self
+            .client
+            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
+            .await
+            .unwrap()
+            .value;
+
+        let mut cex_quotes_for_block = self
+            .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
             .await?;
 
-        #[cfg(feature = "cex-dex-quotes")]
-        {
-            tracing::info!("not markout");
-            let mut cex_quotes_for_block = self
-                .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
-                .await?;
+        let cex_quotes = cex_quotes_for_block.remove(0);
+        let eth_price = determine_eth_prices(
+            &cex_quotes.value,
+            block_meta.block_timestamp * 1_000_000,
+            quote_asset,
+        );
 
-            let cex_quotes = cex_quotes_for_block.remove(0);
-            let eth_prices = determine_eth_prices(&cex_quotes.value);
+        let meta = BlockMetadata::new(
+            block_num,
+            block_meta.block_hash,
+            block_meta.block_timestamp,
+            block_meta.relay_timestamp,
+            block_meta.p2p_timestamp,
+            block_meta.proposer_fee_recipient,
+            block_meta.proposer_mev_reward,
+            eth_price.unwrap_or_default(),
+            block_meta.private_flow.into_iter().collect(),
+        )
+        .into_metadata(cex_quotes.value, None, None, None);
 
-            Ok(BlockMetadata::new(
-                block_num,
-                block_meta.block_hash,
-                block_meta.block_timestamp,
-                block_meta.relay_timestamp,
-                block_meta.p2p_timestamp,
-                block_meta.proposer_fee_recipient,
-                block_meta.proposer_mev_reward,
-                max(eth_prices.price_maker.1, eth_prices.price_taker.1),
-                block_meta.private_flow.into_iter().collect(),
-            )
-            .into_metadata(cex_quotes.value, None, None, None))
-        }
-
-        #[cfg(not(feature = "cex-dex-quotes"))]
-        {
-            tracing::info!("markout");
-            let cex_trades = self
-                .get_cex_trades(CexRangeOrArbitrary::Range(block_num, block_num + 1))
-                .await
-                .unwrap()
-                .remove(0)
-                .value;
-
-            Ok(BlockMetadata::new(
-                block_num,
-                block_meta.block_hash,
-                block_meta.block_timestamp,
-                block_meta.relay_timestamp,
-                block_meta.p2p_timestamp,
-                block_meta.proposer_fee_recipient,
-                block_meta.proposer_mev_reward,
-                Default::default(),
-                block_meta.private_flow.into_iter().collect(),
-            )
-            .into_metadata(Default::default(), None, None, Some(cex_trades)))
-        }
+        Ok(meta)
     }
 
     async fn query_many_range<T, D>(&self, start_block: u64, end_block: u64) -> eyre::Result<Vec<D>>
@@ -368,7 +348,6 @@ impl PostgresHandle for Postgres {
         &self.client
     }
 
-    #[cfg(feature = "cex-dex-quotes")]
     async fn get_cex_prices(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -468,7 +447,6 @@ impl PostgresHandle for Postgres {
         Ok(prices)
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     async fn get_cex_trades(
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
@@ -954,7 +932,6 @@ mod tests {
             .await;
     }
 
-    #[cfg(not(feature = "cex-dex-quotes"))]
     #[brontes_macros::test]
     async fn test_db_trades() {
         use reth_primitives::TxHash;
