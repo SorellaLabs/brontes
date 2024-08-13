@@ -282,7 +282,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     .collect_vec(),
             );
         } else {
-            buffer_size = (self.max_tasks as usize / 3).clamp(2, 40)
+            buffer_size = (self.max_tasks as usize / 4).clamp(2, 25)
         }
 
         let range_metrics = self.metrics.then(|| {
@@ -593,7 +593,7 @@ fn initialize_global_progress_bar(
 #[cfg(feature = "sorella-server")]
 fn calculate_buffer_size(state_to_init: &StateToInitialize, max_tasks: usize) -> usize {
     if state_to_init.ranges_to_init.is_empty() {
-        return (max_tasks / 3).clamp(4, 60);
+        return (max_tasks / 4).clamp(4, 30);
     }
 
     let initializing_cex = state_to_init.ranges_to_init.contains_key(&Tables::CexPrice)
