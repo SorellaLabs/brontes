@@ -96,7 +96,7 @@ impl Clickhouse {
             + 1)
         .into();
 
-        // self.client.insert_one::<BrontesRun_Id>(&id).await?;
+        self.client.insert_one::<BrontesRun_Id>(&id).await?;
 
         Ok(id.run_id)
     }
@@ -374,7 +374,7 @@ impl ClickhouseHandle for Clickhouse {
                 let mut query = BLOCK_TIMES.to_string();
 
                 let vals = vals
-                    .into_iter()
+                    .iter()
                     .flat_map(|v| {
                         (v - self.cex_download_config.run_time_window.0
                             ..=v + self.cex_download_config.run_time_window.1)
@@ -460,7 +460,7 @@ impl ClickhouseHandle for Clickhouse {
             }
         };
 
-        let price_converter = CexQuotesConverter::new(block_times, symbols, data);
+        let price_converter = CexQuotesConverter::new(block_times, symbols, data, symbol_rank);
         let prices: Vec<CexPriceData> = price_converter
             .convert_to_prices()
             .into_iter()
@@ -510,7 +510,7 @@ impl ClickhouseHandle for Clickhouse {
         debug!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
-            warn!("No block times found, returning empty result");
+            tracing::warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
 
