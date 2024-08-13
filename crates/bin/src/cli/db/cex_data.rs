@@ -366,31 +366,41 @@ async fn process_pair_quotes<D: ClickhouseDBMS>(
     pair: Pair,
     block_timestamp: u64,
 ) -> Result<(), eyre::Report> {
+    println!("Processing pair quotes for {:?}", pair);
     let pair_info = query_trading_pair_info(clickhouse, pair).await?;
+    println!("Trading pair info: {:?}", pair_info);
     query_quote_stats(clickhouse, &pair_info.trading_pair, block_timestamp).await?;
     Ok(())
 }
+
 async fn query_quote_stats<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
-    trading_pair: &str,
+    pair_info: &str,
     block_timestamp: u64,
 ) -> Result<(), eyre::Report> {
-    println!("Querying quote stats for {}", trading_pair);
+    println!("Querying quote stats for {}", pair_info);
 
     let start_time = block_timestamp;
     let end_time = block_timestamp + QUOTE_TIME_POINTS.last().unwrap() * SECONDS_TO_US;
 
+    println!("Time range: {} to {}", start_time, end_time);
+
     let result: Result<Vec<QuoteStats>, DatabaseError> = clickhouse
-        .query_many(QUOTE_STATS_QUERY, &(start_time, end_time, trading_pair))
+        .query_many(QUOTE_STATS_QUERY, &(start_time, end_time, &pair_info))
         .await;
 
     match result {
         Ok(stats) => {
-            let filtered_stats = filter_quotes_by_time_points(&stats, block_timestamp);
-            print_quote_stats(&filtered_stats);
+            if stats.is_empty() {
+                println!("No quotes found for {} in the given time range", pair_info);
+            } else {
+                println!("Found {} quotes for {}", stats.len(), pair_info);
+                let filtered_stats = filter_quotes_by_time_points(&stats, block_timestamp);
+                print_quote_stats(&filtered_stats);
+            }
         }
         Err(e) => {
-            println!("Error fetching quotes for {}: {:?}", trading_pair, e);
+            println!("Error fetching quotes for {}: {:?}", pair_info, e);
         }
     }
 
