@@ -9,6 +9,8 @@ pub use exchanges::*;
 pub mod quotes;
 pub mod trades;
 
+use strum::Display;
+
 #[derive(
     Copy,
     Display,
