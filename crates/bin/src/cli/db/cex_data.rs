@@ -101,6 +101,7 @@ impl CexDB {
             intermediary_addresses,
             block_timestamp,
             (10.0_f64 * self.w_multiplier) as u64,
+            self.use_quotes,
         )
         .await?;
 
@@ -114,6 +115,7 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
     intermediaries: FastHashSet<Address>,
     block_timestamp: u64,
     tw_size: u64,
+    use_quotes: bool,
 ) -> Result<(), eyre::Report> {
     for intermediary in intermediaries {
         let intermediary_pair_1 = Pair(pair.0, intermediary);
@@ -124,10 +126,22 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
         // Query for the first intermediary pair
         let pair_info_1 = query_trading_pair_info(clickhouse, intermediary_pair_1).await?;
 
-        query_trade_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp, tw_size).await?;
+        if use_quotes {
+            query_quote_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp).await?;
+        } else {
+            query_trade_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp, tw_size)
+                .await?;
+        }
 
         // Query for the second intermediary pair
         let pair_info_2 = query_trading_pair_info(clickhouse, intermediary_pair_2).await?;
+
+        if use_quotes {
+            query_quote_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp).await?;
+        } else {
+            query_trade_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp, tw_size)
+                .await?;
+        }
 
         query_trade_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp, tw_size).await?;
     }
@@ -356,7 +370,6 @@ async fn process_pair_quotes<D: ClickhouseDBMS>(
     query_quote_stats(clickhouse, &pair_info.trading_pair, block_timestamp).await?;
     Ok(())
 }
-
 async fn query_quote_stats<D: ClickhouseDBMS>(
     clickhouse: &ClickhouseClient<D>,
     trading_pair: &str,
@@ -387,15 +400,27 @@ async fn query_quote_stats<D: ClickhouseDBMS>(
 fn filter_quotes_by_time_points(stats: &[QuoteStats], block_timestamp: u64) -> Vec<QuoteStats> {
     let mut filtered_stats = Vec::new();
     for &seconds in &QUOTE_TIME_POINTS {
-        let target_timestamp = block_timestamp + (seconds as u64) * SECONDS_TO_US;
+        let target_timestamp = block_timestamp + seconds * SECONDS_TO_US;
         let closest_quote = stats
             .iter()
-            .min_by_key(|stat| (stat.timestamp as i64 - target_timestamp as i64).abs());
+            .min_by_key(|stat| stat.timestamp.abs_diff(target_timestamp));
 
         if let Some(quote) = closest_quote {
             let mut new_quote = quote.clone();
             new_quote.seconds_from_block = seconds;
             filtered_stats.push(new_quote);
+        } else {
+            // Add a placeholder if no quote is found for this time point
+            filtered_stats.push(QuoteStats {
+                exchange:           "N/A".to_string(),
+                symbol:             stats.first().map(|s| s.symbol.clone()).unwrap_or_default(),
+                timestamp:          target_timestamp,
+                ask_amount:         0.0,
+                ask_price:          0.0,
+                bid_price:          0.0,
+                bid_amount:         0.0,
+                seconds_from_block: seconds,
+            });
         }
     }
     filtered_stats
