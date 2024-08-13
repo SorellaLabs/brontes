@@ -4,19 +4,18 @@ use std::{
     ops::MulAssign,
 };
 
-use clickhouse::Row;
 use malachite::{num::arithmetic::traits::Reciprocal, Rational};
 use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
-
 use crate::{
     db::{
         cex::{quotes::download::RawCexQuotes, trades::Direction, CexExchange},
-        redefined_types::malachite::RationalRedefined,
+        redefined_types::malachite::RationalRedefined
     },
     utils::ToFloatNearest,
 };
+use clickhouse::Row;
 
 #[derive(Debug, Clone, Default, Row, Eq, serde::Serialize, serde::Deserialize, Redefined)]
 #[redefined_attr(derive(
@@ -31,12 +30,14 @@ use crate::{
 ))]
 pub struct CexQuote {
     #[redefined(same_fields)]
-    pub exchange:  CexExchange,
-    pub timestamp: u64,
+    pub exchange:       CexExchange,
+    pub timestamp:      u64,
     /// Best Bid & Ask price
-    pub price:     (Rational, Rational),
+    pub price:          (Rational, Rational),
     /// Bid & Ask amount
-    pub amount:    (Rational, Rational),
+    pub amount:         (Rational, Rational),
+    // pub token0:         Address,
+    // pub token1:         Address,
 }
 
 impl Display for CexQuote {

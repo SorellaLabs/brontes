@@ -293,7 +293,7 @@ impl<'a> SortedTrades<'a> {
         for trade in trades_used {
             let weight = calculate_weight(block_timestamp, trade.timestamp);
 
-            let (m_fee, t_fee) = trade.exchange.fees();
+            let (m_fee, t_fee) = trade.exchange.fees(&pair, &crate::db::cex::CommodityClass::Spot);
 
             vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
             vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;

@@ -26,7 +26,7 @@ use malachite::{
     },
     Natural, Rational,
 };
-use redefined::{Redefined, RedefinedConvert};
+use redefined::{Redefined, RedefinedConvert, self_convert_redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 #[allow(unused_imports)]
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
@@ -35,7 +35,7 @@ use tracing::error;
 use super::types::CexQuote;
 use crate::{
     db::{
-        cex::{quotes::CexQuoteRedefined, trades::Direction, CexExchange},
+        cex::{quotes::CexQuoteRedefined, trades::Direction, CexExchange, RawCexQuotes},
         redefined_types::malachite::RationalRedefined,
     },
     implement_table_value_codecs_with_zc,
@@ -44,9 +44,32 @@ use crate::{
     utils::ToFloatNearest,
     FastHashMap, FastHashSet,
 };
+use crate::constants::*;
 
 const MAX_TIME_DIFFERENCE: u64 = 250_000;
 
+pub enum CommodityClass {
+    Spot,
+    Futures,
+    Options,
+    Derivative
+}
+
+/// Centralized exchange price map organized by exchange.
+///
+///
+/// Each pair is entered into the map with an ordered `Pair` key whereby:
+///
+/// If: Token0 (base asset) > Token1 (quote asset), then:
+///
+///  Pair key = (token0, token1)
+///
+/// Initially when deserializing the clickhouse data we create `CexQuote`
+/// entries with token0 as the base asset and token1 as the quote asset.
+///
+/// This provides us with the actual token0 when the map is queried so we can
+/// interpret the price in the correct direction & reciprocate the price (which
+/// is stored as a malachite rational) if need be.
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap {
     pub quotes:         FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
@@ -177,7 +200,7 @@ impl CexPriceMap {
 
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
 
-                let fees = exchange.fees();
+                let fees = exchange.fees(pair, &CommodityClass::Spot);
 
                 let fee_adjusted_maker = (
                     &adjusted_quote.price.0 * (Rational::ONE - &fees.0),
@@ -319,7 +342,7 @@ impl CexPriceMap {
                     let volume_weighted_bid = volume_price.0 / &cumulative_bbo.0;
                     let volume_weighted_ask = volume_price.1 / &cumulative_bbo.1;
 
-                    let fees = exchange.fees();
+                    let fees = exchange.fees(&pair, &CommodityClass::Spot);
 
                     let fee_adjusted_maker = (
                         &volume_weighted_bid * (Rational::ONE - &fees.0),
@@ -765,6 +788,106 @@ impl MulAssign for FeeAdjustedQuote {
     }
 }
 
+impl From<(Pair, RawCexQuotes)> for CexQuote {
+    fn from(value: (Pair, RawCexQuotes)) -> Self {
+        let (_pair, quote) = value;
+
+        let price = (
+            Rational::try_from_float_simplest(quote.bid_price).unwrap(),
+            Rational::try_from_float_simplest(quote.ask_price).unwrap(),
+        );
+
+        let amount = (
+            Rational::try_from_float_simplest(quote.bid_amount).unwrap(),
+            Rational::try_from_float_simplest(quote.ask_amount).unwrap(),
+        );
+
+        CexQuote {
+            exchange: quote.exchange,
+            timestamp: quote.timestamp,
+            price,
+            // token0: pair.0,
+            // token1: pair.1,
+            amount,
+        }
+    }
+}
+
+self_convert_redefined!(CexExchange);
+
+impl<'de> serde::Deserialize<'de> for CexExchange {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let cex_exchange: String = Deserialize::deserialize(deserializer)?;
+        Ok(cex_exchange.as_str().into())
+    }
+}
+
+impl From<&str> for CexExchange {
+    fn from(value: &str) -> Self {
+        let val = value.to_lowercase();
+        let value = val.as_str();
+        match value {
+            "binance" | "binance-futures" => CexExchange::Binance,
+            "bitmex" | "Bitmex" => CexExchange::Bitmex,
+            "deribit" | "Deribit" => CexExchange::Deribit,
+            "okex" | "Okex" | "okex-swap" => CexExchange::Okex,
+            "coinbase" | "Coinbase" => CexExchange::Coinbase,
+            "kraken" | "Kraken" => CexExchange::Kraken,
+            "bybit-spot" | "bybitspot" | "BybitSpot" | "Bybit-Spot" | "Bybit_Spot" | "bybit" => {
+                CexExchange::BybitSpot
+            }
+            "kucoin" | "Kucoin" => CexExchange::Kucoin,
+            "upbit" | "Upbit" => CexExchange::Upbit,
+            "huobi" | "Huobi" => CexExchange::Huobi,
+            "gate-io" | "gateio" | "GateIo" | "Gate_Io" => CexExchange::GateIo,
+            "bitstamp" | "Bitstamp" => CexExchange::Bitstamp,
+            "gemini" | "Gemini" => CexExchange::Gemini,
+            _ => CexExchange::Unknown,
+        }
+    }
+}
+
+pub struct SupportedCexExchanges {
+    pub exchanges: Vec<CexExchange>,
+}
+
+impl From<Vec<String>> for SupportedCexExchanges {
+    fn from(value: Vec<String>) -> Self {
+        let exchanges = value
+            .iter()
+            .map(|val| val.as_str().into())
+            .collect::<Vec<CexExchange>>();
+
+        SupportedCexExchanges { exchanges }
+    }
+}
+
+impl From<String> for CexExchange {
+    fn from(value: String) -> Self {
+        value.as_str().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_cex_quote() {
+        let pair = Pair(
+            DAI_ADDRESS,
+            Address::from_str("0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2").unwrap(),
+        );
+
+        assert_eq!(pair.ordered(), pair);
+    }
+}
+
 pub fn size_of_cex_price_map(price_map: &CexPriceMap) -> usize {
     let mut total_size = mem::size_of_val(price_map);
 
@@ -818,4 +941,358 @@ fn size_of_rational(rational: &Rational) -> usize {
 fn size_of_natural(natural: &Natural) -> usize {
     let capacity = (natural.significant_bits() / 64 + 1) as usize;
     mem::size_of::<Natural>() + capacity * mem::size_of::<usize>()
+}
+
+pub struct ExchangeData {
+    pub exchange: CexExchange,
+    pub quotes:   Vec<CexQuote>,
+    pub trades:   Vec<Trade>,
+}
+
+pub struct Trade {
+    pub exchange:  CexExchange,
+    pub timestamp: u64,
+    pub price:     Rational,
+    pub amount:    Rational,
+    pub side:      TradeSide,
+}
+
+pub enum TradeSide {
+    Buy,
+    Sell,
+}
+
+impl CexExchange {
+    pub fn to_clickhouse_filter(&self) -> &str {
+        match self {
+            CexExchange::Binance => "(c.exchange = 'binance' or c.exchange = 'binance-futures')",
+            CexExchange::Bitmex => "c.exchange = 'bitmex'",
+            CexExchange::Deribit => "c.exchange = 'deribit'",
+            CexExchange::Okex => "(c.exchange = 'okex' or c.exchange = 'okex-swap')",
+            CexExchange::Coinbase => "c.exchange = 'coinbase'",
+            CexExchange::Kraken => "c.exchange = 'kraken'",
+            CexExchange::BybitSpot => "(c.exchange = 'bybit-spot' or c.exchange = 'bybit')",
+            CexExchange::Kucoin => "c.exchange = 'kucoin'",
+            CexExchange::Upbit => "c.exchange = 'upbit'",
+            CexExchange::Huobi => "c.exchange = 'huobi'",
+            CexExchange::GateIo => "c.exchange = 'gate-io;",
+            CexExchange::Bitstamp => "c.exchange = 'bitstamp'",
+            CexExchange::Gemini => "c.exchange = 'gemini'",
+            CexExchange::Unknown => "c.exchange = ''",
+            CexExchange::Average => "c.exchange = ''",
+            CexExchange::VWAP => "c.exchange = ''",
+            CexExchange::OptimisticVWAP => "c.exchange = ''",
+        }
+    }
+}
+
+impl CexExchange {
+    //TQDO: Add for all supported exchanges
+    pub fn most_common_quote_assets(&self) -> Vec<Address> {
+        match self {
+            CexExchange::Binance => {
+                vec![
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    BUSD_ADDRESS,
+                    USDC_ADDRESS,
+                    BNB_ADDRESS,
+                    WETH_ADDRESS,
+                    FDUSD_ADDRESS,
+                    PAX_DOLLAR_ADDRESS,
+                ]
+            }
+            CexExchange::Bitmex => vec![USDT_ADDRESS, USDC_ADDRESS, WETH_ADDRESS],
+            CexExchange::Bitstamp => {
+                vec![WBTC_ADDRESS, USDC_ADDRESS, USDT_ADDRESS, PAX_DOLLAR_ADDRESS]
+            }
+            CexExchange::BybitSpot => {
+                vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS, DAI_ADDRESS, WETH_ADDRESS]
+            }
+            CexExchange::Coinbase => {
+                vec![
+                    USDC_ADDRESS,
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    DAI_ADDRESS,
+                    WETH_ADDRESS,
+                    DAI_ADDRESS,
+                ]
+            }
+            CexExchange::Deribit => vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS],
+            CexExchange::GateIo => vec![USDT_ADDRESS, WETH_ADDRESS, WBTC_ADDRESS, USDC_ADDRESS],
+            CexExchange::Gemini => {
+                vec![WBTC_ADDRESS, WETH_ADDRESS, GUSD_ADDRESS, DAI_ADDRESS, USDT_ADDRESS]
+            }
+            CexExchange::Huobi => {
+                vec![
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    HT_ADDRESS,
+                    HUSD_ADDRESS,
+                    USDC_ADDRESS,
+                    USDD_ADDRESS,
+                    TUSD_ADDRESS,
+                    DAI_ADDRESS,
+                    PYUSD_ADDRESS,
+                ]
+            }
+            CexExchange::Kraken => {
+                vec![WBTC_ADDRESS, WETH_ADDRESS, USDT_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
+            }
+            CexExchange::Kucoin => {
+                vec![
+                    USDT_ADDRESS,
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    USDC_ADDRESS,
+                    TUSD_ADDRESS,
+                    DAI_ADDRESS,
+                ]
+            }
+            CexExchange::Okex => {
+                vec![
+                    USDT_ADDRESS,
+                    USDC_ADDRESS,
+                    WBTC_ADDRESS,
+                    WETH_ADDRESS,
+                    DAI_ADDRESS,
+                    EURT_ADDRESS,
+                ]
+            }
+            CexExchange::Upbit => {
+                vec![WETH_ADDRESS, WBTC_ADDRESS, LINK_ADDRESS, EURT_ADDRESS, UNI_TOKEN]
+            }
+
+            _ => vec![],
+        }
+    }
+
+    /// Returns the maker & taker fees by exchange
+    /// Assumes best possible fee structure e.g Binanace VIP 9 for example
+    /// Does not account for special market maker rebate programs or special
+    /// pairs
+    ///
+    /// TODO: Account for special fee pairs & stableswap rates
+    /// TODO: Account for futures & spot fee deltas
+    pub fn fees(&self, pair: &Pair, trade_type: &CommodityClass) -> (Rational, Rational) {
+        let (maker, taker) = match self {
+            CexExchange::Binance => {
+                match trade_type {
+                    CommodityClass::Spot =>
+                        if Self::BINANCE_SPOT_PROMO_FEE_TYPE1_PAIRS.iter().any(|p| p.eq_ordered(pair)) {
+                            ("0.0", "0.0") // https://www.binance.com/en/fee/tradingPromote
+                        } else if Self::BINANCE_SPOT_PROMO_FEE_TYPE2_PAIRS.iter().any(|p| p.eq_ordered(pair)) {
+                            ("0.0", "0.00024") // https://www.binance.com/en/fee/tradingPromote
+                        } else if pair.0 == USDC_ADDRESS || pair.1 == USDC_ADDRESS {
+                            ("0.00012", "0.0001425") // https://www.binance.com/en/fee/trading
+                        } else {
+                            ("0.00012", "0.00024") // https://www.binance.com/en/fee/trading
+                        },
+                    CommodityClass::Derivative => ("0.0003", "0.0003"), // https://www.binance.com/en/fee/optionsTrading
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
+                }
+            },
+            CexExchange::Bitmex =>
+                match trade_type {
+                    CommodityClass::Spot => ("0.001", "0.001"), // https://www.bitmex.com/wallet/fees/spot
+                    CommodityClass::Derivative => ("-0.000125", "0.000175"), // https://www.bitmex.com/wallet/fees/derivatives
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
+                }
+            CexExchange::Deribit =>
+                match trade_type {
+                    CommodityClass::Spot => ("0.0", "0.0"), // https://www.deribit.com/kb/fees
+                    CommodityClass::Derivative => ("-0.0001", "0.0005"), // https://www.deribit.com/kb/fees
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
+                }
+            CexExchange::Okex => ("-0.0001", "0.00015"), // https://tr.okx.com/fees
+            CexExchange::Coinbase =>
+                // https://help.coinbase.com/en/exchange/trading-and-funding/exchange-fees
+                if USD_STABLES_BY_ADDRESS.iter().any(|a| pair.0 == *a || pair.1 == *a) ||
+                    WBTC_ADDRESS == pair.0 || WBTC_ADDRESS == pair.1 {
+                    ("0.0", "0.00001")
+                } else {
+                    ("0", "0.0005")
+                },
+            CexExchange::Kraken =>
+                match trade_type {
+                    CommodityClass::Spot => ("0.0", "0.001"), // https://www.kraken.com/features/fee-schedule#spot-crypto
+                    CommodityClass::Derivative =>  ("0.0", "0.0001"), // https://www.kraken.com/features/fee-schedule#futures
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
+                },
+            CexExchange::BybitSpot =>
+                // https://www.bybit.com/en/help-center/article/Trading-Fee-Structure
+                match trade_type {
+                    CommodityClass::Spot => ("0.00005", "0.00015"),
+                    CommodityClass::Derivative => if USDC_ADDRESS == pair.0 || USDC_ADDRESS == pair.1 {
+                        ("0.0", "0.0001")
+                    } else {
+                        ("0.0", "0.00025")
+                    }
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
+                }
+            CexExchange::Kucoin => 
+                // https://www.kucoin.com/vip/privilege
+                match trade_type {
+                    CommodityClass::Spot =>
+                        if Self::KUCOIN_CLASS_C_BASE_COINS.iter().any(|a| pair.0 == *a) {
+                            ("-0.00005", "0.00075")
+                        } else if Self::KUCOIN_CLASS_B_BASE_COINS.iter().any(|a| pair.0 == *a) {
+                            ("-0.00005", "0.0005")
+                        } else if Self::KUCOIN_CLASS_A_BASE_COINS.iter().any(|a| pair.0 == *a) {
+                            ("-0.00005", "0.00025")
+                        } else if Self::KUCOIN_TOP_BASE_COINS.iter().any(|a| pair.0 == *a) {
+                            ("-0.00005", "0.00025")
+                        } else {
+                            ("-0.00005", "0.00025")
+                        },
+                    CommodityClass::Derivative => ("-0.00008", "0.00025"),
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
+                },
+            CexExchange::Upbit => ("0.0002", "0.0002"), // https://sg.upbit.com/service_center/guide
+            CexExchange::Huobi => 
+                match trade_type {
+                    CommodityClass::Spot => ("0.000097", "0.000193"), // https://www.htx.com/zh-cn/support/360000312282
+                    CommodityClass::Derivative => ("-0.00005", "0.0002"), // https://www.htx.com/zh-cn/support/360000113122
+                    CommodityClass::Futures | CommodityClass::Options => todo!()
+                }
+            CexExchange::GateIo => ("0.0", "0.0002"), // https://www.gate.io/fee (curl, search for spot_feelist)
+            CexExchange::Bitstamp => ("0", "0.0003"), // https://www.bitstamp.net/fee-schedule/
+            CexExchange::Gemini => ("0", "0.0003"), // https://www.gemini.com/fees/api-fee-schedule#section-gemini-stablecoin-fee-schedule
+            CexExchange::Average => {
+                unreachable!("Cannot get fees for cross exchange average quote")
+            }
+            CexExchange::Unknown => unreachable!("Unknown cex exchange"),
+            CexExchange::VWAP | CexExchange::OptimisticVWAP => {
+                unreachable!("Cannot get fees for VWAP")
+            }
+        };
+        (Rational::from_sci_string_simplest(maker).unwrap(), Rational::from_sci_string_simplest(taker).unwrap())
+    }
+
+    // https://www.binance.com/en/fee/tradingPromote
+    const BINANCE_SPOT_PROMO_FEE_TYPE1_PAIRS: [Pair; 8] = [
+        Pair(WBTC_ADDRESS, FDUSD_ADDRESS),
+        Pair(FDUSD_ADDRESS, USDT_ADDRESS),
+        Pair(ETH_ADDRESS, FDUSD_ADDRESS),
+        Pair(LINK_ADDRESS, FDUSD_ADDRESS),
+        Pair(AEUR_ADDRESS, USDT_ADDRESS),
+        Pair(TUSD_ADDRESS, USDT_ADDRESS),
+        Pair(USDC_ADDRESS, USDT_ADDRESS),
+        Pair(USDP_ADDRESS, USDT_ADDRESS),
+    ];
+
+    // https://www.binance.com/en/fee/tradingPromote
+    const BINANCE_SPOT_PROMO_FEE_TYPE2_PAIRS: [Pair; 50] = [
+        Pair(ACE_ADDRESS, FDUSD_ADDRESS),
+        Pair(ADA_ADDRESS, FDUSD_ADDRESS),
+        Pair(AEVO_ADDRESS, FDUSD_ADDRESS),
+        Pair(AI_ADDRESS, FDUSD_ADDRESS),
+        Pair(ALT_ADDRESS, FDUSD_ADDRESS),
+        Pair(ARB_ADDRESS, FDUSD_ADDRESS),
+        Pair(ARKM_ADDRESS, FDUSD_ADDRESS),
+        Pair(AUCTION_ADDRESS, FDUSD_ADDRESS),
+        Pair(AXL_ADDRESS, FDUSD_ADDRESS),
+        Pair(BLZ_ADDRESS, FDUSD_ADDRESS),
+        Pair(CHZ_ADDRESS, FDUSD_ADDRESS),
+        Pair(CYBER_ADDRESS, FDUSD_ADDRESS),
+        Pair(DYDX_ADDRESS, FDUSD_ADDRESS),
+        Pair(ENA_ADDRESS, FDUSD_ADDRESS),
+        Pair(ENS_ADDRESS, FDUSD_ADDRESS),
+        Pair(ETHFI_ADDRESS, FDUSD_ADDRESS),
+        Pair(FET_ADDRESS, FDUSD_ADDRESS),
+        Pair(FLOKI_ADDRESS, FDUSD_ADDRESS),
+        Pair(FTM_ADDRESS, FDUSD_ADDRESS),
+        Pair(GALA_ADDRESS, FDUSD_ADDRESS),
+        Pair(GRT_ADDRESS, FDUSD_ADDRESS),
+        Pair(INJ_ADDRESS, FDUSD_ADDRESS),
+        Pair(JUP_ADDRESS, FDUSD_ADDRESS),
+        Pair(LDO_ADDRESS, FDUSD_ADDRESS),
+        Pair(MATIC_ADDRESS, FDUSD_ADDRESS),
+        Pair(MEME_ADDRESS, FDUSD_ADDRESS),
+        Pair(OMNI_ADDRESS, FDUSD_ADDRESS),
+        Pair(PENDLE_ADDRESS, FDUSD_ADDRESS),
+        Pair(PEOPLE_ADDRESS, FDUSD_ADDRESS),
+        Pair(PEPE_ADDRESS, FDUSD_ADDRESS),
+        Pair(PIXEL_ADDRESS, FDUSD_ADDRESS),
+        Pair(PORTAL_ADDRESS, FDUSD_ADDRESS),
+        Pair(REZ_ADDRESS, FDUSD_ADDRESS),
+        Pair(RNDR_ADDRESS, FDUSD_ADDRESS),
+        Pair(SAND_ADDRESS, FDUSD_ADDRESS),
+        Pair(SHIB_ADDRESS, FDUSD_ADDRESS),
+        Pair(STRK_ADDRESS, FDUSD_ADDRESS),
+        Pair(SUPER_ADDRESS, FDUSD_ADDRESS),
+        Pair(UNI_ADDRESS, FDUSD_ADDRESS),
+        Pair(W_ADDRESS, FDUSD_ADDRESS),
+        Pair(WLD_ADDRESS, FDUSD_ADDRESS),
+        Pair(ADA_ADDRESS, TUSD_ADDRESS),
+        Pair(ARB_ADDRESS, TUSD_ADDRESS),
+        Pair(ARKM_ADDRESS, TUSD_ADDRESS),
+        Pair(WBTC_ADDRESS, TUSD_ADDRESS),
+        Pair(CYBER_ADDRESS, TUSD_ADDRESS),
+        Pair(ETH_ADDRESS, TUSD_ADDRESS),
+        Pair(MATIC_ADDRESS, TUSD_ADDRESS),
+        Pair(MAV_ADDRESS, TUSD_ADDRESS),
+        Pair(PEPE_ADDRESS, TUSD_ADDRESS),
+    ];
+
+    const KUCOIN_TOP_BASE_COINS: [Address; 12] = [
+        WBTC_ADDRESS,
+        ETH_ADDRESS,
+        // XRP_ADDRESS,
+        // SOL_ADDRESS,
+        ADA_ADDRESS,
+        // DOGE_ADDRESS,
+        // TRX_ADDRESS,
+        // AVAX_ADDRESS,
+        MATIC_ADDRESS,
+        LINK_ADDRESS,
+        // DOT_ADDRESS,
+        // LTC_ADDRESS,
+        SHIB_ADDRESS,
+        // BCH_ADDRESS,
+        // ATOM_ADDRESS,
+        UNI_ADDRESS,
+        // XMR_ADDRESS,
+        // ETC_ADDRESS,
+        // LUNC_ADDRESS,
+        // TON_ADDRESS,
+        DAI_ADDRESS,
+        KCS_ADDRESS,
+        USDT_ADDRESS,
+        USDC_ADDRESS,
+        USDP_ADDRESS,
+    ];
+
+    const KUCOIN_CLASS_A_BASE_COINS: [Address; 39] = [
+        AEVO_ADDRESS, ARB_ADDRESS, ARKM_ADDRESS, AUCTION_ADDRESS, BLZ_ADDRESS, BNB_ADDRESS, CHZ_ADDRESS, CYBER_ADDRESS,
+        DYDX_ADDRESS, ENA_ADDRESS, ENS_ADDRESS, ETHFI_ADDRESS, FET_ADDRESS, FLOKI_ADDRESS, FTM_ADDRESS, GRT_ADDRESS,
+        INJ_ADDRESS, JUP_ADDRESS, LDO_ADDRESS, MAV_ADDRESS, MEME_ADDRESS, OMNI_ADDRESS, PAXG_ADDRESS, PENDLE_ADDRESS,
+        PEOPLE_ADDRESS, PEPE_ADDRESS, PIXEL_ADDRESS, PORTAL_ADDRESS, PYUSD_ADDRESS, REZ_ADDRESS, SAND_ADDRESS, STRK_ADDRESS,
+        SUPER_ADDRESS, TUSD_ADDRESS, USDD_ADDRESS, USTC_ADDRESS, W_ADDRESS, WBTC_ADDRESS, WLD_ADDRESS,
+    ];
+
+    const KUCOIN_CLASS_B_BASE_COINS: [Address; 5] = [
+        ACE_ADDRESS, AI_ADDRESS, ALT_ADDRESS, RNDR_ADDRESS, USDE_ADDRESS,
+    ];
+
+    const KUCOIN_CLASS_C_BASE_COINS: [Address; 0] = [];
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_cex_quote() {
+        let pair = Pair(
+            DAI_ADDRESS,
+            Address::from_str("0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2").unwrap(),
+        );
+
+        assert_eq!(pair.ordered(), pair);
+    }
 }
