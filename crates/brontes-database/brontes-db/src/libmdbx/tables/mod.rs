@@ -780,7 +780,7 @@ compressed_table!(
         compressed_value: CexPriceMapRedefined
         },
         Init {
-            init_size: Some(10000),
+            init_size: Some(2500),
             init_method: Clickhouse,
             http_endpoint: Some("cex-price"),
             init_flag: Some(CEX_QUOTES_FLAG)
