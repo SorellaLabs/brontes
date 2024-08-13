@@ -27,11 +27,13 @@ const BYTES_TO_MB: u64 = 1_000_000;
 
 #[derive(Debug, Parser)]
 pub struct Snapshot {
-    /// endpoint url
-    #[arg(long, short, default_value = "https://data.brontes.xyz/")]
+    /// Snapshot endpoint
+    #[arg(long, default_value = "https://data.brontes.xyz/")]
     pub endpoint:    Url,
+    /// Optional start block
     #[arg(long, short)]
     pub start_block: Option<u64>,
+    /// Optional end block
     #[arg(long, short)]
     pub end_block:   Option<u64>,
 }

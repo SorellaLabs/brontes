@@ -1,6 +1,6 @@
 # brontes db test-traces-init
 
-Traces all blocks needed for testing and inserts them into clickhouse
+Traces all blocks required to run the tests and inserts them into clickhouse
 
 ```bash
 $ brontes db test-traces-init --help
@@ -8,7 +8,7 @@ Usage: brontes db test-traces-init [OPTIONS]
 
 Options:
   -b, --blocks <BLOCKS>
-          
+          Blocks to trace
 
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db

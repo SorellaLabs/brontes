@@ -20,6 +20,7 @@ pub struct DiscoveryFill {
     /// Start Block
     #[arg(long, short)]
     pub start_block: Option<u64>,
+    /// Max number of tasks to run concurrently
     #[arg(long, short)]
     pub max_tasks:   Option<usize>,
 }

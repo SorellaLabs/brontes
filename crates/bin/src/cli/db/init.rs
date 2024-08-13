@@ -16,7 +16,7 @@ pub struct Init {
     /// Initialize the local Libmdbx DB
     #[arg(long, short)]
     pub init_libmdbx:              bool,
-    /// Libmdbx tables to init:
+    /// Libmdbx tables to initialize:
     ///     TokenDecimals
     ///     AddressToTokens
     ///     AddressToProtocol
@@ -27,12 +27,12 @@ pub struct Init {
     ///     CexTrades
     #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
     pub tables_to_init:            Option<Vec<Tables>>,
-    /// The sliding time window (BEFORE) for cex prices relative to the block
-    /// number
+    /// The sliding time window (BEFORE) for cex quotes relative to the block
+    /// time
     #[arg(long = "price-tw-before", default_value_t = 3)]
     pub quotes_time_window_before: u64,
-    /// The sliding time window (AFTER) for cex prices relative to the block
-    /// number
+    /// The sliding time window (AFTER) for cex quotes relative to the block
+    /// time
     #[arg(long = "price-tw-after", default_value_t = 3)]
     pub quotes_time_window_after:  u64,
     /// The sliding time window (BEFORE) for cex trades relative to the block
@@ -43,7 +43,7 @@ pub struct Init {
     /// number
     #[arg(long = "trades-tw-after", default_value_t = 3)]
     pub trades_time_window_after:  u64,
-    /// Centralized exchanges to consider for cex-dex inspector
+    /// Centralized exchanges that the cex-dex inspector will consider
     #[arg(
         long,
         short,

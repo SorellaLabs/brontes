@@ -1,25 +1,25 @@
-# brontes db download-snapshot
+# brontes db r2-upload
 
-Downloads a database snapshot. Without specified blocks, it fetches the full range. With start/end blocks, it downloads that range and merges it into the current database
+For internal use only. Uploads snapshots of db every 100k blocks to r2
 
 ```bash
-$ brontes db download-snapshot --help
-Usage: brontes db download-snapshot [OPTIONS]
+$ brontes db r2-upload --help
+Usage: brontes db r2-upload [OPTIONS] --r2-config-name <R2_CONFIG_NAME>
 
 Options:
-      --endpoint <ENDPOINT>
-          Snapshot endpoint
-          
-          [default: https://data.brontes.xyz/]
+  -r, --r2-config-name <R2_CONFIG_NAME>
+          R2 Config Name
 
   -s, --start-block <START_BLOCK>
-          Optional start block
+          Start Block
 
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 
-  -e, --end-block <END_BLOCK>
-          Optional end block
+  -p, --partition-db-folder <PARTITION_DB_FOLDER>
+          Path to db partition folder
+          
+          [default: <CACHE_DIR>-db-partitions/]
 
   -h, --help
           Print help (see a summary with '-h')

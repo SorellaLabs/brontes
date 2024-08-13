@@ -45,8 +45,6 @@ pub struct CexDB {
     /// Time window multiplier (expands it)
     #[arg(long, short, default_value_t = 1.0)]
     pub w_multiplier: f64,
-    #[arg(long, short)]
-    pub volume:       Option<f64>,
 }
 
 impl CexDB {

@@ -10,13 +10,12 @@ use reth_interfaces::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]
 pub struct DatabaseQuery {
-    /// that table to query
+    /// Table to query
     #[arg(long, short)]
     pub table: Tables,
-    /// the key of the table being queried. if a range is wanted use the rust
-    /// syntax of ..
-    /// --key 80
-    /// or --key 80..100
+    /// Key for table query. Use Rust range syntax for ranges:
+    /// --key 80 (single key)
+    /// --key 80..100 (range)
     #[arg(long, short)]
     pub key:   String,
 }

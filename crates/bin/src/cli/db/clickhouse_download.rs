@@ -15,16 +15,16 @@ use crate::{
 /// downloads a range of data from clickhouse
 #[derive(Debug, Parser)]
 pub struct ClickhouseDownload {
-    /// start block
+    /// Start block
     #[arg(long, short)]
     pub start_block: u64,
-    /// end block
+    /// End block
     #[arg(long, short)]
     pub end_block:   u64,
-    /// table to download
+    /// Table to download
     #[arg(short, long)]
     pub table:       brontes_database::Tables,
-    /// clears the table before downloading
+    /// Clear the table before downloading
     #[arg(short, long, default_value = "false")]
     pub clear_table: bool,
 }

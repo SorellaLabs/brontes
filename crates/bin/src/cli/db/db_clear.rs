@@ -15,14 +15,17 @@ pub struct Clear {
                          TokenDecimals,AddressToProtocolInfo,PoolCreationBlocks,Builder,\
                          AddressMeta,SearcherEOAs,SearcherContracts,SubGraphs,TxTraces"
     )]
-    pub tables: Vec<Tables>,
-
+    pub tables:                  Vec<Tables>,
+    /// Mark metadata as uninitialized in the initialized state table
     #[arg(long, default_value = "false")]
     pub clear_metadata_flags:    bool,
+    /// Mark cex data as uninitialized in the initialized state table
     #[arg(long, default_value = "false")]
     pub clear_cex_flags:         bool,
+    /// Mark tx traces as uninitialized in the initialized state table
     #[arg(long, default_value = "false")]
     pub clear_tx_traces_flags:   bool,
+    /// Mark dex pricing as uninitialized in the initialized state table
     #[arg(long, default_value = "false")]
     pub clear_dex_pricing_flags: bool,
 }

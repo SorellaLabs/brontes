@@ -1,6 +1,6 @@
 # brontes db insert
 
-Allows for inserting items into libmdbx
+Insert into the brontes libmdbx db
 
 ```bash
 $ brontes db insert --help
@@ -8,16 +8,16 @@ Usage: brontes db insert [OPTIONS] --table <TABLE> --key <KEY> --value <VALUE>
 
 Options:
   -t, --table <TABLE>
-          that table to be queried
+          Table to query
 
   -k, --key <KEY>
-          
+          Key to query
 
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 
       --value <VALUE>
-          
+          Value to insert
 
   -h, --help
           Print help (see a summary with '-h')

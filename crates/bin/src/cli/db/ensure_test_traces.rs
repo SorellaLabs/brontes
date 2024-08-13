@@ -16,6 +16,7 @@ use crate::{
 
 #[derive(Debug, Parser)]
 pub struct TestTraceArgs {
+    /// Blocks to trace
     #[arg(long, short, value_delimiter = ',')]
     pub blocks: Vec<u64>,
 }

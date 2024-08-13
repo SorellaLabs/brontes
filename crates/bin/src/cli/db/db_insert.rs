@@ -4,13 +4,13 @@ use clap::Parser;
 
 #[derive(Debug, Parser)]
 pub struct Insert {
-    /// that table to be queried
+    /// Table to query
     #[arg(long, short)]
     pub table: Tables,
-    // key of value
+    /// Key to query
     #[arg(long, short)]
     pub key:   String,
-    // value
+    /// Value to insert
     #[arg(long)]
     pub value: String,
 }

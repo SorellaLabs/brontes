@@ -27,25 +27,25 @@ const SECONDS_TO_US: u64 = 1_000_000;
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:    Option<u64>,
+    pub start_block:          Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:      Option<u64>,
+    pub end_block:            Option<u64>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks:      Option<u64>,
+    pub max_tasks:            Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size: u64,
+    pub min_batch_size:       u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset:    String,
+    pub quote_asset:          String,
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors:     Option<Vec<Inspectors>>,
-
+    pub inspectors:           Option<Vec<Inspectors>>,
+    /// Time window arguments for cex data downloads
     #[clap(flatten)]
     pub time_window_args:     TimeWindowArgs,
     /// CEX exchanges to consider for cex-dex analysis
@@ -83,7 +83,7 @@ pub struct RunArgs {
     /// loss.
     #[arg(long)]
     pub fallback_server:      Option<String>,
-    /// Set a custom run ID.
+    /// Set a custom run ID used when inserting data into the Clickhouse
     ///
     /// If omitted, the ID will be automatically incremented from the last run
     /// stored in the Clickhouse database.
