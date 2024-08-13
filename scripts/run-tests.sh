@@ -3,7 +3,6 @@
 setup() {
   if rustup default nightly; then : ; else return 1; fi
   
-  git checkout "$1"
   echo "setting up db at /home/brontes-ci/data/$2"
   mkdir -p "/home/brontes-ci/data/$2"
   if cp /home/brontes-ci/.env .env; then :; else return 1;fi

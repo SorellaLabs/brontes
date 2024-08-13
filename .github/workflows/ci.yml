@@ -95,6 +95,7 @@ jobs:
             cd ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             git clone https://github.com/SorellaLabs/brontes.git
             cd brontes
+            git checkout ${{ steps.branch-names.outputs.current_branch }}
             ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }} test ${{ matrix.features }}
           '"
       - name: Cleanup
@@ -142,6 +143,7 @@ jobs:
             cd ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             git clone https://github.com/SorellaLabs/brontes.git
             cd brontes
+            git checkout ${{ steps.branch-names.outputs.current_branch }}
             ./scripts/run-tests.sh ${{ steps.branch-names.outputs.current_branch }} ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }} it ${{ matrix.features }}
           '"
 
