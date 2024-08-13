@@ -1,25 +1,17 @@
-# brontes db download-snapshot
+# brontes db trace-at-tip
 
-Downloads a database snapshot. Without specified blocks, it fetches the full range. With start/end blocks, it downloads that range and merges it into the current database
+Generates traces up to chain tip and inserts them into libmbx
 
 ```bash
-$ brontes db download-snapshot --help
-Usage: brontes db download-snapshot [OPTIONS]
+$ brontes db trace-at-tip --help
+Usage: brontes db trace-at-tip [OPTIONS]
 
 Options:
-      --endpoint <ENDPOINT>
-          Snapshot endpoint
-          
-          [default: https://data.brontes.xyz/]
-
   -s, --start-block <START_BLOCK>
-          Optional start block
+          Start Block
 
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
-
-  -e, --end-block <END_BLOCK>
-          Optional end block
 
   -h, --help
           Print help (see a summary with '-h')

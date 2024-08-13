@@ -446,28 +446,19 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         info: &TxInfo,
         metadata: &Metadata,
     ) -> Option<(f64, BundleData)> {
-        let is_cex_dex_bot_with_significant_activity = info
-            .is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD * 2);
+        let is_cex_dex_bot_with_significant_activity =
+            info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexQuotes);
 
-        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 0.0;
+        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 5.0;
 
-        let tx_attributes_meet_cex_dex_criteria = !info.is_classified
-            && info.is_private
-            && (info
-                .is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD)
-                || info
-                    .contract_type
-                    .as_ref()
-                    .map_or(false, |contract_type| contract_type.could_be_mev_contract()));
+        let should_include_if_know_cex_dex = possible_cex_dex.pnl.aggregate_pnl > 0.0;
 
-        let is_cex_dex_based_on_historical_activity =
-            is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
+        let is_cex_dex_based_on_historical_activity = (is_cex_dex_bot_with_significant_activity
+            || is_labelled_cex_dex_bot)
+            && should_include_if_know_cex_dex;
 
-        if should_include_based_on_pnl
-            || is_cex_dex_based_on_historical_activity
-            || tx_attributes_meet_cex_dex_criteria
-        {
+        if is_cex_dex_based_on_historical_activity || should_include_based_on_pnl {
             let t2 = self
                 .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 2, None)
                 .into_iter()

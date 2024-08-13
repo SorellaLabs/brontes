@@ -55,12 +55,13 @@ pub async fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
     hr: Option<HeartRateMonitor>,
+    run_id: Option<u64>,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
-    let mut clickhouse = Clickhouse::new_default().await;
+    let mut clickhouse = Clickhouse::new_default(run_id).await;
     clickhouse.buffered_insert_tx = Some(tx);
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
@@ -84,7 +85,7 @@ pub async fn load_read_only_database(
     db_endpoint: String,
 ) -> eyre::Result<ReadOnlyMiddleware<LibmdbxReadWriter>> {
     let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
-    let clickhouse = Clickhouse::new_default().await;
+    let clickhouse = Clickhouse::new_default(None).await;
     Ok(ReadOnlyMiddleware::new(clickhouse, inner))
 }
 
@@ -97,15 +98,21 @@ pub fn load_libmdbx(
 
 #[allow(clippy::field_reassign_with_default)]
 #[cfg(feature = "local-clickhouse")]
-pub async fn load_clickhouse(cex_download_config: CexDownloadConfig) -> eyre::Result<Clickhouse> {
-    let mut clickhouse = Clickhouse::new_default().await;
+pub async fn load_clickhouse(
+    cex_download_config: CexDownloadConfig,
+    run_id: Option<u64>,
+) -> eyre::Result<Clickhouse> {
+    let mut clickhouse = Clickhouse::new_default(run_id).await;
     clickhouse.cex_download_config = cex_download_config;
 
     Ok(clickhouse)
 }
 
 #[cfg(not(feature = "local-clickhouse"))]
-pub async fn load_clickhouse(_: CexDownloadConfig) -> eyre::Result<ClickhouseHttpClient> {
+pub async fn load_clickhouse(
+    _: CexDownloadConfig,
+    _: Option<u64>,
+) -> eyre::Result<ClickhouseHttpClient> {
     let clickhouse_api = env::var("CLICKHOUSE_API")?;
     let clickhouse_api_key = env::var("CLICKHOUSE_API_KEY").ok();
     Ok(ClickhouseHttpClient::new(clickhouse_api, clickhouse_api_key).await)
@@ -132,8 +139,8 @@ pub fn determine_max_tasks(max_tasks: Option<u64>) -> u64 {
     match max_tasks {
         Some(max_tasks) => max_tasks,
         None => {
-            let cpus = num_cpus::get_physical();
-            (cpus as f64 * 0.60) as u64 // 60% of physical cores
+            let cpus = num_cpus::get();
+            (cpus as f64 * 0.90) as u64
         }
     }
 }

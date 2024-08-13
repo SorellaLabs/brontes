@@ -1,17 +1,14 @@
-# brontes db query
+# brontes db table-stats
 
-Query data from any libmdbx table and pretty print it in stdout
+Libmbdx Table Stats
 
 ```bash
-$ brontes db query --help
-Usage: brontes db query [OPTIONS] --table <TABLE> --key <KEY>
+$ brontes db table-stats --help
+Usage: brontes db table-stats [OPTIONS]
 
 Options:
-  -t, --table <TABLE>
-          Table to query
-
-  -k, --key <KEY>
-          Key for table query. Use Rust range syntax for ranges: --key 80 (single key) --key 80..100 (range)
+      --detailed-sizes
+          Show only the total size for static files
 
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db

@@ -15,7 +15,7 @@ use brontes_metrics::PoirotMetricEvents;
 use brontes_types::{
     constants::USDT_ADDRESS,
     db::{cex::trades::CexTradeMap, metadata::Metadata},
-    init_threadpools,
+    init_thread_pools,
     structured_trace::TxTrace,
     traits::TracingProvider,
     FastHashMap,
@@ -57,7 +57,7 @@ pub struct TraceLoader {
 impl TraceLoader {
     pub async fn new() -> Self {
         let handle = tokio::runtime::Handle::current();
-        init_threadpools(32);
+        init_thread_pools(32);
         let libmdbx = get_db_handle(handle.clone()).await;
 
         let (a, b) = unbounded_channel();
@@ -552,7 +552,7 @@ pub async fn init_trace_parser(
 
 #[cfg(feature = "local-clickhouse")]
 pub async fn load_clickhouse() -> Clickhouse {
-    Clickhouse::new_default().await
+    Clickhouse::new_default(None).await
 }
 
 #[cfg(not(feature = "local-clickhouse"))]

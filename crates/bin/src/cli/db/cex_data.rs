@@ -5,7 +5,7 @@ use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_types::{
     constants::USDT_ADDRESS,
     db::cex::{trades::CexTrades, CexExchange},
-    init_threadpools,
+    init_thread_pools,
     pair::Pair,
     FastHashMap, FastHashSet,
 };
@@ -45,13 +45,11 @@ pub struct CexDB {
     /// Time window multiplier (expands it)
     #[arg(long, short, default_value_t = 1.0)]
     pub w_multiplier: f64,
-    #[arg(long, short)]
-    pub volume:       Option<f64>,
 }
 
 impl CexDB {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
-        init_threadpools(10);
+        init_thread_pools(10);
 
         let task_executor = ctx.task_executor;
 

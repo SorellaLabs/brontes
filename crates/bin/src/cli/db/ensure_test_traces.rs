@@ -3,7 +3,7 @@ use std::path::Path;
 use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{
-    init_threadpools, unordered_buffer_map::BrontesStreamExt, UnboundedYapperReceiver,
+    init_thread_pools, unordered_buffer_map::BrontesStreamExt, UnboundedYapperReceiver,
 };
 use clap::Parser;
 use futures::StreamExt;
@@ -16,6 +16,7 @@ use crate::{
 
 #[derive(Debug, Parser)]
 pub struct TestTraceArgs {
+    /// Blocks to trace
     #[arg(long, short, value_delimiter = ',')]
     pub blocks: Vec<u64>,
 }
@@ -25,7 +26,7 @@ impl TestTraceArgs {
         let db_path = get_env_vars()?;
 
         let max_tasks = determine_max_tasks(None) * 2;
-        init_threadpools(max_tasks as usize);
+        init_thread_pools(max_tasks as usize);
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
@@ -36,8 +37,9 @@ impl TestTraceArgs {
         ctx.task_executor
             .spawn_critical("metrics", metrics_listener);
 
-        let libmdbx =
-            static_object(load_database(&ctx.task_executor, brontes_db_endpoint, None).await?);
+        let libmdbx = static_object(
+            load_database(&ctx.task_executor, brontes_db_endpoint, None, None).await?,
+        );
 
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());

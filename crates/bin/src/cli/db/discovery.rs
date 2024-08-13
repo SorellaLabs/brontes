@@ -2,7 +2,7 @@ use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
 use brontes_metrics::PoirotMetricsListener;
-use brontes_types::{init_threadpools, UnboundedYapperReceiver};
+use brontes_types::{init_thread_pools, UnboundedYapperReceiver};
 use clap::Parser;
 use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
@@ -20,6 +20,7 @@ pub struct DiscoveryFill {
     /// Start Block
     #[arg(long, short)]
     pub start_block: Option<u64>,
+    /// Max number of tasks to run concurrently
     #[arg(long, short)]
     pub max_tasks:   Option<usize>,
 }
@@ -29,7 +30,7 @@ impl DiscoveryFill {
         let db_path = get_env_vars()?;
 
         let max_tasks = self.max_tasks.unwrap_or(num_cpus::get_physical());
-        init_threadpools(max_tasks);
+        init_thread_pools(max_tasks);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
 

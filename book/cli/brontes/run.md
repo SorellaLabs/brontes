@@ -35,22 +35,27 @@ Options:
   -b, --tw-before <TIME_WINDOW_BEFORE>
           The sliding time window (BEFORE) for cex prices or trades relative to the block timestamp
           
-          [default: 5.0]
+          [default: 10]
 
   -a, --tw-after <TIME_WINDOW_AFTER>
           The sliding time window (AFTER) for cex prices or trades relative to the block timestamp
           
-          [default: 8.0]
+          [default: 20]
 
       --op-tw-before <TIME_WINDOW_BEFORE_OPTIMISTIC>
           The time window (BEFORE) for cex prices or trades relative to the block timestamp for fully optimistic calculations
           
-          [default: 0.5]
+          [default: 5.0]
 
       --op-tw-after <TIME_WINDOW_AFTER_OPTIMISTIC>
           The time window (AFTER) for cex prices or trades relative to the block timestamp for fully optimistic calculations
           
-          [default: 2.0]
+          [default: 10.0]
+
+      --mk-time <QUOTES_PRICE_TIME>
+          Cex Dex Quotes price time
+          
+          [default: 0.0]
 
   -c, --cex-exchanges <CEX_EXCHANGES>
           CEX exchanges to consider for cex-dex analysis
@@ -58,24 +63,32 @@ Options:
           [default: Binance,Coinbase,Okex,BybitSpot,Kucoin]
 
   -f, --force-dex-pricing
-          Ensures that dex prices are calculated at every block, even if the db already contains the price
+          Force DEX price calculation for every block, ignoring existing database values
 
       --force-no-dex-pricing
-          Turns off dex pricing entirely, inspectors requiring dex pricing won't calculate USD pnl if we don't have dex pricing in the db & will only calculate token pnl
+          Disables DEX pricing. Inspectors needing DEX prices will only calculate token PnL, not USD PnL, if DEX pricing is unavailable in the database
 
       --behind-tip <BEHIND_TIP>
-          How many blocks behind chain tip to run
+          Number of blocks to lag behind the chain tip when processing
           
           [default: 10]
 
       --cli-only
-          Run in CLI only mode (no TUI) - will output progress bars to stdout
-
-      --init-crit-tables
-          Initialize full range database tables
+          Legacy, run in CLI only mode (no TUI) - will output progress bars to stdout
 
       --with-metrics
-          Metrics will be exported
+          Export metrics
+
+      --enable-fallback
+          Wether or not to use a fallback server
+
+      --fallback-server <FALLBACK_SERVER>
+          Address of the fallback server. Triggers database writes if the main connection fails, preventing data loss
+
+  -r, --run-id <RUN_ID>
+          Set a custom run ID used when inserting data into the Clickhouse
+          
+          If omitted, the ID will be automatically incremented from the last run stored in the Clickhouse database.
 
   -h, --help
           Print help (see a summary with '-h')

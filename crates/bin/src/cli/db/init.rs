@@ -1,7 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use brontes_database::{libmdbx::LibmdbxInit, Tables};
-use brontes_types::{db::cex::CexExchange, init_threadpools};
+use brontes_types::{db::cex::CexExchange, init_thread_pools};
 use clap::Parser;
 use indicatif::MultiProgress;
 use itertools::Itertools;
@@ -16,7 +16,7 @@ pub struct Init {
     /// Initialize the local Libmdbx DB
     #[arg(long, short)]
     pub init_libmdbx:              bool,
-    /// Libmdbx tables to init:
+    /// Libmdbx tables to initialize:
     ///     TokenDecimals
     ///     AddressToTokens
     ///     AddressToProtocol
@@ -27,12 +27,12 @@ pub struct Init {
     ///     CexTrades
     #[arg(long, short, requires = "init_libmdbx", value_delimiter = ',')]
     pub tables_to_init:            Option<Vec<Tables>>,
-    /// The sliding time window (BEFORE) for cex prices relative to the block
-    /// number
+    /// The sliding time window (BEFORE) for cex quotes relative to the block
+    /// time
     #[arg(long = "price-tw-before", default_value_t = 3)]
     pub quotes_time_window_before: u64,
-    /// The sliding time window (AFTER) for cex prices relative to the block
-    /// number
+    /// The sliding time window (AFTER) for cex quotes relative to the block
+    /// time
     #[arg(long = "price-tw-after", default_value_t = 3)]
     pub quotes_time_window_after:  u64,
     /// The sliding time window (BEFORE) for cex trades relative to the block
@@ -43,7 +43,7 @@ pub struct Init {
     /// number
     #[arg(long = "trades-tw-after", default_value_t = 3)]
     pub trades_time_window_after:  u64,
-    /// Centralized exchanges to consider for cex-dex inspector
+    /// Centralized exchanges that the cex-dex inspector will consider
     #[arg(
         long,
         short,
@@ -67,12 +67,12 @@ impl Init {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
-        init_threadpools(10);
+        init_thread_pools(10);
         let task_executor = ctx.task_executor;
 
         let libmdbx =
-            static_object(load_database(&task_executor, brontes_db_endpoint, None).await?);
-        let clickhouse = static_object(load_clickhouse(Default::default()).await?);
+            static_object(load_database(&task_executor, brontes_db_endpoint, None, None).await?);
+        let clickhouse = static_object(load_clickhouse(Default::default(), None).await?);
 
         let tracer = Arc::new(get_tracing_provider(Path::new(&db_path), 10, task_executor.clone()));
 

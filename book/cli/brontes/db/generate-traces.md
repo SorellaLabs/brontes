@@ -1,6 +1,6 @@
 # brontes db generate-traces
 
-Generates traces and will store them in libmdbx (also clickhouse if --feature local-clickhouse)
+Generates traces and store them in libmdbx (also clickhouse if --feature local-clickhouse)
 
 ```bash
 $ brontes db generate-traces --help

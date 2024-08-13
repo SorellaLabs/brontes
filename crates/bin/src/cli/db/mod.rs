@@ -29,7 +29,7 @@ pub struct Database {
 
 #[derive(Debug, Subcommand)]
 pub enum DatabaseCommands {
-    /// Allows for inserting items into libmdbx
+    /// Insert into the brontes libmdbx db
     #[command(name = "insert")]
     DbInserts(db_insert::Insert),
     /// Query data from any libmdbx table and pretty print it in stdout
@@ -38,13 +38,14 @@ pub enum DatabaseCommands {
     /// Clear a libmdbx table
     #[command(name = "clear")]
     DbClear(db_clear::Clear),
-    /// Generates traces and will store them in libmdbx (also clickhouse if
+    /// Generates traces and store them in libmdbx (also clickhouse if
     /// --feature local-clickhouse)
     #[command(name = "generate-traces")]
     TraceRange(trace_range::TraceArgs),
+    /// Fetches Cex data from the Sorella DB
     #[command(name = "cex-query")]
     CexData(cex_data::CexDB),
-    /// For a given range, will fetch all data from the api and insert it into
+    /// Fetch data from the api and insert it into
     /// libmdbx.
     #[command(name = "init")]
     Init(init::Init),
@@ -54,22 +55,21 @@ pub enum DatabaseCommands {
     /// Export libmbdx data to parquet
     #[command(name = "export")]
     Export(export::Export),
-    /// downloads a db snapshot from the remote endpoint. if no start or
-    /// end block is set. the database for the full range will be downloaded.
-    /// Otherwise it will download the specific block range and then merge
-    /// it into the current libmdbx db.
+    /// Downloads a database snapshot. Without specified blocks, it fetches
+    /// the full range. With start/end blocks, it downloads that range and
+    /// merges it into the current database.
     #[command(name = "download-snapshot")]
     DownloadSnapshot(snapshot::Snapshot),
     #[cfg(feature = "local-clickhouse")]
-    /// downloads a the db data from clickhouse
+    /// Downloads the db data from clickhouse
     #[command(name = "download-clickhouse")]
     DownloadClickhouse(clickhouse_download::ClickhouseDownload),
-    /// for internal use only. Constantly will upload snapshots
-    /// of db every 100k blocks for easy downloads.
+    /// For internal use only. Uploads snapshots
+    /// of db every 100k blocks to r2
     #[command(name = "r2-upload")]
     UploadSnapshot(r2_uploader::R2Uploader),
     #[cfg(feature = "local-clickhouse")]
-    /// Traces all blocks needed for testing and inserts them into
+    /// Traces all blocks required to run the tests and inserts them into
     /// clickhouse
     #[command(name = "test-traces-init")]
     TestTracesInit(ensure_test_traces::TestTraceArgs),
@@ -77,8 +77,7 @@ pub enum DatabaseCommands {
     /// Generates traces up to chain tip and inserts them into libmbx
     #[command(name = "trace-at-tip")]
     TraceAtTip(tip_tracer::TipTraceArgs),
-    /// from the start block, runs only discovery and inserts into clickhouse.
-    /// this ensures we have all classifier data.
+    /// Only runs discovery and inserts discovered protocols into clickhouse
     #[cfg(feature = "local-clickhouse")]
     #[command(name = "run-discovery")]
     Discovery(discovery::DiscoveryFill),

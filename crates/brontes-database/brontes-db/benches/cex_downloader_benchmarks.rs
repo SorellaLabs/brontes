@@ -13,7 +13,7 @@ fn setup_runtime_and_client() -> (Runtime, Clickhouse) {
         .build()
         .unwrap();
 
-    let client = rt.block_on(Clickhouse::new_default());
+    let client = rt.block_on(Clickhouse::new_default(None));
 
     (rt, client)
 }

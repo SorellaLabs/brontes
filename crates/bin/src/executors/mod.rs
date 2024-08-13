@@ -263,25 +263,27 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 .unwrap(),
         );
 
-        // #[cfg(feature = "sorella-server")]
-        // let buffer_size = calculate_buffer_size(
-        //     &state_to_init,
-        //     end_block - self.start_block.unwrap(),
-        //     chunks.len() as f64,
-        // );
-        //
-        // #[cfg(not(feature = "sorella-server"))]
-        // let buffer_size = 10;
+        #[cfg(feature = "sorella-server")]
+        let mut buffer_size = calculate_buffer_size(&state_to_init, self.max_tasks as usize);
+
+        #[cfg(not(feature = "sorella-server"))]
+        let mut buffer_size = 8;
+
+        let mut tables_pb = Arc::new(Vec::new());
 
         let multi = MultiProgress::default();
-        let tables_pb = Arc::new(
-            state_to_init
-                .tables_with_init_count()
-                .map(|(table, count)| {
-                    (table, table.build_init_state_progress_bar(&multi, count as u64))
-                })
-                .collect_vec(),
-        );
+        if !self.is_snapshot {
+            tables_pb = Arc::new(
+                state_to_init
+                    .tables_with_init_count()
+                    .map(|(table, count)| {
+                        (table, table.build_init_state_progress_bar(&multi, count as u64))
+                    })
+                    .collect_vec(),
+            );
+        } else {
+            buffer_size = (self.max_tasks as usize / 4).clamp(2, 25)
+        }
 
         let range_metrics = self.metrics.then(|| {
             GlobalRangeMetrics::new(chunks.iter().map(|(start, end)| end - start).collect_vec())
@@ -331,7 +333,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 }
             },
         ))
-        .buffer_unordered(2)
+        .buffer_unordered(buffer_size)
     }
 
     fn build_tip_inspector(
@@ -589,57 +591,21 @@ fn initialize_global_progress_bar(
 }
 
 #[cfg(feature = "sorella-server")]
-#[allow(unused)]
-fn calculate_buffer_size(
-    state_to_init: &StateToInitialize,
-    total_block_range: u64,
-    chunks: f64,
-) -> usize {
-    const TABLE_WEIGHTS: [(Tables, f64); 3] =
-        [(Tables::DexPrice, 0.2), (Tables::CexTrades, 0.5), (Tables::CexPrice, 1.0)];
-    const REFERENCE_BLOCK_RANGE: f64 = 4_921_227.0;
+fn calculate_buffer_size(state_to_init: &StateToInitialize, max_tasks: usize) -> usize {
+    if state_to_init.ranges_to_init.is_empty() {
+        return (max_tasks / 4).clamp(4, 30);
+    }
 
-    let table_ranges: Vec<(Tables, usize)> = TABLE_WEIGHTS
-        .iter()
-        .filter_map(|(table, _)| {
-            state_to_init.ranges_to_init.get(table).map(|ranges| {
-                let total_range: usize = ranges
-                    .iter()
-                    .map(|range| range.end() - range.start() + 1)
-                    .sum();
-                (*table, total_range)
-            })
-        })
-        .collect();
+    let initializing_cex = state_to_init.ranges_to_init.contains_key(&Tables::CexPrice)
+        || state_to_init
+            .ranges_to_init
+            .contains_key(&Tables::CexTrades);
 
-    let weighted_sum: f64 = table_ranges
-        .iter()
-        .map(|(table, range_size)| {
-            let weight = TABLE_WEIGHTS
-                .iter()
-                .find(|(t, _)| t == table)
-                .map(|(_, w)| w)
-                .unwrap();
-            *weight * (*range_size as f64 / REFERENCE_BLOCK_RANGE)
-        })
-        .sum();
-
-    // Normalize weighted_sum to be between 0 and 1
-    let normalized_weight =
-        (weighted_sum / TABLE_WEIGHTS.iter().map(|(_, w)| w).sum::<f64>()).min(1.0);
-
-    // Calculate buffer size
-    let buffer_size = chunks * (1.0 - normalized_weight);
-
-    // Adjust based on total range size relative to reference
-    let size_factor = (total_block_range as f64 / REFERENCE_BLOCK_RANGE).min(1.0);
-    let adjusted_buffer_size = buffer_size * (1.0 - size_factor * normalized_weight);
-
-    // Clamp the buffer size
-    let min_buffer = 10;
-    let max_buffer = 80;
-
-    (adjusted_buffer_size.round() as usize).clamp(min_buffer, max_buffer)
+    if initializing_cex {
+        4
+    } else {
+        (max_tasks / 10).clamp(4, 15)
+    }
 }
 
 pub struct Brontes {

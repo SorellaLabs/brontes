@@ -3,27 +3,26 @@ use brontes_database::{
     CompressedTable, IntoTableKey, Tables,
 };
 use brontes_libmdbx::RO;
-use brontes_types::init_threadpools;
+use brontes_types::init_thread_pools;
 use clap::Parser;
 use itertools::Itertools;
 use reth_interfaces::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]
 pub struct DatabaseQuery {
-    /// that table to query
+    /// Table to query
     #[arg(long, short)]
     pub table: Tables,
-    /// the key of the table being queried. if a range is wanted use the rust
-    /// syntax of ..
-    /// --key 80
-    /// or --key 80..100
+    /// Key for table query. Use Rust range syntax for ranges:
+    /// --key 80 (single key)
+    /// --key 80..100 (range)
     #[arg(long, short)]
     pub key:   String,
 }
 
 impl DatabaseQuery {
     pub async fn execute(self, brontes_db_endpoint: String) -> eyre::Result<()> {
-        init_threadpools(10);
+        init_thread_pools(10);
         let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
 
         db.view_db(|tx| {

@@ -1,6 +1,6 @@
 # brontes db init
 
-For a given range, will fetch all data from the api and insert it into libmdbx
+Fetch data from the api and insert it into libmdbx
 
 ```bash
 $ brontes db init --help
@@ -11,23 +11,33 @@ Options:
           Initialize the local Libmdbx DB
 
   -t, --tables-to-init <TABLES_TO_INIT>
-          Libmdbx tables to init: TokenDecimals AddressToTokens AddressToProtocol CexPrice Metadata PoolState DexPrice CexTrades
+          Libmdbx tables to initialize: TokenDecimals AddressToTokens AddressToProtocol CexPrice Metadata PoolState DexPrice CexTrades
 
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 
-      --trades-tw-before <CEX_TIME_WINDOW_BEFORE>
-          The sliding time window (BEFORE) for cex trades relative to the block timestamp
+      --price-tw-before <QUOTES_TIME_WINDOW_BEFORE>
+          The sliding time window (BEFORE) for cex quotes relative to the block time
           
-          [default: 0.5]
+          [default: 3]
 
-      --trades-tw-after <CEX_TIME_WINDOW_AFTER>
-          The sliding time window (AFTER) for cex trades relative to the block timestamp
+      --price-tw-after <QUOTES_TIME_WINDOW_AFTER>
+          The sliding time window (AFTER) for cex quotes relative to the block time
           
-          [default: 2.0]
+          [default: 3]
+
+      --trades-tw-before <TRADES_TIME_WINDOW_BEFORE>
+          The sliding time window (BEFORE) for cex trades relative to the block number
+          
+          [default: 3]
+
+      --trades-tw-after <TRADES_TIME_WINDOW_AFTER>
+          The sliding time window (AFTER) for cex trades relative to the block number
+          
+          [default: 3]
 
   -c, --cex-exchanges <CEX_EXCHANGES>
-          Centralized exchanges to consider for cex-dex inspector
+          Centralized exchanges that the cex-dex inspector will consider
           
           [default: Binance,Coinbase,Okex,BybitSpot,Kucoin]
 

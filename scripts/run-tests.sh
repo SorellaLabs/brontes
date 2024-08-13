@@ -3,12 +3,11 @@
 setup() {
   if rustup default nightly; then : ; else return 1; fi
   
-  git checkout "$1"
-  echo "setting up db at /home/data/brontes-ci/$2"
-  mkdir -p "/home/data/brontes-ci/$2"
+  echo "setting up db at /home/brontes-ci/data/$2"
+  mkdir -p "/home/brontes-ci/data/$2"
   if cp /home/brontes-ci/.env .env; then :; else return 1;fi
-  echo "BRONTES_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
-  echo "BRONTES_TEST_DB_PATH='/home/data/brontes-ci/$2'" >> .env 
+  echo "BRONTES_DB_PATH='/home/brontes-ci/data/$2'" >> .env 
+  echo "BRONTES_TEST_DB_PATH='/home/brontes-ci/data$2'" >> .env 
   echo "updated .env"
 }
 
@@ -20,9 +19,9 @@ teardown() {
     exit 1;
   fi 
 
-  echo "deleting db /home/data/brontes-ci/$1"
+  echo "deleting db /home/brontes-ci/data/$1"
   # delete db
-  rm -rf "/home/data/brontes-ci/$1"
+  rm -rf "/home/brontes-ci/data/$1"
   echo "deleting folder /home/brontes-ci/$1"
   # delete folder
   rm -rf "/home/brontes-ci/$1"

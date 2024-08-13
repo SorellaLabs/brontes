@@ -15,16 +15,16 @@ use crate::{
 /// downloads a range of data from clickhouse
 #[derive(Debug, Parser)]
 pub struct ClickhouseDownload {
-    /// start block
+    /// Start block
     #[arg(long, short)]
     pub start_block: u64,
-    /// end block
+    /// End block
     #[arg(long, short)]
     pub end_block:   u64,
-    /// table to download
+    /// Table to download
     #[arg(short, long)]
     pub table:       brontes_database::Tables,
-    /// clears the table before downloading
+    /// Clear the table before downloading
     #[arg(short, long, default_value = "false")]
     pub clear_table: bool,
 }
@@ -50,7 +50,7 @@ impl ClickhouseDownload {
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
         debug!(target: "brontes::db::clickhouse-download", "made libmdbx");
         let cex_config = CexDownloadConfig::default();
-        let clickhouse = static_object(load_clickhouse(cex_config).await?);
+        let clickhouse = static_object(load_clickhouse(cex_config, None).await?);
         debug!(target: "brontes::db::clickhouse-download", "made clickhouse");
 
         let tracer = Arc::new(get_tracing_provider(

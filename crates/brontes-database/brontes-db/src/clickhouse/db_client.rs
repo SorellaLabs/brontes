@@ -72,16 +72,24 @@ impl Clickhouse {
         cex_download_config: CexDownloadConfig,
         buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
         tip: bool,
+        run_id: Option<u64>,
     ) -> Self {
         let client = config.build();
         let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0 };
-        this.run_id = this.get_and_inc_run_id().await.unwrap_or_default();
 
+        this.run_id = if let Some(run_id) = run_id {
+            run_id
+        } else {
+            this.get_and_inc_run_id()
+                .await
+                .expect("failed to set run_id")
+        };
         this
     }
 
-    pub async fn new_default() -> Self {
-        Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false).await
+    pub async fn new_default(run_id: Option<u64>) -> Self {
+        Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false, run_id)
+            .await
     }
 
     pub fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
@@ -781,7 +789,7 @@ mod tests {
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
-        init_threadpools,
+        init_thread_pools,
         mev::{
             ArbDetails, AtomicArb, BundleHeader, CexDex, CexDexQuote, JitLiquidity,
             JitLiquiditySandwich, Liquidation, OptimisticTrade, PossibleMev, PossibleMevCollection,
@@ -803,7 +811,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_block_info_query() {
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
+        let test_db = ClickhouseTestClient { client: Clickhouse::new_default(None).await.client };
         let _ = test_db
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
@@ -1093,8 +1101,8 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_all_inserts() {
-        init_threadpools(10);
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default().await.client };
+        init_thread_pools(10);
+        let test_db = ClickhouseTestClient { client: Clickhouse::new_default(None).await.client };
 
         let tables = &BrontesClickhouseTables::all_tables();
         test_db

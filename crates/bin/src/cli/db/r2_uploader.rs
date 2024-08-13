@@ -10,10 +10,13 @@ use crate::runner::CliContext;
 
 #[derive(Debug, Parser)]
 pub struct R2Uploader {
+    /// R2 Config Name
     #[clap(short, long)]
     r2_config_name:      String,
+    /// Start Block
     #[clap(short, long)]
     start_block:         Option<u64>,
+    /// Path to db partition folder
     #[clap(short, long, default_value = "/home/data/brontes-db-partitions/")]
     partition_db_folder: PathBuf,
 }
