@@ -12,8 +12,8 @@ use brontes_types::{
         cex::{quotes::CexPriceMap, trades::CexTradeMap},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DATA_NOT_PRESENT_NOT_AVAILABLE,
-            DATA_NOT_PRESENT_UNKNOWN, DATA_PRESENT, DEX_PRICE_FLAG, META_FLAG,
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DATA_NOT_PRESENT_UNKNOWN,
+            DATA_PRESENT, DEX_PRICE_FLAG, META_FLAG,
         },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         mev_block::MevBlockWithClassified,
