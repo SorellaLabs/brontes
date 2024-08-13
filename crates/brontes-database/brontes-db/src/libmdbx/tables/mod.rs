@@ -820,7 +820,7 @@ compressed_table!(
             compressed_value: BlockMetadataInnerRedefined
         },
         Init {
-            init_size: Some(1000),
+            init_size: Some(250),
             init_method: Clickhouse,
             http_endpoint: Some("block-info"),
                 init_flag: Some(META_FLAG)
