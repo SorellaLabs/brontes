@@ -48,8 +48,8 @@ impl CexQuotesConverter {
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
+            .map(|((ex, pair),c) | {tracing::info!(ex=?ex, ?pair); ((ex,pair),c))
             .collect::<FastHashMap<_, _>>();
-        tracing::info!(?symbols);
 
         //TODO: Joe are you sure this won't filter out a bunch of quotes we should acc
         // be storing?
