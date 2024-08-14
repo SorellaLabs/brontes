@@ -60,7 +60,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(|b| CexBlockTimes::add_time_window(b, (0.0, 301.0)))
+                .map(|b| CexBlockTimes::add_time_window(b, (301.0, 301.0)))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
@@ -97,11 +97,8 @@ impl CexQuotesConverter {
         exchange_map
             .into_iter()
             .map(|(exch, quote_indices)| {
-                let mut exchange_pair_index_map: std::collections::HashMap<
-                    Pair,
-                    Vec<usize>,
-                    ahash::RandomState,
-                > = FastHashMap::default();
+                let mut exchange_pair_index_map: FastHashMap<Pair, Vec<usize>> =
+                    FastHashMap::default();
 
                 quote_indices.into_iter().for_each(|index| {
                     let quote = &self.quotes[index];
@@ -124,17 +121,18 @@ impl CexQuotesConverter {
             .collect::<FastHashMap<_, _>>()
     }
 
-    pub fn process_best_cex_venues(&self) -> FastHashMap<Pair, CexExchange> {
+    pub fn process_best_cex_venues(&self) -> FastHashMap<Pair, Vec<CexExchange>> {
         self.best_cex_per_pair
             .iter()
             .filter_map(|pair_ex| {
-                let symbol = self
-                    .symbols
-                    .get(&(pair_ex.exchange, pair_ex.symbol.clone()))?;
+                let symbol = pair_ex
+                    .exchange
+                    .iter()
+                    .find_map(|exchange| self.symbols.get(&(*exchange, pair_ex.symbol.clone())))?;
 
                 let pair = correct_usdc_address(&symbol.address_pair);
 
-                Some((pair, pair_ex.exchange))
+                Some((pair, pair_ex.clone().exchange))
             })
             .collect()
     }
@@ -199,7 +197,7 @@ impl CexQuotesConverter {
             if block.contains_time(timestamp) {
                 matching_blocks.push((block.block_number, block.precise_timestamp));
             } else {
-                break;
+                break
             }
         }
 
@@ -215,7 +213,7 @@ impl CexQuotesConverter {
             .into_par_iter()
             .filter_map(|(pair, quotes_indices)| {
                 if quotes_indices.is_empty() {
-                    return None;
+                    return None
                 }
 
                 let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len() + 2);

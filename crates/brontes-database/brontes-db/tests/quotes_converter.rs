@@ -11,18 +11,6 @@ use brontes_types::{
     pair::Pair,
 };
 use malachite::Rational;
-use tokio::runtime::Runtime;
-
-fn setup_runtime_and_client() -> (Runtime, Clickhouse) {
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    let client = rt.block_on(Clickhouse::new_default(None));
-
-    (rt, client)
-}
 
 async fn fetch_test_data(
     client: &Clickhouse,
@@ -41,12 +29,12 @@ async fn fetch_test_data(
     Ok((block_times, symbols, raw_quotes, symbol_rank))
 }
 
-#[test]
-fn test_cex_quote_conversion() {
-    let (rt, client) = setup_runtime_and_client();
+#[brontes_macros::test]
+async fn test_cex_quote_conversion() {
+    let client = Clickhouse::new_default(None).await;
     let range = CexRangeOrArbitrary::Range(18264694, 18264795);
     let (block_times, symbols, quotes, best_cex_per_pair) =
-        rt.block_on(async { fetch_test_data(&client, range).await.unwrap() });
+        fetch_test_data(&client, range).await.unwrap();
 
     let converter = CexQuotesConverter::new(block_times, symbols, quotes, best_cex_per_pair);
     let price_map = converter.convert_to_prices();
