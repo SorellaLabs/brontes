@@ -446,7 +446,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         info: &TxInfo,
         metadata: &Metadata,
     ) -> Option<(f64, BundleData)> {
-        tracing::info!(?possible_cex_dex, "filter time: {:#?}",metadata.cex_quotes);
+        tracing::info!(?possible_cex_dex, "filter time");
         let is_cex_dex_bot_with_significant_activity =
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexQuotes);
