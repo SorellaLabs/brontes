@@ -121,7 +121,7 @@ impl CexPriceMap {
         timestamp: u64,
         max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
-        tracing::info!(?pair, "getting quote at");
+        tracing::info!(?pair, ?exchange, "getting quote at");
         self.get_exchange_quote_at_direct(pair, exchange, timestamp, max_time_diff)
             .or_else(|| {
                 self.get_exchange_quote_at_via_intermediary(
@@ -141,7 +141,7 @@ impl CexPriceMap {
         max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
-            return Some(FeeAdjustedQuote::default_one_to_one());
+            return Some(FeeAdjustedQuote::default_one_to_one())
         }
 
         self.quotes
@@ -158,7 +158,7 @@ impl CexPriceMap {
             })
             .and_then(|(adjusted_quotes, direction)| {
                 if adjusted_quotes.is_empty() {
-                    return None;
+                    return None
                 }
 
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
@@ -173,7 +173,7 @@ impl CexPriceMap {
                 let max_allowed_diff = max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
 
                 if time_diff > max_allowed_diff {
-                    return None;
+                    return None
                 }
 
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
@@ -231,7 +231,7 @@ impl CexPriceMap {
                     );
 
                     if quote2.price_maker.0 == Rational::ZERO {
-                        return None;
+                        return None
                     }
 
                     let normalized_bbo_amount: (Rational, Rational) = (
@@ -277,7 +277,7 @@ impl CexPriceMap {
     ///   price is reciprocated to match the requested pair ordering.
     pub fn get_vm_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
-            return Some(FeeAdjustedQuote::default_one_to_one());
+            return Some(FeeAdjustedQuote::default_one_to_one())
         }
 
         self.quotes
