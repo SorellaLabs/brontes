@@ -146,7 +146,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
-        max_time_diff: Option<u64>,
+        _max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
             return Some(FeeAdjustedQuote::default_one_to_one())
@@ -171,19 +171,21 @@ impl CexPriceMap {
 
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
 
+                // closest quote will be the last updated quote.
                 let closest_quote = adjusted_quotes
                     .get(index.saturating_sub(1))
                     .into_iter()
                     .chain(adjusted_quotes.get(index))
-                    .min_by_key(|&quote| (quote.timestamp as i64 - timestamp as i64).abs())?;
+                    .min_by_key(|&quote| (timestamp as i64 - quote.timestamp as i64))?;
 
-                let time_diff = (closest_quote.timestamp as i64 - timestamp as i64).unsigned_abs();
-                let max_allowed_diff = max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
-
-                if time_diff > max_allowed_diff {
-                    tracing::debug!(?time_diff, ?max_allowed_diff, ?pair, ?exchange);
-                    return None
-                }
+                // let time_diff = (closest_quote.timestamp as i64 - timestamp as
+                // i64).unsigned_abs(); let max_allowed_diff =
+                // max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
+                //
+                // if time_diff > max_allowed_diff {
+                //     tracing::debug!(?time_diff, ?max_allowed_diff, ?pair, ?exchange);
+                //     return None
+                // }
 
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
 
