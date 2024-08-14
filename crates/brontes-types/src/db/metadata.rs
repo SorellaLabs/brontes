@@ -71,7 +71,7 @@ impl Metadata {
             pairs.keys().for_each(|key| {
                 let Ok(token0) = db.try_fetch_token_info(key.0).map(|s| s.symbol.clone()) else { return };
                 let Ok(token1) = db.try_fetch_token_info(key.1).map(|s| s.symbol.clone()) else { return };
-                if &token0 == "WETH" || &token1 == "USDT" {
+                if &token0 == "WETH" && &token1 == "USDT" {
                 tracing::info!(?exchange, "{}-{} in quotes", token0, token1);
                 }
             });
