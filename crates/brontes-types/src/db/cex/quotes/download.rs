@@ -61,7 +61,7 @@ impl CexQuotesConverter {
         let quotes = quotes
             .into_iter()
             .filter(|quote| {
-                let res = symbols.contains_key(&(quote.exchange, quote.symbol.clone()))
+                let res = symbols.contains_key(&(quote.exchange, quote.symbol.clone()));
                 if quote.symbol == "ETHUSDT" {
                     tracing::info!(?res, "have eth");
                 }
