@@ -51,7 +51,7 @@ const MAX_TIME_DIFFERENCE: u64 = 1_000_000;
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap {
     pub quotes:         FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
-    pub most_liquid_ex: FastHashMap<Pair, CexExchange>,
+    pub most_liquid_ex: FastHashMap<Pair, Vec<CexExchange>>,
 }
 
 #[derive(

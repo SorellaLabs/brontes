@@ -121,13 +121,14 @@ impl CexQuotesConverter {
             .collect::<FastHashMap<_, _>>()
     }
 
-    pub fn process_best_cex_venues(&self) -> FastHashMap<Pair, CexExchange> {
+    pub fn process_best_cex_venues(&self) -> FastHashMap<Pair, Vec<CexExchange>> {
         self.best_cex_per_pair
             .iter()
             .filter_map(|pair_ex| {
-                let symbol = self
-                    .symbols
-                    .get(&(pair_ex.exchange, pair_ex.symbol.clone()))?;
+                let symbol = pair_ex
+                    .exchange
+                    .iter()
+                    .find_map(|exchange| self.symbols.get(&(*exchange, pair_ex.symbol.clone())))?;
 
                 let pair = correct_usdc_address(&symbol.address_pair);
 
