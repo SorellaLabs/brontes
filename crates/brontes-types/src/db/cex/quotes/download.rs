@@ -60,7 +60,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(|b| CexBlockTimes::add_time_window(b, (0.0, 300.0)))
+                .map(|b| CexBlockTimes::add_time_window(b, (0.0, 301.0)))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
@@ -258,11 +258,26 @@ impl CexQuotesConverter {
                     result.push(closest_quote.clone().into());
                 }
 
-                result.push(
-                    self.quotes[quotes_indices[quotes_indices.len() - 1]]
-                        .clone()
-                        .into(),
-                );
+                if quotes_indices.len() > 2 {
+                    let target_time = block_time as i128 + (300 * 1_000_000);
+                    let penultimate_quote = &self.quotes[quotes_indices[quotes_indices.len() - 2]];
+                    let last_quote = &self.quotes[quotes_indices[quotes_indices.len() - 1]];
+
+                    let penultimate_diff =
+                        (target_time - penultimate_quote.timestamp as i128).abs();
+                    let last_diff = (target_time - last_quote.timestamp as i128).abs();
+
+                    let closest_quote =
+                        if penultimate_diff <= last_diff { penultimate_quote } else { last_quote };
+
+                    result.push(closest_quote.clone().into());
+                } else {
+                    result.push(
+                        self.quotes[quotes_indices[quotes_indices.len() - 1]]
+                            .clone()
+                            .into(),
+                    );
+                }
 
                 Some((pair, result))
             })

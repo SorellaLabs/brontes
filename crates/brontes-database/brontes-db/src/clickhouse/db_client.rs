@@ -55,7 +55,7 @@ use crate::{
 };
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
-const MAX_MARKOUT_TIME: f64 = 300.0;
+const MAX_MARKOUT_TIME: f64 = 300.5;
 
 #[derive(Clone)]
 pub struct Clickhouse {
