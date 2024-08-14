@@ -55,7 +55,7 @@ fn test_cex_quote_conversion() {
 
     let test_block = &price_map
         .iter()
-        .find(|(block, _)| block == &18264795)
+        .find(|(block, _)| block == &18264694)
         .unwrap()
         .1;
 
@@ -68,6 +68,9 @@ fn test_cex_quote_conversion() {
         .clone();
 
     assert_eq!(cex_quotes, test_quotes);
+
+    let expected_length = 18264795 - 18264694 + 1;
+    assert_eq!(cex_quotes.len(), expected_length)
 }
 
 fn create_test_cex_quotes() -> Vec<CexQuote> {
