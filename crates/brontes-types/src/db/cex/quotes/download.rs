@@ -132,7 +132,7 @@ impl CexQuotesConverter {
 
                 let pair = correct_usdc_address(&symbol.address_pair);
 
-                Some((pair, pair_ex.exchange))
+                Some((pair, pair_ex.clone().exchange))
             })
             .collect()
     }

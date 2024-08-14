@@ -67,13 +67,13 @@ pub struct CexPriceMap {
 )]
 pub struct CexPriceMapRedefined {
     pub map:            Vec<(CexExchange, FastHashMap<PairRedefined, Vec<CexQuoteRedefined>>)>,
-    pub most_liquid_ex: Vec<(PairRedefined, CexExchange)>,
+    pub most_liquid_ex: Vec<(PairRedefined, Vec<CexExchange>)>,
 }
 
 impl CexPriceMapRedefined {
     fn new(
         map: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
-        most_liquid_ex: FastHashMap<Pair, CexExchange>,
+        most_liquid_ex: FastHashMap<Pair, Vec<CexExchange>>,
     ) -> Self {
         Self {
             map:            map
@@ -112,7 +112,15 @@ impl CexPriceMap {
         self.most_liquid_ex
             .get(pair)
             .or_else(|| self.most_liquid_ex.get(&pair.flip()))
-            .and_then(|exchange| self.get_quote_at(pair, exchange, timestamp, max_time_diff))
+            .and_then(|exchanges| {
+                for exchange in exchanges {
+                    let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
+                    if res.is_some() {
+                        return res
+                    }
+                }
+                None
+            })
     }
 
     pub fn get_quote_at(
