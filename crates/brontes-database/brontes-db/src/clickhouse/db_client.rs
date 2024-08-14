@@ -400,6 +400,7 @@ impl ClickhouseHandle for Clickhouse {
                 self.client.query_many(query, &()).await?
             }
         };
+        tracing::info!("block times not boom");
 
         if block_times.is_empty() {
             tracing::error!(?range_or_arbitrary, "no block times found");
