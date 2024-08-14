@@ -60,13 +60,7 @@ impl CexQuotesConverter {
         // be storing?
         let quotes = quotes
             .into_iter()
-            .filter(|quote| {
-                let res = symbols.contains_key(&(quote.exchange, quote.symbol.clone()));
-                if quote.symbol == "ETHUSDT" {
-                    tracing::info!(?res, "have eth");
-                }
-                res
-            })
+            .filter(|quote| symbols.contains_key(&(quote.exchange, quote.symbol.clone())))
             .collect();
 
         Self {
@@ -85,6 +79,9 @@ impl CexQuotesConverter {
         let block_num_map_with_pairs = self.create_block_num_map_with_pairs();
 
         let most_liquid_exchange_for_pair = &self.process_best_cex_venues();
+        for v in most_liquid_exchange_for_pair.keys() {
+            tracing::info!(?v);
+        }
 
         block_num_map_with_pairs
             .into_par_iter()
