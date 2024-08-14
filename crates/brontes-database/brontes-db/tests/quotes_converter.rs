@@ -137,14 +137,14 @@ fn create_test_cex_quotes() -> Vec<CexQuote> {
         },
         CexQuote {
             exchange:  CexExchange::Binance,
-            timestamp: 1696272262921000,
+            timestamp: 1696272263021000,
             price:     (
                 Rational::try_from_float_simplest(1654.46).unwrap(),
                 Rational::try_from_float_simplest(1654.47).unwrap(),
             ),
             amount:    (
-                Rational::try_from_float_simplest(0.446).unwrap(),
-                Rational::try_from_float_simplest(24.8339).unwrap(),
+                Rational::try_from_float_simplest(1.8037).unwrap(),
+                Rational::try_from_float_simplest(10.8511).unwrap(),
             ),
         },
     ]

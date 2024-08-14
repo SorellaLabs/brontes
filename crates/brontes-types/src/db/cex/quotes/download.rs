@@ -258,7 +258,7 @@ impl CexQuotesConverter {
                     result.push(closest_quote.clone().into());
                 }
 
-                if quotes_indices.len() > 2 {
+                if quotes_indices.len() >= 2 {
                     let target_time = block_time as i128 + (300 * 1_000_000);
                     let penultimate_quote = &self.quotes[quotes_indices[quotes_indices.len() - 2]];
                     let last_quote = &self.quotes[quotes_indices[quotes_indices.len() - 1]];
