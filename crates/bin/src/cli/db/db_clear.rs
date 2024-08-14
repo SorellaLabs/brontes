@@ -1,6 +1,6 @@
 use brontes_database::{libmdbx::Libmdbx, InitializedState, InitializedStateData, Tables};
 use brontes_types::db::initialized_state::{
-    CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
+    CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG,
 };
 use clap::Parser;
 
@@ -93,7 +93,6 @@ impl Clear {
                         key.apply_reset_key(CEX_TRADES_FLAG);
                     }
 
-                    key.apply_reset_key(SKIP_FLAG);
                     updated_res.push(InitializedStateData::new(item.0, item.1));
                 }
                 db.write_table(&updated_res)?;
