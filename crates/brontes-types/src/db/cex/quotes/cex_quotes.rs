@@ -121,6 +121,7 @@ impl CexPriceMap {
         timestamp: u64,
         max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
+        tracing::info!(?pair, "getting quote at");
         self.get_exchange_quote_at_direct(pair, exchange, timestamp, max_time_diff)
             .or_else(|| {
                 self.get_exchange_quote_at_via_intermediary(

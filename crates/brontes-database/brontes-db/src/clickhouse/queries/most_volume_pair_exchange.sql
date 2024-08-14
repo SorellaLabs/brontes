@@ -2,7 +2,7 @@ WITH ranked_symbols AS
     (
         SELECT
             month,
-            symbol,
+            upper(replaceAll(replaceAll(replaceAll(symbol, '/', ''), '-', ''), '_', '')) AS symbol,
             exchange,
             ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY sum_volume DESC) AS rn
         FROM cex.trading_volume_by_month
