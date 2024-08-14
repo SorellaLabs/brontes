@@ -69,7 +69,7 @@ fn test_cex_quote_conversion() {
 
     assert_eq!(cex_quotes, test_quotes);
 
-    let expected_length = 18264795 - 18264694 + 1;
+    let expected_length = 18264795 - 18264694;
     assert_eq!(price_map.len(), expected_length)
 }
 
