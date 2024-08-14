@@ -124,6 +124,7 @@ impl CexPriceMap {
         tracing::info!(?pair, ?exchange, "getting quote at");
         self.get_exchange_quote_at_direct(pair, exchange, timestamp, max_time_diff)
             .or_else(|| {
+                tracing::info!("trying inter");
                 self.get_exchange_quote_at_via_intermediary(
                     pair,
                     exchange,
