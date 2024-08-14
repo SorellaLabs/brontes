@@ -176,6 +176,7 @@ impl CexPriceMap {
                 let max_allowed_diff = max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
 
                 if time_diff > max_allowed_diff {
+                    tracing::info!(?time_diff, ?max_allowed_diff);
                     return None
                 }
 
