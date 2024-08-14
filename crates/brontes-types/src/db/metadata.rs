@@ -10,6 +10,7 @@ use super::{
     builder::BuilderInfo,
     cex::{quotes::CexPriceMap, trades::CexTradeMap},
     dex::DexQuotes,
+    traits::LibmdbxReader,
 };
 use crate::{
     constants::WETH_ADDRESS,
@@ -65,6 +66,16 @@ pub struct Metadata {
 }
 
 impl Metadata {
+    pub fn display_pairs_quotes<DB: LibmdbxReader>(&self, db: DB) {
+        self.cex_quotes.quotes.iter().for_each(|(exchange, pairs)| {
+            pairs.keys().for_each(|key| {
+                let token0 = db.try_fetch_token_info(key.0).unwrap().symbol.clone();
+                let token1 = db.try_fetch_token_info(key.1).unwrap().symbol.clone();
+                tracing::info!(?exchange, "{}-{} in quotes", token0, token1);
+            });
+        });
+    }
+
     pub fn get_gas_price_usd(&self, gas_used: u128, quote_token: Address) -> Rational {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
         let eth_price = self.get_eth_price(quote_token);
