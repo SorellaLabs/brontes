@@ -450,7 +450,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexQuotes);
 
-        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 5.0;
+        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 1.5;
 
         let should_include_if_know_cex_dex = possible_cex_dex.pnl.aggregate_pnl > 0.0;
 
