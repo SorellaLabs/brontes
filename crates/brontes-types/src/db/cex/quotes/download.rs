@@ -70,6 +70,14 @@ impl CexQuotesConverter {
     }
 
     pub fn convert_to_prices(self) -> Vec<(u64, CexPriceMap)> {
+        // self.block_times.len()
+        tracing::info!(
+            symbol_count = self.symbols.len(),
+            block_times = self.block_times.len(),
+            quotes = self.quotes.len(),
+            "price download"
+        );
+
         let block_num_map_with_pairs = self.create_block_num_map_with_pairs();
 
         let most_liquid_exchange_for_pair = &self.process_best_cex_venues();
@@ -199,7 +207,7 @@ impl CexQuotesConverter {
             if block.contains_time(timestamp) {
                 matching_blocks.push((block.block_number, block.precise_timestamp));
             } else {
-                break;
+                break
             }
         }
 
@@ -215,7 +223,7 @@ impl CexQuotesConverter {
             .into_par_iter()
             .filter_map(|(pair, quotes_indices)| {
                 if quotes_indices.is_empty() {
-                    return None;
+                    return None
                 }
 
                 let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len() + 2);

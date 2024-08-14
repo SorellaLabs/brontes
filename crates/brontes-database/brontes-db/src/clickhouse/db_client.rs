@@ -401,6 +401,7 @@ impl ClickhouseHandle for Clickhouse {
         };
 
         if block_times.is_empty() {
+            tracing::error!(?range_or_arbitrary, "no block times found");
             return Ok(vec![])
         }
 
