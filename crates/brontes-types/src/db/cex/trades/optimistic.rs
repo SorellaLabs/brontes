@@ -1,6 +1,5 @@
 use std::{
     cmp::{max, min},
-    f64::consts::E,
     fmt::Display,
     ops::Mul,
 };
@@ -283,7 +282,6 @@ impl<'a> SortedTrades<'a> {
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
         let mut trade_volume = Rational::ZERO;
-        let mut trade_volume_weight = Rational::ZERO;
 
         let mut optimistic_trades = Vec::with_capacity(trades_used.len());
 
@@ -291,13 +289,10 @@ impl<'a> SortedTrades<'a> {
         let mut global_end_time = 0;
 
         for trade in trades_used {
-            let weight = calculate_weight(block_timestamp, trade.timestamp);
-
             let (m_fee, t_fee) = trade.exchange.fees();
 
-            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
-            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;
-            trade_volume_weight += &trade.amount * &weight;
+            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount;
+            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount;
             trade_volume += &trade.amount;
 
             optimistic_trades.push(OptimisticTrade {
@@ -324,8 +319,8 @@ impl<'a> SortedTrades<'a> {
         }
 
         let global = ExchangePath {
-            price_maker:      vxp_maker / &trade_volume_weight,
-            price_taker:      vxp_taker / &trade_volume_weight,
+            price_maker:      vxp_maker / &trade_volume,
+            price_taker:      vxp_taker / &trade_volume,
             volume:           trade_volume,
             final_start_time: global_start_time,
             final_end_time:   global_end_time,
@@ -379,48 +374,4 @@ pub struct OptimisticTradeData {
     pub indices:   (usize, usize),
     pub trades:    Vec<CexTrades>,
     pub direction: Direction,
-}
-
-const PRE_DECAY: f64 = -0.0000003;
-const POST_DECAY: f64 = -0.00000012;
-
-/// Calculates the weight for a trade using a bi-exponential decay function
-/// based on its timestamp relative to a block time.
-///
-/// This function is designed to account for the risk associated with the timing
-/// of trades in relation to block times in the context of cex-dex
-/// arbitrage. This assumption underpins our pricing model: trades that
-/// occur further from the block time are presumed to carry higher uncertainty
-/// and an increased risk of adverse market conditions potentially impacting
-/// arbitrage outcomes. Accordingly, the decay rates (`PRE_DECAY` for pre-block
-/// and `POST_DECAY` for post-block) adjust the weight assigned to each trade
-/// based on its temporal proximity to the block time.
-///
-/// Trades after the block are assumed to be generally preferred by arbitrageurs
-/// as they have confirmation that their DEX swap is executed. However, this
-/// preference can vary for less competitive pairs where the opportunity and
-/// timing of execution might differ.
-///
-/// # Parameters
-/// - `block_time`: The timestamp of the block as seen first on the peer-to-peer
-///   network.
-/// - `trade_time`: The timestamp of the trade to be weighted.
-///
-/// # Returns
-/// Returns a `Rational` representing the calculated weight for the trade. The
-/// weight is determined by:
-/// - `exp(-PRE_DECAY * (block_time - trade_time))` for trades before the block
-///   time.
-/// - `exp(-POST_DECAY * (trade_time - block_time))` for trades after the block
-///   time.
-
-fn calculate_weight(block_time: u64, trade_time: u64) -> Rational {
-    let pre = trade_time < block_time;
-
-    Rational::try_from_float_simplest(if pre {
-        E.powf(PRE_DECAY * (block_time - trade_time) as f64)
-    } else {
-        E.powf(POST_DECAY * (trade_time - block_time) as f64)
-    })
-    .unwrap()
 }
