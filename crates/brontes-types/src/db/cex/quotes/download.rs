@@ -193,7 +193,7 @@ impl CexQuotesConverter {
                 .unwrap_or(self.block_times.len())
         };
 
-        let end_idx = len.min(start_idx + 26);
+        let end_idx = len.min(start_idx + 27);
 
         for block in &self.block_times[start_idx..end_idx] {
             if block.contains_time(timestamp) {

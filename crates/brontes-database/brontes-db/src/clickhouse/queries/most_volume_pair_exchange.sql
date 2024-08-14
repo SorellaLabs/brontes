@@ -14,3 +14,4 @@ SELECT
     toUnixTimestamp(month) * 1000000 AS timestamp
 FROM ranked_symbols
 WHERE rn = 1
+ORDER BY timestamp
