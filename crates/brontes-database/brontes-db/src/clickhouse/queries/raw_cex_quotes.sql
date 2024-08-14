@@ -3,7 +3,7 @@ WITH
         SELECT
             c.exchange as exchange,
             upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) AS symbol,
-            toUnixTimestamp(toDateTime(c.timestamp / 1000000, 'UTC')) * 1000000 AS timestamp_sec,
+            toUnixTimestamp(toDateTime(round(c.timestamp / 1000000), 'UTC')) * 1000000 AS timestamp_sec,
             argMin(c.timestamp, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as timestamp,
             argMin(c.ask_amount, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as ask_amount,
             argMin(c.ask_price, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as ask_price,
@@ -22,4 +22,4 @@ SELECT
     bid_price,
     bid_amount
 FROM grouped_time
-ORDER BY timestamp 
+ORDER BY timestamp
