@@ -48,12 +48,6 @@ impl CexQuotesConverter {
         let symbols = symbols
             .into_iter()
             .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
-            .map(|((ex, pair), c)| {
-                if pair == "ETHUSDT" {
-                    tracing::info!(ex=?ex, ?pair);
-                }
-                ((ex, pair), c)
-            })
             .collect::<FastHashMap<_, _>>();
 
         //TODO: Joe are you sure this won't filter out a bunch of quotes we should acc
@@ -79,11 +73,6 @@ impl CexQuotesConverter {
         let block_num_map_with_pairs = self.create_block_num_map_with_pairs();
 
         let most_liquid_exchange_for_pair = &self.process_best_cex_venues();
-        for v in most_liquid_exchange_for_pair.keys() {
-            if *v == Pair(WETH_ADDRESS, USDT_ADDRESS) {
-                tracing::info!(?v);
-            }
-        }
 
         block_num_map_with_pairs
             .into_par_iter()
