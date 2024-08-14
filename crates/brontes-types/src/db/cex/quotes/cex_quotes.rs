@@ -159,6 +159,7 @@ impl CexPriceMap {
             })
             .and_then(|(adjusted_quotes, direction)| {
                 if adjusted_quotes.is_empty() {
+                    tracing::info!("no quotes");
                     return None
                 }
 
