@@ -55,7 +55,7 @@ use crate::{
 };
 
 const SECONDS_TO_US: f64 = 1_000_000.0;
-const MAX_MARKOUT_TIME: f64 = 300.5;
+const MAX_MARKOUT_TIME: f64 = 300.0;
 
 #[derive(Clone)]
 pub struct Clickhouse {
@@ -401,6 +401,7 @@ impl ClickhouseHandle for Clickhouse {
         };
 
         if block_times.is_empty() {
+            tracing::error!(?range_or_arbitrary, "no block times found");
             return Ok(vec![])
         }
 
@@ -429,7 +430,7 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - (1.0 * SECONDS_TO_US);
+                    - (MAX_MARKOUT_TIME * SECONDS_TO_US);
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
@@ -454,7 +455,10 @@ impl ClickhouseHandle for Clickhouse {
                 let query_mod = block_times
                     .iter()
                     .map(|b| {
-                        b.convert_to_timestamp_query(1.0 * SECONDS_TO_US, 300.0 * SECONDS_TO_US)
+                        b.convert_to_timestamp_query(
+                            MAX_MARKOUT_TIME * SECONDS_TO_US,
+                            MAX_MARKOUT_TIME * SECONDS_TO_US,
+                        )
                     })
                     .collect::<Vec<String>>()
                     .join(" OR ");

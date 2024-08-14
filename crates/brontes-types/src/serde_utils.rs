@@ -899,6 +899,35 @@ pub mod cex_exchange {
         Ok(CexExchange::from(d.as_str()))
     }
 }
+
+pub mod cex_exchange_vec {
+
+    use serde::{
+        de::{Deserialize, Deserializer},
+        ser::{Serialize, Serializer},
+    };
+
+    use crate::db::cex::CexExchange;
+
+    pub fn serialize<S: Serializer>(u: &[CexExchange], serializer: S) -> Result<S::Ok, S::Error> {
+        let st = u
+            .into_iter()
+            .map(|u| u.to_string())
+            .collect::<Vec<String>>();
+
+        st.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<CexExchange>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let d: Vec<String> = Deserialize::deserialize(deserializer)?;
+        Ok(d.into_iter()
+            .map(|d| CexExchange::from(d.as_str()))
+            .collect::<_>())
+    }
+}
 pub mod trade_type {
 
     use serde::{

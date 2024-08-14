@@ -60,7 +60,7 @@ impl CexQuotesConverter {
         Self {
             block_times: block_times
                 .into_iter()
-                .map(|b| CexBlockTimes::add_time_window(b, (0.0, 301.0)))
+                .map(|b| CexBlockTimes::add_time_window(b, (301.0, 301.0)))
                 .sorted_by_key(|b| b.start_timestamp)
                 .collect(),
             symbols,
@@ -97,11 +97,8 @@ impl CexQuotesConverter {
         exchange_map
             .into_iter()
             .map(|(exch, quote_indices)| {
-                let mut exchange_pair_index_map: std::collections::HashMap<
-                    Pair,
-                    Vec<usize>,
-                    ahash::RandomState,
-                > = FastHashMap::default();
+                let mut exchange_pair_index_map: FastHashMap<Pair, Vec<usize>> =
+                    FastHashMap::default();
 
                 quote_indices.into_iter().for_each(|index| {
                     let quote = &self.quotes[index];
