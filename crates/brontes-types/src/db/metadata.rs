@@ -66,7 +66,7 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    pub fn display_pairs_quotes<DB: LibmdbxReader>(&self, db: DB) {
+    pub fn display_pairs_quotes<DB: LibmdbxReader>(&self, db: &DB) {
         self.cex_quotes.quotes.iter().for_each(|(exchange, pairs)| {
             pairs.keys().for_each(|key| {
                 let token0 = db.try_fetch_token_info(key.0).unwrap().symbol.clone();
