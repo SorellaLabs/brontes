@@ -80,7 +80,7 @@ impl CexQuotesConverter {
 
         let most_liquid_exchange_for_pair = &self.process_best_cex_venues();
         for v in most_liquid_exchange_for_pair.keys() {
-            if v == Pair(WETH_ADDRESS, USDT_ADDRESS) {
+            if *v == Pair(WETH_ADDRESS, USDT_ADDRESS) {
                 tracing::info!(?v);
             }
         }
