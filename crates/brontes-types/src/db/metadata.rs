@@ -69,10 +69,14 @@ impl Metadata {
     pub fn display_pairs_quotes<DB: LibmdbxReader>(&self, db: &DB) {
         self.cex_quotes.quotes.iter().for_each(|(exchange, pairs)| {
             pairs.keys().for_each(|key| {
-                let Ok(token0) = db.try_fetch_token_info(key.0).map(|s| s.symbol.clone()) else { return };
-                let Ok(token1) = db.try_fetch_token_info(key.1).map(|s| s.symbol.clone()) else { return };
+                let Ok(token0) = db.try_fetch_token_info(key.0).map(|s| s.symbol.clone()) else {
+                    return
+                };
+                let Ok(token1) = db.try_fetch_token_info(key.1).map(|s| s.symbol.clone()) else {
+                    return
+                };
                 if &token0 == "WETH" && &token1 == "USDT" {
-                tracing::info!(?exchange, "{}-{} in quotes", token0, token1);
+                    tracing::info!(?exchange, "{}-{} in quotes", token0, token1);
                 }
             });
         });
@@ -132,7 +136,6 @@ pub struct BlockMetadata {
     /// Tx
     pub private_flow:           FastHashSet<TxHash>,
 }
-
 
 impl BlockMetadata {
     #[allow(clippy::too_many_arguments)]

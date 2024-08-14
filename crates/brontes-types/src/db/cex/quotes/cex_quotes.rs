@@ -122,10 +122,8 @@ impl CexPriceMap {
         timestamp: u64,
         max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
-        tracing::info!(?pair, ?exchange, "getting quote at");
         self.get_exchange_quote_at_direct(pair, exchange, timestamp, max_time_diff)
             .or_else(|| {
-                tracing::info!("trying inter");
                 self.get_exchange_quote_at_via_intermediary(
                     pair,
                     exchange,
@@ -149,7 +147,6 @@ impl CexPriceMap {
         self.quotes
             .get(exchange)
             .and_then(|quotes| {
-                tracing::info!("got quotes");
                 if let Some(exchange_quotes) = quotes.get(pair) {
                     Some((exchange_quotes, Direction::Sell))
                 } else {
@@ -161,7 +158,6 @@ impl CexPriceMap {
             })
             .and_then(|(adjusted_quotes, direction)| {
                 if adjusted_quotes.is_empty() {
-                    tracing::info!("no quotes");
                     return None
                 }
 
@@ -177,7 +173,7 @@ impl CexPriceMap {
                 let max_allowed_diff = max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
 
                 if time_diff > max_allowed_diff {
-                    tracing::info!(?time_diff, ?max_allowed_diff);
+                    tracing::debug!(?time_diff, ?max_allowed_diff, ?pair, ?exchange);
                     return None
                 }
 

@@ -163,8 +163,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        metadata.display_pairs_quotes(self.utils.db);
-
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
