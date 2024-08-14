@@ -49,6 +49,7 @@ impl CexQuotesConverter {
             .into_iter()
             .map(|c| ((c.exchange, c.symbol_pair.clone()), c))
             .collect::<FastHashMap<_, _>>();
+        tracing::info!(?symbols);
 
         //TODO: Joe are you sure this won't filter out a bunch of quotes we should acc
         // be storing?
@@ -199,7 +200,7 @@ impl CexQuotesConverter {
             if block.contains_time(timestamp) {
                 matching_blocks.push((block.block_number, block.precise_timestamp));
             } else {
-                break;
+                break
             }
         }
 
@@ -215,7 +216,7 @@ impl CexQuotesConverter {
             .into_par_iter()
             .filter_map(|(pair, quotes_indices)| {
                 if quotes_indices.is_empty() {
-                    return None;
+                    return None
                 }
 
                 let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len() + 2);

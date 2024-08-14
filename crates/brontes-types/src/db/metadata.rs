@@ -131,6 +131,7 @@ pub struct BlockMetadata {
     pub private_flow:           FastHashSet<TxHash>,
 }
 
+
 impl BlockMetadata {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
