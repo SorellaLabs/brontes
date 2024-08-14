@@ -369,6 +369,7 @@ impl ClickhouseHandle for Clickhouse {
         &self,
         range_or_arbitrary: CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<crate::CexPriceData>> {
+        tracing::info!("cex prices");
         let block_times: Vec<BlockTimes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(s, e) => {
                 debug!(
