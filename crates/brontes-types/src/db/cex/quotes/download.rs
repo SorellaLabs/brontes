@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use super::{CexPriceMap, CexQuote};
 use crate::{
-    constants::USDC_ADDRESS,
+    constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
     db::{
         block_times::{BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
@@ -80,7 +80,9 @@ impl CexQuotesConverter {
 
         let most_liquid_exchange_for_pair = &self.process_best_cex_venues();
         for v in most_liquid_exchange_for_pair.keys() {
-            tracing::info!(?v);
+            if v == Pair(WETH_ADDRESS, USDT_ADDRESS) {
+                tracing::info!(?v);
+            }
         }
 
         block_num_map_with_pairs
