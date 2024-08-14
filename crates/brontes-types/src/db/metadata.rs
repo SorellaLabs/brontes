@@ -69,8 +69,8 @@ impl Metadata {
     pub fn display_pairs_quotes<DB: LibmdbxReader>(&self, db: &DB) {
         self.cex_quotes.quotes.iter().for_each(|(exchange, pairs)| {
             pairs.keys().for_each(|key| {
-                let token0 = db.try_fetch_token_info(key.0).unwrap().symbol.clone();
-                let token1 = db.try_fetch_token_info(key.1).unwrap().symbol.clone();
+                let Ok(token0) = db.try_fetch_token_info(key.0).map(|s| s.symbol.clone()) else { return };
+                let Ok(token1) = db.try_fetch_token_info(key.1).map(|s| s.symbol.clone()) else { return };
                 tracing::info!(?exchange, "{}-{} in quotes", token0, token1);
             });
         });
