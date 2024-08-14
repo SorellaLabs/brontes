@@ -148,6 +148,7 @@ impl CexPriceMap {
         self.quotes
             .get(exchange)
             .and_then(|quotes| {
+                tracing::info!("got quotes");
                 if let Some(exchange_quotes) = quotes.get(pair) {
                     Some((exchange_quotes, Direction::Sell))
                 } else {
