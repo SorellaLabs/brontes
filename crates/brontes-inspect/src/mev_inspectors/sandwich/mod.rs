@@ -1346,7 +1346,7 @@ mod tests {
     /// This is a balancer sandwich
     #[brontes_macros::test]
     async fn test_sandwich_not_classified() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 5.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
