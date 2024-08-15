@@ -86,7 +86,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         let BlockData { metadata, tree } = block;
 
         if metadata.cex_trades.is_none() {
-            tracing::warn!("no cex trades for block");
+            tracing::warn!("no cex trades for block: {}", block.metadata.block_num);
             return vec![]
         }
 
