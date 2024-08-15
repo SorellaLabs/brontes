@@ -603,7 +603,7 @@ fn calculate_buffer_size(state_to_init: &StateToInitialize, max_tasks: usize) ->
             .contains_key(&Tables::CexTrades);
 
     if initializing_cex {
-        3
+        4
     } else {
         (max_tasks / 10).clamp(4, 15)
     }
