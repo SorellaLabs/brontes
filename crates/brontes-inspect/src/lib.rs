@@ -137,7 +137,7 @@ impl Inspectors {
                 quote_token,
                 db,
                 cex_exchanges,
-                trade_config.quotes_fetch_time,
+                trade_config.quote_offset_from_block_us,
                 metrics,
             )) as DynMevInspector,
             Self::Sandwich => {

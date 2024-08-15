@@ -33,9 +33,6 @@ use crate::{
 
 pub const BASE_EXECUTION_QUALITY: usize = 80;
 
-const PRE_SCALING_DIFF: u64 = 500_000;
-const TIME_STEP: u64 = 10_000;
-
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
 #[derive(Debug, Clone)]
@@ -247,23 +244,26 @@ impl<'a> SortedTrades<'a> {
 
         let trade_data = self.get_trades(pair, dex_swap, tx_hash)?;
 
-        let mut baskets_queue = TimeBasketQueue::new(trade_data, block_timestamp, quality_pct);
+        let mut baskets_queue =
+            TimeBasketQueue::new(trade_data, block_timestamp, quality_pct, &config);
 
         baskets_queue.construct_time_baskets();
 
         while baskets_queue.volume.lt(volume) {
-            if baskets_queue.get_min_time_delta(block_timestamp) >= config.optimistic_before_us
-                || baskets_queue.get_max_time_delta(block_timestamp) >= config.optimistic_after_us
+            if baskets_queue.get_min_time_delta(block_timestamp)
+                >= config.max_optimistic_pre_block_us
+                || baskets_queue.get_max_time_delta(block_timestamp)
+                    >= config.max_optimistic_post_block_us
             {
                 break
             }
 
             let min_expand = (baskets_queue.get_max_time_delta(block_timestamp)
-                >= PRE_SCALING_DIFF)
-                .then_some(TIME_STEP)
+                >= config.optimistic_scaling_diff_us)
+                .then_some(config.optimistic_time_step_us)
                 .unwrap_or_default();
 
-            baskets_queue.expand_time_bounds(min_expand, TIME_STEP);
+            baskets_queue.expand_time_bounds(min_expand, config.optimistic_time_step_us);
         }
 
         let mut trades_used: Vec<CexTrades> = Vec::new();

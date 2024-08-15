@@ -25,12 +25,6 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-const START_POST_TIME_US: u64 = 50_000;
-const START_PRE_TIME_US: u64 = 20_000;
-
-const PRE_SCALING_DIFF: u64 = 500_000;
-const TIME_STEP: u64 = 10_000;
-
 #[derive(Debug, Clone, Default)]
 pub struct ExchangePath {
     pub price_maker:      Rational,
@@ -263,8 +257,8 @@ impl<'a> TimeWindowTrades<'a> {
         let mut walker = PairTradeWalker::new(
             trade_data.trades,
             trade_data.indices,
-            block_timestamp - START_PRE_TIME_US,
-            block_timestamp + START_POST_TIME_US,
+            block_timestamp - config.initial_vwap_pre_block_us,
+            block_timestamp + config.initial_vwap_post_block_us,
         );
 
         let mut trade_volume_global = Rational::ZERO;
@@ -295,17 +289,18 @@ impl<'a> TimeWindowTrades<'a> {
                 *end_time = walker.max_timestamp;
             }
 
-            if walker.get_min_time_delta(block_timestamp) >= config.time_window_before_us
-                || walker.get_max_time_delta(block_timestamp) >= config.time_window_after_us
+            if walker.get_min_time_delta(block_timestamp) >= config.max_optimistic_pre_block_us
+                || walker.get_max_time_delta(block_timestamp) >= config.max_optimistic_post_block_us
             {
                 break
             }
 
-            let min_expand = (walker.get_max_time_delta(block_timestamp) >= PRE_SCALING_DIFF)
-                .then_some(TIME_STEP)
+            let min_expand = (walker.get_max_time_delta(block_timestamp)
+                >= config.vwap_scaling_diff_us)
+                .then_some(config.vwap_time_step_us)
                 .unwrap_or_default();
 
-            walker.expand_time_bounds(min_expand, TIME_STEP);
+            walker.expand_time_bounds(min_expand, config.vwap_time_step_us);
         }
 
         if &trade_volume_global < vol && !bypass_vol {

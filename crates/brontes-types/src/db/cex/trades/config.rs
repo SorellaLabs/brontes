@@ -1,20 +1,36 @@
 #[derive(Debug, Clone, Copy)]
 pub struct CexDexTradeConfig {
-    pub time_window_before_us: u64,
-    pub time_window_after_us:  u64,
-    pub optimistic_before_us:  u64,
-    pub optimistic_after_us:   u64,
-    pub quotes_fetch_time:     u64,
+    pub initial_vwap_pre_block_us:        u64,
+    pub initial_vwap_post_block_us:       u64,
+    pub max_vwap_pre_block_us:            u64,
+    pub max_vwap_post_block_us:           u64,
+    pub vwap_scaling_diff_us:             u64,
+    pub vwap_time_step_us:                u64,
+    pub initial_optimistic_pre_block_us:  u64,
+    pub initial_optimistic_post_block_us: u64,
+    pub max_optimistic_pre_block_us:      u64,
+    pub max_optimistic_post_block_us:     u64,
+    pub optimistic_scaling_diff_us:       u64,
+    pub optimistic_time_step_us:          u64,
+    pub quote_offset_from_block_us:       u64,
 }
 
 impl Default for CexDexTradeConfig {
     fn default() -> Self {
         Self {
-            time_window_after_us:  8_000_000,
-            time_window_before_us: 5_000_000,
-            optimistic_before_us:  500_000,
-            optimistic_after_us:   2_000_000,
-            quotes_fetch_time:     2_000_000,
+            initial_vwap_pre_block_us:        50_000,
+            initial_vwap_post_block_us:       50_000,
+            max_vwap_pre_block_us:            5_000_000,
+            max_vwap_post_block_us:           8_000_000,
+            vwap_scaling_diff_us:             300_000,
+            vwap_time_step_us:                10_000,
+            initial_optimistic_pre_block_us:  300_000,
+            initial_optimistic_post_block_us: 50_000,
+            max_optimistic_pre_block_us:      500_000,
+            max_optimistic_post_block_us:     2_000_000,
+            optimistic_scaling_diff_us:       200_000,
+            optimistic_time_step_us:          100_000,
+            quote_offset_from_block_us:       0,
         }
     }
 }

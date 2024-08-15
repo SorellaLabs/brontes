@@ -8,14 +8,11 @@ use tracing::trace;
 use crate::{db::cex::trades::BASE_EXECUTION_QUALITY, FastHashSet};
 const TIME_BASKET_SIZE: u64 = 100_000;
 
-use super::{optimistic::OptimisticTradeData, CexTrades};
+use super::{optimistic::OptimisticTradeData, CexDexTradeConfig, CexTrades};
 use crate::{
     db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair, utils::ToFloatNearest,
     FastHashMap,
 };
-
-const START_POST_TIME_US: u64 = 100_000;
-const START_PRE_TIME_US: u64 = 0;
 
 /// Manages the traversal and collection of trade data within dynamically
 /// adjustable time windows.
@@ -270,12 +267,13 @@ impl<'a> TimeBasketQueue<'a> {
         trade_data: OptimisticTradeData,
         block_timestamp: u64,
         quality: Option<FastHashMap<CexExchange, usize>>,
+        config: &CexDexTradeConfig,
     ) -> Self {
         Self {
             current_pre_time:  block_timestamp,
             current_post_time: block_timestamp,
-            min_timestamp:     block_timestamp - START_PRE_TIME_US,
-            max_timestamp:     block_timestamp + START_POST_TIME_US,
+            min_timestamp:     block_timestamp - config.initial_optimistic_pre_block_us,
+            max_timestamp:     block_timestamp + config.initial_optimistic_post_block_us,
             indexes:           trade_data.indices,
             trades:            trade_data.trades,
             quality_pct:       quality,

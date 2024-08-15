@@ -22,7 +22,7 @@ use crate::{
     MevProcessor,
     RangeType,
 };
-const SECONDS_TO_US: u64 = 1_000_000;
+
 const SECONDS_TO_US_FLOAT: f64 = 1_000_000.0;
 
 #[derive(Debug, Parser)]
@@ -98,29 +98,6 @@ pub struct RunArgs {
     pub run_id:               Option<u64>,
 }
 
-#[derive(Debug, Parser)]
-pub struct TimeWindowArgs {
-    /// The sliding time window (BEFORE) for cex prices or trades relative to
-    /// the block timestamp
-    #[arg(long = "tw-before", short = 'b', default_value = "6")]
-    pub time_window_before:            f64,
-    /// The sliding time window (AFTER) for cex prices or trades relative to the
-    /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = "30")]
-    pub time_window_after:             f64,
-    /// The time window (BEFORE) for cex prices or trades relative to
-    /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-before", default_value = "6.0")]
-    pub time_window_before_optimistic: f64,
-    /// The time window (AFTER) for cex prices or trades relative to
-    /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-after", default_value = "15.0")]
-    pub time_window_after_optimistic:  f64,
-    /// Cex Dex Quotes price time
-    #[arg(long = "mk-time", default_value = "0.0")]
-    pub quotes_price_time:             f64,
-}
-
 impl RunArgs {
     pub async fn execute(
         mut self,
@@ -185,7 +162,7 @@ impl RunArgs {
             self.force_no_dex_pricing = true;
         }
 
-        let trade_config = self.trade_config();
+        let trade_config = self.time_window_args.trade_config();
 
         let inspectors = init_inspectors(
             quote_asset,
@@ -272,10 +249,10 @@ impl RunArgs {
     /// the time window in seconds for downloading
     fn load_time_window(&self) -> usize {
         self.time_window_args
-            .time_window_before
-            .max(self.time_window_args.time_window_after)
-            .max(self.time_window_args.time_window_before_optimistic)
-            .max(self.time_window_args.time_window_after_optimistic) as usize
+            .max_vwap_pre
+            .max(self.time_window_args.max_vwap_post)
+            .max(self.time_window_args.max_optimistic_pre)
+            .max(self.time_window_args.max_optimistic_post) as usize
     }
 
     fn check_proper_range(&self) -> eyre::Result<()> {
@@ -285,19 +262,6 @@ impl RunArgs {
             }
         }
         Ok(())
-    }
-
-    fn trade_config(&self) -> CexDexTradeConfig {
-        CexDexTradeConfig {
-            time_window_after_us:  self.time_window_args.time_window_after as u64 * SECONDS_TO_US,
-            time_window_before_us: self.time_window_args.time_window_before as u64 * SECONDS_TO_US,
-            optimistic_before_us:  self.time_window_args.time_window_before_optimistic as u64
-                * SECONDS_TO_US,
-            optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
-                * SECONDS_TO_US,
-            quotes_fetch_time:     (self.time_window_args.quotes_price_time * SECONDS_TO_US_FLOAT)
-                as u64,
-        }
     }
 }
 
@@ -323,4 +287,95 @@ fn parse_ranges(ranges: &[String]) -> Result<Vec<(u64, u64)>, String> {
             Ok((start, end))
         })
         .collect()
+}
+
+#[derive(Debug, Parser)]
+pub struct TimeWindowArgs {
+    /// The initial sliding time window (BEFORE) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "initial-pre", default_value = "0.05")]
+    pub initial_vwap_pre: f64,
+
+    /// The initial sliding time window (AFTER) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "initial-post", default_value = "0.05")]
+    pub initial_vwap_post: f64,
+
+    /// The maximum sliding time window (BEFORE) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "max-vwap-pre", short = 'b', default_value = "10.0")]
+    pub max_vwap_pre: f64,
+
+    /// The maximum sliding time window (AFTER) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "max-vwap-post", short = 'a', default_value = "20.0")]
+    pub max_vwap_post: f64,
+
+    /// Defines how much to extend the post-block time window before the
+    /// pre-block.
+    #[arg(long = "vwap-scaling-diff", default_value = "0.3")]
+    pub vwap_scaling_diff: f64,
+
+    /// Size of each extension to the vwap calculations time window
+    #[arg(long = "vwap-time-step", default_value = "0.01")]
+    pub vwap_time_step: f64,
+
+    /// The initial time window (BEFORE) for cex prices or trades relative to
+    /// the block timestamp for fully optimistic calculations
+    #[arg(long = "initial-op-pre", default_value = "0.05")]
+    pub initial_optimistic_pre: f64,
+
+    /// The initial time window (AFTER) for cex prices or trades relative to the
+    /// block timestamp for fully optimistic calculations
+    #[arg(long = "initial-op-post", default_value = "0.3")]
+    pub initial_optimistic_post: f64,
+
+    /// The maximum time window (BEFORE) for cex prices or trades relative to
+    /// the block timestamp for fully optimistic calculations
+    #[arg(long = "max-op-pre", default_value = "5.0")]
+    pub max_optimistic_pre: f64,
+
+    /// The maximum time window (AFTER) for cex prices or trades relative to the
+    /// block timestamp for fully optimistic calculations
+    #[arg(long = "max-op-post", default_value = "10.0")]
+    pub max_optimistic_post: f64,
+
+    /// Defines how much to extend the post-block time window before the
+    /// pre-block.
+    #[arg(long = "optimistic-scaling-diff", default_value = "0.2")]
+    pub optimistic_scaling_diff: f64,
+
+    /// Size of each extension to the optimistic calculations time window
+    #[arg(long = "optimistic-time-step", default_value = "0.1")]
+    pub optimistic_time_step: f64,
+
+    /// Cex Dex Quotes price time offset from block timestamp
+    #[arg(long = "quote-offset", default_value = "0.0")]
+    pub quote_offset: f64,
+}
+
+impl TimeWindowArgs {
+    fn trade_config(&self) -> CexDexTradeConfig {
+        CexDexTradeConfig {
+            initial_vwap_pre_block_us:        (self.initial_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            initial_vwap_post_block_us:       (self.initial_vwap_post * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_pre_block_us:            (self.max_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_post_block_us:           (self.max_vwap_post * SECONDS_TO_US_FLOAT) as u64,
+            vwap_scaling_diff_us:             (self.vwap_scaling_diff * SECONDS_TO_US_FLOAT) as u64,
+            vwap_time_step_us:                (self.vwap_time_step * SECONDS_TO_US_FLOAT) as u64,
+            initial_optimistic_pre_block_us:  (self.initial_optimistic_pre * SECONDS_TO_US_FLOAT)
+                as u64,
+            initial_optimistic_post_block_us: (self.initial_optimistic_post * SECONDS_TO_US_FLOAT)
+                as u64,
+            max_optimistic_pre_block_us:      (self.max_optimistic_pre * SECONDS_TO_US_FLOAT)
+                as u64,
+            max_optimistic_post_block_us:     (self.max_optimistic_post * SECONDS_TO_US_FLOAT)
+                as u64,
+            optimistic_scaling_diff_us:       (self.optimistic_scaling_diff * SECONDS_TO_US_FLOAT)
+                as u64,
+            optimistic_time_step_us:          (self.optimistic_time_step * SECONDS_TO_US_FLOAT)
+                as u64,
+            quote_offset_from_block_us:       (self.quote_offset * SECONDS_TO_US_FLOAT) as u64,
+        }
+    }
 }
