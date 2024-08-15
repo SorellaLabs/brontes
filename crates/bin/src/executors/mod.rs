@@ -49,9 +49,7 @@ pub const PROMETHEUS_ENDPOINT_IP: [u8; 4] = [0u8, 0u8, 0u8, 0u8];
 
 pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
-    pub start_block: Option<u64>,
-    pub end_block: Option<u64>,
-    pub back_from_tip: u64,
+    pub range_type: RangeType,
     pub max_tasks: u64,
     pub min_batch_size: u64,
     pub quote_asset: Address,
@@ -74,9 +72,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        start_block: Option<u64>,
-        end_block: Option<u64>,
-        back_from_tip: u64,
+        range_type: RangeType,
         max_tasks: u64,
         min_batch_size: u64,
         quote_asset: Address,
@@ -94,8 +90,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     ) -> Self {
         Self {
             clickhouse,
-            start_block,
-            back_from_tip,
+            range_type,
             min_batch_size,
             max_tasks,
             force_dex_pricing,
@@ -103,7 +98,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             libmdbx,
             inspectors,
             quote_asset,
-            end_block,
             force_no_dex_pricing,
             cli_only,
             metrics,
@@ -120,9 +114,8 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         shutdown: GracefulShutdown,
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
-        let (had_end_block, end_block) = self.get_end_block().await;
         self.verify_global_tables().await?;
-        let build_future = self.build_internal(executor.clone(), had_end_block, end_block);
+        let build_future = self.build_internal(executor.clone());
 
         pin_mut!(build_future, shutdown);
         tokio::select! {
@@ -141,21 +134,16 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         Err(eyre::eyre!("shutdown"))
     }
 
-    async fn build_internal(
-        self,
-        executor: BrontesTaskExecutor,
-        had_end_block: bool,
-        end_block: u64,
-    ) -> eyre::Result<Brontes> {
+    async fn build_internal(self, executor: BrontesTaskExecutor) -> eyre::Result<Brontes> {
         let futures = FuturesUnordered::new();
 
         let pricing_metrics = self.metrics.then(DexPricingMetrics::default);
+        let (should_run_tip_inspector, end_block) = self.should_run_tip_inspector().await;
 
         if self.is_snapshot {
             let (start_block, db_end_block) = self.libmdbx.get_db_range()?;
-            if self.start_block.is_none()
-                || !had_end_block
-                || self.start_block < Some(start_block)
+            if should_run_tip_inspector
+                || self.range_type.get_start_block() < Some(start_block)
                 || end_block > db_end_block
             {
                 eyre::bail!(
@@ -167,7 +155,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             }
         }
 
-        if had_end_block && self.start_block.is_some() {
+        if !should_run_tip_inspector {
             self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
                 .for_each(|block_range| {
                     futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -180,7 +168,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .await;
         } else {
-            if self.start_block.is_some() {
+            if self.range_type.get_start_block().is_some() {
                 self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
                     .for_each(|block_range| {
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -193,13 +181,12 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     })
                     .await;
             }
-
             tracing::info!("starting tip inspector");
             let tip_inspector = self.build_tip_inspector(
                 usize::MAX,
                 executor.clone(),
                 end_block,
-                self.back_from_tip,
+                self.range_type.back_from_tip(),
                 pricing_metrics,
             );
 
@@ -213,7 +200,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         metrics.running_ranges.increment(futures.len() as f64);
         metrics
             .total_set_range
-            .increment(end_block - self.start_block.unwrap_or(end_block));
+            .increment(end_block - self.range_type.get_start_block().unwrap_or(end_block));
 
         Ok(Brontes { futures, metrics })
     }
@@ -252,16 +239,16 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
         pricing_metrics: Option<DexPricingMetrics>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
-        let chunks = self.calculate_chunks(end_block);
+        let chunks = match &self.range_type {
+            RangeType::SingleRange { start_block, end_block: _, back_from_tip: _ } => {
+                self.calculate_chunks(start_block.unwrap(), end_block)
+            }
+            RangeType::MultipleRanges(ranges) => ranges.clone(),
+        };
 
-        let progress_bar =
-            initialize_global_progress_bar(self.cli_only, self.start_block, self.end_block);
+        let progress_bar = self.initialize_global_progress_bar();
 
-        let state_to_init = Arc::new(
-            self.libmdbx
-                .state_to_initialize(self.start_block.unwrap(), end_block)
-                .unwrap(),
-        );
+        let state_to_init = Arc::new(self.state_to_initialize(end_block));
 
         #[cfg(feature = "sorella-server")]
         let mut buffer_size = calculate_buffer_size(&state_to_init, self.max_tasks as usize);
@@ -520,23 +507,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         Ok(())
     }
 
-    async fn get_end_block(&self) -> (bool, u64) {
-        if let Some(end_block) = self.end_block {
-            (true, end_block)
-        } else {
-            #[cfg(feature = "local-reth")]
-            let chain_tip = self.parser.get_latest_block_number().unwrap();
-            #[cfg(not(feature = "local-reth"))]
-            let chain_tip = self.parser.get_latest_block_number().await.unwrap();
-
-            (false, chain_tip - self.back_from_tip)
-        }
-    }
-
     ///Calculate the block chunks using min batch size and max_tasks.
     /// Max tasks defaults to 50% of physical cores of the system if not set
-    fn calculate_chunks(&self, end_block: u64) -> Vec<(u64, u64)> {
-        let start_block = self.start_block.unwrap();
+    fn calculate_chunks(&self, start_block: u64, end_block: u64) -> Vec<(u64, u64)> {
         let range = end_block - start_block;
         let cpus_min = range / self.min_batch_size + 1;
         let cpus = std::cmp::min(cpus_min, self.max_tasks);
@@ -553,42 +526,86 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             })
             .collect_vec()
     }
-}
 
-fn initialize_global_progress_bar(
-    cli_only: bool,
-    start_block: Option<u64>,
-    end_block: Option<u64>,
-) -> Option<ProgressBar> {
-    cli_only
-        .then(|| {
-            let start = start_block?;
-            let end = end_block?;
-            // Assuming `had_end_block` and `end_block` should be defined or passed
-            // elsewhere
-            let progress_bar = ProgressBar::with_draw_target(
-                Some(end - start),
-                ProgressDrawTarget::stderr_with_hz(100),
-            );
-            let style = ProgressStyle::default_bar()
-                .template(
-                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
-                     ({percent}%) | ETA: {eta}",
-                )
-                .expect("Invalid progress bar template")
-                .progress_chars("█>-")
-                .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                    write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
-                })
-                .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
-                    write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
-                });
-            progress_bar.set_style(style);
-            progress_bar.set_message("Processing blocks:");
+    async fn should_run_tip_inspector(&self) -> (bool, u64) {
+        match &self.range_type {
+            RangeType::MultipleRanges(ranges) => {
+                (false, ranges.last().expect("Specified Range is empty").1)
+            }
+            RangeType::SingleRange { end_block, back_from_tip, .. } => {
+                if let Some(end_block) = end_block {
+                    (false, *end_block)
+                } else {
+                    #[cfg(feature = "local-reth")]
+                    let chain_tip = self.parser.get_latest_block_number().unwrap();
+                    #[cfg(not(feature = "local-reth"))]
+                    let chain_tip = self.parser.get_latest_block_number().await.unwrap();
+                    (true, chain_tip - back_from_tip)
+                }
+            }
+        }
+    }
 
-            Some(progress_bar)
-        })
-        .flatten()
+    fn state_to_initialize(&self, end: u64) -> StateToInitialize {
+        match &self.range_type {
+            RangeType::SingleRange { start_block, end_block: _, back_from_tip: _ } => self
+                .libmdbx
+                .state_to_initialize(start_block.unwrap(), end)
+                .unwrap(),
+            RangeType::MultipleRanges(ranges) => {
+                let mut state_to_init = StateToInitialize::default();
+                for (start_block, end_block) in ranges {
+                    state_to_init.merge(
+                        self.libmdbx
+                            .state_to_initialize(*start_block, *end_block)
+                            .unwrap(),
+                    )
+                }
+                state_to_init
+            }
+        }
+    }
+
+    fn initialize_global_progress_bar(&self) -> Option<ProgressBar> {
+        self.cli_only
+            .then(|| {
+                let total_blocks = match &self.range_type {
+                    RangeType::SingleRange { start_block, end_block, back_from_tip: _ } => {
+                        let start = start_block.as_ref().copied()?;
+                        let end = end_block.as_ref().copied()?;
+                        end.saturating_sub(start).saturating_add(1)
+                    }
+                    RangeType::MultipleRanges(ranges) => ranges
+                        .iter()
+                        .map(|(start, end)| end.saturating_sub(*start).saturating_add(1))
+                        .sum(),
+                };
+
+                let progress_bar = ProgressBar::with_draw_target(
+                    Some(total_blocks),
+                    ProgressDrawTarget::stderr_with_hz(100),
+                );
+
+                let style = ProgressStyle::default_bar()
+                    .template(
+                        "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} blocks \
+                         ({percent}%) | ETA: {eta}",
+                    )
+                    .expect("Invalid progress bar template")
+                    .progress_chars("█>-")
+                    .with_key("eta", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                        write!(f, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+                    })
+                    .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                        write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                    });
+
+                progress_bar.set_style(style);
+                progress_bar.set_message("Processing blocks:");
+                Some(progress_bar)
+            })
+            .flatten()
+    }
 }
 
 #[cfg(feature = "sorella-server")]
@@ -629,5 +646,28 @@ impl Future for Brontes {
         } {}
 
         Poll::Pending
+    }
+}
+
+pub enum RangeType {
+    SingleRange { start_block: Option<u64>, end_block: Option<u64>, back_from_tip: u64 },
+    MultipleRanges(Vec<(u64, u64)>),
+}
+
+impl RangeType {
+    fn get_start_block(&self) -> Option<u64> {
+        match self {
+            RangeType::SingleRange { start_block, .. } => *start_block,
+            RangeType::MultipleRanges(ranges) => Some(ranges.first().unwrap().0),
+        }
+    }
+
+    fn back_from_tip(&self) -> u64 {
+        match self {
+            RangeType::SingleRange { back_from_tip, .. } => *back_from_tip,
+            RangeType::MultipleRanges(_) => {
+                panic!("Should never be called for specified multi range")
+            }
+        }
     }
 }

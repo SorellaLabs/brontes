@@ -385,6 +385,12 @@ impl StateToInitialize {
             .iter()
             .map(|(table, cnt)| (*table, cnt.iter().map(|r| r.end() - r.start()).sum()))
     }
+
+    pub fn merge(&mut self, other: StateToInitialize) {
+        for (table, ranges) in other.ranges_to_init {
+            self.ranges_to_init.entry(table).or_default().extend(ranges);
+        }
+    }
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
