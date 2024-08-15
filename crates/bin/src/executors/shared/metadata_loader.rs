@@ -110,7 +110,6 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         }
     }
 
-    //TODO: return acc option, instead of just returning default
     fn load_cex_trades<DB: LibmdbxReader>(
         &mut self,
         libmdbx: &'static DB,

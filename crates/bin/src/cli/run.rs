@@ -20,6 +20,7 @@ use crate::{
     runner::CliContext,
     BrontesRunConfig,
     MevProcessor,
+    RangeType,
 };
 const SECONDS_TO_US: u64 = 1_000_000;
 
@@ -32,6 +33,11 @@ pub struct RunArgs {
     /// killed
     #[arg(long, short)]
     pub end_block:            Option<u64>,
+    /// Optional Multiple Ranges, format: "start1-end1 start2-end2 ..."
+    /// Use this if you want to specify the exact, non continuous block ranges
+    /// you want to run
+    #[arg(long, num_args = 1.., value_delimiter = ' ')]
+    pub ranges:               Option<Vec<String>>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
@@ -161,6 +167,7 @@ impl RunArgs {
             self.cex_exchanges.clone(),
         );
 
+        let range_type = self.get_range_type()?;
         let clickhouse = static_object(load_clickhouse(cex_download_config, self.run_id).await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
@@ -197,9 +204,7 @@ impl RunArgs {
             .clone()
             .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
                 if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
-                    self.start_block,
-                    self.end_block,
-                    self.behind_tip,
+                    range_type,
                     max_tasks,
                     self.min_batch_size,
                     quote_asset,
@@ -228,6 +233,19 @@ impl RunArgs {
         result.await?;
 
         Ok(())
+    }
+
+    pub fn get_range_type(&self) -> eyre::Result<RangeType> {
+        if let Some(ranges) = &self.ranges {
+            let parsed_ranges = parse_ranges(ranges).map_err(|e| eyre::eyre!(e))?;
+            Ok(RangeType::MultipleRanges(parsed_ranges))
+        } else {
+            Ok(RangeType::SingleRange {
+                start_block:   self.start_block,
+                end_block:     self.end_block,
+                back_from_tip: self.behind_tip,
+            })
+        }
     }
 
     async fn try_start_fallback_server(&self) -> Option<HeartRateMonitor> {
@@ -279,4 +297,28 @@ impl RunArgs {
             quotes_fetch_time:     (self.time_window_args.quotes_price_time * 1000000.0) as u64,
         }
     }
+}
+
+fn parse_ranges(ranges: &[String]) -> Result<Vec<(u64, u64)>, String> {
+    ranges
+        .iter()
+        .map(|range| {
+            let (start, end) = range
+                .split_once('-')
+                .ok_or_else(|| format!("invalid range: {}", range))?;
+            let start: u64 = start
+                .parse()
+                .map_err(|_| format!("invalid start block: {}", start))?;
+            let end: u64 = end
+                .parse()
+                .map_err(|_| format!("invalid end block: {}", end))?;
+            if start > end {
+                return Err(format!(
+                    "start block {} must be less than or equal to end block {}",
+                    start, end
+                ));
+            }
+            Ok((start, end))
+        })
+        .collect()
 }

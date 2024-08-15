@@ -910,10 +910,7 @@ pub mod cex_exchange_vec {
     use crate::db::cex::CexExchange;
 
     pub fn serialize<S: Serializer>(u: &[CexExchange], serializer: S) -> Result<S::Ok, S::Error> {
-        let st = u
-            .into_iter()
-            .map(|u| u.to_string())
-            .collect::<Vec<String>>();
+        let st = u.iter().map(|u| u.to_string()).collect::<Vec<String>>();
 
         st.serialize(serializer)
     }
