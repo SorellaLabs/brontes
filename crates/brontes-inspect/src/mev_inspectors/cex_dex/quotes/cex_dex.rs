@@ -648,7 +648,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(5152.80)
-            .with_gas_paid_usd(79071.87);
+            .with_gas_paid_usd(78754.85);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }

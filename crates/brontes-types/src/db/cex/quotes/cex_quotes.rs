@@ -113,11 +113,9 @@ impl CexPriceMap {
             .get(pair)
             .or_else(|| self.most_liquid_ex.get(&pair.flip()))
             .and_then(|exchanges| {
-                tracing::debug!(?exchanges);
                 for exchange in exchanges {
                     let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
                     if res.is_some() {
-                        tracing::debug!("got result");
                         return res
                     }
                 }
@@ -148,7 +146,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
-        max_time_diff: Option<u64>,
+        _max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
             return Some(FeeAdjustedQuote::default_one_to_one())
