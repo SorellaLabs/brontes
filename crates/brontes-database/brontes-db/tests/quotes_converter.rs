@@ -66,38 +66,74 @@ fn create_test_cex_quotes() -> Vec<CexQuote> {
         CexQuote {
             exchange:  Binance,
             timestamp: 1696271963002000,
-            price:     (1648.31, 1648.4),
-            amount:    (0.0256, 0.4466),
+            price:     (
+                Rational::try_from_float_simplest(1648.31).unwrap(),
+                Rational::try_from_float_simplest(1648.4).unwrap(),
+            ),
+            amount:    (
+                Rational::try_from_float_simplest(0.0256).unwrap(),
+                Rational::try_from_float_simplest(0.4466).unwrap(),
+            ),
         },
         CexQuote {
             exchange:  Binance,
             timestamp: 1696271964002000,
-            price:     (1649.74, 1666.1),
-            amount:    (0.3615, 8.378),
+            price:     (
+                Rational::try_from_float_simplest(1649.74).unwrap(),
+                Rational::try_from_float_simplest(1666.1).unwrap(),
+            ),
+            amount:    (
+                Rational::try_from_float_simplest(0.3615).unwrap(),
+                Rational::try_from_float_simplest(8.378).unwrap(),
+            ),
         },
         CexQuote {
             exchange:  Binance,
             timestamp: 1696271974005000,
-            price:     (1653.27, 1653.85),
-            amount:    (17.4219, 2.0796),
+            price:     (
+                Rational::try_from_float_simplest(1653.27).unwrap(),
+                Rational::try_from_float_simplest(1653.85).unwrap(),
+            ),
+            amount:    (
+                Rational::try_from_float_simplest(17.4219).unwrap(),
+                Rational::try_from_float_simplest(2.0796).unwrap(),
+            ),
         },
         CexQuote {
             exchange:  Binance,
             timestamp: 1696271992011000,
-            price:     (1648.0, 1648.15),
-            amount:    (0.8695, 0.1945),
+            price:     (
+                Rational::try_from_float_simplest(1648.0).unwrap(),
+                Rational::try_from_float_simplest(1648.15).unwrap(),
+            ),
+            amount:    (
+                Rational::try_from_float_simplest(0.8695).unwrap(),
+                Rational::try_from_float_simplest(0.1945).unwrap(),
+            ),
         },
         CexQuote {
             exchange:  Binance,
             timestamp: 1696272022022000,
-            price:     (1651.69, 1651.7),
-            amount:    (4.6408, 0.7662),
+            price:     (
+                Rational::try_from_float_simplest(1651.69).unwrap(),
+                Rational::try_from_float_simplest(1651.7).unwrap(),
+            ),
+            amount:    (
+                Rational::try_from_float_simplest(4.6408).unwrap(),
+                Rational::try_from_float_simplest(0.7662).unwrap(),
+            ),
         },
         CexQuote {
             exchange:  Binance,
             timestamp: 1696272262121000,
-            price:     (1654.55, 1654.56),
-            amount:    (0.0268, 41.2785),
+            price:     (
+                Rational::try_from_float_simplest(1654.55).unwrap(),
+                Rational::try_from_float_simplest(1654.56).unwrap(),
+            ),
+            amount:    (
+                Rational::try_from_float_simplest(0.0268).unwrap(),
+                Rational::try_from_float_simplest(41.2785).unwrap(),
+            ),
         },
     ]
 }
