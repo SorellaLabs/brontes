@@ -64,7 +64,7 @@ async fn test_cex_quote_conversion() {
 fn create_test_cex_quotes() -> Vec<CexQuote> {
     vec![
         CexQuote {
-            exchange:  Binance,
+            exchange:  CexExchange::Binance,
             timestamp: 1696271963002000,
             price:     (
                 Rational::try_from_float_simplest(1648.31).unwrap(),
@@ -76,7 +76,7 @@ fn create_test_cex_quotes() -> Vec<CexQuote> {
             ),
         },
         CexQuote {
-            exchange:  Binance,
+            exchange:  CexExchange::Binance,
             timestamp: 1696271964002000,
             price:     (
                 Rational::try_from_float_simplest(1649.74).unwrap(),
@@ -88,7 +88,7 @@ fn create_test_cex_quotes() -> Vec<CexQuote> {
             ),
         },
         CexQuote {
-            exchange:  Binance,
+            exchange:  CexExchange::Binance,
             timestamp: 1696271974005000,
             price:     (
                 Rational::try_from_float_simplest(1653.27).unwrap(),
@@ -100,7 +100,7 @@ fn create_test_cex_quotes() -> Vec<CexQuote> {
             ),
         },
         CexQuote {
-            exchange:  Binance,
+            exchange:  CexExchange::Binance,
             timestamp: 1696271992011000,
             price:     (
                 Rational::try_from_float_simplest(1648.0).unwrap(),
@@ -112,7 +112,7 @@ fn create_test_cex_quotes() -> Vec<CexQuote> {
             ),
         },
         CexQuote {
-            exchange:  Binance,
+            exchange:  CexExchange::Binance,
             timestamp: 1696272022022000,
             price:     (
                 Rational::try_from_float_simplest(1651.69).unwrap(),
@@ -124,7 +124,7 @@ fn create_test_cex_quotes() -> Vec<CexQuote> {
             ),
         },
         CexQuote {
-            exchange:  Binance,
+            exchange:  CexExchange::Binance,
             timestamp: 1696272262121000,
             price:     (
                 Rational::try_from_float_simplest(1654.55).unwrap(),
