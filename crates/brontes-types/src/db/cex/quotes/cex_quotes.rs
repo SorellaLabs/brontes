@@ -148,7 +148,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
-        _max_time_diff: Option<u64>,
+        max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
             return Some(FeeAdjustedQuote::default_one_to_one())
@@ -174,7 +174,7 @@ impl CexPriceMap {
 
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
 
-                let closest_quote = adjusted_quotes.get(index.saturating_sub(1));
+                let closest_quote = adjusted_quotes.get(index.saturating_sub(1))?;
 
                 let time_diff = (closest_quote.timestamp as i64 - timestamp as i64).unsigned_abs();
                 let max_allowed_diff = max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
