@@ -33,7 +33,7 @@ use crate::{
 
 pub const BASE_EXECUTION_QUALITY: usize = 80;
 
-const PRE_SCALING_DIFF: u64 = 4_000_000;
+const PRE_SCALING_DIFF: u64 = 500_000;
 const TIME_STEP: u64 = 10_000;
 
 /// the calculated price based off of trades with the estimated exchanges with
@@ -176,7 +176,8 @@ impl<'a> SortedTrades<'a> {
 
                 let mut bypass_intermediary_vol = false;
 
-                // bypass volume requirements for stable pairs
+                // bypass volume requirements for stable pairs as we can assume that 
+                // some arbitrageurs consider the USDC & USDT to be equal on a longer time frame
                 if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS
                 || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS {
                     bypass_intermediary_vol = true;
@@ -233,10 +234,10 @@ impl<'a> SortedTrades<'a> {
         tx_hash: FixedBytes<32>,
     ) -> Option<OptimisticPrice> {
         // Populate Map of Assumed Execution Quality by Exchange
-        // - We're making the assumption that the stat arber isn't hitting *every* good
-        //   markout for each pair on each exchange.
-        // - Quality percent adjusts the total percent of "good" trades the arber is
-        //   capturing for the relevant pair on a given exchange.
+        // - We're making the assumption that the arbitrageur isn't executing *every*
+        //   best trade for each pair on each exchange.
+        // - Quality percent adjusts the total percent of "good" trades the arbitrageur
+        //   is capturing for the relevant pair on a given exchange.
 
         let quality_pct = quality.map(|map| {
             map.iter()

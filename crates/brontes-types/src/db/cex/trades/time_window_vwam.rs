@@ -26,9 +26,9 @@ use crate::{
 };
 
 const START_POST_TIME_US: u64 = 50_000;
-const START_PRE_TIME_US: u64 = 0;
+const START_PRE_TIME_US: u64 = 20_000;
 
-const PRE_SCALING_DIFF: u64 = 10_000_000;
+const PRE_SCALING_DIFF: u64 = 500_000;
 const TIME_STEP: u64 = 10_000;
 
 #[derive(Debug, Clone, Default)]

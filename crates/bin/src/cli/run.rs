@@ -23,6 +23,7 @@ use crate::{
     RangeType,
 };
 const SECONDS_TO_US: u64 = 1_000_000;
+const SECONDS_TO_US_FLOAT: f64 = 1_000_000.0;
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -101,7 +102,7 @@ pub struct RunArgs {
 pub struct TimeWindowArgs {
     /// The sliding time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp
-    #[arg(long = "tw-before", short = 'b', default_value = "0")]
+    #[arg(long = "tw-before", short = 'b', default_value = "6")]
     pub time_window_before:            f64,
     /// The sliding time window (AFTER) for cex prices or trades relative to the
     /// block timestamp
@@ -109,7 +110,7 @@ pub struct TimeWindowArgs {
     pub time_window_after:             f64,
     /// The time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-before", default_value = "0.0")]
+    #[arg(long = "op-tw-before", default_value = "6.0")]
     pub time_window_before_optimistic: f64,
     /// The time window (AFTER) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
@@ -294,7 +295,8 @@ impl RunArgs {
                 * SECONDS_TO_US,
             optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
                 * SECONDS_TO_US,
-            quotes_fetch_time:     (self.time_window_args.quotes_price_time * 1000000.0) as u64,
+            quotes_fetch_time:     (self.time_window_args.quotes_price_time * SECONDS_TO_US_FLOAT)
+                as u64,
         }
     }
 }
