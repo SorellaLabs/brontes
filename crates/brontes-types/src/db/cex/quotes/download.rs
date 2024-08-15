@@ -10,7 +10,7 @@ use super::{CexPriceMap, CexQuote};
 use crate::{
     constants::USDC_ADDRESS,
     db::{
-        block_times::{self, BlockTimes, CexBlockTimes},
+        block_times::{BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
     },
     pair::Pair,
@@ -216,7 +216,7 @@ impl CexQuotesConverter {
                     return None
                 }
 
-                let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len() + 2);
+                let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
 
                 let mut quote_iter = quotes_indices
                     .into_iter()

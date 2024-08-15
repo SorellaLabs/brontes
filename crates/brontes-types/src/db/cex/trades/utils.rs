@@ -14,8 +14,8 @@ use crate::{
     FastHashMap,
 };
 
-const START_POST_TIME_US: u64 = 300_000;
-const START_PRE_TIME_US: u64 = 50_000;
+const START_POST_TIME_US: u64 = 100_000;
+const START_PRE_TIME_US: u64 = 0;
 
 /// Manages the traversal and collection of trade data within dynamically
 /// adjustable time windows.
