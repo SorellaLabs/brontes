@@ -175,15 +175,6 @@ impl CexPriceMap {
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
 
                 let closest_quote = adjusted_quotes.get(index.saturating_sub(1))?;
-
-                // let time_diff = (closest_quote.timestamp as i64 - timestamp as
-                // i64).unsigned_abs(); let max_allowed_diff =
-                // max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
-                //
-                // if time_diff > max_allowed_diff {
-                //     tracing::debug!(?time_diff, ?max_allowed_diff, ?pair, ?exchange);
-                //     return None
-                // }
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
 
                 let fees = exchange.fees();
