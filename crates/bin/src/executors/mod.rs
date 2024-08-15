@@ -3,7 +3,6 @@ mod processors;
 mod range;
 use std::ops::RangeInclusive;
 
-#[cfg(feature = "sorella-server")]
 use brontes_database::libmdbx::StateToInitialize;
 use brontes_metrics::{
     pricing::DexPricingMetrics,
@@ -252,7 +251,6 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         #[cfg(feature = "sorella-server")]
         let mut buffer_size = calculate_buffer_size(&state_to_init, self.max_tasks as usize);
-        println!("buffer_size: {}", buffer_size);
 
         #[cfg(not(feature = "sorella-server"))]
         let mut buffer_size = 8;

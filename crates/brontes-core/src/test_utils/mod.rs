@@ -144,8 +144,8 @@ impl TraceLoader {
         let multi = MultiProgress::default();
         let tables = Arc::new(vec![
             (Tables::BlockInfo, Tables::BlockInfo.build_init_state_progress_bar(&multi, 4)),
-            (Tables::CexPrice, Tables::CexPrice.build_init_state_progress_bar(&multi, 27)),
-            (Tables::CexTrades, Tables::CexTrades.build_init_state_progress_bar(&multi, 4)),
+            (Tables::CexPrice, Tables::CexPrice.build_init_state_progress_bar(&multi, 50)),
+            (Tables::CexTrades, Tables::CexTrades.build_init_state_progress_bar(&multi, 6)),
         ]);
 
         futures::try_join!(
@@ -162,7 +162,7 @@ impl TraceLoader {
                 self.tracing_provider.get_tracer(),
                 Tables::CexPrice,
                 false,
-                Some((block - 2, block + 25)),
+                Some((block - 25, block + 25)),
                 tables.clone(),
             ),
             self.libmdbx.initialize_tables(
@@ -170,13 +170,38 @@ impl TraceLoader {
                 self.tracing_provider.get_tracer(),
                 Tables::CexTrades,
                 false,
-                Some((block - 2, block + 2)),
+                Some((block - 2, block + 4)),
                 tables,
             ),
         )?;
 
         multi.clear().unwrap();
 
+        Ok(())
+    }
+
+    pub async fn fetch_missing_trades(&self, block: u64) -> eyre::Result<()> {
+        tracing::info!(%block, "fetching missing metadata");
+
+        let clickhouse = Box::leak(Box::new(load_clickhouse().await));
+        let multi = MultiProgress::default();
+        let tables = Arc::new(vec![(
+            Tables::CexPrice,
+            Tables::CexPrice.build_init_state_progress_bar(&multi, 50),
+        )]);
+
+        self.libmdbx
+            .initialize_tables(
+                clickhouse,
+                self.tracing_provider.get_tracer(),
+                Tables::CexTrades,
+                false,
+                Some((block - 2, block + 2)),
+                tables,
+            )
+            .await?;
+
+        multi.clear().unwrap();
         Ok(())
     }
 
@@ -349,8 +374,16 @@ impl TraceLoader {
         .collect()
     }
 
-    pub fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
-        self.libmdbx.get_cex_trades(block)
+    pub async fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
+        if let Ok(trades) = self.libmdbx.get_cex_trades(block) {
+            Ok(trades)
+        } else {
+            self.fetch_missing_trades(block)
+                .await
+                .expect("Failed to fetch missing trades");
+
+            self.libmdbx.get_cex_trades(block)
+        }
     }
 }
 

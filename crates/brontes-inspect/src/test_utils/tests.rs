@@ -232,12 +232,17 @@ impl InspectorTestUtils {
             }
         };
 
-        let cex_trades = (config.expected_mev_type == Inspectors::CexDexMarkout).then(|| {
-            self.classifier_inspector
+        if config.expected_mev_type == Inspectors::CexDexMarkout {
+            if let Ok(trades) = self
+                .classifier_inspector
                 .get_cex_trades(tree.header.number)
-                .unwrap_or_else(|_| panic!("No CEX Trades found for block {}", tree.header.number))
-        });
-        metadata.cex_trades = cex_trades;
+                .await
+            {
+                metadata.cex_trades = Some(trades);
+            } else {
+                panic!("Failed to fetch Cex Trades")
+            }
+        }
 
         if metadata.dex_quotes.is_none() {
             metadata.dex_quotes = quotes;
@@ -350,13 +355,17 @@ impl InspectorTestUtils {
             }
         };
 
-        let cex_trades = (config.inspectors.contains(&Inspectors::CexDexMarkout)).then(|| {
-            self.classifier_inspector
+        if config.inspectors.contains(&Inspectors::CexDexMarkout) {
+            if let Ok(trades) = self
+                .classifier_inspector
                 .get_cex_trades(tree.header.number)
-                .unwrap_or_else(|_| panic!("No CEX Trades found for block {}", tree.header.number))
-        });
-
-        metadata.cex_trades = cex_trades;
+                .await
+            {
+                metadata.cex_trades = Some(trades);
+            } else {
+                panic!("Failed to fetch Cex Trades")
+            }
+        }
 
         if let Some(quotes) = quotes {
             metadata.dex_quotes = Some(quotes);
