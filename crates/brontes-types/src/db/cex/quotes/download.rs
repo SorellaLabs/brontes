@@ -10,7 +10,7 @@ use super::{CexPriceMap, CexQuote};
 use crate::{
     constants::USDC_ADDRESS,
     db::{
-        block_times::{BlockTimes, CexBlockTimes},
+        block_times::{self, BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
     },
     pair::Pair,
@@ -218,63 +218,24 @@ impl CexQuotesConverter {
 
                 let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len() + 2);
 
-                //Push the first and the last as will naturally be the closest to their time
-                //boundary
-                result.push(self.quotes[quotes_indices[0]].clone().into());
-                let quotes_len = quotes_indices.len();
+                let mut quote_iter = quotes_indices
+                    .into_iter()
+                    .map(|q| self.quotes[q].clone())
+                    .peekable();
 
-                let mut current_index = 0;
+                let mut last_quote = quote_iter.next();
 
-                for &time in &QUOTE_TIME_BOUNDARY {
-                    let target_time = block_time as i128 + (time as i128 * 1_000_000);
-
-                    while current_index < quotes_len - 1
-                        && (self.quotes[quotes_indices[current_index + 1]].timestamp as i128)
-                            <= target_time
-                    {
-                        current_index += 1;
+                for time in QUOTE_TIME_BOUNDARY {
+                    while let Some(peeked) = quote_iter.peek() {
+                        if peeked.timestamp > block_time + time * 1_000_000 {
+                            break
+                        }
+                        last_quote = quote_iter.next();
                     }
 
-                    let closest_quote = if current_index == quotes_len - 1 {
-                        &self.quotes[quotes_indices[current_index]]
-                    } else {
-                        let current_diff = (target_time
-                            - self.quotes[quotes_indices[current_index]].timestamp as i128)
-                            .abs();
-                        let next_diff = (target_time
-                            - self.quotes[quotes_indices[current_index + 1]].timestamp as i128)
-                            .abs();
-
-                        if current_diff <= next_diff {
-                            &self.quotes[quotes_indices[current_index]]
-                        } else {
-                            current_index += 1;
-                            &self.quotes[quotes_indices[current_index]]
-                        }
-                    };
-
-                    result.push(closest_quote.clone().into());
-                }
-
-                if quotes_indices.len() >= 2 {
-                    let target_time = block_time as i128 + (300 * 1_000_000);
-                    let penultimate_quote = &self.quotes[quotes_indices[quotes_indices.len() - 2]];
-                    let last_quote = &self.quotes[quotes_indices[quotes_indices.len() - 1]];
-
-                    let penultimate_diff =
-                        (target_time - penultimate_quote.timestamp as i128).abs();
-                    let last_diff = (target_time - last_quote.timestamp as i128).abs();
-
-                    let closest_quote =
-                        if penultimate_diff <= last_diff { penultimate_quote } else { last_quote };
-
-                    result.push(closest_quote.clone().into());
-                } else {
-                    result.push(
-                        self.quotes[quotes_indices[quotes_indices.len() - 1]]
-                            .clone()
-                            .into(),
-                    );
+                    if let Some(quote) = &last_quote {
+                        result.push(quote.clone().into());
+                    }
                 }
 
                 Some((pair, result))
@@ -283,7 +244,7 @@ impl CexQuotesConverter {
     }
 }
 
-const QUOTE_TIME_BOUNDARY: [u64; 4] = [2, 12, 30, 60];
+const QUOTE_TIME_BOUNDARY: [u64; 6] = [0, 2, 12, 30, 60, 300];
 
 pub fn correct_usdc_address(pair: &Pair) -> Pair {
     let mut corrected_pair = *pair;
