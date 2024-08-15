@@ -152,6 +152,7 @@ impl CexPriceMap {
             return Some(FeeAdjustedQuote::default_one_to_one())
         }
 
+
         self.quotes
             .get(exchange)
             .and_then(|quotes| {
@@ -166,6 +167,7 @@ impl CexPriceMap {
             })
             .and_then(|(adjusted_quotes, direction)| {
                 if adjusted_quotes.is_empty() {
+                    tracing::debug!(?pair, ?exchange, "no quotes");
                     return None
                 }
 
