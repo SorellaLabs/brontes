@@ -265,6 +265,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         #[cfg(feature = "sorella-server")]
         let mut buffer_size = calculate_buffer_size(&state_to_init, self.max_tasks as usize);
+        println!("buffer_size: {}", buffer_size);
 
         #[cfg(not(feature = "sorella-server"))]
         let mut buffer_size = 8;
@@ -602,7 +603,7 @@ fn calculate_buffer_size(state_to_init: &StateToInitialize, max_tasks: usize) ->
             .contains_key(&Tables::CexTrades);
 
     if initializing_cex {
-        5
+        3
     } else {
         (max_tasks / 10).clamp(4, 15)
     }
