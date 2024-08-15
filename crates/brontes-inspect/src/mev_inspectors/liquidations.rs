@@ -168,7 +168,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_aave_v3_liquidation() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 4.0).await;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 6.0).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::Liquidations)
             .with_mev_tx_hashes(vec![hex!(
