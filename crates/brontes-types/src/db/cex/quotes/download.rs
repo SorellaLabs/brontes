@@ -10,7 +10,7 @@ use super::{CexPriceMap, CexQuote};
 use crate::{
     constants::USDC_ADDRESS,
     db::{
-        block_times::{self, BlockTimes, CexBlockTimes},
+        block_times::{BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
     },
     pair::Pair,
