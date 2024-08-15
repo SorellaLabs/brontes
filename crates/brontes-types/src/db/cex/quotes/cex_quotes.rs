@@ -117,6 +117,7 @@ impl CexPriceMap {
                 for exchange in exchanges {
                     let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
                     if res.is_some() {
+                        tracing::debug!("got result");
                         return res
                     }
                 }
