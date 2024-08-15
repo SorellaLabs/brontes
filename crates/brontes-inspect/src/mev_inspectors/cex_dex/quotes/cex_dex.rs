@@ -641,7 +641,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 50.5).await;
 
         let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
 
@@ -655,7 +655,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_eoa_cex_dex() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 10.5).await;
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 50.5).await;
 
         let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
 
