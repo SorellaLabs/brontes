@@ -86,29 +86,6 @@ We expand the time window in three phases:
 - Action: Extend both pre and post-block time up to -5/+8 seconds
 - Purpose: Capture less competitive arbitrages and low-volume pair activity
 
-#### Weighting Trades: Bi-Exponential Decay Function
-
-We use a bi-exponential decay function to weight trades based on their timing relative to the block time. This approach favors post-block trades, reflecting increased arbitrageur certainty after DEX execution confirmation.
-
-The weight function:
-
-$$
-Weight(t) =
-\begin{cases}
-e^{-\lambda_{pre} \cdot (BlockTime - t)} & \text{if } t < BlockTime \\\\
-e^{-\lambda_{post} \cdot (t - BlockTime)} & \text{if } t \geq BlockTime
-\end{cases}
-$$
-
-Where:
-
-- \\( \text{t} \\) is the timestamp of each trade.
-- \\( \text{BlockTime} \\) is the first time the block has been seen on the p2p network.
-- \\( \lambda\_{pre} \\) is the decay rate before the block time.
-- \\( \lambda\_{post} \\) is the decay rate after the block time.
-
-Current λ values are set [here](https://www.desmos.com/calculator/7ktqmde9ab).
-
 #### Adjusted Volume Weighted Average Price (VWAP)
 
 We integrate volume data and time-based weights into our VWAP calculation:
@@ -128,8 +105,6 @@ The result is a price estimate that reflects both market depth and the likely ti
 This method returns a `MakerTakerWindowVWAP` for each DEX swap:
 
 ```rust,ignore
-pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
-
 pub struct WindowExchangePrice {
     pub exchange_price_with_volume_direct: FastHashMap<CexExchange, ExchangePath>,
     pub pairs: Vec<Pair>,

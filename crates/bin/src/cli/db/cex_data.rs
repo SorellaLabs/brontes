@@ -30,7 +30,6 @@ use crate::{
 };
 
 const SECONDS_TO_US: u64 = 1_000_000;
-const QUOTE_TIME_POINTS: [u64; 6] = [0, 2, 12, 30, 60, 300];
 
 #[derive(Debug, Parser)]
 pub struct CexDB {
@@ -46,9 +45,6 @@ pub struct CexDB {
     /// Time window multiplier (expands it)
     #[arg(long, short, default_value_t = 1.0)]
     pub w_multiplier: f64,
-    /// Use quotes instead of trades
-    #[arg(long, default_value_t = true)]
-    pub use_quotes:   bool,
 }
 
 impl CexDB {
@@ -83,8 +79,6 @@ impl CexDB {
 
         if !pair_exists {
             println!("No direct trading pair found for {:?}", pair);
-        } else if self.use_quotes {
-            process_pair_quotes(&clickhouse, pair, block_timestamp).await?;
         } else {
             process_pair(&clickhouse, pair, block_timestamp, (10.0 * self.w_multiplier) as u64)
                 .await?;
@@ -101,7 +95,6 @@ impl CexDB {
             intermediary_addresses,
             block_timestamp,
             (10.0_f64 * self.w_multiplier) as u64,
-            self.use_quotes,
         )
         .await?;
 
@@ -115,7 +108,6 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
     intermediaries: FastHashSet<Address>,
     block_timestamp: u64,
     tw_size: u64,
-    use_quotes: bool,
 ) -> Result<(), eyre::Report> {
     for intermediary in intermediaries {
         let intermediary_pair_1 = Pair(pair.0, intermediary);
@@ -126,22 +118,10 @@ async fn process_intermediaries<D: ClickhouseDBMS>(
         // Query for the first intermediary pair
         let pair_info_1 = query_trading_pair_info(clickhouse, intermediary_pair_1).await?;
 
-        if use_quotes {
-            query_quote_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp).await?;
-        } else {
-            query_trade_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp, tw_size)
-                .await?;
-        }
+        query_trade_stats(clickhouse, &pair_info_1.trading_pair, block_timestamp, tw_size).await?;
 
         // Query for the second intermediary pair
         let pair_info_2 = query_trading_pair_info(clickhouse, intermediary_pair_2).await?;
-
-        if use_quotes {
-            query_quote_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp).await?;
-        } else {
-            query_trade_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp, tw_size)
-                .await?;
-        }
 
         query_trade_stats(clickhouse, &pair_info_2.trading_pair, block_timestamp, tw_size).await?;
     }
@@ -360,150 +340,3 @@ s.pair AS trading_pair,
 FROM cex.trading_pairs AS s
 INNER JOIN all_symbols AS p1 ON p1.symbol = s.base_asset
 INNER JOIN all_symbols AS p2 ON p2.symbol = s.quote_asset";
-
-async fn process_pair_quotes<D: ClickhouseDBMS>(
-    clickhouse: &ClickhouseClient<D>,
-    pair: Pair,
-    block_timestamp: u64,
-) -> Result<(), eyre::Report> {
-    println!("Processing pair quotes for {:?}", pair);
-    let pair_info = query_trading_pair_info(clickhouse, pair).await?;
-    println!("Trading pair info: {:?}", pair_info);
-    query_quote_stats(clickhouse, &pair_info.trading_pair, block_timestamp).await?;
-    Ok(())
-}
-
-async fn query_quote_stats<D: ClickhouseDBMS>(
-    clickhouse: &ClickhouseClient<D>,
-    pair_info: &str,
-    block_timestamp: u64,
-) -> Result<(), eyre::Report> {
-    println!("Querying quote stats for {}", pair_info);
-
-    let start_time = block_timestamp;
-    let end_time = block_timestamp + QUOTE_TIME_POINTS.last().unwrap() * SECONDS_TO_US;
-
-    println!("Time range: {} to {}", start_time, end_time);
-
-    let result: Result<Vec<QuoteStats>, DatabaseError> = clickhouse
-        .query_many(QUOTE_STATS_QUERY, &(start_time, end_time, &pair_info))
-        .await;
-
-    match result {
-        Ok(stats) => {
-            if stats.is_empty() {
-                println!("No quotes found for {} in the given time range", pair_info);
-            } else {
-                println!("Found {} quotes for {}", stats.len(), pair_info);
-                let filtered_stats = filter_quotes_by_time_points(&stats, block_timestamp);
-                print_quote_stats(&filtered_stats);
-            }
-        }
-        Err(e) => {
-            println!("Error fetching quotes for {}: {:?}", pair_info, e);
-        }
-    }
-
-    Ok(())
-}
-
-fn filter_quotes_by_time_points(stats: &[QuoteStats], block_timestamp: u64) -> Vec<QuoteStats> {
-    let mut filtered_stats = Vec::new();
-    for &seconds in &QUOTE_TIME_POINTS {
-        let target_timestamp = block_timestamp + seconds * SECONDS_TO_US;
-        let closest_quote = stats
-            .iter()
-            .min_by_key(|stat| stat.timestamp.abs_diff(target_timestamp));
-
-        if let Some(quote) = closest_quote {
-            let mut new_quote = quote.clone();
-            new_quote.seconds_from_block = seconds;
-            filtered_stats.push(new_quote);
-        } else {
-            // Add a placeholder if no quote is found for this time point
-            filtered_stats.push(QuoteStats {
-                exchange:           "N/A".to_string(),
-                symbol:             stats.first().map(|s| s.symbol.clone()).unwrap_or_default(),
-                timestamp:          target_timestamp,
-                ask_amount:         0.0,
-                ask_price:          0.0,
-                bid_price:          0.0,
-                bid_amount:         0.0,
-                seconds_from_block: seconds,
-            });
-        }
-    }
-    filtered_stats
-}
-
-#[derive(Debug, Clone, Row, Deserialize, Serialize)]
-struct QuoteStats {
-    exchange:           String,
-    symbol:             String,
-    timestamp:          u64,
-    ask_amount:         f64,
-    ask_price:          f64,
-    bid_price:          f64,
-    bid_amount:         f64,
-    #[serde(skip)]
-    seconds_from_block: u64,
-}
-
-fn print_quote_stats(stats: &[QuoteStats]) {
-    if stats.is_empty() {
-        return;
-    }
-
-    let symbol = &stats[0].symbol;
-    println!("Quote Statistics for {}", symbol);
-
-    let mut table = Table::new();
-    table.add_row(Row::new(vec![
-        Cell::new("Seconds"),
-        Cell::new("Exchange"),
-        Cell::new("Ask Amount"),
-        Cell::new("Ask Price"),
-        Cell::new("Bid Price"),
-        Cell::new("Bid Amount"),
-    ]));
-
-    for stat in stats {
-        table.add_row(Row::new(vec![
-            Cell::new(&format!("+{}", stat.seconds_from_block)),
-            Cell::new(&stat.exchange),
-            Cell::new(&format!("{:.8}", stat.ask_amount)),
-            Cell::new(&format!("{:.8}", stat.ask_price)),
-            Cell::new(&format!("{:.8}", stat.bid_price)),
-            Cell::new(&format!("{:.8}", stat.bid_amount)),
-        ]));
-    }
-
-    table.printstd();
-}
-
-const QUOTE_STATS_QUERY: &str = r#"
-WITH
-    grouped_time AS (
-        SELECT
-            c.exchange as exchange,
-            upper(replaceAll(replaceAll(replaceAll(c.symbol, '/', ''), '-', ''), '_', '')) AS symbol,
-            toUnixTimestamp(toDateTime(c.timestamp / 1000000, 'UTC')) * 1000000 AS timestamp_sec,
-            argMin(c.timestamp, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as timestamp,
-            argMin(c.ask_amount, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as ask_amount,
-            argMin(c.ask_price, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as ask_price,
-            argMin(c.bid_price, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as bid_price,
-            argMin(c.bid_amount, abs(CAST(c.timestamp, 'Int64') - CAST(timestamp_sec, 'Int64'))) as bid_amount
-        FROM cex.normalized_quotes as c
-        WHERE c.timestamp >= ? AND c.timestamp < ? AND c.symbol = ?
-        GROUP BY exchange, symbol, timestamp_sec
-    )
-SELECT
-    exchange,
-    symbol,
-    timestamp,
-    ask_amount,
-    ask_price,
-    bid_price,
-    bid_amount
-FROM grouped_time
-"#;

@@ -1,6 +1,6 @@
 use brontes_database::{libmdbx::Libmdbx, InitializedState, InitializedStateData, Tables};
 use brontes_types::db::initialized_state::{
-    CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG, SKIP_FLAG, TRACE_FLAG,
+    CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DEX_PRICE_FLAG, META_FLAG, TRACE_FLAG,
 };
 use clap::Parser;
 
