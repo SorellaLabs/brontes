@@ -320,6 +320,20 @@ pub struct TimeWindowArgs {
     #[arg(long = "vwap-time-step", default_value = "0.01")]
     pub vwap_time_step: f64,
 
+    /// Use block time weights to favour prices closer to the block time
+    #[arg(long = "weights-vwap", default_value = "false")]
+    pub block_time_weights_vwap: bool,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::cex
+    #[arg(long = "weights-pre-vwap", default_value = "-0.0000005")]
+    pub pre_decay_weight_vwap: f64,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::ce
+    #[arg(long = "weights-pre-vwap", default_value = "-0.0000002")]
+    pub post_decay_weight_vwap: f64,
+
     /// The initial time window (BEFORE) for cex prices or trades relative to
     /// the block timestamp for fully optimistic calculations
     #[arg(long = "initial-op-pre", default_value = "0.05")]
@@ -349,6 +363,20 @@ pub struct TimeWindowArgs {
     #[arg(long = "optimistic-time-step", default_value = "0.1")]
     pub optimistic_time_step: f64,
 
+    /// Use block time weights to favour prices closer to the block time
+    #[arg(long = "weights-opt", default_value = "false")]
+    pub block_time_weights_optimistic: bool,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::cex
+    #[arg(long = "weights-pre-op", default_value = "-0.0000003")]
+    pub pre_decay_weight_optimistic: f64,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::ce
+    #[arg(long = "weights-pre-op", default_value = "-0.00000012")]
+    pub post_decay_weight_optimistic: f64,
+
     /// Cex Dex Quotes price time offset from block timestamp
     #[arg(long = "quote-offset", default_value = "0.0")]
     pub quote_offset: f64,
@@ -357,25 +385,32 @@ pub struct TimeWindowArgs {
 impl TimeWindowArgs {
     fn trade_config(&self) -> CexDexTradeConfig {
         CexDexTradeConfig {
-            initial_vwap_pre_block_us:        (self.initial_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
-            initial_vwap_post_block_us:       (self.initial_vwap_post * SECONDS_TO_US_FLOAT) as u64,
-            max_vwap_pre_block_us:            (self.max_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
-            max_vwap_post_block_us:           (self.max_vwap_post * SECONDS_TO_US_FLOAT) as u64,
-            vwap_scaling_diff_us:             (self.vwap_scaling_diff * SECONDS_TO_US_FLOAT) as u64,
-            vwap_time_step_us:                (self.vwap_time_step * SECONDS_TO_US_FLOAT) as u64,
-            initial_optimistic_pre_block_us:  (self.initial_optimistic_pre * SECONDS_TO_US_FLOAT)
+            initial_vwap_pre_block_us:  (self.initial_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            initial_vwap_post_block_us: (self.initial_vwap_post * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_pre_block_us:      (self.max_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_post_block_us:     (self.max_vwap_post * SECONDS_TO_US_FLOAT) as u64,
+            vwap_scaling_diff_us:       (self.vwap_scaling_diff * SECONDS_TO_US_FLOAT) as u64,
+            vwap_time_step_us:          (self.vwap_time_step * SECONDS_TO_US_FLOAT) as u64,
+
+            use_block_time_weights_vwap:       self.block_time_weights_vwap,
+            pre_decay_weight_vwap:             self.pre_decay_weight_vwap,
+            post_decay_weight_vwap:            self.post_decay_weight_vwap,
+            initial_optimistic_pre_block_us:   (self.initial_optimistic_pre * SECONDS_TO_US_FLOAT)
                 as u64,
-            initial_optimistic_post_block_us: (self.initial_optimistic_post * SECONDS_TO_US_FLOAT)
+            initial_optimistic_post_block_us:  (self.initial_optimistic_post * SECONDS_TO_US_FLOAT)
                 as u64,
-            max_optimistic_pre_block_us:      (self.max_optimistic_pre * SECONDS_TO_US_FLOAT)
+            max_optimistic_pre_block_us:       (self.max_optimistic_pre * SECONDS_TO_US_FLOAT)
                 as u64,
-            max_optimistic_post_block_us:     (self.max_optimistic_post * SECONDS_TO_US_FLOAT)
+            max_optimistic_post_block_us:      (self.max_optimistic_post * SECONDS_TO_US_FLOAT)
                 as u64,
-            optimistic_scaling_diff_us:       (self.optimistic_scaling_diff * SECONDS_TO_US_FLOAT)
+            optimistic_scaling_diff_us:        (self.optimistic_scaling_diff * SECONDS_TO_US_FLOAT)
                 as u64,
-            optimistic_time_step_us:          (self.optimistic_time_step * SECONDS_TO_US_FLOAT)
+            optimistic_time_step_us:           (self.optimistic_time_step * SECONDS_TO_US_FLOAT)
                 as u64,
-            quote_offset_from_block_us:       (self.quote_offset * SECONDS_TO_US_FLOAT) as u64,
+            use_block_time_weights_optimistic: self.block_time_weights_optimistic,
+            pre_decay_weight_op:               self.pre_decay_weight_optimistic,
+            post_decay_weight_op:              self.post_decay_weight_optimistic,
+            quote_offset_from_block_us:        (self.quote_offset * SECONDS_TO_US_FLOAT) as u64,
         }
     }
 }

@@ -13,7 +13,9 @@ use tracing::trace;
 
 use super::{
     config::CexDexTradeConfig,
-    utils::{log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker},
+    utils::{
+        calculate_weight, log_insufficient_trade_volume, log_missing_trade_data, PairTradeWalker,
+    },
     CexTrades,
 };
 use crate::{
@@ -269,19 +271,46 @@ impl<'a> TimeWindowTrades<'a> {
             for trade in trades {
                 let trade = trade.get();
 
+                let weight = if config.use_block_time_weights_vwap {
+                    calculate_weight(
+                        block_timestamp,
+                        trade.timestamp,
+                        config.pre_decay_weight_vwap,
+                        config.post_decay_weight_op,
+                    )
+                } else {
+                    Rational::ONE
+                };
+
                 // See explanation of trade representation in the book
                 let adjusted_trade = trade.adjust_for_direction(trade_data.direction);
 
                 let (m_fee, t_fee) = trade.exchange.fees();
 
-                let (vxp_maker, vxp_taker, trade_volume_ex, start_time, end_time) = exchange_vxp
-                    .entry(trade.exchange)
-                    .or_insert((Rational::ZERO, Rational::ZERO, Rational::ZERO, 0u64, 0u64));
+                let (
+                    vxp_maker,
+                    vxp_taker,
+                    trade_volume_ex,
+                    trade_volume_weight,
+                    start_time,
+                    end_time,
+                ) = exchange_vxp.entry(trade.exchange).or_insert((
+                    Rational::ZERO,
+                    Rational::ZERO,
+                    Rational::ZERO,
+                    Rational::ZERO,
+                    0u64,
+                    0u64,
+                ));
 
-                *vxp_maker +=
-                    (&adjusted_trade.price * (Rational::ONE - m_fee)) * &adjusted_trade.amount;
-                *vxp_taker +=
-                    (&adjusted_trade.price * (Rational::ONE - t_fee)) * &adjusted_trade.amount;
+                *vxp_maker += (&adjusted_trade.price * (Rational::ONE - m_fee))
+                    * &adjusted_trade.amount
+                    * &weight;
+                *vxp_taker += (&adjusted_trade.price * (Rational::ONE - t_fee))
+                    * &adjusted_trade.amount
+                    * &weight;
+
+                *trade_volume_weight += &adjusted_trade.amount * weight;
                 *trade_volume_ex += &adjusted_trade.amount;
                 trade_volume_global += &adjusted_trade.amount;
 
@@ -322,12 +351,14 @@ impl<'a> TimeWindowTrades<'a> {
         let mut global_start_time = u64::MAX;
         let mut global_end_time = 0;
 
-        for (ex, (vxp_maker, vxp_taker, trade_vol, start_time, end_time)) in exchange_vxp {
+        for (ex, (vxp_maker, vxp_taker, trade_vol_weight, trade_vol, start_time, end_time)) in
+            exchange_vxp
+        {
             if trade_vol == Rational::ZERO {
                 continue
             }
-            let maker_price = vxp_maker / &trade_vol;
-            let taker_price = vxp_taker / &trade_vol;
+            let maker_price = vxp_maker / &trade_vol_weight;
+            let taker_price = vxp_taker / &trade_vol_weight;
 
             global_maker += &maker_price * &trade_vol;
             global_taker += &taker_price * &trade_vol;

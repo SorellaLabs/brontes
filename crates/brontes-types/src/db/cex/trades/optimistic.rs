@@ -11,6 +11,8 @@ use malachite::{
     Rational,
 };
 
+use super::utils::calculate_weight;
+
 const R2: Rational = Rational::TWO;
 
 use super::{config::CexDexTradeConfig, time_window_vwam::ExchangePath};
@@ -283,6 +285,7 @@ impl<'a> SortedTrades<'a> {
         let mut vxp_maker = Rational::ZERO;
         let mut vxp_taker = Rational::ZERO;
         let mut trade_volume = Rational::ZERO;
+        let mut trade_volume_weight = Rational::ZERO;
 
         let mut optimistic_trades = Vec::with_capacity(trades_used.len());
 
@@ -292,8 +295,20 @@ impl<'a> SortedTrades<'a> {
         for trade in trades_used {
             let (m_fee, t_fee) = trade.exchange.fees();
 
-            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount;
-            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount;
+            let weight = if config.use_block_time_weights_vwap {
+                calculate_weight(
+                    block_timestamp,
+                    trade.timestamp,
+                    config.pre_decay_weight_vwap,
+                    config.post_decay_weight_op,
+                )
+            } else {
+                Rational::ONE
+            };
+
+            vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
+            vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;
+            trade_volume_weight += &trade.amount * &weight;
             trade_volume += &trade.amount;
 
             optimistic_trades.push(OptimisticTrade {
@@ -320,8 +335,8 @@ impl<'a> SortedTrades<'a> {
         }
 
         let global = ExchangePath {
-            price_maker:      vxp_maker / &trade_volume,
-            price_taker:      vxp_taker / &trade_volume,
+            price_maker:      vxp_maker / &trade_volume_weight,
+            price_taker:      vxp_taker / &trade_volume_weight,
             volume:           trade_volume,
             final_start_time: global_start_time,
             final_end_time:   global_end_time,
