@@ -5,7 +5,6 @@ use brontes_database::Tables;
 use brontes_metrics::PoirotMetricsListener;
 use brontes_types::{init_thread_pools, UnboundedYapperReceiver};
 use clap::Parser;
-use futures::StreamExt;
 use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
