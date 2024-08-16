@@ -16,6 +16,9 @@ Options:
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 
+      --ranges <RANGES>...
+          Optional Multiple Ranges, format: "start1-end1 start2-end2 ..." Use this if you want to specify the exact, non continuous block ranges you want to run
+
   -m, --max-tasks <MAX_TASKS>
           Optional Max Tasks, if omitted it will default to 80% of the number of physical cores on your machine
 
@@ -32,28 +35,94 @@ Options:
   -i, --inspectors <INSPECTORS>
           Inspectors to run. If omitted it defaults to running all inspectors
 
-  -b, --tw-before <TIME_WINDOW_BEFORE>
-          The sliding time window (BEFORE) for cex prices or trades relative to the block timestamp
+      --initial-pre <INITIAL_VWAP_PRE>
+          The initial sliding time window (BEFORE) for cex prices or trades relative to the block timestamp
           
-          [default: 10]
+          [default: 0.05]
 
-  -a, --tw-after <TIME_WINDOW_AFTER>
-          The sliding time window (AFTER) for cex prices or trades relative to the block timestamp
+      --initial-post <INITIAL_VWAP_POST>
+          The initial sliding time window (AFTER) for cex prices or trades relative to the block timestamp
           
-          [default: 20]
+          [default: 0.05]
 
-      --op-tw-before <TIME_WINDOW_BEFORE_OPTIMISTIC>
-          The time window (BEFORE) for cex prices or trades relative to the block timestamp for fully optimistic calculations
-          
-          [default: 5.0]
-
-      --op-tw-after <TIME_WINDOW_AFTER_OPTIMISTIC>
-          The time window (AFTER) for cex prices or trades relative to the block timestamp for fully optimistic calculations
+  -b, --max-vwap-pre <MAX_VWAP_PRE>
+          The maximum sliding time window (BEFORE) for cex prices or trades relative to the block timestamp
           
           [default: 10.0]
 
-      --mk-time <QUOTES_PRICE_TIME>
-          Cex Dex Quotes price time
+  -a, --max-vwap-post <MAX_VWAP_POST>
+          The maximum sliding time window (AFTER) for cex prices or trades relative to the block timestamp
+          
+          [default: 20.0]
+
+      --vwap-scaling-diff <VWAP_SCALING_DIFF>
+          Defines how much to extend the post-block time window before the pre-block
+          
+          [default: 0.3]
+
+      --vwap-time-step <VWAP_TIME_STEP>
+          Size of each extension to the vwap calculations time window
+          
+          [default: 0.01]
+
+      --weights-vwap
+          Use block time weights to favour prices closer to the block time
+
+      --weights-pre-vwap <PRE_DECAY_WEIGHT_VWAP>
+          Rate of decay of bi-exponential decay function see calculate_weight in brontes_types::db::cex
+          
+          [default: -0.0000005]
+
+      --weights-post-vwap <POST_DECAY_WEIGHT_VWAP>
+          Rate of decay of bi-exponential decay function see calculate_weight in brontes_types::db::ce
+          
+          [default: -0.0000002]
+
+      --initial-op-pre <INITIAL_OPTIMISTIC_PRE>
+          The initial time window (BEFORE) for cex prices or trades relative to the block timestamp for fully optimistic calculations
+          
+          [default: 0.05]
+
+      --initial-op-post <INITIAL_OPTIMISTIC_POST>
+          The initial time window (AFTER) for cex prices or trades relative to the block timestamp for fully optimistic calculations
+          
+          [default: 0.3]
+
+      --max-op-pre <MAX_OPTIMISTIC_PRE>
+          The maximum time window (BEFORE) for cex prices or trades relative to the block timestamp for fully optimistic calculations
+          
+          [default: 5.0]
+
+      --max-op-post <MAX_OPTIMISTIC_POST>
+          The maximum time window (AFTER) for cex prices or trades relative to the block timestamp for fully optimistic calculations
+          
+          [default: 10.0]
+
+      --optimistic-scaling-diff <OPTIMISTIC_SCALING_DIFF>
+          Defines how much to extend the post-block time window before the pre-block
+          
+          [default: 0.2]
+
+      --optimistic-time-step <OPTIMISTIC_TIME_STEP>
+          Size of each extension to the optimistic calculations time window
+          
+          [default: 0.1]
+
+      --weights-op
+          Use block time weights to favour prices closer to the block time
+
+      --weights-pre-op <PRE_DECAY_WEIGHT_OPTIMISTIC>
+          Rate of decay of bi-exponential decay function see calculate_weight in brontes_types::db::cex
+          
+          [default: -0.0000003]
+
+      --weights-post-op <POST_DECAY_WEIGHT_OPTIMISTIC>
+          Rate of decay of bi-exponential decay function see calculate_weight in brontes_types::db::ce
+          
+          [default: -0.00000012]
+
+      --quote-offset <QUOTE_OFFSET>
+          Cex Dex Quotes price time offset from block timestamp
           
           [default: 0.0]
 
