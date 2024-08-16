@@ -70,7 +70,7 @@ async fn test_query_retry() {
 
     let mut futs = FuturesUnordered::new();
 
-    for _ in 0..10 {
+    for _ in 0..30 {
         futs.push(fetch_test_data(&client, range));
     }
 

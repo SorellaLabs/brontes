@@ -293,7 +293,7 @@ impl Clickhouse {
         P: BindParameters + Send + Sync,
     {
         let max_retries = 10;
-        let initial_delay = Duration::from_millis(300);
+        let initial_delay = Duration::from_millis(100);
         let mut delay = initial_delay;
 
         for attempt in 0..=max_retries {
@@ -326,7 +326,7 @@ impl Clickhouse {
                         {
                             if s.contains("MEMORY_LIMIT_EXCEEDED") {
                                 warn!("Memory limit exceeded. Waiting additional 2 seconds.");
-                                sleep(Duration::from_secs(2)).await;
+                                sleep(Duration::from_millis(250)).await;
                             }
                         }
                     } else {
