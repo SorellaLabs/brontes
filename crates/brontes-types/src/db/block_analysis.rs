@@ -658,20 +658,20 @@ impl BlockAnalysis {
     pub fn new(block: &MevBlock, bundles: &[Bundle]) -> Self {
         // All fields
         let (all_profit_addr, all_profit_am) =
-            Self::top_searcher_by_profit(|b| b != MevType::SearcherTx  || b!= MevType::CexDexTrades, bundles).unzip();
+            Self::top_searcher_by_profit(|b| b != MevType::SearcherTx && b!= MevType::CexDexTrades, bundles).unzip();
         let (all_rev_addr, all_rev_am) =
-            Self::top_searcher_by_rev(|b| b != MevType::SearcherTx  || b!= MevType::CexDexTrades, bundles).unzip();
+            Self::top_searcher_by_rev(|b| b != MevType::SearcherTx  && b!= MevType::CexDexTrades, bundles).unzip();
 
         let (all_biggest_tx_prof, all_biggest_prof) =
-            Self::biggest_arb_profit(|b| b != MevType::SearcherTx  || b!= MevType::CexDexTrades, bundles).unzip();
+            Self::biggest_arb_profit(|b| b != MevType::SearcherTx  && b!= MevType::CexDexTrades, bundles).unzip();
 
         let (all_biggest_tx_rev, all_biggest_rev) =
-            Self::biggest_arb_revenue(|b| b != MevType::SearcherTx  || b!= MevType::CexDexTrades, bundles).unzip();
+            Self::biggest_arb_revenue(|b| b != MevType::SearcherTx  && b!= MevType::CexDexTrades, bundles).unzip();
 
         let (fund_rev, fund_rev_am) =
-            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx || b!= MevType::CexDexTrades, bundles).unzip();
+            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx && b!= MevType::CexDexTrades, bundles).unzip();
         let (fund_profit, fund_profit_am) =
-            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx || b!= MevType::CexDexTrades, bundles).unzip();
+            Self::top_fund_by_type_rev(|b| b != MevType::SearcherTx && b!= MevType::CexDexTrades, bundles).unzip();
 
         let (all_pool_addr_prof, all_pool_addr_rev, all_pool_prof, all_pool_rev) =
             Self::most_transacted_pool(

@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
-
+#[cfg(feature = "local-clickhouse")]
+mod backfill;
 mod r2_uploader;
 mod snapshot;
 use crate::runner::CliContext;
@@ -81,6 +82,10 @@ pub enum DatabaseCommands {
     #[cfg(feature = "local-clickhouse")]
     #[command(name = "run-discovery")]
     Discovery(discovery::DiscoveryFill),
+    /// Identify data missing in libmdbx and backfill it
+    #[cfg(feature = "local-clickhouse")]
+    #[command(name = "backfill")]
+    Backfill(backfill::Backfill),
 }
 
 impl Database {
@@ -106,6 +111,8 @@ impl Database {
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            #[cfg(feature = "local-clickhouse")]
+            DatabaseCommands::Backfill(cmd) => todo!(),
         }
     }
 }
