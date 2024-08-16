@@ -232,12 +232,17 @@ impl InspectorTestUtils {
             }
         };
 
-        let cex_trades = (config.expected_mev_type == Inspectors::CexDexMarkout).then(|| {
-            self.classifier_inspector
+        if config.expected_mev_type == Inspectors::CexDexMarkout {
+            if let Ok(trades) = self
+                .classifier_inspector
                 .get_cex_trades(tree.header.number)
-                .unwrap_or_else(|_| panic!("No CEX Trades found for block {}", tree.header.number))
-        });
-        metadata.cex_trades = cex_trades;
+                .await
+            {
+                metadata.cex_trades = Some(trades);
+            } else {
+                panic!("Failed to fetch Cex Trades")
+            }
+        }
 
         if metadata.dex_quotes.is_none() {
             metadata.dex_quotes = quotes;
@@ -245,6 +250,12 @@ impl InspectorTestUtils {
 
         if metadata.dex_quotes.is_none() && config.needs_dex_prices {
             panic!("no dex quotes found in metadata. test suite will fail");
+        }
+
+        let mut cex_trade_config = CexDexTradeConfig::default();
+
+        if config.use_block_time_weights_for_cex_pricing {
+            cex_trade_config.with_block_time_weights();
         }
 
         let inspector = config.expected_mev_type.init_mev_inspector(
@@ -258,7 +269,7 @@ impl InspectorTestUtils {
                 CexExchange::Kucoin,
                 CexExchange::Upbit,
             ],
-            CexDexTradeConfig::default(),
+            cex_trade_config,
             None,
         );
 
@@ -350,13 +361,17 @@ impl InspectorTestUtils {
             }
         };
 
-        let cex_trades = (config.inspectors.contains(&Inspectors::CexDexMarkout)).then(|| {
-            self.classifier_inspector
+        if config.inspectors.contains(&Inspectors::CexDexMarkout) {
+            if let Ok(trades) = self
+                .classifier_inspector
                 .get_cex_trades(tree.header.number)
-                .unwrap_or_else(|_| panic!("No CEX Trades found for block {}", tree.header.number))
-        });
-
-        metadata.cex_trades = cex_trades;
+                .await
+            {
+                metadata.cex_trades = Some(trades);
+            } else {
+                panic!("Failed to fetch Cex Trades")
+            }
+        }
 
         if let Some(quotes) = quotes {
             metadata.dex_quotes = Some(quotes);
@@ -442,27 +457,29 @@ impl InspectorTestUtils {
 /// bundle.
 #[derive(Debug, Clone)]
 pub struct InspectorTxRunConfig {
-    pub metadata_override:   Option<Metadata>,
-    pub mev_tx_hashes:       Option<Vec<TxHash>>,
-    pub block:               Option<u64>,
+    pub metadata_override: Option<Metadata>,
+    pub mev_tx_hashes: Option<Vec<TxHash>>,
+    pub block: Option<u64>,
     pub expected_profit_usd: Option<f64>,
-    pub expected_gas_usd:    Option<f64>,
-    pub expected_mev_type:   Inspectors,
-    pub needs_dex_prices:    bool,
-    pub needs_tokens:        Vec<Address>,
+    pub expected_gas_usd: Option<f64>,
+    pub expected_mev_type: Inspectors,
+    pub needs_dex_prices: bool,
+    pub needs_tokens: Vec<Address>,
+    pub use_block_time_weights_for_cex_pricing: bool,
 }
 
 impl InspectorTxRunConfig {
     pub fn new(mev: Inspectors) -> Self {
         Self {
-            expected_mev_type:   mev,
-            block:               None,
-            mev_tx_hashes:       None,
+            expected_mev_type: mev,
+            block: None,
+            mev_tx_hashes: None,
             expected_profit_usd: None,
-            expected_gas_usd:    None,
-            metadata_override:   None,
-            needs_tokens:        Vec::new(),
-            needs_dex_prices:    false,
+            expected_gas_usd: None,
+            metadata_override: None,
+            needs_tokens: Vec::new(),
+            needs_dex_prices: false,
+            use_block_time_weights_for_cex_pricing: false,
         }
     }
 
@@ -505,6 +522,11 @@ impl InspectorTxRunConfig {
     /// bribe
     pub fn with_gas_paid_usd(mut self, gas: f64) -> Self {
         self.expected_gas_usd = Some(gas);
+        self
+    }
+
+    pub fn with_block_time_weights_for_cex_pricing(mut self) -> Self {
+        self.use_block_time_weights_for_cex_pricing = true;
         self
     }
 }

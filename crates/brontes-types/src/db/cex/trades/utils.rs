@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{f64::consts::E, marker::PhantomData};
 
 use ahash::HashSetExt;
 use alloy_primitives::{Address, TxHash};
@@ -8,14 +8,11 @@ use tracing::trace;
 use crate::{db::cex::trades::BASE_EXECUTION_QUALITY, FastHashSet};
 const TIME_BASKET_SIZE: u64 = 100_000;
 
-use super::{optimistic::OptimisticTradeData, CexTrades};
+use super::{optimistic::OptimisticTradeData, CexDexTradeConfig, CexTrades};
 use crate::{
     db::cex::CexExchange, normalized_actions::NormalizedSwap, pair::Pair, utils::ToFloatNearest,
     FastHashMap,
 };
-
-const START_POST_TIME_US: u64 = 300_000;
-const START_PRE_TIME_US: u64 = 50_000;
 
 /// Manages the traversal and collection of trade data within dynamically
 /// adjustable time windows.
@@ -270,12 +267,13 @@ impl<'a> TimeBasketQueue<'a> {
         trade_data: OptimisticTradeData,
         block_timestamp: u64,
         quality: Option<FastHashMap<CexExchange, usize>>,
+        config: &CexDexTradeConfig,
     ) -> Self {
         Self {
             current_pre_time:  block_timestamp,
             current_post_time: block_timestamp,
-            min_timestamp:     block_timestamp - START_PRE_TIME_US,
-            max_timestamp:     block_timestamp + START_POST_TIME_US,
+            min_timestamp:     block_timestamp - config.initial_optimistic_pre_block_us,
+            max_timestamp:     block_timestamp + config.initial_optimistic_post_block_us,
             indexes:           trade_data.indices,
             trades:            trade_data.trades,
             quality_pct:       quality,
@@ -452,4 +450,50 @@ pub fn log_insufficient_trade_volume(
         tx_hash,
         pair
     );
+}
+
+/// Calculates the weight for a trade using a bi-exponential decay function
+/// based on its timestamp relative to a block time.
+///
+/// This function is designed to account for the risk associated with the timing
+/// of trades in relation to block times in the context of cex-dex
+/// arbitrage. This assumption underpins our pricing model: trades that
+/// occur further from the block time are presumed to carry higher uncertainty
+/// and an increased risk of adverse market conditions potentially impacting
+/// arbitrage outcomes. Accordingly, the decay rates (`PRE_DECAY` for pre-block
+/// and `POST_DECAY` for post-block) adjust the weight assigned to each trade
+/// based on its temporal proximity to the block time.
+///
+/// Trades after the block are assumed to be generally preferred by arbitrageurs
+/// as they have confirmation that their DEX swap is executed. However, this
+/// preference can vary for less competitive pairs where the opportunity and
+/// timing of execution might differ.
+///
+/// # Parameters
+/// - `block_time`: The timestamp of the block as seen first on the peer-to-peer
+///   network.
+/// - `trade_time`: The timestamp of the trade to be weighted.
+///
+/// # Returns
+/// Returns a `Rational` representing the calculated weight for the trade. The
+/// weight is determined by:
+/// - `exp(-PRE_DECAY * (block_time - trade_time))` for trades before the block
+///   time.
+/// - `exp(-POST_DECAY * (trade_time - block_time))` for trades after the block
+///   time.
+
+pub fn calculate_weight(
+    block_time: u64,
+    trade_time: u64,
+    pre_decay: f64,
+    post_decay: f64,
+) -> Rational {
+    let pre = trade_time < block_time;
+
+    Rational::try_from_float_simplest(if pre {
+        E.powf(pre_decay * (block_time - trade_time) as f64)
+    } else {
+        E.powf(post_decay * (trade_time - block_time) as f64)
+    })
+    .unwrap()
 }

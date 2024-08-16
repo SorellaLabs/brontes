@@ -19,9 +19,12 @@ pub struct Clear {
     /// Mark metadata as uninitialized in the initialized state table
     #[arg(long, default_value = "false")]
     pub clear_metadata_flags:    bool,
-    /// Mark cex data as uninitialized in the initialized state table
+    /// Mark cex quotes as uninitialized in the initialized state table
     #[arg(long, default_value = "false")]
-    pub clear_cex_flags:         bool,
+    pub clear_cex_quotes_flags:  bool,
+    /// Mark cex trades as uninitialized in the initialized state table
+    #[arg(long, default_value = "false")]
+    pub clear_cex_trades_flags:  bool,
     /// Mark tx traces as uninitialized in the initialized state table
     #[arg(long, default_value = "false")]
     pub clear_tx_traces_flags:   bool,
@@ -67,7 +70,8 @@ impl Clear {
             )
         });
 
-        if self.clear_cex_flags
+        if self.clear_cex_quotes_flags
+            || self.clear_cex_trades_flags
             || self.clear_tx_traces_flags
             || self.clear_metadata_flags
             || self.clear_dex_pricing_flags
@@ -88,8 +92,10 @@ impl Clear {
                     if self.clear_tx_traces_flags {
                         key.apply_reset_key(TRACE_FLAG);
                     }
-                    if self.clear_cex_flags {
+                    if self.clear_cex_quotes_flags {
                         key.apply_reset_key(CEX_QUOTES_FLAG);
+                    }
+                    if self.clear_cex_trades_flags {
                         key.apply_reset_key(CEX_TRADES_FLAG);
                     }
 

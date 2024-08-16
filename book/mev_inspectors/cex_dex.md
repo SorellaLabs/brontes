@@ -37,7 +37,7 @@ Our `merge_possible_swaps` function combines these sequential swaps, allowing us
 
 To estimate the CEX price the arbitrageur traded at, we use two distinct methods
 
-### A. Dynamic Time Window Volume Weighted Markouts
+### A. Dynamic Time Window VWAP
 
 This method calculates a Volume Weighted Average Price (VWAP) within a dynamic time window around each block. We use a dynamic window to capture diverse arbitrage scenarios across different market conditions.
 
@@ -46,7 +46,6 @@ This method calculates a Volume Weighted Average Price (VWAP) within a dynamic t
 1. Highly Competitive Markets (e.g., ETH/USDT):
 
    - Arbitrageurs face uncertainty about DEX trade inclusion until block proposal because of high competition of other arbitrageurs seeking the same opportunity.
-   - They often wait for block confirmation before executing the CEX leg.
    - High volume allows rapid trade execution close to block time.
    - Window: Narrow, focused around and shortly after block time.
 
@@ -67,7 +66,7 @@ We expand the time window in three phases:
  <img src="cex-dex/default-time-window.png" alt="Default Time Window" style="border-radius: 20px; width: 550px; height: auto;">
 </div>
 
-- Setting: ±50 milliseconds around block time
+- Setting: -20 +80 milliseconds around block time
 - Purpose: Capture highly competitive, time-sensitive arbitrages
 
 2. Initial Extension
@@ -83,31 +82,8 @@ We expand the time window in three phases:
  <img src="cex-dex/final-time-window.png" alt="Fully Extended Time Window" style="border-radius: 20px; width: 550px; height: auto;">
 </div>
 
-- Action: Extend both pre and post-block time up to -5/+8 seconds
+- Action: Extend both pre and post-block time up to -10/+20 seconds
 - Purpose: Capture less competitive arbitrages and low-volume pair activity
-
-#### Weighting Trades: Bi-Exponential Decay Function
-
-We use a bi-exponential decay function to weight trades based on their timing relative to the block time. This approach favors post-block trades, reflecting increased arbitrageur certainty after DEX execution confirmation.
-
-The weight function:
-
-$$
-Weight(t) =
-\begin{cases}
-e^{-\lambda_{pre} \cdot (BlockTime - t)} & \text{if } t < BlockTime \\\\
-e^{-\lambda_{post} \cdot (t - BlockTime)} & \text{if } t \geq BlockTime
-\end{cases}
-$$
-
-Where:
-
-- \\( \text{t} \\) is the timestamp of each trade.
-- \\( \text{BlockTime} \\) is the first time the block has been seen on the p2p network.
-- \\( \lambda\_{pre} \\) is the decay rate before the block time.
-- \\( \lambda\_{post} \\) is the decay rate after the block time.
-
-Current λ values are set [here](https://www.desmos.com/calculator/7ktqmde9ab).
 
 #### Adjusted Volume Weighted Average Price (VWAP)
 
@@ -128,8 +104,6 @@ The result is a price estimate that reflects both market depth and the likely ti
 This method returns a `MakerTakerWindowVWAP` for each DEX swap:
 
 ```rust,ignore
-pub type MakerTakerWindowVWAP = (WindowExchangePrice, WindowExchangePrice);
-
 pub struct WindowExchangePrice {
     pub exchange_price_with_volume_direct: FastHashMap<CexExchange, ExchangePath>,
     pub pairs: Vec<Pair>,

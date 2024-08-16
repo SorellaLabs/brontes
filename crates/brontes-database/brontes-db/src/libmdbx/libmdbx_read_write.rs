@@ -385,6 +385,12 @@ impl StateToInitialize {
             .iter()
             .map(|(table, cnt)| (*table, cnt.iter().map(|r| r.end() - r.start()).sum()))
     }
+
+    pub fn merge(&mut self, other: StateToInitialize) {
+        for (table, ranges) in other.ranges_to_init {
+            self.ranges_to_init.entry(table).or_default().extend(ranges);
+        }
+    }
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
@@ -394,7 +400,12 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
-        self.fetch_trades(block)
+        let mut trades = CexTradeMap::default();
+        for current_block in block..=block + 5 {
+            let block_trades = self.fetch_trades(current_block)?;
+            trades.merge_in_map(block_trades);
+        }
+        Ok(trades)
     }
 
     fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
