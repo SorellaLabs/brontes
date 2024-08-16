@@ -44,7 +44,7 @@ impl Backfill {
 
         ctx.task_executor
             .spawn_critical("metrics", metrics_listener);
-
+        /*
         let libmdbx = static_object(
             load_database(&ctx.task_executor, brontes_db_endpoint, None, None).await?,
         );
@@ -55,7 +55,7 @@ impl Backfill {
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
 
         let amount = (self.end_block - self.start_block) as f64;
-
+        */
         Ok(())
     }
 }

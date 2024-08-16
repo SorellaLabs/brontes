@@ -112,7 +112,7 @@ impl Database {
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
-            DatabaseCommands::Backfill(cmd) => todo!(),
+            DatabaseCommands::Backfill(_cmd) => todo!(),
         }
     }
 }
