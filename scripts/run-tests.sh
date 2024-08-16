@@ -44,7 +44,7 @@ if [ "$3" = "$IT" ]; then
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  if cargo test -j 20 --features $4 --profile release -- --nocapture --show-ouput; then : ;else  teardown $2; exit 1; fi
+  if cargo test -j 20 --features $4 --profile release -- --nocapture --show-output; then : ;else  teardown $2; exit 1; fi
 fi
 
 if [ "$3" = "$BENCH" ]; then 

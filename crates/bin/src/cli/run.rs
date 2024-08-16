@@ -331,7 +331,7 @@ pub struct TimeWindowArgs {
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
     /// brontes_types::db::ce
-    #[arg(long = "weights-pre-vwap", default_value = "-0.0000002")]
+    #[arg(long = "weights-post-vwap", default_value = "-0.0000002")]
     pub post_decay_weight_vwap: f64,
 
     /// The initial time window (BEFORE) for cex prices or trades relative to
@@ -364,7 +364,7 @@ pub struct TimeWindowArgs {
     pub optimistic_time_step: f64,
 
     /// Use block time weights to favour prices closer to the block time
-    #[arg(long = "weights-opt", default_value = "false")]
+    #[arg(long = "weights-op", default_value = "false")]
     pub block_time_weights_optimistic: bool,
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
@@ -374,7 +374,7 @@ pub struct TimeWindowArgs {
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
     /// brontes_types::db::ce
-    #[arg(long = "weights-pre-op", default_value = "-0.00000012")]
+    #[arg(long = "weights-post-op", default_value = "-0.00000012")]
     pub post_decay_weight_optimistic: f64,
 
     /// Cex Dex Quotes price time offset from block timestamp
