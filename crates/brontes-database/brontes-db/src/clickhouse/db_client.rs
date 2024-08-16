@@ -35,7 +35,7 @@ use db_interfaces::{
     params::BindParameters,
     Database,
 };
-use eyre::{eyre, Result};
+use eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -694,8 +694,7 @@ impl Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64;
 
-                self.client
-                    .query_many(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
+                self.query_many_with_retry(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
@@ -724,7 +723,7 @@ impl Clickhouse {
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
-                self.client.query_many(query, &()).await?
+                self.query_many_with_retry(query, &()).await?
             }
         })
     }
@@ -739,13 +738,13 @@ impl Clickhouse {
         };
 
         debug!(target = "b", "Querying block times for range: start={}, end={}", start, end);
-        self.client.query_many(BLOCK_TIMES, &(start, end)).await
+        self.query_many_with_retry(BLOCK_TIMES, &(start, end)).await
     }
 
     pub async fn get_cex_symbols(
         &self,
     ) -> Result<Vec<CexSymbols>, db_interfaces::errors::DatabaseError> {
-        self.client.query_many(CEX_SYMBOLS, &()).await
+        self.query_many_with_retry(CEX_SYMBOLS, &()).await
     }
 
     pub async fn get_raw_cex_quotes_range(
@@ -756,7 +755,7 @@ impl Clickhouse {
         let exchanges_str = self.get_exchanges_filter_string();
 
         let query = self.build_range_cex_quotes_query(start_time, end_time, &exchanges_str);
-        self.client.query_many(&query, &()).await
+        self.query_many_with_retry(&query, &()).await
     }
 
     fn get_exchanges_filter_string(&self) -> String {
