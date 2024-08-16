@@ -4,6 +4,7 @@ mod download;
 pub mod optimistic;
 pub mod time_window_vwam;
 pub mod utils;
+pub mod window_loader;
 
 use alloy_primitives::FixedBytes;
 pub use cex_trades::*;

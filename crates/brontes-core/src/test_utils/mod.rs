@@ -196,7 +196,7 @@ impl TraceLoader {
                 self.tracing_provider.get_tracer(),
                 Tables::CexTrades,
                 false,
-                Some((block - 2, block + 2)),
+                Some((block - 2, block + 4)),
                 tables,
             )
             .await?;

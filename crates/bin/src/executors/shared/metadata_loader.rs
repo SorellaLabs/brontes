@@ -13,7 +13,12 @@ use alloy_primitives::Address;
 use brontes_core::DBWriter;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
-    db::{cex::trades::CexTradeMap, dex::DexQuotes, metadata::Metadata, traits::LibmdbxReader},
+    db::{
+        cex::trades::{window_loader::CexWindow, CexTradeMap},
+        dex::DexQuotes,
+        metadata::Metadata,
+        traits::LibmdbxReader,
+    },
     normalized_actions::Action,
     traits::TracingProvider,
     BlockData, BlockTree,
@@ -21,7 +26,7 @@ use brontes_types::{
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
 
-use super::{cex_window::CexWindow, dex_pricing::WaitingForPricerFuture};
+use super::dex_pricing::WaitingForPricerFuture;
 
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
