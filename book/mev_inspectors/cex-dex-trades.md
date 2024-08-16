@@ -221,7 +221,7 @@ Question E: Should I remove trades that are larger than the total amount require
 2. Trade Weighting:
    Apply the bi-exponential decay function to weight trades:
 
-   ```
+   ```math,ignore
    Weight(t) =
    {
      e^(-λ_pre * (BlockTime - t))  if t < BlockTime
@@ -252,7 +252,7 @@ Question E: Should I remove trades that are larger than the total amount require
 6. Price Calculation:
    Calculate the final price using both volume and time weights:
 
-   ```
+   ```ignore
    FinalPrice = Σ(Price_i * V_i_adjusted * w_i) / Σ(V_i_adjusted * w_i)
    ```
 
