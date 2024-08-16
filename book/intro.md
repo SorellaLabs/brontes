@@ -44,7 +44,7 @@ Brontes is designed for:
 
 ## Licensing and Community Involvement
 
-Initially developed and currently maintained by [Sorella Labs](https://twitter.com/Sorellalabs), Brontes is licensed under the GPL 2.0. We actively welcome community contributions, aiming for a future where the project is led collaboratively, by and for the community.
+Initially developed and currently maintained by [Sorella Labs](https://twitter.com/Sorellalabs), Brontes is licensed under the Apache and MIT licenses. We actively welcome community contributions, aiming for a future where the project is led collaboratively, by and for the community.
 
 [tg-badge]: https://img.shields.io/endpoint?color=neon&logo=telegram&label=chat&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fsorella_brontes
 [tg-url]: https://t.me/sorella_brontes
