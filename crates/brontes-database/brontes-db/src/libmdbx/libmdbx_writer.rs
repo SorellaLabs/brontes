@@ -11,7 +11,7 @@ use brontes_types::{
         address_to_protocol_info::ProtocolInfo,
         builder::BuilderInfo,
         dex::{make_key, DexQuoteWithIndex, DexQuotes},
-        initialized_state::{DEX_PRICE_FLAG, TRACE_FLAG},
+        initialized_state::{DATA_PRESENT, DEX_PRICE_FLAG, TRACE_FLAG},
         mev_block::MevBlockWithClassified,
         pool_creation_block::PoolsToAddresses,
         searcher::SearcherInfo,
@@ -436,10 +436,10 @@ impl LibmdbxWriter {
     }
 
     #[instrument(target = "libmdbx_read_write::init_state_updating", skip_all, level = "warn")]
-    fn init_state_updating(&mut self, block: u64, flag: u8) -> eyre::Result<()> {
+    fn init_state_updating(&mut self, block: u64, flag: u16) -> eyre::Result<()> {
         let tx = self.db.ro_tx()?;
         let mut state = tx.get::<InitializedState>(block)?.unwrap_or_default();
-        state.set(flag);
+        state.set(flag, DATA_PRESENT);
         let data = InitializedStateData::new(block, state).into_key_val();
 
         let (key, value) = Self::convert_into_save_bytes(data);

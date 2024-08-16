@@ -18,8 +18,11 @@ Options:
       --brontes-db-path <BRONTES_DB_PATH>
           path to the brontes libmdbx db
 
-      --clear-cex-flags
-          Mark cex data as uninitialized in the initialized state table
+      --clear-cex-quotes-flags
+          Mark cex quotes as uninitialized in the initialized state table
+
+      --clear-cex-trades-flags
+          Mark cex trades as uninitialized in the initialized state table
 
       --clear-tx-traces-flags
           Mark tx traces as uninitialized in the initialized state table

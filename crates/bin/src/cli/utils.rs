@@ -40,6 +40,7 @@ pub async fn load_database(
     executor: &BrontesTaskExecutor,
     db_endpoint: String,
     _: Option<HeartRateMonitor>,
+    _: Option<u64>,
 ) -> eyre::Result<LibmdbxReadWriter> {
     LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)
 }

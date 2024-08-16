@@ -8,6 +8,21 @@ Centralized exchanges (CEX) and decentralized exchanges (DEX) operate on fundame
 
 ## Methodology
 
+> **Note**
+> Experimental Methodology - Work in Progress!
+>
+> This methodology is highly experimental and currently under active development. Key points to consider:
+>
+> It has been built iteratively based on continuous testing and real-world observations, rather than a comprehensive theoretical framework.
+>
+> Many parameters within the methodology have been set arbitrarily based on experimentation. These settings require further testing and analysis before we can present this as a credible framework.
+>
+> We offer this glimpse into our work-in-progress to encourage community engagement. It is not yet a finalized or validated approach.
+>
+> We strongly encourage users to approach these results with a critical eye. Your feedback, insights, criticisms, and contributions are invaluable as we refine and improve this methodology.
+>
+> Please share your experiences, observations, and any issues you encounter. This will help us enhance the accuracy, reliability of this approach.
+
 ### Step 1: Identify Potential Arbitrage Transactions
 
 First, the inspector collects all block transactions involving `swap`, `transfer`, `eth_transfer`, `aggregator_swap` actions.
@@ -22,7 +37,7 @@ Then, for each transaction it:
 ### Step 2: Merge Sequential Swaps
 
 <div style="text-align: center;">
- <img src="cex-dex/swap-merging.png" alt="Swap Merging" style="border-radius: 20px; width: 400px; height: auto;">
+ <img src="cex-dex-trades/swap-merging.png" alt="Swap Merging" style="border-radius: 20px; width: 400px; height: auto;">
 </div>
 
 We merge sequential swaps to match on-chain routes with off-chain markets. Here's why:
@@ -63,7 +78,7 @@ We expand the time window in three phases:
 
 1. Default Window
 <div style="text-align: center;">
- <img src="cex-dex/default-time-window.png" alt="Default Time Window" style="border-radius: 20px; width: 550px; height: auto;">
+ <img src="cex-dex-trades/default-time-window.png" alt="Default Time Window" style="border-radius: 20px; width: 550px; height: auto;">
 </div>
 
 - Setting: -20 +80 milliseconds around block time
@@ -71,7 +86,7 @@ We expand the time window in three phases:
 
 2. Initial Extension
 <div style="text-align: center;">
- <img src="cex-dex/first-extension-time-window.png" alt="Initial Time Window Extension" style="border-radius: 20px; width: 550px; height: auto;">
+ <img src="cex-dex-trades/first-extension-time-window.png" alt="Initial Time Window Extension" style="border-radius: 20px; width: 550px; height: auto;">
 </div>
 
 - Action: Extend post-block time up to 350ms in 10ms increments
@@ -79,7 +94,7 @@ We expand the time window in three phases:
 
 3. Full Extension
 <div style="text-align: center;">
- <img src="cex-dex/final-time-window.png" alt="Fully Extended Time Window" style="border-radius: 20px; width: 550px; height: auto;">
+ <img src="cex-dex-trades/final-time-window.png" alt="Fully Extended Time Window" style="border-radius: 20px; width: 550px; height: auto;">
 </div>
 
 - Action: Extend both pre and post-block time up to -10/+20 seconds
@@ -139,7 +154,7 @@ This method provides an upper bound on potential arbitrage profitability by assu
    - Use a quality parameter (expressed as a percentage) to determine starting point in sorted trades.
    - Select most favorable trades up to the required clearance amount.
 
-#### Key Considerations:
+#### Key Considerations
 
 TODO: Changes to optimistic execution calculation
 
@@ -169,7 +184,7 @@ pub struct ExchangePrice {
 
 In the next step, we'll explore how we use these price estimates to calculate the actual arbitrage PnL, considering both realistic market conditions and best-case scenarios.
 
-### C. Updated Optimistic Execution Calculation
+### C. Optimistic Execution Calculation
 
 This method provides an optimistic yet realistic estimate of potential arbitrage profitability, adapting to market conditions while minimizing lookahead bias.
 
@@ -206,7 +221,7 @@ Question E: Should I remove trades that are larger than the total amount require
 2. Trade Weighting:
    Apply the bi-exponential decay function to weight trades:
 
-   ```
+   ```math,ignore
    Weight(t) =
    {
      e^(-λ_pre * (BlockTime - t))  if t < BlockTime
@@ -237,7 +252,7 @@ Question E: Should I remove trades that are larger than the total amount require
 6. Price Calculation:
    Calculate the final price using both volume and time weights:
 
-   ```
+   ```ignore
    FinalPrice = Σ(Price_i * V_i_adjusted * w_i) / Σ(V_i_adjusted * w_i)
    ```
 
@@ -253,8 +268,6 @@ Question E: Should I remove trades that are larger than the total amount require
 - The quality parameter allows for optimistic selection without assuming perfect execution.
 - Progressive filling and sliding window approach reduce lookahead bias.
 - The method balances optimism with realism, providing a nuanced view of potential arbitrage opportunities.
-
-This refined approach provides a realistically optimistic estimate of CEX prices for arbitrage calculations, respecting market dynamics and execution constraints while acknowledging arbitrageur sophistication.
 
 ### Step 4: Calculate Potential Arbitrage Profits
 

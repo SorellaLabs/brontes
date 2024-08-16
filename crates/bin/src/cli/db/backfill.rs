@@ -1,12 +1,18 @@
+#[allow(unused_imports)]
 use std::path::Path;
 
-use brontes_core::decoding::Parser as DParser;
+#[allow(unused_imports)]
 use brontes_database::Tables;
+#[allow(unused_imports)]
 use brontes_metrics::PoirotMetricsListener;
+#[allow(unused_imports)]
 use brontes_types::{init_thread_pools, UnboundedYapperReceiver};
+#[allow(unused_imports)]
 use clap::Parser;
+#[allow(unused_imports)]
 use tokio::sync::mpsc::unbounded_channel;
 
+#[allow(unused_imports)]
 use crate::{
     cli::{determine_max_tasks, get_env_vars, get_tracing_provider, load_database, static_object},
     runner::CliContext,
@@ -29,12 +35,12 @@ pub struct Backfill {
 }
 
 impl Backfill {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
-        let db_path = get_env_vars()?;
+    pub async fn execute(self, _brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+        let _db_path = get_env_vars()?;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
         init_thread_pools(max_tasks as usize);
-        let (metrics_tx, metrics_rx) = unbounded_channel();
+        let (_metrics_tx, metrics_rx) = unbounded_channel();
 
         let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
             metrics_rx,

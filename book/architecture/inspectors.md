@@ -23,7 +23,7 @@ pub trait Inspector: Send + Sync {
 
 The `brontes_inspect` crate includes several MEV-inspectors, each implementing the Inspector trait to identify specific MEV types. Follow the links below to learn more about each their methodologies:
 
-- [Cex-Dex Arbitrage](../mev_inspectors/cex_dex.md)
+- [Cex-Dex Arbitrage](../mev_inspectors/cex-dex-quotes.md)
 - [Sandwich Attacks](../mev_inspectors/sandwich.md)
 - [Atomic Arbitrage](../mev_inspectors/atomic-arb.md)
 - [JIT Liquidity](../mev_inspectors/jit-liquidity.md)

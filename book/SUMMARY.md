@@ -20,7 +20,8 @@
 
 - [Inspector Methodology](./mev_inspectors/intro.md)
 
-  - [Cex-Dex Arbitrage](./mev_inspectors/cex_dex.md)
+  - [Cex-Dex Arbitrage](./mev_inspectors/cex-dex-quotes.md)
+  - [Experimental CEX DEX Arbitrage](./mev_inspectors/cex-dex-trades.md)
   - [Sandwich Attack](./mev_inspectors/sandwich.md)
   - [Atomic Arbitrage](./mev_inspectors/atomic-arb.md)
   - [JIT Liquidity](./mev_inspectors/jit-liquidity.md)
@@ -43,5 +44,4 @@
       - [`brontes db r2-upload`](./cli/brontes/db/r2-upload.md)
       - [`brontes db test-traces-init`](./cli/brontes/db/test-traces-init.md)
       - [`brontes db trace-at-tip`](./cli/brontes/db/trace-at-tip.md)
-      - [`brontes db run-discovery`](./cli/brontes/db/run-discovery.md)
-- [Developers](./developers/developers.md) <!-- CLI_REFERENCE END -->
+      - [`brontes db run-discovery`](./cli/brontes/db/run-discovery.md)<!-- CLI_REFERENCE END -->

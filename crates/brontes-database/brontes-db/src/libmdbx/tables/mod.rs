@@ -695,7 +695,7 @@ macro_rules! compressed_table {
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = Some(paste! {[<$table_name InitQuery>]});
             const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
-            const INIT_FLAG: Option<u8> = $init_flag;
+            const INIT_FLAG: Option<u16> = $init_flag;
         }
         } $($tail)*);
     };
@@ -710,7 +710,7 @@ macro_rules! compressed_table {
             const INIT_CHUNK_SIZE: Option<usize> = $init_chunk_size;
             const INIT_QUERY: Option<&'static str> = None;
             const HTTP_ENDPOINT: Option<&'static str> = $http_endpoint;
-            const INIT_FLAG: Option<u8> = None;
+            const INIT_FLAG: Option<u16> = None;
         }
         } $($tail)*);
     };
