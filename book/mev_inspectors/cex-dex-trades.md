@@ -9,17 +9,19 @@ Centralized exchanges (CEX) and decentralized exchanges (DEX) operate on fundame
 ## Methodology
 
 > **Note**
-> Experimental Methodology - Work in Progress
+> Experimental Methodology - Work in Progress!
 >
 > This methodology is highly experimental and currently under active development. Key points to consider:
 >
-> - It has been built iteratively based on continuous testing and real-world observations, rather than a comprehensive theoretical framework.
-> - Many parameters within the methodology have been set arbitrarily based on experimentation. These settings require further testing and analysis before we can present this as a credible framework.
-> - We offer this glimpse into our work-in-progress to encourage community engagement. It is not yet a finalized or validated approach.
-> - We strongly encourage users to approach these results with a critical eye. Your feedback, insights, criticisms, and contributions are invaluable as we refine and improve this methodology.
-> - Please share your experiences, observations, and any issues you encounter. This will help us enhance the accuracy, reliability, and theoretical grounding of our approach.
+> It has been built iteratively based on continuous testing and real-world observations, rather than a comprehensive theoretical framework.
 >
-> Our goal in sharing this early-stage work is to foster open dialogue and collaborative improvement within the community.
+> Many parameters within the methodology have been set arbitrarily based on experimentation. These settings require further testing and analysis before we can present this as a credible framework.
+>
+> We offer this glimpse into our work-in-progress to encourage community engagement. It is not yet a finalized or validated approach.
+>
+> We strongly encourage users to approach these results with a critical eye. Your feedback, insights, criticisms, and contributions are invaluable as we refine and improve this methodology.
+>
+> Please share your experiences, observations, and any issues you encounter. This will help us enhance the accuracy, reliability of this approach.
 
 ### Step 1: Identify Potential Arbitrage Transactions
 
@@ -152,7 +154,7 @@ This method provides an upper bound on potential arbitrage profitability by assu
    - Use a quality parameter (expressed as a percentage) to determine starting point in sorted trades.
    - Select most favorable trades up to the required clearance amount.
 
-#### Key Considerations:
+#### Key Considerations
 
 TODO: Changes to optimistic execution calculation
 
@@ -182,7 +184,7 @@ pub struct ExchangePrice {
 
 In the next step, we'll explore how we use these price estimates to calculate the actual arbitrage PnL, considering both realistic market conditions and best-case scenarios.
 
-### C. Updated Optimistic Execution Calculation
+### C. Optimistic Execution Calculation
 
 This method provides an optimistic yet realistic estimate of potential arbitrage profitability, adapting to market conditions while minimizing lookahead bias.
 
@@ -266,8 +268,6 @@ Question E: Should I remove trades that are larger than the total amount require
 - The quality parameter allows for optimistic selection without assuming perfect execution.
 - Progressive filling and sliding window approach reduce lookahead bias.
 - The method balances optimism with realism, providing a nuanced view of potential arbitrage opportunities.
-
-This refined approach provides a realistically optimistic estimate of CEX prices for arbitrage calculations, respecting market dynamics and execution constraints while acknowledging arbitrageur sophistication.
 
 ### Step 4: Calculate Potential Arbitrage Profits
 

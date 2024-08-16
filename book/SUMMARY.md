@@ -21,6 +21,7 @@
 - [Inspector Methodology](./mev_inspectors/intro.md)
 
   - [Cex-Dex Arbitrage](./mev_inspectors/cex-dex-quotes.md)
+  - [Experimental CEX DEX Arbitrage](./mev_inspectors/cex-dex-trades.md)
   - [Sandwich Attack](./mev_inspectors/sandwich.md)
   - [Atomic Arbitrage](./mev_inspectors/atomic-arb.md)
   - [JIT Liquidity](./mev_inspectors/jit-liquidity.md)

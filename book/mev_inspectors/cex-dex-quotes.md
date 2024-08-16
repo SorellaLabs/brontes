@@ -3,16 +3,7 @@
 The CEX-DEX inspector identifies arbitrage between centralized and decentralized exchanges. While on-chain DEX trades are visible, CEX orderbook data does not reveal the specific parties involved on either side of a fill. Using the available CEX data the inspector estimates the value extracted from onchain LPs via just-in-time CEX markouts with the methodology described below.
 
 > **Note**
-> Experimental Methodology - Work in Progress
-> This methodology is highly experimental and currently under active development. Key points to consider:
-
-It has been built iteratively based on continuous testing and real-world observations, rather than a comprehensive theoretical framework.
-Many parameters within the methodology have been set arbitrarily based on experimentation. These settings require further testing and analysis before we can present this as a credible framework.
-We offer this glimpse into our work-in-progress to encourage community engagement. It is not yet a finalized or validated approach.
-We strongly encourage users to approach these results with a critical eye. Your feedback, insights, criticisms, and contributions are invaluable as we refine and improve this methodology.
-Please share your experiences, observations, and any issues you encounter. This will help us enhance the accuracy, reliability, and theoretical grounding of our approach.
-
-Our goal in sharing this early-stage work is to foster open dialogue and collaborative improvement within the community.
+> Work in Progress: This methodology is currently under development and subject to change. We welcome feedback and contributions as we refine our approach.
 
 ## Background Information
 
@@ -36,7 +27,7 @@ However, the choice of the time interval for the future price involves a trade-o
 
 The core insight is that CEX-DEX arbitrageurs, whether they are trading against on-chain AMMs and hedging instantaneously on a more-liquid centralized exchange or just using the deepest centralized exchange as an accurate oracle that they can utilize to repeatedly extract AMM liquidity at better-than-true price, are taking on-chain liquidity preferentially based on the instantaneous CEX price.
 
-The initial CEX-DEX inspector filter thus looks at all AMM swaps with relative execution prices that are favorable (above a $1.5 in profit after gas for unknown addresses, and positive pnl for know searchers, searchers with more than 20 profitable cex-dex arbs with pnl greater than 1.5 each) to the instantaneous centralized exchange mid sprice at the most liquid centralized exchange for that given asset pair. This implies that the instantaneous markout to centralized exchanges is always positive for a CEX-DEX arb (or else, if they're trading on some directional alpha, it would make sense for them to employ the same strategy on the centralized exchange given their sophistication).
+The initial CEX-DEX inspector filter thus looks at all AMM swaps with relative execution prices that are favorable (above a $1.5 in profit after gas for unknown addresses, and positive pnl for know searchers, searchers with more than 20 profitable cex-dex arbs with pnl greater than 1.5 each) to the instantaneous centralized exchange mid price at the most liquid centralized exchange for that given asset pair. This implies that the instantaneous markout to centralized exchanges is always positive for a CEX-DEX arb (or else, if they're trading on some directional alpha, it would make sense for them to employ the same strategy on the centralized exchange given their sophistication).
 
 But, the arbitrageurs favorable on-chain swap also leaks some ex-post information that affects true price. We thus need to determine the optimal markout time to determine the expected true value of these arbitrages. Note that, given we're operating on a true value basis, we're able to compare the extraction from on-chain LPs from arbitrageurs _irrespective_ of the specific strategy that the arbitrageur is running (of which, there are several).
 
