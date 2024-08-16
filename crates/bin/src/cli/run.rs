@@ -321,7 +321,7 @@ pub struct TimeWindowArgs {
     pub vwap_time_step: f64,
 
     /// Use block time weights to favour prices closer to the block time
-    #[arg(long = "weights-vwap", default_value = "false")]
+    #[arg(long = "weights-vwap", default_value = "true")]
     pub block_time_weights_vwap: bool,
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
@@ -364,7 +364,7 @@ pub struct TimeWindowArgs {
     pub optimistic_time_step: f64,
 
     /// Use block time weights to favour prices closer to the block time
-    #[arg(long = "weights-op", default_value = "false")]
+    #[arg(long = "weights-op", default_value = "true")]
     pub block_time_weights_optimistic: bool,
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
