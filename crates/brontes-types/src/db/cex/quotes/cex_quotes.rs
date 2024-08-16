@@ -45,12 +45,10 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-const MAX_TIME_DIFFERENCE: u64 = 250_000;
-
 #[derive(Debug, Clone, Row, PartialEq, Eq)]
 pub struct CexPriceMap {
     pub quotes:         FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
-    pub most_liquid_ex: FastHashMap<Pair, CexExchange>,
+    pub most_liquid_ex: FastHashMap<Pair, Vec<CexExchange>>,
 }
 
 #[derive(
@@ -66,13 +64,13 @@ pub struct CexPriceMap {
 )]
 pub struct CexPriceMapRedefined {
     pub map:            Vec<(CexExchange, FastHashMap<PairRedefined, Vec<CexQuoteRedefined>>)>,
-    pub most_liquid_ex: Vec<(PairRedefined, CexExchange)>,
+    pub most_liquid_ex: Vec<(PairRedefined, Vec<CexExchange>)>,
 }
 
 impl CexPriceMapRedefined {
     fn new(
         map: FastHashMap<CexExchange, FastHashMap<Pair, Vec<CexQuote>>>,
-        most_liquid_ex: FastHashMap<Pair, CexExchange>,
+        most_liquid_ex: FastHashMap<Pair, Vec<CexExchange>>,
     ) -> Self {
         Self {
             map:            map
@@ -111,7 +109,15 @@ impl CexPriceMap {
         self.most_liquid_ex
             .get(pair)
             .or_else(|| self.most_liquid_ex.get(&pair.flip()))
-            .and_then(|exchange| self.get_quote_at(pair, exchange, timestamp, max_time_diff))
+            .and_then(|exchanges| {
+                for exchange in exchanges {
+                    let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
+                    if res.is_some() {
+                        return res
+                    }
+                }
+                None
+            })
     }
 
     pub fn get_quote_at(
@@ -137,10 +143,10 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
-        max_time_diff: Option<u64>,
+        _max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
-            return Some(FeeAdjustedQuote::default_one_to_one());
+            return Some(FeeAdjustedQuote::default_one_to_one())
         }
 
         self.quotes
@@ -157,24 +163,13 @@ impl CexPriceMap {
             })
             .and_then(|(adjusted_quotes, direction)| {
                 if adjusted_quotes.is_empty() {
-                    return None;
+                    tracing::debug!(?pair, ?exchange, "no quotes");
+                    return None
                 }
 
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
 
-                let closest_quote = adjusted_quotes
-                    .get(index.saturating_sub(1))
-                    .into_iter()
-                    .chain(adjusted_quotes.get(index))
-                    .min_by_key(|&quote| (quote.timestamp as i64 - timestamp as i64).abs())?;
-
-                let time_diff = (closest_quote.timestamp as i64 - timestamp as i64).unsigned_abs();
-                let max_allowed_diff = max_time_diff.unwrap_or(MAX_TIME_DIFFERENCE);
-
-                if time_diff > max_allowed_diff {
-                    return None;
-                }
-
+                let closest_quote = adjusted_quotes.get(index.saturating_sub(1))?;
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
 
                 let fees = exchange.fees();
@@ -230,7 +225,7 @@ impl CexPriceMap {
                     );
 
                     if quote2.price_maker.0 == Rational::ZERO {
-                        return None;
+                        return None
                     }
 
                     let normalized_bbo_amount: (Rational, Rational) = (
@@ -276,7 +271,7 @@ impl CexPriceMap {
     ///   price is reciprocated to match the requested pair ordering.
     pub fn get_vm_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
-            return Some(FeeAdjustedQuote::default_one_to_one());
+            return Some(FeeAdjustedQuote::default_one_to_one())
         }
 
         self.quotes

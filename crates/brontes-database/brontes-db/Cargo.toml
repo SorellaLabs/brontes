@@ -150,6 +150,10 @@ name = "cex_quotes_conversion"
 harness = false
 required-features = ["sorella-server"]
 
+[[test]]
+name = "quotes_converter"
+path = "tests/quotes_converter.rs"
+required-features = ["sorella-server"]
 
 
 

@@ -450,7 +450,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexQuotes);
 
-        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 5.0;
+        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 1.5;
 
         let should_include_if_know_cex_dex = possible_cex_dex.pnl.aggregate_pnl > 0.0;
 
@@ -638,6 +638,34 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
+
+    #[brontes_macros::test]
+    async fn test_cex_dex() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 50.5).await;
+
+        let tx = hex!("21b129d221a4f169de0fc391fe0382dbde797b69300a9a68143487c54d620295").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(1931.53)
+            .with_gas_paid_usd(78754.85);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_eoa_cex_dex() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 50.5).await;
+
+        let tx = hex!("dfe3152caaf92e5a9428827ea94eff2a822ddcb22129499da4d5b6942a7f203e").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(8941.5750)
+            .with_gas_paid_usd(6267.29);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 
     #[brontes_macros::test]
     async fn test_not_triangular_arb_false_positive() {

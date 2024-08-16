@@ -37,39 +37,39 @@ builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 # Wintermute EOAs - associated with Rsync
 [searcher_eoas."0xDBF5E9c5206d0dB70a90108bf936DA60221dC080"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_eoas."0x0000f079e68BbCC79AB9600ace786B0a4dB1c83c"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_eoas."0xB3f923eaBAF178fC1BD8E13902FC5C61D3DdEF5B"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_eoas."0xAaD5Ae975e15fde11cb508866d836D3A278D34d3"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searchers_contracts]
 # Beaver Builder contracts
 [searcher_contracts."0xFA103c21ea2DF71DFb92B0652F8B1D795e51cdEf"]
 fund = "Symbolic Capital Partners"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 [searcher_contracts."0xA69babEF1cA67A37Ffaf7a485DfFF3382056e78C"]
 fund = "Symbolic Capital Partners"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 [searcher_contracts."0x5050e08626c499411B5D0E0b5AF0E83d3fD82EDF"]
 fund = "Symbolic Capital Partners"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 
 [searcher_contracts."0x7d32C90762E22379235FC311fDB16fAB399Ed40A"]
@@ -80,12 +80,12 @@ builder = "0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5"
 # Rsync contracts
 [searcher_contracts."0x0087BB802D9C0e343F00510000729031ce00bf27"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_contracts."0x51c72848c68a965f66fa7a88855f9f7784502a7f"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_contracts."0x00000000AE347930bD1E7B0F35588b92280f9e75"]
@@ -94,12 +94,12 @@ builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_contracts."0xaf0b0000f0210d0f421f0009c72406703b50506b"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_contracts."0x0000006daea1723962647b7e189d311d757fb793"]
 fund = "Wintermute"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 
 [searcher_contracts."0x280027dd00ee0050d3f9d168efd6b40090009246"]
@@ -109,39 +109,39 @@ builder = "0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326"
 # Jane Street searcher associated with Manta Builder
 [searcher_contracts."0xf8b721bff6bf7095a0e10791ce8f998baa254fd0"]
 fund = "Jane Street"
-mev_types = ["CexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades"] 
 builder = "0x5F927395213ee6b95dE97bDdCb1b2B1C0F16844F"
 
 # Anta Builder searcher_contracts - associated with Ant Builder and Flow Traders fund
 [searcher_contracts."0x32801ab1957aaad1c65289b51603373802b4e8bb"]
 fund = "Flow Traders"
-mev_types = ["CexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [searcher_contracts."0xD198fBE60C49D4789525fC54567447518C7D2a11"]
 fund = "Flow Traders"
-mev_types = ["CexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 
 [searcher_contracts."0xaafb85ad4a412dd8adc49611496a7695a22f4aeb"]
 fund = "Flow Traders"
-mev_types = ["CexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [searcher_contracts."0x752e87b5f1397e171D5383cec3D4C51A8D3C114B"]
 fund = "Flow Traders"
-mev_types = ["CexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades"] 
 builder = "0xc9D945721ed37c6451E457b3C7F1e0ceC42417fb"
 
 [searcher_contracts."0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
 fund = "Tokka Labs"
-mev_types = ["CexDex", "RfqCexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades", "RfqCexDex"] 
 builder = "0xdcca982701a264e8d629a6e8cfba9c1a27912623"
 
 [searcher_contracts."0xeeaa83b2d581a3a790774d4dae7bf354fffe3376"]
 fund = "EthBuilder"
-mev_types = ["CexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades"] 
 builder = "0xFeebabE6b0418eC13b30aAdF129F5DcDd4f70CeA"
 
 [searcher_contracts."0x6980a47bee930a4584b09ee79ebe46484fbdbdd0"]
@@ -151,55 +151,55 @@ builder = "0x229b8325bb9ac04602898b7e8989998710235d5f"
 
 [searcher_contracts."0x9507c04b10486547584c37bcbd931b2a4fee9a41"]
 fund = "Jump Trading"
-mev_types = ["AtomicArb", "Sandwich", "CexDex"]
+mev_types = ["AtomicArb", "Sandwich", "CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x053F661abf26d086194540f20F312E0d90a61302"]
-mev_types = ["CexDex"] 
+mev_types = ["CexDexQuotes", "CexDexTrades"] 
 
 [searcher_contracts."0x6f1cdbbb4d53d226cf4b917bf768b94acbab6168"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xbfef411d9ae30c5b471d529c838f1abb7b65d67f"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x98c3d3183c4b8a650614ad179a1a98be0a8d6b8e"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x4a137fd5e7a256ef08a7de531a17d0be0cc7b6b6"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x99999999D116Ffa7D76590De2f427d8e15AEb0b8"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xfbeedcfe378866dab6abbafd8b2986f5c1768737"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x81153f0889ab398c4acb42cb58b565a5392bba95"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xc758d5718147c8c5bc440098d623cf8d96b95b83"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xa0b18cdf5f395d98c061b753d8dedb28c7aee450"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xc6fecdf760af24095cded954de7d81ab49f8bae1"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x966d8c1f61bae657d577077abfbd7d896c09e242"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xcfd4176f7975c70f800d87aeaca316270521595a"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x9ea3cda5c2adf0370454b9ee28786a068227b1a4"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xe6ae75be7c9317af842b8f2c2cd6dc7f49f17184"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x1Fc4B4BDf5162Aa5E357041945C9333b2818ADAD"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 
 [searcher_contracts."0x000000000dFDe7deaF24138722987c9a6991e2D4"]
@@ -207,14 +207,14 @@ mev_types = ["Sandwich, CexDex"]
 
 [searcher_contracts."0xe8cFAd4C75a5e1CaF939Fd80AfCf837DdE340a69"]
 fund = "Beelder"
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x000000000035B5e5ad9019092C665357240f594e"]
 mev_types = ["AtomicArb"]
 sibling_searchers = ["0x00000000032962B51589768828ad878876299E14"]
 
 [searcher_contracts."0x0c3DE458b51A11da7D4616f42F66C861e3859D3E"]
-mev_types = ["CexDex"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0x53FacEe52e897740B140F5304E9Cd9DC6238d735"]
 fund = "NC"

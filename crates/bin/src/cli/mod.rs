@@ -26,6 +26,7 @@ pub struct Args {
     pub metrics_port:    u16,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Run brontes

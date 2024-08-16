@@ -16,6 +16,25 @@
 [tg-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fsorella_brontes
 [tg-url]: https://t.me/sorella_brontes
 
-## What is Brontes?
+## Why Brontes?
 
-Brontes is an advanced blockchain analytics pipeline built on top of [Reth](https://github.com/paradigmxyz/reth/). It transforms raw Ethereum data into a structured, analyzable format, enriched with a diverse set of off-chain data. Brontes provides a pipelined and modular framework for complex analytics, enabling developers data scientists, and researchers to focus on their analysis and methodology without being burdened by the intricacies of data preprocessing.
+[Brontes](https://github.com/SorellaLabs/brontes) is a blockchain analytics pipeline built on top of [Reth](https://github.com/paradigmxyz/reth/). It addresses a critical challenge in blockchain research: the overwhelming flood of data and tedious preprocessing that often derail researchers from their core focus.
+
+**Key features:**
+
+- Transforms raw Ethereum data into a structured, analyzable format
+- Enhances analysis with off-chain data (metadata, CEX prices, p2p data...)
+- Provides a modular framework to easily implement user-defined inspectors for custom analytics
+
+Blockchain data analysis, especially at the trace level, can overwhelm even seasoned researchers. While a few masochists might find satisfaction in the chore of data preprocessing and normalization, most of us are captivated by the intellectual challenge of crafting innovative analytical techniques.
+
+Our Inspector Framework allows you to focus on developing and applying novel methodologies. By eliminating initial hurdles, Brontes frees you to immerse yourself in creative analysis rather than getting bogged down in preprocessing.
+
+## Who is this for?
+
+Brontes is designed for:
+
+- Blockchain researchers and data scientists
+- MEV analysts and strategists
+- DeFi protocol developers
+- Anyone working with large-scale Ethereum data

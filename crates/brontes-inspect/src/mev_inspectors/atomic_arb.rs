@@ -712,7 +712,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_very_big_atomic_arb_2() {
-        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 0.5).await;
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 5.5).await;
 
         let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
             .with_mev_tx_hashes(vec![hex!(

@@ -20,8 +20,10 @@ use crate::{
     runner::CliContext,
     BrontesRunConfig,
     MevProcessor,
+    RangeType,
 };
-const SECONDS_TO_US: u64 = 1_000_000;
+
+const SECONDS_TO_US_FLOAT: f64 = 1_000_000.0;
 
 #[derive(Debug, Parser)]
 pub struct RunArgs {
@@ -32,6 +34,11 @@ pub struct RunArgs {
     /// killed
     #[arg(long, short)]
     pub end_block:            Option<u64>,
+    /// Optional Multiple Ranges, format: "start1-end1 start2-end2 ..."
+    /// Use this if you want to specify the exact, non continuous block ranges
+    /// you want to run
+    #[arg(long, num_args = 1.., value_delimiter = ' ')]
+    pub ranges:               Option<Vec<String>>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
@@ -91,29 +98,6 @@ pub struct RunArgs {
     pub run_id:               Option<u64>,
 }
 
-#[derive(Debug, Parser)]
-pub struct TimeWindowArgs {
-    /// The sliding time window (BEFORE) for cex prices or trades relative to
-    /// the block timestamp
-    #[arg(long = "tw-before", short = 'b', default_value = "10")]
-    pub time_window_before:            f64,
-    /// The sliding time window (AFTER) for cex prices or trades relative to the
-    /// block timestamp
-    #[arg(long = "tw-after", short = 'a', default_value = "20")]
-    pub time_window_after:             f64,
-    /// The time window (BEFORE) for cex prices or trades relative to
-    /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-before", default_value = "5.0")]
-    pub time_window_before_optimistic: f64,
-    /// The time window (AFTER) for cex prices or trades relative to
-    /// the block timestamp for fully optimistic calculations
-    #[arg(long = "op-tw-after", default_value = "10.0")]
-    pub time_window_after_optimistic:  f64,
-    /// Cex Dex Quotes price time
-    #[arg(long = "mk-time", default_value = "0.0")]
-    pub quotes_price_time:             f64,
-}
-
 impl RunArgs {
     pub async fn execute(
         mut self,
@@ -161,6 +145,7 @@ impl RunArgs {
             self.cex_exchanges.clone(),
         );
 
+        let range_type = self.get_range_type()?;
         let clickhouse = static_object(load_clickhouse(cex_download_config, self.run_id).await?);
         tracing::info!(target: "brontes", "Databases initialized");
 
@@ -177,7 +162,7 @@ impl RunArgs {
             self.force_no_dex_pricing = true;
         }
 
-        let trade_config = self.trade_config();
+        let trade_config = self.time_window_args.trade_config();
 
         let inspectors = init_inspectors(
             quote_asset,
@@ -197,9 +182,7 @@ impl RunArgs {
             .clone()
             .spawn_critical_with_graceful_shutdown_signal("run init", |shutdown| async move {
                 if let Ok(brontes) = BrontesRunConfig::<_, _, _, MevProcessor>::new(
-                    self.start_block,
-                    self.end_block,
-                    self.behind_tip,
+                    range_type,
                     max_tasks,
                     self.min_batch_size,
                     quote_asset,
@@ -230,6 +213,19 @@ impl RunArgs {
         Ok(())
     }
 
+    pub fn get_range_type(&self) -> eyre::Result<RangeType> {
+        if let Some(ranges) = &self.ranges {
+            let parsed_ranges = parse_ranges(ranges).map_err(|e| eyre::eyre!(e))?;
+            Ok(RangeType::MultipleRanges(parsed_ranges))
+        } else {
+            Ok(RangeType::SingleRange {
+                start_block:   self.start_block,
+                end_block:     self.end_block,
+                back_from_tip: self.behind_tip,
+            })
+        }
+    }
+
     async fn try_start_fallback_server(&self) -> Option<HeartRateMonitor> {
         if self.enable_fallback {
             if let Some(fallback_server) = self.fallback_server.clone() {
@@ -253,10 +249,10 @@ impl RunArgs {
     /// the time window in seconds for downloading
     fn load_time_window(&self) -> usize {
         self.time_window_args
-            .time_window_before
-            .max(self.time_window_args.time_window_after)
-            .max(self.time_window_args.time_window_before_optimistic)
-            .max(self.time_window_args.time_window_after_optimistic) as usize
+            .max_vwap_pre
+            .max(self.time_window_args.max_vwap_post)
+            .max(self.time_window_args.max_optimistic_pre)
+            .max(self.time_window_args.max_optimistic_post) as usize
     }
 
     fn check_proper_range(&self) -> eyre::Result<()> {
@@ -267,16 +263,154 @@ impl RunArgs {
         }
         Ok(())
     }
+}
 
+fn parse_ranges(ranges: &[String]) -> Result<Vec<(u64, u64)>, String> {
+    ranges
+        .iter()
+        .map(|range| {
+            let (start, end) = range
+                .split_once('-')
+                .ok_or_else(|| format!("invalid range: {}", range))?;
+            let start: u64 = start
+                .parse()
+                .map_err(|_| format!("invalid start block: {}", start))?;
+            let end: u64 = end
+                .parse()
+                .map_err(|_| format!("invalid end block: {}", end))?;
+            if start > end {
+                return Err(format!(
+                    "start block {} must be less than or equal to end block {}",
+                    start, end
+                ));
+            }
+            Ok((start, end))
+        })
+        .collect()
+}
+
+#[derive(Debug, Parser)]
+pub struct TimeWindowArgs {
+    /// The initial sliding time window (BEFORE) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "initial-pre", default_value = "0.05")]
+    pub initial_vwap_pre: f64,
+
+    /// The initial sliding time window (AFTER) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "initial-post", default_value = "0.05")]
+    pub initial_vwap_post: f64,
+
+    /// The maximum sliding time window (BEFORE) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "max-vwap-pre", short = 'b', default_value = "10.0")]
+    pub max_vwap_pre: f64,
+
+    /// The maximum sliding time window (AFTER) for cex prices or trades
+    /// relative to the block timestamp
+    #[arg(long = "max-vwap-post", short = 'a', default_value = "20.0")]
+    pub max_vwap_post: f64,
+
+    /// Defines how much to extend the post-block time window before the
+    /// pre-block.
+    #[arg(long = "vwap-scaling-diff", default_value = "0.3")]
+    pub vwap_scaling_diff: f64,
+
+    /// Size of each extension to the vwap calculations time window
+    #[arg(long = "vwap-time-step", default_value = "0.01")]
+    pub vwap_time_step: f64,
+
+    /// Use block time weights to favour prices closer to the block time
+    #[arg(long = "weights-vwap", default_value = "false")]
+    pub block_time_weights_vwap: bool,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::cex
+    #[arg(long = "weights-pre-vwap", default_value = "-0.0000005")]
+    pub pre_decay_weight_vwap: f64,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::ce
+    #[arg(long = "weights-post-vwap", default_value = "-0.0000002")]
+    pub post_decay_weight_vwap: f64,
+
+    /// The initial time window (BEFORE) for cex prices or trades relative to
+    /// the block timestamp for fully optimistic calculations
+    #[arg(long = "initial-op-pre", default_value = "0.05")]
+    pub initial_optimistic_pre: f64,
+
+    /// The initial time window (AFTER) for cex prices or trades relative to the
+    /// block timestamp for fully optimistic calculations
+    #[arg(long = "initial-op-post", default_value = "0.3")]
+    pub initial_optimistic_post: f64,
+
+    /// The maximum time window (BEFORE) for cex prices or trades relative to
+    /// the block timestamp for fully optimistic calculations
+    #[arg(long = "max-op-pre", default_value = "5.0")]
+    pub max_optimistic_pre: f64,
+
+    /// The maximum time window (AFTER) for cex prices or trades relative to the
+    /// block timestamp for fully optimistic calculations
+    #[arg(long = "max-op-post", default_value = "10.0")]
+    pub max_optimistic_post: f64,
+
+    /// Defines how much to extend the post-block time window before the
+    /// pre-block.
+    #[arg(long = "optimistic-scaling-diff", default_value = "0.2")]
+    pub optimistic_scaling_diff: f64,
+
+    /// Size of each extension to the optimistic calculations time window
+    #[arg(long = "optimistic-time-step", default_value = "0.1")]
+    pub optimistic_time_step: f64,
+
+    /// Use block time weights to favour prices closer to the block time
+    #[arg(long = "weights-op", default_value = "false")]
+    pub block_time_weights_optimistic: bool,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::cex
+    #[arg(long = "weights-pre-op", default_value = "-0.0000003")]
+    pub pre_decay_weight_optimistic: f64,
+
+    /// Rate of decay of bi-exponential decay function see calculate_weight in
+    /// brontes_types::db::ce
+    #[arg(long = "weights-post-op", default_value = "-0.00000012")]
+    pub post_decay_weight_optimistic: f64,
+
+    /// Cex Dex Quotes price time offset from block timestamp
+    #[arg(long = "quote-offset", default_value = "0.0")]
+    pub quote_offset: f64,
+}
+
+impl TimeWindowArgs {
     fn trade_config(&self) -> CexDexTradeConfig {
         CexDexTradeConfig {
-            time_window_after_us:  self.time_window_args.time_window_after as u64 * SECONDS_TO_US,
-            time_window_before_us: self.time_window_args.time_window_before as u64 * SECONDS_TO_US,
-            optimistic_before_us:  self.time_window_args.time_window_before_optimistic as u64
-                * SECONDS_TO_US,
-            optimistic_after_us:   self.time_window_args.time_window_after_optimistic as u64
-                * SECONDS_TO_US,
-            quotes_fetch_time:     (self.time_window_args.quotes_price_time * 1000000.0) as u64,
+            initial_vwap_pre_block_us:  (self.initial_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            initial_vwap_post_block_us: (self.initial_vwap_post * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_pre_block_us:      (self.max_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_post_block_us:     (self.max_vwap_post * SECONDS_TO_US_FLOAT) as u64,
+            vwap_scaling_diff_us:       (self.vwap_scaling_diff * SECONDS_TO_US_FLOAT) as u64,
+            vwap_time_step_us:          (self.vwap_time_step * SECONDS_TO_US_FLOAT) as u64,
+
+            use_block_time_weights_vwap:       self.block_time_weights_vwap,
+            pre_decay_weight_vwap:             self.pre_decay_weight_vwap,
+            post_decay_weight_vwap:            self.post_decay_weight_vwap,
+            initial_optimistic_pre_block_us:   (self.initial_optimistic_pre * SECONDS_TO_US_FLOAT)
+                as u64,
+            initial_optimistic_post_block_us:  (self.initial_optimistic_post * SECONDS_TO_US_FLOAT)
+                as u64,
+            max_optimistic_pre_block_us:       (self.max_optimistic_pre * SECONDS_TO_US_FLOAT)
+                as u64,
+            max_optimistic_post_block_us:      (self.max_optimistic_post * SECONDS_TO_US_FLOAT)
+                as u64,
+            optimistic_scaling_diff_us:        (self.optimistic_scaling_diff * SECONDS_TO_US_FLOAT)
+                as u64,
+            optimistic_time_step_us:           (self.optimistic_time_step * SECONDS_TO_US_FLOAT)
+                as u64,
+            use_block_time_weights_optimistic: self.block_time_weights_optimistic,
+            pre_decay_weight_op:               self.pre_decay_weight_optimistic,
+            post_decay_weight_op:              self.post_decay_weight_optimistic,
+            quote_offset_from_block_us:        (self.quote_offset * SECONDS_TO_US_FLOAT) as u64,
         }
     }
 }

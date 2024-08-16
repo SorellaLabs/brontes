@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use brontes_types::{
+use crate::{
     db::cex::{trades::CexTradeMap, CexExchange},
     pair::Pair,
     FastHashMap,
@@ -8,7 +8,7 @@ use brontes_types::{
 
 pub struct CexWindow {
     /// a queue of each pairs vec offset. this allows us to quickly trim
-    /// out fields from the extended map
+    /// out fields from the extended mapw
     offset_list:           VecDeque<FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
     global_map:            CexTradeMap,
     /// this is the last block loaded, adjusted for the range lookahead.

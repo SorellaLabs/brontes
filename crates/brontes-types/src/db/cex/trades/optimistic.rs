@@ -1,6 +1,5 @@
 use std::{
     cmp::{max, min},
-    f64::consts::E,
     fmt::Display,
     ops::Mul,
 };
@@ -11,6 +10,8 @@ use malachite::{
     num::basic::traits::{One, Two, Zero},
     Rational,
 };
+
+use super::utils::calculate_weight;
 
 const R2: Rational = Rational::TWO;
 
@@ -32,10 +33,7 @@ use crate::{
     FastHashMap,
 };
 
-pub const BASE_EXECUTION_QUALITY: usize = 70;
-
-const PRE_SCALING_DIFF: u64 = 200_000;
-const TIME_STEP: u64 = 100_000;
+pub const BASE_EXECUTION_QUALITY: usize = 80;
 
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
@@ -177,7 +175,8 @@ impl<'a> SortedTrades<'a> {
 
                 let mut bypass_intermediary_vol = false;
 
-                // bypass volume requirements for stable pairs
+                // bypass volume requirements for stable pairs as we can assume that 
+                // some arbitrageurs consider the USDC & USDT to be equal on a longer time frame
                 if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS
                 || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS {
                     bypass_intermediary_vol = true;
@@ -234,10 +233,10 @@ impl<'a> SortedTrades<'a> {
         tx_hash: FixedBytes<32>,
     ) -> Option<OptimisticPrice> {
         // Populate Map of Assumed Execution Quality by Exchange
-        // - We're making the assumption that the stat arber isn't hitting *every* good
-        //   markout for each pair on each exchange.
-        // - Quality percent adjusts the total percent of "good" trades the arber is
-        //   capturing for the relevant pair on a given exchange.
+        // - We're making the assumption that the arbitrageur isn't executing *every*
+        //   best trade for each pair on each exchange.
+        // - Quality percent adjusts the total percent of "good" trades the arbitrageur
+        //   is capturing for the relevant pair on a given exchange.
 
         let quality_pct = quality.map(|map| {
             map.iter()
@@ -247,23 +246,26 @@ impl<'a> SortedTrades<'a> {
 
         let trade_data = self.get_trades(pair, dex_swap, tx_hash)?;
 
-        let mut baskets_queue = TimeBasketQueue::new(trade_data, block_timestamp, quality_pct);
+        let mut baskets_queue =
+            TimeBasketQueue::new(trade_data, block_timestamp, quality_pct, &config);
 
         baskets_queue.construct_time_baskets();
 
         while baskets_queue.volume.lt(volume) {
-            if baskets_queue.get_min_time_delta(block_timestamp) >= config.optimistic_before_us
-                || baskets_queue.get_max_time_delta(block_timestamp) >= config.optimistic_after_us
+            if baskets_queue.get_min_time_delta(block_timestamp)
+                >= config.max_optimistic_pre_block_us
+                || baskets_queue.get_max_time_delta(block_timestamp)
+                    >= config.max_optimistic_post_block_us
             {
                 break
             }
 
             let min_expand = (baskets_queue.get_max_time_delta(block_timestamp)
-                >= PRE_SCALING_DIFF)
-                .then_some(TIME_STEP)
+                >= config.optimistic_scaling_diff_us)
+                .then_some(config.optimistic_time_step_us)
                 .unwrap_or_default();
 
-            baskets_queue.expand_time_bounds(min_expand, TIME_STEP);
+            baskets_queue.expand_time_bounds(min_expand, config.optimistic_time_step_us);
         }
 
         let mut trades_used: Vec<CexTrades> = Vec::new();
@@ -291,9 +293,18 @@ impl<'a> SortedTrades<'a> {
         let mut global_end_time = 0;
 
         for trade in trades_used {
-            let weight = calculate_weight(block_timestamp, trade.timestamp);
-
             let (m_fee, t_fee) = trade.exchange.fees();
+
+            let weight = if config.use_block_time_weights_vwap {
+                calculate_weight(
+                    block_timestamp,
+                    trade.timestamp,
+                    config.pre_decay_weight_vwap,
+                    config.post_decay_weight_op,
+                )
+            } else {
+                Rational::ONE
+            };
 
             vxp_maker += (&trade.price * (Rational::ONE - m_fee)) * &trade.amount * &weight;
             vxp_taker += (&trade.price * (Rational::ONE - t_fee)) * &trade.amount * &weight;
@@ -379,48 +390,4 @@ pub struct OptimisticTradeData {
     pub indices:   (usize, usize),
     pub trades:    Vec<CexTrades>,
     pub direction: Direction,
-}
-
-const PRE_DECAY: f64 = -0.0000003;
-const POST_DECAY: f64 = -0.00000012;
-
-/// Calculates the weight for a trade using a bi-exponential decay function
-/// based on its timestamp relative to a block time.
-///
-/// This function is designed to account for the risk associated with the timing
-/// of trades in relation to block times in the context of cex-dex
-/// arbitrage. This assumption underpins our pricing model: trades that
-/// occur further from the block time are presumed to carry higher uncertainty
-/// and an increased risk of adverse market conditions potentially impacting
-/// arbitrage outcomes. Accordingly, the decay rates (`PRE_DECAY` for pre-block
-/// and `POST_DECAY` for post-block) adjust the weight assigned to each trade
-/// based on its temporal proximity to the block time.
-///
-/// Trades after the block are assumed to be generally preferred by arbitrageurs
-/// as they have confirmation that their DEX swap is executed. However, this
-/// preference can vary for less competitive pairs where the opportunity and
-/// timing of execution might differ.
-///
-/// # Parameters
-/// - `block_time`: The timestamp of the block as seen first on the peer-to-peer
-///   network.
-/// - `trade_time`: The timestamp of the trade to be weighted.
-///
-/// # Returns
-/// Returns a `Rational` representing the calculated weight for the trade. The
-/// weight is determined by:
-/// - `exp(-PRE_DECAY * (block_time - trade_time))` for trades before the block
-///   time.
-/// - `exp(-POST_DECAY * (trade_time - block_time))` for trades after the block
-///   time.
-
-fn calculate_weight(block_time: u64, trade_time: u64) -> Rational {
-    let pre = trade_time < block_time;
-
-    Rational::try_from_float_simplest(if pre {
-        E.powf(PRE_DECAY * (block_time - trade_time) as f64)
-    } else {
-        E.powf(POST_DECAY * (trade_time - block_time) as f64)
-    })
-    .unwrap()
 }
