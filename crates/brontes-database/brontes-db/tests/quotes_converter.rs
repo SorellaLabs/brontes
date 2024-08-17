@@ -1,34 +1,15 @@
 use brontes_database::{clickhouse::Clickhouse, libmdbx::cex_utils::CexRangeOrArbitrary};
 use brontes_types::{
     constants::{USDT_ADDRESS, WETH_ADDRESS},
-    db::{
-        block_times::BlockTimes,
-        cex::{
-            quotes::{CexQuote, CexQuotesConverter, RawCexQuotes},
-            BestCexPerPair, CexExchange, CexSymbols,
-        },
+    db::cex::{
+        quotes::{CexQuote, CexQuotesConverter},
+        CexExchange,
     },
     pair::Pair,
 };
-use futures::{stream::FuturesUnordered, StreamExt};
 use malachite::Rational;
-
-async fn fetch_test_data(
-    client: &Clickhouse,
-    range: CexRangeOrArbitrary,
-) -> eyre::Result<(Vec<BlockTimes>, Vec<CexSymbols>, Vec<RawCexQuotes>, Vec<BestCexPerPair>)> {
-    let block_times: Vec<BlockTimes> = client.get_block_times_range(&range).await?;
-    let symbols = client.get_cex_symbols().await?;
-    let start_time = block_times.first().unwrap().timestamp;
-    let end_time = block_times.last().unwrap().timestamp + 300 * 1_000_000;
-
-    let raw_quotes = client
-        .get_raw_cex_quotes_range(start_time, end_time)
-        .await?;
-    let symbol_rank = client.fetch_symbol_rank(&block_times, &range).await?;
-
-    Ok((block_times, symbols, raw_quotes, symbol_rank))
-}
+mod shared;
+use shared::fetch_test_data;
 
 #[brontes_macros::test]
 async fn test_cex_quote_conversion() {
@@ -60,23 +41,6 @@ async fn test_cex_quote_conversion() {
 
     let expected_length = 18264795 - 18264694;
     assert_eq!(price_map.len(), expected_length)
-}
-
-#[brontes_macros::test]
-async fn test_query_retry() {
-    let client = Clickhouse::new_default(None).await;
-
-    let range = CexRangeOrArbitrary::Range(19000000, 19001000);
-
-    let mut futs = FuturesUnordered::new();
-
-    for _ in 0..30 {
-        futs.push(fetch_test_data(&client, range));
-    }
-
-    while let Some(result) = futs.next().await {
-        assert!(result.is_ok());
-    }
 }
 
 fn create_test_cex_quotes() -> Vec<CexQuote> {

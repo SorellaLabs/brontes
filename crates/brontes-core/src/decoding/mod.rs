@@ -15,7 +15,7 @@ mod dyn_decode;
 pub mod parser;
 mod utils;
 use brontes_metrics::{
-    range::GlobalRangeMetrics, trace::types::TraceMetricEvent, PoirotMetricEvents,
+    range::GlobalRangeMetrics, trace::types::TraceMetricEvent, ParserMetricEvents,
 };
 #[allow(dead_code)]
 pub(crate) const UNKNOWN: &str = "unknown";
@@ -36,7 +36,7 @@ pub struct Parser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
     pub async fn new(
-        metrics_tx: UnboundedSender<PoirotMetricEvents>,
+        metrics_tx: UnboundedSender<ParserMetricEvents>,
         libmdbx: &'static DB,
         tracing: T,
     ) -> Self {

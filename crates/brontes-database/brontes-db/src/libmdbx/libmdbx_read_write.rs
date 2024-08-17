@@ -53,7 +53,7 @@ use crate::{
 
 pub trait LibmdbxInit: LibmdbxReader + DBWriter {
     /// initializes all the tables with data via the CLI
-    fn initialize_tables<T: TracingProvider, CH: ClickhouseHandle>(
+    fn initialize_table<T: TracingProvider, CH: ClickhouseHandle>(
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
@@ -61,6 +61,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         clear_tables: bool,
         block_range: Option<(u64, u64)>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// Initialize the small tables that aren't indexed by block number
@@ -68,16 +69,18 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
+        metrics: bool,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     /// initializes all the tables with missing data ranges via the CLI
-    fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+    fn initialize_table_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
         tables: Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> impl Future<Output = eyre::Result<()>> + Send;
 
     fn state_to_initialize(
@@ -140,8 +143,8 @@ impl LibmdbxReadWriter {
 }
 
 impl LibmdbxInit for LibmdbxReadWriter {
-    /// initializes all the tables with data via the CLI
-    async fn initialize_tables<T: TracingProvider, CH: ClickhouseHandle>(
+    /// Initializes a table for a given range of blocks
+    async fn initialize_table<T: TracingProvider, CH: ClickhouseHandle>(
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
@@ -149,8 +152,9 @@ impl LibmdbxInit for LibmdbxReadWriter {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer, metrics);
         initializer
             .initialize(tables, clear_tables, block_range, progress_bar)
             .await?;
@@ -158,18 +162,19 @@ impl LibmdbxInit for LibmdbxReadWriter {
         Ok(())
     }
 
-    /// initializes all the tables with missing data ranges via the CLI
-    async fn initialize_tables_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
+    /// Initializes a table for a given range of blocks
+    async fn initialize_table_arbitrary<T: TracingProvider, CH: ClickhouseHandle>(
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
         tables: Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         let block_range = Box::leak(Box::new(block_range));
 
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer, metrics);
         initializer
             .initialize_arbitrary_state(tables, block_range, progress_bar)
             .await?;
@@ -181,8 +186,9 @@ impl LibmdbxInit for LibmdbxReadWriter {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
+        metrics: bool,
     ) -> eyre::Result<()> {
-        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer);
+        let initializer = LibmdbxInitializer::new(self, clickhouse, tracer, metrics);
         initializer.initialize_full_range_tables().await?;
 
         Ok(())

@@ -326,7 +326,7 @@ impl Clickhouse {
                         {
                             if s.contains("MEMORY_LIMIT_EXCEEDED") {
                                 warn!("Memory limit exceeded. Waiting additional 2 seconds.");
-                                sleep(Duration::from_millis(250)).await;
+                                sleep(Duration::from_millis(500)).await;
                             }
                         }
                     } else {

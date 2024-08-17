@@ -5,6 +5,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use brontes_metrics::db_writer::WriterMetrics;
 use brontes_types::{
     db::{
         address_metadata::AddressMetadata,
@@ -41,6 +42,7 @@ use crate::{
 // how often we will append data
 const CLEAR_AM: usize = 1000;
 
+//TODO: Mark instant here
 type InsetQueue = FastHashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>>;
 
 pub enum WriterMessage {
@@ -154,6 +156,7 @@ pub struct LibmdbxWriter {
     db:           Arc<Libmdbx>,
     insert_queue: InsetQueue,
     rx:           UnboundedYapperReceiver<WriterMessage>,
+    metrics:      WriterMetrics,
 }
 
 impl LibmdbxWriter {

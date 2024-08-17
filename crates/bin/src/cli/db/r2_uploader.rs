@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use brontes_core::LibmdbxReadWriter;
 use brontes_database::libmdbx::{
-    rclone_wrapper::RCloneWrapper, LibmdbxPartitioner, FULL_RANGE_NAME,
+    rclone_wrapper::RCloneWrapper, LibmdbxPartitioner, LibmdbxReadWriter, FULL_RANGE_NAME,
 };
 use clap::Parser;
 

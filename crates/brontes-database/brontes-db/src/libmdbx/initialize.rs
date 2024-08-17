@@ -31,13 +31,14 @@ const SEARCHER_CONFIG_FILE: &str = "config/searcher_config.toml";
 const BUILDER_CONFIG_FILE: &str = "config/builder_config.toml";
 const METADATA_CONFIG_FILE: &str = "config/metadata_config.toml";
 const DEFAULT_START_BLOCK: u64 = 0;
-
+use brontes_metrics::db_initialization::InitMetrics;
 type FnOutput<D> = Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
     pub(crate) libmdbx: &'static LibmdbxReadWriter,
     clickhouse:         &'static CH,
     tracer:             Arc<TP>,
+    metrics:            InitMetrics,
 }
 
 impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
@@ -45,8 +46,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         libmdbx: &'static LibmdbxReadWriter,
         clickhouse: &'static CH,
         tracer: Arc<TP>,
+        metrics: bool,
     ) -> Self {
-        Self { libmdbx, clickhouse, tracer }
+        Self { libmdbx, clickhouse, tracer, metrics: InitMetrics::new(metrics) }
     }
 
     pub fn get_libmdbx_handle(&self) -> &'static LibmdbxReadWriter {
@@ -209,9 +211,15 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let count = end - start;
             let f = f.clone();
             let d = d.clone();
+            let metrics = self.metrics.clone();
 
             async move {
-                let data = (d(start, end + 1, clickhouse)).await;
+                let block_count = start - end + 1;
+
+                let data = metrics
+                    .measure_query(T::NAME, block_count, || d(start, end + 1, clickhouse))
+                    .await;
+
                 match data {
                     Ok(d) => {
                         pb.inc(count);
@@ -221,6 +229,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     }
                     Err(e) => {
                         info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e);
+                        metrics.increment_query_errors(T::NAME, &e);
                         return Ok::<(), eyre::Report>(())
                     }
                 }

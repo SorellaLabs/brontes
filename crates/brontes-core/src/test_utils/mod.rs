@@ -11,7 +11,7 @@ pub use brontes_database::libmdbx::{DBWriter, LibmdbxReadWriter, LibmdbxReader};
 use brontes_database::{
     libmdbx::LibmdbxInit, AddressToProtocolInfo, PoolCreationBlocks, Tables, TokenDecimals,
 };
-use brontes_metrics::PoirotMetricEvents;
+use brontes_metrics::ParserMetricEvents;
 use brontes_types::{
     constants::USDT_ADDRESS,
     db::{cex::trades::CexTradeMap, metadata::Metadata},
@@ -51,7 +51,7 @@ pub struct TraceLoader {
     pub libmdbx:          &'static LibmdbxReadWriter,
     pub tracing_provider: TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter>,
     // store so when we trace we don't get a closed rx error
-    _metrics:             UnboundedReceiver<PoirotMetricEvents>,
+    _metrics:             UnboundedReceiver<ParserMetricEvents>,
 }
 
 impl TraceLoader {
@@ -123,13 +123,14 @@ impl TraceLoader {
         )]);
 
         self.libmdbx
-            .initialize_tables(
+            .initialize_table(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
                 Tables::TxTraces,
                 false,
                 Some((block - 2, block + 2)),
                 tables,
+                false,
             )
             .await?;
         multi.clear().unwrap();
@@ -149,29 +150,32 @@ impl TraceLoader {
         ]);
 
         futures::try_join!(
-            self.libmdbx.initialize_tables(
+            self.libmdbx.initialize_table(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
                 Tables::BlockInfo,
                 false,
                 Some((block - 2, block + 2)),
                 tables.clone(),
+                false,
             ),
-            self.libmdbx.initialize_tables(
+            self.libmdbx.initialize_table(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
                 Tables::CexPrice,
                 false,
                 Some((block - 25, block + 25)),
                 tables.clone(),
+                false,
             ),
-            self.libmdbx.initialize_tables(
+            self.libmdbx.initialize_table(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
                 Tables::CexTrades,
                 false,
                 Some((block - 2, block + 4)),
                 tables,
+                false
             ),
         )?;
 
@@ -191,7 +195,7 @@ impl TraceLoader {
         )]);
 
         self.libmdbx
-            .initialize_tables(
+            .initialize_table(
                 clickhouse,
                 self.tracing_provider.get_tracer(),
                 Tables::CexTrades,
@@ -544,7 +548,7 @@ pub fn init_tracing() {
 #[cfg(feature = "local-reth")]
 pub async fn init_trace_parser(
     handle: Handle,
-    metrics_tx: UnboundedSender<PoirotMetricEvents>,
+    metrics_tx: UnboundedSender<ParserMetricEvents>,
     libmdbx: &'static LibmdbxReadWriter,
     max_tasks: u32,
 ) -> TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter> {
@@ -571,7 +575,7 @@ pub async fn init_trace_parser(
 #[cfg(not(feature = "local-reth"))]
 pub async fn init_trace_parser(
     _handle: Handle,
-    metrics_tx: UnboundedSender<PoirotMetricEvents>,
+    metrics_tx: UnboundedSender<ParserMetricEvents>,
     libmdbx: &'static LibmdbxReadWriter,
     _max_tasks: u32,
 ) -> TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter> {

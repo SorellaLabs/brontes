@@ -4,7 +4,7 @@ use std::path::Path;
 #[allow(unused_imports)]
 use brontes_database::Tables;
 #[allow(unused_imports)]
-use brontes_metrics::PoirotMetricsListener;
+use brontes_metrics::ParserMetricsListener;
 #[allow(unused_imports)]
 use brontes_types::{init_thread_pools, UnboundedYapperReceiver};
 #[allow(unused_imports)]
@@ -42,7 +42,7 @@ impl Backfill {
         init_thread_pools(max_tasks as usize);
         let (_metrics_tx, metrics_rx) = unbounded_channel();
 
-        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+        let metrics_listener = ParserMetricsListener::new(UnboundedYapperReceiver::new(
             metrics_rx,
             10_000,
             "metrics".to_string(),

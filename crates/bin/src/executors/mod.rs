@@ -293,7 +293,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                     );
 
                     if !self.is_snapshot {
-                        self.init_block_range_tables(ranges, tables_pb.clone())
+                        self.init_block_range_tables(ranges, tables_pb.clone(), self.metrics)
                             .await
                             .unwrap();
                     }
@@ -448,6 +448,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         &self,
         ranges: Vec<(Tables, Vec<RangeInclusive<u64>>)>,
         tables_pb: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         tracing::info!(?ranges, "initting ranges");
         join_all(ranges.into_iter().flat_map(|(table, ranges)| {
@@ -462,25 +463,27 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 if end - start > 1000 {
                     futs.push(Box::pin(async move {
                         self.libmdbx
-                            .initialize_tables(
+                            .initialize_table(
                                 self.clickhouse,
                                 self.parser.get_tracer(),
                                 table,
                                 false,
                                 Some((start, end)),
                                 tables_pb.clone(),
+                                metrics,
                             )
                             .await
                     }));
                 } else {
                     futs.push(Box::pin(async move {
                         self.libmdbx
-                            .initialize_tables_arbitrary(
+                            .initialize_table_arbitrary(
                                 self.clickhouse,
                                 self.parser.get_tracer(),
                                 table,
                                 range.collect_vec(),
                                 tables_pb.clone(),
+                                metrics,
                             )
                             .await
                     }));

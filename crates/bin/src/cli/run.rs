@@ -3,7 +3,7 @@ use std::{path::Path, time::Duration};
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
-use brontes_metrics::PoirotMetricsListener;
+use brontes_metrics::ParserMetricsListener;
 use brontes_types::{
     constants::USDT_ADDRESS_STRING,
     db::cex::{trades::CexDexTradeConfig, CexExchange},
@@ -120,7 +120,7 @@ impl RunArgs {
         init_thread_pools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
-        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+        let metrics_listener = ParserMetricsListener::new(UnboundedYapperReceiver::new(
             metrics_rx,
             10_000,
             "metrics".to_string(),
