@@ -1,15 +1,50 @@
-use std::time::Instant;
+use std::{sync::OnceLock, time::Instant};
 
-use clickhouse::error::Error;
+use clickhouse::{error::Error, query};
 use db_interfaces::{clickhouse::errors::ClickhouseError, errors::DatabaseError};
 use eyre::Report;
-use prometheus::{HistogramVec, IntCounterVec, IntGaugeVec};
+use prometheus::{CounterVec, HistogramVec, IntCounter, IntCounterVec, IntGaugeVec};
 
+fn query_speed() -> &'static HistogramVec {
+    static QUERY_SPEED: OnceLock<HistogramVec> = OnceLock::new();
+    QUERY_SPEED.get_or_init(|| {
+        prometheus::register_histogram_vec!(
+            "initialization_query_speed_us",
+            "Time taken for each query during initialization in microseconds",
+            &["table", "block_count"]
+        )
+        .unwrap()
+    })
+}
+
+fn query_errors() -> &'static IntCounterVec {
+    static QUERY_ERRORS: OnceLock<IntCounterVec> = OnceLock::new();
+    QUERY_ERRORS.get_or_init(|| {
+        prometheus::register_int_counter_vec!(
+            "initialization_query_errors",
+            "Number of query errors for each table",
+            &["table"]
+        )
+        .unwrap()
+    })
+}
+
+fn query_error_types() -> &'static IntCounterVec {
+    static QUERY_SPEED: OnceLock<IntCounterVec> = OnceLock::new();
+    QUERY_SPEED.get_or_init(|| {
+        prometheus::register_int_counter_vec!(
+            "initialization_query_error_types",
+            "Types of errors encountered during initialization queries",
+            &["table", "error_type"]
+        )
+        .unwrap()
+    })
+}
 #[derive(Clone)]
 pub struct InitializationMetrics {
-    query_speed:       HistogramVec,
-    query_errors:      IntCounterVec,
-    query_error_types: IntCounterVec,
+    query_speed:       &'static HistogramVec,
+    query_errors:      &'static IntCounterVec,
+    query_error_types: &'static IntCounterVec,
 }
 
 impl Default for InitializationMetrics {
@@ -21,26 +56,9 @@ impl Default for InitializationMetrics {
 impl InitializationMetrics {
     pub fn new() -> Self {
         let buckets = prometheus::exponential_buckets(1.0, 2.0, 22).unwrap();
-        let query_speed = prometheus::register_histogram_vec!(
-            "initialization_query_speed_us",
-            "Time taken for each query during initialization in microseconds",
-            &["table", "block_count"]
-        )
-        .unwrap();
-
-        let query_errors = prometheus::register_int_counter_vec!(
-            "initialization_query_errors",
-            "Number of query errors for each table",
-            &["table"]
-        )
-        .unwrap();
-
-        let query_error_types = prometheus::register_int_counter_vec!(
-            "initialization_query_error_types",
-            "Types of errors encountered during initialization queries",
-            &["table", "error_type"]
-        )
-        .unwrap();
+        let query_speed = query_speed();
+        let query_errors = query_errors();
+        let query_error_types = query_error_types();
 
         Self { query_speed, query_errors, query_error_types }
     }
