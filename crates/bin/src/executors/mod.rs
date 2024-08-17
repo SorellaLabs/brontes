@@ -502,7 +502,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     async fn verify_global_tables(&self) -> eyre::Result<()> {
         tracing::info!("Initializing critical range state");
         self.libmdbx
-            .initialize_full_range_tables(self.clickhouse, self.parser.get_tracer())
+            .initialize_full_range_tables(self.clickhouse, self.parser.get_tracer(), true)
             .await?;
 
         Ok(())

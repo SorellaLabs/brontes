@@ -39,7 +39,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tracing::{info, instrument};
 
 use super::{
-    libmdbx_writer::{LibmdbxWriter, WriterMessage},
+    libmdbx_writer::{LibmdbxWriter, StampedWriterMessage, WriterMessage},
     types::ReturnKV,
     ReadWriteCache,
 };
@@ -95,7 +95,7 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 #[derive(Clone)]
 pub struct LibmdbxReadWriter {
     pub db:  Arc<Libmdbx>,
-    pub tx:  UnboundedSender<WriterMessage>,
+    pub tx:  UnboundedSender<StampedWriterMessage>,
     metrics: Option<LibmdbxMetrics>,
     // 100 shards for now, might change in future
     cache:   ReadWriteCache,
@@ -116,7 +116,7 @@ impl LibmdbxReadWriter {
         let shutdown = ex.get_graceful_shutdown();
 
         // start writing task on own thread
-        let writer = LibmdbxWriter::new(db.clone(), yapper);
+        let writer = LibmdbxWriter::new(db.clone(), yapper, metrics);
         writer.run(shutdown);
 
         Ok(Self {
@@ -135,7 +135,7 @@ impl LibmdbxReadWriter {
         let db = Arc::new(Libmdbx::init_db(path, None)?);
 
         // start writing task on own thread
-        let writer = LibmdbxWriter::new(db.clone(), yapper);
+        let writer = LibmdbxWriter::new(db.clone(), yapper, false);
         writer.run_no_shutdown();
 
         Ok(Self { db, tx, metrics: None, cache: ReadWriteCache::new(memory_per_table_mb, false) })
@@ -929,7 +929,7 @@ impl DBWriter for LibmdbxReadWriter {
             contract_address,
             eoa_info: Box::new(eoa_info),
             contract_info: Box::new(contract_info),
-        })?)
+        }.stamp())?)
     }
 
     async fn write_searcher_eoa_info(
@@ -944,7 +944,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(self.tx.send(WriterMessage::SearcherEoaInfo {
             searcher_eoa,
             searcher_info: Box::new(searcher_info),
-        })?)
+        }.stamp())?)
     }
 
     async fn write_searcher_contract_info(
@@ -959,7 +959,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(self.tx.send(WriterMessage::SearcherContractInfo {
             searcher_contract,
             searcher_info: Box::new(searcher_info),
-        })?)
+        }.stamp())?)
     }
 
     async fn write_address_meta(
@@ -973,7 +973,7 @@ impl DBWriter for LibmdbxReadWriter {
 
         Ok(self
             .tx
-            .send(WriterMessage::AddressMeta { address, metadata: Box::new(metadata) })?)
+            .send(WriterMessage::AddressMeta { address, metadata: Box::new(metadata) }.stamp())?)
     }
 
     async fn save_mev_blocks(
@@ -984,7 +984,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         Ok(self
             .tx
-            .send(WriterMessage::MevBlocks { block_number, block: Box::new(block), mev })?)
+            .send(WriterMessage::MevBlocks { block_number, block: Box::new(block), mev }.stamp())?)
     }
 
     async fn write_dex_quotes(
@@ -994,7 +994,7 @@ impl DBWriter for LibmdbxReadWriter {
     ) -> eyre::Result<()> {
         Ok(self
             .tx
-            .send(WriterMessage::DexQuotes { block_number, quotes })?)
+            .send(WriterMessage::DexQuotes { block_number, quotes }.stamp())?)
     }
 
     async fn write_token_info(
@@ -1010,7 +1010,7 @@ impl DBWriter for LibmdbxReadWriter {
 
         Ok(self
             .tx
-            .send(WriterMessage::TokenInfo { address, decimals, symbol })?)
+            .send(WriterMessage::TokenInfo { address, decimals, symbol }.stamp())?)
     }
 
     async fn insert_pool(
@@ -1043,11 +1043,11 @@ impl DBWriter for LibmdbxReadWriter {
             tokens: tokens.to_vec(),
             curve_lp_token,
             classifier_name,
-        })?)
+        }.stamp())?)
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        Ok(self.tx.send(WriterMessage::Traces { block, traces })?)
+        Ok(self.tx.send(WriterMessage::Traces { block, traces }.stamp())?)
     }
 
     async fn write_builder_info(
@@ -1058,7 +1058,7 @@ impl DBWriter for LibmdbxReadWriter {
         Ok(self.tx.send(WriterMessage::BuilderInfo {
             builder_address,
             builder_info: Box::new(builder_info),
-        })?)
+        }.stamp())?)
     }
 
     /// only for internal functionality (i.e. clickhouse)
@@ -1266,7 +1266,7 @@ impl LibmdbxReadWriter {
     }
 
     pub fn send_message(&self, message: WriterMessage) -> eyre::Result<()> {
-        Ok(self.tx.send(message)?)
+        Ok(self.tx.send(message.stamp())?)
     }
 
     pub fn get_table_entry_count<T>(&self) -> eyre::Result<usize>

@@ -202,6 +202,7 @@ impl TraceLoader {
                 false,
                 Some((block - 2, block + 4)),
                 tables,
+                false
             )
             .await?;
 
@@ -442,7 +443,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
             let tracer = init_trace_parser(handle, tx, this, 5).await;
             if init_crit_tables(this) {
                 tracing::info!("initting crit tables");
-                this.initialize_full_range_tables(clickhouse, tracer.get_tracer())
+                this.initialize_full_range_tables(clickhouse, tracer.get_tracer(), false)
                     .await
                     .unwrap();
             } else {
