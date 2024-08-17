@@ -38,7 +38,7 @@ impl LibmdbxWriterMetrics {
         let commit_latency = prometheus::register_histogram_vec!(
             "libmdbx_commit_latency_seconds",
             "Time taken from receiving data to completing the write operation",
-            &["table"],
+            &["msg_type"],
             prometheus::exponential_buckets(0.001, 2.0, 20).unwrap()
         )
         .unwrap();
