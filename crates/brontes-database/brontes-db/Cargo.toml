@@ -98,6 +98,7 @@ hyper.workspace = true
 tracing.workspace = true
 
 # misc
+backon.workspace = true
 eyre.workspace = true
 parking_lot.workspace = true
 dotenv.workspace = true

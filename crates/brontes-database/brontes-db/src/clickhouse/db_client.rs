@@ -35,6 +35,7 @@ use db_interfaces::{
     params::BindParameters,
     Database,
 };
+use backon::{ExponentialBuilder, Retryable};
 use eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -292,55 +293,36 @@ impl Clickhouse {
         Q: ClickhouseQuery,
         P: BindParameters + Send + Sync,
     {
-        let max_retries = 10;
-        let initial_delay = Duration::from_millis(100);
-        let mut delay = initial_delay;
+        let retry_strategy = ExponentialBuilder::default()
+            .with_max_times(10)
+            .with_min_delay(Duration::from_millis(100))
+            .with_max_delay(Duration::from_secs(20));
 
-        for attempt in 0..=max_retries {
-            match self.client.query_many::<Q, P>(query.as_ref(), params).await {
-                Ok(result) => return Ok(result),
-                Err(e) => {
-                    let should_retry = match &e {
-                        DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(
-                            Network(_),
-                        )) => true,
-                        DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(
-                            BadResponse(s),
-                        )) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
-                        _ => false,
-                    };
-
-                    if should_retry && attempt < max_retries {
-                        warn!(
-                            "Query failed on attempt {}. Retrying in {:?}... Error: {}",
-                            attempt + 1,
-                            delay,
-                            e
-                        );
-                        sleep(delay).await;
-                        delay *= 2;
-
-                        if let DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(
-                            BadResponse(s),
-                        )) = &e
-                        {
-                            if s.contains("MEMORY_LIMIT_EXCEEDED") {
-                                warn!("Memory limit exceeded. Waiting additional 2 seconds.");
-                                sleep(Duration::from_millis(500)).await;
-                            }
-                        }
-                    } else {
-                        error!("Query failed after {} attempts: {}", attempt + 1, e);
-                        return Err(e);
-                    }
-                }
+        let mut try_count = 1;
+        let res = (|| async { self.client.query_many::<Q, P>(query.as_ref(), params).await } )
+            .retry(&retry_strategy)
+            .when(|e| {
+                let should_retry = match e {
+                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(_),)) => true,
+                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(BadResponse(s),)) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
+                    _ => false,
+                };
+                should_retry
+            })
+            .notify(|err, dur| {
+                warn!("Query failed after {} attempt(s).  Retrying in {:?}... Error: {}", try_count, dur, err);
+                try_count += 1;
+            })
+            .await;
+        match res {
+            Ok(result) => return Ok(result),
+            Err(err) => {
+                error!("Query failed after maximum retries - final Error: {}", err);
+                return Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Custom(
+                    "Query failed after maximum retries".to_string(),
+                ))))
             }
         }
-
-        error!("Query failed after maximum retries");
-        Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Custom(
-            "Query failed after maximum retries".to_string(),
-        ))))
     }
 }
 
