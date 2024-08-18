@@ -906,7 +906,7 @@ pub mod test {
             TxHash::ZERO,
             swaps,
         );
-        assert_eq!(res.len(), 1);
+        assert_eq!(res.len(), 1, "{:#?}", res);
         let res = res.remove(0);
         assert_eq!(res, expected);
     }
