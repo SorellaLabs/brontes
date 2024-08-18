@@ -708,12 +708,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         self.try_create_swaps(&transfers, ingore_addresses).pop()
     }
 
-    //TODO: This should likely be done on the pricing side instead of here, so that
-    // we can pass it on to the pricer and it can attempt to get the price doing
-    // this & the baseline individual price calculation so that we can make sure
-    // we're getting the best price
-    // We also want to make
-    /// see's if we can form a intermediary path on dex swaps
     pub fn cex_merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
         let mut matching: FastHashMap<TokenInfoWithAddress, Vec<&NormalizedSwap>> =
             FastHashMap::default();

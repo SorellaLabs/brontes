@@ -924,12 +924,15 @@ impl DBWriter for LibmdbxReadWriter {
             });
         }
 
-        Ok(self.tx.send(WriterMessage::SearcherInfo {
-            eoa_address,
-            contract_address,
-            eoa_info: Box::new(eoa_info),
-            contract_info: Box::new(contract_info),
-        }.stamp())?)
+        Ok(self.tx.send(
+            WriterMessage::SearcherInfo {
+                eoa_address,
+                contract_address,
+                eoa_info: Box::new(eoa_info),
+                contract_info: Box::new(contract_info),
+            }
+            .stamp(),
+        )?)
     }
 
     async fn write_searcher_eoa_info(
@@ -941,10 +944,10 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(searcher_eoa, Some(searcher_info.clone()));
         });
 
-        Ok(self.tx.send(WriterMessage::SearcherEoaInfo {
-            searcher_eoa,
-            searcher_info: Box::new(searcher_info),
-        }.stamp())?)
+        Ok(self.tx.send(
+            WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info: Box::new(searcher_info) }
+                .stamp(),
+        )?)
     }
 
     async fn write_searcher_contract_info(
@@ -956,10 +959,13 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(searcher_contract, Some(searcher_info.clone()));
         });
 
-        Ok(self.tx.send(WriterMessage::SearcherContractInfo {
-            searcher_contract,
-            searcher_info: Box::new(searcher_info),
-        }.stamp())?)
+        Ok(self.tx.send(
+            WriterMessage::SearcherContractInfo {
+                searcher_contract,
+                searcher_info: Box::new(searcher_info),
+            }
+            .stamp(),
+        )?)
     }
 
     async fn write_address_meta(
@@ -1037,17 +1043,22 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(address, Some(details.clone()));
         });
 
-        Ok(self.tx.send(WriterMessage::Pool {
-            block,
-            address,
-            tokens: tokens.to_vec(),
-            curve_lp_token,
-            classifier_name,
-        }.stamp())?)
+        Ok(self.tx.send(
+            WriterMessage::Pool {
+                block,
+                address,
+                tokens: tokens.to_vec(),
+                curve_lp_token,
+                classifier_name,
+            }
+            .stamp(),
+        )?)
     }
 
     async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
-        Ok(self.tx.send(WriterMessage::Traces { block, traces }.stamp())?)
+        Ok(self
+            .tx
+            .send(WriterMessage::Traces { block, traces }.stamp())?)
     }
 
     async fn write_builder_info(
@@ -1055,10 +1066,10 @@ impl DBWriter for LibmdbxReadWriter {
         builder_address: Address,
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
-        Ok(self.tx.send(WriterMessage::BuilderInfo {
-            builder_address,
-            builder_info: Box::new(builder_info),
-        }.stamp())?)
+        Ok(self.tx.send(
+            WriterMessage::BuilderInfo { builder_address, builder_info: Box::new(builder_info) }
+                .stamp(),
+        )?)
     }
 
     /// only for internal functionality (i.e. clickhouse)

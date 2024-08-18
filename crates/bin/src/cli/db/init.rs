@@ -115,7 +115,7 @@ impl Init {
                                             false,
                                             range,
                                             tables_with_progress,
-                                            true
+                                            true,
                                         )
                                         .await
                                         .unwrap();

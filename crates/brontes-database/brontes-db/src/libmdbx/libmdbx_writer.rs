@@ -1,5 +1,8 @@
 use std::{
-    ops::Deref, sync::Arc, task::Poll, time::{Duration, Instant}
+    ops::Deref,
+    sync::Arc,
+    task::Poll,
+    time::{Duration, Instant},
 };
 
 use alloy_primitives::Address;
@@ -24,7 +27,10 @@ use brontes_types::{
 };
 use futures::{pin_mut, Future};
 use itertools::Itertools;
-use reth_db::{table::{Compress, Encode}, DatabaseError};
+use reth_db::{
+    table::{Compress, Encode},
+    DatabaseError,
+};
 use reth_tasks::shutdown::GracefulShutdown;
 use tokio::sync::Notify;
 use tracing::instrument;
@@ -97,25 +103,28 @@ pub enum WriterMessage {
 
 impl WriterMessage {
     pub fn stamp(self) -> StampedWriterMessage {
-        StampedWriterMessage {
-            recv_time: Instant::now(),
-            msg: self
-        }
+        StampedWriterMessage { recv_time: Instant::now(), msg: self }
     }
 }
 
 pub struct StampedWriterMessage {
     recv_time: Instant,
-    msg: WriterMessage
+    msg:       WriterMessage,
 }
 
 impl StampedWriterMessage {
-    pub fn recv_time(&self) -> &Instant { &self.recv_time }
-    pub fn msg(&self) -> &WriterMessage { &self.msg }
+    pub fn recv_time(&self) -> &Instant {
+        &self.recv_time
+    }
+
+    pub fn msg(&self) -> &WriterMessage {
+        &self.msg
+    }
 }
 
 impl Deref for StampedWriterMessage {
     type Target = WriterMessage;
+
     fn deref(&self) -> &Self::Target {
         &self.msg
     }
@@ -185,7 +194,11 @@ pub struct LibmdbxWriter {
 }
 
 impl LibmdbxWriter {
-    pub fn new(db: Arc<Libmdbx>, rx: UnboundedYapperReceiver<StampedWriterMessage>, metrics: bool) -> Self {
+    pub fn new(
+        db: Arc<Libmdbx>,
+        rx: UnboundedYapperReceiver<StampedWriterMessage>,
+        metrics: bool,
+    ) -> Self {
         Self { rx, db, insert_queue: FastHashMap::default(), metrics: WriterMetrics::new(metrics) }
     }
 
@@ -200,7 +213,7 @@ impl LibmdbxWriter {
             WriterMessage::Traces { block, traces } => {
                 self.save_traces(block, traces)?;
                 "traces"
-            },
+            }
             WriterMessage::DexQuotes { block_number, quotes } => {
                 self.write_dex_quotes(block_number, quotes)?;
                 "dexquotes"
@@ -244,12 +257,14 @@ impl LibmdbxWriter {
                 "init"
             }
         };
-        // Use recv_time to instrument the overall clearing duration 
-        self.metrics.observe_commit_latency(msg_type, recv_time, None);
+        // Use recv_time to instrument the overall clearing duration
+        self.metrics
+            .observe_commit_latency(msg_type, recv_time, None);
         Ok(())
     }
 
-    /// Wrapper around the Libmdbx `write_table` function that instruments latency and error count/type
+    /// Wrapper around the Libmdbx `write_table` function that instruments
+    /// latency and error count/type
     fn instrumented_write<T, D>(&self, entries: &[D]) -> Result<(), DatabaseError>
     where
         T: CompressedTable,
@@ -413,10 +428,10 @@ impl LibmdbxWriter {
     #[instrument(target = "libmdbx_read_write::write_token_info", skip_all, level = "warn")]
     fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
         self.instrumented_write::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
-                address,
-                TokenInfo::new(decimals, symbol),
-            )])
-            .expect("libmdbx write failure");
+            address,
+            TokenInfo::new(decimals, symbol),
+        )])
+        .expect("libmdbx write failure");
         Ok(())
     }
 
@@ -433,21 +448,21 @@ impl LibmdbxWriter {
         let mut tokens = tokens.iter();
         let default = Address::ZERO;
         self.instrumented_write::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
-                AddressToProtocolInfoData::new(
-                    address,
-                    ProtocolInfo {
-                        protocol: classifier_name,
-                        init_block: block,
-                        token0: *tokens.next().unwrap_or(&default),
-                        token1: *tokens.next().unwrap_or(&default),
-                        token2: tokens.next().cloned(),
-                        token3: tokens.next().cloned(),
-                        token4: tokens.next().cloned(),
-                        curve_lp_token,
-                    },
-                ),
-            ])
-            .expect("libmdbx write failure");
+            AddressToProtocolInfoData::new(
+                address,
+                ProtocolInfo {
+                    protocol: classifier_name,
+                    init_block: block,
+                    token0: *tokens.next().unwrap_or(&default),
+                    token1: *tokens.next().unwrap_or(&default),
+                    token2: tokens.next().cloned(),
+                    token3: tokens.next().cloned(),
+                    token4: tokens.next().cloned(),
+                    curve_lp_token,
+                },
+            ),
+        ])
+        .expect("libmdbx write failure");
 
         // add to pool creation block
         self.db.view_db(|tx| {
@@ -459,9 +474,9 @@ impl LibmdbxWriter {
 
             addrs.push(address);
             self.instrumented_write::<PoolCreationBlocks, PoolCreationBlocksData>(&[
-                    PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
-                ])
-                .expect("libmdbx write failure");
+                PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
+            ])
+            .expect("libmdbx write failure");
 
             Ok(())
         })
@@ -629,8 +644,8 @@ impl Future for LibmdbxWriter {
             if let Err(e) = this.handle_msg(msg) {
                 tracing::error!(error=%e, "libmdbx write error");
             }
-            // This might be looped too tightly, we could maybe do this in chunks of 5 or something...but it's a cheap
-            // call it SHOULD be alright
+            // This might be looped too tightly, we could maybe do this in chunks of 5 or
+            // something...but it's a cheap call it SHOULD be alright
             messages_len -= 1;
             this.metrics.set_queue_size(this.rx.len() + messages_len)
         }

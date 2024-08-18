@@ -8,7 +8,7 @@ pub struct LibmdbxWriterMetrics {
     // Number of initialized blocks for each tables
     initialized_blocks:  IntGaugeVec,
     // Total message latency from receipt to end of write operation
-    commit_latency: HistogramVec,
+    commit_latency:      HistogramVec,
     // Write latency for a single-record write
     write_latency:       HistogramVec,
     // Write latency for each batch
@@ -55,7 +55,8 @@ impl LibmdbxWriterMetrics {
             "libmdbx_write_latency_batch_ms",
             "Latency of a batch write operation",
             prometheus::exponential_buckets(0.001, 2.0, 25).unwrap()
-        ).unwrap();
+        )
+        .unwrap();
 
         let write_errors = prometheus::register_int_counter_vec!(
             "libmdbx_write_errors",
@@ -77,7 +78,15 @@ impl LibmdbxWriterMetrics {
         )
         .unwrap();
 
-        Self { initialized_blocks, commit_latency, write_latency, write_latency_batch, write_errors, write_error_types, queue_size }
+        Self {
+            initialized_blocks,
+            commit_latency,
+            write_latency,
+            write_latency_batch,
+            write_errors,
+            write_error_types,
+            queue_size,
+        }
     }
 
     pub fn increment_initialized_blocks(&self, table: &str, count: i64) {
@@ -86,30 +95,44 @@ impl LibmdbxWriterMetrics {
             .add(count);
     }
 
-    /// Instruments the total commit latency, representing the time from the message's insertion into the queue to the
-    /// conclusion of the write operation.  Accepts a string representing the message time, `start_time` representing
-    /// the message's insertion time into the queue, and an optional `end_time`.  If `None`, `end_time` will be set to
-    /// `Instant::now()` otherwise the caller can provide an `Instant` to be used as the end tiem for this observation.
-    pub fn observe_commit_latency(&self, msg_type: &str, start_time: Instant, end_time: Option<Instant>) {
+    /// Instruments the total commit latency, representing the time from the
+    /// message's insertion into the queue to the conclusion of the write
+    /// operation.  Accepts a string representing the message time, `start_time`
+    /// representing the message's insertion time into the queue, and an
+    /// optional `end_time`.  If `None`, `end_time` will be set to
+    /// `Instant::now()` otherwise the caller can provide an `Instant` to be
+    /// used as the end tiem for this observation.
+    pub fn observe_commit_latency(
+        &self,
+        msg_type: &str,
+        start_time: Instant,
+        end_time: Option<Instant>,
+    ) {
         let final_time = end_time.unwrap_or_else(|| Instant::now());
         let t_total = final_time - start_time;
-        self.commit_latency.with_label_values(&[msg_type]).observe(t_total.as_secs_f64() * 1000_f64);
+        self.commit_latency
+            .with_label_values(&[msg_type])
+            .observe(t_total.as_secs_f64() * 1000_f64);
     }
 
-    /// Instruments the latency of a single database write operation, tagged with the table name being written to.
+    /// Instruments the latency of a single database write operation, tagged
+    /// with the table name being written to.
     pub fn observe_write_latency(&self, table: &str, duration: Duration) {
         self.write_latency
             .with_label_values(&[table])
             .observe(duration.as_secs_f64() * 1000_f64);
     }
 
-    /// Instruments the latency of a batch write operation.  Since we don't know what might be in the batch, we'll just
-    /// have this be a plain histogram which takes a duration on its own with no tags.
+    /// Instruments the latency of a batch write operation.  Since we don't know
+    /// what might be in the batch, we'll just have this be a plain
+    /// histogram which takes a duration on its own with no tags.
     pub fn observe_write_latency_batch(&self, duration: Duration) {
-        self.write_latency_batch.observe(duration.as_secs_f64() * 1000_f64);
+        self.write_latency_batch
+            .observe(duration.as_secs_f64() * 1000_f64);
     }
 
-    /// Instruments the count of errors encountered while writing to the database, tagged by the type of error encountered
+    /// Instruments the count of errors encountered while writing to the
+    /// database, tagged by the type of error encountered
     pub fn increment_write_errors(&self, table: &str, error: &DatabaseError) {
         self.write_errors.with_label_values(&[table]).inc();
 
@@ -132,8 +155,9 @@ impl LibmdbxWriterMetrics {
             .inc();
     }
 
-    /// Instruments the current size of the write queue.  Queue size will be bracketed to the max i64 value if it exceeds
-    /// this but at that point we probably have much bigger problems
+    /// Instruments the current size of the write queue.  Queue size will be
+    /// bracketed to the max i64 value if it exceeds this but at that point
+    /// we probably have much bigger problems
     pub fn set_queue_size(&self, size: usize) {
         let s = size.try_into().unwrap_or(i64::MAX);
         self.queue_size.set(s);
@@ -158,7 +182,12 @@ impl WriterMetrics {
         }
     }
 
-    pub fn observe_commit_latency(&self, msg_type: &str, start_time: Instant, end_time: Option<Instant>) {
+    pub fn observe_commit_latency(
+        &self,
+        msg_type: &str,
+        start_time: Instant,
+        end_time: Option<Instant>,
+    ) {
         if let Some(metrics) = &self.0 {
             metrics.observe_commit_latency(msg_type, start_time, end_time);
         }
