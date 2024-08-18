@@ -731,7 +731,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let mut res = vec![];
         let mut voided = FastHashSet::default();
         let mut log_res = false;
-        tracing::info!("{:#?}", swaps);
 
         for (intermediary, swaps) in matching {
             if swaps.len() != 2 {
@@ -780,7 +779,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             }));
         }
         if log_res {
-            tracing::debug!(?hash, "{:#?}\n\n\n {:#?}", swaps, res);
+            tracing::debug!(target: "brontes::cex_multi",?hash, "{:#?}\n\n\n {:#?}", swaps, res);
         }
 
         swaps
