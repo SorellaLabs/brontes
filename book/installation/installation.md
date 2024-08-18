@@ -1,58 +1,23 @@
 # Installation
 
-Brontes runs on Linux and macOS. Currently it must be installed from source, though plans are underway to offer Docker container deployments in the future.
+Brontes runs on Linux and macOS. We currently support source installation only, but welcome contributions to support Docker images.
 
 ## Hardware Requirements
 
-Running Brontes with Reth in the background requires hardware that's more robust than what might typically be recommended for Reth alone.
+Requirements vary based on your setup:
+
+| Component | Historical Analysis             | With Reth (Archive Node)     |
+| --------- | ------------------------------- | ---------------------------- |
+| Disk      | 2TB SSD                         | 5TB+ (TLC NVMe recommended)  |
+| Memory    | 16GB+                           | 32GB+                        |
+| CPU       | 8+ cores (the more the merrier) | High clock speed prioritized |
+| Bandwidth |                                 | 30Mbps+ stable connection    |
 
 - See [reth installation guide](https://paradigmxyz.github.io/reth/installation/installation.html) for more details on Reth's hardware requirements.
 
-|           | Archive Node (Brontes + Reth)                |
-| --------- | -------------------------------------------- |
-| Disk      | Minimum of 3TB (TLC NVMe recommended)        |
-| Memory    | 32GB+                                        |
-| CPU       | High clock speed prioritized over core count |
-| Bandwidth | Stable connection of 30Mbps+                 |
-
 ## Installation Steps
 
-Brontes can be configured in two primary modes based on your data needs and technical setup. Select the appropriate installation option below, then proceed with the general setup steps applicable to both configurations.
-
-### Data Setup Options
-
-#### Option 1: Running Brontes Without a Reth Archive Node
-
-This setup is designed for users that want to run historical analysis and aren't interested in keeping up with chain tip.
-
-**Steps:**
-
-1. **Download the Brontes libmdbx Snapshot (with trace data)**
-
-   - Obtain the db snapshot containing the necessary data to run historical analysis.
-   - Snapshots are similar to Merkle.io's Reth snapshots and are updated every Monday and Thursday at midnight.
-   - Visit [Brontes Downloads](https://brontes.xyz/downloads) to download.
-
-#### Option 2: Running Brontes with a Reth Archive Node
-
-Opt for this setup if you need real-time data and wish to remain synced with chain tip.
-
-**Steps:**
-
-1. **Set Up and Sync a Reth Archive Node**
-
-   - Install Reth following the [Reth Installation Guide](https://paradigmxyz.github.io/reth/installation/source.html).
-   - Use [Merkle Snapshots](https://snapshots.merkle.io/) to get the latest reth db snapshot & sync faster.
-
-2. **Download the Brontes libmdbx Snapshot (without trace data)**
-
-   - Obtain the db snapshot containing the necessary data to run historical analysis.
-   - Snapshots are similar to Merkle.io's Reth snapshots and are updated every Monday and Thursday at midnight.
-   - Visit [Brontes Downloads](https://brontes.xyz/downloads) to download, choose the snapshot without trace data.
-
-### General Setup Steps
-
-These steps should be followed after completing the either of the initial setup options.
+### Setup Steps
 
 1. **Clone the Brontes Repository**
 
@@ -68,11 +33,44 @@ These steps should be followed after completing the either of the initial setup 
      cd brontes
      RUSTFLAGS="-C target-cpu=native" cargo install --path crates/bin --profile maxperf
      ```
+   - **Note**: The `RUSTFLAGS` environment variable & `maxperf` profile is optional but recommended for performance improvements. We strongly recommend against including them when running tests or debugging.
 
 3. **Set Up Environment**
 
    - Before running Brontes, configure your environment by referencing the `sample.env` file provided in the repository. This file contains necessary environment variables and their explanations. Rename `sample.env` to `.env` and update the values according to your specific setup.
 
-### Additional Notes
+### Data Setup Options
 
-- **Chain Tip Access**: For users that want to follow the chain head, please contact us via the Brontes Telegram group chat to obtain an API key necessary for fetching the latest metadata at chain tip.
+Brontes relies on extensive off-chain data to classify complex MEV strategies. Due to the data's size and prohibitive egress costs, we currently don't offer public query access. Instead, choose from these setup options:
+
+#### Option 1: Historical Analysis (Recommended for Data Analysts / Researchers)
+
+For users focusing on historical data without chain tip updates:
+
+1. Download the Brontes libmdbx snapshot:
+   ```sh
+   brontes db snapshot -s $start_block$ -e $end_block$
+   ```
+   **Note**: For the full range since the merge block, omit `-s` and `-e` flags. This is **strongly** recommended for large ranges as it downloads the complete database instead of multiple partitions, significantly speeding up the process.
+
+- Snapshots are updated every Monday and Thursday at midnight.
+
+#### Option 2: Running with Reth Archive Node (Recommended for Developers)
+
+For developers extending Brontes with:
+
+- New action or discovery classifiers that fetch on-chain state
+- Support for additional DEX protocols requiring pool state
+- Custom modules that interact with the Reth database
+
+1. Set up a Reth Archive Node:
+   - Follow the [Reth Installation Guide](https://paradigmxyz.github.io/reth/installation/source.html).
+   - Use [Merkle Snapshots](https://snapshots.merkle.io/) for faster syncing.
+
+#### Note on Snapshots and Traces
+
+Currently, snapshots include pre-generated traces, which occupy significant space. Users running Brontes with Reth don't require these traces, though they can speed up processing. We welcome contributions to improve our snapshot downloader for more flexible options.
+
+#### Chain Tip Access
+
+Currently, we don't offer chain head access due to resource constraints. However, if you're interested in collaborating on a public query API solution, we'd welcome your contribution. Feel free to reach out via the Brontes Telegram group chat to discuss a potential collaboration.

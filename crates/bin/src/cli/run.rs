@@ -99,11 +99,7 @@ pub struct RunArgs {
 }
 
 impl RunArgs {
-    pub async fn execute(
-        mut self,
-        brontes_db_endpoint: String,
-        ctx: CliContext,
-    ) -> eyre::Result<()> {
+    pub async fn execute(mut self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         self.check_proper_range()?;
 
         let snapshot_mode = !cfg!(feature = "local-clickhouse");
@@ -130,9 +126,9 @@ impl RunArgs {
 
         let hr = self.try_start_fallback_server().await;
 
-        tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_endpoint);
+        tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_path);
         let libmdbx =
-            static_object(load_database(&task_executor, brontes_db_endpoint, hr, None).await?);
+            static_object(load_database(&task_executor, brontes_db_path, hr, None).await?);
 
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");

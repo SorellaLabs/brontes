@@ -25,7 +25,7 @@ pub struct TraceArgs {
 }
 
 impl TraceArgs {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
         let max_tasks = determine_max_tasks(None) * 2;
@@ -41,9 +41,8 @@ impl TraceArgs {
         ctx.task_executor
             .spawn_critical("metrics", metrics_listener);
 
-        let libmdbx = static_object(
-            load_database(&ctx.task_executor, brontes_db_endpoint, None, None).await?,
-        );
+        let libmdbx =
+            static_object(load_database(&ctx.task_executor, brontes_db_path, None, None).await?);
 
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());

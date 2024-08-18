@@ -16,8 +16,8 @@ pub struct Insert {
 }
 
 impl Insert {
-    pub async fn execute(self, brontes_db_endpoint: String) -> eyre::Result<()> {
-        let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
+    pub async fn execute(self, brontes_db_path: String) -> eyre::Result<()> {
+        let db = Libmdbx::init_db(brontes_db_path, None)?;
         init_thread_pools(10);
 
         macro_rules! write_to_table {

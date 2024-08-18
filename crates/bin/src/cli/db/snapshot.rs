@@ -38,14 +38,14 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
         let ranges_avail = self.get_available_ranges(&client).await?;
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
-        fs_extra::dir::create_all(&brontes_db_endpoint, false)?;
+        fs_extra::dir::create_all(&brontes_db_path, false)?;
 
         let curl_queries = self
-            .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
+            .meets_space_requirement(&client, ranges_to_download, &brontes_db_path)
             .await?;
 
         // download db tarball
@@ -97,11 +97,11 @@ impl Snapshot {
         if self.should_merge() {
             tracing::info!(
                 "all partitions downloaded, merging into the current db at: {}",
-                brontes_db_endpoint
+                brontes_db_path
             );
 
             let final_db =
-                LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
+                LibmdbxReadWriter::init_db(brontes_db_path, None, &ctx.task_executor, false)?;
 
             let db = cloned_download_dir.clone();
             let ex = ctx.task_executor.clone();
@@ -207,7 +207,7 @@ impl Snapshot {
         &self,
         client: &reqwest::Client,
         ranges: RangeOrFull,
-        brontes_db_endpoint: &String,
+        brontes_db_path: &String,
     ) -> eyre::Result<Vec<DbRequestWithBytes>> {
         let mut new_db_size = 0u64;
         let mut res = vec![];
@@ -262,7 +262,7 @@ impl Snapshot {
         }
 
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
-        let storage_available = fs2::free_space(brontes_db_endpoint)?;
+        let storage_available = fs2::free_space(brontes_db_path)?;
 
         if storage_available >= new_db_size {
             Ok(res)

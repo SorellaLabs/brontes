@@ -44,7 +44,7 @@ fn main() -> eyre::Result<()> {
 
 fn run() -> eyre::Result<()> {
     let opt = Args::parse();
-    let brontes_db_endpoint = opt
+    let brontes_db_path = opt
         .brontes_db_path
         .unwrap_or(env::var("BRONTES_DB_PATH").expect("No BRONTES_DB_PATH in .env"));
 
@@ -54,11 +54,11 @@ fn run() -> eyre::Result<()> {
         Commands::Run(command) => runner::run_command_until_exit(
             Some(opt.metrics_port),
             Duration::from_secs(3600),
-            |ctx| command.execute(brontes_db_endpoint, ctx),
+            |ctx| command.execute(brontes_db_path, ctx),
         ),
         Commands::Database(command) => {
             runner::run_command_until_exit(None, Duration::from_secs(5), |ctx| {
-                command.execute(brontes_db_endpoint, ctx)
+                command.execute(brontes_db_path, ctx)
             })
         }
     }

@@ -21,9 +21,9 @@ pub struct DatabaseQuery {
 }
 
 impl DatabaseQuery {
-    pub async fn execute(self, brontes_db_endpoint: String) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String) -> eyre::Result<()> {
         init_thread_pools(10);
-        let db = Libmdbx::init_db(brontes_db_endpoint, None)?;
+        let db = Libmdbx::init_db(brontes_db_path, None)?;
 
         db.view_db(|tx| {
             macro_rules! match_table {

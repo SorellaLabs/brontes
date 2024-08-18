@@ -6,6 +6,7 @@ use std::{
 use alloy_rlp::Encodable;
 use bytes::{BufMut, Bytes};
 use futures::{stream::Stream, Future, FutureExt, StreamExt};
+use humansize::{format_size, BINARY};
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -68,7 +69,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
                 ProgressBar::with_draw_target(Some(bytes), ProgressDrawTarget::stderr_with_hz(30));
             let style = ProgressStyle::default_bar()
                 .template(
-                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} bytes \
+                    "{msg}\n[{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} \
                      ({percent}%) | ETA: {eta}",
                 )
                 .expect("Invalid progress bar template")
@@ -78,6 +79,12 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
                 })
                 .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
                     write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+                })
+                .with_key("bytes", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{}", format_size(state.pos(), BINARY)).unwrap()
+                })
+                .with_key("total_bytes", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+                    write!(f, "{}", format_size(state.len().unwrap_or(0), BINARY)).unwrap()
                 });
             progress_bar.set_style(style);
             progress_bar.set_message("download progress");
