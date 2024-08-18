@@ -778,8 +778,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 }
             }));
         }
-        if log_res && !res.is_empty(){
-            tracing::debug!(target: "brontes::cex_multi", ?hash, "{:#?}\n\n\n {:#?}", swaps, res);
+        if log_res && !res.is_empty() {
+            tracing::trace!(target: "brontes::cex_multi", ?hash, "{:#?}\n\n\n {:#?}", swaps, res);
         }
 
         swaps

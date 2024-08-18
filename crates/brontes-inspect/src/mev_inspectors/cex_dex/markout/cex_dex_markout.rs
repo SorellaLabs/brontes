@@ -856,4 +856,15 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_multihop() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("6d54d3f40db88bc62257ad653d3120c9798223b9666269937055e574b713e3a3").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
 }
