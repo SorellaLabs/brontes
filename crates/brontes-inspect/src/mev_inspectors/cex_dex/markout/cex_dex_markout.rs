@@ -515,7 +515,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> CexPricesForSwaps {
-        let merged_swaps = self.utils.cex_merge_possible_swaps(dex_swaps);
+        let merged_swaps = self.utils.cex_merge_possible_swaps(tx_hash, dex_swaps);
 
         let (time_window_vwam, optimistic): (Vec<_>, Vec<_>) = merged_swaps
             .clone()

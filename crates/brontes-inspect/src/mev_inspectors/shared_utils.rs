@@ -709,7 +709,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     }
 
     /// TODO: refactor to deal with multi-hops.
-    pub fn cex_merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
+    pub fn cex_merge_possible_swaps(
+        &self,
+        hash: TxHash,
+        swaps: Vec<NormalizedSwap>,
+    ) -> Vec<NormalizedSwap> {
         let mut matching: FastHashMap<TokenInfoWithAddress, Vec<&NormalizedSwap>> =
             FastHashMap::default();
 
@@ -726,8 +730,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let mut res = vec![];
         let mut voided = FastHashSet::default();
+        let mut log_res = false;
+        tracing::info!("{:#?}", swaps);
 
         for (intermediary, swaps) in matching {
+            if swaps.len() != 2 {
+                log_res = true;
+            }
+
             res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
                 let s0 = swaps.remove(0);
                 let s1 = swaps.remove(0);
@@ -768,6 +778,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     None
                 }
             }));
+        }
+        if log_res {
+            tracing::debug!(?hash, "{:#?}\n\n\n {:#?}", swaps, res);
         }
 
         swaps

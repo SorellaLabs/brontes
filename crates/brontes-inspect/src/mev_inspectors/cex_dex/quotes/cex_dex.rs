@@ -267,7 +267,9 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         tx_info: &TxInfo,
     ) -> Option<CexDexProcessing> {
         //TODO: Add smiths map to query most liquid dex for given pair
-        let swaps = self.utils.cex_merge_possible_swaps(dex_swaps);
+        let swaps = self
+            .utils
+            .cex_merge_possible_swaps(tx_info.tx_hash, dex_swaps);
 
         let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0, None);
         let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_info)?;
