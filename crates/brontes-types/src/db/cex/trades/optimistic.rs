@@ -213,7 +213,6 @@ impl<'a> SortedTrades<'a> {
                     tx_hash,
                 )?;
 
-
                 let price = first_leg * second_leg;
 
                 Some(price)

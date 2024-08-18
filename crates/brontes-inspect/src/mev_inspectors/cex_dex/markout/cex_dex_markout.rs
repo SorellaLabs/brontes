@@ -7,29 +7,26 @@ use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
-    db::{
-        cex::{
-            trades::{
-                config::CexDexTradeConfig,
-                optimistic::OptimisticPrice,
-                time_window_vwam::{ExchangePath, WindowExchangePrice},
-            },
-            CexExchange,
+    db::cex::{
+        trades::{
+            config::CexDexTradeConfig,
+            optimistic::OptimisticPrice,
+            time_window_vwam::{ExchangePath, WindowExchangePrice},
         },
-        token_info::TokenInfoWithAddress,
+        CexExchange,
     },
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType, OptimisticTrade},
     normalized_actions::{
         accounting::{ActionAccounting, AddressDeltas},
-        Action, NormalizedBatch, NormalizedSwap, NormalizedTransfer,
+        Action, NormalizedBatch, NormalizedSwap,
     },
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    BlockData, FastHashMap, FastHashSet, MultiBlockData, ToFloatNearest, TreeCollector,
-    TreeSearchBuilder, TxInfo,
+    BlockData, FastHashMap, MultiBlockData, ToFloatNearest, TreeCollector, TreeSearchBuilder,
+    TxInfo,
 };
-use itertools::{multizip, Itertools};
+use itertools::multizip;
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
@@ -183,7 +180,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
 
         if dex_swaps.is_empty() {
-            if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
+            if let Some(extra) = self.utils.cex_try_convert_transfer_to_swap(
+                transfers,
+                &tx_info,
+                MevType::CexDexTrades,
+            ) {
                 dex_swaps.push(extra);
             }
         }
@@ -514,7 +515,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> CexPricesForSwaps {
-        let merged_swaps = self.merge_possible_swaps(dex_swaps);
+        let merged_swaps = SharedInspectorUtils::<DB>::cex_merge_possible_swaps(dex_swaps);
 
         let (time_window_vwam, optimistic): (Vec<_>, Vec<_>) = merged_swaps
             .clone()
@@ -585,80 +586,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         }
 
         (window, optimistic)
-    }
-
-    //TODO: This should likely be done on the pricing side instead of here, so that
-    // we can pass it on to the pricer and it can attempt to get the price doing
-    // this & the baseline individual price calculation so that we can make sure
-    // we're getting the best price
-    // We also want to make
-    /// see's if we can form a intermediary path on dex swaps
-    fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
-        let mut matching: FastHashMap<TokenInfoWithAddress, Vec<&NormalizedSwap>> =
-            FastHashMap::default();
-
-        for swap in &swaps {
-            matching
-                .entry(swap.token_in.clone())
-                .or_default()
-                .push(swap);
-            matching
-                .entry(swap.token_out.clone())
-                .or_default()
-                .push(swap);
-        }
-
-        let mut res = vec![];
-        let mut voided = FastHashSet::default();
-
-        for (intermediary, swaps) in matching {
-            res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
-                let s0 = swaps.remove(0);
-                let s1 = swaps.remove(0);
-
-                // if s0 is first hop
-                if s0.token_out == intermediary
-                    && s0.token_out == s1.token_in
-                    && s0.amount_out == s1.amount_in
-                {
-                    voided.insert(s0.clone());
-                    voided.insert(s1.clone());
-                    Some(NormalizedSwap {
-                        from: s0.from,
-                        recipient: s1.recipient,
-                        token_in: s0.token_in.clone(),
-                        token_out: s1.token_out.clone(),
-                        amount_in: s0.amount_in.clone(),
-                        amount_out: s1.amount_out.clone(),
-                        protocol: s0.protocol,
-                        pool: s0.pool,
-                        ..Default::default()
-                    })
-                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
-                    voided.insert(s0.clone());
-                    voided.insert(s1.clone());
-                    Some(NormalizedSwap {
-                        from: s1.from,
-                        recipient: s0.recipient,
-                        token_in: s1.token_in.clone(),
-                        token_out: s0.token_out.clone(),
-                        amount_in: s1.amount_in.clone(),
-                        amount_out: s0.amount_out.clone(),
-                        protocol: s1.protocol,
-                        pool: s1.pool,
-                        ..Default::default()
-                    })
-                } else {
-                    None
-                }
-            }));
-        }
-
-        swaps
-            .into_iter()
-            .filter(|s| !voided.contains(s))
-            .chain(res)
-            .collect()
     }
 
     /// Accounts for gas costs in the calculation of potential arbitrage
@@ -774,47 +701,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         original_token == final_token
     }
-
-    fn try_convert_transfer_to_swap(
-        &self,
-        mut transfers: Vec<NormalizedTransfer>,
-        info: &TxInfo,
-    ) -> Option<NormalizedSwap> {
-        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDexTrades)) {
-            return None
-        }
-
-        let t0 = transfers.remove(0);
-        let t1 = transfers.remove(0);
-
-        if t0.to == t1.from && Some(t0.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t0.trace_index,
-                amount_out: t1.amount,
-                token_out: t1.token,
-                amount_in: t0.amount,
-                token_in: t0.token,
-                from: t0.from,
-                pool: t0.to,
-                recipient: t0.from,
-                ..Default::default()
-            })
-        } else if t1.to == t0.from && Some(t1.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t1.trace_index,
-                amount_out: t0.amount,
-                token_out: t0.token,
-                amount_in: t1.amount,
-                token_in: t1.token,
-                from: t1.from,
-                pool: t1.to,
-                recipient: t1.from,
-                ..Default::default()
-            })
-        } else {
-            None
-        }
-    }
 }
 
 pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
@@ -925,5 +811,60 @@ mod tests {
             .with_gas_paid_usd(2.43);
 
         inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_coinbase_0x() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("dcfbaf4b300d92e694dc836f2276bff06ed0b68f207a6684b78466c2e0113571").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_merging_swaps_failure() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("97c21d85f56aac561647a893825699e144980eed53480a2bf18f0f830fd4867a").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_uni_router() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("18304d0a912708e79cb79faee830cfce349411a0da21c6ed4b91f5365025f59a").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_0x_more() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("857d39e8f3d840e3c088ddef50e9010731a52affa3e20e719f304de639077ab4").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_multihop() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("6d54d3f40db88bc62257ad653d3120c9798223b9666269937055e574b713e3a3").into();
+        let config =
+            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.assert_no_mev(config).await.unwrap();
     }
 }

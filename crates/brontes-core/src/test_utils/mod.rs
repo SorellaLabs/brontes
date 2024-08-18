@@ -202,7 +202,7 @@ impl TraceLoader {
                 false,
                 Some((block - 2, block + 4)),
                 tables,
-                false
+                false,
             )
             .await?;
 

@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
+use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
@@ -35,7 +36,6 @@ use db_interfaces::{
     params::BindParameters,
     Database,
 };
-use backon::{ExponentialBuilder, Retryable};
 use eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -299,18 +299,25 @@ impl Clickhouse {
             .with_max_delay(Duration::from_secs(20));
 
         let mut try_count = 1;
-        let res = (|| async { self.client.query_many::<Q, P>(query.as_ref(), params).await } )
+        let res = (|| async { self.client.query_many::<Q, P>(query.as_ref(), params).await })
             .retry(&retry_strategy)
             .when(|e| {
                 let should_retry = match e {
-                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(_),)) => true,
-                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(BadResponse(s),)) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
+                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(
+                        _,
+                    ))) => true,
+                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(
+                        BadResponse(s),
+                    )) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
                     _ => false,
                 };
                 should_retry
             })
             .notify(|err, dur| {
-                warn!("Query failed after {} attempt(s).  Retrying in {:?}... Error: {}", try_count, dur, err);
+                warn!(
+                    "Query failed after {} attempt(s).  Retrying in {:?}... Error: {}",
+                    try_count, dur, err
+                );
                 try_count += 1;
             })
             .await;
@@ -318,9 +325,9 @@ impl Clickhouse {
             Ok(result) => return Ok(result),
             Err(err) => {
                 error!("Query failed after maximum retries - final Error: {}", err);
-                return Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Custom(
-                    "Query failed after maximum retries".to_string(),
-                ))))
+                return Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(
+                    Custom("Query failed after maximum retries".to_string()),
+                )))
             }
         }
     }
