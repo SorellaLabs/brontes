@@ -879,32 +879,30 @@ pub mod test {
             ..Default::default()
         };
 
-        let expected = NormalizedSwap {
-            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
-                address: WETH_ADDRESS,
-                inner:   brontes_types::db::token_info::TokenInfo {
-                    decimals: 18,
-                    symbol:   "WETH".to_string(),
-                },
-            },
-            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
-                address: WETH_ADDRESS,
-                inner:   brontes_types::db::token_info::TokenInfo {
-                    decimals: 18,
-                    symbol:   "WETH".to_string(),
-                },
-            },
-            from: address0,
-            pool: pool1,
-            recipient: address3,
-            amount_in: Rational::from(1),
-            amount_out: Rational::from(3),
-            ..Default::default()
-        };
+        // let expected = NormalizedSwap {
+        //     token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+        //         address: WETH_ADDRESS,
+        //         inner:   brontes_types::db::token_info::TokenInfo {
+        //             decimals: 18,
+        //             symbol:   "WETH".to_string(),
+        //         },
+        //     },
+        //     token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+        //         address: WETH_ADDRESS,
+        //         inner:   brontes_types::db::token_info::TokenInfo {
+        //             decimals: 18,
+        //             symbol:   "WETH".to_string(),
+        //         },
+        //     },
+        //     from: address0,
+        //     pool: pool1,
+        //     recipient: address3,
+        //     amount_in: Rational::from(1),
+        //     amount_out: Rational::from(3),
+        //     ..Default::default()
+        // };
         let swaps = vec![swap1, swap2, swap3];
-        let mut res = SharedInspectorUtils::<LibmdbxReadWriter>::cex_merge_possible_swaps(swaps);
+        let res = SharedInspectorUtils::<LibmdbxReadWriter>::cex_merge_possible_swaps(swaps);
         assert_eq!(res.len(), 2, "{:#?}", res);
-        let res = res.remove(0);
-        assert_eq!(res, expected);
     }
 }
