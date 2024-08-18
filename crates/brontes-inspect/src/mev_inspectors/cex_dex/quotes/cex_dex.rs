@@ -198,7 +198,11 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
                 // robust way & deduplicate the swaps post
                 if dex_swaps.is_empty() {
-                    if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
+                    if let Some(extra) = self.utils.cex_try_convert_transfer_to_swap(
+                        transfers,
+                        &tx_info,
+                        MevType::CexDexQuotes,
+                    ) {
                         dex_swaps.push(extra);
                     }
                 }
@@ -263,7 +267,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         tx_info: &TxInfo,
     ) -> Option<CexDexProcessing> {
         //TODO: Add smiths map to query most liquid dex for given pair
-        let swaps = self.merge_possible_swaps(dex_swaps);
+        let swaps = self.utils.cex_merge_possible_swaps(dex_swaps);
 
         let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0, None);
         let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_info)?;
@@ -520,88 +524,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         let final_token = dex_swaps.last().unwrap().token_out.address;
 
         original_token == final_token
-    }
-
-    fn try_convert_transfer_to_swap(
-        &self,
-        transfers: Vec<NormalizedTransfer>,
-        info: &TxInfo,
-    ) -> Option<NormalizedSwap> {
-        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDexQuotes)) {
-            return None
-        }
-        let ingore_addresses = info.collect_address_set_for_accounting();
-
-        self.utils
-            .try_create_swaps(&transfers, ingore_addresses)
-            .pop()
-    }
-
-    fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
-        let mut matching: FastHashMap<_, Vec<_>> = FastHashMap::default();
-
-        for swap in &swaps {
-            matching
-                .entry(swap.token_in.clone())
-                .or_default()
-                .push(swap);
-            matching
-                .entry(swap.token_out.clone())
-                .or_default()
-                .push(swap);
-        }
-
-        let mut res = vec![];
-        let mut voided = FastHashSet::default();
-
-        for (intermediary, swaps) in matching {
-            res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
-                let s0 = swaps.remove(0);
-                let s1 = swaps.remove(0);
-
-                // if s0 is first hop
-                if s0.token_out == intermediary
-                    && s0.token_out == s1.token_in
-                    && s0.amount_out == s1.amount_in
-                {
-                    voided.insert(s0.clone());
-                    voided.insert(s1.clone());
-                    Some(NormalizedSwap {
-                        from: s0.from,
-                        recipient: s1.recipient,
-                        token_in: s0.token_in.clone(),
-                        token_out: s1.token_out.clone(),
-                        amount_in: s0.amount_in.clone(),
-                        amount_out: s1.amount_out.clone(),
-                        protocol: s0.protocol,
-                        pool: s0.pool,
-                        ..Default::default()
-                    })
-                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
-                    voided.insert(s0.clone());
-                    voided.insert(s1.clone());
-                    Some(NormalizedSwap {
-                        from: s1.from,
-                        recipient: s0.recipient,
-                        token_in: s1.token_in.clone(),
-                        token_out: s0.token_out.clone(),
-                        amount_in: s1.amount_in.clone(),
-                        amount_out: s0.amount_out.clone(),
-                        protocol: s1.protocol,
-                        pool: s1.pool,
-                        ..Default::default()
-                    })
-                } else {
-                    None
-                }
-            }));
-        }
-
-        swaps
-            .into_iter()
-            .filter(|s| !voided.contains(s))
-            .chain(res)
-            .collect()
     }
 }
 
