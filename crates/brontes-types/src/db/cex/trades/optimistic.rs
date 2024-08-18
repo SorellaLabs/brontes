@@ -195,6 +195,8 @@ impl<'a> SortedTrades<'a> {
                 )?;
                 let new_vol = volume
                     * ((&first_leg.global.price_maker + &first_leg.global.price_taker) / R2);
+                
+                    
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -212,6 +214,8 @@ impl<'a> SortedTrades<'a> {
                     dex_swap,
                     tx_hash,
                 )?;
+
+                tracing::trace!(?first_leg, ?volume, ?second_leg, ?new_vol);
 
 
                 let price = first_leg * second_leg;
