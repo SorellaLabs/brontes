@@ -878,6 +878,7 @@ pub mod test {
             amount_out: Rational::from(3),
             ..Default::default()
         };
+
         let expected = NormalizedSwap {
             token_in: brontes_types::db::token_info::TokenInfoWithAddress {
                 address: WETH_ADDRESS,
@@ -905,7 +906,7 @@ pub mod test {
             TxHash::ZERO,
             swaps,
         );
-        assert!(res.len() == 1);
+        assert_eq!(res.len(), 1);
         let res = res.remove(0);
         assert_eq!(res, expected);
     }
