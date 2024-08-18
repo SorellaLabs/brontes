@@ -93,20 +93,20 @@ impl LibmdbxWriterMetrics {
     pub fn observe_commit_latency(&self, msg_type: &str, start_time: Instant, end_time: Option<Instant>) {
         let final_time = end_time.unwrap_or_else(|| Instant::now());
         let t_total = final_time - start_time;
-        self.commit_latency.with_label_values(&[msg_type]).observe(t_total.as_millis_f64());
+        self.commit_latency.with_label_values(&[msg_type]).observe(t_total.as_secs_f64() * 1000_f64);
     }
 
     /// Instruments the latency of a single database write operation, tagged with the table name being written to.
     pub fn observe_write_latency(&self, table: &str, duration: Duration) {
         self.write_latency
             .with_label_values(&[table])
-            .observe(duration.as_millis_f64());
+            .observe(duration.as_secs_f64() * 1000_f64);
     }
 
     /// Instruments the latency of a batch write operation.  Since we don't know what might be in the batch, we'll just
     /// have this be a plain histogram which takes a duration on its own with no tags.
     pub fn observe_write_latency_batch(&self, duration: Duration) {
-        self.write_latency_batch.observe(duration.as_millis_f64());
+        self.write_latency_batch.observe(duration.as_secs_f64() * 1000_f64);
     }
 
     /// Instruments the count of errors encountered while writing to the database, tagged by the type of error encountered
