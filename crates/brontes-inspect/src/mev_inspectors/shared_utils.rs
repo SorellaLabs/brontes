@@ -192,8 +192,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         transfers: &[NormalizedTransfer],
         invalid_addresses: FastHashSet<Address>,
     ) -> Vec<NormalizedSwap> {
-        let mut pools: FastHashMap<Address, Vec<(TokenInfoWithAddress, bool, Rational, Address)>> =
-            FastHashMap::default();
+        let mut pools: FastHashMap<
+            Address,
+            Vec<(TokenInfoWithAddress, bool, Rational, Address, u64)>,
+        > = FastHashMap::default();
 
         for t in transfers {
             // we do this so if the transfer is from a mev contract or a searcher, it gets
@@ -202,15 +204,21 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 continue
             }
 
-            pools
-                .entry(t.to)
-                .or_default()
-                .push((t.token.clone(), true, t.amount.clone(), t.from));
+            pools.entry(t.to).or_default().push((
+                t.token.clone(),
+                true,
+                t.amount.clone(),
+                t.from,
+                t.trace_index,
+            ));
 
-            pools
-                .entry(t.from)
-                .or_default()
-                .push((t.token.clone(), false, t.amount.clone(), t.to));
+            pools.entry(t.from).or_default().push((
+                t.token.clone(),
+                false,
+                t.amount.clone(),
+                t.to,
+                t.trace_index,
+            ));
         }
 
         pools
@@ -220,12 +228,13 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     return None
                 }
 
-                let (f_token, f_direction, f_am, f_addr) = possible_swaps.pop()?;
-                let (s_token, s_direction, s_am, s_addr) = possible_swaps.pop()?;
+                let (f_token, f_direction, f_am, f_addr, f_trace) = possible_swaps.pop()?;
+                let (s_token, s_direction, s_am, s_addr, s_trace) = possible_swaps.pop()?;
 
                 if s_token == f_token || s_direction == f_direction {
                     return None
                 }
+                let trace_index = std::cmp::min(f_trace, s_trace);
 
                 let (amount_in, amount_out, token_in, token_out, from, recip) = if f_direction {
                     (f_am, s_am, f_token, s_token, f_addr, s_addr)
@@ -241,6 +250,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     token_in,
                     from,
                     recipient: recip,
+                    trace_index,
                     ..Default::default()
                 })
             })
@@ -708,11 +718,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         self.try_create_swaps(&transfers, ingore_addresses).pop()
     }
 
-    /// TODO: refactor to deal with multi-hops.
-    pub fn cex_merge_possible_swaps(
-        hash: TxHash,
-        swaps: Vec<NormalizedSwap>,
-    ) -> Vec<NormalizedSwap> {
+    pub fn cex_merge_possible_swaps(swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
         let mut matching: FastHashMap<TokenInfoWithAddress, Vec<&NormalizedSwap>> =
             FastHashMap::default();
 
@@ -729,17 +735,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         let mut res = vec![];
         let mut voided = FastHashSet::default();
-        let mut log_res = false;
 
         for (intermediary, swaps) in matching {
-            if swaps.len() > 2 {
-                log_res = true;
-            }
-
             res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
                 let s0 = swaps.remove(0);
                 let s1 = swaps.remove(0);
 
+                if voided.contains(s0) || voided.contains(s1) {
+                    return None
+                }
                 // if s0 is first hop
                 if s0.token_out == intermediary
                     && s0.token_out == s1.token_in
@@ -777,9 +781,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 }
             }));
         }
-        if log_res && !res.is_empty() {
-            tracing::trace!(target: "brontes::cex_multi", ?hash, "{:#?}\n\n\n {:#?}", swaps, res);
-        }
 
         swaps
             .into_iter()
@@ -797,7 +798,6 @@ pub mod test {
         normalized_actions::NormalizedSwap,
     };
     use malachite::Rational;
-    use reth_primitives::TxHash;
 
     use super::SharedInspectorUtils;
 
@@ -902,11 +902,8 @@ pub mod test {
             ..Default::default()
         };
         let swaps = vec![swap1, swap2, swap3];
-        let mut res = SharedInspectorUtils::<LibmdbxReadWriter>::cex_merge_possible_swaps(
-            TxHash::ZERO,
-            swaps,
-        );
-        assert_eq!(res.len(), 1, "{:#?}", res);
+        let mut res = SharedInspectorUtils::<LibmdbxReadWriter>::cex_merge_possible_swaps(swaps);
+        assert_eq!(res.len(), 2, "{:#?}", res);
         let res = res.remove(0);
         assert_eq!(res, expected);
     }
