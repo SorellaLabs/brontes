@@ -215,9 +215,6 @@ impl<'a> SortedTrades<'a> {
                     tx_hash,
                 )?;
 
-                tracing::trace!(?first_leg, ?volume, ?second_leg, ?new_vol);
-
-
                 let price = first_leg * second_leg;
 
                 Some(price)
