@@ -733,7 +733,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         let mut log_res = false;
 
         for (intermediary, swaps) in matching {
-            if swaps.len() != 2 {
+            if swaps.len() > 2 {
                 log_res = true;
             }
 
@@ -779,7 +779,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             }));
         }
         if log_res {
-            tracing::debug!(target: "brontes::cex_multi",?hash, "{:#?}\n\n\n {:#?}", swaps, res);
+            tracing::debug!(target: "brontes::cex_multi", ?hash, "{:#?}\n\n\n {:#?}", swaps, res);
         }
 
         swaps
