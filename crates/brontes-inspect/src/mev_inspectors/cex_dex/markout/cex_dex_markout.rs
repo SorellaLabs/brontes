@@ -815,4 +815,56 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_coinbase_0x() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("dcfbaf4b300d92e694dc836f2276bff06ed0b68f207a6684b78466c2e0113571").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(15.25)
+            .with_gas_paid_usd(2.43);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_merging_swaps_failure() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("97c21d85f56aac561647a893825699e144980eed53480a2bf18f0f830fd4867a").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(15.25)
+            .with_gas_paid_usd(2.43);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_uni_router() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("18304d0a912708e79cb79faee830cfce349411a0da21c6ed4b91f5365025f59a").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(15.25)
+            .with_gas_paid_usd(2.43);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_cex_dex_0x_more() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("857d39e8f3d840e3c088ddef50e9010731a52affa3e20e719f304de639077ab4").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(15.25)
+            .with_gas_paid_usd(2.43);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
