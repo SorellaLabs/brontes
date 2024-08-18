@@ -116,8 +116,6 @@ impl CexQuotesConverter {
                         pair.0 = Address::from(hex!("d1d2Eb1B1e90B638588728b4130137D262C87cae"))
                     }
 
-                    let pair = correct_usdc_address(&symbol.address_pair);
-
                     exchange_pair_index_map.entry(pair).or_default().push(index);
                 });
 

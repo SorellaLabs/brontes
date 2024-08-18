@@ -462,6 +462,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             token_price.clone().reciprocal()
         };
 
+        if cex_quote.price_maker == Rational::ZERO {
+            return None
+        }
+
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
             price0: base_to_quote.clone(),
