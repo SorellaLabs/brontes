@@ -710,7 +710,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
     /// TODO: refactor to deal with multi-hops.
     pub fn cex_merge_possible_swaps(
-        &self,
         hash: TxHash,
         swaps: Vec<NormalizedSwap>,
     ) -> Vec<NormalizedSwap> {
@@ -787,5 +786,127 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .filter(|s| !voided.contains(s))
             .chain(res)
             .collect()
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use brontes_core::LibmdbxReadWriter;
+    use brontes_types::{
+        constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+        normalized_actions::NormalizedSwap,
+    };
+    use malachite::Rational;
+    use reth_primitives::TxHash;
+
+    use super::SharedInspectorUtils;
+
+    #[test]
+    pub fn test_multi_hop_cex_merge_swap() {
+        let address0 = alloy_primitives::address!("76F36d497b51e48A288f03b4C1d7461e92247d5e");
+        let address3 = alloy_primitives::address!("76F36d497b51e48A288f03b4C1d7461e92247d52");
+
+        let pool1 = alloy_primitives::address!("16F36d497b51e48A288f03b4C1d7461e92247d52");
+        let pool2 = alloy_primitives::address!("26F36d497b51e48A288f03b4C1d7461e92247d52");
+        let pool3 = alloy_primitives::address!("36F36d497b51e48A288f03b4C1d7461e92247d52");
+
+        let swap1 = NormalizedSwap {
+            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: WETH_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 18,
+                    symbol:   "WETH".to_string(),
+                },
+            },
+            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDT_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDT".to_string(),
+                },
+            },
+            from: address0,
+            pool: pool1,
+            recipient: pool2,
+            amount_in: Rational::from(1),
+            amount_out: Rational::from(2),
+            ..Default::default()
+        };
+
+        let swap2 = NormalizedSwap {
+            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDT_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDT".to_string(),
+                },
+            },
+            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDC_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDC".to_string(),
+                },
+            },
+            from: pool1,
+            pool: pool2,
+            recipient: pool3,
+            amount_in: Rational::from(2),
+            amount_out: Rational::from(1),
+            ..Default::default()
+        };
+
+        let swap3 = NormalizedSwap {
+            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDC_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDC".to_string(),
+                },
+            },
+            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: WETH_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 18,
+                    symbol:   "WETH".to_string(),
+                },
+            },
+            from: pool2,
+            pool: pool3,
+            recipient: address3,
+            amount_in: Rational::from(1),
+            amount_out: Rational::from(3),
+            ..Default::default()
+        };
+        let expected = NormalizedSwap {
+            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: WETH_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 18,
+                    symbol:   "WETH".to_string(),
+                },
+            },
+            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: WETH_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 18,
+                    symbol:   "WETH".to_string(),
+                },
+            },
+            from: address0,
+            pool: pool1,
+            recipient: address3,
+            amount_in: Rational::from(1),
+            amount_out: Rational::from(3),
+            ..Default::default()
+        };
+        let swaps = vec![swap1, swap2, swap3];
+        let mut res = SharedInspectorUtils::<LibmdbxReadWriter>::cex_merge_possible_swaps(
+            TxHash::ZERO,
+            swaps,
+        );
+        assert!(res.len() == 1);
+        let res = res.remove(0);
+        assert_eq!(res, expected);
     }
 }
