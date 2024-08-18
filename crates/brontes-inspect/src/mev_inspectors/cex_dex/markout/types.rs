@@ -30,7 +30,6 @@ type PerExchangePrices<'a> = Vec<(&'a CexExchange, Vec<Option<(&'a ExchangePath,
 
 #[derive(Debug, Clone)]
 pub struct CexPricesForSwaps {
-    pub original_swaps:   Vec<NormalizedSwap>,
     pub dex_swaps:        Vec<NormalizedSwap>,
     pub time_window_vwam: Vec<Option<WindowExchangePrice>>,
     pub optimistic:       Vec<Option<OptimisticPrice>>,
@@ -70,6 +69,7 @@ impl CexPricesForSwaps {
         }
     }
 
+    /* Used when debugging the cex-dex quote discrepancy issue, not needed for now
     pub fn print_swap_report(&self) {
         println!("{}", "\nSwaps Report".bold().underline());
         println!("{}", "=============".bold());
@@ -105,6 +105,7 @@ impl CexPricesForSwaps {
 
         println!("Unique tokens involved: {}", unique_tokens.into_iter().join(", "));
     }
+     */
 }
 
 #[derive(Debug)]

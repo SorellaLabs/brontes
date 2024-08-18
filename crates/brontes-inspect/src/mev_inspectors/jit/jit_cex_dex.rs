@@ -164,7 +164,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                     &metadata,
                     tx_info.is_searcher_of_type(MevType::JitCexDex)
                         || tx_info.is_labelled_searcher_of_type(MevType::JitCexDex),
-                    tx_info.tx_hash,
+                    &tx_info,
                 )?;
 
                 self.cex_dex.gas_accounting(

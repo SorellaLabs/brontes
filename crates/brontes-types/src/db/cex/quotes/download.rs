@@ -1,6 +1,6 @@
 use std::mem;
 
-use alloy_primitives::hex;
+use alloy_primitives::{hex, Address};
 use clickhouse::Row;
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -107,6 +107,14 @@ impl CexQuotesConverter {
                         .symbols
                         .get(&(quote.exchange, quote.symbol.clone()))
                         .unwrap();
+
+                    let mut pair = correct_usdc_address(&symbol.address_pair);
+
+                    if symbol.address_pair.0 == hex!("15D4c048F83bd7e37d49eA4C83a07267Ec4203dA")
+                        && quote.timestamp > 1684220400000000
+                    {
+                        pair.0 = Address::from(hex!("d1d2Eb1B1e90B638588728b4130137D262C87cae"))
+                    }
 
                     let pair = correct_usdc_address(&symbol.address_pair);
 

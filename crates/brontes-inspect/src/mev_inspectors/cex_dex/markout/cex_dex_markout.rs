@@ -33,7 +33,7 @@ use itertools::{multizip, Itertools};
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
-        basic::traits::{One, Two, Zero},
+        basic::traits::{One, Zero},
     },
     Rational,
 };
@@ -89,7 +89,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
         let BlockData { metadata, tree } = block;
 
         if metadata.cex_trades.is_none() {
-            tracing::warn!("no cex trades for block: {}", block.metadata.block_num);
+            tracing::error!("no cex trades for block: {}", block.metadata.block_num);
             return vec![]
         }
 
@@ -257,7 +257,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 || tx_info.is_labelled_searcher_of_type(MevType::CexDexTrades)
                 || tx_info.is_labelled_searcher_of_type(MevType::CexDexRfq)
                 || tx_info.is_searcher_of_type(MevType::JitCexDex),
-            tx_info.tx_hash,
+            &tx_info,
         )?;
 
         self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
@@ -293,19 +293,20 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
         marked_cex_dex: bool,
-        tx_hash: FixedBytes<32>,
+        tx_info: &TxInfo,
     ) -> Option<CexDexProcessing> {
-        let cex_prices = self.cex_prices_for_swaps(dex_swaps, metadata, marked_cex_dex, tx_hash);
+        let cex_prices =
+            self.cex_prices_for_swaps(dex_swaps, metadata, marked_cex_dex, tx_info.tx_hash);
 
         let merged_swaps = cex_prices.dex_swaps.clone();
 
         let global_vwam: Option<PossibleCexDex> =
-            self.process_global_vwam(&cex_prices, metadata, tx_hash);
+            self.process_global_vwam(&cex_prices, metadata, tx_info);
 
-        let per_exchange_pnl = self.process_per_exchange(&cex_prices, metadata, tx_hash);
+        let per_exchange_pnl = self.process_per_exchange(&cex_prices, metadata, tx_info);
 
         let optimstic_res: Option<OptimisticDetails> =
-            self.process_optimistic(cex_prices, metadata, tx_hash);
+            self.process_optimistic(cex_prices, metadata, tx_info);
 
         CexDexProcessing::new(merged_swaps, global_vwam, per_exchange_pnl, optimstic_res)
     }
@@ -314,7 +315,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         cex_prices: &CexPricesForSwaps,
         metadata: &Metadata,
-        tx_hash: FixedBytes<32>,
+        tx_info: &TxInfo,
     ) -> Option<PossibleCexDex> {
         cex_prices.global_price().and_then(|global_prices| {
             PossibleCexDex::from_arb_legs(
@@ -329,7 +330,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                             global_price,
                             CexExchange::VWAP,
                             metadata,
-                            tx_hash,
+                            tx_info,
                             PriceCalcType::TimeWindowGlobal,
                         )
                     })
@@ -342,7 +343,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         cex_prices: &CexPricesForSwaps,
         metadata: &Metadata,
-        tx_hash: FixedBytes<32>,
+        tx_info: &TxInfo,
     ) -> Vec<Option<PossibleCexDex>> {
         cex_prices
             .per_exchange_trades(self.cex_exchanges.as_slice())
@@ -360,7 +361,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                                 path,
                                 *exchange,
                                 metadata,
-                                tx_hash,
+                                tx_info,
                                 PriceCalcType::TimeWindowPerEx,
                             )
                         })
@@ -377,13 +378,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         &self,
         cex_prices: CexPricesForSwaps,
         metadata: &Metadata,
-        tx_hash: FixedBytes<32>,
+        tx_info: &TxInfo,
     ) -> Option<OptimisticDetails> {
         let arb_legs_and_trades: Vec<(Option<ArbLeg>, Vec<OptimisticTrade>)> = cex_prices
-            .clone()
             .dex_swaps
             .into_iter()
-            .zip(cex_prices.clone().optimistic)
+            .zip(cex_prices.optimistic)
             .map(|(dex_swap, opt_price)| {
                 opt_price.map_or((None, Vec::new()), |price| {
                     let arb_leg = self.profit_classifier(
@@ -392,21 +392,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                         &price.global,
                         CexExchange::OptimisticVWAP,
                         metadata,
-                        tx_hash,
+                        tx_info,
                         PriceCalcType::Optimistic,
                     );
                     (arb_leg, price.trades_used)
                 })
             })
             .collect();
-
-        if arb_legs_and_trades.iter().any(|(arb_leg, _)| {
-            arb_leg
-                .as_ref()
-                .map_or(false, |leg| *leg == ArbLeg::default())
-        }) {
-            cex_prices.clone().print_swap_report()
-        };
 
         if arb_legs_and_trades.is_empty() {
             return None
@@ -430,31 +422,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         cex_quote: &ExchangePath,
         exchange: CexExchange,
         metadata: &Metadata,
-        tx_hash: FixedBytes<32>,
+        tx_info: &TxInfo,
         price_calculation_type: PriceCalcType,
     ) -> Option<ArbLeg> {
         let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
             (&cex_quote.price_maker * &swap.amount_out, &cex_quote.price_taker * &swap.amount_out);
 
-        let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
-        let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
-
-        if smaller * Rational::TWO < *larger {
-            log_cex_trade_price_delta(
-                &tx_hash,
-                swap.token_in_symbol(),
-                swap.token_out_symbol(),
-                swap.swap_rate().clone().to_float(),
-                cex_quote.price_maker.clone().to_float(),
-                &swap.token_in.address,
-                &swap.token_out.address,
-                price_calculation_type,
-                &swap.amount_in,
-                &swap.amount_out,
-                &output_of_cex_trade_maker,
-            );
-            return Some(ArbLeg::default())
-        }
         // A positive amount indicates potential profit from selling the token in on the
         // DEX and buying it on the CEX.
         let maker_token_delta = &output_of_cex_trade_maker - &swap.amount_in;
@@ -476,7 +449,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 metadata.microseconds_block_timestamp(),
                 true,
                 swap,
-                tx_hash,
+                tx_info.tx_hash,
             )?
             .global
             .price_maker;
@@ -496,14 +469,36 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             price1: (&token_price * cex_quote.price_maker.clone().reciprocal()).reciprocal(),
         };
 
-        let pnl_mid = (&maker_token_delta * &base_to_quote, &taker_token_delta * &base_to_quote);
+        let pnl = (&maker_token_delta * &base_to_quote, &taker_token_delta * &base_to_quote);
+
+        let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
+        let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
+
+        let max_diff = max_arb_delta(tx_info, &pnl.0);
+
+        if smaller * max_diff < *larger {
+            log_cex_trade_price_delta(
+                &tx_info.tx_hash,
+                swap.token_in_symbol(),
+                swap.token_out_symbol(),
+                swap.swap_rate().clone().to_float(),
+                cex_quote.price_maker.clone().to_float(),
+                &swap.token_in.address,
+                &swap.token_out.address,
+                price_calculation_type,
+                &swap.amount_in,
+                &swap.amount_out,
+                &output_of_cex_trade_maker,
+            );
+            return None
+        }
 
         Some(ArbLeg {
             price: cex_quote.clone(),
             pairs,
             exchange,
-            pnl_maker: pnl_mid.0,
-            pnl_taker: pnl_mid.1,
+            pnl_maker: pnl.0,
+            pnl_taker: pnl.1,
             token_price: pairs_price,
         })
     }
@@ -515,7 +510,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> CexPricesForSwaps {
-        let merged_swaps = self.merge_possible_swaps(dex_swaps.clone());
+        let merged_swaps = self.merge_possible_swaps(dex_swaps);
 
         let (time_window_vwam, optimistic): (Vec<_>, Vec<_>) = merged_swaps
             .clone()
@@ -524,12 +519,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(|swap| self.calculate_cex_price(swap, metadata, marked_cex_dex, tx_hash))
             .unzip();
 
-        CexPricesForSwaps {
-            original_swaps: dex_swaps,
-            dex_swaps: merged_swaps,
-            time_window_vwam,
-            optimistic,
-        }
+        CexPricesForSwaps { dex_swaps: merged_swaps, time_window_vwam, optimistic }
     }
 
     fn calculate_cex_price(
@@ -821,6 +811,30 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             None
         }
     }
+}
+
+pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
+    let mut base_diff = 3;
+
+    if tx_info.is_labelled_searcher_of_type(MevType::CexDexQuotes)
+        || tx_info.is_labelled_searcher_of_type(MevType::CexDexTrades)
+    {
+        if pnl < &Rational::from(5) {
+            base_diff += 7;
+        } else if pnl < &Rational::from(40) {
+            base_diff += 5;
+        } else if pnl < &Rational::from(100) {
+            base_diff += 2;
+        }
+    } else if tx_info
+        .contract_type
+        .as_ref()
+        .map_or(false, |c| c.is_mev_contract())
+    {
+        base_diff += 2;
+    }
+
+    Rational::from(base_diff)
 }
 
 #[cfg(test)]

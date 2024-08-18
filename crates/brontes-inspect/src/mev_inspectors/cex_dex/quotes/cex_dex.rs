@@ -46,7 +46,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -62,10 +62,7 @@ use brontes_types::{
     TreeSearchBuilder, TxInfo,
 };
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{Two, Zero},
-    },
+    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
 use tracing::{debug, trace};
@@ -125,7 +122,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexQuotesInspector<'_, DB> {
         let BlockData { metadata, tree } = block;
 
         if metadata.cex_quotes.quotes.is_empty() {
-            tracing::warn!("no cex quotes for this block");
+            tracing::error!("no cex quotes for this block");
             return vec![]
         }
 
@@ -226,7 +223,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 }
 
                 let mut possible_cex_dex: CexDexProcessing =
-                    self.detect_cex_dex(dex_swaps, &metadata, &tx_info.tx_hash)?;
+                    self.detect_cex_dex(dex_swaps, &metadata, &tx_info)?;
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
@@ -263,13 +260,13 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         &self,
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
-        tx_hash: &TxHash,
+        tx_info: &TxInfo,
     ) -> Option<CexDexProcessing> {
         //TODO: Add smiths map to query most liquid dex for given pair
         let swaps = self.merge_possible_swaps(dex_swaps);
 
         let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0, None);
-        let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_hash)?;
+        let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_info)?;
         let cex_dex_processing = CexDexProcessing { dex_swaps: swaps, pnl: cex_dex };
         Some(cex_dex_processing)
     }
@@ -292,7 +289,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         dex_swaps: &[NormalizedSwap],
         cex_prices: Vec<Option<FeeAdjustedQuote>>,
         metadata: &Metadata,
-        tx_hash: &TxHash,
+        tx_info: &TxInfo,
     ) -> Option<PossibleCexDex> {
         PossibleCexDex::from_exchange_legs(
             dex_swaps
@@ -300,7 +297,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .zip(cex_prices)
                 .map(|(dex_swap, quote)| {
                     if let Some(q) = quote {
-                        self.profit_classifier(dex_swap, q, metadata, tx_hash)
+                        self.profit_classifier(dex_swap, q, metadata, tx_info)
                     } else {
                         None
                     }
@@ -316,7 +313,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         swap: &NormalizedSwap,
         cex_quote: FeeAdjustedQuote,
         metadata: &Metadata,
-        tx_hash: &TxHash,
+        tx_info: &TxInfo,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
         let maker_taker_mid = cex_quote.maker_taker_mid();
 
@@ -324,23 +321,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
-
-        if smaller * Rational::TWO < *larger {
-            log_cex_dex_quote_delta(
-                &tx_hash.to_string(),
-                swap.token_in_symbol(),
-                swap.token_out_symbol(),
-                &cex_quote.exchange,
-                swap.swap_rate().clone().to_float(),
-                cex_quote.price_maker.0.clone().to_float(),
-                &swap.token_in.address,
-                &swap.token_out.address,
-                &swap.amount_in,
-                &swap.amount_out,
-                &output_of_cex_trade_maker,
-            );
-            return None
-        }
 
         // A positive amount indicates potential profit from selling the token in on the
         // DEX and buying it on the CEX.
@@ -372,6 +352,25 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         };
 
         let pnl_mid = &maker_token_delta * &base_to_quote;
+
+        let max_diff = max_arb_delta(tx_info, &pnl_mid);
+
+        if smaller * max_diff < *larger {
+            log_cex_dex_quote_delta(
+                &tx_info.tx_hash.to_string(),
+                swap.token_in_symbol(),
+                swap.token_out_symbol(),
+                &cex_quote.exchange,
+                swap.swap_rate().clone().to_float(),
+                cex_quote.price_maker.0.clone().to_float(),
+                &swap.token_in.address,
+                &swap.token_out.address,
+                &swap.amount_in,
+                &swap.amount_out,
+                &output_of_cex_trade_maker,
+            );
+            return None
+        }
 
         Some((
             ExchangeLeg {
@@ -626,6 +625,30 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             .chain(res)
             .collect()
     }
+}
+
+pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
+    let mut base_diff = 3;
+
+    if tx_info.is_labelled_searcher_of_type(MevType::CexDexQuotes)
+        || tx_info.is_labelled_searcher_of_type(MevType::CexDexTrades)
+    {
+        if pnl < &Rational::from(5) {
+            base_diff += 7;
+        } else if pnl < &Rational::from(40) {
+            base_diff += 5;
+        } else if pnl < &Rational::from(100) {
+            base_diff += 2;
+        }
+    } else if tx_info
+        .contract_type
+        .as_ref()
+        .map_or(false, |c| c.is_mev_contract())
+    {
+        base_diff += 1;
+    }
+
+    Rational::from(base_diff)
 }
 
 #[cfg(test)]
