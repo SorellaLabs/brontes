@@ -27,7 +27,7 @@ use crate::{
     FastHashMap, FastHashSet,
 };
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ExchangePath {
     pub price_maker:      Rational,
     pub price_taker:      Rational,

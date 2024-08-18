@@ -7,13 +7,16 @@ use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
-    db::cex::{
-        trades::{
-            config::CexDexTradeConfig,
-            optimistic::OptimisticPrice,
-            time_window_vwam::{ExchangePath, WindowExchangePrice},
+    db::{
+        cex::{
+            trades::{
+                config::CexDexTradeConfig,
+                optimistic::OptimisticPrice,
+                time_window_vwam::{ExchangePath, WindowExchangePrice},
+            },
+            CexExchange,
         },
-        CexExchange,
+        token_info::TokenInfoWithAddress,
     },
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType, OptimisticTrade},
@@ -296,11 +299,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         let merged_swaps = cex_prices.dex_swaps.clone();
 
-        let global_vwam = self.process_global_vwam(&cex_prices, metadata, tx_hash);
+        let global_vwam: Option<PossibleCexDex> =
+            self.process_global_vwam(&cex_prices, metadata, tx_hash);
 
         let per_exchange_pnl = self.process_per_exchange(&cex_prices, metadata, tx_hash);
 
-        let optimstic_res = self.process_optimistic(cex_prices, metadata, tx_hash);
+        let optimstic_res: Option<OptimisticDetails> =
+            self.process_optimistic(cex_prices, metadata, tx_hash);
 
         CexDexProcessing::new(merged_swaps, global_vwam, per_exchange_pnl, optimstic_res)
     }
@@ -366,6 +371,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .collect()
     }
 
+    //TODO: Remove horendous clones, just getting ouput for debugging purposes
+    // right now
     pub fn process_optimistic(
         &self,
         cex_prices: CexPricesForSwaps,
@@ -373,9 +380,10 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_hash: FixedBytes<32>,
     ) -> Option<OptimisticDetails> {
         let arb_legs_and_trades: Vec<(Option<ArbLeg>, Vec<OptimisticTrade>)> = cex_prices
+            .clone()
             .dex_swaps
             .into_iter()
-            .zip(cex_prices.optimistic)
+            .zip(cex_prices.clone().optimistic)
             .map(|(dex_swap, opt_price)| {
                 opt_price.map_or((None, Vec::new()), |price| {
                     let arb_leg = self.profit_classifier(
@@ -391,6 +399,14 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 })
             })
             .collect();
+
+        if arb_legs_and_trades.iter().any(|(arb_leg, _)| {
+            arb_leg
+                .as_ref()
+                .map_or(false, |leg| *leg == ArbLeg::default())
+        }) {
+            cex_prices.clone().print_swap_report()
+        };
 
         if arb_legs_and_trades.is_empty() {
             return None
@@ -437,7 +453,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &swap.amount_out,
                 &output_of_cex_trade_maker,
             );
-            return None
+            return Some(ArbLeg::default())
         }
         // A positive amount indicates potential profit from selling the token in on the
         // DEX and buying it on the CEX.
@@ -499,7 +515,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         marked_cex_dex: bool,
         tx_hash: FixedBytes<32>,
     ) -> CexPricesForSwaps {
-        let merged_swaps = self.merge_possible_swaps(dex_swaps);
+        let merged_swaps = self.merge_possible_swaps(dex_swaps.clone());
 
         let (time_window_vwam, optimistic): (Vec<_>, Vec<_>) = merged_swaps
             .clone()
@@ -508,7 +524,12 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .map(|swap| self.calculate_cex_price(swap, metadata, marked_cex_dex, tx_hash))
             .unzip();
 
-        CexPricesForSwaps { dex_swaps: merged_swaps, time_window_vwam, optimistic }
+        CexPricesForSwaps {
+            original_swaps: dex_swaps,
+            dex_swaps: merged_swaps,
+            time_window_vwam,
+            optimistic,
+        }
     }
 
     fn calculate_cex_price(
@@ -579,7 +600,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     // We also want to make
     /// see's if we can form a intermediary path on dex swaps
     fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
-        let mut matching: FastHashMap<_, Vec<_>> = FastHashMap::default();
+        let mut matching: FastHashMap<TokenInfoWithAddress, Vec<&NormalizedSwap>> =
+            FastHashMap::default();
 
         for swap in &swaps {
             matching

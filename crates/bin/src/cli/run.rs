@@ -80,7 +80,7 @@ pub struct RunArgs {
     #[arg(long, default_value = "true")]
     pub cli_only:             bool,
     /// Export metrics
-    #[arg(long, default_value = "true")]
+    #[arg(long, default_value = "false")]
     pub with_metrics:         bool,
     /// Wether or not to use a fallback server.
     #[arg(long, default_value_t = false)]
