@@ -108,13 +108,14 @@ impl Init {
                                 let tables_with_progress = tables_with_progress.clone();
                                 async move {
                                     libmdbx
-                                        .initialize_tables(
+                                        .initialize_table(
                                             clickhouse,
                                             tracer,
                                             table,
                                             false,
                                             range,
                                             tables_with_progress,
+                                            true
                                         )
                                         .await
                                         .unwrap();

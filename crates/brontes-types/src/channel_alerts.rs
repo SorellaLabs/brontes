@@ -14,6 +14,10 @@ impl<T> UnboundedYapperReceiver<T> {
         Self { chan, yap_count, name }
     }
 
+    pub fn len(&self) -> usize {
+        self.chan.len()
+    }
+
     pub fn blocking_recv(&mut self) -> Option<T> {
         let len = self.chan.len();
         if len > self.yap_count {

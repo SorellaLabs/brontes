@@ -3,7 +3,7 @@ use std::{path::Path, time::Duration};
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
-use brontes_metrics::PoirotMetricsListener;
+use brontes_metrics::ParserMetricsListener;
 use brontes_types::{
     constants::USDT_ADDRESS_STRING,
     db::cex::{trades::CexDexTradeConfig, CexExchange},
@@ -120,7 +120,7 @@ impl RunArgs {
         init_thread_pools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
-        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+        let metrics_listener = ParserMetricsListener::new(UnboundedYapperReceiver::new(
             metrics_rx,
             10_000,
             "metrics".to_string(),
@@ -321,7 +321,7 @@ pub struct TimeWindowArgs {
     pub vwap_time_step: f64,
 
     /// Use block time weights to favour prices closer to the block time
-    #[arg(long = "weights-vwap", default_value = "false")]
+    #[arg(long = "weights-vwap", default_value = "true")]
     pub block_time_weights_vwap: bool,
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
@@ -364,7 +364,7 @@ pub struct TimeWindowArgs {
     pub optimistic_time_step: f64,
 
     /// Use block time weights to favour prices closer to the block time
-    #[arg(long = "weights-op", default_value = "false")]
+    #[arg(long = "weights-op", default_value = "true")]
     pub block_time_weights_optimistic: bool,
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
