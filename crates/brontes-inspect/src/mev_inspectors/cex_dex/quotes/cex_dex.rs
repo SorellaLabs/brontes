@@ -524,43 +524,17 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
     fn try_convert_transfer_to_swap(
         &self,
-        mut transfers: Vec<NormalizedTransfer>,
+        transfers: Vec<NormalizedTransfer>,
         info: &TxInfo,
     ) -> Option<NormalizedSwap> {
         if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDexQuotes)) {
             return None
         }
+        let ingore_addresses = info.collect_address_set_for_accounting();
 
-        let t0 = transfers.remove(0);
-        let t1 = transfers.remove(0);
-
-        if t0.to == t1.from && Some(t0.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t0.trace_index,
-                amount_out: t1.amount,
-                token_out: t1.token,
-                amount_in: t0.amount,
-                token_in: t0.token,
-                from: t0.from,
-                pool: t0.to,
-                recipient: t0.from,
-                ..Default::default()
-            })
-        } else if t1.to == t0.from && Some(t1.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t1.trace_index,
-                amount_out: t0.amount,
-                token_out: t0.token,
-                amount_in: t1.amount,
-                token_in: t1.token,
-                from: t1.from,
-                pool: t1.to,
-                recipient: t1.from,
-                ..Default::default()
-            })
-        } else {
-            None
-        }
+        self.utils
+            .try_create_swaps(&transfers, ingore_addresses)
+            .pop()
     }
 
     fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
@@ -665,6 +639,7 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
+    // 0x77d0b50f0da1a77856a44821599aa1cdd06558c4bcdfdb323e14969619be6d2c
 
     #[brontes_macros::test]
     async fn test_cex_dex() {
