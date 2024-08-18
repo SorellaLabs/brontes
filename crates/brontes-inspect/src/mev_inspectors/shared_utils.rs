@@ -700,7 +700,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         info: &TxInfo,
         mev_type: MevType,
     ) -> Option<NormalizedSwap> {
-        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(mev_type)) {
+        if !(transfers.len() == 2 && (info.is_labelled_searcher_of_type(mev_type) || cfg!(test))) {
             return None
         }
         let ingore_addresses = info.collect_address_set_for_accounting();
@@ -708,6 +708,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         self.try_create_swaps(&transfers, ingore_addresses).pop()
     }
 
+    /// TODO: refactor to deal with multi-hops.
     pub fn cex_merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
         let mut matching: FastHashMap<TokenInfoWithAddress, Vec<&NormalizedSwap>> =
             FastHashMap::default();

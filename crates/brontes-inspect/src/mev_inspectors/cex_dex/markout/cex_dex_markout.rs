@@ -7,16 +7,13 @@ use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
-    db::{
-        cex::{
-            trades::{
-                config::CexDexTradeConfig,
-                optimistic::OptimisticPrice,
-                time_window_vwam::{ExchangePath, WindowExchangePrice},
-            },
-            CexExchange,
+    db::cex::{
+        trades::{
+            config::CexDexTradeConfig,
+            optimistic::OptimisticPrice,
+            time_window_vwam::{ExchangePath, WindowExchangePrice},
         },
-        token_info::TokenInfoWithAddress,
+        CexExchange,
     },
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType, OptimisticTrade},
@@ -26,10 +23,10 @@ use brontes_types::{
     },
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    BlockData, FastHashMap, FastHashSet, MultiBlockData, ToFloatNearest, TreeCollector,
-    TreeSearchBuilder, TxInfo,
+    BlockData, FastHashMap, MultiBlockData, ToFloatNearest, TreeCollector, TreeSearchBuilder,
+    TxInfo,
 };
-use itertools::{multizip, Itertools};
+use itertools::multizip;
 use malachite::{
     num::{
         arithmetic::traits::Reciprocal,
