@@ -51,7 +51,6 @@ impl LoadState for Protocol {
                 | Self::SushiSwapV2
                 | Self::SushiSwapV3
                 | Self::PancakeSwapV2
-                | Self::PancakeSwapV3
         )
     }
 
@@ -92,7 +91,7 @@ impl LoadState for Protocol {
                     res,
                 ))
             }
-            Self::UniswapV3 | Self::SushiSwapV3 | Self::PancakeSwapV3 => {
+            Self::UniswapV3 | Self::SushiSwapV3 => {
                 let (pool, res) = if let Ok(pool) =
                     UniswapV3Pool::new_from_address(address, block_number - 1, provider.clone())
                         .await
