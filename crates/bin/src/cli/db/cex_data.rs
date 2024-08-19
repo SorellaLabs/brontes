@@ -34,10 +34,7 @@ impl CexQuery {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         println!("Executing CexQuery");
         match self.command {
-            CexQueryCommands::Quotes(cex_db) => ctx
-                .task_executor
-                .clone()
-                .block_on(cex_db.execute(brontes_db_endpoint, ctx)),
+            CexQueryCommands::Quotes(cex_db) => cex_db.execute(brontes_db_endpoint, ctx).await,
             CexQueryCommands::Trades(cex_db) => cex_db.execute(brontes_db_endpoint, ctx).await,
         }
     }
@@ -63,6 +60,7 @@ pub struct CexQuotesDebug {
 impl CexQuotesDebug {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         init_thread_pools(10);
+        println!("Executing Quotes command");
 
         let task_executor = ctx.task_executor;
         //let reth_db_path = get_env_vars()?;
@@ -72,6 +70,7 @@ impl CexQuotesDebug {
             .await
             .expect("Failed to get block tree");
 
+        println!("Got block tree");
         let tx_tree = Arc::new(tx_tree);
 
         let cex_config = CexDownloadConfig::default();
@@ -80,9 +79,12 @@ impl CexQuotesDebug {
             load_libmdbx(&task_executor, brontes_db_endpoint).expect("Failed to load libmdbx"),
         );
 
+        print!("Getting metadata...");
         let metadata = libmdbx
             .get_metadata(tx_tree.header.number, USDT_ADDRESS)
             .expect("Failed to get metadata");
+
+        println!("Got metadata");
 
         let inspector = CexDexQuotesInspector::new(
             USDT_ADDRESS,
@@ -101,6 +103,8 @@ impl CexQuotesDebug {
                 Action::is_aggregator,
             ]))
             .for_each(|(tx, swaps)| {
+                print!("Processing tx {}...", tx);
+
                 let tx_info = tx_tree
                     .get_tx_info(tx, &libmdbx)
                     .expect("Failed to get tx info");
