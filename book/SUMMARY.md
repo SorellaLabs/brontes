@@ -30,5 +30,20 @@
 - [CLI Reference](./cli/cli.md) <!-- CLI_REFERENCE START -->
   - [`brontes`](./cli/brontes.md)
     - [`brontes run`](./cli/brontes/run.md)
-    - [`brontes db`](./cli/brontes/db.md) - [`brontes db insert`](./cli/brontes/db/insert.md) - [`brontes db query`](./cli/brontes/db/query.md) - [`brontes db clear`](./cli/brontes/db/clear.md) - [`brontes db generate-traces`](./cli/brontes/db/generate-traces.md) - [`brontes db cex-query`](./cli/brontes/db/cex-query.md) - [`brontes db init`](./cli/brontes/db/init.md) - [`brontes db table-stats`](./cli/brontes/db/table-stats.md) - [`brontes db export`](./cli/brontes/db/export.md) - [`brontes db download-snapshot`](./cli/brontes/db/download-snapshot.md) - [`brontes db download-clickhouse`](./cli/brontes/db/download-clickhouse.md) - [`brontes db r2-upload`](./cli/brontes/db/r2-upload.md) - [`brontes db test-traces-init`](./cli/brontes/db/test-traces-init.md) - [`brontes db trace-at-tip`](./cli/brontes/db/trace-at-tip.md) - [`brontes db run-discovery`](./cli/brontes/db/run-discovery.md)
-    <!-- CLI_REFERENCE END -->
+    - [`brontes db`](./cli/brontes/db.md)
+      - [`brontes db insert`](./cli/brontes/db/insert.md)
+      - [`brontes db query`](./cli/brontes/db/query.md)
+      - [`brontes db clear`](./cli/brontes/db/clear.md)
+      - [`brontes db generate-traces`](./cli/brontes/db/generate-traces.md)
+      - [`brontes db cex-query`](./cli/brontes/db/cex-query.md)
+      - [`brontes db init`](./cli/brontes/db/init.md)
+      - [`brontes db table-stats`](./cli/brontes/db/table-stats.md)
+      - [`brontes db export`](./cli/brontes/db/export.md)
+      - [`brontes db download-snapshot`](./cli/brontes/db/download-snapshot.md)
+      - [`brontes db download-clickhouse`](./cli/brontes/db/download-clickhouse.md)
+      - [`brontes db r2-upload`](./cli/brontes/db/r2-upload.md)
+      - [`brontes db test-traces-init`](./cli/brontes/db/test-traces-init.md)
+      - [`brontes db trace-at-tip`](./cli/brontes/db/trace-at-tip.md)
+      - [`brontes db run-discovery`](./cli/brontes/db/run-discovery.md)
+      - [`brontes db backfill`](./cli/brontes/db/backfill.md)
+      - [`brontes db run-discovery`](./cli/brontes/db/run-discovery.md)<!-- CLI_REFERENCE END -->

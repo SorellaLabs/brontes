@@ -2,7 +2,7 @@ use alloy_primitives::Address;
 use colored::Colorize;
 use tracing::info;
 
-use crate::PoirotMetricEvents;
+use crate::ParserMetricEvents;
 
 /// metric event for traces
 #[derive(Clone, Debug)]
@@ -21,9 +21,9 @@ impl DynamicContractMetricEvent {
     }
 }
 
-impl From<DynamicContractMetricEvent> for PoirotMetricEvents {
+impl From<DynamicContractMetricEvent> for ParserMetricEvents {
     fn from(val: DynamicContractMetricEvent) -> Self {
-        PoirotMetricEvents::DynamicContractMetricRecieved(val)
+        ParserMetricEvents::DynamicContractMetricRecieved(val)
     }
 }
 

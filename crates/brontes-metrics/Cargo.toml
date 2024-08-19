@@ -21,7 +21,7 @@ reth-metrics.workspace = true
 alloy-primitives.workspace = true
 reth-primitives.workspace = true
 colored.workspace = true
-
+reth-interfaces.workspace = true
 # metrics
 metrics-exporter-prometheus.workspace = true
 metrics-util.workspace = true
@@ -29,6 +29,11 @@ metrics-process.workspace = true
 metrics.workspace = true
 prometheus = "0.13.4"
 
+db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", features = [
+  "test-utils",
+] }
+
+clickhouse = { workspace = true, features = ["tls"] }
 # errors
 eyre.workspace = true
 

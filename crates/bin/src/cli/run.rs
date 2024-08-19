@@ -3,7 +3,7 @@ use std::{path::Path, time::Duration};
 use brontes_core::decoding::Parser as DParser;
 use brontes_database::clickhouse::cex_config::CexDownloadConfig;
 use brontes_inspect::Inspectors;
-use brontes_metrics::PoirotMetricsListener;
+use brontes_metrics::ParserMetricsListener;
 use brontes_types::{
     constants::USDT_ADDRESS_STRING,
     db::cex::{trades::CexDexTradeConfig, CexExchange},
@@ -15,12 +15,10 @@ use tokio::sync::mpsc::unbounded_channel;
 
 use super::{determine_max_tasks, get_env_vars, load_clickhouse, load_database, static_object};
 use crate::{
-    //banner::rain,
+    banner::rain,
     cli::{get_tracing_provider, init_inspectors, load_tip_database},
     runner::CliContext,
-    BrontesRunConfig,
-    MevProcessor,
-    RangeType,
+    BrontesRunConfig, MevProcessor, RangeType,
 };
 
 const SECONDS_TO_US_FLOAT: f64 = 1_000_000.0;
@@ -80,7 +78,7 @@ pub struct RunArgs {
     #[arg(long, default_value = "true")]
     pub cli_only:             bool,
     /// Export metrics
-    #[arg(long, default_value = "true")]
+    #[arg(long, default_value = "false")]
     pub with_metrics:         bool,
     /// Wether or not to use a fallback server.
     #[arg(long, default_value_t = false)]
@@ -96,6 +94,10 @@ pub struct RunArgs {
     /// stored in the Clickhouse database.
     #[arg(long, short)]
     pub run_id:               Option<u64>,
+
+    /// shows a cool display at startup
+    #[arg(long, short, default_value_t = false)]
+    pub waterfall: bool,
 }
 
 impl RunArgs {
@@ -105,6 +107,10 @@ impl RunArgs {
         ctx: CliContext,
     ) -> eyre::Result<()> {
         self.check_proper_range()?;
+
+        if self.waterfall {
+            rain();
+        }
 
         let snapshot_mode = !cfg!(feature = "local-clickhouse");
         tracing::info!(%snapshot_mode);
@@ -120,7 +126,7 @@ impl RunArgs {
         init_thread_pools(max_tasks as usize);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
-        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+        let metrics_listener = ParserMetricsListener::new(UnboundedYapperReceiver::new(
             metrics_rx,
             10_000,
             "metrics".to_string(),
@@ -282,7 +288,7 @@ fn parse_ranges(ranges: &[String]) -> Result<Vec<(u64, u64)>, String> {
                 return Err(format!(
                     "start block {} must be less than or equal to end block {}",
                     start, end
-                ));
+                ))
             }
             Ok((start, end))
         })
@@ -321,7 +327,7 @@ pub struct TimeWindowArgs {
     pub vwap_time_step: f64,
 
     /// Use block time weights to favour prices closer to the block time
-    #[arg(long = "weights-vwap", default_value = "false")]
+    #[arg(long = "weights-vwap", default_value = "true")]
     pub block_time_weights_vwap: bool,
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in
@@ -364,7 +370,7 @@ pub struct TimeWindowArgs {
     pub optimistic_time_step: f64,
 
     /// Use block time weights to favour prices closer to the block time
-    #[arg(long = "weights-op", default_value = "false")]
+    #[arg(long = "weights-op", default_value = "true")]
     pub block_time_weights_optimistic: bool,
 
     /// Rate of decay of bi-exponential decay function see calculate_weight in

@@ -9,9 +9,14 @@ pub struct UnboundedYapperReceiver<T> {
     name:      String,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<T> UnboundedYapperReceiver<T> {
     pub fn new(chan: UnboundedReceiver<T>, yap_count: usize, name: String) -> Self {
         Self { chan, yap_count, name }
+    }
+
+    pub fn len(&self) -> usize {
+        self.chan.len()
     }
 
     pub fn blocking_recv(&mut self) -> Option<T> {

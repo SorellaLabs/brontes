@@ -203,7 +203,7 @@ mev_types = ["CexDexQuotes", "CexDexTrades"]
 
 
 [searcher_contracts."0x000000000dFDe7deaF24138722987c9a6991e2D4"]
-mev_types = ["Sandwich, CexDex"]
+mev_types = ["Sandwich, CexDexQuotes", "CexDexTrades"]
 
 [searcher_contracts."0xe8cFAd4C75a5e1CaF939Fd80AfCf837DdE340a69"]
 fund = "Beelder"
@@ -233,3 +233,7 @@ mev_types = ["Sandwich"]
 
 [searcher_contracts."0x00000000009E50a7dDb7a7B0e2ee6604fd120E49"]
 mev_types = ["AtomicArb"]
+
+
+[searcher_contracts."0xAF0B0000f0210D0f421F0009C72406703B50506B"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]

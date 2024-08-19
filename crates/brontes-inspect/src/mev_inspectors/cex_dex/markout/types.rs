@@ -28,6 +28,7 @@ pub const HIGH_PROFIT_THRESHOLD: Rational = Rational::const_from_unsigned(10000)
 use crate::Metadata;
 type PerExchangePrices<'a> = Vec<(&'a CexExchange, Vec<Option<(&'a ExchangePath, &'a [Pair])>>)>;
 
+#[derive(Debug, Clone)]
 pub struct CexPricesForSwaps {
     pub dex_swaps:        Vec<NormalizedSwap>,
     pub time_window_vwam: Vec<Option<WindowExchangePrice>>,
@@ -67,6 +68,44 @@ impl CexPricesForSwaps {
             None
         }
     }
+
+    /* Used when debugging the cex-dex quote discrepancy issue, not needed for now
+    pub fn print_swap_report(&self) {
+        println!("{}", "\nSwaps Report".bold().underline());
+        println!("{}", "=============".bold());
+
+        // Print original swaps
+        println!("\n{}", "Original Swaps:".yellow().bold());
+        self.print_swaps(&self.original_swaps);
+
+        // Print merged swaps
+        println!("\n{}", "Merged Swaps:".yellow().bold());
+        self.print_swaps(&self.dex_swaps);
+    }
+
+    fn print_swaps(&self, swaps: &[NormalizedSwap]) {
+        for (index, swap) in swaps.iter().enumerate() {
+            println!("{}", format!("Swap #{}", index + 1).cyan().bold());
+            println!("{}", "---------".cyan());
+            println!("{}", swap);
+
+            if index < swaps.len() - 1 {
+                println!("{}", "↓".bright_blue().bold());
+            }
+        }
+
+        println!("\n{}", "Summary".underline());
+        println!("Total swaps: {}", swaps.len());
+
+        let unique_tokens: Vec<_> = swaps
+            .iter()
+            .flat_map(|swap| vec![&swap.token_in.symbol, &swap.token_out.symbol])
+            .unique()
+            .collect();
+
+        println!("Unique tokens involved: {}", unique_tokens.into_iter().join(", "));
+    }
+     */
 }
 
 #[derive(Debug)]
@@ -450,7 +489,7 @@ impl PossibleCexDex {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ArbLeg {
     pub price:       ExchangePath,
     pub exchange:    CexExchange,
@@ -608,7 +647,7 @@ impl fmt::Display for ArbSanityCheck {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExchangeLegCexPrice {
     pub token0: Address,
     pub price0: Rational,
