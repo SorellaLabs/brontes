@@ -275,7 +275,10 @@ impl SubGraphRegistry {
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         if let Some(next) = next {
-            let next_price = self.get_price_all(next, edge_state)?;
+            let Some(next_price) = self.get_price_all(next, edge_state) else {
+                tracing::warn!(?unordered_pair,"a subgraph that extends another subgraph points to nothing");
+                return None;
+            };
 
             let price = next_price * &default_price;
             if unordered_pair.eq_unordered(&complete_pair) {
