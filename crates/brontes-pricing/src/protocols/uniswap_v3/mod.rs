@@ -242,10 +242,10 @@ impl UniswapV3Pool {
 
         //We need to get tick spacing before populating tick data because tick spacing
         // can not be uninitialized when syncing burn and mint logs
-        #[cfg(feature = "uni-v3-ticks")]
-        pool.sync_ticks_around_current(block_number, 100, middleware.clone())
-            .await;
-
+        // #[cfg(feature = "uni-v3-ticks")]
+        // pool.sync_ticks_around_current(block_number, 100, middleware.clone())
+        //     .await;
+        //
         pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
