@@ -8,7 +8,7 @@ Requirements vary based on your setup:
 
 | Component | Historical Analysis             | With Reth (Archive Node)     |
 | --------- | ------------------------------- | ---------------------------- |
-| Disk      | 2TB SSD                         | 5TB+ (TLC NVMe recommended)  |
+| Disk      | 2TB SSD (TLC NVMe recommended)  | 5TB+ (TLC NVMe recommended)  |
 | Memory    | 16GB+                           | 32GB+                        |
 | CPU       | 8+ cores (the more the merrier) | High clock speed prioritized |
 | Bandwidth |                                 | 30Mbps+ stable connection    |
@@ -33,11 +33,11 @@ Requirements vary based on your setup:
      cd brontes
      RUSTFLAGS="-C target-cpu=native" cargo install --path crates/bin --profile maxperf
      ```
-   - **Note**: The `RUSTFLAGS` environment variable & `maxperf` profile is optional but recommended for performance improvements. We strongly recommend against including them when running tests or debugging.
+   - **Note**: The `RUSTFLAGS` environment variable & `maxperf` profile is optional but recommended for performance improvements. We strongly recommend **against** including them when running tests or debugging.
 
 3. **Set Up Environment**
 
-   - Before running Brontes, configure your environment by referencing the `sample.env` file provided in the repository. This file contains necessary environment variables and their explanations. Rename `sample.env` to `.env` and update the values according to your specific setup.
+   - Before running Brontes or downloading the db snapshot, configure your environment by referencing the `sample.env` file provided in the repository. This file contains necessary environment variables and their explanations. Rename `sample.env` to `.env` and update the values according to your specific setup.
 
 ### Data Setup Options
 

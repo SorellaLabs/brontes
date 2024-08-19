@@ -113,7 +113,10 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         shutdown: GracefulShutdown,
     ) -> eyre::Result<Brontes> {
         // we always verify before we allow for any canceling
-        self.verify_global_tables().await?;
+        if !self.is_snapshot {
+            self.verify_global_tables().await?;
+        }
+
         let build_future = self.build_internal(executor.clone());
 
         pin_mut!(build_future, shutdown);
