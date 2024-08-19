@@ -293,7 +293,7 @@ impl Clickhouse {
         let retry_strategy = ExponentialBuilder::default()
             .with_max_times(10)
             .with_min_delay(Duration::from_millis(100))
-            .with_max_delay(Duration::from_secs(20));
+            .with_max_delay(Duration::from_secs(30));
 
         let mut try_count = 1;
         let res = (|| async { self.client.query_many::<Q, P>(query.as_ref(), params).await })
