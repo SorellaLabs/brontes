@@ -119,6 +119,10 @@ ahash = "0.8.11"
 tikv-jemallocator = { version = "0.5.0", features = [
   "unprefixed_malloc_on_supported_platforms",
 ] }
+const_format = "0.2.32"
+
+[build-dependencies]
+vergen = { version = "8.0.0", features = ["build", "cargo", "git", "gitcl"] }
 
 [features]
 default = ["brontes-core/default", "brontes-classifier/default", "jemalloc"]

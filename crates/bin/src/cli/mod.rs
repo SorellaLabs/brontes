@@ -4,14 +4,16 @@ mod db;
 mod misc;
 mod run;
 mod utils;
+mod version_data;
+pub use version_data::*;
 
 pub use utils::*;
 
 use self::misc::Verbosity;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-#[command(name = "brontes", author = "Sorella Labs", version = "0.1.0")]
+#[command(author, version = SHORT_VERSION, long_version = LONG_VERSION, about, long_about = None)]
+#[command(name = NAME_CLIENT, author = "Sorella Labs", version = "0.1.0")]
 #[command(propagate_version = true)]
 pub struct Args {
     #[clap(subcommand)]
