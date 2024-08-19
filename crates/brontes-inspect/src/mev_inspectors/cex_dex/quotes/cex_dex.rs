@@ -347,7 +347,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             token_price.clone().reciprocal()
         };
 
-        if maker_taker_mid.0 == Rational::ZERO {
+        if maker_taker_mid.0 == Rational::ZERO || swap.amount_out == Rational::ZERO {
             return None
         }
 
@@ -383,7 +383,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             ExchangeLeg {
                 pnl:           pnl_mid.to_float(),
                 cex_mid_price: maker_taker_mid.0.to_float(),
-                exchange:      CexExchange::Binance,
+                exchange:      cex_quote.exchange,
             },
             pairs_price,
         ))
