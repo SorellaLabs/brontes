@@ -238,11 +238,6 @@ impl SubGraphRegistry {
                         return
                     }
                     let possible_bad_extends_to = graph.pair;
-                    // check to see for this base pair if there are any
-                    // others, that are also     // being
-                    // removed. if this is the only subgraph that others can
-                    // extend. we     // need to remove all
-                    // subgraphs that extend this one.
                     let valid_count = range
                         .iter()
                         .filter(|(_, g)| g.extends_to().is_none() && g.remove_at.is_none())
@@ -265,6 +260,19 @@ impl SubGraphRegistry {
                         }
                     }
                 })
+            });
+            self.pending_finalized_graphs.values_mut().for_each(|sub| {
+                sub.sub_graphs.iter_mut().for_each(|(_, graphs)| {
+                graphs.iter_mut().for_each(|(_, graph)| {
+                    if let Some(extends) = graph.extends_to() {
+                        if invalid_extends.contains(&extends) {
+                            tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
+                            graph.remove_at = Some(block);
+                        }
+                    }
+                })
+            });
+
             });
         }
     }
