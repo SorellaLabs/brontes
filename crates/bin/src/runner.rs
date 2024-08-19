@@ -24,7 +24,7 @@ where
     let AsyncCliRunner { context, task_manager, tokio_runtime } = AsyncCliRunner::new()?;
 
     if let Some(mp) = metrics_port {
-        // initalize prometheus if we don't already have a endpoint
+        // initialize prometheus if we don't already have a endpoint
         tokio_runtime.block_on(try_initialize_prometheus(mp));
     }
 
