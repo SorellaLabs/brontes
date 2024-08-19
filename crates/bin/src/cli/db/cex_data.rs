@@ -72,7 +72,9 @@ impl CexQuotesDebug {
 
         let cex_config = CexDownloadConfig::default();
 
-        let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint)?);
+        let libmdbx = static_object(
+            load_libmdbx(&task_executor, brontes_db_endpoint).expect("Failed to load libmdbx"),
+        );
 
         let metadata = libmdbx
             .get_metadata(tx_tree.header.number, USDT_ADDRESS)

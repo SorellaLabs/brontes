@@ -483,7 +483,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
 
         if smaller * max_diff < *larger {
             log_cex_trade_price_delta(
-                &tx_info,
+                tx_info,
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
                 swap.swap_rate().clone().to_float(),

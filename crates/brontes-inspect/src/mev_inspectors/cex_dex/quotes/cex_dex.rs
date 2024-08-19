@@ -362,7 +362,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         if smaller * max_diff < *larger {
             log_cex_dex_quote_delta(
-                &tx_info,
+                tx_info,
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
                 &cex_quote.exchange,

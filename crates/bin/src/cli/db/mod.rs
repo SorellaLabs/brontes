@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 mod r2_uploader;
 mod snapshot;
 use crate::runner::CliContext;
+#[cfg(feature = "tests")]
 mod cex_data;
 #[cfg(feature = "local-clickhouse")]
 mod clickhouse_download;
