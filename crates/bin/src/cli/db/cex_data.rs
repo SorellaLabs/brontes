@@ -34,7 +34,10 @@ impl CexQuery {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         println!("Executing CexQuery");
         match self.command {
-            CexQueryCommands::Quotes(cex_db) => cex_db.execute(brontes_db_endpoint, ctx).await,
+            CexQueryCommands::Quotes(cex_db) => ctx
+                .task_executor
+                .clone()
+                .block_on(cex_db.execute(brontes_db_endpoint, ctx)),
             CexQueryCommands::Trades(cex_db) => cex_db.execute(brontes_db_endpoint, ctx).await,
         }
     }
@@ -210,6 +213,7 @@ fn print_detailed_comparison(
     table.printstd();
 }
 
+#[allow(clippy::type_complexity)]
 fn calculate_comparison(
     swap: &NormalizedSwap,
     quote: Option<&FeeAdjustedQuote>,
