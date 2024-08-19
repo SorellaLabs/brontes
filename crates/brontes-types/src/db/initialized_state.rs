@@ -57,11 +57,6 @@ impl InitializedStateMeta {
     }
 
     #[inline(always)]
-    pub fn merge(self, other: Self) -> InitializedStateMeta {
-        InitializedStateMeta(self.0 | other.0)
-    }
-
-    #[inline(always)]
     pub fn set(&mut self, this: u16, availability: u16) {
         // reset the data at the given offset
         self.0 &= u16::MAX ^ (DATA_PRESENT << this);
