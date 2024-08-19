@@ -4,6 +4,7 @@ use brontes_database::{clickhouse::Clickhouse, libmdbx::cex_utils::CexRangeOrArb
 use futures::{stream::FuturesUnordered, StreamExt};
 
 mod shared;
+use rand::Rng;
 use shared::fetch_test_data;
 use tokio::time::sleep;
 
@@ -14,10 +15,13 @@ async fn test_query_retry() {
     let range = CexRangeOrArbitrary::Range(19000000, 19001000);
 
     let mut futs = FuturesUnordered::new();
+    let rng = rand::thread_rng();
 
-    for _ in 0..10 {
-        futs.push(fetch_test_data(&client, range));
-        sleep(Duration::from_millis(550)).await;
+    for _ in 0..30 {
+        futs.push(async {
+            sleep(Duration::from_millis(rng.gen_range(10..100))).await;
+            fetch_test_data(&client, range).await
+        });
     }
 
     while let Some(result) = futs.next().await {
