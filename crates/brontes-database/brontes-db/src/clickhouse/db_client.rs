@@ -298,17 +298,14 @@ impl Clickhouse {
         let mut try_count = 1;
         let res = (|| async { self.client.query_many::<Q, P>(query.as_ref(), params).await })
             .retry(&retry_strategy)
-            .when(|e| {
-                let should_retry = match e {
-                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(
-                        _,
-                    ))) => true,
-                    DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(
-                        BadResponse(s),
-                    )) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
-                    _ => false,
-                };
-                should_retry
+            .when(|e| match e {
+                DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(_))) => {
+                    true
+                }
+                DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(BadResponse(
+                    s,
+                ))) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
+                _ => false,
             })
             .notify(|err, dur| {
                 warn!(
@@ -319,12 +316,12 @@ impl Clickhouse {
             })
             .await;
         match res {
-            Ok(result) => return Ok(result),
+            Ok(result) => Ok(result),
             Err(err) => {
                 error!("Query failed after maximum retries - final Error: {}", err);
-                return Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(
-                    Custom("Query failed after maximum retries".to_string()),
-                )))
+                Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Custom(
+                    "Query failed after maximum retries".to_string(),
+                ))))
             }
         }
     }
