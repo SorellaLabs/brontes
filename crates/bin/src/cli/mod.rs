@@ -5,9 +5,8 @@ mod misc;
 mod run;
 mod utils;
 mod version_data;
-pub use version_data::*;
-
 pub use utils::*;
+pub use version_data::*;
 
 use self::misc::Verbosity;
 
