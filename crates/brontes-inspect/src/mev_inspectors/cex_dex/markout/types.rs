@@ -707,7 +707,7 @@ pub fn log_cex_trade_price_delta(
         arb_percent,
         token_in_address,
         token_out_address,
-        tx_hash.to_string(),
+        tx_hash,
         price_calculation_type,
         mev_bot_info
     );

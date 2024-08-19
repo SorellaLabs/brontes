@@ -146,7 +146,7 @@ pub fn log_cex_dex_quote_delta(
         mev_bot_info,
         token_in_address,
         token_out_address,
-        tx_hash.to_string()
+        tx_hash
     );
 }
 
