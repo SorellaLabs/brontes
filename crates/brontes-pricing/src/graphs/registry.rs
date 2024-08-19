@@ -281,7 +281,7 @@ impl SubGraphRegistry {
 
         if let Some(next) = next {
             let Some(next_price) = self.get_price_all(next, edge_state) else {
-                tracing::info!(target:"brontes_pricing::missing_pricing", "subgraph that extends other points to nil");
+                tracing::info!(target:"brontes::missing_pricing", "subgraph that extends other points to nil");
                 return None
             };
 
