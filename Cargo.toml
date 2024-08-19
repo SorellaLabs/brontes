@@ -154,6 +154,7 @@ phf_codegen = "0.11.2"
 metrics = "0.21.1"
 
 # misc
+backon = "0.4.4"
 c-kzg = "0.4.0"
 hex-literal = "0.4.1"
 rayon = "1.7.0"

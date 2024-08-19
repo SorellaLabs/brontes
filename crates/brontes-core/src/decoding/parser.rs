@@ -25,7 +25,7 @@ use crate::errors::TraceParseError;
 pub struct TraceParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx:               &'static DB,
     pub tracer:            Arc<T>,
-    pub(crate) metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
+    pub(crate) metrics_tx: Arc<UnboundedSender<ParserMetricEvents>>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for TraceParser<T, DB> {
@@ -42,7 +42,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     pub async fn new(
         libmdbx: &'static DB,
         tracer: Arc<T>,
-        metrics_tx: Arc<UnboundedSender<PoirotMetricEvents>>,
+        metrics_tx: Arc<UnboundedSender<ParserMetricEvents>>,
     ) -> Self {
         Self { libmdbx, tracer, metrics_tx }
     }

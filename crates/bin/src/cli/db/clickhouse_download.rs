@@ -60,7 +60,7 @@ impl ClickhouseDownload {
         ));
         debug!(target: "brontes::db::clickhouse-download", "made tracer");
 
-        let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracer);
+        let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracer, true);
 
         let bar = ProgressBar::with_draw_target(
             Some(self.end_block - self.start_block),

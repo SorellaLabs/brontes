@@ -45,6 +45,7 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
 }
 type TokenDeltas = FastHashMap<Address, Rational>;
 type AddressDeltas = FastHashMap<Address, TokenDeltas>;
+type PossibleSwapDetails = Vec<(TokenInfoWithAddress, bool, Rational, Address, u64)>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_metrics(&self) -> Option<&OutlierMetrics> {
@@ -192,8 +193,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         transfers: &[NormalizedTransfer],
         invalid_addresses: FastHashSet<Address>,
     ) -> Vec<NormalizedSwap> {
-        let mut pools: FastHashMap<Address, Vec<(TokenInfoWithAddress, bool, Rational, Address)>> =
-            FastHashMap::default();
+        let mut pools: FastHashMap<Address, PossibleSwapDetails> = FastHashMap::default();
 
         for t in transfers {
             // we do this so if the transfer is from a mev contract or a searcher, it gets
@@ -202,15 +202,21 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 continue
             }
 
-            pools
-                .entry(t.to)
-                .or_default()
-                .push((t.token.clone(), true, t.amount.clone(), t.from));
+            pools.entry(t.to).or_default().push((
+                t.token.clone(),
+                true,
+                t.amount.clone(),
+                t.from,
+                t.trace_index,
+            ));
 
-            pools
-                .entry(t.from)
-                .or_default()
-                .push((t.token.clone(), false, t.amount.clone(), t.to));
+            pools.entry(t.from).or_default().push((
+                t.token.clone(),
+                false,
+                t.amount.clone(),
+                t.to,
+                t.trace_index,
+            ));
         }
 
         pools
@@ -220,12 +226,13 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     return None
                 }
 
-                let (f_token, f_direction, f_am, f_addr) = possible_swaps.pop()?;
-                let (s_token, s_direction, s_am, s_addr) = possible_swaps.pop()?;
+                let (f_token, f_direction, f_am, f_addr, f_trace) = possible_swaps.pop()?;
+                let (s_token, s_direction, s_am, s_addr, s_trace) = possible_swaps.pop()?;
 
                 if s_token == f_token || s_direction == f_direction {
                     return None
                 }
+                let trace_index = std::cmp::min(f_trace, s_trace);
 
                 let (amount_in, amount_out, token_in, token_out, from, recip) = if f_direction {
                     (f_am, s_am, f_token, s_token, f_addr, s_addr)
@@ -241,6 +248,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     token_in,
                     from,
                     recipient: recip,
+                    trace_index,
                     ..Default::default()
                 })
             })
@@ -692,5 +700,207 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         });
 
         bundles.into_iter().map(|res| res.1).collect_vec()
+    }
+
+    pub fn cex_try_convert_transfer_to_swap(
+        &self,
+        transfers: Vec<NormalizedTransfer>,
+        info: &TxInfo,
+        mev_type: MevType,
+    ) -> Option<NormalizedSwap> {
+        if !(transfers.len() == 2 && (info.is_labelled_searcher_of_type(mev_type) || cfg!(test))) {
+            return None
+        }
+        let ingore_addresses = info.collect_address_set_for_accounting();
+
+        self.try_create_swaps(&transfers, ingore_addresses).pop()
+    }
+
+    pub fn cex_merge_possible_swaps(swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
+        let mut matching: FastHashMap<TokenInfoWithAddress, Vec<&NormalizedSwap>> =
+            FastHashMap::default();
+
+        for swap in &swaps {
+            matching
+                .entry(swap.token_in.clone())
+                .or_default()
+                .push(swap);
+            matching
+                .entry(swap.token_out.clone())
+                .or_default()
+                .push(swap);
+        }
+
+        let mut res = vec![];
+        let mut voided = FastHashSet::default();
+
+        for (intermediary, swaps) in matching {
+            res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
+                let s0 = swaps.remove(0);
+                let s1 = swaps.remove(0);
+
+                if voided.contains(s0) || voided.contains(s1) {
+                    return None
+                }
+                // if s0 is first hop
+                if s0.token_out == intermediary
+                    && s0.token_out == s1.token_in
+                    && s0.amount_out == s1.amount_in
+                {
+                    voided.insert(s0.clone());
+                    voided.insert(s1.clone());
+                    Some(NormalizedSwap {
+                        from: s0.from,
+                        recipient: s1.recipient,
+                        token_in: s0.token_in.clone(),
+                        token_out: s1.token_out.clone(),
+                        amount_in: s0.amount_in.clone(),
+                        amount_out: s1.amount_out.clone(),
+                        protocol: s0.protocol,
+                        pool: s0.pool,
+                        ..Default::default()
+                    })
+                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
+                    voided.insert(s0.clone());
+                    voided.insert(s1.clone());
+                    Some(NormalizedSwap {
+                        from: s1.from,
+                        recipient: s0.recipient,
+                        token_in: s1.token_in.clone(),
+                        token_out: s0.token_out.clone(),
+                        amount_in: s1.amount_in.clone(),
+                        amount_out: s0.amount_out.clone(),
+                        protocol: s1.protocol,
+                        pool: s1.pool,
+                        ..Default::default()
+                    })
+                } else {
+                    None
+                }
+            }));
+        }
+
+        swaps
+            .into_iter()
+            .filter(|s| !voided.contains(s))
+            .chain(res)
+            .collect()
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use brontes_core::LibmdbxReadWriter;
+    use brontes_types::{
+        constants::{USDC_ADDRESS, USDT_ADDRESS, WETH_ADDRESS},
+        normalized_actions::NormalizedSwap,
+    };
+    use malachite::Rational;
+
+    use super::SharedInspectorUtils;
+
+    #[test]
+    pub fn test_multi_hop_cex_merge_swap() {
+        let address0 = alloy_primitives::address!("76F36d497b51e48A288f03b4C1d7461e92247d5e");
+        let address3 = alloy_primitives::address!("76F36d497b51e48A288f03b4C1d7461e92247d52");
+
+        let pool1 = alloy_primitives::address!("16F36d497b51e48A288f03b4C1d7461e92247d52");
+        let pool2 = alloy_primitives::address!("26F36d497b51e48A288f03b4C1d7461e92247d52");
+        let pool3 = alloy_primitives::address!("36F36d497b51e48A288f03b4C1d7461e92247d52");
+
+        let swap1 = NormalizedSwap {
+            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: WETH_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 18,
+                    symbol:   "WETH".to_string(),
+                },
+            },
+            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDT_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDT".to_string(),
+                },
+            },
+            from: address0,
+            pool: pool1,
+            recipient: pool2,
+            amount_in: Rational::from(1),
+            amount_out: Rational::from(2),
+            ..Default::default()
+        };
+
+        let swap2 = NormalizedSwap {
+            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDT_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDT".to_string(),
+                },
+            },
+            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDC_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDC".to_string(),
+                },
+            },
+            from: pool1,
+            pool: pool2,
+            recipient: pool3,
+            amount_in: Rational::from(2),
+            amount_out: Rational::from(1),
+            ..Default::default()
+        };
+
+        let swap3 = NormalizedSwap {
+            token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: USDC_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 6,
+                    symbol:   "USDC".to_string(),
+                },
+            },
+            token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+                address: WETH_ADDRESS,
+                inner:   brontes_types::db::token_info::TokenInfo {
+                    decimals: 18,
+                    symbol:   "WETH".to_string(),
+                },
+            },
+            from: pool2,
+            pool: pool3,
+            recipient: address3,
+            amount_in: Rational::from(1),
+            amount_out: Rational::from(3),
+            ..Default::default()
+        };
+
+        // let expected = NormalizedSwap {
+        //     token_in: brontes_types::db::token_info::TokenInfoWithAddress {
+        //         address: WETH_ADDRESS,
+        //         inner:   brontes_types::db::token_info::TokenInfo {
+        //             decimals: 18,
+        //             symbol:   "WETH".to_string(),
+        //         },
+        //     },
+        //     token_out: brontes_types::db::token_info::TokenInfoWithAddress {
+        //         address: WETH_ADDRESS,
+        //         inner:   brontes_types::db::token_info::TokenInfo {
+        //             decimals: 18,
+        //             symbol:   "WETH".to_string(),
+        //         },
+        //     },
+        //     from: address0,
+        //     pool: pool1,
+        //     recipient: address3,
+        //     amount_in: Rational::from(1),
+        //     amount_out: Rational::from(3),
+        //     ..Default::default()
+        // };
+        let swaps = vec![swap1, swap2, swap3];
+        let res = SharedInspectorUtils::<LibmdbxReadWriter>::cex_merge_possible_swaps(swaps);
+        assert_eq!(res.len(), 2, "{:#?}", res);
     }
 }

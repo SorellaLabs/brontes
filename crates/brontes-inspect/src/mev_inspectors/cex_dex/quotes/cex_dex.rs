@@ -46,26 +46,21 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
     db::cex::{quotes::FeeAdjustedQuote, CexExchange},
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType},
-    normalized_actions::{
-        accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
-    },
+    normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    BlockData, FastHashMap, FastHashSet, MultiBlockData, ToFloatNearest, TreeCollector,
-    TreeSearchBuilder, TxInfo,
+    BlockData, FastHashMap, MultiBlockData, ToFloatNearest, TreeCollector, TreeSearchBuilder,
+    TxInfo,
 };
 use malachite::{
-    num::{
-        arithmetic::traits::Reciprocal,
-        basic::traits::{Two, Zero},
-    },
+    num::{arithmetic::traits::Reciprocal, basic::traits::Zero},
     Rational,
 };
 use tracing::{debug, trace};
@@ -125,7 +120,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexQuotesInspector<'_, DB> {
         let BlockData { metadata, tree } = block;
 
         if metadata.cex_quotes.quotes.is_empty() {
-            tracing::warn!("no cex quotes for this block");
+            tracing::error!("no cex quotes for this block");
             return vec![]
         }
 
@@ -201,7 +196,11 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
                 // robust way & deduplicate the swaps post
                 if dex_swaps.is_empty() {
-                    if let Some(extra) = self.try_convert_transfer_to_swap(transfers, &tx_info) {
+                    if let Some(extra) = self.utils.cex_try_convert_transfer_to_swap(
+                        transfers,
+                        &tx_info,
+                        MevType::CexDexQuotes,
+                    ) {
                         dex_swaps.push(extra);
                     }
                 }
@@ -226,7 +225,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 }
 
                 let mut possible_cex_dex: CexDexProcessing =
-                    self.detect_cex_dex(dex_swaps, &metadata, &tx_info.tx_hash)?;
+                    self.detect_cex_dex(dex_swaps, &metadata, &tx_info)?;
 
                 self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
 
@@ -263,13 +262,14 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         &self,
         dex_swaps: Vec<NormalizedSwap>,
         metadata: &Metadata,
-        tx_hash: &TxHash,
+        tx_info: &TxInfo,
     ) -> Option<CexDexProcessing> {
         //TODO: Add smiths map to query most liquid dex for given pair
-        let swaps = self.merge_possible_swaps(dex_swaps);
+        //
+        let swaps = SharedInspectorUtils::<DB>::cex_merge_possible_swaps(dex_swaps);
 
         let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0, None);
-        let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_hash)?;
+        let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_info)?;
         let cex_dex_processing = CexDexProcessing { dex_swaps: swaps, pnl: cex_dex };
         Some(cex_dex_processing)
     }
@@ -292,7 +292,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         dex_swaps: &[NormalizedSwap],
         cex_prices: Vec<Option<FeeAdjustedQuote>>,
         metadata: &Metadata,
-        tx_hash: &TxHash,
+        tx_info: &TxInfo,
     ) -> Option<PossibleCexDex> {
         PossibleCexDex::from_exchange_legs(
             dex_swaps
@@ -300,7 +300,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 .zip(cex_prices)
                 .map(|(dex_swap, quote)| {
                     if let Some(q) = quote {
-                        self.profit_classifier(dex_swap, q, metadata, tx_hash)
+                        self.profit_classifier(dex_swap, q, metadata, tx_info)
                     } else {
                         None
                     }
@@ -316,7 +316,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         swap: &NormalizedSwap,
         cex_quote: FeeAdjustedQuote,
         metadata: &Metadata,
-        tx_hash: &TxHash,
+        tx_info: &TxInfo,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
         let maker_taker_mid = cex_quote.maker_taker_mid();
 
@@ -324,23 +324,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         let smaller = min(&swap.amount_in, &output_of_cex_trade_maker);
         let larger = max(&swap.amount_in, &output_of_cex_trade_maker);
-
-        if smaller * Rational::TWO < *larger {
-            log_cex_dex_quote_delta(
-                &tx_hash.to_string(),
-                swap.token_in_symbol(),
-                swap.token_out_symbol(),
-                &cex_quote.exchange,
-                swap.swap_rate().clone().to_float(),
-                cex_quote.price_maker.0.clone().to_float(),
-                &swap.token_in.address,
-                &swap.token_out.address,
-                &swap.amount_in,
-                &swap.amount_out,
-                &output_of_cex_trade_maker,
-            );
-            return None
-        }
 
         // A positive amount indicates potential profit from selling the token in on the
         // DEX and buying it on the CEX.
@@ -364,6 +347,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             token_price.clone().reciprocal()
         };
 
+        if maker_taker_mid.0 == Rational::ZERO || swap.amount_out == Rational::ZERO {
+            return None
+        }
+
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
             price0: base_to_quote.clone(),
@@ -373,11 +360,30 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         let pnl_mid = &maker_token_delta * &base_to_quote;
 
+        let max_diff = max_arb_delta(tx_info, &pnl_mid);
+
+        if smaller * max_diff < *larger {
+            log_cex_dex_quote_delta(
+                &tx_info.tx_hash.to_string(),
+                swap.token_in_symbol(),
+                swap.token_out_symbol(),
+                &cex_quote.exchange,
+                swap.swap_rate().clone().to_float(),
+                cex_quote.price_maker.0.clone().to_float(),
+                &swap.token_in.address,
+                &swap.token_out.address,
+                &swap.amount_in,
+                &swap.amount_out,
+                &output_of_cex_trade_maker,
+            );
+            return None
+        }
+
         Some((
             ExchangeLeg {
                 pnl:           pnl_mid.to_float(),
                 cex_mid_price: maker_taker_mid.0.to_float(),
-                exchange:      CexExchange::Binance,
+                exchange:      cex_quote.exchange,
             },
             pairs_price,
         ))
@@ -518,114 +524,30 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         original_token == final_token
     }
+}
 
-    fn try_convert_transfer_to_swap(
-        &self,
-        mut transfers: Vec<NormalizedTransfer>,
-        info: &TxInfo,
-    ) -> Option<NormalizedSwap> {
-        if !(transfers.len() == 2 && info.is_labelled_searcher_of_type(MevType::CexDexQuotes)) {
-            return None
+pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
+    let mut base_diff = 3;
+
+    if tx_info.is_labelled_searcher_of_type(MevType::CexDexQuotes)
+        || tx_info.is_labelled_searcher_of_type(MevType::CexDexTrades)
+    {
+        if pnl < &Rational::from(5) {
+            base_diff += 7;
+        } else if pnl < &Rational::from(40) {
+            base_diff += 5;
+        } else if pnl < &Rational::from(100) {
+            base_diff += 2;
         }
-
-        let t0 = transfers.remove(0);
-        let t1 = transfers.remove(0);
-
-        if t0.to == t1.from && Some(t0.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t0.trace_index,
-                amount_out: t1.amount,
-                token_out: t1.token,
-                amount_in: t0.amount,
-                token_in: t0.token,
-                from: t0.from,
-                pool: t0.to,
-                recipient: t0.from,
-                ..Default::default()
-            })
-        } else if t1.to == t0.from && Some(t1.to) != info.mev_contract {
-            Some(NormalizedSwap {
-                trace_index: t1.trace_index,
-                amount_out: t0.amount,
-                token_out: t0.token,
-                amount_in: t1.amount,
-                token_in: t1.token,
-                from: t1.from,
-                pool: t1.to,
-                recipient: t1.from,
-                ..Default::default()
-            })
-        } else {
-            None
-        }
+    } else if tx_info
+        .contract_type
+        .as_ref()
+        .map_or(false, |c| c.is_mev_contract())
+    {
+        base_diff += 1;
     }
 
-    fn merge_possible_swaps(&self, swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {
-        let mut matching: FastHashMap<_, Vec<_>> = FastHashMap::default();
-
-        for swap in &swaps {
-            matching
-                .entry(swap.token_in.clone())
-                .or_default()
-                .push(swap);
-            matching
-                .entry(swap.token_out.clone())
-                .or_default()
-                .push(swap);
-        }
-
-        let mut res = vec![];
-        let mut voided = FastHashSet::default();
-
-        for (intermediary, swaps) in matching {
-            res.extend(swaps.into_iter().combinations(2).filter_map(|mut swaps| {
-                let s0 = swaps.remove(0);
-                let s1 = swaps.remove(0);
-
-                // if s0 is first hop
-                if s0.token_out == intermediary
-                    && s0.token_out == s1.token_in
-                    && s0.amount_out == s1.amount_in
-                {
-                    voided.insert(s0.clone());
-                    voided.insert(s1.clone());
-                    Some(NormalizedSwap {
-                        from: s0.from,
-                        recipient: s1.recipient,
-                        token_in: s0.token_in.clone(),
-                        token_out: s1.token_out.clone(),
-                        amount_in: s0.amount_in.clone(),
-                        amount_out: s1.amount_out.clone(),
-                        protocol: s0.protocol,
-                        pool: s0.pool,
-                        ..Default::default()
-                    })
-                } else if s0.token_in == s1.token_out && s0.amount_in == s1.amount_out {
-                    voided.insert(s0.clone());
-                    voided.insert(s1.clone());
-                    Some(NormalizedSwap {
-                        from: s1.from,
-                        recipient: s0.recipient,
-                        token_in: s1.token_in.clone(),
-                        token_out: s0.token_out.clone(),
-                        amount_in: s1.amount_in.clone(),
-                        amount_out: s0.amount_out.clone(),
-                        protocol: s1.protocol,
-                        pool: s1.pool,
-                        ..Default::default()
-                    })
-                } else {
-                    None
-                }
-            }));
-        }
-
-        swaps
-            .into_iter()
-            .filter(|s| !voided.contains(s))
-            .chain(res)
-            .collect()
-    }
+    Rational::from(base_diff)
 }
 
 #[cfg(test)]
@@ -638,6 +560,7 @@ mod tests {
         test_utils::{InspectorTestUtils, InspectorTxRunConfig},
         Inspectors,
     };
+    // 0x77d0b50f0da1a77856a44821599aa1cdd06558c4bcdfdb323e14969619be6d2c
 
     #[brontes_macros::test]
     async fn test_cex_dex() {

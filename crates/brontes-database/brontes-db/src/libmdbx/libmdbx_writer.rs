@@ -1,10 +1,12 @@
 use std::{
+    ops::Deref,
     sync::Arc,
     task::Poll,
     time::{Duration, Instant},
 };
 
 use alloy_primitives::Address;
+use brontes_metrics::db_writer::WriterMetrics;
 use brontes_types::{
     db::{
         address_metadata::AddressMetadata,
@@ -24,7 +26,10 @@ use brontes_types::{
 };
 use futures::{pin_mut, Future};
 use itertools::Itertools;
-use reth_db::table::{Compress, Encode};
+use reth_db::{
+    table::{Compress, Encode},
+    DatabaseError,
+};
 use reth_tasks::shutdown::GracefulShutdown;
 use tokio::sync::Notify;
 use tracing::instrument;
@@ -41,6 +46,7 @@ use crate::{
 // how often we will append data
 const CLEAR_AM: usize = 1000;
 
+//TODO: Mark instant here
 type InsetQueue = FastHashMap<Tables, Vec<(Vec<u8>, Vec<u8>)>>;
 
 pub enum WriterMessage {
@@ -94,6 +100,35 @@ pub enum WriterMessage {
     Init(InitTables, Arc<Notify>),
 }
 
+impl WriterMessage {
+    pub fn stamp(self) -> StampedWriterMessage {
+        StampedWriterMessage { recv_time: Instant::now(), msg: self }
+    }
+}
+
+pub struct StampedWriterMessage {
+    recv_time: Instant,
+    msg:       WriterMessage,
+}
+
+impl StampedWriterMessage {
+    pub fn recv_time(&self) -> &Instant {
+        &self.recv_time
+    }
+
+    pub fn msg(&self) -> &WriterMessage {
+        &self.msg
+    }
+}
+
+impl Deref for StampedWriterMessage {
+    type Target = WriterMessage;
+
+    fn deref(&self) -> &Self::Target {
+        &self.msg
+    }
+}
+
 macro_rules! init {
     ($($table:ident),*) => {
         paste::paste!(
@@ -115,21 +150,55 @@ macro_rules! init {
                 pub fn write_data(self, handle: Arc<Libmdbx>) -> eyre::Result<()> {
                     match self {
                         $(
-                            Self::$table(data) => {
-                               handle
-                                    .write_table::<$table, [<$table Data>]>(&data)
-                                    .expect("libmdbx write failure");
-
-                                Ok(())
-                            }
+                            Self::$table(data) =>
+                            InitTables::[< write_ $table:snake>](&handle, data),
                         )*
                     }
-
                 }
+
+                $(
+                    init!($table $table);
+                )*
             }
         );
-
     };
+    (InitializedState $table:ident) => {
+        paste::paste!(
+        fn [< write_ $table:snake>](handle:&Arc<Libmdbx>, data: Vec<[<$table Data>]>)
+        -> eyre::Result<()> {
+            let tx = handle.ro_tx()?;
+            let merged_data= data.into_iter().map(|entry| {
+                let current_init = tx.get::<InitializedState>(entry.key)
+                    .unwrap_or_default().unwrap_or_default();
+                let merged = current_init.merge(entry.value);
+                InitializedStateData {
+                    key: entry.key,
+                    value: merged
+                }
+
+            }).collect::<Vec<_>>();
+
+           handle
+                .write_table::<$table, [<$table Data>]>(&merged_data)
+                .expect("libmdbx write failure");
+
+            Ok(())
+        }
+        );
+    };
+    ($any:ident $table:ident) => {
+        paste::paste!(
+        fn [< write_ $table:snake>](handle:&Arc<Libmdbx>, data: Vec<[<$table Data>]>)
+        -> eyre::Result<()> {
+           handle
+                .write_table::<$table, [<$table Data>]>(&data)
+                .expect("libmdbx write failure");
+
+            Ok(())
+        }
+        );
+    };
+
 }
 init!(
     TokenDecimals,
@@ -153,34 +222,49 @@ init!(
 pub struct LibmdbxWriter {
     db:           Arc<Libmdbx>,
     insert_queue: InsetQueue,
-    rx:           UnboundedYapperReceiver<WriterMessage>,
+    rx:           UnboundedYapperReceiver<StampedWriterMessage>,
+    metrics:      WriterMetrics,
 }
 
 impl LibmdbxWriter {
-    pub fn new(db: Arc<Libmdbx>, rx: UnboundedYapperReceiver<WriterMessage>) -> Self {
-        Self { rx, db, insert_queue: FastHashMap::default() }
+    pub fn new(
+        db: Arc<Libmdbx>,
+        rx: UnboundedYapperReceiver<StampedWriterMessage>,
+        metrics: bool,
+    ) -> Self {
+        Self { rx, db, insert_queue: FastHashMap::default(), metrics: WriterMetrics::new(metrics) }
     }
 
-    fn handle_msg(&mut self, msg: WriterMessage) -> eyre::Result<()> {
-        match msg {
+    fn handle_msg(&mut self, stamped_msg: StampedWriterMessage) -> eyre::Result<()> {
+        let StampedWriterMessage { recv_time, msg } = stamped_msg;
+        let msg_type = match msg {
             WriterMessage::Pool { block, address, tokens, curve_lp_token, classifier_name } => {
                 self.insert_pool(block, address, &tokens, curve_lp_token, classifier_name)?;
+                "pool"
             }
-            WriterMessage::Traces { block, traces } => self.save_traces(block, traces)?,
+            WriterMessage::Traces { block, traces } => {
+                self.save_traces(block, traces)?;
+                "traces"
+            }
             WriterMessage::DexQuotes { block_number, quotes } => {
-                self.write_dex_quotes(block_number, quotes)?
+                self.write_dex_quotes(block_number, quotes)?;
+                "dexquotes"
             }
             WriterMessage::TokenInfo { address, decimals, symbol } => {
-                self.write_token_info(address, decimals, symbol)?
+                self.write_token_info(address, decimals, symbol)?;
+                "tokeninfo"
             }
             WriterMessage::MevBlocks { block_number, block, mev } => {
-                self.save_mev_blocks(block_number, *block, mev)?
+                self.save_mev_blocks(block_number, *block, mev)?;
+                "mevblocks"
             }
             WriterMessage::BuilderInfo { builder_address, builder_info } => {
                 self.write_builder_info(builder_address, *builder_info)?;
+                "builderinfo"
             }
             WriterMessage::AddressMeta { address, metadata } => {
                 self.write_address_meta(address, *metadata)?;
+                "addressmeta"
             }
             WriterMessage::SearcherInfo {
                 eoa_address,
@@ -189,19 +273,46 @@ impl LibmdbxWriter {
                 contract_info,
             } => {
                 self.write_searcher_info(eoa_address, contract_address, *eoa_info, *contract_info)?;
+                "searcherinfo"
             }
             WriterMessage::SearcherEoaInfo { searcher_eoa, searcher_info } => {
                 self.write_searcher_eoa_info(searcher_eoa, *searcher_info)?;
+                "searchereoainfo"
             }
             WriterMessage::SearcherContractInfo { searcher_contract, searcher_info } => {
                 self.write_searcher_contract_info(searcher_contract, *searcher_info)?;
+                "searchercontractinfo"
             }
             WriterMessage::Init(init, not) => {
                 init.write_data(self.db.clone())?;
                 not.notify_one();
+                "init"
             }
-        }
+        };
+        // Use recv_time to instrument the overall clearing duration
+        self.metrics
+            .observe_commit_latency(msg_type, recv_time, None);
         Ok(())
+    }
+
+    /// Wrapper around the Libmdbx `write_table` function that instruments
+    /// latency and error count/type
+    fn instrumented_write<T, D>(&self, entries: &[D]) -> Result<(), DatabaseError>
+    where
+        T: CompressedTable,
+        T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
+        D: LibmdbxData<T>,
+    {
+        let start_time = Instant::now();
+        let res = self.db.write_table::<T, D>(entries);
+        let end_time = Instant::now();
+        let duration = end_time - start_time;
+        let table = T::NAME;
+        self.metrics.observe_write_latency(table, duration);
+        if let Err(error) = res.as_ref() {
+            self.metrics.increment_write_errors(table, error);
+        }
+        res
     }
 
     fn convert_into_save_bytes<T: CompressedTable>(
@@ -222,13 +333,16 @@ impl LibmdbxWriter {
     where
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     {
+        let start_time = Instant::now();
         let tx = self.db.rw_tx()?;
 
         for (key, value) in data {
             tx.put_bytes::<T>(&key, value)?;
         }
-
         tx.commit()?;
+        // Record the total latency
+        let total_time = Instant::now() - start_time;
+        self.metrics.observe_write_latency_batch(total_time);
         Ok(())
     }
 
@@ -257,8 +371,7 @@ impl LibmdbxWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherEOAsData::new(searcher_eoa, searcher_info);
-        self.db
-            .write_table::<SearcherEOAs, SearcherEOAsData>(&[data])
+        self.instrumented_write::<SearcherEOAs, SearcherEOAsData>(&[data])
             .expect("libmdbx write failure");
 
         Ok(())
@@ -271,8 +384,7 @@ impl LibmdbxWriter {
         searcher_info: SearcherInfo,
     ) -> eyre::Result<()> {
         let data = SearcherContractsData::new(searcher_contract, searcher_info);
-        self.db
-            .write_table::<SearcherContracts, SearcherContractsData>(&[data])
+        self.instrumented_write::<SearcherContracts, SearcherContractsData>(&[data])
             .expect("libmdbx write failure");
 
         Ok(())
@@ -282,8 +394,7 @@ impl LibmdbxWriter {
     fn write_address_meta(&self, address: Address, metadata: AddressMetadata) -> eyre::Result<()> {
         let data = AddressMetaData::new(address, metadata);
 
-        self.db
-            .write_table::<AddressMeta, AddressMetaData>(&[data])
+        self.instrumented_write::<AddressMeta, AddressMetaData>(&[data])
             .expect("libmdx metadata write failure");
 
         Ok(())
@@ -348,12 +459,11 @@ impl LibmdbxWriter {
 
     #[instrument(target = "libmdbx_read_write::write_token_info", skip_all, level = "warn")]
     fn write_token_info(&self, address: Address, decimals: u8, symbol: String) -> eyre::Result<()> {
-        self.db
-            .write_table::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
-                address,
-                TokenInfo::new(decimals, symbol),
-            )])
-            .expect("libmdbx write failure");
+        self.instrumented_write::<TokenDecimals, TokenDecimalsData>(&[TokenDecimalsData::new(
+            address,
+            TokenInfo::new(decimals, symbol),
+        )])
+        .expect("libmdbx write failure");
         Ok(())
     }
 
@@ -369,23 +479,22 @@ impl LibmdbxWriter {
         // add to default table
         let mut tokens = tokens.iter();
         let default = Address::ZERO;
-        self.db
-            .write_table::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
-                AddressToProtocolInfoData::new(
-                    address,
-                    ProtocolInfo {
-                        protocol: classifier_name,
-                        init_block: block,
-                        token0: *tokens.next().unwrap_or(&default),
-                        token1: *tokens.next().unwrap_or(&default),
-                        token2: tokens.next().cloned(),
-                        token3: tokens.next().cloned(),
-                        token4: tokens.next().cloned(),
-                        curve_lp_token,
-                    },
-                ),
-            ])
-            .expect("libmdbx write failure");
+        self.instrumented_write::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
+            AddressToProtocolInfoData::new(
+                address,
+                ProtocolInfo {
+                    protocol: classifier_name,
+                    init_block: block,
+                    token0: *tokens.next().unwrap_or(&default),
+                    token1: *tokens.next().unwrap_or(&default),
+                    token2: tokens.next().cloned(),
+                    token3: tokens.next().cloned(),
+                    token4: tokens.next().cloned(),
+                    curve_lp_token,
+                },
+            ),
+        ])
+        .expect("libmdbx write failure");
 
         // add to pool creation block
         self.db.view_db(|tx| {
@@ -396,11 +505,10 @@ impl LibmdbxWriter {
                 .unwrap_or_default();
 
             addrs.push(address);
-            self.db
-                .write_table::<PoolCreationBlocks, PoolCreationBlocksData>(&[
-                    PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
-                ])
-                .expect("libmdbx write failure");
+            self.instrumented_write::<PoolCreationBlocks, PoolCreationBlocksData>(&[
+                PoolCreationBlocksData::new(block, PoolsToAddresses(addrs)),
+            ])
+            .expect("libmdbx write failure");
 
             Ok(())
         })
@@ -429,8 +537,7 @@ impl LibmdbxWriter {
         builder_info: BuilderInfo,
     ) -> eyre::Result<()> {
         let data = BuilderData::new(builder_address, builder_info);
-        self.db
-            .write_table::<Builder, BuilderData>(&[data])
+        self.instrumented_write::<Builder, BuilderData>(&[data])
             .expect("libmdbx write failure");
         Ok(())
     }
@@ -564,11 +671,15 @@ impl Future for LibmdbxWriter {
         while let Poll::Ready(Some(msg)) = this.rx.poll_recv(cx) {
             messages.push(msg);
         }
-
+        let mut messages_len = messages.len();
         for msg in messages.drain(..) {
             if let Err(e) = this.handle_msg(msg) {
                 tracing::error!(error=%e, "libmdbx write error");
             }
+            // This might be looped too tightly, we could maybe do this in chunks of 5 or
+            // something...but it's a cheap call it SHOULD be alright
+            messages_len -= 1;
+            this.metrics.set_queue_size(this.rx.len() + messages_len)
         }
 
         Poll::Pending

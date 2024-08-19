@@ -2,7 +2,7 @@ use colored::Colorize;
 use reth_primitives::B256;
 use tracing::debug;
 
-use crate::PoirotMetricEvents;
+use crate::ParserMetricEvents;
 
 /// metric event for traces
 #[derive(Clone, Debug)]
@@ -15,9 +15,9 @@ pub enum TraceMetricEvent {
     TraceMetricRecieved(TraceStats),
 }
 
-impl From<TraceMetricEvent> for PoirotMetricEvents {
+impl From<TraceMetricEvent> for ParserMetricEvents {
     fn from(val: TraceMetricEvent) -> Self {
-        PoirotMetricEvents::TraceMetricRecieved(val)
+        ParserMetricEvents::TraceMetricRecieved(val)
     }
 }
 

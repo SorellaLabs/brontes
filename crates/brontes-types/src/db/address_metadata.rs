@@ -196,6 +196,10 @@ impl ContractType {
         matches!(self, ContractType::SolverSettlement)
     }
 
+    pub fn is_mev_contract(&self) -> bool {
+        matches!(self, ContractType::MevBot)
+    }
+
     pub fn is_defi_automation(&self) -> bool {
         matches!(self, ContractType::DefiAutomation)
     }

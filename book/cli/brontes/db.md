@@ -21,6 +21,7 @@ Commands:
   test-traces-init     Traces all blocks required to run the tests and inserts them into clickhouse
   trace-at-tip         Generates traces up to chain tip and inserts them into libmbx
   run-discovery        Only runs discovery and inserts discovered protocols into clickhouse
+  backfill             Identify data missing in libmdbx and backfill it
   help                 Print this message or the help of the given subcommand(s)
 
 Options:

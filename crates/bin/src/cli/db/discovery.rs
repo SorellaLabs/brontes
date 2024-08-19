@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use brontes_core::decoding::Parser as DParser;
-use brontes_metrics::PoirotMetricsListener;
+use brontes_metrics::ParserMetricsListener;
 use brontes_types::{init_thread_pools, UnboundedYapperReceiver};
 use clap::Parser;
 use futures::StreamExt;
@@ -34,7 +34,7 @@ impl DiscoveryFill {
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
 
-        let metrics_listener = PoirotMetricsListener::new(UnboundedYapperReceiver::new(
+        let metrics_listener = ParserMetricsListener::new(UnboundedYapperReceiver::new(
             metrics_rx,
             10_000,
             "metrics".to_string(),

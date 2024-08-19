@@ -217,8 +217,9 @@ impl LibmdbxReadWriter {
     {
         let mapped = data.into_iter().map(D::from).collect::<Vec<_>>();
         let not = Arc::new(Notify::new());
-        self.tx
-            .send(libmdbx::libmdbx_writer::WriterMessage::Init(mapped.into(), not.clone()))?;
+        self.tx.send(
+            libmdbx::libmdbx_writer::WriterMessage::Init(mapped.into(), not.clone()).stamp(),
+        )?;
 
         let waker = Waker::noop();
         let mut cx = Context::from_waker(waker);

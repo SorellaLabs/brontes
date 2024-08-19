@@ -169,7 +169,7 @@ impl<I: DBWriter + Send + Sync> DBWriter for ClickhouseMiddleware<I> {
 }
 
 impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
-    async fn initialize_tables<T: brontes_types::traits::TracingProvider, CH: ClickhouseHandle>(
+    async fn initialize_table<T: brontes_types::traits::TracingProvider, CH: ClickhouseHandle>(
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
@@ -177,9 +177,18 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
+            .initialize_table(
+                clickhouse,
+                tracer,
+                tables,
+                clear_tables,
+                block_range,
+                progress_bar,
+                metrics,
+            )
             .await
     }
 
@@ -187,7 +196,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         self.inner.get_db_range()
     }
 
-    async fn initialize_tables_arbitrary<
+    async fn initialize_table_arbitrary<
         T: brontes_types::traits::TracingProvider,
         CH: ClickhouseHandle,
     >(
@@ -197,9 +206,17 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         tables: crate::Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
+            .initialize_table_arbitrary(
+                clickhouse,
+                tracer,
+                tables,
+                block_range,
+                progress_bar,
+                metrics,
+            )
             .await
     }
 
@@ -207,9 +224,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ClickhouseMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_full_range_tables(clickhouse, tracer)
+            .initialize_full_range_tables(clickhouse, tracer, metrics)
             .await
     }
 
@@ -475,7 +493,7 @@ impl<I: DBWriter + Send + Sync> DBWriter for ReadOnlyMiddleware<I> {
 }
 
 impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
-    async fn initialize_tables<T: brontes_types::traits::TracingProvider, CH: ClickhouseHandle>(
+    async fn initialize_table<T: brontes_types::traits::TracingProvider, CH: ClickhouseHandle>(
         &'static self,
         clickhouse: &'static CH,
         tracer: std::sync::Arc<T>,
@@ -483,9 +501,18 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         clear_tables: bool,
         block_range: Option<(u64, u64)>, // inclusive of start only
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables(clickhouse, tracer, tables, clear_tables, block_range, progress_bar)
+            .initialize_table(
+                clickhouse,
+                tracer,
+                tables,
+                clear_tables,
+                block_range,
+                progress_bar,
+                metrics,
+            )
             .await
     }
 
@@ -493,7 +520,7 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         self.inner.get_db_range()
     }
 
-    async fn initialize_tables_arbitrary<
+    async fn initialize_table_arbitrary<
         T: brontes_types::traits::TracingProvider,
         CH: ClickhouseHandle,
     >(
@@ -503,9 +530,17 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         tables: crate::Tables,
         block_range: Vec<u64>,
         progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_tables_arbitrary(clickhouse, tracer, tables, block_range, progress_bar)
+            .initialize_table_arbitrary(
+                clickhouse,
+                tracer,
+                tables,
+                block_range,
+                progress_bar,
+                metrics,
+            )
             .await
     }
 
@@ -513,9 +548,10 @@ impl<I: LibmdbxInit> LibmdbxInit for ReadOnlyMiddleware<I> {
         &'static self,
         clickhouse: &'static CH,
         tracer: Arc<T>,
+        metrics: bool,
     ) -> eyre::Result<()> {
         self.inner
-            .initialize_full_range_tables(clickhouse, tracer)
+            .initialize_full_range_tables(clickhouse, tracer, metrics)
             .await
     }
 
