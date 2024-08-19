@@ -4,7 +4,6 @@ use std::{
 };
 
 use alloy_primitives::FixedBytes;
-use alloy_sol_types::abi::token;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -464,10 +463,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             token_price.clone().reciprocal()
         };
 
-        if cex_quote.price_maker == Rational::ZERO
-            || cex_quote.price_maker == Rational::ZERO
-            || swap.amount_out == Rational::ZERO
-        {
+        if cex_quote.price_maker == Rational::ZERO || swap.amount_out == Rational::ZERO {
             return None
         }
 
