@@ -94,6 +94,10 @@ pub struct RunArgs {
     /// stored in the Clickhouse database.
     #[arg(long, short)]
     pub run_id:               Option<u64>,
+
+    /// shows a cool display at startup
+    #[arg(long, short, default_value_t = false)]
+    pub waterfall: bool,
 }
 
 impl RunArgs {
@@ -104,7 +108,9 @@ impl RunArgs {
     ) -> eyre::Result<()> {
         self.check_proper_range()?;
 
-        rain();
+        if self.waterfall {
+            rain();
+        }
 
         let snapshot_mode = !cfg!(feature = "local-clickhouse");
         tracing::info!(%snapshot_mode);
@@ -282,7 +288,7 @@ fn parse_ranges(ranges: &[String]) -> Result<Vec<(u64, u64)>, String> {
                 return Err(format!(
                     "start block {} must be less than or equal to end block {}",
                     start, end
-                ));
+                ))
             }
             Ok((start, end))
         })
