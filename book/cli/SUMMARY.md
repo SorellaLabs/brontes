@@ -15,5 +15,4 @@
     - [`brontes db test-traces-init`](./brontes/db/test-traces-init.md)
     - [`brontes db trace-at-tip`](./brontes/db/trace-at-tip.md)
     - [`brontes db run-discovery`](./brontes/db/run-discovery.md)
-    - [`brontes db backfill`](./brontes/db/backfill.md)
 
