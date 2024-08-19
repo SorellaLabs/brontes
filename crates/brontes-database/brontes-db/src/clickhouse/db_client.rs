@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
-use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
@@ -26,21 +25,16 @@ use brontes_types::{
     structured_trace::TxTrace,
     BlockTree, Protocol,
 };
-use clickhouse::error::Error::{BadResponse, Custom, Network};
 use db_interfaces::{
-    clickhouse::{
-        client::ClickhouseClient, config::ClickhouseConfig, errors::ClickhouseError,
-        types::ClickhouseQuery,
-    },
+    clickhouse::{client::ClickhouseClient, config::ClickhouseConfig},
     errors::DatabaseError,
-    params::BindParameters,
     Database,
 };
 use eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use tokio::{sync::mpsc::UnboundedSender, time::Duration};
-use tracing::{debug, error, warn};
+use tokio::sync::mpsc::UnboundedSender;
+use tracing::debug;
 
 use super::{
     cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE,
@@ -280,51 +274,6 @@ impl Clickhouse {
     pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
         Ok(())
     }
-
-    async fn query_many_with_retry<Q, P>(
-        &self,
-        query: impl AsRef<str> + Send,
-        params: &P,
-    ) -> Result<Vec<Q>, DatabaseError>
-    where
-        Q: ClickhouseQuery,
-        P: BindParameters + Send + Sync,
-    {
-        let retry_strategy = ExponentialBuilder::default()
-            .with_max_times(10)
-            .with_min_delay(Duration::from_millis(100))
-            .with_max_delay(Duration::from_secs(30));
-
-        let mut try_count = 1;
-        let res = (|| async { self.client.query_many::<Q, P>(query.as_ref(), params).await })
-            .retry(&retry_strategy)
-            .when(|e| match e {
-                DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(_))) => {
-                    true
-                }
-                DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(BadResponse(
-                    s,
-                ))) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
-                _ => false,
-            })
-            .notify(|err, dur| {
-                warn!(
-                    "Query failed after {} attempt(s).  Retrying in {:?}... Error: {}",
-                    try_count, dur, err
-                );
-                try_count += 1;
-            })
-            .await;
-        match res {
-            Ok(result) => Ok(result),
-            Err(err) => {
-                error!("Query failed after maximum retries - final Error: {}", err);
-                Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Custom(
-                    "Query failed after maximum retries".to_string(),
-                ))))
-            }
-        }
-    }
 }
 
 impl ClickhouseHandle for Clickhouse {
@@ -374,12 +323,13 @@ impl ClickhouseHandle for Clickhouse {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
-        self.query_many_with_retry::<D, _>(
-            T::INIT_QUERY.expect("no init query found for clickhouse query"),
-            &(start_block, end_block),
-        )
-        .await
-        .map_err(Into::into)
+        self.client
+            .query_many::<D, _>(
+                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                &(start_block, end_block),
+            )
+            .await
+            .map_err(Into::into)
     }
 
     async fn query_many_arbitrary<T, D>(&self, range: &'static [u64]) -> eyre::Result<Vec<D>>
@@ -390,7 +340,8 @@ impl ClickhouseHandle for Clickhouse {
     {
         let query = format_arbitrary_query::<T>(range);
 
-        self.query_many_with_retry::<D, _>(&query, &())
+        self.client
+            .query_many::<D, _>(&query, &())
             .await
             .map_err(Into::into)
     }
@@ -401,12 +352,13 @@ impl ClickhouseHandle for Clickhouse {
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
         D: LibmdbxData<T> + DbRow + for<'de> Deserialize<'de> + Send + Debug + 'static,
     {
-        self.query_many_with_retry::<D, _>(
-            T::INIT_QUERY.expect("no init query found for clickhouse query"),
-            &(),
-        )
-        .await
-        .map_err(Into::into)
+        self.client
+            .query_many::<D, _>(
+                T::INIT_QUERY.expect("no init query found for clickhouse query"),
+                &(),
+            )
+            .await
+            .map_err(Into::into)
     }
 
     fn inner(&self) -> &ClickhouseClient<BrontesClickhouseTables> {
@@ -423,7 +375,7 @@ impl ClickhouseHandle for Clickhouse {
                     target = "b",
                     "Querying block times to download quotes for range: start={}, end={}", s, e
                 );
-                self.query_many_with_retry(BLOCK_TIMES, &(s, e)).await?
+                self.client.query_many(BLOCK_TIMES, &(s, e)).await?
             }
 
             CexRangeOrArbitrary::Arbitrary(vals) => {
@@ -495,7 +447,7 @@ impl ClickhouseHandle for Clickhouse {
                     ),
                 );
 
-                self.query_many_with_retry(query, &()).await?
+                self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
                 let mut query = RAW_CEX_QUOTES.to_string();
@@ -516,7 +468,7 @@ impl ClickhouseHandle for Clickhouse {
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
 
-                self.query_many_with_retry(query, &()).await?
+                self.client.query_many(query, &()).await?
             }
         };
 
@@ -616,7 +568,7 @@ impl ClickhouseHandle for Clickhouse {
                         and ({exchanges_str})"
                     ),
                 );
-                self.query_many_with_retry(query, &()).await?
+                self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
                 let mut query = RAW_CEX_TRADES.to_string();
@@ -632,7 +584,7 @@ impl ClickhouseHandle for Clickhouse {
                     "c.timestamp >= ? AND c.timestamp < ?",
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
-                self.query_many_with_retry(query, &()).await?
+                self.client.query_many(query, &()).await?
             }
         };
 
@@ -677,7 +629,8 @@ impl Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64;
 
-                self.query_many_with_retry(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
+                self.client
+                    .query_many(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
             }
             CexRangeOrArbitrary::Arbitrary(_) => {
@@ -706,7 +659,7 @@ impl Clickhouse {
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
-                self.query_many_with_retry(query, &()).await?
+                self.client.query_many(query, &()).await?
             }
         })
     }
@@ -721,13 +674,13 @@ impl Clickhouse {
         };
 
         debug!(target = "b", "Querying block times for range: start={}, end={}", start, end);
-        self.query_many_with_retry(BLOCK_TIMES, &(start, end)).await
+        self.client.query_many(BLOCK_TIMES, &(start, end)).await
     }
 
     pub async fn get_cex_symbols(
         &self,
     ) -> Result<Vec<CexSymbols>, db_interfaces::errors::DatabaseError> {
-        self.query_many_with_retry(CEX_SYMBOLS, &()).await
+        self.client.query_many(CEX_SYMBOLS, &()).await
     }
 
     pub async fn get_raw_cex_quotes_range(
@@ -738,7 +691,7 @@ impl Clickhouse {
         let exchanges_str = self.get_exchanges_filter_string();
 
         let query = self.build_range_cex_quotes_query(start_time, end_time, &exchanges_str);
-        self.query_many_with_retry(&query, &()).await
+        self.client.query_many(&query, &()).await
     }
 
     fn get_exchanges_filter_string(&self) -> String {
