@@ -32,6 +32,7 @@ pub struct CexQuery {
 
 impl CexQuery {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+        println!("Executing CexQuery");
         match self.command {
             CexQueryCommands::Quotes(cex_db) => cex_db.execute(brontes_db_endpoint, ctx).await,
             CexQueryCommands::Trades(cex_db) => cex_db.execute(brontes_db_endpoint, ctx).await,
@@ -126,6 +127,8 @@ impl CexQuotesDebug {
 
                 print_report(&dex_swaps, &merged_swaps, &quotes);
             });
+
+        println!("Done");
 
         Ok(())
     }
