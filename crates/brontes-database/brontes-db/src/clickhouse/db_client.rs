@@ -39,10 +39,7 @@ use db_interfaces::{
 use eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use tokio::{
-    sync::mpsc::UnboundedSender,
-    time:: Duration,
-};
+use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
 
 use super::{
