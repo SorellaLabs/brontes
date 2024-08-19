@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use alloy_primitives::Address;
 use brontes_metrics::pricing::DexPricingMetrics;
-use brontes_types::{pair::Pair, FastHashMap};
+use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
+use futures::task::waker;
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -110,6 +111,13 @@ impl SubGraphRegistry {
         let Some(graph) = self.sub_graphs.get(&pair.ordered()) else { return };
         if let Some(graph) = graph.get(&gt.ordered()) {
             graph.future_use(block);
+
+            // ensure if subgraph extends others that those get marked
+            if let Some(extends_to) = graph.extends_to() {
+                self.sub_graphs.get(&extends_to.ordered()).map(|subgraphs| {
+                    subgraphs.values().for_each(|sub_g| sub_g.future_use(block));
+                });
+            }
         }
     }
 
@@ -221,19 +229,45 @@ impl SubGraphRegistry {
         state: &FastHashMap<Address, &T>,
         block: u64,
     ) {
-        let (pair, gt) = pair.pair_gt();
-        self.sub_graphs.iter_mut().for_each(|(g_pair, sub)| {
-            // wrong pair, then retain
-            if *g_pair != pair.ordered() {
-                return
-            }
+        let mut invalid_extends = FastHashSet::default();
 
-            sub.iter_mut().for_each(|(goes_through, graph)| {
-                if *goes_through == gt {
-                    graph.has_valid_liquidity(start, start_price.clone(), state, block)
+        let (pair, gt) = pair.pair_gt();
+        if let Some(range) = self.sub_graphs.get_mut(&pair.ordered()) {
+            if let Some(graph) = range.get_mut(&gt.ordered()) {
+                if !graph.has_valid_liquidity(start, start_price.clone(), state, block) {
+                    if graph.extends_to().is_some() {
+                        return
+                    }
+                    let possible_bad_extends_to = graph.pair;
+                    // check to see for this base pair if there are any
+                    // others, that are also     // being
+                    // removed. if this is the only subgraph that others can
+                    // extend. we     // need to remove all
+                    // subgraphs that extend this one.
+                    let valid_count = range
+                        .iter()
+                        .filter(|(_, g)| g.extends_to().is_none() && g.remove_at.is_none())
+                        .count();
+
+                    if valid_count == 0 {
+                        invalid_extends.insert(possible_bad_extends_to);
+                    }
                 }
+            }
+        }
+
+        if !invalid_extends.is_empty() {
+            self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
+                graphs.iter_mut().for_each(|(_, graph)| {
+                    if let Some(extends) = graph.extends_to() {
+                        if invalid_extends.contains(&extends) {
+                            tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
+                            graph.remove_at = Some(block);
+                        }
+                    }
+                })
             });
-        });
+        }
     }
 
     pub fn get_price(

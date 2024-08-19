@@ -375,9 +375,9 @@ impl PairSubGraph {
         start_price: Rational,
         state: &FastHashMap<Address, &T>,
         block: u64,
-    ) {
+    ) -> bool {
         if self.remove_at.is_some() {
-            return
+            return false
         }
 
         let result = self.run_bfs_with_liquidity_params(start, start_price, state, true);
@@ -403,7 +403,9 @@ impl PairSubGraph {
         if disjoint {
             tracing::debug!(pair=?self.complete_pair, ?block, "invalid liquidity");
             self.remove_at = Some(block);
+            return false
         }
+        true
     }
 
     pub fn rundown_subgraph_check<T: ProtocolState>(
