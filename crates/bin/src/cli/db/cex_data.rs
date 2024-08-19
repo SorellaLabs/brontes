@@ -65,9 +65,8 @@ impl CexQuotesDebug {
         let task_executor = ctx.task_executor;
         //let reth_db_path = get_env_vars()?;
 
-        let (tx_tree, _dex_quotes) = self
-            .get_block_tree()
-            .await
+        let (tx_tree, _dex_quotes) = task_executor
+            .block_on(self.get_block_tree())
             .expect("Failed to get block tree");
 
         println!("Got block tree");
@@ -141,8 +140,10 @@ impl CexQuotesDebug {
     }
 
     async fn get_block_tree(&self) -> Option<(BlockTree<Action>, DexQuotes)> {
+        println!("Creating inspector utils");
         let inspector_utils: InspectorTestUtils =
             InspectorTestUtils::new(USDT_ADDRESS, 1000.9).await;
+        println!("Getting block tree");
 
         Some(
             inspector_utils
