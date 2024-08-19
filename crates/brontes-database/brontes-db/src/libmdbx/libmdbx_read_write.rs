@@ -12,7 +12,7 @@ use brontes_types::{
         cex::{quotes::CexPriceMap, trades::CexTradeMap},
         dex::{make_filter_key_range, DexPrices, DexQuotes},
         initialized_state::{
-            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DATA_NOT_PRESENT_UNKNOWN,
+            InitializedStateMeta, CEX_QUOTES_FLAG, CEX_TRADES_FLAG, DATA_NOT_PRESENT_NOT_AVAILABLE,
             DATA_PRESENT, DEX_PRICE_FLAG, META_FLAG,
         },
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
@@ -1215,7 +1215,8 @@ impl LibmdbxReadWriter {
     fn fetch_block_metadata(&self, block_num: u64) -> eyre::Result<BlockMetadataInner> {
         self.db.view_db(|tx| {
             tx.get::<BlockInfo>(block_num)?.ok_or_else(|| {
-                let _ = self.init_state_updating(block_num, META_FLAG, DATA_NOT_PRESENT_UNKNOWN);
+                let _ =
+                    self.init_state_updating(block_num, META_FLAG, DATA_NOT_PRESENT_NOT_AVAILABLE);
                 eyre!("Failed to fetch Metadata's block info for block {}", block_num)
             })
         })
@@ -1226,8 +1227,11 @@ impl LibmdbxReadWriter {
             tx.get::<CexTrades>(block)?
                 .ok_or_else(|| eyre::eyre!("no cex trades"))
                 .inspect_err(|_| {
-                    let _ =
-                        self.init_state_updating(block, CEX_TRADES_FLAG, DATA_NOT_PRESENT_UNKNOWN);
+                    let _ = self.init_state_updating(
+                        block,
+                        CEX_TRADES_FLAG,
+                        DATA_NOT_PRESENT_NOT_AVAILABLE,
+                    );
                 })
         })
     }
@@ -1235,8 +1239,11 @@ impl LibmdbxReadWriter {
     pub fn fetch_cex_quotes(&self, block_num: u64) -> eyre::Result<CexPriceMap> {
         self.db.view_db(|tx| {
             let res = tx.get::<CexPrice>(block_num)?.unwrap_or_else(|| {
-                let _ =
-                    self.init_state_updating(block_num, CEX_QUOTES_FLAG, DATA_NOT_PRESENT_UNKNOWN);
+                let _ = self.init_state_updating(
+                    block_num,
+                    CEX_QUOTES_FLAG,
+                    DATA_NOT_PRESENT_NOT_AVAILABLE,
+                );
                 CexPriceMap::default()
             });
 
