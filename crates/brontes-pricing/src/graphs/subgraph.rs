@@ -101,7 +101,7 @@ pub struct PairSubGraph {
     /// to avoid removing when there is a dependency
     /// we mark the removal time and all new subgraphs past this block,
     /// will generate a new subgrpah.
-    remove_at:              Option<u64>,
+    pub(crate) remove_at:   Option<u64>,
 }
 
 impl PairSubGraph {

@@ -199,13 +199,9 @@ impl GraphManager {
             .remove_empty_address(pool_pair, pool_address)
     }
 
-    pub fn remove_subgraph(&mut self, pair: PairWithFirstPoolHop) {
+    pub fn mark_subgraph_for_removal(&mut self, pair: PairWithFirstPoolHop, block: u64) {
         self.sub_graph_registry
-            .remove_subgraph(pair)
-            .into_iter()
-            .for_each(|(pool, amount)| {
-                self.graph_state.remove_finalized_state_dep(pool, amount);
-            })
+            .mark_subgraph_for_removal(pair, block);
     }
 
     /// Returns all pairs that have been ignored from lowest to highest

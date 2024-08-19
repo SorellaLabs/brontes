@@ -70,10 +70,8 @@ use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 use crate::types::PoolState;
 /// max movement of price in the block before its considered invalid.
-/// currently %90 movement from start price.
-/// If WETH was at 3000$usd. to trigger this. the final price
-/// of the pool would have to end at $350
-const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
+/// currently %98 movement from start price.
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(98, 100);
 
 pub struct BrontesBatchPricer<T: TracingProvider> {
     range_id:        usize,
@@ -228,16 +226,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let pair1 = PairWithFirstPoolHop::from_pair_gt(pair1, gt.flip());
 
             // mark low liq ones for removal when this block is completed
-            self.graph_manager.prune_low_liq_subgraphs(
-                pair0,
-                self.quote_asset,
-                self.completed_block + 1,
-            );
-            self.graph_manager.prune_low_liq_subgraphs(
-                pair1,
-                self.quote_asset,
-                self.completed_block + 1,
-            );
+            self.graph_manager
+                .prune_low_liq_subgraphs(pair0, self.quote_asset, block);
+            self.graph_manager
+                .prune_low_liq_subgraphs(pair1, self.quote_asset, block);
         });
 
         tracing::debug!("search triggered by pool updates");
@@ -683,10 +675,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     })
                 }
                 VerificationResults::Abort(pair, block) => {
-                    tracing::debug!(target: "brontes_pricing::missing_pricing",
+                    tracing::info!(target: "brontes_pricing::missing_pricing",
                                     ?pair,
                                     ?block,
                                     "aborted verification process");
+
                     self.failed_pairs.entry(block).or_default().push(pair);
 
                     None
@@ -1114,10 +1107,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .for_each(|map| map.retain(|k, v| !removals.contains(&(*k, v.goes_through))));
 
         removals.into_iter().for_each(|pair| {
-            tracing::debug!(target: "brontes::missing_pricing",pair=?pair.0,
+            tracing::info!(target: "brontes::missing_pricing",pair=?pair.0,
                             goes_through=?pair.1, "drastic price change detected. removing pair");
-            self.graph_manager
-                .remove_subgraph(PairWithFirstPoolHop::from_pair_gt(pair.0, pair.1));
+            // add it to removal queue so we get the missing price logs.
+            self.graph_manager.mark_subgraph_for_removal(
+                PairWithFirstPoolHop::from_pair_gt(pair.0, pair.1),
+                self.current_block + 1,
+            );
         })
     }
 

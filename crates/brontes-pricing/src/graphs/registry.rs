@@ -46,19 +46,6 @@ pub struct PendingRegistry {
     sub_graphs: FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
 }
 
-impl Drop for SubGraphRegistry {
-    fn drop(&mut self) {
-        let subgraphs_cnt = self.sub_graphs.values().map(|f| f.len()).sum::<usize>();
-
-        tracing::debug!(
-            target: "brontes::mem",
-            pending_finalized_subs = self.pending_finalized_graphs.len(),
-            subgraphs_len = subgraphs_cnt,
-            "subgraph registry final"
-        );
-    }
-}
-
 impl SubGraphRegistry {
     pub fn new(metrics: Option<DexPricingMetrics>) -> Self {
         let sub_graphs = FastHashMap::default();
@@ -194,30 +181,14 @@ impl SubGraphRegistry {
             .unwrap_or(false)
     }
 
-    pub fn remove_subgraph(&mut self, pair: PairWithFirstPoolHop) -> FastHashMap<Address, u64> {
+    pub fn mark_subgraph_for_removal(&mut self, pair: PairWithFirstPoolHop, block: u64) {
         let (pair, goes_through) = pair.pair_gt();
 
-        let mut removals = FastHashMap::default();
-        self.sub_graphs.retain(|k, v| {
-            if k != &pair.ordered() {
-                return true
+        self.sub_graphs.get_mut(&pair.ordered()).map(|v| {
+            if let Some(subgraph) = v.get_mut(&goes_through.ordered()) {
+                subgraph.remove_at = Some(block);
             }
-            v.retain(|gt, s| {
-                let res = gt != &goes_through.ordered();
-                if !res {
-                    self.metrics
-                        .as_ref()
-                        .inspect(|m| m.active_subgraphs.decrement(1.0));
-                    s.get_all_pools().flatten().for_each(|edge| {
-                        *removals.entry(edge.pool_addr).or_default() += 1;
-                    });
-                }
-
-                res
-            });
-            !v.is_empty()
         });
-        removals
     }
 
     pub fn add_verified_subgraph(
@@ -347,5 +318,18 @@ impl SubGraphRegistry {
             }
             (cnt != Rational::ZERO).then(|| acc / cnt)
         })
+    }
+}
+
+impl Drop for SubGraphRegistry {
+    fn drop(&mut self) {
+        let subgraphs_cnt = self.sub_graphs.values().map(|f| f.len()).sum::<usize>();
+
+        tracing::debug!(
+            target: "brontes::mem",
+            pending_finalized_subs = self.pending_finalized_graphs.len(),
+            subgraphs_len = subgraphs_cnt,
+            "subgraph registry final"
+        );
     }
 }
