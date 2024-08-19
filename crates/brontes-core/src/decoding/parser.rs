@@ -123,11 +123,20 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
-            .fill_metadata(parity_trace.0.unwrap(), parity_trace.1, receipts.0.unwrap(), block_num)
+            .fill_metadata(
+                parity_trace.0.unwrap_or_default(),
+                parity_trace.1,
+                receipts.0.unwrap_or_default(),
+                block_num,
+            )
             .await;
         #[cfg(not(feature = "dyn-decode"))]
         let traces = self
-            .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
+            .fill_metadata(
+                parity_trace.0.unwrap_or_default(),
+                receipts.0.unwrap_or_default(),
+                block_num,
+            )
             .await;
 
         let _ = self
