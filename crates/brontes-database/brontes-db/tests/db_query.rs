@@ -15,10 +15,10 @@ async fn test_query_retry() {
     let range = CexRangeOrArbitrary::Range(19000000, 19001000);
 
     let mut futs = FuturesUnordered::new();
-    let rng = rand::thread_rng();
 
     for _ in 0..30 {
         futs.push(async {
+            let mut rng = rand::thread_rng();
             sleep(Duration::from_millis(rng.gen_range(10..100))).await;
             fetch_test_data(&client, range).await
         });
