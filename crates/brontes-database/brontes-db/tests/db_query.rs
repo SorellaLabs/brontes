@@ -17,7 +17,7 @@ async fn test_query_retry() {
 
     for _ in 0..10 {
         futs.push(fetch_test_data(&client, range));
-        sleep(Duration::from_millis(550))
+        sleep(Duration::from_millis(550)).await;
     }
 
     while let Some(result) = futs.next().await {
