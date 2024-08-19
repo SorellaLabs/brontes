@@ -128,6 +128,16 @@ impl TxInfo {
                 .map_or(false, |info| info.is_searcher_of_type_with_threshold(mev_type, threshold))
     }
 
+    pub fn infer_mev_bot_type(&self) -> Option<MevType> {
+        self.searcher_contract_info
+            .as_ref()
+            .and_then(|info| info.infer_mev_bot_type())
+            .or(self
+                .searcher_eoa_info
+                .as_ref()
+                .and_then(|info| info.infer_mev_bot_type()))
+    }
+
     pub fn is_labelled_searcher_of_type(&self, mev_type: MevType) -> bool {
         self.searcher_eoa_info
             .as_ref()

@@ -42,8 +42,9 @@ pub enum DatabaseCommands {
     #[command(name = "generate-traces")]
     TraceRange(trace_range::TraceArgs),
     /// Fetches Cex data from the Sorella DB
-    #[command(name = "cex-query")]
-    CexData(cex_data::CexDB),
+    #[command(name = "cex-data")]
+    #[cfg(feature = "tests")]
+    CexData(cex_data::CexQuery),
     /// Fetch data from the api and insert it into
     /// libmdbx.
     #[command(name = "init")]
@@ -94,6 +95,7 @@ impl Database {
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::TableStats(cmd) => cmd.execute(brontes_db_endpoint),
             DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            #[cfg(feature = "tests")]
             DatabaseCommands::CexData(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::DownloadClickhouse(cmd) => {

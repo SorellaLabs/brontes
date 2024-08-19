@@ -91,7 +91,7 @@ pub struct ExchangeLeg {
 }
 
 pub fn log_cex_dex_quote_delta(
-    tx_hash: &str,
+    tx_info: &TxInfo,
     token_in_symbol: &str,
     token_out_symbol: &str,
     exchange: &CexExchange,
@@ -108,10 +108,17 @@ pub fn log_cex_dex_quote_delta(
         arb_ratio = cex_output.clone() / dex_amount_in;
     }
 
+    let tx_hash = tx_info.tx_hash;
+
+    let mev_bot_info = match tx_info.infer_mev_bot_type() {
+        Some(mev_type) => format!("Likely an MEV bot of type: {:?}", mev_type),
+        None => "No info on EOA or contract, likely not an MEV bot".to_string(),
+    };
+
     let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
 
     error!(
-        "\n\x1b[1;35mSignificant Cex-Dex quote discrepancy detected for {} - {} on {}:\x1b[0m\n\
+        "\n\x1b[1;32mSignificant Cex-Dex quote discrepancy detected for {} - {} on {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap:\x1b[0m\n\
            * Rate: {:.7}\n\
            * Amount In: {}\n\
@@ -120,6 +127,7 @@ pub fn log_cex_dex_quote_delta(
            * Rate: {:.7}\n\
            * Equivalent Output: {}\n\
          - \x1b[1;33mArbitrage Ratio:\x1b[0m {:.4} ({}%)\n\
+        - \x1b[1;32mMEV Bot Info:\x1b[0m {}\n\
          - Token Contracts:\n\
            * Token In: https://etherscan.io/address/{}\n\
            * Token Out: https://etherscan.io/address/{}\n\
@@ -135,9 +143,10 @@ pub fn log_cex_dex_quote_delta(
         cex_output.clone().to_float(),
         arb_ratio.to_float(),
         arb_percent,
+        mev_bot_info,
         token_in_address,
         token_out_address,
-        tx_hash
+        tx_hash.to_string()
     );
 }
 

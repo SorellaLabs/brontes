@@ -711,9 +711,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         if !(transfers.len() == 2 && (info.is_labelled_searcher_of_type(mev_type) || cfg!(test))) {
             return None
         }
-        let ingore_addresses = info.collect_address_set_for_accounting();
+        let ignore_addresses = info.collect_address_set_for_accounting();
 
-        self.try_create_swaps(&transfers, ingore_addresses).pop()
+        self.try_create_swaps(&transfers, ignore_addresses).pop()
     }
 
     pub fn cex_merge_possible_swaps(swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {

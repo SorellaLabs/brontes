@@ -75,7 +75,7 @@ use itertools::Itertools;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 pub struct CexDexQuotesInspector<'db, DB: LibmdbxReader> {
-    utils:                SharedInspectorUtils<'db, DB>,
+    pub utils:            SharedInspectorUtils<'db, DB>,
     _quotes_fetch_offset: u64,
     _cex_exchanges:       Vec<CexExchange>,
 }
@@ -264,8 +264,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         metadata: &Metadata,
         tx_info: &TxInfo,
     ) -> Option<CexDexProcessing> {
-        //TODO: Add smiths map to query most liquid dex for given pair
-        //
         let swaps = SharedInspectorUtils::<DB>::cex_merge_possible_swaps(dex_swaps);
 
         let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0, None);
@@ -364,7 +362,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         if smaller * max_diff < *larger {
             log_cex_dex_quote_delta(
-                &tx_info.tx_hash.to_string(),
+                &tx_info,
                 swap.token_in_symbol(),
                 swap.token_out_symbol(),
                 &cex_quote.exchange,
@@ -391,7 +389,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
     /// Retrieves CEX quotes for a DEX swap, analyzing both direct and
     /// intermediary token pathways.
-    fn cex_quotes_for_swap(
+    pub fn cex_quotes_for_swap(
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,

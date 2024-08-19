@@ -4,6 +4,7 @@ use db_interfaces::clickhouse::{
     client::ClickhouseClient, config::ClickhouseConfig, dbms::NullDBMS,
 };
 
+#[allow(dead_code)]
 pub(crate) fn get_clickhouse_env() -> ClickhouseClient<NullDBMS> {
     let user = env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not set");
     let password = env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not set");

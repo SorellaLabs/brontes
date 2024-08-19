@@ -14,6 +14,7 @@ use crate::{
     implement_table_value_codecs_with_zc,
     mev::{BundleHeader, MevCount, MevType},
     serde_utils::{addresss, option_addresss, vec_address},
+    FastHashMap,
 };
 
 #[derive(Debug, Default, Row, PartialEq, Clone, Serialize, Deserialize, Redefined)]
@@ -26,12 +27,15 @@ pub struct SearcherInfo {
     pub fund:              Fund,
     #[redefined(same_fields)]
     #[serde(default)]
+    /// Bundle count by mev type
     pub mev_count:         MevCount,
     #[redefined(same_fields)]
     #[serde(default)]
+    /// Profit and loss by mev type
     pub pnl:               TollByType,
     #[redefined(same_fields)]
     #[serde(default)]
+    /// Gas bids by mev type
     pub gas_bids:          TollByType,
     /// If the searcher is vertically integrated, this will contain the
     /// corresponding builder's information.
@@ -171,6 +175,83 @@ impl SearcherInfo {
         self.pnl.account_pnl(header);
         self.mev_count.increment_count(header.mev_type);
         self.gas_bids.account_gas(header);
+    }
+
+    /// Uses elementary scoring to infer the most likely bot type. This is only
+    /// used to improve error logs when we need context on the type of bot
+    /// that is causing an error.
+    pub fn infer_mev_bot_type(&self) -> Option<MevType> {
+        let type_scores: FastHashMap<MevType, (u64, f64, f64)> = [
+            (
+                MevType::Sandwich,
+                (self.mev_count.sandwich_count, self.gas_bids.sandwich, self.pnl.sandwich),
+            ),
+            (
+                MevType::CexDexTrades,
+                (
+                    self.mev_count.cex_dex_trade_count,
+                    self.gas_bids.cex_dex_trades,
+                    self.pnl.cex_dex_trades,
+                ),
+            ),
+            (
+                MevType::CexDexQuotes,
+                (
+                    self.mev_count.cex_dex_quote_count,
+                    self.gas_bids.cex_dex_quotes,
+                    self.pnl.cex_dex_quotes,
+                ),
+            ),
+            (MevType::Jit, (self.mev_count.jit_count, self.gas_bids.jit, self.pnl.jit)),
+            (
+                MevType::JitSandwich,
+                (
+                    self.mev_count.jit_sandwich_count,
+                    self.gas_bids.jit_sandwich,
+                    self.pnl.jit_sandwich,
+                ),
+            ),
+            (
+                MevType::AtomicArb,
+                (
+                    self.mev_count.atomic_backrun_count,
+                    self.gas_bids.atomic_backrun,
+                    self.pnl.atomic_backrun,
+                ),
+            ),
+            (
+                MevType::Liquidation,
+                (self.mev_count.liquidation_count, self.gas_bids.liquidation, self.pnl.liquidation),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(mev_type, (count, gas, profit))| Some((mev_type, (count?, gas?, profit?))))
+        .collect();
+
+        if type_scores.is_empty() {
+            return None;
+        }
+
+        let totals = type_scores
+            .values()
+            .fold((0, 0.0, 0.0), |acc, &(count, gas, profit)| {
+                (acc.0 + count, acc.1 + gas, acc.2 + profit)
+            });
+
+        type_scores
+            .into_iter()
+            .map(|(mev_type, (count, gas, profit))| {
+                let score = if totals.0 > 0 && totals.1 > 0.0 && totals.2 > 0.0 {
+                    0.5 * (count as f64 / totals.0 as f64)
+                        + 0.3 * (gas / totals.1)
+                        + 0.2 * (profit / totals.2)
+                } else {
+                    0.0
+                };
+                (mev_type, score)
+            })
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(mev_type, _)| mev_type)
     }
 }
 

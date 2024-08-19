@@ -1,6 +1,5 @@
 use std::{fmt, sync::Arc};
 
-use alloy_primitives::FixedBytes;
 use brontes_types::{
     db::cex::{
         trades::{
@@ -656,7 +655,7 @@ pub struct ExchangeLegCexPrice {
 }
 
 pub fn log_cex_trade_price_delta(
-    tx_hash: &FixedBytes<32>,
+    tx_info: &TxInfo,
     token_in_symbol: &str,
     token_out_symbol: &str,
     dex_swap_rate: f64,
@@ -672,9 +671,14 @@ pub fn log_cex_trade_price_delta(
     if dex_amount_in != &Rational::ZERO {
         arb_ratio = cex_output.clone() / dex_amount_in;
     }
+    let tx_hash = tx_info.tx_hash;
+
+    let mev_bot_info = match tx_info.infer_mev_bot_type() {
+        Some(mev_type) => format!("Likely an MEV bot of type: {:?}", mev_type),
+        None => "No info on EOA or contract, likely not an MEV bot".to_string(),
+    };
 
     let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
-
     warn!(
         "\n\x1b[1;35mSignificant CEX trade price discrepancy detected for {} - {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap:\x1b[0m\n\
@@ -690,6 +694,7 @@ pub fn log_cex_trade_price_delta(
            * Token Out: https://etherscan.io/address/{}\n\
          - Tx Hash: https://etherscan.io/tx/{:?}\n\
          - Price Calculation Type: {}\n\
+         - \x1b[1;32mMEV Bot Info:\x1b[0m {}\n\
          - \x1b[1;31mWarning:\x1b[0m The CEX trade output is more than 2x the DEX input, indicating a potentially invalid trade or extreme market inefficiency.",
         token_in_symbol,
         token_out_symbol,
@@ -702,8 +707,9 @@ pub fn log_cex_trade_price_delta(
         arb_percent,
         token_in_address,
         token_out_address,
-        tx_hash,
-        price_calculation_type
+        tx_hash.to_string(),
+        price_calculation_type,
+        mev_bot_info
     );
 }
 
