@@ -74,7 +74,6 @@ impl LoadState for Protocol {
                         UniswapV2Pool::new_load_on_block(address, provider, block_number)
                             .await
                             .map_err(|e| {
-                                info!(target: "brontes::missing_pricing",?pool_pair,protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
                                 (address, Protocol::UniswapV2, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
@@ -102,7 +101,6 @@ impl LoadState for Protocol {
                         UniswapV3Pool::new_from_address(address, block_number, provider)
                             .await
                             .map_err(|e| {
-                                info!(target: "brontes::missing_pricing",?pool_pair, protocol=%self, %block_number, pool_address=?address, err=%e, "lazy load failed");
                                 (address, Protocol::UniswapV3, block_number, pool_pair, fp, e)
                             })?,
                         LoadResult::PoolInitOnBlock,
