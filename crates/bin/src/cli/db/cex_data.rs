@@ -65,8 +65,9 @@ impl CexQuotesDebug {
         let task_executor = ctx.task_executor;
         //let reth_db_path = get_env_vars()?;
 
-        let (tx_tree, _dex_quotes) = task_executor
-            .block_on(self.get_block_tree())
+        let (tx_tree, _dex_quotes) = self
+            .get_block_tree()
+            .await
             .expect("Failed to get block tree");
 
         println!("Got block tree");
