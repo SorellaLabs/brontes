@@ -53,13 +53,11 @@ use brontes_types::{
     db::cex::{quotes::FeeAdjustedQuote, CexExchange},
     display::utils::format_etherscan_url,
     mev::{Bundle, BundleData, MevType},
-    normalized_actions::{
-        accounting::ActionAccounting, Action, NormalizedSwap, NormalizedTransfer,
-    },
+    normalized_actions::{accounting::ActionAccounting, Action, NormalizedSwap},
     pair::Pair,
     tree::{BlockTree, GasDetails},
-    BlockData, FastHashMap, FastHashSet, MultiBlockData, ToFloatNearest, TreeCollector,
-    TreeSearchBuilder, TxInfo,
+    BlockData, FastHashMap, MultiBlockData, ToFloatNearest, TreeCollector, TreeSearchBuilder,
+    TxInfo,
 };
 use malachite::{
     num::{arithmetic::traits::Reciprocal, basic::traits::Zero},

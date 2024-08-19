@@ -45,6 +45,7 @@ impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
 }
 type TokenDeltas = FastHashMap<Address, Rational>;
 type AddressDeltas = FastHashMap<Address, TokenDeltas>;
+type PossibleSwapDetails = Vec<(TokenInfoWithAddress, bool, Rational, Address, u64)>;
 
 impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_metrics(&self) -> Option<&OutlierMetrics> {
@@ -192,10 +193,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         transfers: &[NormalizedTransfer],
         invalid_addresses: FastHashSet<Address>,
     ) -> Vec<NormalizedSwap> {
-        let mut pools: FastHashMap<
-            Address,
-            Vec<(TokenInfoWithAddress, bool, Rational, Address, u64)>,
-        > = FastHashMap::default();
+        let mut pools: FastHashMap<Address, PossibleSwapDetails> = FastHashMap::default();
 
         for t in transfers {
             // we do this so if the transfer is from a mev contract or a searcher, it gets

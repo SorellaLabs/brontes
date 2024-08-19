@@ -150,7 +150,8 @@ macro_rules! init {
                 pub fn write_data(self, handle: Arc<Libmdbx>) -> eyre::Result<()> {
                     match self {
                         $(
-                            Self::$table(data) => InitTables::[< write_ $table:snake>](&handle, data),
+                            Self::$table(data) =>
+                            InitTables::[< write_ $table:snake>](&handle, data),
                         )*
                     }
                 }
@@ -163,10 +164,12 @@ macro_rules! init {
     };
     (InitializedState $table:ident) => {
         paste::paste!(
-        fn [< write_ $table:snake>](handle:&Arc<Libmdbx>, data: Vec<[<$table Data>]>) -> eyre::Result<()> {
+        fn [< write_ $table:snake>](handle:&Arc<Libmdbx>, data: Vec<[<$table Data>]>)
+        -> eyre::Result<()> {
             let tx = handle.ro_tx()?;
             let merged_data= data.into_iter().map(|entry| {
-                let current_init = tx.get::<InitializedState>(entry.key).unwrap_or_default().unwrap_or_default();
+                let current_init = tx.get::<InitializedState>(entry.key)
+                    .unwrap_or_default().unwrap_or_default();
                 let merged = current_init.merge(entry.value);
                 InitializedStateData {
                     key: entry.key,
@@ -185,7 +188,8 @@ macro_rules! init {
     };
     ($any:ident $table:ident) => {
         paste::paste!(
-        fn [< write_ $table:snake>](handle:&Arc<Libmdbx>, data: Vec<[<$table Data>]>) -> eyre::Result<()> {
+        fn [< write_ $table:snake>](handle:&Arc<Libmdbx>, data: Vec<[<$table Data>]>)
+        -> eyre::Result<()> {
            handle
                 .write_table::<$table, [<$table Data>]>(&data)
                 .expect("libmdbx write failure");
@@ -233,7 +237,6 @@ impl LibmdbxWriter {
 
     fn handle_msg(&mut self, stamped_msg: StampedWriterMessage) -> eyre::Result<()> {
         let StampedWriterMessage { recv_time, msg } = stamped_msg;
-        let write_start = Instant::now();
         let msg_type = match msg {
             WriterMessage::Pool { block, address, tokens, curve_lp_token, classifier_name } => {
                 self.insert_pool(block, address, &tokens, curve_lp_token, classifier_name)?;
