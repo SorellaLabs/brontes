@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use alloy_primitives::Address;
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{pair::Pair, FastHashMap, FastHashSet};
-use futures::task::waker;
 use itertools::Itertools;
 use malachite::{
     num::{
