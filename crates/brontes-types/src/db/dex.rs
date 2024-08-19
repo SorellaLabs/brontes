@@ -168,6 +168,9 @@ impl DexQuotes {
 
         debug!(target: "brontes::missing_pricing",?pair, at=?s_idx, "no price for pair");
 
+        let r = self.price_at_or_before(pair, s_idx);
+        debug!(target: "brontes::missing_pricing",?r, "see if price exists before");
+
         None
     }
 
