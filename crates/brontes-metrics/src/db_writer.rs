@@ -108,7 +108,7 @@ impl LibmdbxWriterMetrics {
         start_time: Instant,
         end_time: Option<Instant>,
     ) {
-        let final_time = end_time.unwrap_or_else(|| Instant::now());
+        let final_time = end_time.unwrap_or_else(Instant::now);
         let t_total = final_time - start_time;
         self.commit_latency
             .with_label_values(&[msg_type])
