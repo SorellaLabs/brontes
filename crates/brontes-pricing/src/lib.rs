@@ -56,7 +56,7 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, FastHashSet,
 };
-use futures::{stream::FuturesUnordered, Stream};
+use futures::Stream;
 pub use graphs::{
     AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,
     VerificationResults,
@@ -1314,6 +1314,14 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             return Poll::Ready(self.on_close())
                         }
                         break
+                    }
+                }
+            }
+            while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
+                match init {
+                    PendingHeavyCalcs::DefaultCreate(block, args) => {
+                        self.async_tasks_block = block + 1;
+                        self.finish_on_pool_updates(args);
                     }
                 }
             }
