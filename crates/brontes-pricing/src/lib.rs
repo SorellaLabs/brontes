@@ -1238,6 +1238,15 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
+            match init {
+                PendingHeavyCalcs::DefaultCreate(block, args) => {
+                    self.async_tasks_block = block + 1;
+                    self.finish_on_pool_updates(args);
+                }
+            }
+        }
+
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
