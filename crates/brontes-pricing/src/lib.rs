@@ -730,7 +730,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .print_rem(self.completed_block);
 
         self.async_tasks
-            .push(self.graph_manager.verify_subgraph(pairs, self.quote_asset));
+            .push_back(self.graph_manager.verify_subgraph(pairs, self.quote_asset));
         //
     }
 
