@@ -46,6 +46,7 @@ pathfinding = "4.8.1"
 rustc-hash = "1.1.0"
 indexmap = "2.2.2"
 
+parking_lot = { workspace = true }
 # misc
 phf.workspace = true
 strum = { workspace = true, features = ["derive"] }
@@ -54,9 +55,6 @@ alloy-primitives = { workspace = true, features = ["serde"] }
 alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-dyn-abi.workspace = true
-parking_lot = { workspace = true, default-features = false, features = [
-  "deadlock_detection",
-] }
 petgraph = "0.6.4"
 derive_more.workspace = true
 async-trait.workspace = true
@@ -93,7 +91,6 @@ rand = "0.8.5"
 eyre.workspace = true
 
 [features]
-default = ["deadlock_detection"]
 deadlock_detection = []
 sorella-server = ["local-reth", "local-clickhouse"]
 tests = ["criterion"]
