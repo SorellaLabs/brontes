@@ -69,7 +69,7 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tracing::{debug, debug_span, error, error_span, info, Instrument};
+use tracing::{debug, debug_span, error,  info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 use crate::types::PoolState;
@@ -209,7 +209,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             }
         }
 
-        tracing::debug!("starting add new pools");
         // insert new pools accessed on this block.
         updates
             .iter()
@@ -221,9 +220,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.graph_manager
                     .add_pool(pair, pool_addr, protocol, block);
             });
-        tracing::debug!("added new pools");
 
-        tracing::debug!("starting updates");
         updates.iter().for_each(|msg| {
             let Some(pair) = msg.get_pair(self.quote_asset) else { return };
             let is_transfer = msg.is_transfer();
@@ -234,7 +231,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
             let gt = Some(pair).filter(|_| !is_transfer).unwrap_or_default();
 
-            tracing::debug!("future use");
             // mark that they will be used
             self.graph_manager.mark_future_use(pair0, gt, block);
             self.graph_manager.mark_future_use(pair1, gt.flip(), block);
@@ -242,7 +238,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let pair0 = PairWithFirstPoolHop::from_pair_gt(pair0, gt);
             let pair1 = PairWithFirstPoolHop::from_pair_gt(pair1, gt.flip());
 
-            tracing::debug!("prune low liq");
             // mark low liq ones for removal when this block is completed
             self.graph_manager
                 .prune_low_liq_subgraphs(pair0, self.quote_asset, block);
@@ -250,7 +245,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .prune_low_liq_subgraphs(pair1, self.quote_asset, block);
         });
 
-        tracing::debug!("search triggered by pool updates");
         let quote = self.quote_asset.clone();
         let graph_mg = self.graph_manager.clone();
         let cur_block = self.current_block;
@@ -265,7 +259,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
             .boxed(),
         );
-        tracing::debug!("search was stored as the task");
     }
 
     fn finish_on_pool_updates(&mut self, args: GraphSeachParRes) {
@@ -1245,16 +1238,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        tracing::debug!("starting repoll");
-        while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
-            match init {
-                PendingHeavyCalcs::DefaultCreate(block, args) => {
-                    self.async_tasks_block = block + 1;
-                    self.finish_on_pool_updates(args);
-                }
-            }
-        }
-
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
@@ -1267,7 +1250,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // small budget as pretty heavy loop
         let mut budget = 4;
         'outer: loop {
-            tracing::debug!("starting inner");
             self.process_future_blocks();
 
             let mut block_updates = Vec::new();
@@ -1296,7 +1278,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     })
                 }) {
                     Poll::Ready(Some(u)) => {
-                        tracing::debug!("got from chan");
                         if let PollResult::State(update) = u {
                             if let Some(overlap) = self.overlap_update.take() {
                                 block_updates.push(overlap);
@@ -1311,12 +1292,10 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         }
                     }
                     Poll::Ready(None) => {
-                        tracing::debug!("chan closed");
                         cx.waker().wake_by_ref();
                         break
                     }
                     Poll::Pending => {
-                        tracing::debug!("pending");
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
                             && self
@@ -1326,18 +1305,15 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             && self.async_tasks_block > self.completed_block
                             && self.finished.load(SeqCst)
                         {
-                            tracing::debug!("try close");
                             return Poll::Ready(self.on_close())
                         }
 
-                        tracing::debug!("pending break");
                         break
                     }
                 }
             }
 
             if block_updates.is_empty() {
-                tracing::debug!("no updates");
                 break 'outer
             }
 
@@ -1348,16 +1324,12 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 .map(|block_update_num| self.skip_pricing.contains(&block_update_num))
                 .unwrap_or(false)
             {
-                tracing::debug!("no prciing");
                 self.on_pool_update_no_pricing(block_updates);
             } else {
-                tracing::debug!("pool updates");
                 self.on_pool_updates(block_updates);
             }
 
-            tracing::debug!("gonna poll async tasks {}", self.async_tasks.len());
             while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
-                tracing::debug!("resovled async task");
                 match init {
                     PendingHeavyCalcs::DefaultCreate(block, args) => {
                         self.async_tasks_block = block + 1;
@@ -1365,16 +1337,13 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     }
                 }
             }
-            tracing::debug!("polled async task");
 
             budget -= 1;
             if budget == 0 {
                 break 'outer
             }
         }
-        tracing::debug!("requery");
 
-        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }

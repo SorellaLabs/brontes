@@ -107,14 +107,12 @@ impl GraphManager {
         self.graph_state = Arc::new(RwLock::new(state));
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn add_pool(&self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {
         self.all_pair_graph
             .write()
             .add_node(pair, pool_addr, dex, block);
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn pool_dep_failure(
         &self,
         pair: &PairWithFirstPoolHop,
@@ -126,12 +124,10 @@ impl GraphManager {
             .pool_dep_failure(pair, pool_addr, pool_pair)
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn has_extension(&self, pair: &Pair, quote: Address) -> Option<Pair> {
         self.sub_graph_registry.read().has_extension(pair, quote)
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn mark_future_use(&self, pair: Pair, goes_through: Pair, block: u64) {
         self.sub_graph_registry
             .read()
@@ -140,7 +136,6 @@ impl GraphManager {
 
     /// creates a subgraph returning the edges and the state to load.
     /// this is done so that this isn't mut and be ran in parallel
-    #[instrument(skip_all, level = "debug")]
     pub fn create_subgraph(
         &self,
         block: u64,
@@ -172,7 +167,6 @@ impl GraphManager {
         (path.into_iter().flatten().flatten().collect_vec(), extends)
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn add_subgraph_for_verification(
         &self,
         pair: PairWithFirstPoolHop,
@@ -189,7 +183,6 @@ impl GraphManager {
         )
     }
 
-    #[instrument(skip_all, level = "debug")]
     /// prunes dead sup_graphs and empty state.
     pub fn prune_dead_subgraphs(&self, block: u64) {
         self.sub_graph_registry
@@ -203,7 +196,6 @@ impl GraphManager {
             })
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn add_verified_subgraph(&self, subgraph: PairSubGraph, block: u64) {
         self.sub_graph_registry.write().add_verified_subgraph(
             subgraph,
@@ -212,7 +204,6 @@ impl GraphManager {
         )
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn remove_pair_graph_address(
         &self,
         pool_pair: Pair,
@@ -223,7 +214,6 @@ impl GraphManager {
             .remove_empty_address(pool_pair, pool_address)
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn mark_subgraph_for_removal(&self, pair: PairWithFirstPoolHop, block: u64) {
         self.sub_graph_registry
             .write()
@@ -232,7 +222,6 @@ impl GraphManager {
 
     /// Returns all pairs that have been ignored from lowest to highest
     /// liquidity
-    #[instrument(skip_all, level = "debug")]
     pub fn verify_subgraph_on_new_path_failure(
         &self,
         pair: PairWithFirstPoolHop,
@@ -242,12 +231,10 @@ impl GraphManager {
             .verify_subgraph_on_new_path_failure(pair)
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn subgraph_extends(&self, pair: PairWithFirstPoolHop) -> Option<Pair> {
         self.subgraph_verifier.read().get_subgraph_extends(pair)
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn get_price(&self, pair: Pair, goes_through: Pair) -> Option<Rational> {
         let span = error_span!("price generation for block");
         span.in_scope(|| {
@@ -259,19 +246,16 @@ impl GraphManager {
         })
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn new_state(&self, address: Address, state: StateWithDependencies) {
         self.graph_state
             .write()
             .new_state_for_verification(address, state);
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn update_state(&self, address: Address, update: PoolUpdate) {
         self.graph_state.write().update_pool_state(address, update);
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn has_subgraph_goes_through(&self, pair: PairWithFirstPoolHop) -> bool {
         self.sub_graph_registry.read().has_go_through(pair)
             || self.subgraph_verifier.read().has_go_through(pair)
@@ -279,7 +263,6 @@ impl GraphManager {
 
     // returns true if the subgraph should be requeried. will mark it for removal
     // at the current block and it won't be used in pricing in the future
-    #[instrument(skip_all, level = "debug")]
     pub fn prune_low_liq_subgraphs(
         &self,
         pair: PairWithFirstPoolHop,
@@ -314,6 +297,7 @@ impl GraphManager {
                     (epair, start_addr, start_price, current_block)
                 })
                 .collect::<Vec<_>>();
+
             for (epair, start_addr, start_price, current_block) in verifications {
                 tracing::debug!("write");
                 self.sub_graph_registry.write().verify_current_subgraphs(
@@ -327,7 +311,6 @@ impl GraphManager {
         });
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn add_frayed_end_extension(
         &self,
         pair: PairWithFirstPoolHop,
@@ -342,7 +325,6 @@ impl GraphManager {
         )
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn verify_subgraph(
         &self,
         pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
@@ -383,7 +365,6 @@ impl GraphManager {
         })
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn finalize_block(&self, block: u64) {
         self.graph_state.write().finalize_block(block);
         let rem = self.sub_graph_registry.write().finalize_block(block);
@@ -394,7 +375,6 @@ impl GraphManager {
         }
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn verification_done_for_block(&self, block: u64) -> bool {
         self.subgraph_verifier.read().is_done_block(block)
     }
