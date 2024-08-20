@@ -238,6 +238,7 @@ impl SubGraphRegistry {
                     if graph.extends_to().is_some() {
                         return
                     }
+
                     let possible_bad_extends_to = graph.pair;
                     let valid_count = range
                         .iter()
@@ -294,7 +295,7 @@ impl SubGraphRegistry {
 
         if let Some(next) = next {
             let Some(next_price) = self.get_price_all(next, edge_state) else {
-                tracing::info!(target:"brontes::missing_pricing", "subgraph that extends other points to nil");
+                tracing::info!(target:"brontes::missing_pricing",pair=?next, "subgraph that extends other points to nil");
                 return None
             };
 

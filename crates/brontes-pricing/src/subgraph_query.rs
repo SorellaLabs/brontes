@@ -11,7 +11,7 @@ use crate::{
     GraphManager, Pair,
 };
 
-type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
+pub type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
 
 pub fn graph_search_par(
     graph: &GraphManager,
