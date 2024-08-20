@@ -30,7 +30,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use crate::graphs::StateWithDependencies;
 pub mod function_call_bench;
 mod graphs;
-pub mod pending_tasks;
+// pub mod pending_tasks;
 pub mod protocols;
 mod subgraph_query;
 pub mod types;
