@@ -69,7 +69,7 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tracing::{debug, debug_span, error,  info};
+use tracing::{debug, debug_span, error, info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 use crate::types::PoolState;
