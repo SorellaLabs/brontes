@@ -429,12 +429,12 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
         .get_or_init(|| async {
             let _ = dotenv::dotenv();
             init_tracing();
-            let brontes_db_endpoint =
+            let brontes_db_path =
                 env::var("BRONTES_TEST_DB_PATH").expect("No BRONTES_TEST_DB_PATH in .env");
 
             let this = &*Box::leak(Box::new(
-                LibmdbxReadWriter::init_db_tests(&brontes_db_endpoint).unwrap_or_else(|e| {
-                    panic!("failed to open db path {}, err={}", brontes_db_endpoint, e)
+                LibmdbxReadWriter::init_db_tests(&brontes_db_path).unwrap_or_else(|e| {
+                    panic!("failed to open db path {}, err={}", brontes_db_path, e)
                 }),
             ));
 

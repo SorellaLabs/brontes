@@ -83,28 +83,26 @@ pub enum DatabaseCommands {
 }
 
 impl Database {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         match self.command {
-            DatabaseCommands::DbInserts(cmd) => cmd.execute(brontes_db_endpoint).await,
-            DatabaseCommands::DbQuery(cmd) => cmd.execute(brontes_db_endpoint).await,
-            DatabaseCommands::TraceRange(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            DatabaseCommands::Init(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_endpoint).await,
-            DatabaseCommands::UploadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            DatabaseCommands::TableStats(cmd) => cmd.execute(brontes_db_endpoint),
-            DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            DatabaseCommands::CexData(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::DbInserts(cmd) => cmd.execute(brontes_db_path).await,
+            DatabaseCommands::DbQuery(cmd) => cmd.execute(brontes_db_path).await,
+            DatabaseCommands::TraceRange(cmd) => cmd.execute(brontes_db_path, ctx).await,
+            DatabaseCommands::Init(cmd) => cmd.execute(brontes_db_path, ctx).await,
+            DatabaseCommands::DbClear(cmd) => cmd.execute(brontes_db_path).await,
+            DatabaseCommands::UploadSnapshot(cmd) => cmd.execute(brontes_db_path, ctx).await,
+            DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_path, ctx).await,
+            DatabaseCommands::TableStats(cmd) => cmd.execute(brontes_db_path),
+            DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_path, ctx).await,
+            DatabaseCommands::CexData(cmd) => cmd.execute(brontes_db_path, ctx).await,
             #[cfg(feature = "local-clickhouse")]
-            DatabaseCommands::DownloadClickhouse(cmd) => {
-                cmd.execute(brontes_db_endpoint, ctx).await
-            }
+            DatabaseCommands::DownloadClickhouse(cmd) => cmd.execute(brontes_db_path, ctx).await,
             #[cfg(feature = "local-clickhouse")]
-            DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::Discovery(cmd) => cmd.execute(brontes_db_path, ctx).await,
             #[cfg(feature = "local-clickhouse")]
-            DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_path, ctx).await,
             #[cfg(feature = "local-clickhouse")]
-            DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
+            DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_path, ctx).await,
         }
     }
 }

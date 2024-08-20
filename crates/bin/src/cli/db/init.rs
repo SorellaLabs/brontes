@@ -64,14 +64,14 @@ pub struct Init {
 }
 
 impl Init {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
         init_thread_pools(10);
         let task_executor = ctx.task_executor;
 
         let libmdbx =
-            static_object(load_database(&task_executor, brontes_db_endpoint, None, None).await?);
+            static_object(load_database(&task_executor, brontes_db_path, None, None).await?);
         let clickhouse = static_object(load_clickhouse(Default::default(), None).await?);
 
         let tracer = Arc::new(get_tracing_provider(Path::new(&db_path), 10, task_executor.clone()));

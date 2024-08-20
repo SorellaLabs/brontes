@@ -46,14 +46,14 @@ pub struct CexDB {
 }
 
 impl CexDB {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         init_thread_pools(10);
 
         let task_executor = ctx.task_executor;
 
         let cex_config = CexDownloadConfig::default();
 
-        let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_endpoint)?);
+        let libmdbx = static_object(load_libmdbx(&task_executor, brontes_db_path)?);
 
         let metadata = libmdbx.get_metadata(self.block_number, USDT_ADDRESS)?;
 

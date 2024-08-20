@@ -45,5 +45,4 @@
       - [`brontes db test-traces-init`](./cli/brontes/db/test-traces-init.md)
       - [`brontes db trace-at-tip`](./cli/brontes/db/trace-at-tip.md)
       - [`brontes db run-discovery`](./cli/brontes/db/run-discovery.md)
-      - [`brontes db backfill`](./cli/brontes/db/backfill.md)
       - [`brontes db run-discovery`](./cli/brontes/db/run-discovery.md)<!-- CLI_REFERENCE END -->

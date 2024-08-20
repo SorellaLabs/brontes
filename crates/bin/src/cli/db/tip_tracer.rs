@@ -22,7 +22,7 @@ pub struct TipTraceArgs {
 }
 
 impl TipTraceArgs {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         let db_path = get_env_vars()?;
 
         let max_tasks = (num_cpus::get_physical() as f64 * 0.7) as u64 + 1;
@@ -39,7 +39,7 @@ impl TipTraceArgs {
             .spawn_critical("metrics", metrics_listener);
 
         let libmdbx =
-            static_object(load_read_only_database(&ctx.task_executor, brontes_db_endpoint).await?);
+            static_object(load_read_only_database(&ctx.task_executor, brontes_db_path).await?);
 
         let tracer =
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());

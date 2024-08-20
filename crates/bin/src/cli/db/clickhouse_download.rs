@@ -30,10 +30,10 @@ pub struct ClickhouseDownload {
 }
 
 impl ClickhouseDownload {
-    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
         let table = self.table;
         info!(target: "brontes::db::clickhouse-download", "starting download for table: {:?}", table);
-        let task = self.run(brontes_db_endpoint, ctx).await;
+        let task = self.run(brontes_db_path, ctx).await;
 
         if let Err(e) = task.as_ref() {
             error!(target: "brontes::db::clickhouse-download", "Error downloading data -- {:?}", e);
@@ -46,8 +46,8 @@ impl ClickhouseDownload {
         Ok(())
     }
 
-    async fn run(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
-        let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_endpoint.clone())?);
+    async fn run(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
+        let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_path.clone())?);
         debug!(target: "brontes::db::clickhouse-download", "made libmdbx");
         let cex_config = CexDownloadConfig::default();
         let clickhouse = static_object(load_clickhouse(cex_config, None).await?);

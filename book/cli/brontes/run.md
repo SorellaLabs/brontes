@@ -159,6 +159,9 @@ Options:
           
           If omitted, the ID will be automatically incremented from the last run stored in the Clickhouse database.
 
+  -w, --waterfall
+          shows a cool display at startup
+
   -h, --help
           Print help (see a summary with '-h')
 

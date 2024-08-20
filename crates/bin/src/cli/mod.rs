@@ -20,11 +20,13 @@ pub struct Args {
     /// path to the brontes libmdbx db
     #[arg(long = "brontes-db-path", global = true)]
     pub brontes_db_path: Option<String>,
-    /// verbosity fo the logs
+    /// The verbosity level of the logs
     #[clap(flatten)]
     pub verbosity:       Verbosity,
-    #[clap(long, default_value = "6923")]
+    #[clap(long, default_value = "6923", global = true)]
     pub metrics_port:    u16,
+    #[clap(long, default_value = "false", global = true)]
+    pub skip_prometheus: bool,
 }
 
 #[allow(clippy::large_enum_variant)]

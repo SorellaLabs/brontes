@@ -36,4 +36,6 @@ Display:
 
       --metrics-port <METRICS_PORT>
           [default: 6923]
+
+      --skip-prometheus
 ```
