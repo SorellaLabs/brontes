@@ -1344,6 +1344,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 self.on_pool_updates(block_updates);
             }
 
+            tracing::debug!("gonna poll async tasks");
             while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
                 match init {
                     PendingHeavyCalcs::DefaultCreate(block, args) => {
