@@ -182,7 +182,6 @@ fn queue_loading_returns(
             (pair, None)
         } else {
             graph
-                .read()
                 .has_extension(&must_include, pair.1)
                 .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
                 .unwrap_or((pair, None))
@@ -190,7 +189,7 @@ fn queue_loading_returns(
     };
 
     Some({
-        let (subgraph, actual_extends) = graph.read().create_subgraph(
+        let (subgraph, actual_extends) = graph.create_subgraph(
             block,
             Some(must_include).filter(|m| !m.is_zero()),
             n_pair,
