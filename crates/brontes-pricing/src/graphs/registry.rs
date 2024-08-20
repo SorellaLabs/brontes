@@ -241,17 +241,20 @@ impl SubGraphRegistry {
                     let possible_bad_extends_to = graph.pair;
                     let valid_count = range
                         .iter()
+                        // keep if can be base and isn't being removed
                         .filter(|(_, g)| g.extends_to().is_none() && g.remove_at.is_none())
                         .count();
 
                     if valid_count == 0 {
-                        invalid_extends.insert(possible_bad_extends_to);
+                        invalid_extends.insert(possible_bad_extends_to.ordered());
                     }
                 }
             }
         }
 
         if !invalid_extends.is_empty() {
+            tracing::info!(target: "brontes::missing_pricing", "we have invalid extends");
+            // active
             self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
                 graphs.iter_mut().for_each(|(_, graph)| {
                     if let Some(extends) = graph.extends_to() {
@@ -263,6 +266,7 @@ impl SubGraphRegistry {
                 })
             });
 
+            // inactive
             self.pending_finalized_graphs.values_mut().for_each(|sub| {
                 sub.sub_graphs.iter_mut().for_each(|(_, graphs)| {
                 graphs.iter_mut().for_each(|(_, graph)| {
