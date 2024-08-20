@@ -146,7 +146,7 @@ impl TraceLoader {
         let tables = Arc::new(vec![
             (Tables::BlockInfo, Tables::BlockInfo.build_init_state_progress_bar(&multi, 4)),
             (Tables::CexPrice, Tables::CexPrice.build_init_state_progress_bar(&multi, 50)),
-            (Tables::CexTrades, Tables::CexTrades.build_init_state_progress_bar(&multi, 6)),
+            //(Tables::CexTrades, Tables::CexTrades.build_init_state_progress_bar(&multi, 6)),
         ]);
 
         futures::try_join!(
@@ -168,15 +168,15 @@ impl TraceLoader {
                 tables.clone(),
                 false,
             ),
-            self.libmdbx.initialize_table(
-                clickhouse,
-                self.tracing_provider.get_tracer(),
-                Tables::CexTrades,
-                false,
-                Some((block - 2, block + 4)),
-                tables,
-                false
-            ),
+            // self.libmdbx.initialize_table(
+            //     clickhouse,
+            //     self.tracing_provider.get_tracer(),
+            //     Tables::CexTrades,
+            //     false,
+            //     Some((block - 2, block + 4)),
+            //     tables,
+            //     false
+            // ),
         )?;
 
         multi.clear().unwrap();
@@ -194,17 +194,17 @@ impl TraceLoader {
             Tables::CexPrice.build_init_state_progress_bar(&multi, 50),
         )]);
 
-        self.libmdbx
-            .initialize_table(
-                clickhouse,
-                self.tracing_provider.get_tracer(),
-                Tables::CexTrades,
-                false,
-                Some((block - 2, block + 4)),
-                tables,
-                false,
-            )
-            .await?;
+        // self.libmdbx
+        //     .initialize_table(
+        //         clickhouse,
+        //         self.tracing_provider.get_tracer(),
+        //         Tables::CexTrades,
+        //         false,
+        //         Some((block - 2, block + 4)),
+        //         tables,
+        //         false,
+        //     )
+        //     .await?;
 
         multi.clear().unwrap();
         Ok(())

@@ -266,16 +266,18 @@ impl Tables {
             }
 
             Tables::CexTrades => {
-                initializer
-                    .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
-                        block_range,
-                        clear_table,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_range_trades,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
-                    )
-                    .await
+                // initializer
+                //     .initialize_table_from_clickhouse::<CexTrades, CexTradesData>(
+                //         block_range,
+                //         clear_table,
+                //         self.fetch_progress_bar(progress_bar),
+                //         Self::fetch_download_fn_range_trades,
+                //         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                //     )
+                //     .await
+                unimplemented!("'initialize_table' not implemented for {:?}", self)
             }
+
             Tables::SearcherEOAs | Tables::SearcherContracts | Tables::InitializedState => Ok(()),
             _ => unimplemented!("'initialize_table' not implemented for {:?}", self),
         }
@@ -334,14 +336,15 @@ impl Tables {
             }
 
             Tables::CexTrades => {
-                initializer
-                    .initialize_table_from_clickhouse_arbitrary_state::<CexTrades, CexTradesData>(
-                        block_range,
-                        self.fetch_progress_bar(progress_bar),
-                        Self::fetch_download_fn_arbitrary_trades,
-                        |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
-                    )
-                    .await
+                // initializer
+                //     .initialize_table_from_clickhouse_arbitrary_state::<CexTrades,
+                // CexTradesData>(         block_range,
+                //         self.fetch_progress_bar(progress_bar),
+                //         Self::fetch_download_fn_arbitrary_trades,
+                //         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
+                //     )
+                //     .await
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for {}", table);
             }
             table @ (Tables::TokenDecimals
             | Tables::AddressToProtocolInfo
