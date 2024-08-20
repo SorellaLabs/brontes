@@ -2,7 +2,6 @@ use clap::{Parser, Subcommand};
 mod r2_uploader;
 mod snapshot;
 use crate::runner::CliContext;
-#[cfg(feature = "tests")]
 mod cex_data;
 #[cfg(feature = "local-clickhouse")]
 mod clickhouse_download;
@@ -44,7 +43,6 @@ pub enum DatabaseCommands {
     TraceRange(trace_range::TraceArgs),
     /// Fetches Cex data from the Sorella DB
     #[command(name = "cex-data")]
-    #[cfg(feature = "tests")]
     CexData(cex_data::CexQuery),
     /// Fetch data from the api and insert it into
     /// libmdbx.
@@ -96,7 +94,6 @@ impl Database {
             DatabaseCommands::Export(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             DatabaseCommands::TableStats(cmd) => cmd.execute(brontes_db_endpoint),
             DatabaseCommands::DownloadSnapshot(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
-            #[cfg(feature = "tests")]
             DatabaseCommands::CexData(cmd) => cmd.execute(brontes_db_endpoint, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::DownloadClickhouse(cmd) => {

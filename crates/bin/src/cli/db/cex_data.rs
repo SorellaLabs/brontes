@@ -1,26 +1,27 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
-use brontes_core::LibmdbxReader;
+use brontes_classifier::Classifier;
+use brontes_core::{decoding::Parser as DParser, LibmdbxReader};
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxReadWriter};
-use brontes_inspect::{
-    cex_dex::quotes::CexDexQuotesInspector, shared_utils::SharedInspectorUtils,
-    test_utils::InspectorTestUtils,
-};
+use brontes_inspect::{cex_dex::quotes::CexDexQuotesInspector, shared_utils::SharedInspectorUtils};
 use brontes_types::{
     constants::USDT_ADDRESS,
-    db::{cex::quotes::FeeAdjustedQuote, dex::DexQuotes},
+    db::cex::quotes::FeeAdjustedQuote,
     init_thread_pools,
     mev::MevType,
     normalized_actions::{Action, NormalizedSwap},
+    traits::TracingProvider,
     BlockTree, ToFloatNearest, TreeCollector, TreeSearchBuilder,
 };
 use clap::{Parser, Subcommand};
 use colored::*;
 use malachite::Rational;
 use prettytable::{Cell, Row, Table};
+use reth_tracing_ext::TracingClient;
+use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
-    cli::{load_libmdbx, static_object},
+    cli::{get_env_vars, get_tracing_provider, load_libmdbx, static_object},
     runner::CliContext,
 };
 
@@ -63,21 +64,23 @@ impl CexQuotesDebug {
         println!("Executing Quotes command");
 
         let task_executor = ctx.task_executor;
-        //let reth_db_path = get_env_vars()?;
+        let reth_db_path = get_env_vars().expect("Failed to get reth db path");
 
-        let (tx_tree, _dex_quotes) = self
-            .get_block_tree()
-            .await
-            .expect("Failed to get block tree");
+        let libmdbx = static_object(
+            load_libmdbx(&task_executor, brontes_db_endpoint).expect("Failed to load libmdbx"),
+        );
+
+        let (metrics_tx, _metrics_rx) = unbounded_channel();
+
+        let tracer = get_tracing_provider(Path::new(&reth_db_path), 10, task_executor.clone());
+        let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
+
+        let tx_tree = self.get_block_tree(libmdbx, parser).await;
 
         println!("Got block tree");
         let tx_tree = Arc::new(tx_tree);
 
         let cex_config = CexDownloadConfig::default();
-
-        let libmdbx = static_object(
-            load_libmdbx(&task_executor, brontes_db_endpoint).expect("Failed to load libmdbx"),
-        );
 
         print!("Getting metadata...");
         let metadata = libmdbx
@@ -140,24 +143,33 @@ impl CexQuotesDebug {
         Ok(())
     }
 
-    async fn get_block_tree(&self) -> Option<(BlockTree<Action>, DexQuotes)> {
+    async fn get_block_tree(
+        &self,
+        libmdbx: &LibmdbxReadWriter,
+        parser: &DParser<TracingClient, LibmdbxReadWriter>,
+    ) -> BlockTree<Action> {
         println!("Creating inspector utils");
-        let inspector_utils: InspectorTestUtils =
-            InspectorTestUtils::new(USDT_ADDRESS, 1000.9).await;
-        println!("Getting block tree");
 
-        Some(
-            inspector_utils
-                .classifier_inspector
-                .build_tree_txes_with_pricing(
-                    vec![self.tx_hash.parse().expect("Invalid Tx hash")],
-                    USDT_ADDRESS,
-                    vec![],
-                )
-                .await
-                .expect("Failed to build tree")
-                .remove(0),
-        )
+        let (unbounded_tx, _unbounded_rx) = unbounded_channel();
+
+        let (block, tx_idx) = parser
+            .get_tracer()
+            .block_and_tx_index(self.tx_hash.parse().expect("Invalid Tx hash"))
+            .await
+            .expect("Failed to get block and tx index");
+
+        let (traces, header) = parser
+            .execute(block, tx_idx, None)
+            .await
+            .expect("Failed to execute block");
+
+        let classifier = Classifier::new(libmdbx, unbounded_tx, parser.get_tracer());
+
+        let trace = traces.first().expect("No traces found");
+
+        classifier
+            .build_block_tree(vec![trace.clone()], header, false)
+            .await
     }
 }
 
