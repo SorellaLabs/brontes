@@ -123,7 +123,7 @@ impl RunArgs {
         let task_executor = ctx.task_executor;
 
         let max_tasks = determine_max_tasks(self.max_tasks);
-        init_thread_pools(max_tasks as usize);
+        init_thread_pools(125);
 
         let (metrics_tx, metrics_rx) = unbounded_channel();
         let metrics_listener = ParserMetricsListener::new(UnboundedYapperReceiver::new(
