@@ -1216,12 +1216,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             execute_on!(pricing, { self.try_verify_subgraph(pairs) });
         }
 
-        while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
-            match init {
-                PendingHeavyCalcs::DefaultCreate(args) => self.finish_on_pool_updates(args),
-            }
-        }
-
         self.try_flush_out_pending_verification();
 
         // // check if we can progress to the next block.
@@ -1325,6 +1319,12 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 self.on_pool_update_no_pricing(block_updates);
             } else {
                 self.on_pool_updates(block_updates);
+            }
+
+            while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
+                match init {
+                    PendingHeavyCalcs::DefaultCreate(args) => self.finish_on_pool_updates(args),
+                }
             }
 
             budget -= 1;
