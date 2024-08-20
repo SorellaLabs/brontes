@@ -615,8 +615,10 @@ fn calculate_buffer_size(state_to_init: &StateToInitialize, max_tasks: usize) ->
         return (max_tasks / 4).clamp(4, 30);
     }
 
-    let initializing_cex = state_to_init.ranges_to_init.contains_key(&Tables::CexPrice)
-        || state_to_init.ranges_to_init; //.contains_key(&Tables::CexTrades);
+    let initializing_cex = state_to_init.ranges_to_init.contains_key(&Tables::CexPrice);
+    // || state_to_init
+    //     .ranges_to_init
+    //     .contains_key(&Tables::CexTrades);
 
     if initializing_cex {
         4
