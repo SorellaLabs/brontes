@@ -1321,8 +1321,11 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             && self.async_tasks_block > self.completed_block
                             && self.finished.load(SeqCst)
                         {
+                        tracing::debug!("try close");
                             return Poll::Ready(self.on_close())
                         }
+
+                        tracing::debug!("pending break");
                         break
                     }
                 }
@@ -1343,6 +1346,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 tracing::debug!("no prciing");
                 self.on_pool_update_no_pricing(block_updates);
             } else {
+                tracing::debug!("pool updates");
                 self.on_pool_updates(block_updates);
             }
 
