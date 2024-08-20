@@ -234,6 +234,7 @@ impl SubGraphRegistry {
         if let Some(range) = self.sub_graphs.get_mut(&pair.ordered()) {
             if let Some(graph) = range.get_mut(&gt.ordered()) {
                 if !graph.has_valid_liquidity(start, start_price.clone(), state, block) {
+                    // if we extend to another subgraph, then we dont gotta check.
                     if graph.extends_to().is_some() {
                         return
                     }
@@ -254,18 +255,19 @@ impl SubGraphRegistry {
             self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
                 graphs.iter_mut().for_each(|(_, graph)| {
                     if let Some(extends) = graph.extends_to() {
-                        if invalid_extends.contains(&extends) {
+                        if invalid_extends.contains(&extends.ordered()) {
                             tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
                             graph.remove_at = Some(block);
                         }
                     }
                 })
             });
+
             self.pending_finalized_graphs.values_mut().for_each(|sub| {
                 sub.sub_graphs.iter_mut().for_each(|(_, graphs)| {
                 graphs.iter_mut().for_each(|(_, graph)| {
                     if let Some(extends) = graph.extends_to() {
-                        if invalid_extends.contains(&extends) {
+                        if invalid_extends.contains(&extends.ordered()) {
                             tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
                             graph.remove_at = Some(block);
                         }
