@@ -1232,7 +1232,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        tracing::info!("sir");
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
@@ -1319,7 +1318,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             {
                 self.on_pool_update_no_pricing(block_updates);
             } else {
-                tracing::info!("sir");
                 self.on_pool_updates(block_updates);
             }
 
