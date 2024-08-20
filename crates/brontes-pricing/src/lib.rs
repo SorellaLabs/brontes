@@ -257,7 +257,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
     fn finish_on_pool_updates(&mut self, args: GraphSeachParRes) {
         let (state, pools) = args;
-        tracing::debug!("search triggered by on pool updates completed");
+        tracing::debug!(target: "brontes::missing_pricing", "search triggered by on pool updates completed");
 
         state.into_iter().flatten().for_each(|(addr, update)| {
             let block = update.block;
@@ -1234,6 +1234,11 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
+        }
+        while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
+            match init {
+                PendingHeavyCalcs::DefaultCreate(args) => self.finish_on_pool_updates(args),
+            }
         }
 
         // ensure clearing when finished
