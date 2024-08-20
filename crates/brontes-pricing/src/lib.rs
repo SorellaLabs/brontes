@@ -234,6 +234,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
             let gt = Some(pair).filter(|_| !is_transfer).unwrap_or_default();
 
+            tracing::debug!("future use");
             // mark that they will be used
             self.graph_manager.mark_future_use(pair0, gt, block);
             self.graph_manager.mark_future_use(pair1, gt.flip(), block);
@@ -241,6 +242,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let pair0 = PairWithFirstPoolHop::from_pair_gt(pair0, gt);
             let pair1 = PairWithFirstPoolHop::from_pair_gt(pair1, gt.flip());
 
+            tracing::debug!("prune low liq");
             // mark low liq ones for removal when this block is completed
             self.graph_manager
                 .prune_low_liq_subgraphs(pair0, self.quote_asset, block);
