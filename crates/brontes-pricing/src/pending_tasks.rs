@@ -1,5 +1,5 @@
 use crate::GraphSeachParRes;
 
 pub enum PendingHeavyCalcs {
-    DefaultCreate(GraphSeachParRes),
+    DefaultCreate(u64, GraphSeachParRes),
 }

@@ -27,7 +27,7 @@ use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
     BrontesTaskExecutor, UnboundedYapperReceiver,
 };
-use futures::{Future, FutureExt, StreamExt};
+use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::{graphs::StateWithDependencies, pending_tasks::PendingHeavyCalcs};
@@ -87,35 +87,37 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx:       UnboundedYapperReceiver<DexPriceMsg>,
+    update_rx:         UnboundedYapperReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
-    buffer:          StateBuffer,
+    buffer:            StateBuffer,
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
+    new_graph_pairs:   FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager:   Arc<GraphManager>,
+    graph_manager:     Arc<GraphManager>,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader:     LazyExchangeLoader<T>,
-    dex_quotes:      FastHashMap<u64, DexQuotes>,
+    lazy_loader:       LazyExchangeLoader<T>,
+    dex_quotes:        FastHashMap<u64, DexQuotes>,
     /// pairs that failed to be verified. we use this to avoid the fallback for
     /// transfers
-    failed_pairs:    FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
+    failed_pairs:      FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
-    overlap_update:  Option<PoolUpdate>,
+    overlap_update:    Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
-    skip_pricing:    VecDeque<u64>,
+    skip_pricing:      VecDeque<u64>,
     /// metrics
-    metrics:         Option<DexPricingMetrics>,
+    metrics:           Option<DexPricingMetrics>,
     /// async_tasks
-    async_tasks:     FuturesUnordered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
+    async_tasks:       FuturesOrdered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
+    /// async task block
+    async_tasks_block: u64,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
@@ -149,7 +151,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             skip_pricing: VecDeque::new(),
             needs_more_data,
             metrics,
-            async_tasks: FuturesUnordered::default(),
+            async_tasks: FuturesOrdered::default(),
+            async_tasks_block: current_block,
         }
     }
 
@@ -245,11 +248,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         tracing::debug!("search triggered by pool updates");
         let quote = self.quote_asset.clone();
         let graph_mg = self.graph_manager.clone();
+        let cur_block = self.current_block;
 
-        self.async_tasks.push(
+        self.async_tasks.push_back(
             execute_on!(async_pricing, {
                 let res = graph_search_par(graph_mg, quote, updates);
-                PendingHeavyCalcs::DefaultCreate(res)
+                PendingHeavyCalcs::DefaultCreate(cur_block, res)
             })
             .boxed(),
         );
@@ -989,7 +993,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .graph_manager
                 .verification_done_for_block(self.completed_block)
             && self.completed_block < self.current_block
-            && self.async_tasks.is_empty()
+            && self.async_tasks_block > self.completed_block
     }
 
     /// lets the state loader know if  it should be pre processing more blocks.
@@ -1328,7 +1332,10 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 
             while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
                 match init {
-                    PendingHeavyCalcs::DefaultCreate(args) => self.finish_on_pool_updates(args),
+                    PendingHeavyCalcs::DefaultCreate(block, args) => {
+                        self.async_tasks_block = block + 1;
+                        self.finish_on_pool_updates(args);
+                    }
                 }
             }
 
