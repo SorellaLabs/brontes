@@ -304,7 +304,11 @@ impl Clickhouse {
                 }
                 DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(BadResponse(
                     s,
-                ))) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") => true,
+                ))) if s.to_string().contains("MEMORY_LIMIT_EXCEEDED")
+                    || s.to_string().contains("All connection tries failed") =>
+                {
+                    true
+                }
                 _ => false,
             })
             .notify(|err, dur| {
