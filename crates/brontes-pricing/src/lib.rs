@@ -1262,6 +1262,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         // small budget as pretty heavy loop
         let mut budget = 4;
         'outer: loop {
+            tracing::debug!("starting inner");
             self.process_future_blocks();
 
             let mut block_updates = Vec::new();
@@ -1290,6 +1291,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     })
                 }) {
                     Poll::Ready(Some(u)) => {
+                        tracing::debug!("got from chan");
                         if let PollResult::State(update) = u {
                             if let Some(overlap) = self.overlap_update.take() {
                                 block_updates.push(overlap);
@@ -1304,10 +1306,12 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         }
                     }
                     Poll::Ready(None) => {
+                        tracing::debug!("chan closed");
                         cx.waker().wake_by_ref();
                         break
                     }
                     Poll::Pending => {
+                        tracing::debug!("pending");
                         if self.lazy_loader.is_empty()
                             && self.lazy_loader.can_progress(&self.completed_block)
                             && self
@@ -1325,6 +1329,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
 
             if block_updates.is_empty() {
+                tracing::debug!("no updates");
                 break 'outer
             }
 
@@ -1335,6 +1340,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 .map(|block_update_num| self.skip_pricing.contains(&block_update_num))
                 .unwrap_or(false)
             {
+                tracing::debug!("no prciing");
                 self.on_pool_update_no_pricing(block_updates);
             } else {
                 self.on_pool_updates(block_updates);
