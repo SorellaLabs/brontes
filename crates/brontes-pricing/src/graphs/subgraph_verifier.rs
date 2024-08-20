@@ -174,6 +174,7 @@ impl SubgraphVerifier {
         query_state
     }
 
+    #[instrument(skip_all, level = "debug")]
     #[instrument(skip(self), level = "trace")]
     pub fn verify_subgraph_on_new_path_failure(
         &mut self,
