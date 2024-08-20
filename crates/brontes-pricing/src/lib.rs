@@ -1357,6 +1357,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     }
                 }
             }
+            tracing::debug!("polled async task"));
 
             budget -= 1;
             if budget == 0 {
