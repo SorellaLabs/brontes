@@ -777,7 +777,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         if !recusing.is_empty() {
             tracing::debug!("requery bad state");
-            execute_on!(target = pricing, self.try_verify_subgraph(recusing));
+            self.try_verify_subgraph(recusing);
         }
 
         self.par_rundown(rundown);
@@ -1252,7 +1252,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let pairs = self.lazy_loader.pairs_to_verify();
         if !pairs.is_empty() {
-            execute_on!(pricing, { self.try_verify_subgraph(pairs) });
+            self.try_verify_subgraph(pairs);
         }
 
         self.try_flush_out_pending_verification();
