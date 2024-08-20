@@ -1310,6 +1310,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                                 .graph_manager
                                 .verification_done_for_block(self.completed_block)
                             && block_updates.is_empty()
+                            && self.async_tasks_block > self.completed_block
                             && self.finished.load(SeqCst)
                         {
                             return Poll::Ready(self.on_close())
