@@ -27,7 +27,10 @@ use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
     BrontesTaskExecutor, UnboundedYapperReceiver,
 };
-use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
+use futures::{
+    stream::{FuturesOrdered, FuturesUnordered},
+    Future, FutureExt, StreamExt,
+};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
@@ -118,7 +121,8 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// metrics
     metrics:           Option<DexPricingMetrics>,
     /// async_tasks
-    async_tasks:       FuturesOrdered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
+    init_tasks: FuturesOrdered<Pin<Box<dyn Future<Output = (u64, GraphSeachParRes)> + Send>>>,
+    general_tasks:     FuturesUnordered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
     /// async task block
     async_tasks_block: u64,
 }
@@ -154,7 +158,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             skip_pricing: VecDeque::new(),
             needs_more_data,
             metrics,
-            async_tasks: FuturesOrdered::default(),
+            init_tasks: FuturesOrdered::default(),
+            general_tasks: FuturesUnordered::default(),
             async_tasks_block: current_block,
         }
     }
@@ -252,12 +257,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let graph_mg = self.graph_manager.clone();
         let cur_block = self.current_block;
 
-        self.async_tasks.push_back(
+        self.init_tasks.push_back(
             execute_on!(async_pricing, {
                 let span = debug_span!("async task", block = cur_block);
                 span.in_scope(|| {
                     let res = graph_search_par(graph_mg, quote, updates);
-                    PendingHeavyCalcs::DefaultCreate(cur_block, res)
+                    (cur_block, res)
                 })
             })
             .boxed(),
@@ -729,32 +734,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .read()
             .print_rem(self.completed_block);
 
-        self.async_tasks
-            .push_back(self.graph_manager.verify_subgraph(pairs, self.quote_asset));
-        //
+        self.general_tasks
+            .push(self.graph_manager.verify_subgraph(pairs, self.quote_asset));
     }
 
-    /// Requeries the state of subgraphs for given pairs that encountered issues
-    /// during verification.
-    ///
-    /// # Behavior
-    /// This function is invoked when subgraph verification fails for certain
-    /// pairs. It reattempts to construct valid subgraphs by: 1. Requerying
-    /// the state for each pair and block number, considering any ignored pairs
-    /// during the graph construction. 2. Adding newly constructed subgraphs
-    /// if they are non-empty, or recursively removing problematic pairs and
-    /// requerying if necessary. 3. In cases where no valid paths are found
-    /// after requery, it escalates the verification by analyzing alternative
-    /// paths or pairs.
-    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "bad_state_requery")]
-    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>, frayed_ext: bool) {
-        if pairs.is_empty() {
-            return
-        }
-        tracing::debug!("requerying bad state");
-
-        let new_state = execute_on!(target = pricing, par_state_query(&self.graph_manager, pairs));
-
+    fn finish_requery_bad_state(&mut self, new_state: ParStateQueryRes, frayed_ext: bool) {
         if new_state.is_empty() {
             error!("requery bad state returned nothing");
         }
@@ -799,6 +783,34 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         self.par_rundown(rundown);
 
         tracing::debug!("finished requerying bad state");
+    }
+
+    /// Requeries the state of subgraphs for given pairs that encountered issues
+    /// during verification.
+    ///
+    /// # Behavior
+    /// This function is invoked when subgraph verification fails for certain
+    /// pairs. It reattempts to construct valid subgraphs by: 1. Requerying
+    /// the state for each pair and block number, considering any ignored pairs
+    /// during the graph construction. 2. Adding newly constructed subgraphs
+    /// if they are non-empty, or recursively removing problematic pairs and
+    /// requerying if necessary. 3. In cases where no valid paths are found
+    /// after requery, it escalates the verification by analyzing alternative
+    /// paths or pairs.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "bad_state_requery")]
+    fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>, frayed_ext: bool) {
+        if pairs.is_empty() {
+            return
+        }
+        tracing::debug!("requerying bad state");
+
+        let graph = self.graph_manager.clone();
+        self.general_tasks.push(
+            execute_on!(async_pricing, {
+                PendingHeavyCalcs::StateQuery(par_state_query(graph, pairs), frayed_ext)
+            })
+            .boxed(),
+        );
     }
 
     /// rundown occurs when we have hit a attempt limit for trying to find high
@@ -865,7 +877,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     let pair = shit.pair;
                     let block = shit.block;
                     let (edges, mut extend): (Vec<_>, Vec<_>) =
-                        par_state_query(&self.graph_manager, queries)
+                        par_state_query(self.graph_manager.clone(), queries)
                             .into_iter()
                             .map(|e| (e.edges, e.extends_pair))
                             .unzip();
@@ -1250,16 +1262,20 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
+        while let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
             match init {
-                PendingHeavyCalcs::DefaultCreate(block, args) => {
-                    self.async_tasks_block = block + 1;
-                    self.finish_on_pool_updates(args);
+                PendingHeavyCalcs::StateQuery(new_state, frayed_ext) => {
+                    self.finish_requery_bad_state(new_state, frayed_ext);
                 }
                 PendingHeavyCalcs::SubgraphVerification(args) => {
                     self.on_subgraph_verify_finish(args);
                 }
             }
+        }
+
+        while let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
+            self.async_tasks_block = block + 1;
+            self.finish_on_pool_updates(args);
         }
 
         if let Some(new_prices) = self.poll_state_processing(cx) {
@@ -1353,16 +1369,20 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 self.on_pool_updates(block_updates);
             }
 
-            while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
+            while let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
                 match init {
-                    PendingHeavyCalcs::DefaultCreate(block, args) => {
-                        self.async_tasks_block = block + 1;
-                        self.finish_on_pool_updates(args);
+                    PendingHeavyCalcs::StateQuery(new_state, frayed_ext) => {
+                        self.finish_requery_bad_state(new_state, frayed_ext);
                     }
                     PendingHeavyCalcs::SubgraphVerification(args) => {
                         self.on_subgraph_verify_finish(args);
                     }
                 }
+            }
+
+            while let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
+                self.async_tasks_block = block + 1;
+                self.finish_on_pool_updates(args);
             }
 
             budget -= 1;

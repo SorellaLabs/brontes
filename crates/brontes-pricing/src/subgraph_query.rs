@@ -45,7 +45,7 @@ pub fn graph_search_par(
     (state, pools)
 }
 
-type ParStateQueryRes = Vec<StateQueryRes>;
+pub type ParStateQueryRes = Vec<StateQueryRes>;
 
 pub struct RequeryPairs {
     pub pair:         PairWithFirstPoolHop,
@@ -70,7 +70,7 @@ pub struct StateQueryRes {
 }
 
 // already generated subgraph but need to fill in gaps
-pub fn par_state_query(graph: &GraphManager, pairs: Vec<RequeryPairs>) -> ParStateQueryRes {
+pub fn par_state_query(graph: Arc<GraphManager>, pairs: Vec<RequeryPairs>) -> ParStateQueryRes {
     pairs
         .into_par_iter()
         .map(|RequeryPairs { pair, block, ignore_state, frayed_ends, extends_pair }| {
