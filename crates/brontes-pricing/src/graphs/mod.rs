@@ -273,7 +273,6 @@ impl GraphManager {
         span.in_scope(|| {
             let state = self.graph_state.read();
             let state = state.finalized_state();
-            tracing::debug!("got state");
 
             // let (start_price, start_addr) = self
             let verifications = self
@@ -282,7 +281,6 @@ impl GraphManager {
                 .get_subgraph_extends_iter(pair)
                 .into_iter()
                 .map(|(epair, jump_pair)| {
-                    tracing::debug!("for each");
                     let (start_price, start_addr) = jump_pair
                         .map(|jump_pair| {
                             (
@@ -299,7 +297,6 @@ impl GraphManager {
                 .collect::<Vec<_>>();
 
             for (epair, start_addr, start_price, current_block) in verifications {
-                tracing::debug!("write");
                 self.sub_graph_registry.write().verify_current_subgraphs(
                     epair,
                     start_addr,
