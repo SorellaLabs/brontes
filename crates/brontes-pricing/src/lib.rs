@@ -257,6 +257,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
             .boxed(),
         );
+        tracing::debug!("search was stored as the task");
     }
 
     fn finish_on_pool_updates(&mut self, args: GraphSeachParRes) {
