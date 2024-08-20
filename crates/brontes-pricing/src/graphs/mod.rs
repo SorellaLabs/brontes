@@ -5,6 +5,7 @@ mod state_tracker;
 mod subgraph;
 mod yens;
 use std::{sync::Arc, time::Duration};
+use tracing::instrument;
 
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{FastHashMap, FastHashSet};
