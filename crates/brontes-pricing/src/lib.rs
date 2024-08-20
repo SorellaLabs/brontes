@@ -243,9 +243,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         });
 
         tracing::debug!("search triggered by pool updates");
-        // let (state, pools) =
         let quote = self.quote_asset.clone();
         let graph_mg = self.graph_manager.clone();
+
         self.async_tasks.push(
             execute_on!(async_pricing, {
                 let res = graph_search_par(graph_mg, quote, updates);
@@ -253,32 +253,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             })
             .boxed(),
         );
-
-
-        // state.into_iter().flatten().for_each(|(addr, update)| {
-        //     let block = update.block;
-        //     self.buffer
-        //         .updates
-        //         .entry(block)
-        //         .or_default()
-        //         .push_back((addr, update));
-        // });
-        //
-        // pools.into_iter().flatten().for_each(
-        //     |NewGraphDetails { pair, extends_pair, block, edges }| {
-        //         if edges.is_empty() {
-        //             tracing::debug!(?pair, ?extends_pair, "new pool has no
-        // graph edges");             return
-        //         }
-        //
-        //         if self.graph_manager.has_subgraph_goes_through(pair) {
-        //             tracing::debug!(?pair, ?extends_pair, "already have
-        // pairs");             return
-        //         }
-        //
-        //         self.add_subgraph(pair, extends_pair, block, edges, false);
-        //     },
-        // );
     }
 
     fn finish_on_pool_updates(&mut self, args: GraphSeachParRes) {
@@ -1015,6 +989,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .graph_manager
                 .verification_done_for_block(self.completed_block)
             && self.completed_block < self.current_block
+            && self.async_tasks.is_empty()
     }
 
     /// lets the state loader know if  it should be pre processing more blocks.
