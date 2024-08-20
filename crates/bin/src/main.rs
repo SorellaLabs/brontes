@@ -50,12 +50,14 @@ fn run() -> eyre::Result<()> {
 
     init_tracing(opt.verbosity.directive());
 
+    let metrics_port = if opt.skip_prometheus { None } else { Some(opt.metrics_port) };
+
     match opt.command {
-        Commands::Run(command) => runner::run_command_until_exit(
-            Some(opt.metrics_port),
-            Duration::from_secs(3600),
-            |ctx| command.execute(brontes_db_path, ctx),
-        ),
+        Commands::Run(command) => {
+            runner::run_command_until_exit(metrics_port, Duration::from_secs(3600), |ctx| {
+                command.execute(brontes_db_path, ctx)
+            })
+        }
         Commands::Database(command) => {
             runner::run_command_until_exit(None, Duration::from_secs(5), |ctx| {
                 command.execute(brontes_db_path, ctx)
