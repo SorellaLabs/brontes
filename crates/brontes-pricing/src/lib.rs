@@ -1240,6 +1240,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        tracing::debug!("starting repoll");
         while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
             match init {
                 PendingHeavyCalcs::DefaultCreate(block, args) => {
@@ -1322,14 +1323,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     }
                 }
             }
-            while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
-                match init {
-                    PendingHeavyCalcs::DefaultCreate(block, args) => {
-                        self.async_tasks_block = block + 1;
-                        self.finish_on_pool_updates(args);
-                    }
-                }
-            }
 
             if block_updates.is_empty() {
                 break 'outer
@@ -1364,6 +1357,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 break 'outer
             }
         }
+        tracing::debug!("requery");
 
         cx.waker().wake_by_ref();
         Poll::Pending
