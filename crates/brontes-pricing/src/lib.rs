@@ -69,7 +69,7 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tracing::{debug, error, error_span, info, Instrument};
+use tracing::{debug, error, error_span,debug_span, info, Instrument};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 use crate::types::PoolState;
@@ -252,7 +252,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         self.async_tasks.push_back(
             execute_on!(async_pricing, {
-                let span = error_span!("async task", block = cur_block);
+                let span = debug_span!("async task", block = cur_block);
                 span.in_scope(|| {
                     let res = graph_search_par(graph_mg, quote, updates);
                     PendingHeavyCalcs::DefaultCreate(cur_block, res)
