@@ -1358,6 +1358,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
         }
 
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
