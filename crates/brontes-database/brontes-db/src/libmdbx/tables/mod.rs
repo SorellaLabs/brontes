@@ -344,7 +344,7 @@ impl Tables {
                 //         |f, not| handle.send_message(WriterMessage::Init(f.into(), not)),
                 //     )
                 //     .await
-                unimplemented!("'initialize_table_arbitrary_state' not implemented for {}", table);
+                unimplemented!("'initialize_table_arbitrary_state' not implemented for {}", self);
             }
             table @ (Tables::TokenDecimals
             | Tables::AddressToProtocolInfo
