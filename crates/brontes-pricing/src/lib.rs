@@ -69,7 +69,7 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tracing::{debug, error, error_span,debug_span, info, Instrument};
+use tracing::{debug, debug_span, error, error_span, info, Instrument};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 use crate::types::PoolState;
@@ -1326,7 +1326,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             && self.async_tasks_block > self.completed_block
                             && self.finished.load(SeqCst)
                         {
-                        tracing::debug!("try close");
+                            tracing::debug!("try close");
                             return Poll::Ready(self.on_close())
                         }
 

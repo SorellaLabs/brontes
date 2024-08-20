@@ -5,11 +5,11 @@ mod state_tracker;
 mod subgraph;
 mod yens;
 use std::{sync::Arc, time::Duration};
-use tracing::instrument;
 
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{FastHashMap, FastHashSet};
 use parking_lot::RwLock;
+use tracing::instrument;
 mod subgraph_verifier;
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
@@ -290,13 +290,16 @@ impl GraphManager {
         span.in_scope(|| {
             let state = self.graph_state.read();
             let state = state.finalized_state();
+            tracing::debug!("got state");
 
             // let (start_price, start_addr) = self
-            self.sub_graph_registry
+            let verifications = self
+                .sub_graph_registry
                 .read()
                 .get_subgraph_extends_iter(pair)
                 .into_iter()
-                .for_each(|(epair, jump_pair)| {
+                .map(|(epair, jump_pair)| {
+                    tracing::debug!("for each");
                     let (start_price, start_addr) = jump_pair
                         .map(|jump_pair| {
                             (
@@ -308,15 +311,19 @@ impl GraphManager {
                             )
                         })
                         .unwrap_or_else(|| (Rational::ONE, quote));
-
-                    self.sub_graph_registry.write().verify_current_subgraphs(
-                        epair,
-                        start_addr,
-                        start_price,
-                        &state,
-                        current_block,
-                    );
-                });
+                    (epair, start_addr, start_price, current_block)
+                })
+                .collect::<Vec<_>>();
+            for (epair, start_addr, start_price, current_block) in verifications {
+                tracing::debug!("write");
+                self.sub_graph_registry.write().verify_current_subgraphs(
+                    epair,
+                    start_addr,
+                    start_price,
+                    &state,
+                    current_block,
+                );
+            }
         });
     }
 
