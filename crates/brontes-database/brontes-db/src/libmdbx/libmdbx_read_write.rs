@@ -1323,7 +1323,7 @@ pub fn determine_eth_prices(
 }
 
 fn default_tables_to_init() -> Vec<Tables> {
-    vec![Tables::BlockInfo, Tables::DexPrice, Tables::CexPrice, Tables::CexTrades]
+    vec![Tables::BlockInfo, Tables::DexPrice, Tables::CexPrice]
 }
 
 pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
@@ -1331,6 +1331,6 @@ pub fn tables_to_initialize(data: InitializedStateMeta) -> Vec<(Tables, bool)> {
         (Tables::BlockInfo, data.is_initialized(META_FLAG)),
         (Tables::DexPrice, data.is_initialized(DEX_PRICE_FLAG)),
         (Tables::CexPrice, data.is_initialized(CEX_QUOTES_FLAG)),
-        (Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
+        //(Tables::CexTrades, data.is_initialized(CEX_TRADES_FLAG)),
     ]
 }

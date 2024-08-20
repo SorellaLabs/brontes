@@ -160,10 +160,12 @@ pub fn init_inspectors<DB: LibmdbxReader>(
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
     let mut res = Vec::new();
     let metrics = metrics.then(OutlierMetrics::new);
-    for inspector in inspectors
-        .map(|i| i.into_iter())
-        .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
-    {
+    for inspector in inspectors.map(|i| i.into_iter()).unwrap_or_else(|| {
+        Inspectors::iter()
+            .filter(|inspector| *inspector != Inspectors::CexDexMarkout)
+            .collect_vec()
+            .into_iter()
+    }) {
         res.push(inspector.init_mev_inspector(
             quote_token,
             db,
