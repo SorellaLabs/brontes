@@ -813,88 +813,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         );
     }
 
-    /// rundown occurs when we have hit a attempt limit for trying to find high
-    /// liquidity nodes for a pair subgraph. when this happens, we take all
-    /// of the low liquidity nodes and generate all unique paths through each
-    /// and then add it to the subgraph. And then allow for these low liquidity
-    /// nodes as they are the only nodes for the given pair.
-    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "rundown")]
-    fn par_rundown(&mut self, pairs: Vec<(PairWithFirstPoolHop, u64)>) {
-        if pairs.is_empty() {
-            return
-        }
-
-        let new_subgraphs = execute_on!(target = pricing, {
-            pairs
-                .into_iter()
-                .map(|(pair, block)| {
-                    // if the rundown was forced. this means that we don't need to be so aggressive
-                    // with the ign
-                    let ignores = self
-                        .graph_manager
-                        .verify_subgraph_on_new_path_failure(pair)
-                        .unwrap_or_default();
-
-                    let extends = self.graph_manager.subgraph_extends(pair);
-
-                    if ignores.is_empty() {
-                        tracing::debug!(
-                            ?pair,
-                            ?block,
-                            "rundown for subgraph has no edges we are supposed to ignore"
-                        );
-                    }
-
-                    // take all combinations of our ignore nodes. If the rundown was forced, we,
-                    // won't bother trying to generate a diverse set and
-                    if ignores.len() > 1 {
-                        ignores
-                            .iter()
-                            .copied()
-                            .combinations(ignores.len() - 1)
-                            .map(|i| RequeryPairs {
-                                pair,
-                                extends_pair: extends,
-                                block,
-                                ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
-                                frayed_ends: vec![],
-                            })
-                            .collect_vec()
-                    } else {
-                        vec![RequeryPairs {
-                            extends_pair: extends,
-                            pair,
-                            block,
-                            ignore_state: FastHashSet::default(),
-                            frayed_ends: vec![],
-                        }]
-                    }
-                })
-                .collect_vec()
-                .into_par_iter()
-                .map(|queries| {
-                    let shit = queries.first().unwrap();
-                    let pair = shit.pair;
-                    let block = shit.block;
-                    let (edges, mut extend): (Vec<_>, Vec<_>) =
-                        par_state_query(self.graph_manager.clone(), queries)
-                            .into_iter()
-                            .map(|e| (e.edges, e.extends_pair))
-                            .unzip();
-
-                    let edges = edges.into_iter().flatten().flatten().unique().collect_vec();
-
-                    // if we dont have any edges, lets run with no ignores.
-                    let (edges, extend) = (edges, extend.pop().flatten());
-
-                    // add calls and try_verify calls
-
-                    tracing::debug!(?pair, ?block, "finished rundown");
-                    (pair, extend, block, edges, true)
-                })
-                .collect::<Vec<_>>()
-        });
-
+    fn finish_rundown(
+        &mut self,
+        new_subgraphs: Vec<(PairWithFirstPoolHop, Option<Pair>, u64, Vec<SubGraphEdge>, bool)>,
+    ) {
         let verify = new_subgraphs
             .into_iter()
             .filter_map(|(pair, extend, block, edges, frayed_ext)| {
@@ -912,7 +834,94 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return
         }
 
-        execute_on!(target = pricing, self.try_verify_subgraph(verify));
+        self.try_verify_subgraph(verify);
+    }
+
+    /// rundown occurs when we have hit a attempt limit for trying to find high
+    /// liquidity nodes for a pair subgraph. when this happens, we take all
+    /// of the low liquidity nodes and generate all unique paths through each
+    /// and then add it to the subgraph. And then allow for these low liquidity
+    /// nodes as they are the only nodes for the given pair.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "rundown")]
+    fn par_rundown(&mut self, pairs: Vec<(PairWithFirstPoolHop, u64)>) {
+        if pairs.is_empty() {
+            return
+        }
+        let graph_manager = self.graph_manager.clone();
+
+        self.general_tasks.push(
+            execute_on!(async_pricing, {
+                let res = pairs
+                    .into_iter()
+                    .map(|(pair, block)| {
+                        // if the rundown was forced. this means that we don't need to be so
+                        // aggressive with the ign
+                        let ignores = graph_manager
+                            .verify_subgraph_on_new_path_failure(pair)
+                            .unwrap_or_default();
+
+                        let extends = graph_manager.subgraph_extends(pair);
+
+                        if ignores.is_empty() {
+                            tracing::debug!(
+                                ?pair,
+                                ?block,
+                                "rundown for subgraph has no edges we are supposed to ignore"
+                            );
+                        }
+
+                        // take all combinations of our ignore nodes. If the rundown was forced, we,
+                        // won't bother trying to generate a diverse set and
+                        if ignores.len() > 1 {
+                            ignores
+                                .iter()
+                                .copied()
+                                .combinations(ignores.len() - 1)
+                                .map(|i| RequeryPairs {
+                                    pair,
+                                    extends_pair: extends,
+                                    block,
+                                    ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
+                                    frayed_ends: vec![],
+                                })
+                                .collect_vec()
+                        } else {
+                            vec![RequeryPairs {
+                                extends_pair: extends,
+                                pair,
+                                block,
+                                ignore_state: FastHashSet::default(),
+                                frayed_ends: vec![],
+                            }]
+                        }
+                    })
+                    .collect_vec()
+                    .into_par_iter()
+                    .map(|queries| {
+                        let shit = queries.first().unwrap();
+                        let pair = shit.pair;
+                        let block = shit.block;
+                        let (edges, mut extend): (Vec<_>, Vec<_>) =
+                            par_state_query(graph_manager.clone(), queries)
+                                .into_iter()
+                                .map(|e| (e.edges, e.extends_pair))
+                                .unzip();
+
+                        let edges = edges.into_iter().flatten().flatten().unique().collect_vec();
+
+                        // if we dont have any edges, lets run with no ignores.
+                        let (edges, extend) = (edges, extend.pop().flatten());
+
+                        // add calls and try_verify calls
+
+                        tracing::debug!(?pair, ?block, "finished rundown");
+                        (pair, extend, block, edges, true)
+                    })
+                    .collect::<Vec<_>>();
+                PendingHeavyCalcs::Rundown(res)
+            })
+            .boxed(),
+        );
     }
 
     /// Adds a subgraph for verification based on the given pair, block, and
@@ -1270,6 +1279,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 PendingHeavyCalcs::SubgraphVerification(args) => {
                     self.on_subgraph_verify_finish(args);
                 }
+                PendingHeavyCalcs::Rundown(res) => self.finish_rundown(res),
             }
         }
 
@@ -1377,6 +1387,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     PendingHeavyCalcs::SubgraphVerification(args) => {
                         self.on_subgraph_verify_finish(args);
                     }
+                    PendingHeavyCalcs::Rundown(res) => self.finish_rundown(res),
                 }
             }
 
