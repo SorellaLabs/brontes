@@ -209,6 +209,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             }
         }
 
+        tracing::debug!("starting add new pools");
         // insert new pools accessed on this block.
         updates
             .iter()
@@ -220,7 +221,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 self.graph_manager
                     .add_pool(pair, pool_addr, protocol, block);
             });
+        tracing::debug!("added new pools");
 
+        tracing::debug!("starting updates");
         updates.iter().for_each(|msg| {
             let Some(pair) = msg.get_pair(self.quote_asset) else { return };
             let is_transfer = msg.is_transfer();
