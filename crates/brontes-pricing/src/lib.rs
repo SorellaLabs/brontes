@@ -252,10 +252,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         self.async_tasks.push_back(
             execute_on!(async_pricing, {
-                let res = graph_search_par(graph_mg, quote, updates);
-                PendingHeavyCalcs::DefaultCreate(cur_block, res)
+                let span = error_span!("async task", block = cur_block);
+                span.in_scope(|| {
+                    let res = graph_search_par(graph_mg, quote, updates);
+                    PendingHeavyCalcs::DefaultCreate(cur_block, res)
+                })
             })
-            .instrument(error_span!("async task", block = cur_block))
             .boxed(),
         );
         tracing::debug!("search was stored as the task");
