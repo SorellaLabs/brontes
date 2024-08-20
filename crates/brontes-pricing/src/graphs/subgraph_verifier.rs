@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 
 use alloy_primitives::Address;
-use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
+use brontes_types::{execute_on, pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
+use futures::{Future, FutureExt};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use parking_lot::RwLock;
@@ -12,7 +13,10 @@ use super::{
     state_tracker::StateTracker,
     subgraph::{BadEdge, PairSubGraph, VerificationOutcome},
 };
-use crate::{types::PairWithFirstPoolHop, AllPairGraph, PoolPairInfoDirection, SubGraphEdge};
+use crate::{
+    pending_tasks::PendingHeavyCalcs, types::PairWithFirstPoolHop, AllPairGraph,
+    PoolPairInfoDirection, SubGraphEdge,
+};
 
 /// [`SubgraphVerifier`] Manages the verification of subgraphs for token pairs
 /// in the BrontesBatchPricer system. It ensures the accuracy and relevance of
@@ -249,60 +253,68 @@ impl SubgraphVerifier {
         ))
     }
 
-    pub fn verify_subgraph(
+    // async time
+    pub fn start_verify_subgraph(
         &mut self,
         pair: Vec<(u64, Option<u64>, PairWithFirstPoolHop, Rational, Address)>,
+        state_tracker: Arc<RwLock<StateTracker>>,
+    ) -> Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>> {
+        let pairs = self.get_subgraphs(pair);
+
+        execute_on!(async_pricing, {
+            PendingHeavyCalcs::SubgraphVerification(Self::verify_par(pairs, state_tracker.clone()))
+        })
+        .boxed()
+    }
+
+    pub fn verify_subgraph_finish(
+        &mut self,
+        args: Vec<(PairWithFirstPoolHop, u64, VerificationOutcome, Subgraph)>,
         all_graph: Arc<RwLock<AllPairGraph>>,
         state_tracker: Arc<RwLock<StateTracker>>,
     ) -> Vec<VerificationResults> {
-        let span = error_span!("Subgraph Verifier");
-        span.in_scope(|| {
-            let pairs = self.get_subgraphs(pair);
-            let res = self.verify_par(pairs, state_tracker.clone());
+        args.into_iter()
+            .map(|(pair, block, result, subgraph)| {
+                self.store_edges_with_liq(pair, &result.removals, all_graph.clone());
 
-            res.into_iter()
-                .map(|(pair, block, result, subgraph)| {
-                    self.store_edges_with_liq(pair, &result.removals, all_graph.clone());
+                // state that we want to be ignored on the next graph search.
+                let state = self.subgraph_verification_state.entry(pair).or_default();
 
-                    // state that we want to be ignored on the next graph search.
-                    let state = self.subgraph_verification_state.entry(pair).or_default();
+                let ignores = state.get_nodes_to_ignore();
 
-                    let ignores = state.get_nodes_to_ignore();
+                //  all results that should be pruned from our main graph.
+                let removals = result
+                    .removals
+                    .clone()
+                    .into_iter()
+                    .filter(|(k, _)| !(ignores.contains(k)))
+                    .collect::<FastHashMap<_, _>>();
 
-                    //  all results that should be pruned from our main graph.
-                    let removals = result
-                        .removals
-                        .clone()
-                        .into_iter()
-                        .filter(|(k, _)| !(ignores.contains(k)))
-                        .collect::<FastHashMap<_, _>>();
+                if result.should_abandon {
+                    self.subgraph_verification_state.remove(&pair);
+                    tracing::trace!(?pair, "aborting");
+                    return VerificationResults::Abort(pair, block)
+                }
 
-                    if result.should_abandon {
-                        self.subgraph_verification_state.remove(&pair);
-                        tracing::trace!(?pair, "aborting");
-                        return VerificationResults::Abort(pair, block)
-                    }
+                if result.should_requery {
+                    let extends = subgraph.subgraph.extends_to();
+                    self.pending_subgraphs.insert(pair, subgraph);
+                    // anything that was fully remove gets cached
+                    tracing::trace!(?pair, "requerying");
 
-                    if result.should_requery {
-                        let extends = subgraph.subgraph.extends_to();
-                        self.pending_subgraphs.insert(pair, subgraph);
-                        // anything that was fully remove gets cached
-                        tracing::trace!(?pair, "requerying");
+                    return VerificationResults::Failed(VerificationFailed {
+                        pair,
+                        extends,
+                        block,
+                        prune_state: removals,
+                        ignore_state: ignores,
+                        frayed_ends: result.frayed_ends,
+                    })
+                }
 
-                        return VerificationResults::Failed(VerificationFailed {
-                            pair,
-                            extends,
-                            block,
-                            prune_state: removals,
-                            ignore_state: ignores,
-                            frayed_ends: result.frayed_ends,
-                        })
-                    }
-
-                    self.passed_verification(pair, block, subgraph, removals, state_tracker.clone())
-                })
-                .collect_vec()
-        })
+                self.passed_verification(pair, block, subgraph, removals, state_tracker.clone())
+            })
+            .collect_vec()
     }
 
     fn get_subgraphs(
@@ -333,7 +345,6 @@ impl SubgraphVerifier {
     }
 
     fn verify_par(
-        &self,
         pairs: Vec<(PairWithFirstPoolHop, u64, bool, Subgraph, Rational, Address)>,
         state_tracker: Arc<RwLock<StateTracker>>,
     ) -> Vec<(PairWithFirstPoolHop, u64, VerificationOutcome, Subgraph)> {

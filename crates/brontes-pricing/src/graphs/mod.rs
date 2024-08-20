@@ -9,14 +9,16 @@ use std::{sync::Arc, time::Duration};
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{FastHashMap, FastHashSet};
 use parking_lot::RwLock;
-use tracing::instrument;
 mod subgraph_verifier;
+use std::pin::Pin;
+
 pub use all_pair_graph::AllPairGraph;
 use alloy_primitives::Address;
 use brontes_types::{
     pair::Pair,
     price_graph_types::{PoolPairInfoDirection, SubGraphEdge},
 };
+use futures::Future;
 use itertools::Itertools;
 use malachite::{num::basic::traits::One, Rational};
 use tracing::error_span;
@@ -24,10 +26,10 @@ use tracing::error_span;
 pub use self::{
     registry::SubGraphRegistry,
     state_tracker::{StateTracker, StateWithDependencies},
-    subgraph::PairSubGraph,
+    subgraph::{PairSubGraph, VerificationOutcome},
     subgraph_verifier::*,
 };
-use super::PoolUpdate;
+use super::{PendingHeavyCalcs, PoolUpdate};
 use crate::{
     types::{PairWithFirstPoolHop, PoolState},
     Protocol,
@@ -326,7 +328,7 @@ impl GraphManager {
         &self,
         pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
         quote: Address,
-    ) -> Vec<VerificationResults> {
+    ) -> Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>> {
         let span = error_span!("verifying subgraph");
         span.in_scope(|| {
             let pairs = pairs
@@ -354,12 +356,21 @@ impl GraphManager {
                 })
                 .collect_vec();
 
-            self.subgraph_verifier.write().verify_subgraph(
-                pairs,
-                self.all_pair_graph.clone(),
-                self.graph_state.clone(),
-            )
+            self.subgraph_verifier
+                .write()
+                .start_verify_subgraph(pairs, self.graph_state.clone())
         })
+    }
+
+    pub fn finish_subgraph_verification(
+        &self,
+        args: Vec<(PairWithFirstPoolHop, u64, VerificationOutcome, Subgraph)>,
+    ) -> Vec<VerificationResults> {
+        self.subgraph_verifier.write().verify_subgraph_finish(
+            args,
+            self.all_pair_graph.clone(),
+            self.graph_state.clone(),
+        )
     }
 
     pub fn finalize_block(&self, block: u64) {

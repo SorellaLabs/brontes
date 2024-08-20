@@ -30,7 +30,10 @@ use brontes_types::{
 use futures::{stream::FuturesOrdered, Future, FutureExt, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-use crate::{graphs::StateWithDependencies, pending_tasks::PendingHeavyCalcs};
+use crate::{
+    graphs::{StateWithDependencies, Subgraph, VerificationOutcome},
+    pending_tasks::PendingHeavyCalcs,
+};
 pub mod function_call_bench;
 mod graphs;
 pub mod pending_tasks;
@@ -645,27 +648,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         self.requery_bad_state_par(failed_queries, false);
     }
 
-    /// Attempts to verify subgraphs for a given set of pairs and handles the
-    /// verification results.
-    ///
-    /// # Behavior
-    /// The function triggers subgraph verification for each provided pair and
-    /// block number combination. On successful verification, it prunes bad
-    /// edges from the subgraph and updates the graph manager with the verified
-    /// subgraph. If verification fails, it prunes bad edges and prepares
-    /// the failed pair for requery. After processing the verification
-    /// results, it requeues any pairs that need to be reverified due to failed
-    /// verification.
-    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_verify_subgraph")]
-    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>) {
-        self.graph_manager
-            .subgraph_verifier
-            .read()
-            .print_rem(self.completed_block);
-
+    fn on_subgraph_verify_finish(
+        &mut self,
+        args: Vec<(PairWithFirstPoolHop, u64, VerificationOutcome, Subgraph)>,
+    ) {
         let requery = self
             .graph_manager
-            .verify_subgraph(pairs, self.quote_asset)
+            .finish_subgraph_verification(args)
             .into_iter()
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
@@ -720,6 +709,29 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .collect_vec();
 
         self.requery_bad_state_par(requery, true);
+    }
+
+    /// Attempts to verify subgraphs for a given set of pairs and handles the
+    /// verification results.
+    ///
+    /// # Behavior
+    /// The function triggers subgraph verification for each provided pair and
+    /// block number combination. On successful verification, it prunes bad
+    /// edges from the subgraph and updates the graph manager with the verified
+    /// subgraph. If verification fails, it prunes bad edges and prepares
+    /// the failed pair for requery. After processing the verification
+    /// results, it requeues any pairs that need to be reverified due to failed
+    /// verification.
+    #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_verify_subgraph")]
+    fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>) {
+        self.graph_manager
+            .subgraph_verifier
+            .read()
+            .print_rem(self.completed_block);
+
+        self.async_tasks
+            .push(self.graph_manager.verify_subgraph(pairs, self.quote_asset));
+        //
     }
 
     /// Requeries the state of subgraphs for given pairs that encountered issues
@@ -1244,6 +1256,9 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                     self.async_tasks_block = block + 1;
                     self.finish_on_pool_updates(args);
                 }
+                PendingHeavyCalcs::SubgraphVerification(args) => {
+                    self.on_subgraph_verify_finish(args);
+                }
             }
         }
 
@@ -1344,6 +1359,9 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                         self.async_tasks_block = block + 1;
                         self.finish_on_pool_updates(args);
                     }
+                    PendingHeavyCalcs::SubgraphVerification(args) => {
+                        self.on_subgraph_verify_finish(args);
+                    }
                 }
             }
 
@@ -1353,6 +1371,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
             }
         }
 
+        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }

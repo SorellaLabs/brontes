@@ -79,8 +79,10 @@ where
         .get()
         .expect("threadpool not initialized")
         .spawn(move || {
-            let res = op();
-            let _ = tx.send(res);
+            RAYON_PRICING_THREADPOOL.get().unwrap().install(|| {
+                let res = op();
+                let _ = tx.send(res);
+            });
         });
 
     rx.await.unwrap()
