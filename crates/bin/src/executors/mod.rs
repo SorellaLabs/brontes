@@ -238,11 +238,16 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         end_block: u64,
         pricing_metrics: Option<DexPricingMetrics>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
+        let mut multiple = false;
         let chunks = match &self.range_type {
             RangeType::SingleRange { start_block, end_block: _, back_from_tip: _ } => {
                 self.calculate_chunks(start_block.unwrap(), end_block)
             }
-            RangeType::MultipleRanges(ranges) => ranges.clone(),
+            RangeType::MultipleRanges(ranges) =>  {
+                multiple = true;
+
+                ranges.clone(),
+            }
         };
 
         let progress_bar = self.initialize_global_progress_bar();

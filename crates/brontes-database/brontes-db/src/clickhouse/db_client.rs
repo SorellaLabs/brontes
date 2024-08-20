@@ -427,7 +427,7 @@ impl ClickhouseHandle for Clickhouse {
                     target = "b",
                     "Querying block times to download quotes for range: start={}, end={}", s, e
                 );
-                self.query_many_with_retry(BLOCK_TIMES, &(s, e)).await?
+                self.query_many_with_retry(BLOCK_TIMES, &(s, e + 1)).await?
             }
 
             CexRangeOrArbitrary::Arbitrary(vals) => {
@@ -548,7 +548,7 @@ impl ClickhouseHandle for Clickhouse {
                     target = "brontes_db::cex_download",
                     "Querying block times to download trades for range: start={}, end={}", s, e
                 );
-                self.client.query_many(BLOCK_TIMES, &(s, e)).await?
+                self.client.query_many(BLOCK_TIMES, &(s, e + 1)).await?
             }
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let vals = vals
