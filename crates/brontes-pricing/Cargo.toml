@@ -54,7 +54,9 @@ alloy-primitives = { workspace = true, features = ["serde"] }
 alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-dyn-abi.workspace = true
-parking_lot = { workspace = true, features = ["deadlock_detection"] }
+parking_lot = { workspace = true, default-features = false, features = [
+  "deadlock_detection",
+] }
 petgraph = "0.6.4"
 derive_more.workspace = true
 async-trait.workspace = true
