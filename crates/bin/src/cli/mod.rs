@@ -23,9 +23,9 @@ pub struct Args {
     /// The verbosity level of the logs
     #[clap(flatten)]
     pub verbosity:       Verbosity,
-    #[clap(long, default_value = "6923")]
+    #[clap(long, default_value = "6923", global = true)]
     pub metrics_port:    u16,
-    #[clap(long, default_value = "false")]
+    #[clap(long, default_value = "false", global = true)]
     pub skip_prometheus: bool,
 }
 
