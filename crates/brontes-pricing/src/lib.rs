@@ -1241,6 +1241,23 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         &mut self,
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
+        while let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
+            self.async_tasks_block = block + 1;
+            self.finish_on_pool_updates(args);
+        }
+
+        while let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
+            match init {
+                PendingHeavyCalcs::StateQuery(new_state, frayed_ext) => {
+                    self.finish_requery_bad_state(new_state, frayed_ext);
+                }
+                PendingHeavyCalcs::SubgraphVerification(args) => {
+                    self.on_subgraph_verify_finish(args);
+                }
+                PendingHeavyCalcs::Rundown(res) => self.finish_rundown(res),
+            }
+        }
+
         let mut buf = vec![];
         while let Poll::Ready(Some(state)) = self.lazy_loader.poll_next(cx) {
             buf.push(state);
@@ -1271,23 +1288,6 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        while let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
-            match init {
-                PendingHeavyCalcs::StateQuery(new_state, frayed_ext) => {
-                    self.finish_requery_bad_state(new_state, frayed_ext);
-                }
-                PendingHeavyCalcs::SubgraphVerification(args) => {
-                    self.on_subgraph_verify_finish(args);
-                }
-                PendingHeavyCalcs::Rundown(res) => self.finish_rundown(res),
-            }
-        }
-
-        while let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
-            self.async_tasks_block = block + 1;
-            self.finish_on_pool_updates(args);
-        }
-
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
@@ -1379,30 +1379,12 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                 self.on_pool_updates(block_updates);
             }
 
-            while let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
-                match init {
-                    PendingHeavyCalcs::StateQuery(new_state, frayed_ext) => {
-                        self.finish_requery_bad_state(new_state, frayed_ext);
-                    }
-                    PendingHeavyCalcs::SubgraphVerification(args) => {
-                        self.on_subgraph_verify_finish(args);
-                    }
-                    PendingHeavyCalcs::Rundown(res) => self.finish_rundown(res),
-                }
-            }
-
-            while let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
-                self.async_tasks_block = block + 1;
-                self.finish_on_pool_updates(args);
-            }
-
             budget -= 1;
             if budget == 0 {
                 break 'outer
             }
         }
 
-        cx.waker().wake_by_ref();
         Poll::Pending
     }
 }
