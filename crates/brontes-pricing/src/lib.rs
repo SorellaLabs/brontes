@@ -20,17 +20,20 @@
 //! ### Lazy Loading
 //! New pools and their states are fetched as required
 
+use std::pin::Pin;
+
 use brontes_metrics::pricing::DexPricingMetrics;
 use brontes_types::{
     db::dex::PriceAt, execute_on, normalized_actions::pool::NormalizedPoolConfigUpdate,
     BrontesTaskExecutor, UnboundedYapperReceiver,
 };
+use futures::{Future, FutureExt, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-use crate::graphs::StateWithDependencies;
+use crate::{graphs::StateWithDependencies, pending_tasks::PendingHeavyCalcs};
 pub mod function_call_bench;
 mod graphs;
-// pub mod pending_tasks;
+pub mod pending_tasks;
 pub mod protocols;
 mod subgraph_query;
 pub mod types;
@@ -53,7 +56,7 @@ use brontes_types::{
     traits::TracingProvider,
     FastHashMap, FastHashSet,
 };
-use futures::Stream;
+use futures::{stream::FuturesUnordered, Stream};
 pub use graphs::{
     AllPairGraph, GraphManager, StateTracker, SubGraphRegistry, SubgraphVerifier,
     VerificationResults,
@@ -97,7 +100,7 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     /// only pass though valid created pools.
     new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager:   GraphManager,
+    graph_manager:   Arc<GraphManager>,
     /// lazy loads dex pairs so we only fetch init state that is needed
     lazy_loader:     LazyExchangeLoader<T>,
     dex_quotes:      FastHashMap<u64, DexQuotes>,
@@ -111,6 +114,8 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
     skip_pricing:    VecDeque<u64>,
     /// metrics
     metrics:         Option<DexPricingMetrics>,
+    /// async_tasks
+    async_tasks:     FuturesUnordered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
@@ -135,7 +140,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             quote_asset,
             buffer: StateBuffer::new(),
             update_rx,
-            graph_manager,
+            graph_manager: Arc::new(graph_manager),
             dex_quotes: FastHashMap::default(),
             lazy_loader: LazyExchangeLoader::new(provider, executor),
             current_block,
@@ -144,6 +149,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             skip_pricing: VecDeque::new(),
             needs_more_data,
             metrics,
+            async_tasks: FuturesUnordered::default(),
         }
     }
 
@@ -164,12 +170,15 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// testing / benching utils
     pub fn set_state(
         &mut self,
-        sub_graph_registry: SubGraphRegistry,
-        verifier: SubgraphVerifier,
-        state: StateTracker,
+        _sub_graph_registry: SubGraphRegistry,
+        _verifier: SubgraphVerifier,
+        _state: StateTracker,
     ) {
-        self.graph_manager
-            .set_state(sub_graph_registry, verifier, state)
+        todo!()
+        // let mut new: GraphManager = (*self.graph_manager.clone());
+        // new.set_state(sub_graph_registry, verifier, state);
+        //
+        // self.graph_manager = Arc::new(new);
     }
 
     /// Handles pool updates for the BrontesBatchPricer system.
@@ -234,9 +243,46 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         });
 
         tracing::debug!("search triggered by pool updates");
-        let (state, pools) = execute_on!(target = pricing, {
-            graph_search_par(&self.graph_manager, self.quote_asset, updates)
-        });
+        // let (state, pools) =
+        let quote = self.quote_asset.clone();
+        let graph_mg = self.graph_manager.clone();
+        self.async_tasks.push(
+            execute_on!(async_pricing, {
+                let res = graph_search_par(graph_mg, quote, updates);
+                PendingHeavyCalcs::DefaultCreate(res)
+            })
+            .boxed(),
+        );
+
+
+        // state.into_iter().flatten().for_each(|(addr, update)| {
+        //     let block = update.block;
+        //     self.buffer
+        //         .updates
+        //         .entry(block)
+        //         .or_default()
+        //         .push_back((addr, update));
+        // });
+        //
+        // pools.into_iter().flatten().for_each(
+        //     |NewGraphDetails { pair, extends_pair, block, edges }| {
+        //         if edges.is_empty() {
+        //             tracing::debug!(?pair, ?extends_pair, "new pool has no
+        // graph edges");             return
+        //         }
+        //
+        //         if self.graph_manager.has_subgraph_goes_through(pair) {
+        //             tracing::debug!(?pair, ?extends_pair, "already have
+        // pairs");             return
+        //         }
+        //
+        //         self.add_subgraph(pair, extends_pair, block, edges, false);
+        //     },
+        // );
+    }
+
+    fn finish_on_pool_updates(&mut self, args: GraphSeachParRes) {
+        let (state, pools) = args;
         tracing::debug!("search triggered by on pool updates completed");
 
         state.into_iter().flatten().for_each(|(addr, update)| {
@@ -489,6 +535,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         } else if self
             .graph_manager
             .subgraph_verifier
+            .read()
             .is_verifying_with_block(PairWithFirstPoolHop::from_pair_gt(pair0, pool_pair), block)
         {
             error!(?tx_idx, ?block, ?pair0, ?pool_pair, "pair is currently being verified");
@@ -533,6 +580,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         } else if self
             .graph_manager
             .subgraph_verifier
+            .read()
             .is_verifying_with_block(PairWithFirstPoolHop::from_pair_gt(pair1, flipped_pool), block)
         {
             error!(?tx_idx, ?block, ?pair1, ?flipped_pool, "pair is currently being verified");
@@ -632,6 +680,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>) {
         self.graph_manager
             .subgraph_verifier
+            .read()
             .print_rem(self.completed_block);
 
         let requery = self
@@ -945,6 +994,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let rem_block = self
             .graph_manager
             .subgraph_verifier
+            .read()
             .get_rem_for_block(self.completed_block);
 
         if rem_block.is_empty() {
@@ -1188,7 +1238,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let pairs = self.lazy_loader.pairs_to_verify();
         if !pairs.is_empty() {
-            execute_on!(target = pricing, self.try_verify_subgraph(pairs));
+            execute_on!(pricing, { self.try_verify_subgraph(pairs) });
+        }
+
+        while let Poll::Ready(Some(init)) = self.async_tasks.poll_next_unpin(cx) {
+            match init {
+                PendingHeavyCalcs::DefaultCreate(args) => self.finish_on_pool_updates(args),
+            }
         }
 
         self.try_flush_out_pending_verification();

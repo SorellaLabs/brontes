@@ -285,7 +285,7 @@ impl SubGraphRegistry {
     }
 
     pub fn get_price(
-        &mut self,
+        &self,
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,

@@ -40,6 +40,9 @@ macro_rules! execute_on {
     (async_inspect, $block:block) => {
         ::brontes_types::execute_on_inspect_thread_pool_async(move || $block)
     };
+    (async_pricing, $block:block) => {
+        ::brontes_types::execute_on_pricing_thread_pool_async(move || $block)
+    };
 }
 
 /// ThreadPool for pricing operations
@@ -64,6 +67,23 @@ where
         .get()
         .expect("threadpool not initialized")
         .install(op)
+}
+
+pub async fn execute_on_pricing_thread_pool_async<OP, R>(op: OP) -> R
+where
+    OP: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    RAYON_PRICING_THREADPOOL
+        .get()
+        .expect("threadpool not initialized")
+        .spawn(move || {
+            let res = op();
+            let _ = tx.send(res);
+        });
+
+    rx.await.unwrap()
 }
 
 /// ThreadPool for inspect operations
@@ -99,7 +119,7 @@ where
     RAYON_INSPECT_THREADPOOL
         .get()
         .expect("threadpool not initialized")
-        .install(move || {
+        .spawn(move || {
             let res = op();
             let _ = tx.send(res);
         });

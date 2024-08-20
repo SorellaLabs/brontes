@@ -1,5 +1,5 @@
 //! Functions for parallelizing graph fetches
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use alloy_primitives::Address;
 use brontes_types::{FastHashSet, SubGraphEdge};
@@ -14,7 +14,7 @@ use crate::{
 pub type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
 
 pub fn graph_search_par(
-    graph: &GraphManager,
+    graph: Arc<GraphManager>,
     quote: Address,
     updates: Vec<PoolUpdate>,
 ) -> GraphSeachParRes {
@@ -32,7 +32,7 @@ pub fn graph_search_par(
             let key1 = PairWithFirstPoolHop::from_pair_gt(pair1, pair.flip());
 
             let (state, path) = on_new_pool_pair(
-                graph,
+                graph.clone(),
                 msg,
                 pair,
                 (!graph.has_subgraph_goes_through(key0)).then_some(pair0),
@@ -132,7 +132,7 @@ pub fn par_state_query(graph: &GraphManager, pairs: Vec<RequeryPairs>) -> ParSta
 type NewPoolPair = (Vec<(Address, PoolUpdate)>, Vec<NewGraphDetails>);
 
 fn on_new_pool_pair(
-    graph: &GraphManager,
+    graph: Arc<GraphManager>,
     msg: PoolUpdate,
     main_pair: Pair,
     pair0: Option<Pair>,
@@ -150,7 +150,7 @@ fn on_new_pool_pair(
 
     // add first pair
     if let Some(pair0) = pair0 {
-        if let Some(path) = queue_loading_returns(graph, block, main_pair, pair0) {
+        if let Some(path) = queue_loading_returns(graph.clone(), block, main_pair, pair0) {
             path_pending.push(path);
         }
     }
@@ -166,7 +166,7 @@ fn on_new_pool_pair(
 }
 
 fn queue_loading_returns(
-    graph: &GraphManager,
+    graph: Arc<GraphManager>,
     block: u64,
     must_include: Pair,
     pair: Pair,
@@ -182,6 +182,7 @@ fn queue_loading_returns(
             (pair, None)
         } else {
             graph
+                .read()
                 .has_extension(&must_include, pair.1)
                 .map(|ext| (must_include, Some(ext).filter(|_| must_include.1 != pair.1)))
                 .unwrap_or((pair, None))
@@ -189,7 +190,7 @@ fn queue_loading_returns(
     };
 
     Some({
-        let (subgraph, actual_extends) = graph.create_subgraph(
+        let (subgraph, actual_extends) = graph.read().create_subgraph(
             block,
             Some(must_include).filter(|m| !m.is_zero()),
             n_pair,

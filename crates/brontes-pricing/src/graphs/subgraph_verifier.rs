@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use alloy_primitives::Address;
 use brontes_types::{pair::Pair, FastHashMap, FastHashSet, ToFloatNearest};
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
+use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error_span, instrument};
 
@@ -137,14 +140,14 @@ impl SubgraphVerifier {
         extends_to: Option<Pair>,
         block: u64,
         path: Vec<SubGraphEdge>,
-        state_tracker: &mut StateTracker,
+        state_tracker: Arc<RwLock<StateTracker>>,
     ) -> Vec<PoolPairInfoDirection> {
         // if we find a subgraph that is the same, we return.
         if self.pending_subgraphs.contains_key(&pair) {
             return vec![]
         };
 
-        let query_state = state_tracker.missing_state(block, &path);
+        let query_state = state_tracker.write().missing_state(block, &path);
         let complete_pair = pair.get_pair();
         let gt = pair.get_goes_through();
         let extend_pair = Pair(complete_pair.0, extends_to.map(|e| e.0).unwrap_or(complete_pair.1));
@@ -199,13 +202,13 @@ impl SubgraphVerifier {
         &mut self,
         pair: PairWithFirstPoolHop,
         removals: &FastHashMap<Pair, FastHashSet<BadEdge>>,
-        all_graph: &AllPairGraph,
+        all_graph: Arc<RwLock<AllPairGraph>>,
     ) {
         removals
             .iter()
             .filter_map(|(k, v)| {
                 // look for edges that have been completely removed
-                if all_graph.edge_count(k.0, k.1) == v.len() {
+                if all_graph.read().edge_count(k.0, k.1) == v.len() {
                     Some(
                         v.clone()
                             .into_iter()
@@ -227,11 +230,13 @@ impl SubgraphVerifier {
         &mut self,
         pair: PairWithFirstPoolHop,
         block: u64,
-        state_tracker: &mut StateTracker,
+        state_tracker: Arc<RwLock<StateTracker>>,
         frayed_end_extensions: Vec<SubGraphEdge>,
     ) -> Option<(Vec<PoolPairInfoDirection>, u64, bool)> {
         Some((
-            state_tracker.missing_state(block, &frayed_end_extensions),
+            state_tracker
+                .write()
+                .missing_state(block, &frayed_end_extensions),
             self.pending_subgraphs
                 .get_mut(&pair)
                 .or_else(|| {
@@ -246,17 +251,17 @@ impl SubgraphVerifier {
     pub fn verify_subgraph(
         &mut self,
         pair: Vec<(u64, Option<u64>, PairWithFirstPoolHop, Rational, Address)>,
-        all_graph: &AllPairGraph,
-        state_tracker: &mut StateTracker,
+        all_graph: Arc<RwLock<AllPairGraph>>,
+        state_tracker: Arc<RwLock<StateTracker>>,
     ) -> Vec<VerificationResults> {
         let span = error_span!("Subgraph Verifier");
         span.in_scope(|| {
             let pairs = self.get_subgraphs(pair);
-            let res = self.verify_par(pairs, state_tracker);
+            let res = self.verify_par(pairs, state_tracker.clone());
 
             res.into_iter()
                 .map(|(pair, block, result, subgraph)| {
-                    self.store_edges_with_liq(pair, &result.removals, all_graph);
+                    self.store_edges_with_liq(pair, &result.removals, all_graph.clone());
 
                     // state that we want to be ignored on the next graph search.
                     let state = self.subgraph_verification_state.entry(pair).or_default();
@@ -293,7 +298,7 @@ impl SubgraphVerifier {
                         })
                     }
 
-                    self.passed_verification(pair, block, subgraph, removals, state_tracker)
+                    self.passed_verification(pair, block, subgraph, removals, state_tracker.clone())
                 })
                 .collect_vec()
         })
@@ -329,12 +334,13 @@ impl SubgraphVerifier {
     fn verify_par(
         &self,
         pairs: Vec<(PairWithFirstPoolHop, u64, bool, Subgraph, Rational, Address)>,
-        state_tracker: &mut StateTracker,
+        state_tracker: Arc<RwLock<StateTracker>>,
     ) -> Vec<(PairWithFirstPoolHop, u64, VerificationOutcome, Subgraph)> {
         pairs
             .into_par_iter()
             .map(|(pair, block, rundown, mut subgraph, price, quote)| {
-                let edge_state = state_tracker.state_for_verification(block);
+                let r = state_tracker.read();
+                let edge_state = r.state_for_verification(block);
                 let result = if rundown {
                     subgraph
                         .subgraph
@@ -354,14 +360,16 @@ impl SubgraphVerifier {
         block: u64,
         subgraph: Subgraph,
         removals: FastHashMap<Pair, FastHashSet<BadEdge>>,
-        state_tracker: &mut StateTracker,
+        state_tracker: Arc<RwLock<StateTracker>>,
     ) -> VerificationResults {
         self.subgraph_verification_state.remove(&pair);
         // remove state for pair
         // mark used state finalized
         let subgraph = subgraph.subgraph;
         subgraph.get_all_pools().flatten().for_each(|pool| {
-            state_tracker.mark_state_as_finalized(block, pool.pool_addr);
+            state_tracker
+                .write()
+                .mark_state_as_finalized(block, pool.pool_addr);
         });
 
         VerificationResults::Passed(VerificationPass {
