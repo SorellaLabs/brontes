@@ -53,12 +53,8 @@ use super::{BLOCK_TIMES, CEX_SYMBOLS};
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 use crate::{
-    clickhouse::const_sql::{BLOCK_INFO, CRIT_INIT_TABLES},
-    libmdbx::{
-        determine_eth_prices,
-        tables::{BlockInfoData, CexPriceData},
-        types::LibmdbxData,
-    },
+    clickhouse::const_sql::CRIT_INIT_TABLES,
+    libmdbx::{determine_eth_prices, tables::CexPriceData, types::LibmdbxData},
     CompressedTable,
 };
 
@@ -970,14 +966,36 @@ mod tests {
 
     use super::*;
 
+    // #[brontes_macros::test]
+    // async fn test_block_info_query() {
+    //     let test_db = ClickhouseTestClient { client:
+    // Clickhouse::new_default(None).await.client };     let _ = test_db
+    //         .client
+    //         .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
+    //         .await
+    //         .unwrap();
+    // }
+
     #[brontes_macros::test]
-    async fn test_block_info_query() {
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default(None).await.client };
-        let _ = test_db
-            .client
-            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
-            .await
-            .unwrap();
+    async fn test_get_private_flow() {
+        let tx_hashes = [
+            "0x0000000000051fd2c9e99dcb6037d17950a377f21e10ae13f7e3ff0487b74e97",
+            "0x00000000000aac1650b3ebdc98ff4cf0f5c295a37fa04eddde156d75cac48222",
+        ]
+        .iter()
+        .map(|t| TxHash::from_str(t).unwrap())
+        .collect();
+
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let private_flow = test_db.get_private_flow(tx_hashes).await.unwrap();
+
+        assert_eq!(
+            private_flow,
+            vec![TxHash::from_str(
+                "0x0000000000051fd2c9e99dcb6037d17950a377f21e10ae13f7e3ff0487b74e97"
+            )
+            .unwrap()]
+        );
     }
 
     async fn load_tree() -> Arc<BlockTree<Action>> {
