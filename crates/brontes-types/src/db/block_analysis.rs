@@ -1694,6 +1694,7 @@ impl BlockAnalysis {
                 .map(|s| s.pool)
                 .collect::<Vec<_>>(),
             BundleData::CexDex(c) => c.swaps.iter().map(|p| p.pool).collect::<Vec<_>>(),
+            BundleData::CexDexQuote(c) => c.swaps.iter().map(|s| s.pool).collect::<Vec<_>>(),
             BundleData::Sandwich(c) => c
                 .victim_swaps
                 .iter()
@@ -1720,6 +1721,7 @@ impl BlockAnalysis {
                 .map(|s| s.protocol)
                 .collect::<Vec<_>>(),
             BundleData::CexDex(c) => c.swaps.iter().map(|s| s.protocol).collect::<Vec<_>>(),
+            BundleData::CexDexQuote(c) => c.swaps.iter().map(|s| s.protocol).collect::<Vec<_>>(),
             BundleData::Sandwich(c) => c
                 .victim_swaps
                 .iter()
@@ -1751,6 +1753,11 @@ impl BlockAnalysis {
                 .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
                 .collect::<Vec<_>>(),
             BundleData::CexDex(c) => c
+                .swaps
+                .iter()
+                .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
+                .collect::<Vec<_>>(),
+            BundleData::CexDexQuote(c) => c
                 .swaps
                 .iter()
                 .map(|s| (s.token_in.clone(), s.token_out.clone()).into())
