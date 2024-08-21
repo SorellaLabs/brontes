@@ -307,7 +307,7 @@ impl SubGraphRegistry {
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         if let Some(next) = next {
-            let Some(next_price) = self.get_price_all(next, edge_state, true) else {
+            let Some(next_price) = self.get_price_all(next, edge_state) else {
                 tracing::info!(target:"brontes::missing_pricing",
                     pair=?next,
                     "subgraph that extends other points to nil"
@@ -348,7 +348,7 @@ impl SubGraphRegistry {
             // that way
             .or_else(|| {
                 Some(
-                    self.get_price_all(unordered_pair, edge_state, false)
+                    self.get_price_all(unordered_pair, edge_state)
                         .map(|price| (None, unordered_pair, price)),
                 )
             })
@@ -360,46 +360,34 @@ impl SubGraphRegistry {
         &self,
         unordered_pair: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
-        block_price: bool,
     ) -> Option<Rational> {
         let pair = unordered_pair.ordered();
 
-        self.sub_graphs
-            .get(&pair)
-            .or_else(|| {
-                if block_price {
-                    tracing::info!("no pair for get price all");
-                }
-                None
-            })
-            .and_then(|f| {
-                let mut cnt = Rational::ZERO;
-                let mut acc = Rational::ZERO;
-                for graph in f.values() {
-                    if graph.extends_to().is_some() {
-                        if block_price {
-                            tracing::info!("loop extends to is some");
-                        }
-                        continue
-                    };
+        self.sub_graphs.get(&pair).and_then(|f| {
+            let mut cnt = Rational::ZERO;
+            let mut acc = Rational::ZERO;
+            for graph in f.values() {
+                if graph.extends_to().is_some() {
+                    continue
+                };
 
-                    let Some(next) = graph.fetch_price(edge_state) else {
+                let Some(next) = graph.fetch_price(edge_state) else {
                         tracing::info!("get_price_all failed to fetch price");
                         continue;
                     };
 
-                    let default_pair = graph.get_unordered_pair();
+                let default_pair = graph.get_unordered_pair();
 
-                    // ensure all graph pairs are accumulated in the same way
-                    acc += if !unordered_pair.eq_unordered(&default_pair) {
-                        next.reciprocal()
-                    } else {
-                        next
-                    };
-                    cnt += Rational::ONE;
-                }
-                (cnt != Rational::ZERO).then(|| acc / cnt)
-            })
+                // ensure all graph pairs are accumulated in the same way
+                acc += if !unordered_pair.eq_unordered(&default_pair) {
+                    next.reciprocal()
+                } else {
+                    next
+                };
+                cnt += Rational::ONE;
+            }
+            (cnt != Rational::ZERO).then(|| acc / cnt)
+        })
     }
 }
 
