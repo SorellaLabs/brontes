@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use brontes_types::{normalized_actions::Action, pair::Pair, traits::TracingProvider};
 pub use brontes_types::{queries::make_call_request, Protocol};
 use malachite::Rational;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{
     lazy::{PoolFetchError, PoolFetchSuccess},

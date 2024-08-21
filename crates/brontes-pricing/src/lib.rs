@@ -976,6 +976,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 };
 
             if !is_lazy_loading {
+                // everything here
                 self.lazy_loader.lazy_load_exchange(
                     pair,
                     Pair(pool_info.token_0, pool_info.token_1),

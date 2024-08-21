@@ -342,8 +342,9 @@ impl LoadingStateTracker {
         });
 
         removed.iter().for_each(|pair| {
-            let pair_loading = self.pair_loading.get_mut(pair).unwrap();
-            pair_loading.pending_pools.remove(&pool);
+            if let Some(pair_loading) = self.pair_loading.get_mut(pair) {
+                pair_loading.pending_pools.remove(&pool);
+            }
         });
 
         removed
@@ -385,7 +386,7 @@ impl LoadingStateTracker {
     }
 
     pub fn pool_dep_failure(&mut self, pair: PairWithFirstPoolHop) {
-        self.pair_loading.remove(&pair);
+        let loading = self.pair_loading.remove(&pair);
         self.protocol_address_to_dependent_pairs.retain(|_, v| {
             v.retain(|(_, npair)| npair != &pair);
             !v.is_empty()
