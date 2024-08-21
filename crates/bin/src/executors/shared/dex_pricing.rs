@@ -14,7 +14,6 @@ use brontes_types::{
     tree::BlockTree,
     BrontesTaskExecutor, FastHashMap, FastHashSet,
 };
-use clap::builder::styling::Metadata;
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, error::TrySendError, Receiver, Sender};
 use tracing::{debug, span, Instrument, Level};
