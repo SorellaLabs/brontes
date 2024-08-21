@@ -288,7 +288,7 @@ impl GraphManager {
                             (
                                 self.sub_graph_registry
                                     .read()
-                                    .get_price_all(jump_pair.flip(), &state)
+                                    .get_price_all(jump_pair.flip(), &state, false)
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,
                             )
@@ -351,6 +351,7 @@ impl GraphManager {
                                     .get_price_all(
                                         jump_pair.flip(),
                                         &self.graph_state.read().finalized_state(),
+                                        false,
                                     )
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,

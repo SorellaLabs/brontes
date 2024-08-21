@@ -299,7 +299,7 @@ impl SubGraphRegistry {
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         if let Some(next) = next {
-            let Some(next_price) = self.get_price_all(next, edge_state) else {
+            let Some(next_price) = self.get_price_all(next, edge_state, true) else {
                 tracing::info!(target:"brontes::missing_pricing",
                     pair=?next,
                     "subgraph that extends other points to nil"
@@ -340,7 +340,7 @@ impl SubGraphRegistry {
             // that way
             .or_else(|| {
                 Some(
-                    self.get_price_all(unordered_pair, edge_state)
+                    self.get_price_all(unordered_pair, edge_state, false)
                         .map(|price| (None, unordered_pair, price)),
                 )
             })
@@ -352,13 +352,16 @@ impl SubGraphRegistry {
         &self,
         unordered_pair: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
+        block_price: bool,
     ) -> Option<Rational> {
         let pair = unordered_pair.ordered();
 
         self.sub_graphs
             .get(&pair)
             .or_else(|| {
-                tracing::info!("no pair for get price all");
+                if block_price {
+                    tracing::info!("no pair for get price all");
+                }
                 None
             })
             .and_then(|f| {
