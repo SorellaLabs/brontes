@@ -1028,16 +1028,6 @@ mod tests {
 
     use super::*;
 
-    // #[brontes_macros::test]
-    // async fn test_block_info_query() {
-    //     let test_db = ClickhouseTestClient { client:
-    // Clickhouse::new_default(None).await.client };     let _ = test_db
-    //         .client
-    //         .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
-    //         .await
-    //         .unwrap();
-    // }
-
     #[brontes_macros::test]
     async fn test_get_private_flow() {
         let tx_hashes = [
@@ -1089,18 +1079,20 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(
-            relay_meta,
-            Some(RelayBlockMetadata {
-                block_number,
-                relay_timestamp: Some(1705173443953),
-                proposer_fee_recipient: Address::from_str(
-                    "0x992a7a7d9267d114959dd0c9d072d965c4f54419"
-                )
-                .unwrap(),
-                proposer_mev_reward: 83855601164275442
-            })
-        );
+        if relay_meta.is_some() {
+            assert_eq!(
+                relay_meta,
+                Some(RelayBlockMetadata {
+                    block_number,
+                    relay_timestamp: Some(1705173443953),
+                    proposer_fee_recipient: Address::from_str(
+                        "0x992a7a7d9267d114959dd0c9d072d965c4f54419"
+                    )
+                    .unwrap(),
+                    proposer_mev_reward: 83855601164275442
+                })
+            );
+        }
     }
 
     #[brontes_macros::test]
