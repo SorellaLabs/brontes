@@ -232,32 +232,32 @@ impl SubGraphRegistry {
     // returns a set of pairs that can no longer be used to extend
     pub fn verify_current_subgraphs<T: ProtocolState>(
         &mut self,
-        pair: PairWithFirstPoolHop,
-        start: Address,
-        start_price: Rational,
+        args: Vec<(PairWithFirstPoolHop, Address, Rational)>,
         state: &FastHashMap<Address, &T>,
         block: u64,
-    ) -> Option<FastHashSet<Pair>> {
+    ) {
         let mut invalid_extends = FastHashSet::default();
 
-        let (pair, gt) = pair.pair_gt();
-        if let Some(range) = self.sub_graphs.get_mut(&pair.ordered()) {
-            if let Some(graph) = range.get_mut(&gt.ordered()) {
-                if !graph.has_valid_liquidity(start, start_price.clone(), state, block) {
-                    // if we extend to another subgraph, then we dont gotta check.
-                    if graph.extends_to().is_some() {
-                        return None
-                    }
+        for (pair, start, start_price) in args {
+            let (pair, gt) = pair.pair_gt();
+            if let Some(range) = self.sub_graphs.get_mut(&pair.ordered()) {
+                if let Some(graph) = range.get_mut(&gt.ordered()) {
+                    if !graph.has_valid_liquidity(start, start_price.clone(), state, block) {
+                        // if we extend to another subgraph, then we dont gotta check.
+                        if graph.extends_to().is_some() {
+                            return
+                        }
 
-                    let possible_bad_extends_to = graph.pair;
-                    let valid_count = range
-                        .iter()
-                        // keep if can be base and isn't being removed
-                        .filter(|(_, g)| g.extends_to().is_none() && g.remove_at.is_none())
-                        .count();
+                        let possible_bad_extends_to = graph.pair;
+                        let valid_count = range
+                            .iter()
+                            // keep if can be base and isn't being removed
+                            .filter(|(_, g)| g.extends_to().is_none() && g.remove_at.is_none())
+                            .count();
 
-                    if valid_count == 0 {
-                        invalid_extends.insert(possible_bad_extends_to.ordered());
+                        if valid_count == 0 {
+                            invalid_extends.insert(possible_bad_extends_to.ordered());
+                        }
                     }
                 }
             }
@@ -293,8 +293,6 @@ impl SubGraphRegistry {
 
             });
         }
-
-        Some(invalid_extends)
     }
 
     pub fn get_price(
@@ -372,9 +370,9 @@ impl SubGraphRegistry {
                 };
 
                 let Some(next) = graph.fetch_price(edge_state) else {
-                        tracing::info!("get_price_all failed to fetch price");
-                        continue;
-                    };
+                    tracing::info!("get_price_all failed to fetch price");
+                    continue;
+                };
 
                 let default_pair = graph.get_unordered_pair();
 
