@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, TxHash};
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
@@ -13,6 +13,7 @@ use clickhouse::{remote_cursor::RemoteCursor, DbRow};
 use futures::TryStreamExt;
 use itertools::Itertools;
 use reqwest::StatusCode;
+use reth_primitives::BlockHash;
 use serde::Deserialize;
 
 use crate::{
@@ -73,7 +74,14 @@ impl ClickhouseHttpClient {
 }
 
 impl ClickhouseHandle for ClickhouseHttpClient {
-    async fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
+    async fn get_metadata(
+        &self,
+        block_num: u64,
+        _: u64,
+        _: BlockHash,
+        _: Vec<TxHash>,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
         let block_meta = self
             .query_many_range::<BlockInfo, BlockInfoData>(block_num, block_num + 1)
             .await?
@@ -283,7 +291,15 @@ pub mod test {
     #[brontes_macros::test]
     async fn test_metadata_query() {
         let click_house = load_clickhouse().await;
-        let res = click_house.get_metadata(18500000, USDT_ADDRESS).await;
+        let res = click_house
+            .get_metadata(
+                18500000,
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                USDT_ADDRESS,
+            )
+            .await;
 
         assert!(res.is_ok());
     }

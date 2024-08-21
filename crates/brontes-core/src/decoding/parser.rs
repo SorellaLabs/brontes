@@ -8,6 +8,7 @@ use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, Transaction
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
 use futures::future::join_all;
+use reth_primitives::BlockHash;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::{AnyReceiptEnvelope, Log, TransactionReceipt};
@@ -96,10 +97,17 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
 
     /// executes the tracing of a given block
     #[allow(unreachable_code)]
-    pub async fn execute_block(self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+    pub async fn execute_block(self, block_num: u64) -> Option<(BlockHash, Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
-            return Some(res)
+
+            let block_hash = self.tracer.block_hash_for_id(block_num).await.ok()?;
+
+            if block_hash.is_none() {
+                error!(%block_num, "failed to get block hash for block");
+            }
+
+            return block_hash.map(|b| (b, res.0, res.1))
         }
         #[cfg(not(feature = "local-reth"))]
         {
@@ -143,14 +151,30 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             error!(%block_num, "failed to store traces for block");
         }
 
-        Some((traces.0, traces.2))
+        let block_hash = self.tracer.block_hash_for_id(block_num).await.ok()?;
+
+        if block_hash.is_none() {
+            error!(%block_num, "failed to get block hash for block");
+        }
+
+        block_hash.map(|b| (b, traces.0, traces.2))
     }
 
     #[allow(unreachable_code)]
-    pub async fn execute_block_discovery(self, block_num: u64) -> Option<(Vec<TxTrace>, Header)> {
+    pub async fn execute_block_discovery(
+        self,
+        block_num: u64,
+    ) -> Option<(BlockHash, Vec<TxTrace>, Header)> {
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
-            return Some(res)
+
+            let block_hash = self.tracer.block_hash_for_id(block_num).await.ok()?;
+
+            if block_hash.is_none() {
+                error!(%block_num, "failed to get block hash for block");
+            }
+
+            return block_hash.map(|b| (b, res.0, res.1))
         }
         #[cfg(not(feature = "local-reth"))]
         {
@@ -181,7 +205,13 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             .fill_metadata(parity_trace.0.unwrap(), receipts.0.unwrap(), block_num)
             .await;
 
-        Some((traces.0, traces.2))
+        let block_hash = self.tracer.block_hash_for_id(block_num).await.ok()?;
+
+        if block_hash.is_none() {
+            error!(%block_num, "failed to get block hash for block");
+        }
+
+        block_hash.map(|b| (b, traces.0, traces.2))
     }
 
     #[cfg(feature = "dyn-decode")]

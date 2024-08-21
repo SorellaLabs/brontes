@@ -2,6 +2,7 @@ use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
+use reth_primitives::BlockHash;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use serde_with::serde_as;
@@ -13,6 +14,7 @@ use super::{
     traits::LibmdbxReader,
 };
 use crate::{
+    block_metadata::RelayBlockMetadata,
     constants::WETH_ADDRESS,
     db::{dex::BlockPrice, redefined_types::primitives::*},
     implement_table_value_codecs_with_zc,
@@ -52,6 +54,26 @@ pub struct BlockMetadataInner {
 }
 
 implement_table_value_codecs_with_zc!(BlockMetadataInnerRedefined);
+
+impl BlockMetadataInner {
+    pub fn make_new(
+        block_hash: BlockHash,
+        block_timestamp: u64,
+        relay: Option<RelayBlockMetadata>,
+        p2p_timestamp: Option<u64>,
+        private_flow: Vec<TxHash>,
+    ) -> Self {
+        Self {
+            block_hash: block_hash.into(),
+            block_timestamp,
+            relay_timestamp: relay.as_ref().and_then(|r| r.relay_timestamp),
+            p2p_timestamp,
+            proposer_fee_recipient: relay.as_ref().map(|r| r.proposer_fee_recipient),
+            proposer_mev_reward: relay.as_ref().map(|r| r.proposer_mev_reward),
+            private_flow,
+        }
+    }
+}
 
 /// Aggregated Metadata
 #[derive(Debug, Clone, derive_more::Deref, derive_more::AsRef, Default)]

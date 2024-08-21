@@ -6,7 +6,7 @@ WITH ranked_symbols AS
             exchange,
             sum(sum_volume) AS total_volume
         FROM cex.trading_volume_by_month
-        WHERE (month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1)))
+        WHERE (month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND (month <= toStartOfMonth(toDateTime(? / 1000000) + toIntervalMonth(1)))
         GROUP BY month, symbol, exchange
     ),
     aggregated_exchanges AS

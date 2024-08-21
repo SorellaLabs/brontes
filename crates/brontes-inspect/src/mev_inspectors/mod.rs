@@ -8,5 +8,6 @@ pub mod searcher_activity;
 pub mod shared_utils;
 
 use malachite::Rational;
-/// Jokes for testing cur
-pub(crate) const MAX_PROFIT: Rational = Rational::const_from_unsigned(500_000_000);
+
+pub(crate) const MAX_PROFIT: Rational = Rational::const_from_unsigned(15_000_000);
+pub(crate) const MIN_PROFIT: Rational = Rational::const_from_signed(-15_000_000);

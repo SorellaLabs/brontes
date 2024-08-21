@@ -44,3 +44,4 @@ pub mod protocol;
 pub use protocol::*;
 pub mod channel_alerts;
 pub use channel_alerts::*;
+pub mod block_metadata;
