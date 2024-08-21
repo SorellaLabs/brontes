@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     pin::Pin,
     task::{Context, Poll},
     time::Duration,
@@ -13,6 +14,7 @@ use brontes_types::{
     tree::BlockTree,
     BrontesTaskExecutor, FastHashMap, FastHashSet,
 };
+use clap::builder::styling::Metadata;
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc::{channel, error::TrySendError, Receiver, Sender};
 use tracing::{debug, span, Instrument, Level};
@@ -29,6 +31,8 @@ pub struct WaitingForPricerFuture<T: TracingProvider> {
     // trees and cause memory overflows
     pub tmp_trees:            FastHashSet<u64>,
     task_executor:            BrontesTaskExecutor,
+    max_tree_block:           u64,
+    pricing_resolved_cache:   VecDeque<(u64, DexQuotes)>,
 }
 
 impl<T: TracingProvider> WaitingForPricerFuture<T> {
@@ -44,6 +48,8 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             tx,
             receiver: rx,
             tmp_trees: FastHashSet::default(),
+            max_tree_block: 0,
+            pricing_resolved_cache: VecDeque::new(),
         }
     }
 
@@ -85,10 +91,42 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
     }
 
     pub fn add_pending_inspection(&mut self, block: u64, tree: BlockTree<Action>, meta: Metadata) {
+        self.max_tree_block = block;
         assert!(
             self.pending_trees.insert(block, (tree, meta)).is_none(),
             "traced a duplicate block"
         );
+    }
+
+    fn process_resolved_pricing(
+        &mut self,
+        block: u64,
+        prices: DexQuotes,
+    ) -> Poll<Option<(BlockTree<Action>, Metadata)>> {
+        let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
+            let _ = self.tmp_trees.remove(&block);
+            tracing::error!("no tree for price");
+            return Poll::Ready(None);
+        };
+
+        // try drop trees that we know will never process but be loud about it if there
+        // are any. If any, ensure to fix
+        self.pending_trees.retain(|pending_block, _| {
+            if &block > pending_block {
+                tracing::error!(block=%pending_block, "pending tree never had dex pricing");
+                return false
+            }
+
+            true
+        });
+
+        if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
+            tree.label_private_txes(&meta);
+        }
+
+        let finalized_meta = meta.into_full_metadata(prices);
+
+        return Poll::Ready(Some((tree, finalized_meta)))
     }
 }
 
@@ -96,6 +134,18 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
     type Item = (BlockTree<Action>, Metadata);
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // check to see if there is cached block
+        if !self.pricing_resolved_cache.is_empty() {
+            let (resolved_block, pricing) = self.pricing_resolved_cache.pop_front().unwrap();
+            if resolved_block <= self.max_tree_block {
+                return self.process_resolved_pricing(resolved_block, pricing)
+            }
+
+            // not ready yet so push to front
+            self.pricing_resolved_cache
+                .push_front((resolved_block, pricing));
+        }
+
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let Some((pricer, inner)) = handle else {
                 tracing::warn!("tokio task exited");
@@ -108,35 +158,22 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
             if let Some((block, prices)) = inner {
                 debug!(target:"brontes","Generated dex prices for block: {} ", block);
 
-                let Some((mut tree, meta)) = self.pending_trees.remove(&block) else {
-                    let _ = self.tmp_trees.remove(&block);
-                    tracing::error!("no tree for price");
-                    return Poll::Ready(None);
-                };
+                if block > self.max_tree_block {
+                    tracing::info!(
+                        pricing_block=%block,
+                        last_metadata_block=%self.max_tree_block,
+                        "Pricing completed for block before metadata"
+                    );
 
-                // try drop trees that we know will never process but be loud about it if there
-                // are any. If any, ensure to fix
-                self.pending_trees.retain(|pending_block, _| {
-                    if &block > pending_block {
-                        tracing::error!(block=%pending_block, "pending tree never had dex pricing");
-                        return false
-                    }
-
-                    true
-                });
-
-                if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
-                    tree.label_private_txes(&meta);
+                    self.pricing_resolved_cache.push_back((block, prices));
+                    return Poll::Pending
                 }
-
-                let finalized_meta = meta.into_full_metadata(prices);
-
-                return Poll::Ready(Some((tree, finalized_meta)))
-            } else {
-                tracing::info!("pricing returned completed");
-                // means we have completed chunks
-                return Poll::Ready(None)
+                return self.process_resolved_pricing(block, prices)
             }
+
+            tracing::info!("pricing returned completed");
+            // means we have completed chunks
+            return Poll::Ready(None)
         }
 
         Poll::Pending
