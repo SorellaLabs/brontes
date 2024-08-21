@@ -44,14 +44,14 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct SubgraphVerifier {
     pending_subgraphs:           FastHashMap<PairWithFirstPoolHop, Subgraph>,
+    /// because we take the subgraph while where processing we mark it here so
+    /// we don't re-create subgraphs.
+    processing_subgraph:         FastHashSet<PairWithFirstPoolHop>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
     subgraph_verification_state: FastHashMap<PairWithFirstPoolHop, SubgraphVerificationState>,
-    // /// holds all pairs that have been marked invalid to extend. this becomes a
-    // /// problem when we are verify
-    // invalid_extends:             FastHashMap<u64, FastHashSet<Pair>>,
 }
 
 impl Drop for SubgraphVerifier {
@@ -75,6 +75,7 @@ impl SubgraphVerifier {
     pub fn new() -> Self {
         Self {
             pending_subgraphs:           FastHashMap::default(),
+            processing_subgraph:         FastHashSet::default(),
             subgraph_verification_state: FastHashMap::default(),
         }
     }
@@ -86,7 +87,7 @@ impl SubgraphVerifier {
     }
 
     pub fn has_go_through(&self, pair: PairWithFirstPoolHop) -> bool {
-        self.pending_subgraphs.contains_key(&pair)
+        self.pending_subgraphs.contains_key(&pair) || self.processing_subgraph.contains(&pair)
     }
 
     pub fn print_rem(&self, block: u64) {
@@ -120,14 +121,6 @@ impl SubgraphVerifier {
             .map(|s| s.block == block)
             .unwrap_or(false)
     }
-
-    // pub fn set_invalid_extends_for_block(
-    //     &mut self,
-    //     block: u64,
-    //     invalid_extends: FastHashSet<Pair>,
-    // ) {
-    //     self.invalid_extends.insert(block, invalid_extends);
-    // }
 
     pub fn pool_dep_failure(
         &mut self,
@@ -307,6 +300,7 @@ impl SubgraphVerifier {
                     return VerificationResults::Abort(pair, block)
                 }
 
+                self.processing_subgraph.remove(&pair);
                 if result.should_requery {
                     let extends = subgraph.subgraph.extends_to();
                     self.pending_subgraphs.insert(pair, subgraph);
@@ -347,6 +341,7 @@ impl SubgraphVerifier {
                 )
             })
             .filter_map(|(pair, block, _, subgraph, price, quote)| {
+                self.processing_subgraph.insert(pair);
                 let mut subgraph = subgraph?;
                 subgraph.iters += 1;
 

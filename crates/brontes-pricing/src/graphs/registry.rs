@@ -154,7 +154,7 @@ impl SubGraphRegistry {
             .filter(|(_, subgraphs)| {
                 subgraphs
                     .iter()
-                    .any(|(_, subgraph)| subgraph.should_use_for_new())
+                    .any(|(_, subgraph)| subgraph.should_use_for_extend())
             })
             .map(|(p, _)| *p)
             .collect_vec()
@@ -170,7 +170,7 @@ impl SubGraphRegistry {
                     // if end key of cur is quote
                     && cur_graphs.1 == quote
                     // can be used to extend
-                    && sub.iter().any(|(_, s)| s.should_use_for_new())
+                    && sub.iter().any(|(_, s)| s.should_use_for_extend())
             })
             .map(|(k, _)| k)
             .copied()
