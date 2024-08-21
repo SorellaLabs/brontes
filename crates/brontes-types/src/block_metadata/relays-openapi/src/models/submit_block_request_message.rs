@@ -28,7 +28,7 @@ pub struct SubmitBlockRequestMessage {
     #[serde(rename = "gas_used", skip_serializing_if = "Option::is_none")]
     pub gas_used:               Option<String>,
     #[serde(rename = "value", skip_serializing_if = "Option::is_none")]
-    pub value:                  Option<String>
+    pub value:                  Option<String>,
 }
 
 impl SubmitBlockRequestMessage {
@@ -41,7 +41,7 @@ impl SubmitBlockRequestMessage {
             proposer_fee_recipient: None,
             gas_limit:              None,
             gas_used:               None,
-            value:                  None
+            value:                  None,
         }
     }
 }

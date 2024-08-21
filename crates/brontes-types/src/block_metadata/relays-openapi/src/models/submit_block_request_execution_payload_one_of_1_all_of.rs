@@ -39,7 +39,7 @@ pub struct SubmitBlockRequestExecutionPayloadOneOf1AllOf {
     #[serde(rename = "base_fee_per_gas", skip_serializing_if = "Option::is_none")]
     pub base_fee_per_gas: Option<String>,
     #[serde(rename = "block_hash", skip_serializing_if = "Option::is_none")]
-    pub block_hash:       Option<String>
+    pub block_hash:       Option<String>,
 }
 
 impl SubmitBlockRequestExecutionPayloadOneOf1AllOf {
@@ -58,7 +58,7 @@ impl SubmitBlockRequestExecutionPayloadOneOf1AllOf {
             timestamp:        None,
             extra_data:       None,
             base_fee_per_gas: None,
-            block_hash:       None
+            block_hash:       None,
         }
     }
 }

@@ -16,7 +16,7 @@ pub struct GetValidators200ResponseInnerEntry {
     #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
     pub message:   Option<Box<crate::models::GetValidators200ResponseInnerEntryMessage>>,
     #[serde(rename = "signature", skip_serializing_if = "Option::is_none")]
-    pub signature: Option<String>
+    pub signature: Option<String>,
 }
 
 impl GetValidators200ResponseInnerEntry {

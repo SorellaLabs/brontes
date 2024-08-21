@@ -13,7 +13,7 @@ pub struct SubmitBlock200ResponseMessage {
     #[serde(rename = "receive_timestamp", skip_serializing_if = "Option::is_none")]
     pub receive_timestamp: Option<String>,
     #[serde(rename = "bid_trace", skip_serializing_if = "Option::is_none")]
-    pub bid_trace:         Option<Box<crate::models::SubmitBlockRequestMessage>>
+    pub bid_trace:         Option<Box<crate::models::SubmitBlockRequestMessage>>,
 }
 
 impl SubmitBlock200ResponseMessage {

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Relays;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct RelayBid {
     pub relay:                  Relays,
     pub slot:                   u64,
@@ -72,17 +72,17 @@ pub struct RelayPayload {
 impl RelayPayload {
     pub fn new(payload: GetDeliveredPayloads200ResponseInner, relay: Relays) -> Self {
         Self {
-            slot:                   payload.slot.unwrap().parse().unwrap(),
-            parent_hash:            payload.parent_hash.unwrap(),
-            block_hash:             payload.block_hash.unwrap(),
-            builder_pubkey:         payload.builder_pubkey.unwrap(),
+            relay,
+            slot: payload.slot.unwrap().parse().unwrap(),
+            parent_hash: payload.parent_hash.unwrap(),
+            block_hash: payload.block_hash.unwrap(),
+            builder_pubkey: payload.builder_pubkey.unwrap(),
             proposer_fee_recipient: payload.proposer_fee_recipient.unwrap(),
-            gas_limit:              payload.gas_limit.unwrap().parse().unwrap(),
-            gas_used:               payload.gas_used.unwrap().parse().unwrap(),
-            value:                  payload.value.unwrap().parse().unwrap(),
-            block_number:           payload.block_number.unwrap().parse().unwrap(),
-            num_tx:                 payload.num_tx.unwrap().parse().unwrap(),
-            relay:                  relay.clone(),
+            gas_limit: payload.gas_limit.unwrap().parse().unwrap(),
+            gas_used: payload.gas_used.unwrap().parse().unwrap(),
+            value: payload.value.unwrap().parse().unwrap(),
+            block_number: payload.block_number.unwrap().parse().unwrap(),
+            num_tx: payload.num_tx.unwrap().parse().unwrap(),
         }
     }
 

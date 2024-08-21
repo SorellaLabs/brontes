@@ -11,7 +11,7 @@
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct SubmitBlockRequestExecutionPayloadOneOfAllOf1 {
     #[serde(rename = "transactions", skip_serializing_if = "Option::is_none")]
-    pub transactions: Option<Vec<String>>
+    pub transactions: Option<Vec<String>>,
 }
 
 impl SubmitBlockRequestExecutionPayloadOneOfAllOf1 {

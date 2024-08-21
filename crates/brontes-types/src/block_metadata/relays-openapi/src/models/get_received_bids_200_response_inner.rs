@@ -36,7 +36,7 @@ pub struct GetReceivedBids200ResponseInner {
     #[serde(rename = "timestamp", skip_serializing_if = "Option::is_none")]
     pub timestamp:              Option<String>,
     #[serde(rename = "timestamp_ms", skip_serializing_if = "Option::is_none")]
-    pub timestamp_ms:           Option<String>
+    pub timestamp_ms:           Option<String>,
 }
 
 impl GetReceivedBids200ResponseInner {
@@ -53,7 +53,7 @@ impl GetReceivedBids200ResponseInner {
             block_number:           None,
             num_tx:                 None,
             timestamp:              None,
-            timestamp_ms:           None
+            timestamp_ms:           None,
         }
     }
 }

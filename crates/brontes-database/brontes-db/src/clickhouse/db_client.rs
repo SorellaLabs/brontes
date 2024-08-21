@@ -377,6 +377,10 @@ impl Clickhouse {
         &self,
         mut tx_hashes_in_block: Vec<TxHash>,
     ) -> eyre::Result<Vec<TxHash>> {
+        if tx_hashes_in_block.is_empty() {
+            return Ok(Vec::new())
+        }
+
         let public_txs = self
             .query_many_with_retry(
                 PRIVATE_FLOW,

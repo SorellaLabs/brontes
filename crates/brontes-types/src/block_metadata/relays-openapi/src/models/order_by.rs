@@ -20,7 +20,7 @@ pub enum OrderBy {
     #[serde(rename = "-value")]
     NegValue,
     #[serde(rename = "value")]
-    Value
+    Value,
 }
 
 #[allow(clippy::to_string_trait_impl)]
@@ -28,7 +28,7 @@ impl ToString for OrderBy {
     fn to_string(&self) -> String {
         match self {
             Self::NegValue => String::from("-value"),
-            Self::Value => String::from("value")
+            Self::Value => String::from("value"),
         }
     }
 }

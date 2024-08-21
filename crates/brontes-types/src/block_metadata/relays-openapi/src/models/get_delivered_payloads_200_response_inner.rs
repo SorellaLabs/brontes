@@ -32,7 +32,7 @@ pub struct GetDeliveredPayloads200ResponseInner {
     #[serde(rename = "block_number", skip_serializing_if = "Option::is_none")]
     pub block_number:           Option<String>,
     #[serde(rename = "num_tx", skip_serializing_if = "Option::is_none")]
-    pub num_tx:                 Option<String>
+    pub num_tx:                 Option<String>,
 }
 
 impl GetDeliveredPayloads200ResponseInner {
@@ -47,7 +47,7 @@ impl GetDeliveredPayloads200ResponseInner {
             gas_used:               None,
             value:                  None,
             block_number:           None,
-            num_tx:                 None
+            num_tx:                 None,
         }
     }
 }

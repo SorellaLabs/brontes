@@ -39,7 +39,7 @@ pub struct SubmitBlockRequestExecutionPayloadOneOf {
     #[serde(rename = "block_hash", skip_serializing_if = "Option::is_none")]
     pub block_hash:       Option<String>,
     #[serde(rename = "transactions", skip_serializing_if = "Option::is_none")]
-    pub transactions:     Option<Vec<String>>
+    pub transactions:     Option<Vec<String>>,
 }
 
 impl SubmitBlockRequestExecutionPayloadOneOf {
@@ -58,7 +58,7 @@ impl SubmitBlockRequestExecutionPayloadOneOf {
             extra_data:       None,
             base_fee_per_gas: None,
             block_hash:       None,
-            transactions:     None
+            transactions:     None,
         }
     }
 }

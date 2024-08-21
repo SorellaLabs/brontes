@@ -19,11 +19,15 @@ pub struct GetValidatorRegistration400Response {
     pub message:     Option<String>,
     /// Optional stacktraces, sent when node is in debug mode
     #[serde(rename = "stacktraces", skip_serializing_if = "Option::is_none")]
-    pub stacktraces: Option<Vec<String>>
+    pub stacktraces: Option<Vec<String>>,
 }
 
 impl GetValidatorRegistration400Response {
     pub fn new() -> GetValidatorRegistration400Response {
-        GetValidatorRegistration400Response { code: None, message: None, stacktraces: None }
+        GetValidatorRegistration400Response {
+            code:        None,
+            message:     None,
+            stacktraces: None,
+        }
     }
 }

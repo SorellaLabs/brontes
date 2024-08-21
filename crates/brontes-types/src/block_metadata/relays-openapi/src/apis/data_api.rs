@@ -17,7 +17,7 @@ use crate::apis::ResponseContent;
 pub enum GetDeliveredPayloadsError {
     Status400(crate::models::GetDeliveredPayloads400Response),
     Status500(crate::models::SubmitBlock400ResponseAllOf),
-    UnknownValue(serde_json::Value)
+    UnknownValue(serde_json::Value),
 }
 
 /// struct for typed errors of method [`get_received_bids`]
@@ -26,7 +26,7 @@ pub enum GetDeliveredPayloadsError {
 pub enum GetReceivedBidsError {
     Status400(crate::models::GetReceivedBids400Response),
     Status500(crate::models::SubmitBlock400ResponseAllOf),
-    UnknownValue(serde_json::Value)
+    UnknownValue(serde_json::Value),
 }
 
 /// struct for typed errors of method [`get_validator_registration`]
@@ -35,7 +35,7 @@ pub enum GetReceivedBidsError {
 pub enum GetValidatorRegistrationError {
     Status400(crate::models::GetValidatorRegistration400Response),
     Status500(crate::models::SubmitBlock400ResponseAllOf),
-    UnknownValue(serde_json::Value)
+    UnknownValue(serde_json::Value),
 }
 
 /// * Payloads become available after the relay responds to a `getPayload`
@@ -49,41 +49,57 @@ pub async fn get_delivered_payloads(
     block_number: Option<&str>,
     proposer_pubkey: Option<&str>,
     builder_pubkey: Option<&str>,
-    order_by: Option<&str>
-) -> Result<Vec<crate::models::GetDeliveredPayloads200ResponseInner>, Error<GetDeliveredPayloadsError>> {
+    order_by: Option<&str>,
+) -> Result<
+    Vec<crate::models::GetDeliveredPayloads200ResponseInner>,
+    Error<GetDeliveredPayloadsError>,
+> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/relay/v1/data/bidtraces/proposer_payload_delivered", local_var_configuration.base_path);
-    let mut local_var_req_builder = local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
+    let local_var_uri_str = format!(
+        "{}/relay/v1/data/bidtraces/proposer_payload_delivered",
+        local_var_configuration.base_path
+    );
+    let mut local_var_req_builder =
+        local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
 
     if let Some(ref local_var_str) = slot {
-        local_var_req_builder = local_var_req_builder.query(&[("slot", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("slot", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = cursor {
-        local_var_req_builder = local_var_req_builder.query(&[("cursor", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("cursor", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = limit {
-        local_var_req_builder = local_var_req_builder.query(&[("limit", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("limit", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = block_hash {
-        local_var_req_builder = local_var_req_builder.query(&[("block_hash", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("block_hash", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = block_number {
-        local_var_req_builder = local_var_req_builder.query(&[("block_number", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("block_number", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = proposer_pubkey {
-        local_var_req_builder = local_var_req_builder.query(&[("proposer_pubkey", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("proposer_pubkey", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = builder_pubkey {
-        local_var_req_builder = local_var_req_builder.query(&[("builder_pubkey", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("builder_pubkey", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = order_by {
-        local_var_req_builder = local_var_req_builder.query(&[("order_by", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("order_by", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
-        local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
+        local_var_req_builder =
+            local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }
 
     let local_var_req = local_var_req_builder.build()?;
@@ -95,8 +111,13 @@ pub async fn get_delivered_payloads(
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
     } else {
-        let local_var_entity: Option<GetDeliveredPayloadsError> = serde_json::from_str(&local_var_content).ok();
-        let local_var_error = ResponseContent { status: local_var_status, content: local_var_content, entity: local_var_entity };
+        let local_var_entity: Option<GetDeliveredPayloadsError> =
+            serde_json::from_str(&local_var_content).ok();
+        let local_var_error = ResponseContent {
+            status:  local_var_status,
+            content: local_var_content,
+            entity:  local_var_entity,
+        };
         Err(Error::ResponseError(local_var_error))
     }
 }
@@ -109,32 +130,42 @@ pub async fn get_received_bids(
     block_hash: Option<&str>,
     block_number: Option<&str>,
     builder_pubkey: Option<&str>,
-    limit: Option<&str>
+    limit: Option<&str>,
 ) -> Result<Vec<crate::models::GetReceivedBids200ResponseInner>, Error<GetReceivedBidsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/relay/v1/data/bidtraces/builder_blocks_received", local_var_configuration.base_path);
-    let mut local_var_req_builder = local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
+    let local_var_uri_str = format!(
+        "{}/relay/v1/data/bidtraces/builder_blocks_received",
+        local_var_configuration.base_path
+    );
+    let mut local_var_req_builder =
+        local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
 
     if let Some(ref local_var_str) = slot {
-        local_var_req_builder = local_var_req_builder.query(&[("slot", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("slot", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = block_hash {
-        local_var_req_builder = local_var_req_builder.query(&[("block_hash", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("block_hash", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = block_number {
-        local_var_req_builder = local_var_req_builder.query(&[("block_number", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("block_number", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = builder_pubkey {
-        local_var_req_builder = local_var_req_builder.query(&[("builder_pubkey", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("builder_pubkey", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_str) = limit {
-        local_var_req_builder = local_var_req_builder.query(&[("limit", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("limit", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
-        local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
+        local_var_req_builder =
+            local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }
 
     let local_var_req = local_var_req_builder.build()?;
@@ -146,8 +177,13 @@ pub async fn get_received_bids(
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
     } else {
-        let local_var_entity: Option<GetReceivedBidsError> = serde_json::from_str(&local_var_content).ok();
-        let local_var_error = ResponseContent { status: local_var_status, content: local_var_content, entity: local_var_entity };
+        let local_var_entity: Option<GetReceivedBidsError> =
+            serde_json::from_str(&local_var_content).ok();
+        let local_var_error = ResponseContent {
+            status:  local_var_status,
+            content: local_var_content,
+            entity:  local_var_entity,
+        };
         Err(Error::ResponseError(local_var_error))
     }
 }
@@ -156,18 +192,22 @@ pub async fn get_received_bids(
 ///   check whether your own registration was successful.
 pub async fn get_validator_registration(
     configuration: &configuration::Configuration,
-    pubkey: &str
-) -> Result<crate::models::GetValidators200ResponseInnerEntry, Error<GetValidatorRegistrationError>> {
+    pubkey: &str,
+) -> Result<crate::models::GetValidators200ResponseInnerEntry, Error<GetValidatorRegistrationError>>
+{
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/relay/v1/data/validator_registration", local_var_configuration.base_path);
-    let mut local_var_req_builder = local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
+    let local_var_uri_str =
+        format!("{}/relay/v1/data/validator_registration", local_var_configuration.base_path);
+    let mut local_var_req_builder =
+        local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
 
     local_var_req_builder = local_var_req_builder.query(&[("pubkey", &pubkey.to_string())]);
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
-        local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
+        local_var_req_builder =
+            local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }
 
     let local_var_req = local_var_req_builder.build()?;
@@ -179,8 +219,13 @@ pub async fn get_validator_registration(
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
     } else {
-        let local_var_entity: Option<GetValidatorRegistrationError> = serde_json::from_str(&local_var_content).ok();
-        let local_var_error = ResponseContent { status: local_var_status, content: local_var_content, entity: local_var_entity };
+        let local_var_entity: Option<GetValidatorRegistrationError> =
+            serde_json::from_str(&local_var_content).ok();
+        let local_var_error = ResponseContent {
+            status:  local_var_status,
+            content: local_var_content,
+            entity:  local_var_entity,
+        };
         Err(Error::ResponseError(local_var_error))
     }
 }

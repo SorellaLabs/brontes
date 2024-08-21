@@ -41,7 +41,8 @@ pub struct SubmitBlockRequestExecutionPayload {
     #[serde(rename = "transactions", skip_serializing_if = "Option::is_none")]
     pub transactions:     Option<Vec<String>>,
     #[serde(rename = "withdrawals", skip_serializing_if = "Option::is_none")]
-    pub withdrawals:      Option<Vec<crate::models::SubmitBlockRequestExecutionPayloadOneOf1AllOf1WithdrawalsInner>>
+    pub withdrawals:
+        Option<Vec<crate::models::SubmitBlockRequestExecutionPayloadOneOf1AllOf1WithdrawalsInner>>,
 }
 
 impl SubmitBlockRequestExecutionPayload {
@@ -61,7 +62,7 @@ impl SubmitBlockRequestExecutionPayload {
             base_fee_per_gas: None,
             block_hash:       None,
             transactions:     None,
-            withdrawals:      None
+            withdrawals:      None,
         }
     }
 }

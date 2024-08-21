@@ -66,7 +66,7 @@ impl BlockMetadataInner {
         Self {
             block_hash: block_hash.into(),
             block_timestamp,
-            relay_timestamp: relay.as_ref().map(|r| r.relay_timestamp).flatten(),
+            relay_timestamp: relay.as_ref().and_then(|r| r.relay_timestamp),
             p2p_timestamp,
             proposer_fee_recipient: relay.as_ref().map(|r| r.proposer_fee_recipient),
             proposer_mev_reward: relay.as_ref().map(|r| r.proposer_mev_reward),

@@ -15,11 +15,15 @@ pub struct GetValidators200ResponseInner {
     #[serde(rename = "validator_index", skip_serializing_if = "Option::is_none")]
     pub validator_index: Option<String>,
     #[serde(rename = "entry", skip_serializing_if = "Option::is_none")]
-    pub entry:           Option<Box<crate::models::GetValidators200ResponseInnerEntry>>
+    pub entry:           Option<Box<crate::models::GetValidators200ResponseInnerEntry>>,
 }
 
 impl GetValidators200ResponseInner {
     pub fn new() -> GetValidators200ResponseInner {
-        GetValidators200ResponseInner { slot: None, validator_index: None, entry: None }
+        GetValidators200ResponseInner {
+            slot:            None,
+            validator_index: None,
+            entry:           None,
+        }
     }
 }

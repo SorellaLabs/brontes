@@ -19,7 +19,7 @@ pub struct GetReceivedBids400Response {
     pub message:     Option<String>,
     /// Optional stacktraces, sent when node is in debug mode
     #[serde(rename = "stacktraces", skip_serializing_if = "Option::is_none")]
-    pub stacktraces: Option<Vec<String>>
+    pub stacktraces: Option<Vec<String>>,
 }
 
 impl GetReceivedBids400Response {

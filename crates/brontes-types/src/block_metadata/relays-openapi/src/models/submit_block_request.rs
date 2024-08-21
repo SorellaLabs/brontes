@@ -15,11 +15,15 @@ pub struct SubmitBlockRequest {
     #[serde(rename = "execution_payload", skip_serializing_if = "Option::is_none")]
     pub execution_payload: Option<Box<crate::models::SubmitBlockRequestExecutionPayload>>,
     #[serde(rename = "signature", skip_serializing_if = "Option::is_none")]
-    pub signature:         Option<String>
+    pub signature:         Option<String>,
 }
 
 impl SubmitBlockRequest {
     pub fn new() -> SubmitBlockRequest {
-        SubmitBlockRequest { message: None, execution_payload: None, signature: None }
+        SubmitBlockRequest {
+            message:           None,
+            execution_payload: None,
+            signature:         None,
+        }
     }
 }

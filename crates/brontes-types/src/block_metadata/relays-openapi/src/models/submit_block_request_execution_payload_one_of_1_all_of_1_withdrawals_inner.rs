@@ -21,7 +21,7 @@ pub struct SubmitBlockRequestExecutionPayloadOneOf1AllOf1WithdrawalsInner {
     pub address:         Option<String>,
     /// The value withdrawn (gwei).
     #[serde(rename = "amount", skip_serializing_if = "Option::is_none")]
-    pub amount:          Option<String>
+    pub amount:          Option<String>,
 }
 
 impl SubmitBlockRequestExecutionPayloadOneOf1AllOf1WithdrawalsInner {
@@ -30,7 +30,7 @@ impl SubmitBlockRequestExecutionPayloadOneOf1AllOf1WithdrawalsInner {
             index:           None,
             validator_index: None,
             address:         None,
-            amount:          None
+            amount:          None,
         }
     }
 }

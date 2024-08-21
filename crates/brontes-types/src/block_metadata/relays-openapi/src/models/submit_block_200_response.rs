@@ -13,7 +13,7 @@ pub struct SubmitBlock200Response {
     #[serde(rename = "message", skip_serializing_if = "Option::is_none")]
     pub message:   Option<Box<crate::models::SubmitBlock200ResponseMessage>>,
     #[serde(rename = "signature", skip_serializing_if = "Option::is_none")]
-    pub signature: Option<String>
+    pub signature: Option<String>,
 }
 
 impl SubmitBlock200Response {

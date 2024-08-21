@@ -1,14 +1,20 @@
-use relays_openapi::apis::{configuration::Configuration, data_api::{get_delivered_payloads, get_received_bids}};
+use relays_openapi::apis::{
+    configuration::Configuration,
+    data_api::{get_delivered_payloads, get_received_bids},
+};
 use reth_primitives::BlockHash;
 use strum::IntoEnumIterator;
-use crate::block_metadata::{RelayBid, RelayPayload};
 
 use super::RelayBlockMetadata;
+use crate::block_metadata::{RelayBid, RelayPayload};
 
 macro_rules! relays {
     ($([$relay:ident, $min_block:literal, $url:expr]),*) => {
 
-        #[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq, std::hash::Hash, PartialOrd, Ord, strum::EnumIter)]
+        #[derive(
+            Debug, Copy, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq,
+            std::hash::Hash, PartialOrd, strum::EnumIter
+        )]
         pub enum Relays {
             $($relay),*
         }
@@ -88,52 +94,74 @@ impl Relays {
         Configuration { base_path: self.url().to_string(), ..Default::default() }
     }
 
-
-    pub async fn get_relay_metadata(block_number: u64, block_hash: BlockHash) -> eyre::Result<Option<RelayBlockMetadata>> {
+    pub async fn get_relay_metadata(
+        block_number: u64,
+        block_hash: BlockHash,
+    ) -> eyre::Result<Option<RelayBlockMetadata>> {
         let block_hash = format!("{:?}", block_hash);
         let bids = futures::future::join_all(Relays::iter().map(|relay| {
-            relay.get_winning_bid(block_number, block_hash.clone())
-        })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
+            let block_hash = block_hash.clone();
 
-        if let Some(best_bid) = bids.into_iter().min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms)) {
+            async move {
+                match relay.get_winning_bid(block_number, block_hash).await {
+                    Ok(r) => Some(r),
+                    Err(e) => {
+                        tracing::error!(%relay, "error getting bids - {:?}", e);
+                        None
+                    }
+                }
+            }
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .flatten()
+        .collect::<Vec<_>>();
+
+        if let Some(best_bid) = bids
+            .into_iter()
+            .min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms))
+        {
             return Ok(Some(best_bid.try_into()?))
         }
-        
 
-        if let Some(pl) =  futures::future::join_all(Relays::iter().map(|relay| {
-            relay.get_payload(block_number)
-        })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().next() {
+        if let Some(pl) = futures::future::join_all(Relays::iter().map(|relay| async move {
+            match relay.get_payload(block_number).await {
+                Ok(r) => Some(r),
+                Err(e) => {
+                    tracing::error!(%relay, "error getting payloads - {:?}", e);
+                    None
+                }
+            }
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .flatten()
+        .next()
+        {
             return Ok(Some(pl.try_into()?))
         }
 
         Ok(None)
-
     }
 
-     async fn get_winning_bid(
+    async fn get_winning_bid(
         self,
         block_number: u64,
         block_hash: String,
     ) -> eyre::Result<Option<RelayBid>> {
         let bids = self
-            .get_received_bids(
-                None,
-                None,
-                Some(block_number.to_string()),
-                None,
-                None,
-            )
+            .get_received_bids(None, None, Some(block_number.to_string()), None, None)
             .await?;
 
-        Ok(bids.into_iter().filter(|bid| bid.block_hash.to_lowercase() == block_hash.to_lowercase()).min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms)))
-
-
+        Ok(bids
+            .into_iter()
+            .filter(|bid| bid.block_hash.to_lowercase() == block_hash.to_lowercase())
+            .min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms)))
     }
 
-     async fn get_payload(
-        self,
-        block_number: u64,
-    ) -> eyre::Result<Option<RelayPayload>> {
+    async fn get_payload(self, block_number: u64) -> eyre::Result<Option<RelayPayload>> {
         let payloads = self
             .get_delivered_payloads(
                 None,
@@ -142,7 +170,7 @@ impl Relays {
                 None,
                 Some(block_number.to_string()),
                 None,
-           None,
+                None,
                 None,
             )
             .await?;
@@ -168,7 +196,10 @@ impl Relays {
         )
         .await?;
 
-        Ok(bids.into_iter().map(|bid| RelayBid::new(bid, *self)).collect())
+        Ok(bids
+            .into_iter()
+            .map(|bid| RelayBid::new(bid, *self))
+            .collect())
     }
 
     async fn get_delivered_payloads(
@@ -195,6 +226,9 @@ impl Relays {
         )
         .await?;
 
-        Ok(payloads.into_iter().map(|payload| RelayPayload::new(payload, *self)).collect())
+        Ok(payloads
+            .into_iter()
+            .map(|payload| RelayPayload::new(payload, *self))
+            .collect())
     }
 }

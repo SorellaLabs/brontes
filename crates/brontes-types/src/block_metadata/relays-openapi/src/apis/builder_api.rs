@@ -15,7 +15,7 @@ use crate::apis::ResponseContent;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum GetValidatorsError {
-    UnknownValue(serde_json::Value)
+    UnknownValue(serde_json::Value),
 }
 
 /// struct for typed errors of method [`submit_block`]
@@ -24,7 +24,7 @@ pub enum GetValidatorsError {
 pub enum SubmitBlockError {
     Status400(crate::models::SubmitBlock400Response),
     Status500(crate::models::SubmitBlock400ResponseAllOf),
-    UnknownValue(serde_json::Value)
+    UnknownValue(serde_json::Value),
 }
 
 /// * Used by builders to know when to submit bids for an upcoming proposal.  *
@@ -32,17 +32,20 @@ pub enum SubmitBlockError {
 ///   epoch.  * Each entry includes a slot and the validator with assigned duty.
 ///   * Slots without a registered validator are omitted.
 pub async fn get_validators(
-    configuration: &configuration::Configuration
+    configuration: &configuration::Configuration,
 ) -> Result<Vec<crate::models::GetValidators200ResponseInner>, Error<GetValidatorsError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/relay/v1/builder/validators", local_var_configuration.base_path);
-    let mut local_var_req_builder = local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
+    let local_var_uri_str =
+        format!("{}/relay/v1/builder/validators", local_var_configuration.base_path);
+    let mut local_var_req_builder =
+        local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
 
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
-        local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
+        local_var_req_builder =
+            local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }
 
     let local_var_req = local_var_req_builder.build()?;
@@ -54,8 +57,13 @@ pub async fn get_validators(
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
     } else {
-        let local_var_entity: Option<GetValidatorsError> = serde_json::from_str(&local_var_content).ok();
-        let local_var_error = ResponseContent { status: local_var_status, content: local_var_content, entity: local_var_entity };
+        let local_var_entity: Option<GetValidatorsError> =
+            serde_json::from_str(&local_var_content).ok();
+        let local_var_error = ResponseContent {
+            status:  local_var_status,
+            content: local_var_content,
+            entity:  local_var_entity,
+        };
         Err(Error::ResponseError(local_var_error))
     }
 }
@@ -74,20 +82,24 @@ pub async fn get_validators(
 pub async fn submit_block(
     configuration: &configuration::Configuration,
     submit_block_request: crate::models::SubmitBlockRequest,
-    cancellations: Option<&str>
+    cancellations: Option<&str>,
 ) -> Result<crate::models::SubmitBlock200Response, Error<SubmitBlockError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/relay/v1/builder/blocks", local_var_configuration.base_path);
-    let mut local_var_req_builder = local_var_client.request(reqwest::Method::POST, local_var_uri_str.as_str());
+    let local_var_uri_str =
+        format!("{}/relay/v1/builder/blocks", local_var_configuration.base_path);
+    let mut local_var_req_builder =
+        local_var_client.request(reqwest::Method::POST, local_var_uri_str.as_str());
 
     if let Some(ref local_var_str) = cancellations {
-        local_var_req_builder = local_var_req_builder.query(&[("cancellations", &local_var_str.to_string())]);
+        local_var_req_builder =
+            local_var_req_builder.query(&[("cancellations", &local_var_str.to_string())]);
     }
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
-        local_var_req_builder = local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
+        local_var_req_builder =
+            local_var_req_builder.header(reqwest::header::USER_AGENT, local_var_user_agent.clone());
     }
     local_var_req_builder = local_var_req_builder.json(&submit_block_request);
 
@@ -100,8 +112,13 @@ pub async fn submit_block(
     if !local_var_status.is_client_error() && !local_var_status.is_server_error() {
         serde_json::from_str(&local_var_content).map_err(Error::from)
     } else {
-        let local_var_entity: Option<SubmitBlockError> = serde_json::from_str(&local_var_content).ok();
-        let local_var_error = ResponseContent { status: local_var_status, content: local_var_content, entity: local_var_entity };
+        let local_var_entity: Option<SubmitBlockError> =
+            serde_json::from_str(&local_var_content).ok();
+        let local_var_error = ResponseContent {
+            status:  local_var_status,
+            content: local_var_content,
+            entity:  local_var_entity,
+        };
         Err(Error::ResponseError(local_var_error))
     }
 }

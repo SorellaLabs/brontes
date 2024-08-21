@@ -24,12 +24,17 @@ pub struct GetValidators200ResponseInnerEntryMessage {
     pub timestamp:     Option<String>,
     /// BLS public key of validator.
     #[serde(rename = "pubkey", skip_serializing_if = "Option::is_none")]
-    pub pubkey:        Option<String>
+    pub pubkey:        Option<String>,
 }
 
 impl GetValidators200ResponseInnerEntryMessage {
     /// The `ValidatorRegistration` object from the Builder API specification.
     pub fn new() -> GetValidators200ResponseInnerEntryMessage {
-        GetValidators200ResponseInnerEntryMessage { fee_recipient: None, gas_limit: None, timestamp: None, pubkey: None }
+        GetValidators200ResponseInnerEntryMessage {
+            fee_recipient: None,
+            gas_limit:     None,
+            timestamp:     None,
+            pubkey:        None,
+        }
     }
 }
