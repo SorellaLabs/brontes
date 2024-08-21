@@ -386,7 +386,7 @@ impl LoadingStateTracker {
     }
 
     pub fn pool_dep_failure(&mut self, pair: PairWithFirstPoolHop) {
-        let loading = self.pair_loading.remove(&pair);
+        self.pair_loading.remove(&pair);
         self.protocol_address_to_dependent_pairs.retain(|_, v| {
             v.retain(|(_, npair)| npair != &pair);
             !v.is_empty()
