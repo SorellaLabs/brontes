@@ -48,6 +48,12 @@ impl RelayBid {
     }
 }
 
+impl PartialOrd for RelayBid {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        Some(self.cmp(&other))
+    }
+}
+
 impl Ord for RelayBid {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.timestamp_ms.cmp(&other.timestamp_ms)
