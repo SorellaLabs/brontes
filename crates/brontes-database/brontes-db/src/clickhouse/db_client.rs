@@ -555,12 +555,12 @@ impl ClickhouseHandle for Clickhouse {
 
                 self.client.query_many(query, &()).await?
             }
-            CexRangeOrArbitrary::Timestamp { .. } => Vec::new(),
+            CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
+                vec![BlockTimes { block_number, timestamp: block_timestamp * 1000000 }]
+            }
         };
 
-        if block_times.is_empty()
-            && !matches!(range_or_arbitrary, CexRangeOrArbitrary::Timestamp { .. })
-        {
+        if block_times.is_empty() {
             tracing::error!(?range_or_arbitrary, "no block times found");
             return Ok(vec![])
         }
@@ -698,14 +698,14 @@ impl ClickhouseHandle for Clickhouse {
                 );
                 self.client.query_many(query, &()).await?
             }
-            CexRangeOrArbitrary::Timestamp { .. } => Vec::new(),
+            CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
+                vec![BlockTimes { block_number, timestamp: block_timestamp * 1000000 }]
+            }
         };
 
         debug!("Retrieved {} block times", block_times.len());
 
-        if block_times.is_empty()
-            && !matches!(range_or_arbitrary, CexRangeOrArbitrary::Timestamp { .. })
-        {
+        if block_times.is_empty() {
             tracing::warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
@@ -813,9 +813,7 @@ impl Clickhouse {
         block_times: &[BlockTimes],
         range_or_arbitrary: &CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
-        if block_times.is_empty()
-            && !matches!(range_or_arbitrary, CexRangeOrArbitrary::Timestamp { .. })
-        {
+        if block_times.is_empty() {
             return Err(DatabaseError::from(clickhouse::error::Error::Custom(
                 "Nothing to query, block times are empty".to_string(),
             )))
