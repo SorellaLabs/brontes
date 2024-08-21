@@ -448,7 +448,10 @@ impl ClickhouseHandle for Clickhouse {
         );
 
         let mut cex_quotes_for_block = self
-            .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+            .get_cex_prices(CexRangeOrArbitrary::Timestamp {
+                block_number: block_num,
+                block_timestamp,
+            })
             .await?;
 
         let cex_quotes = cex_quotes_for_block.remove(0);
@@ -552,9 +555,12 @@ impl ClickhouseHandle for Clickhouse {
 
                 self.client.query_many(query, &()).await?
             }
+            CexRangeOrArbitrary::Timestamp { .. } => Vec::new(),
         };
 
-        if block_times.is_empty() {
+        if block_times.is_empty()
+            && !matches!(range_or_arbitrary, CexRangeOrArbitrary::Timestamp { .. })
+        {
             tracing::error!(?range_or_arbitrary, "no block times found");
             return Ok(vec![])
         }
@@ -624,6 +630,23 @@ impl ClickhouseHandle for Clickhouse {
 
                 self.query_many_with_retry(query, &()).await?
             }
+            CexRangeOrArbitrary::Timestamp { block_number: _, block_timestamp } => {
+                let start_time =
+                    (block_timestamp * 1000000) as f64 - (MAX_MARKOUT_TIME * SECONDS_TO_US);
+                let end_time =
+                    (block_timestamp * 1000000) as f64 + (MAX_MARKOUT_TIME * SECONDS_TO_US);
+
+                let mut query = RAW_CEX_QUOTES.to_string();
+                query = query.replace(
+                    "c.timestamp >= ? AND c.timestamp < ?",
+                    &format!(
+                        "c.timestamp >= {} AND c.timestamp < {} AND ({})",
+                        start_time, end_time, exchanges_str
+                    ),
+                );
+
+                self.query_many_with_retry(query, &()).await?
+            }
         };
 
         let price_converter = CexQuotesConverter::new(block_times, symbols, data, symbol_rank);
@@ -671,11 +694,14 @@ impl ClickhouseHandle for Clickhouse {
                 );
                 self.client.query_many(query, &()).await?
             }
+            CexRangeOrArbitrary::Timestamp { .. } => Vec::new(),
         };
 
         debug!("Retrieved {} block times", block_times.len());
 
-        if block_times.is_empty() {
+        if block_times.is_empty()
+            && !matches!(range_or_arbitrary, CexRangeOrArbitrary::Timestamp { .. })
+        {
             tracing::warn!("No block times found, returning empty result");
             return Ok(vec![])
         }
@@ -738,6 +764,21 @@ impl ClickhouseHandle for Clickhouse {
                     "c.timestamp >= ? AND c.timestamp < ?",
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
+                self.query_many_with_retry(query, &()).await?
+            }
+
+            CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
+                let mut query = RAW_CEX_TRADES.to_string();
+                let query_mod = BlockTimes { block_number, timestamp: block_timestamp * 1000000 }
+                    .convert_to_timestamp_query(6.0 * SECONDS_TO_US, 6.0 * SECONDS_TO_US);
+
+                debug!("Querying raw CEX trades for block number {block_number}");
+
+                query = query.replace(
+                    "c.timestamp >= ? AND c.timestamp < ?",
+                    &format!("({query_mod}) AND ({exchanges_str})"),
+                );
+
                 self.query_many_with_retry(query, &()).await?
             }
         };
@@ -814,6 +855,22 @@ impl Clickhouse {
 
                 self.query_many_with_retry(query, &()).await?
             }
+            CexRangeOrArbitrary::Timestamp { block_number: _, block_timestamp } => {
+                let mut query = MOST_VOLUME_PAIR_EXCHANGE.to_string();
+
+                let times = format!(
+                    "toStartOfMonth(toDateTime({} /  1000000) - INTERVAL 1 MONTH)",
+                    (block_timestamp * 1000000) as f64
+                );
+
+                query = query.replace(
+                    "month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND \
+                     (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))",
+                    &format!("month in (select arrayJoin([{}]) as month)", times),
+                );
+
+                self.query_many_with_retry(query, &()).await?
+            }
         })
     }
 
@@ -824,6 +881,9 @@ impl Clickhouse {
         let (start, end) = match range {
             CexRangeOrArbitrary::Range(start, end) => (start, end),
             CexRangeOrArbitrary::Arbitrary(_) => panic!("Arbitrary range not supported"),
+            CexRangeOrArbitrary::Timestamp { .. } => {
+                panic!("timestamp based block times not supported")
+            }
         };
 
         debug!(target = "b", "Querying block times for range: start={}, end={}", start, end);
@@ -1040,6 +1100,34 @@ mod tests {
                 proposer_mev_reward: 83855601164275442
             })
         );
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_cex_quotes_timestamp() {
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let mut cex_quotes_for_block = test_db
+            .get_cex_prices(CexRangeOrArbitrary::Timestamp {
+                block_number:    19000000,
+                block_timestamp: 1705173443,
+            })
+            .await
+            .unwrap();
+
+        assert!(!cex_quotes_for_block.is_empty());
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_cex_trades_timestamp() {
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let mut cex_trades_for_block = test_db
+            .get_cex_trades(CexRangeOrArbitrary::Timestamp {
+                block_number:    19000000,
+                block_timestamp: 1705173443,
+            })
+            .await
+            .unwrap();
+
+        assert!(!cex_trades_for_block.is_empty());
     }
 
     async fn load_tree() -> Arc<BlockTree<Action>> {

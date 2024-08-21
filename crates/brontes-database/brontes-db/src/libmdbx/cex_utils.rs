@@ -11,4 +11,5 @@ pub enum CexTableFlag {
 pub enum CexRangeOrArbitrary {
     Range(u64, u64),
     Arbitrary(&'static [u64]),
+    Timestamp { block_number: u64, block_timestamp: u64 },
 }
