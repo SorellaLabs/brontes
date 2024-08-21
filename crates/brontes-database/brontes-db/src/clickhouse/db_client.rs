@@ -709,6 +709,7 @@ impl ClickhouseHandle for Clickhouse {
         debug!("Querying CEX symbols");
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
         debug!("Retrieved {} CEX symbols", symbols.len());
+        println!("\n\nSYMBOLS: {}\n\n", symbols.len());
 
         let exchanges_str = self
             .cex_download_config
@@ -778,6 +779,8 @@ impl ClickhouseHandle for Clickhouse {
                     "c.timestamp >= ? AND c.timestamp < ?",
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
+
+                println!("\n\n{query}\n\n");
 
                 self.query_many_with_retry(query, &()).await?
             }
