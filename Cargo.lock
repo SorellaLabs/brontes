@@ -277,7 +277,7 @@ dependencies = [
  "futures",
  "futures-utils-wasm",
  "lru",
- "reqwest",
+ "reqwest 0.12.5",
  "serde_json",
  "tokio",
  "tracing",
@@ -316,7 +316,7 @@ dependencies = [
  "alloy-transport-http",
  "futures",
  "pin-project",
- "reqwest",
+ "reqwest 0.12.5",
  "serde",
  "serde_json",
  "tokio",
@@ -507,7 +507,7 @@ source = "git+https://github.com/alloy-rs/alloy.git?rev=39b8695#39b869585955d95e
 dependencies = [
  "alloy-json-rpc",
  "alloy-transport",
- "reqwest",
+ "reqwest 0.12.5",
  "serde_json",
  "tower",
  "url",
@@ -1563,7 +1563,7 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "regex",
- "reqwest",
+ "reqwest 0.12.5",
  "reth-beacon-consensus",
  "reth-blockchain-tree",
  "reth-db",
@@ -1664,7 +1664,7 @@ dependencies = [
  "malachite",
  "once_cell",
  "phf",
- "reqwest",
+ "reqwest 0.12.5",
  "reth-beacon-consensus",
  "reth-blockchain-tree",
  "reth-db",
@@ -1746,7 +1746,7 @@ dependencies = [
  "rayon",
  "redefined",
  "regex",
- "reqwest",
+ "reqwest 0.12.5",
  "reth-codecs",
  "reth-codecs-derive",
  "reth-db",
@@ -1810,7 +1810,7 @@ dependencies = [
  "malachite",
  "rand 0.8.5",
  "rayon",
- "reqwest",
+ "reqwest 0.12.5",
  "reth-db",
  "reth-primitives",
  "reth-rpc-types",
@@ -1998,7 +1998,8 @@ dependencies = [
  "prettytable-rs",
  "rayon",
  "redefined",
- "reqwest",
+ "relays-openapi",
+ "reqwest 0.12.5",
  "reth-codecs",
  "reth-db",
  "reth-interfaces",
@@ -2374,7 +2375,7 @@ dependencies = [
  "hyper 0.14.30",
  "hyper-tls 0.5.0",
  "lz4",
- "reqwest",
+ "reqwest 0.12.5",
  "sealed",
  "serde",
  "serde_json",
@@ -2975,7 +2976,7 @@ dependencies = [
  "hyper-tls 0.5.0",
  "primitive-types",
  "rand 0.8.5",
- "reqwest",
+ "reqwest 0.12.5",
  "serde",
  "serde_json",
  "strum 0.25.0",
@@ -7488,7 +7489,7 @@ dependencies = [
  "futures",
  "proc-macro2",
  "quote",
- "reqwest",
+ "reqwest 0.12.5",
  "serde",
  "serde_json",
  "syn 2.0.74",
@@ -7579,12 +7580,64 @@ dependencies = [
 ]
 
 [[package]]
+name = "relays-openapi"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.11.27",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "rend"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71fe3824f5629716b1589be05dacd749f6aa084c87e00e016714a8cdfccc997c"
 dependencies = [
  "bytecheck",
+]
+
+[[package]]
+name = "reqwest"
+version = "0.11.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd67538700a17451e7cba03ac727fb961abb7607553461627b97de0b89cf4a62"
+dependencies = [
+ "base64 0.21.7",
+ "bytes",
+ "encoding_rs",
+ "futures-core",
+ "futures-util",
+ "h2 0.3.26",
+ "http 0.2.12",
+ "http-body 0.4.6",
+ "hyper 0.14.30",
+ "hyper-tls 0.5.0",
+ "ipnet",
+ "js-sys",
+ "log",
+ "mime",
+ "mime_guess",
+ "native-tls",
+ "once_cell",
+ "percent-encoding",
+ "pin-project-lite",
+ "rustls-pemfile 1.0.4",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "sync_wrapper 0.1.2",
+ "system-configuration",
+ "tokio",
+ "tokio-native-tls",
+ "tower-service",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "winreg 0.50.0",
 ]
 
 [[package]]
@@ -7618,7 +7671,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
- "sync_wrapper",
+ "sync_wrapper 1.0.1",
  "system-configuration",
  "tokio",
  "tokio-native-tls",
@@ -10188,6 +10241,12 @@ dependencies = [
  "quote",
  "syn 2.0.74",
 ]
+
+[[package]]
+name = "sync_wrapper"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 
 [[package]]
 name = "sync_wrapper"

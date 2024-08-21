@@ -34,7 +34,7 @@ WITH
         SELECT
             block_number,
             block_hash,
-            round(max(timestamp) / 1000) AS p2p_timestamp
+            round(min(timestamp) / 1000) AS p2p_timestamp
         FROM ethereum.block_observations
         WHERE block_number = get_block_number
         GROUP BY block_number, block_hash

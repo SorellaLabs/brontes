@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -38,13 +38,14 @@ use db_interfaces::{
 };
 use eyre::Result;
 use itertools::Itertools;
+use reth_primitives::{BlockHash, TxHash, U256};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
 
 use super::{
     cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE,
-    RAW_CEX_QUOTES, RAW_CEX_TRADES,
+    P2P_OBSERVATIONS, PRIVATE_FLOW, RAW_CEX_QUOTES, RAW_CEX_TRADES,
 };
 #[cfg(feature = "local-clickhouse")]
 use super::{BLOCK_TIMES, CEX_SYMBOLS};
@@ -325,6 +326,93 @@ impl Clickhouse {
             }
         }
     }
+
+    async fn query_optional_with_retry<Q, P>(
+        &self,
+        query: impl AsRef<str> + Send,
+        params: &P,
+    ) -> Result<Option<Q>, DatabaseError>
+    where
+        Q: ClickhouseQuery,
+        P: BindParameters + Send + Sync,
+    {
+        let retry_strategy = ExponentialBuilder::default()
+            .with_max_times(10)
+            .with_min_delay(Duration::from_millis(100))
+            .with_max_delay(Duration::from_secs(30));
+
+        let mut try_count = 1;
+        let res = (|| async {
+            self.client
+                .query_one_optional::<Q, P>(query.as_ref(), params)
+                .await
+        })
+        .retry(&retry_strategy)
+        .when(|e| match e {
+            DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(_))) => true,
+            DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(BadResponse(s)))
+                if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") =>
+            {
+                true
+            }
+            _ => false,
+        })
+        .notify(|err, dur| {
+            warn!(
+                "Query failed after {} attempt(s).  Retrying in {:?}... Error: {}",
+                try_count, dur, err
+            );
+            try_count += 1;
+        })
+        .await;
+        match res {
+            Ok(result) => Ok(result),
+            Err(err) => {
+                error!("Query failed after maximum retries - final Error: {}", err);
+                Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Custom(
+                    "Query failed after maximum retries".to_string(),
+                ))))
+            }
+        }
+    }
+
+    pub async fn get_private_flow_metadata(
+        &self,
+        mut tx_hashes_in_block: Vec<TxHash>,
+    ) -> eyre::Result<Vec<TxHash>> {
+        let public_txs = self
+            .query_many_with_retry(
+                PRIVATE_FLOW,
+                &(tx_hashes_in_block
+                    .iter()
+                    .map(|tx| format!("{:?}", tx).to_lowercase())
+                    .collect::<Vec<_>>()),
+            )
+            .await?
+            .into_iter()
+            .map(|tx: String| TxHash::from_str(&tx))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if !public_txs.is_empty() {
+            tx_hashes_in_block.retain(|tx| !public_txs.contains(tx));
+            Ok(tx_hashes_in_block)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    pub async fn get_earliest_p2p_observation(
+        &self,
+        block_number: u64,
+        block_hash: BlockHash,
+    ) -> eyre::Result<Option<u64>> {
+        Ok(self
+            .query_optional_with_retry::<u64, _>(
+                P2P_OBSERVATIONS,
+                &(block_number, format!("{:?}", block_hash).to_lowercase()),
+            )
+            .await?)
+    }
 }
 
 impl ClickhouseHandle for Clickhouse {
@@ -333,7 +421,13 @@ impl ClickhouseHandle for Clickhouse {
         Ok(res)
     }
 
-    async fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
+    async fn get_metadata(
+        &self,
+        block_num: u64,
+        block_hash: BlockHash,
+        tx_hashes_in_block: Vec<TxHash>,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
         let block_meta = self
             .client
             .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))

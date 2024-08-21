@@ -11,7 +11,7 @@ pub use db_client::*;
 pub mod split_db;
 #[cfg(feature = "local-clickhouse")]
 pub use db_interfaces::clickhouse::config::ClickhouseConfig;
-use reth_primitives::Address;
+use reth_primitives::{Address, BlockHash, TxHash};
 #[cfg(feature = "local-clickhouse")]
 pub use split_db::*;
 #[cfg(not(feature = "local-clickhouse"))]
@@ -48,6 +48,8 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     fn get_metadata(
         &self,
         block_num: u64,
+        block_hash: BlockHash,
+        tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
     ) -> impl Future<Output = eyre::Result<Metadata>> + Send;
 
