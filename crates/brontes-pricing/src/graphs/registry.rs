@@ -147,10 +147,15 @@ impl SubGraphRegistry {
             .flatten()
     }
 
-    pub fn all_pairs_with_quote(&self, addr: Address) -> Vec<Pair> {
+    pub fn all_pairs_with_quote_for_extends(&self, addr: Address) -> Vec<Pair> {
         self.sub_graphs
             .iter()
             .filter(|(pair, _)| pair.1 == addr)
+            .filter(|(_, subgraphs)| {
+                subgraphs
+                    .iter()
+                    .any(|(_, subgraph)| subgraph.should_use_for_new())
+            })
             .map(|(p, _)| *p)
             .collect_vec()
     }
@@ -160,8 +165,11 @@ impl SubGraphRegistry {
         self.sub_graphs
             .iter()
             .find(|(cur_graphs, sub)| {
+                // if start key == end key of first
                 cur_graphs.0 == pair.1
+                    // if end key of cur is quote
                     && cur_graphs.1 == quote
+                    // can be used to extend
                     && sub.iter().any(|(_, s)| s.should_use_for_new())
             })
             .map(|(k, _)| k)

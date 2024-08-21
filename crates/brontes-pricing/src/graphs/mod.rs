@@ -151,7 +151,11 @@ impl GraphManager {
         trying_extensions_quote: Option<Address>,
     ) -> (Vec<SubGraphEdge>, Option<Pair>) {
         let possible_exts = trying_extensions_quote
-            .map(|quote| self.sub_graph_registry.read().all_pairs_with_quote(quote))
+            .map(|quote| {
+                self.sub_graph_registry
+                    .read()
+                    .all_pairs_with_quote_for_extends(quote)
+            })
             .unwrap_or_default();
 
         let (path, extends) = self.all_pair_graph.read().get_paths_ignoring(
