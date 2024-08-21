@@ -125,7 +125,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
 
         let finalized_meta = meta.into_full_metadata(prices);
 
-        return Poll::Ready(Some((tree, finalized_meta)))
+        Poll::Ready(Some((tree, finalized_meta)))
     }
 }
 
