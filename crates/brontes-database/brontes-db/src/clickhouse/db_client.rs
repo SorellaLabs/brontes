@@ -433,11 +433,17 @@ impl ClickhouseHandle for Clickhouse {
         //     .unwrap()
         //     .value;
 
-        let (relay, p2p_timestamp, private_flow) = tokio::try_join!(
+        let (relay, p2p_timestamp, private_flow) = match tokio::try_join!(
             Relays::get_relay_metadata(block_num, block_hash),
             self.get_earliest_p2p_observation(block_num, block_hash),
             self.get_private_flow(tx_hashes_in_block)
-        )?;
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::error!("error getting block metadata - {:?}", e);
+                return Err(e)
+            }
+        };
 
         let block_meta = BlockMetadataInner::make_new(
             block_hash,
