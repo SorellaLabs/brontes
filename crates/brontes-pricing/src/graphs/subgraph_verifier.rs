@@ -7,7 +7,7 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use parking_lot::RwLock;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tracing::{error_span, instrument};
+use tracing::instrument;
 
 use super::{
     state_tracker::StateTracker,
@@ -49,6 +49,9 @@ pub struct SubgraphVerifier {
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
     subgraph_verification_state: FastHashMap<PairWithFirstPoolHop, SubgraphVerificationState>,
+    /// holds all pairs that have been marked invalid to extend. this becomes a
+    /// problem when we are verify
+    // invalid_extends:             FastHashMap<u64, FastHashSet<Pair>>,
 }
 
 impl Drop for SubgraphVerifier {
@@ -117,6 +120,14 @@ impl SubgraphVerifier {
             .map(|s| s.block == block)
             .unwrap_or(false)
     }
+
+    // pub fn set_invalid_extends_for_block(
+    //     &mut self,
+    //     block: u64,
+    //     invalid_extends: FastHashSet<Pair>,
+    // ) {
+    //     self.invalid_extends.insert(block, invalid_extends);
+    // }
 
     pub fn pool_dep_failure(
         &mut self,

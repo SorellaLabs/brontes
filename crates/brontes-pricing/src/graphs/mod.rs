@@ -270,7 +270,7 @@ impl GraphManager {
         pair: PairWithFirstPoolHop,
         quote: Address,
         current_block: u64,
-    ) {
+    ) -> FastHashSet<Pair> {
         let span = error_span!("verified subgraph pruning");
         span.in_scope(|| {
             let state = self.graph_state.read();
@@ -298,16 +298,20 @@ impl GraphManager {
                 })
                 .collect::<Vec<_>>();
 
+            let mut invalid_extends = FastHashSet::default();
             for (epair, start_addr, start_price, current_block) in verifications {
-                self.sub_graph_registry.write().verify_current_subgraphs(
+                if let Some(ie) = self.sub_graph_registry.write().verify_current_subgraphs(
                     epair,
                     start_addr,
                     start_price,
                     &state,
                     current_block,
-                );
+                ) {
+                    invalid_extends.extend(ie)
+                }
             }
-        });
+            invalid_extends
+        })
     }
 
     pub fn add_frayed_end_extension(

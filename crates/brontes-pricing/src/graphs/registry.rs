@@ -221,6 +221,7 @@ impl SubGraphRegistry {
         }
     }
 
+    // returns a set of pairs that can no longer be used to extend
     pub fn verify_current_subgraphs<T: ProtocolState>(
         &mut self,
         pair: PairWithFirstPoolHop,
@@ -228,7 +229,7 @@ impl SubGraphRegistry {
         start_price: Rational,
         state: &FastHashMap<Address, &T>,
         block: u64,
-    ) {
+    ) -> Option<FastHashSet<Pair>> {
         let mut invalid_extends = FastHashSet::default();
 
         let (pair, gt) = pair.pair_gt();
@@ -237,7 +238,7 @@ impl SubGraphRegistry {
                 if !graph.has_valid_liquidity(start, start_price.clone(), state, block) {
                     // if we extend to another subgraph, then we dont gotta check.
                     if graph.extends_to().is_some() {
-                        return
+                        return None
                     }
 
                     let possible_bad_extends_to = graph.pair;
@@ -282,6 +283,8 @@ impl SubGraphRegistry {
 
             });
         }
+
+        Some(invalid_extends)
     }
 
     pub fn get_price(
@@ -359,6 +362,7 @@ impl SubGraphRegistry {
                 };
 
                 let Some(next) = graph.fetch_price(edge_state) else {
+                    tracing::info!("get_price_all failed to fetch price");
                     continue;
                 };
                 let default_pair = graph.get_unordered_pair();
