@@ -49,8 +49,8 @@ pub struct SubgraphVerifier {
     /// edges are below the liq threshold. we want to select the highest liq
     /// pair and thus need to store this information
     subgraph_verification_state: FastHashMap<PairWithFirstPoolHop, SubgraphVerificationState>,
-    /// holds all pairs that have been marked invalid to extend. this becomes a
-    /// problem when we are verify
+    // /// holds all pairs that have been marked invalid to extend. this becomes a
+    // /// problem when we are verify
     // invalid_extends:             FastHashMap<u64, FastHashSet<Pair>>,
 }
 
