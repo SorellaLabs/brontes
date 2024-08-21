@@ -369,13 +369,17 @@ impl SubGraphRegistry {
                 let mut acc = Rational::ZERO;
                 for graph in f.values() {
                     if graph.extends_to().is_some() {
+                        if block_price {
+                            tracing::info!("loop extends to is some");
+                        }
                         continue
                     };
 
                     let Some(next) = graph.fetch_price(edge_state) else {
-                    tracing::info!("get_price_all failed to fetch price");
-                    continue;
-                };
+                        tracing::info!("get_price_all failed to fetch price");
+                        continue;
+                    };
+
                     let default_pair = graph.get_unordered_pair();
 
                     // ensure all graph pairs are accumulated in the same way
