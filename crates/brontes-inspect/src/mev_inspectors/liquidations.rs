@@ -12,7 +12,7 @@ use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{b256, Address};
 
-use super::MAX_PROFIT;
+use super::{MAX_PROFIT, MIN_PROFIT};
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
@@ -118,7 +118,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             .filter(|_| has_dex_price)
             .unwrap_or_default();
 
-        if profit_usd >= MAX_PROFIT || profit_usd <= -MAX_PROFIT {
+        if profit_usd >= MAX_PROFIT || profit_usd <= MIN_PROFIT {
             has_dex_price = false;
             profit_usd = Rational::ZERO;
         }
