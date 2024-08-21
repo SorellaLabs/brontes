@@ -806,7 +806,9 @@ impl Clickhouse {
         block_times: &[BlockTimes],
         range_or_arbitrary: &CexRangeOrArbitrary,
     ) -> eyre::Result<Vec<BestCexPerPair>, DatabaseError> {
-        if block_times.is_empty() {
+        if block_times.is_empty()
+            && !matches!(range_or_arbitrary, CexRangeOrArbitrary::Timestamp { .. })
+        {
             return Err(DatabaseError::from(clickhouse::error::Error::Custom(
                 "Nothing to query, block times are empty".to_string(),
             )))
@@ -849,27 +851,18 @@ impl Clickhouse {
 
                 query = query.replace(
                     "month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND \
-                     (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))",
+                     (month <= toStartOfMonth(toDateTime(? / 1000000) + toIntervalMonth(1))",
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
                 self.query_many_with_retry(query, &()).await?
             }
             CexRangeOrArbitrary::Timestamp { block_number: _, block_timestamp } => {
-                let mut query = MOST_VOLUME_PAIR_EXCHANGE.to_string();
-
-                let times = format!(
-                    "toStartOfMonth(toDateTime({} /  1000000) - INTERVAL 1 MONTH)",
-                    (block_timestamp * 1000000) as f64
-                );
-
-                query = query.replace(
-                    "month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND \
-                     (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))",
-                    &format!("month in (select arrayJoin([{}]) as month)", times),
-                );
-
-                self.query_many_with_retry(query, &()).await?
+                self.query_many_with_retry(
+                    MOST_VOLUME_PAIR_EXCHANGE,
+                    &(block_timestamp * 1000000, block_timestamp * 1000000),
+                )
+                .await?
             }
         })
     }
@@ -1105,7 +1098,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_get_cex_quotes_timestamp() {
         let test_db = Clickhouse::new_default(Some(0)).await;
-        let mut cex_quotes_for_block = test_db
+        let cex_quotes_for_block = test_db
             .get_cex_prices(CexRangeOrArbitrary::Timestamp {
                 block_number:    19000000,
                 block_timestamp: 1705173443,
@@ -1119,7 +1112,7 @@ mod tests {
     #[brontes_macros::test]
     async fn test_get_cex_trades_timestamp() {
         let test_db = Clickhouse::new_default(Some(0)).await;
-        let mut cex_trades_for_block = test_db
+        let cex_trades_for_block = test_db
             .get_cex_trades(CexRangeOrArbitrary::Timestamp {
                 block_number:    19000000,
                 block_timestamp: 1705173443,
