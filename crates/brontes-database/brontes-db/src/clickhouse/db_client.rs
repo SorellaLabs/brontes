@@ -566,6 +566,7 @@ impl ClickhouseHandle for Clickhouse {
         }
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
+        println!("\n\nsymbols: {}\n\n", symbols.len());
 
         let exchanges_str = self
             .cex_download_config
@@ -582,6 +583,7 @@ impl ClickhouseHandle for Clickhouse {
             .await?;
 
         tracing::trace!("Successfully fetched symbol ranks");
+        println!("\n\nsymbol_rank: {}\n\n", symbol_rank.len());
 
         let data: Vec<RawCexQuotes> = match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
@@ -644,6 +646,8 @@ impl ClickhouseHandle for Clickhouse {
                         start_time, end_time, exchanges_str
                     ),
                 );
+
+                println!("\n\nSYMBOLS: {}\n\n", symbols.len());
 
                 self.query_many_with_retry(query, &()).await?
             }
