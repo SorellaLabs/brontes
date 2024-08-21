@@ -134,7 +134,7 @@ impl RunArgs {
 
         tracing::info!(target: "brontes", "starting database initialization at: '{}'", brontes_db_path);
         let libmdbx =
-            static_object(load_database(&task_executor, brontes_db_path, hr, None).await?);
+            static_object(load_database(&task_executor, brontes_db_path, hr, self.run_id).await?);
 
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
