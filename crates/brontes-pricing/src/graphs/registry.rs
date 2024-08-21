@@ -256,6 +256,7 @@ impl SubGraphRegistry {
         }
 
         if !invalid_extends.is_empty() {
+            tracing::info!(target: "brontes::missing_pricing", "searching for any subgraphs that extend {:#?}", invalid_extends);
             // active
             self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
                 graphs.iter_mut().for_each(|(_, graph)| {
