@@ -10,4 +10,5 @@ extern crate serde_json;
 extern crate url;
 
 pub mod apis;
+#[rustfmt::skip]
 pub mod models;

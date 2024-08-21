@@ -17,7 +17,9 @@ use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{Address, B256};
 
-use crate::{shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT};
+use crate::{
+    shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT, MIN_PROFIT,
+};
 
 const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99995, 100000);
 
@@ -168,7 +170,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .filter(|_| has_dex_price)
             .unwrap_or_default();
 
-        if profit >= MAX_PROFIT {
+        if profit >= MAX_PROFIT || profit <= MIN_PROFIT {
             has_dex_price = false;
             profit = Rational::ZERO;
         }

@@ -20,7 +20,7 @@ use reth_primitives::TxHash;
 use super::types::{PossibleJit, PossibleJitWithInfo};
 use crate::{
     shared_utils::SharedInspectorUtils, Action, BlockTree, BundleData, Inspector, Metadata,
-    MAX_PROFIT,
+    MAX_PROFIT, MIN_PROFIT,
 };
 
 pub struct JitInspector<'db, DB: LibmdbxReader> {
@@ -246,7 +246,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .filter(|_| has_dex_price)
             .unwrap_or_default();
 
-        if profit >= MAX_PROFIT {
+        if profit >= MAX_PROFIT || profit <= MIN_PROFIT {
             has_dex_price = false;
             profit = Rational::ZERO;
         }

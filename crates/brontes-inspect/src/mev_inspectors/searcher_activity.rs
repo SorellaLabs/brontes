@@ -13,7 +13,7 @@ use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
 
-use super::MAX_PROFIT;
+use super::{MAX_PROFIT, MIN_PROFIT};
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct SearcherActivity<'db, DB: LibmdbxReader> {
@@ -103,7 +103,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                             .filter(|_| has_dex_price)
                             .unwrap_or_default();
 
-                        if profit >= MAX_PROFIT || profit <= -MAX_PROFIT {
+                        if profit >= MAX_PROFIT || profit <= MIN_PROFIT {
                             has_dex_price = false;
                             profit = Rational::ZERO;
                         }
