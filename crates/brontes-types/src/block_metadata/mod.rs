@@ -7,6 +7,7 @@ mod bids_payloads;
 pub use bids_payloads::*;
 use reth_primitives::Address;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelayBlockMetadata {
     pub block_number:           u64,
     pub relay_timestamp:        Option<u64>,

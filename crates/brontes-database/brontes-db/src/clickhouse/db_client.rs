@@ -945,6 +945,7 @@ mod tests {
     use alloy_primitives::{hex, Uint};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
+        block_metadata::RelayBlockMetadata,
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_thread_pools,
         mev::{
@@ -995,6 +996,49 @@ mod tests {
                 "0x0000000000051fd2c9e99dcb6037d17950a377f21e10ae13f7e3ff0487b74e97"
             )
             .unwrap()]
+        );
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_earliest_p2p_observation() {
+        let block_number = 19000000;
+        let block_hash = BlockHash::from_str(
+            "0xcf384012b91b081230cdf17a3f7dd370d8e67056058af6b272b3d54aa2714fac",
+        )
+        .unwrap();
+
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let earliest_p2p = test_db
+            .get_earliest_p2p_observation(block_number, block_hash)
+            .await
+            .unwrap();
+
+        assert_eq!(earliest_p2p, Some(1705173444789));
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_relay_metadata() {
+        let block_number = 19000000;
+        let block_hash = BlockHash::from_str(
+            "0xcf384012b91b081230cdf17a3f7dd370d8e67056058af6b272b3d54aa2714fac",
+        )
+        .unwrap();
+
+        let relay_meta = Relays::get_relay_metadata(block_number, block_hash)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            relay_meta,
+            Some(RelayBlockMetadata {
+                block_number,
+                relay_timestamp: Some(1705173443953),
+                proposer_fee_recipient: Address::from_str(
+                    "0x992a7a7d9267d114959dd0c9d072d965c4f54419"
+                )
+                .unwrap(),
+                proposer_mev_reward: 83855601164275442
+            })
         );
     }
 
