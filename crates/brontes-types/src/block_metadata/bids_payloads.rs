@@ -49,7 +49,7 @@ impl RelayBid {
 }
 
 impl PartialOrd for RelayBid {
-    fn cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(&other))
     }
 }
