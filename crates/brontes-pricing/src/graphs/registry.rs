@@ -256,7 +256,8 @@ impl SubGraphRegistry {
         }
 
         if !invalid_extends.is_empty() {
-            tracing::info!(target: "brontes::missing_pricing", "searching for any subgraphs that extend {:#?}", invalid_extends);
+            tracing::info!(target: "brontes::missing_pricing",
+                "searching for any subgraphs that extend {:#?}", invalid_extends);
             // active
             self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
                 graphs.iter_mut().for_each(|(_, graph)| {
@@ -354,30 +355,36 @@ impl SubGraphRegistry {
     ) -> Option<Rational> {
         let pair = unordered_pair.ordered();
 
-        self.sub_graphs.get(&pair).and_then(|f| {
-            let mut cnt = Rational::ZERO;
-            let mut acc = Rational::ZERO;
-            for graph in f.values() {
-                if graph.extends_to().is_some() {
-                    continue
-                };
+        self.sub_graphs
+            .get(&pair)
+            .or_else(|| {
+                tracing::info!("no pair for get price all");
+                None
+            })
+            .and_then(|f| {
+                let mut cnt = Rational::ZERO;
+                let mut acc = Rational::ZERO;
+                for graph in f.values() {
+                    if graph.extends_to().is_some() {
+                        continue
+                    };
 
-                let Some(next) = graph.fetch_price(edge_state) else {
+                    let Some(next) = graph.fetch_price(edge_state) else {
                     tracing::info!("get_price_all failed to fetch price");
                     continue;
                 };
-                let default_pair = graph.get_unordered_pair();
+                    let default_pair = graph.get_unordered_pair();
 
-                // ensure all graph pairs are accumulated in the same way
-                acc += if !unordered_pair.eq_unordered(&default_pair) {
-                    next.reciprocal()
-                } else {
-                    next
-                };
-                cnt += Rational::ONE;
-            }
-            (cnt != Rational::ZERO).then(|| acc / cnt)
-        })
+                    // ensure all graph pairs are accumulated in the same way
+                    acc += if !unordered_pair.eq_unordered(&default_pair) {
+                        next.reciprocal()
+                    } else {
+                        next
+                    };
+                    cnt += Rational::ONE;
+                }
+                (cnt != Rational::ZERO).then(|| acc / cnt)
+            })
     }
 }
 
