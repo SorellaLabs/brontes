@@ -1,4 +1,5 @@
 use relays_openapi::apis::{configuration::Configuration, data_api::{get_delivered_payloads, get_received_bids}};
+use reth_primitives::BlockHash;
 use strum::IntoEnumIterator;
 use crate::block_metadata::{RelayBid, RelayPayload};
 
@@ -88,20 +89,21 @@ impl Relays {
     }
 
 
-    pub async fn get_relay_metadata(block_number: u64, block_hash: String) -> eyre::Result<Option<RelayBlockMetadata>> {
+    pub async fn get_relay_metadata(block_number: u64, block_hash: BlockHash) -> eyre::Result<Option<RelayBlockMetadata>> {
+        let block_hash = format!("{:?}", block_hash);
         let bids = futures::future::join_all(Relays::iter().map(|relay| {
             relay.get_winning_bid(block_number, block_hash.clone())
         })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect::<Vec<_>>();
 
         if let Some(best_bid) = bids.into_iter().min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms)) {
-            return Ok(Some(best_bid.into()))
+            return Ok(Some(best_bid.try_into()?))
         }
         
 
         if let Some(pl) =  futures::future::join_all(Relays::iter().map(|relay| {
             relay.get_payload(block_number)
         })).await.into_iter().collect::<Result<Vec<_>, _>>()?.into_iter().flatten().next() {
-            return Ok(Some(pl.into()))
+            return Ok(Some(pl.try_into()?))
         }
 
         Ok(None)

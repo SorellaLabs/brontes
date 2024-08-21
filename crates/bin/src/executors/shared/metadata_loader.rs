@@ -265,7 +265,13 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             //fetch metadata till it works
             let mut meta = loop {
                 if let Ok(res) = clickhouse
-                    .get_metadata(block, block_hash, tree.get_hashes(), quote_asset)
+                    .get_metadata(
+                        block,
+                        tree.header.timestamp,
+                        block_hash,
+                        tree.get_hashes(),
+                        quote_asset,
+                    )
                     .await
                 {
                     break res

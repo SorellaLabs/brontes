@@ -6,6 +6,7 @@ use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
+    block_metadata::Relays,
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
@@ -16,7 +17,7 @@ use brontes_types::{
             BestCexPerPair,
         },
         dex::{DexQuotes, DexQuotesWithBlockNumber},
-        metadata::{BlockMetadata, Metadata},
+        metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         normalized_actions::TransactionRoot,
         searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
@@ -38,7 +39,7 @@ use db_interfaces::{
 };
 use eyre::Result;
 use itertools::Itertools;
-use reth_primitives::{BlockHash, TxHash, U256};
+use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
@@ -376,7 +377,7 @@ impl Clickhouse {
         }
     }
 
-    pub async fn get_private_flow_metadata(
+    pub async fn get_private_flow(
         &self,
         mut tx_hashes_in_block: Vec<TxHash>,
     ) -> eyre::Result<Vec<TxHash>> {
@@ -424,16 +425,31 @@ impl ClickhouseHandle for Clickhouse {
     async fn get_metadata(
         &self,
         block_num: u64,
+        block_timestamp: u64,
         block_hash: BlockHash,
         tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
     ) -> eyre::Result<Metadata> {
-        let block_meta = self
-            .client
-            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-            .await
-            .unwrap()
-            .value;
+        // let block_meta = self
+        //     .client
+        //     .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
+        //     .await
+        //     .unwrap()
+        //     .value;
+
+        let (relay, p2p_timestamp, private_flow) = tokio::try_join!(
+            Relays::get_relay_metadata(block_num, block_hash),
+            self.get_earliest_p2p_observation(block_num, block_hash),
+            self.get_private_flow(tx_hashes_in_block)
+        )?;
+
+        let block_meta = BlockMetadataInner::make_new(
+            block_hash,
+            block_timestamp,
+            relay,
+            p2p_timestamp,
+            private_flow,
+        );
 
         let mut cex_quotes_for_block = self
             .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))

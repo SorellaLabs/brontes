@@ -48,6 +48,7 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
     fn get_metadata(
         &self,
         block_num: u64,
+        block_timestamp: u64,
         block_hash: BlockHash,
         tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
