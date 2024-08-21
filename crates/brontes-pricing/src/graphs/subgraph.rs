@@ -168,7 +168,7 @@ impl PairSubGraph {
     }
 
     pub fn should_use_for_new(&self) -> bool {
-        self.remove_at.is_none()
+        self.remove_at.is_none() && self.extends_to().is_none()
     }
 
     pub fn ready_to_remove(&self, block: u64) -> bool {

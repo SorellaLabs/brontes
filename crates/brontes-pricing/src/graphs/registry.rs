@@ -67,6 +67,7 @@ impl SubGraphRegistry {
                     self.metrics
                         .as_ref()
                         .inspect(|m| m.active_subgraphs.decrement(1.0));
+
                     return false
                 }
                 true
@@ -161,7 +162,7 @@ impl SubGraphRegistry {
             .find(|(cur_graphs, sub)| {
                 cur_graphs.0 == pair.1
                     && cur_graphs.1 == quote
-                    && sub.iter().all(|(_, s)| s.should_use_for_new())
+                    && sub.iter().any(|(_, s)| s.should_use_for_new())
             })
             .map(|(k, _)| k)
             .copied()
@@ -254,7 +255,6 @@ impl SubGraphRegistry {
         }
 
         if !invalid_extends.is_empty() {
-            tracing::info!(target: "brontes::missing_pricing", "we have invalid extends");
             // active
             self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
                 graphs.iter_mut().for_each(|(_, graph)| {
@@ -295,7 +295,11 @@ impl SubGraphRegistry {
 
         if let Some(next) = next {
             let Some(next_price) = self.get_price_all(next, edge_state) else {
-                tracing::info!(target:"brontes::missing_pricing",pair=?next, "subgraph that extends other points to nil");
+                tracing::info!(target:"brontes::missing_pricing",
+                    pair=?next,
+                    "subgraph that extends other points to nil"
+                );
+
                 return None
             };
 
