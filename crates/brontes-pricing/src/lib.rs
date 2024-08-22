@@ -665,14 +665,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
                     passed.prune_state.into_iter().for_each(|(_, bad_edges)| {
-                        // for bad_edge in bad_edges {
-                        //     if let Some((addr, protocol, pair)) = self
-                        //         .graph_manager
-                        //         .remove_pair_graph_address(bad_edge.pair,
-                        // bad_edge.pool_address)     {
-                        //         self.new_graph_pairs.insert(addr, (protocol,
-                        // pair));     }
-                        // }
+                        for bad_edge in bad_edges {
+                            if let Some((addr, protocol, pair)) = self
+                                .graph_manager
+                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
+                            {
+                                self.new_graph_pairs.insert(addr, (protocol, pair));
+                            }
+                        }
                     });
                     self.graph_manager
                         .add_verified_subgraph(passed.subgraph, passed.block);
@@ -681,14 +681,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 VerificationResults::Failed(failed) => {
                     failed.prune_state.into_iter().for_each(|(_, bad_edges)| {
-                        // for bad_edge in bad_edges {
-                        //     if let Some((addr, protocol, pair)) = self
-                        //         .graph_manager
-                        //         .remove_pair_graph_address(bad_edge.pair,
-                        // bad_edge.pool_address)     {
-                        //         self.new_graph_pairs.insert(addr, (protocol,
-                        // pair));     }
-                        // }
+                        for bad_edge in bad_edges {
+                            if let Some((addr, protocol, pair)) = self
+                                .graph_manager
+                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
+                            {
+                                self.new_graph_pairs.insert(addr, (protocol, pair));
+                            }
+                        }
                     });
 
                     Some(RequeryPairs {
