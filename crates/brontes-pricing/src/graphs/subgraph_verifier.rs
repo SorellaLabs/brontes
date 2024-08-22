@@ -339,7 +339,7 @@ impl SubgraphVerifier {
                     block,
                     frayed,
                     self.pending_subgraphs.remove(&pair).or_else(|| {
-                        tracing::debug!(?pair, "not found in pending subgraphs");
+                        tracing::warn!(?pair, "not found in pending subgraphs");
                         None
                     }),
                     price,
