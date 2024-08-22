@@ -625,7 +625,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         .unique()
                         .map(|pair| {
                             self.lazy_loader.full_failure(pair);
-                            tracing::debug!(?pair, "failed state query dep");
+                            tracing::debug!(?pair, "failed state query dep, requerying");
                             RequeryPairs {
                                 pair,
                                 extends_pair: None,
