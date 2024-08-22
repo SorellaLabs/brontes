@@ -292,19 +292,21 @@ impl GraphManager {
 
             let verifications = iter
                 .into_iter()
-                .map(|(epair, jump_pair)| {
-                    let (start_price, start_addr) = jump_pair
-                        .map(|jump_pair| {
-                            (
-                                self.sub_graph_registry
-                                    .write()
-                                    .get_price_all(jump_pair.flip(), &state, current_block)
-                                    .unwrap_or(Rational::ONE),
-                                jump_pair.0,
-                            )
-                        })
-                        .unwrap_or_else(|| (Rational::ONE, quote));
-                    (epair, start_addr, start_price)
+                .filter_map(|(epair, jump_pair)| {
+                    let (start_price, start_addr) = if let Some(jump_pair) = jump_pair {
+                        (
+                            self.sub_graph_registry.write().get_price_all(
+                                jump_pair.flip(),
+                                &state,
+                                current_block,
+                            )?,
+                            jump_pair.0,
+                        )
+                    } else {
+                        (Rational::ONE, quote)
+                    };
+
+                    Some((epair, start_addr, start_price))
                 })
                 .collect::<Vec<_>>();
 
