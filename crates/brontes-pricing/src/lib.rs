@@ -795,7 +795,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if pairs.is_empty() {
             return
         }
-        tracing::debug!("requerying bad state");
+        tracing::debug!(? frayed_ext, "requerying bad state");
 
         let graph = self.graph_manager.clone();
         self.general_tasks.push(
