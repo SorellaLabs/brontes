@@ -151,7 +151,7 @@ impl SubgraphVerifier {
     ) -> Vec<PoolPairInfoDirection> {
         // if we find a subgraph that is the same, we return.
         if self.pending_subgraphs.contains_key(&pair) {
-            tracing::warn!("already have subgraph but trying to create another");
+            tracing::warn!(?pair, ?extends_to, "already have subgraph but trying to create another");
             return vec![]
         };
 
