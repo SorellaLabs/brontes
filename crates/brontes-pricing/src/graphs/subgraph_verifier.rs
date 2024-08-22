@@ -95,12 +95,12 @@ impl SubgraphVerifier {
             .iter()
             .filter(|(_, v)| v.block == block)
             .map(|(k, _)| *k)
-            .chain(
-                self.processing_subgraph
-                    .iter()
-                    .filter(|(_, b)| **b == block)
-                    .map(|(k, _)| *k),
-            )
+            // .chain(
+            //     self.processing_subgraph
+            //         .iter()
+            //         .filter(|(_, b)| **b == block)
+            //         .map(|(k, _)| *k),
+            // )
             .collect()
     }
 
