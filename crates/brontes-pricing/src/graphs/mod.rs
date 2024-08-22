@@ -241,13 +241,19 @@ impl GraphManager {
         self.subgraph_verifier.read().get_subgraph_extends(pair)
     }
 
-    pub fn get_price(&self, pair: Pair, goes_through: Pair) -> Option<Rational> {
+    pub fn get_price(
+        &self,
+        pair: Pair,
+        goes_through: Pair,
+        current_block: u64,
+    ) -> Option<Rational> {
         let span = error_span!("price generation for block");
         span.in_scope(|| {
-            self.sub_graph_registry.read().get_price(
+            self.sub_graph_registry.write().get_price(
                 pair,
                 goes_through,
                 &self.graph_state.read().finalized_state(),
+                current_block,
             )
         })
     }
@@ -291,8 +297,8 @@ impl GraphManager {
                         .map(|jump_pair| {
                             (
                                 self.sub_graph_registry
-                                    .read()
-                                    .get_price_all(jump_pair.flip(), &state)
+                                    .write()
+                                    .get_price_all(jump_pair.flip(), &state, current_block)
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,
                             )
@@ -328,6 +334,7 @@ impl GraphManager {
         &self,
         pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
         quote: Address,
+        current_block: u64,
     ) -> Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>> {
         let span = error_span!("verifying subgraph");
         span.in_scope(|| {
@@ -343,10 +350,11 @@ impl GraphManager {
                                 id,
                                 pair,
                                 self.sub_graph_registry
-                                    .read()
+                                    .write()
                                     .get_price_all(
                                         jump_pair.flip(),
                                         &self.graph_state.read().finalized_state(),
+                                        current_block,
                                     )
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,

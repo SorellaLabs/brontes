@@ -229,6 +229,37 @@ impl SubGraphRegistry {
         }
     }
 
+    fn mark_invalid_extends(&mut self, invalid_extends: FastHashSet<Pair>, block: u64) {
+        if !invalid_extends.is_empty() {
+            // active
+            self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
+                graphs.iter_mut().for_each(|(_, graph)| {
+                    if let Some(extends) = graph.extends_to() {
+                        if invalid_extends.contains(&extends.ordered()) {
+                            tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
+                            graph.remove_at = Some(block);
+                        }
+                    }
+                })
+            });
+
+            // inactive
+            self.pending_finalized_graphs.values_mut().for_each(|sub| {
+                sub.sub_graphs.iter_mut().for_each(|(_, graphs)| {
+                graphs.iter_mut().for_each(|(_, graph)| {
+                    if let Some(extends) = graph.extends_to() {
+                        if invalid_extends.contains(&extends.ordered()) {
+                            tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
+                            graph.remove_at = Some(block);
+                        }
+                    }
+                })
+            });
+
+            });
+        }
+    }
+
     // returns a set of pairs that can no longer be used to extend
     pub fn verify_current_subgraphs<T: ProtocolState>(
         &mut self,
@@ -263,47 +294,51 @@ impl SubGraphRegistry {
             }
         }
 
-        if !invalid_extends.is_empty() {
-            // active
-            self.sub_graphs.iter_mut().for_each(|(_, graphs)| {
-                graphs.iter_mut().for_each(|(_, graph)| {
-                    if let Some(extends) = graph.extends_to() {
-                        if invalid_extends.contains(&extends.ordered()) {
-                            tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
-                            graph.remove_at = Some(block);
-                        }
-                    }
-                })
-            });
+        self.mark_invalid_extends(invalid_extends, block);
+    }
 
-            // inactive
-            self.pending_finalized_graphs.values_mut().for_each(|sub| {
-                sub.sub_graphs.iter_mut().for_each(|(_, graphs)| {
-                graphs.iter_mut().for_each(|(_, graph)| {
-                    if let Some(extends) = graph.extends_to() {
-                        if invalid_extends.contains(&extends.ordered()) {
-                            tracing::info!(target: "brontes::missing_pricing", "avoided pointing to nil");
-                            graph.remove_at = Some(block);
-                        }
-                    }
-                })
-            });
+    fn price_generation_failure(&mut self, failures: Vec<(Pair, Pair)>, block: u64) {
+        let mut invalid_extends = FastHashSet::default();
+        for (pair, gt) in failures {
+            if let Some(range) = self.sub_graphs.get_mut(&pair.ordered()) {
+                if let Some(graph) = range.get_mut(&gt.ordered()) {
+                    // mark this graph for removal.
+                    graph.remove_at = Some(block);
 
-            });
+                    // if we extend to another subgraph, then we dont gotta check.
+                    if graph.extends_to().is_some() {
+                        return
+                    }
+
+                    let possible_bad_extends_to = graph.pair;
+                    let valid_count = range
+                        .iter()
+                        // keep if can be base and isn't being removed
+                        .filter(|(_, g)| g.extends_to().is_none() && g.remove_at.is_none())
+                        .count();
+
+                    if valid_count == 0 {
+                        invalid_extends.insert(possible_bad_extends_to.ordered());
+                    }
+                }
+            }
         }
+
+        self.mark_invalid_extends(invalid_extends, block);
     }
 
     pub fn get_price(
-        &self,
+        &mut self,
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
+        current_block: u64,
     ) -> Option<Rational> {
         let (next, complete_pair, default_price) =
-            self.get_price_once(unordered_pair, goes_through, edge_state)?;
+            self.get_price_once(unordered_pair, goes_through, edge_state, current_block)?;
 
         if let Some(next) = next {
-            let Some(next_price) = self.get_price_all(next, edge_state) else {
+            let Some(next_price) = self.get_price_all(next, edge_state, current_block) else {
                 tracing::info!(target:"brontes::missing_pricing",
                     pair=?next,
                     "subgraph that extends other points to nil"
@@ -324,50 +359,61 @@ impl SubGraphRegistry {
     }
 
     fn get_price_once(
-        &self,
+        &mut self,
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
+        current_block: u64,
     ) -> Option<(Option<Pair>, Pair, Rational)> {
         let pair = unordered_pair.ordered();
 
-        self.sub_graphs
+        if let Some(graph) = self
+            .sub_graphs
             .get(&pair)
             .and_then(|g| g.get(&goes_through.ordered()))
-            .map(|graph| {
-                tracing::debug!("has graph for goes through");
-                Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
-            })
+        {
+            tracing::debug!("has graph for goes through");
+            Some((
+                graph.extends_to(),
+                graph.complete_pair(),
+                graph.fetch_price(edge_state).or_else(|| {
+                    self.price_generation_failure(vec![(pair, goes_through)], current_block);
+                    None
+                })?,
+            ))
+        } else {
             // this can happen when we have pools with a token that only has that one pool.
             // this causes a one way and we can't process price. Instead, in this case
             // we take the average price on non-extended graphs and return the price
             // that way
-            .or_else(|| {
-                Some(
-                    self.get_price_all(unordered_pair, edge_state)
-                        .map(|price| (None, unordered_pair, price)),
-                )
-            })
+            Some(
+                self.get_price_all(unordered_pair, edge_state, current_block)
+                    .map(|price| (None, unordered_pair, price)),
+            )
             .flatten()
+        }
     }
 
     /// for the given pair, grabs the price for all go-through variants
     pub(crate) fn get_price_all(
-        &self,
+        &mut self,
         unordered_pair: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
+        current_block: u64,
     ) -> Option<Rational> {
         let pair = unordered_pair.ordered();
+        let mut removal_pairs = Vec::new();
 
-        self.sub_graphs.get(&pair).and_then(|f| {
+        let result = self.sub_graphs.get(&pair).and_then(|f| {
             let mut cnt = Rational::ZERO;
             let mut acc = Rational::ZERO;
-            for graph in f.values() {
+            for (gt, graph) in f.iter() {
                 if graph.extends_to().is_some() {
                     continue
                 };
 
                 let Some(next) = graph.fetch_price(edge_state) else {
+                    removal_pairs.push((pair, *gt));
                     continue;
                 };
 
@@ -385,7 +431,10 @@ impl SubGraphRegistry {
                 tracing::debug!("get_price_all failed to fetch price");
                 None
             })
-        })
+        });
+        self.price_generation_failure(removal_pairs, current_block);
+
+        result
     }
 }
 

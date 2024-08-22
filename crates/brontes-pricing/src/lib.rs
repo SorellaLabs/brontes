@@ -328,7 +328,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         if pool_pair.0 == pool_pair.1 {
             return Some(Rational::ONE)
         }
-        self.graph_manager.get_price(pool_pair, goes_through)
+        self.graph_manager
+            .get_price(pool_pair, goes_through, self.current_block)
     }
 
     /// For a given block number and tx idx, finds the path to the following
@@ -734,8 +735,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .read()
             .print_rem(self.completed_block);
 
-        self.general_tasks
-            .push(self.graph_manager.verify_subgraph(pairs, self.quote_asset));
+        self.general_tasks.push(self.graph_manager.verify_subgraph(
+            pairs,
+            self.quote_asset,
+            self.current_block,
+        ));
     }
 
     fn finish_requery_bad_state(&mut self, new_state: ParStateQueryRes, frayed_ext: bool) {
