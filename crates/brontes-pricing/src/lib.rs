@@ -93,41 +93,38 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx: UnboundedYapperReceiver<DexPriceMsg>,
+    update_rx:         UnboundedYapperReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
-    buffer: StateBuffer,
+    buffer:            StateBuffer,
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
+    new_graph_pairs:   FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager: Arc<GraphManager>,
+    graph_manager:     Arc<GraphManager>,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader: LazyExchangeLoader<T>,
-    dex_quotes: FastHashMap<u64, DexQuotes>,
+    lazy_loader:       LazyExchangeLoader<T>,
+    dex_quotes:        FastHashMap<u64, DexQuotes>,
     /// pairs that failed to be verified. we use this to avoid the fallback for
     /// transfers
-    failed_pairs: FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
+    failed_pairs:      FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
-    overlap_update: Option<PoolUpdate>,
+    overlap_update:    Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
-    skip_pricing: VecDeque<u64>,
+    skip_pricing:      VecDeque<u64>,
     /// metrics
-    metrics: Option<DexPricingMetrics>,
-    /// async_tasks
-    init_tasks: FuturesOrdered<Pin<Box<dyn Future<Output = (u64, GraphSeachParRes)> + Send>>>,
+    metrics:           Option<DexPricingMetrics>,
+    // /// async_tasks
+    // init_tasks: FuturesOrdered<Pin<Box<dyn Future<Output = (u64, GraphSeachParRes)> + Send>>>,
     general_tasks: FuturesUnordered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
-    /// we need to mark what blocks are in general_tasks as otherwise we can get
-    /// early returns.
-    general_tasks_blocks_running: FastHashMap<u64, usize>,
-    /// async task block
-    async_tasks_block: u64,
+    // /// async task block
+    // async_tasks_block: u64,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
@@ -161,10 +158,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             skip_pricing: VecDeque::new(),
             needs_more_data,
             metrics,
-            init_tasks: FuturesOrdered::default(),
             general_tasks: FuturesUnordered::default(),
-            general_tasks_blocks_running: FastHashMap::default(),
-            async_tasks_block: current_block,
+            // async_tasks_block: current_block,
         }
     }
 
@@ -259,18 +254,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let quote = self.quote_asset.clone();
         let graph_mg = self.graph_manager.clone();
-        let cur_block = self.current_block;
 
-        self.init_tasks.push_back(
-            execute_on!(async_pricing, {
-                let span = debug_span!("async task", block = cur_block);
-                span.in_scope(|| {
-                    let res = graph_search_par(graph_mg, quote, updates);
-                    (cur_block, res)
-                })
-            })
-            .boxed(),
-        );
+        self.finish_on_pool_updates(execute_on!(pricing, {
+            graph_search_par(graph_mg, quote, updates)
+        }));
     }
 
     fn finish_on_pool_updates(&mut self, args: GraphSeachParRes) {
@@ -752,7 +739,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .into_iter()
             .filter_map(|StateQueryRes { pair, block, edges, extends_pair }| {
                 let edges = edges.into_iter().flatten().unique().collect_vec();
+                // gets to here
                 tracing::debug!(?pair, ?extends_pair);
+
                 // add regularly
                 if edges.is_empty() {
                     tracing::debug!(?pair, ?extends_pair, "no edges found");
@@ -1032,7 +1021,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .graph_manager
                 .verification_done_for_block(self.completed_block)
             && self.completed_block < self.current_block
-            && self.async_tasks_block > self.completed_block
+            // && self.async_tasks_block > self.completed_block
     }
 
     /// lets the state loader know if  it should be pre processing more blocks.
@@ -1249,12 +1238,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let mut work = 25;
         loop {
             let mut early = true;
-            if let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
-                early = false;
-
-                self.async_tasks_block = block + 1;
-                self.finish_on_pool_updates(args);
-            }
+            // if let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx)
+            // {     early = false;
+            //
+            //     self.async_tasks_block = block + 1;
+            //     self.finish_on_pool_updates(args);
+            // }
 
             if let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
                 early = false;
@@ -1370,7 +1359,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                                 .graph_manager
                                 .verification_done_for_block(self.completed_block)
                             && block_updates.is_empty()
-                            && self.async_tasks_block > self.completed_block
+                            // && self.async_tasks_block > self.completed_block
                             && self.finished.load(SeqCst)
                         {
                             return Poll::Ready(self.on_close())
