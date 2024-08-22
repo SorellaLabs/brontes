@@ -254,7 +254,7 @@ impl SubgraphVerifier {
             self.pending_subgraphs
                 .get_mut(&pair)
                 .or_else(|| {
-                    tracing::warn!("frayed ext no pair in pending_subgraphs");
+                    tracing::warn!(?pair, "frayed ext no pair in pending_subgraphs");
                     None
                 })?
                 .add_extension(frayed_end_extensions),
