@@ -382,7 +382,7 @@ impl SubGraphRegistry {
                 cnt += Rational::ONE;
             }
             (cnt != Rational::ZERO).then(|| acc / cnt).or_else(|| {
-                tracing::info!("get_price_all failed to fetch price");
+                tracing::debug!("get_price_all failed to fetch price");
                 None
             })
         })

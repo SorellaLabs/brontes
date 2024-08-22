@@ -700,7 +700,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 VerificationResults::Abort(pair, block) => {
                     let (pair_for_log, gt) = pair.pair_gt();
-                    tracing::info!(target: "brontes::missing_pricing",
+                    tracing::debug!(target: "brontes::missing_pricing",
                                     pair=?pair_for_log,
                                     ?gt,
                                     ?block,
