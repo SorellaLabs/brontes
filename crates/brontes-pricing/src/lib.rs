@@ -769,7 +769,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .collect_vec();
 
         if !recusing.is_empty() {
-            tracing::debug!("requery bad state");
+            tracing::debug!("verifying recursively after requery bad state");
             self.try_verify_subgraph(recusing);
         }
 
