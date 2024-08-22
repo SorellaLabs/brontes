@@ -93,36 +93,39 @@ pub struct BrontesBatchPricer<T: TracingProvider> {
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx:         UnboundedYapperReceiver<DexPriceMsg>,
+    update_rx: UnboundedYapperReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
-    buffer:            StateBuffer,
+    buffer: StateBuffer,
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
-    new_graph_pairs:   FastHashMap<Address, (Protocol, Pair)>,
+    new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager:     Arc<GraphManager>,
+    graph_manager: Arc<GraphManager>,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader:       LazyExchangeLoader<T>,
-    dex_quotes:        FastHashMap<u64, DexQuotes>,
+    lazy_loader: LazyExchangeLoader<T>,
+    dex_quotes: FastHashMap<u64, DexQuotes>,
     /// pairs that failed to be verified. we use this to avoid the fallback for
     /// transfers
-    failed_pairs:      FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
+    failed_pairs: FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
-    overlap_update:    Option<PoolUpdate>,
+    overlap_update: Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
-    skip_pricing:      VecDeque<u64>,
+    skip_pricing: VecDeque<u64>,
     /// metrics
-    metrics:           Option<DexPricingMetrics>,
+    metrics: Option<DexPricingMetrics>,
     /// async_tasks
     init_tasks: FuturesOrdered<Pin<Box<dyn Future<Output = (u64, GraphSeachParRes)> + Send>>>,
-    general_tasks:     FuturesUnordered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
+    general_tasks: FuturesUnordered<Pin<Box<dyn Future<Output = PendingHeavyCalcs> + Send>>>,
+    /// we need to mark what blocks are in general_tasks as otherwise we can get
+    /// early returns.
+    general_tasks_blocks_running: FastHashMap<u64, usize>,
     /// async task block
     async_tasks_block: u64,
 }
@@ -160,6 +163,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             metrics,
             init_tasks: FuturesOrdered::default(),
             general_tasks: FuturesUnordered::default(),
+            general_tasks_blocks_running: FastHashMap::default(),
             async_tasks_block: current_block,
         }
     }
@@ -730,11 +734,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// verification.
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_verify_subgraph")]
     fn try_verify_subgraph(&mut self, pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>) {
-        self.graph_manager
-            .subgraph_verifier
-            .read()
-            .print_rem(self.completed_block);
-
         self.general_tasks.push(self.graph_manager.verify_subgraph(
             pairs,
             self.quote_asset,
