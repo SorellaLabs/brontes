@@ -135,6 +135,7 @@ impl SubgraphVerifier {
         if graph.subgraph.is_disjoint() {
             self.subgraph_verification_state.remove(pair);
             self.pending_subgraphs.remove(pair);
+            tracing::debug!(%pair, "subgraph is disjoint");
             return true
         }
         false
@@ -151,7 +152,11 @@ impl SubgraphVerifier {
     ) -> Vec<PoolPairInfoDirection> {
         // if we find a subgraph that is the same, we return.
         if self.pending_subgraphs.contains_key(&pair) {
-            tracing::warn!(?pair, ?extends_to, "already have subgraph but trying to create another");
+            tracing::warn!(
+                ?pair,
+                ?extends_to,
+                "already have subgraph but trying to create another"
+            );
             return vec![]
         };
 
