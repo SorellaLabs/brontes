@@ -196,7 +196,7 @@ impl SubgraphVerifier {
         self.pending_subgraphs
             .get_mut(&pair)
             .or_else(|| {
-                tracing::debug!(?pair, "missing pending subgraph");
+                tracing::warn!(?pair, "missing pending subgraph");
                 None
             })?
             .in_rundown = true;
