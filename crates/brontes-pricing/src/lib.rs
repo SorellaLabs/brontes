@@ -741,7 +741,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .filter_map(|StateQueryRes { pair, block, edges, extends_pair }| {
                 let edges = edges.into_iter().flatten().unique().collect_vec();
                 // gets to here
-                tracing::debug!(?pair, ?extends_pair);
+                tracing::debug!(?pair, ?extends_pair, ?frayed_ext);
 
                 // add regularly
                 if edges.is_empty() {
