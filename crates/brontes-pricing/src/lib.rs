@@ -745,9 +745,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
                 // add regularly
                 if edges.is_empty() {
-                    tracing::debug!(?pair, ?extends_pair, "no edges found");
-
-                    return Some((pair, block))
+                    tracing::debug!(?pair, ?extends_pair, "no edges found, aborting");
+                    return None
+                    // // this cause problems
+                    // return Some((pair, block))
                 }
 
                 let Some((id, need_state, force_rundown)) =
