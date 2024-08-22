@@ -862,24 +862,26 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                                 ?block,
                                 "rundown for subgraph has no edges we are supposed to ignore"
                             );
-                            return None
+                            // return None
                         }
 
                         // take all combinations of our ignore nodes. If the rundown was forced, we,
                         // won't bother trying to generate a diverse set and
                         if ignores.len() > 1 {
-                            Some(ignores
-                                .iter()
-                                .copied()
-                                .combinations(ignores.len() - 1)
-                                .map(|i| RequeryPairs {
-                                    pair,
-                                    extends_pair: extends,
-                                    block,
-                                    ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
-                                    frayed_ends: vec![],
-                                })
-                                .collect_vec())
+                            Some(
+                                ignores
+                                    .iter()
+                                    .copied()
+                                    .combinations(ignores.len() - 1)
+                                    .map(|i| RequeryPairs {
+                                        pair,
+                                        extends_pair: extends,
+                                        block,
+                                        ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
+                                        frayed_ends: vec![],
+                                    })
+                                    .collect_vec(),
+                            )
                         } else {
                             Some(vec![RequeryPairs {
                                 extends_pair: extends,
