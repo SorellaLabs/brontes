@@ -1242,20 +1242,33 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         &mut self,
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
-        while let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
-            self.async_tasks_block = block + 1;
-            self.finish_on_pool_updates(args);
-        }
+        // if we are too agressive on polling, blocks other streams
+        let mut work = 10;
+        loop {
+            let mut early = true;
+            if let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
+                early = false;
 
-        while let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
-            match init {
-                PendingHeavyCalcs::StateQuery(new_state, frayed_ext) => {
-                    self.finish_requery_bad_state(new_state, frayed_ext);
+                self.async_tasks_block = block + 1;
+                self.finish_on_pool_updates(args);
+            }
+
+            if let Poll::Ready(Some(init)) = self.general_tasks.poll_next_unpin(cx) {
+                early = false;
+                match init {
+                    PendingHeavyCalcs::StateQuery(new_state, frayed_ext) => {
+                        self.finish_requery_bad_state(new_state, frayed_ext);
+                    }
+                    PendingHeavyCalcs::SubgraphVerification(args) => {
+                        self.on_subgraph_verify_finish(args);
+                    }
+                    PendingHeavyCalcs::Rundown(res) => self.finish_rundown(res),
                 }
-                PendingHeavyCalcs::SubgraphVerification(args) => {
-                    self.on_subgraph_verify_finish(args);
-                }
-                PendingHeavyCalcs::Rundown(res) => self.finish_rundown(res),
+            }
+
+            work -= 1;
+            if work == 0 || early {
+                break
             }
         }
 
