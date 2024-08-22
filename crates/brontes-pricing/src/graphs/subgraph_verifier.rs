@@ -299,13 +299,14 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !(ignores.contains(k)))
                     .collect::<FastHashMap<_, _>>();
 
+                self.processing_subgraph.remove(&pair);
+
                 if result.should_abandon {
                     self.subgraph_verification_state.remove(&pair);
                     tracing::trace!(?pair, "aborting");
                     return VerificationResults::Abort(pair, block)
                 }
 
-                self.processing_subgraph.remove(&pair);
                 if result.should_requery {
                     let extends = subgraph.subgraph.extends_to();
                     self.pending_subgraphs.insert(pair, subgraph);
