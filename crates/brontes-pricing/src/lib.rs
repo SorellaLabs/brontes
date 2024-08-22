@@ -847,7 +847,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             execute_on!(async_pricing, {
                 let res = pairs
                     .into_iter()
-                    .map(|(pair, block)| {
+                    .filter_map(|(pair, block)| {
                         // if the rundown was forced. this means that we don't need to be so
                         // aggressive with the ign
                         let ignores = graph_manager
@@ -862,12 +862,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                                 ?block,
                                 "rundown for subgraph has no edges we are supposed to ignore"
                             );
+                            return None
                         }
 
                         // take all combinations of our ignore nodes. If the rundown was forced, we,
                         // won't bother trying to generate a diverse set and
                         if ignores.len() > 1 {
-                            ignores
+                            Some(ignores
                                 .iter()
                                 .copied()
                                 .combinations(ignores.len() - 1)
@@ -878,15 +879,15 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                                     ignore_state: i.into_iter().collect::<FastHashSet<_>>(),
                                     frayed_ends: vec![],
                                 })
-                                .collect_vec()
+                                .collect_vec())
                         } else {
-                            vec![RequeryPairs {
+                            Some(vec![RequeryPairs {
                                 extends_pair: extends,
                                 pair,
                                 block,
                                 ignore_state: FastHashSet::default(),
                                 frayed_ends: vec![],
-                            }]
+                            }])
                         }
                     })
                     .collect_vec()
