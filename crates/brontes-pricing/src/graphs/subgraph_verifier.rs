@@ -151,6 +151,7 @@ impl SubgraphVerifier {
     ) -> Vec<PoolPairInfoDirection> {
         // if we find a subgraph that is the same, we return.
         if self.pending_subgraphs.contains_key(&pair) {
+            tracing::warn!("already have subgraph but trying to create another");
             return vec![]
         };
 
@@ -248,7 +249,7 @@ impl SubgraphVerifier {
             self.pending_subgraphs
                 .get_mut(&pair)
                 .or_else(|| {
-                    tracing::trace!("frayed ext no pair in pending_subgraphs");
+                    tracing::warn!("frayed ext no pair in pending_subgraphs");
                     None
                 })?
                 .add_extension(frayed_end_extensions),
