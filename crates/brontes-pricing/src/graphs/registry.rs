@@ -368,7 +368,6 @@ impl SubGraphRegistry {
                 };
 
                 let Some(next) = graph.fetch_price(edge_state) else {
-                    tracing::info!("get_price_all failed to fetch price");
                     continue;
                 };
 
@@ -382,7 +381,10 @@ impl SubGraphRegistry {
                 };
                 cnt += Rational::ONE;
             }
-            (cnt != Rational::ZERO).then(|| acc / cnt)
+            (cnt != Rational::ZERO).then(|| acc / cnt).or_else(|| {
+                tracing::info!("get_price_all failed to fetch price");
+                None
+            })
         })
     }
 }
