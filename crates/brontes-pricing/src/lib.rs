@@ -664,14 +664,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .filter_map(|result| match result {
                 VerificationResults::Passed(passed) => {
                     passed.prune_state.into_iter().for_each(|(_, bad_edges)| {
-                        for bad_edge in bad_edges {
-                            if let Some((addr, protocol, pair)) = self
-                                .graph_manager
-                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
-                            {
-                                self.new_graph_pairs.insert(addr, (protocol, pair));
-                            }
-                        }
+                        // for bad_edge in bad_edges {
+                        //     if let Some((addr, protocol, pair)) = self
+                        //         .graph_manager
+                        //         .remove_pair_graph_address(bad_edge.pair,
+                        // bad_edge.pool_address)     {
+                        //         self.new_graph_pairs.insert(addr, (protocol,
+                        // pair));     }
+                        // }
                     });
                     self.graph_manager
                         .add_verified_subgraph(passed.subgraph, passed.block);
@@ -680,14 +680,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
                 VerificationResults::Failed(failed) => {
                     failed.prune_state.into_iter().for_each(|(_, bad_edges)| {
-                        for bad_edge in bad_edges {
-                            if let Some((addr, protocol, pair)) = self
-                                .graph_manager
-                                .remove_pair_graph_address(bad_edge.pair, bad_edge.pool_address)
-                            {
-                                self.new_graph_pairs.insert(addr, (protocol, pair));
-                            }
-                        }
+                        // for bad_edge in bad_edges {
+                        //     if let Some((addr, protocol, pair)) = self
+                        //         .graph_manager
+                        //         .remove_pair_graph_address(bad_edge.pair,
+                        // bad_edge.pool_address)     {
+                        //         self.new_graph_pairs.insert(addr, (protocol,
+                        // pair));     }
+                        // }
                     });
 
                     Some(RequeryPairs {
@@ -1243,7 +1243,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         cx: &mut Context<'_>,
     ) -> Option<Poll<Option<(u64, DexQuotes)>>> {
         // if we are too agressive on polling, blocks other streams
-        let mut work = 10;
+        let mut work = 25;
         loop {
             let mut early = true;
             if let Poll::Ready(Some((block, args))) = self.init_tasks.poll_next_unpin(cx) {
