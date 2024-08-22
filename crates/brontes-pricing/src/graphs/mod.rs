@@ -285,12 +285,12 @@ impl GraphManager {
         span.in_scope(|| {
             let state = self.graph_state.read();
             let state = state.finalized_state();
-
-            // let (start_price, start_addr) = self
-            let verifications = self
+            let iter = self
                 .sub_graph_registry
                 .read()
-                .get_subgraph_extends_iter(pair)
+                .get_subgraph_extends_iter(pair);
+
+            let verifications = iter
                 .into_iter()
                 .map(|(epair, jump_pair)| {
                     let (start_price, start_addr) = jump_pair
