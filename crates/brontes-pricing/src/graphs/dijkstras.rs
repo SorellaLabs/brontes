@@ -190,7 +190,6 @@ where
         }
 
         if i == max_iter {
-            tracing::debug!("max iter on dijkstra hit");
             break
         }
 
