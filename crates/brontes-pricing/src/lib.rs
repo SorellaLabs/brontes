@@ -622,6 +622,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                             self.graph_manager
                                 .pool_dep_failure(&pair, pool_address, pool_pair)
                         })
+                        .unique()
                         .map(|pair| {
                             self.lazy_loader.full_failure(pair);
                             tracing::debug!(?pair, "failed state query dep");
