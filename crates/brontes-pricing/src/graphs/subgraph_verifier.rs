@@ -163,6 +163,7 @@ impl SubgraphVerifier {
         let gt = pair.get_goes_through();
         let extend_pair = Pair(complete_pair.0, extends_to.map(|e| e.0).unwrap_or(complete_pair.1));
         let subgraph = PairSubGraph::init(extend_pair, complete_pair, gt, extends_to, path, block);
+        self.subgraph_verification_state.entry(pair).or_default();
 
         if self
             .pending_subgraphs
