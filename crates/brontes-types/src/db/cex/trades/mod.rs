@@ -18,6 +18,7 @@ use utils::SortedTrades;
 use super::CexExchange;
 use crate::{normalized_actions::NormalizedSwap, pair::Pair, FastHashMap};
 
+
 impl CexTradeMap {
     /// Calculate the price of a pair with a given volume using both the dynamic
     /// time window VWAP method & the optimistic VWAP that selects the best
