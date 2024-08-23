@@ -616,31 +616,30 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     self.graph_manager
                         .remove_pair_graph_address(pool_pair, pool_address);
 
-                    let failed_queries = deps
-                        .into_iter()
-                        .filter(|&pair| {
-                            self.graph_manager
-                                .pool_dep_failure(&pair, pool_address, pool_pair)
-                        })
-                        .unique()
-                        .map(|pair| {
-                            self.lazy_loader.full_failure(pair);
-                            tracing::debug!(?pair, "failed state query dep, requerying");
-                            RequeryPairs {
-                                pair,
-                                extends_pair: None,
-                                block,
-                                frayed_ends: Default::default(),
-                                ignore_state: Default::default(),
-                            }
-                        })
-                        .collect_vec();
-
-                    return Some(failed_queries)
+                    let manager_c = self.graph_manager.clone();
+                    return Some(
+                        deps.into_iter()
+                            .filter(move |pair| {
+                                manager_c.pool_dep_failure(pair, pool_address, pool_pair)
+                            })
+                            .map(move |pair| (block, pair)),
+                    )
                 }
                 None
             })
             .flatten()
+            .unique()
+            .map(|(block, pair)| {
+                self.lazy_loader.full_failure(pair);
+                tracing::debug!(?pair, "failed state query dep, requerying");
+                RequeryPairs {
+                    pair,
+                    extends_pair: None,
+                    block,
+                    frayed_ends: Default::default(),
+                    ignore_state: Default::default(),
+                }
+            })
             .collect_vec();
 
         self.requery_bad_state_par(failed_queries, false);
