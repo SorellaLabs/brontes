@@ -1023,12 +1023,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         tracing::info!("trying flush");
-        self.par_rundown(
-            rem_block
-                .into_iter()
-                .zip(vec![self.completed_block].into_iter().cycle())
-                .collect_vec(),
-        );
+        // self.par_rundown(
+        //     rem_block
+        //         .into_iter()
+        //         .zip(vec![self.completed_block].into_iter().cycle())
+        //         .collect_vec(),
+        // );
     }
 
     fn can_progress(&self) -> bool {
