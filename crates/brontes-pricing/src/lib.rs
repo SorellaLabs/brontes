@@ -1297,7 +1297,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         cx.waker().wake_by_ref();
-        tracing::debug!("loop");
+        tracing::info!("loop");
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }
