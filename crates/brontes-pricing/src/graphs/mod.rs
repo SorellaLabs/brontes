@@ -366,9 +366,11 @@ impl GraphManager {
                 })
                 .collect_vec();
 
-            self.subgraph_verifier
-                .write()
-                .run_verification_or_remove(pairs, self.graph_state.clone(), self.all_pair_graph.clone())
+            self.subgraph_verifier.write().run_verification_or_remove(
+                pairs,
+                self.graph_state.clone(),
+                self.all_pair_graph.clone(),
+            )
         })
     }
 

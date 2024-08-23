@@ -98,7 +98,6 @@ impl SubgraphVerifier {
         self.pending_subgraphs
             .values()
             .filter(|v| v.block == block)
-            .map(|v| v.block)
             .count()
             == 0
     }
@@ -357,16 +356,7 @@ impl SubgraphVerifier {
     ) -> Vec<(PairWithFirstPoolHop, u64, bool, Subgraph, Rational, Address)> {
         pair.into_iter()
             .map(|(block, frayed, pair, price, quote)| {
-                (
-                    pair,
-                    block,
-                    frayed,
-                    self.pending_subgraphs
-                        .remove(&pair),
-                        
-                    price,
-                    quote,
-                )
+                (pair, block, frayed, self.pending_subgraphs.remove(&pair), price, quote)
             })
             .filter_map(|(pair, block, _, subgraph, price, quote)| {
                 let mut subgraph = subgraph?;

@@ -114,9 +114,9 @@ impl SubGraphRegistry {
 
             // ensure if subgraph extends others that those get marked
             if let Some(extends_to) = graph.extends_to() {
-                self.sub_graphs.get(&extends_to.ordered()).map(|subgraphs| {
+                if let Some(subgraphs) = self.sub_graphs.get(&extends_to.ordered()) {
                     subgraphs.values().for_each(|sub_g| sub_g.future_use(block));
-                });
+                }
             }
         }
     }
@@ -202,11 +202,11 @@ impl SubGraphRegistry {
     pub fn mark_subgraph_for_removal(&mut self, pair: PairWithFirstPoolHop, block: u64) {
         let (pair, goes_through) = pair.pair_gt();
 
-        self.sub_graphs.get_mut(&pair.ordered()).map(|v| {
+        if let Some(v) = self.sub_graphs.get_mut(&pair.ordered()) {
             if let Some(subgraph) = v.get_mut(&goes_through.ordered()) {
                 subgraph.remove_at = Some(block);
             }
-        });
+        };
     }
 
     pub fn add_verified_subgraph(
@@ -227,7 +227,7 @@ impl SubGraphRegistry {
             .insert(subgraph.must_go_through().ordered(), subgraph)
             .is_some()
         {
-            tracing::warn!("double verified subgraph");
+            tracing::debug!("double verified subgraph");
         }
     }
 

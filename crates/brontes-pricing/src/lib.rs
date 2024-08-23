@@ -252,7 +252,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .prune_low_liq_subgraphs(pair1, self.quote_asset, block);
         });
 
-        let quote = self.quote_asset.clone();
+        let quote = self.quote_asset;
         let graph_mg = self.graph_manager.clone();
 
         self.finish_on_pool_updates(execute_on!(pricing, {
@@ -391,7 +391,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let flipped_pool = pool_pair.flip();
 
         if let Some(price0) = self.get_dex_price(pair0, pool_pair) {
-            let mut bad = false;
+            let bad = false;
             // self.failed_pairs.retain(|r_block, s| {
             //     if block != *r_block {
             //         return true
@@ -423,7 +423,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         };
 
         if let Some(price1) = self.get_dex_price(pair1, flipped_pool) {
-            let mut bad = false;
+            let bad = false;
             // self.failed_pairs.retain(|r_block, s| {
             //     if block != *r_block {
             //         return true
@@ -478,7 +478,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let price1_post = self.get_dex_price(pair1, flipped_pool);
 
         if let (Some(price0_pre), Some(price0_post)) = (price0_pre, price0_post) {
-            let mut bad = false;
+            let bad = false;
             // self.failed_pairs.retain(|r_block, s| {
             //     if block != *r_block {
             //         return true
@@ -524,7 +524,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         }
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
-            let mut bad = false;
+            let bad = false;
             // self.failed_pairs.retain(|r_block, s| {
             //     if block != *r_block {
             //         return true
