@@ -1018,6 +1018,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         {
             return
         }
+        tracing::info!("run verification or remove");
 
         let rem_block = self
             .graph_manager
@@ -1033,6 +1034,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .into_iter()
             .map(|pair| (self.completed_block, None, pair))
             .collect_vec();
+
         tracing::info!("run verification or remove");
         let results = self.graph_manager.run_verification_or_remove(
             pairs,
