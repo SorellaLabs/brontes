@@ -448,6 +448,7 @@ impl PairSubGraph {
         }
     }
 
+    #[instrument(skip_all, level = "debug")]
     pub fn verify_subgraph<T: ProtocolState>(
         &mut self,
         start: Address,
