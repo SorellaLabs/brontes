@@ -13,7 +13,6 @@ use fs_extra::dir::{move_dir, CopyOptions};
 use futures::{stream::StreamExt, Stream};
 use indicatif::MultiProgress;
 use itertools::Itertools;
-use malachite::strings::ToDebugString;
 use reqwest::Url;
 use tar::Archive;
 
@@ -136,11 +135,17 @@ impl Snapshot {
     // returns a error if the data isn't available.
     // NOTE: assumes r2 data is continuous
     fn ranges_to_download(&self, ranges_avail: Vec<BlockRangeList>) -> eyre::Result<RangeOrFull> {
+        if ranges_avail.is_empty() {
+            eyre::bail!("currently no snapshots are available for download");
+        }
+
+        let earliest_start = ranges_avail.first().unwrap().start_block;
+        let latest_end = ranges_avail.last().unwrap().end_block;
+        let available_ranges = format!("{}-{}", earliest_start, latest_end);
+
         match (self.start_block, self.end_block) {
             (None, None) => Ok(RangeOrFull::Full),
             (Some(start), None) => {
-                let available_ranges = ranges_avail.to_debug_string();
-
                 let ranges = ranges_avail
                     .into_iter()
                     .filter(|BlockRangeList { end_block, .. }| end_block >= &start)
@@ -156,7 +161,6 @@ impl Snapshot {
                 Ok(RangeOrFull::Range(ranges))
             }
             (None, Some(end)) => {
-                let available_ranges = ranges_avail.to_debug_string();
                 let ranges = ranges_avail
                     .into_iter()
                     .filter(|BlockRangeList { start_block, .. }| start_block <= &end)
@@ -174,7 +178,6 @@ impl Snapshot {
                 Ok(RangeOrFull::Range(ranges))
             }
             (Some(start), Some(end)) => {
-                let available_ranges = ranges_avail.to_debug_string();
                 let ranges = ranges_avail
                     .into_iter()
                     .filter(|BlockRangeList { start_block, end_block }| {
