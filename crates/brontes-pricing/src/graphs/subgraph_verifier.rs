@@ -362,14 +362,14 @@ impl SubgraphVerifier {
                     block,
                     frayed,
                     self.pending_subgraphs
-                        .remove(&pair)
-                        .expect("tried to fetch subgraph not there"),
+                        .remove(&pair),
+                        
                     price,
                     quote,
                 )
             })
             .filter_map(|(pair, block, _, subgraph, price, quote)| {
-                let mut subgraph = subgraph;
+                let mut subgraph = subgraph?;
                 subgraph.iters += 1;
 
                 Some((pair, block, subgraph.in_rundown, subgraph, price, quote))
