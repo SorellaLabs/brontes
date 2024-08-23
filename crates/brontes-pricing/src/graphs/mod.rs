@@ -332,6 +332,46 @@ impl GraphManager {
         )
     }
 
+    pub fn run_verification_or_remove(
+        &self,
+        pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,
+        quote: Address,
+        current_block: u64,
+    ) -> Vec<VerificationResults> {
+        let span = error_span!("verifying subgraph or removing (THIS IS THE END)");
+        span.in_scope(|| {
+            let pairs = pairs
+                .into_iter()
+                .map(|(block, id, pair)| {
+                    self.subgraph_verifier
+                        .read()
+                        .get_subgraph_extends(pair)
+                        .map(|jump_pair| {
+                            (
+                                block,
+                                id,
+                                pair,
+                                self.sub_graph_registry
+                                    .write()
+                                    .get_price_all(
+                                        jump_pair.flip(),
+                                        &self.graph_state.read().finalized_state(),
+                                        current_block,
+                                    )
+                                    .unwrap_or(Rational::ONE),
+                                jump_pair.0,
+                            )
+                        })
+                        .unwrap_or_else(|| (block, id, pair, Rational::ONE, quote))
+                })
+                .collect_vec();
+
+            self.subgraph_verifier
+                .write()
+                .run_verification_or_remove(pairs, self.graph_state.clone(), self.all_pair_graph.clone())
+        })
+    }
+
     pub fn verify_subgraph(
         &self,
         pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop)>,

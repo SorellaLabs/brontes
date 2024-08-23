@@ -187,6 +187,42 @@ impl SubgraphVerifier {
         query_state
     }
 
+    pub fn run_verification_or_remove(
+        &mut self,
+        pairs: Vec<(u64, Option<u64>, PairWithFirstPoolHop, Rational, Address)>,
+        state_tracker: Arc<RwLock<StateTracker>>,
+        all_graph: Arc<RwLock<AllPairGraph>>,
+    ) -> Vec<VerificationResults> {
+        let pairs = self.get_subgraphs(pairs);
+        let res = Self::verify_par(pairs, state_tracker.clone());
+        res.into_iter()
+            .map(|(pair, block, result, subgraph)| {
+                self.store_edges_with_liq(pair, &result.removals, all_graph.clone());
+
+                // state that we want to be ignored on the next graph search.
+                let state = self.subgraph_verification_state.entry(pair).or_default();
+
+                let ignores = state.get_nodes_to_ignore();
+
+                //  all results that should be pruned from our main graph.
+                let removals = result
+                    .removals
+                    .clone()
+                    .into_iter()
+                    .filter(|(k, _)| !(ignores.contains(k)))
+                    .collect::<FastHashMap<_, _>>();
+
+                // ether we pass or byby
+                if result.should_abandon || result.should_requery {
+                    self.subgraph_verification_state.remove(&pair);
+                    return VerificationResults::Abort(pair, block)
+                }
+
+                self.passed_verification(pair, block, subgraph, removals, state_tracker.clone())
+            })
+            .collect_vec()
+    }
+
     #[instrument(skip_all, level = "debug")]
     #[instrument(skip(self), level = "trace")]
     pub fn verify_subgraph_on_new_path_failure(
