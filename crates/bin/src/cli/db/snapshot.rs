@@ -147,7 +147,8 @@ impl Snapshot {
                     .collect_vec();
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}, {available_ranges}",
+                        "no data available for the set range: {:?}-{:?}\n ranges with data: \
+                         {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -163,7 +164,8 @@ impl Snapshot {
 
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}, {available_ranges}",
+                        "no data available for the set range: {:?}-{:?}\n ranges with data: \
+                         {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -182,7 +184,8 @@ impl Snapshot {
 
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}, {available_ranges}",
+                        "no data available for the set range: {:?}-{:?}\n ranges with data: \
+                         {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
