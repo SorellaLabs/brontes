@@ -35,7 +35,7 @@ macro_rules! execute_on {
         execute_on!($t, { $($block)+ })
     };
     (download, $block:block) => {
-        crate::execute_on_download_thread_pool(|| $block)
+        $crate::execute_on_download_thread_pool(|| $block)
     };
     (pricing, $block:block) => {
         ::brontes_types::execute_on_pricing_thread_pool(|| $block)
