@@ -392,24 +392,24 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         if let Some(price0) = self.get_dex_price(pair0, pool_pair) {
             let mut bad = false;
-            self.failed_pairs.retain(|r_block, s| {
-                if block != *r_block {
-                    return true
-                }
-                s.retain(|key| {
-                    let p = key.get_pair();
-                    let gt = key.get_goes_through();
-
-                    if p == pair0 && gt == pool_pair {
-                        bad = true;
-                        false
-                    } else {
-                        true
-                    }
-                });
-
-                !s.is_empty()
-            });
+            // self.failed_pairs.retain(|r_block, s| {
+            //     if block != *r_block {
+            //         return true
+            //     }
+            //     s.retain(|key| {
+            //         let p = key.get_pair();
+            //         let gt = key.get_goes_through();
+            //
+            //         if p == pair0 && gt == pool_pair {
+            //             bad = true;
+            //             false
+            //         } else {
+            //             true
+            //         }
+            //     });
+            //
+            //     !s.is_empty()
+            // });
 
             if !bad {
                 let price0 = DexPrices {
@@ -424,23 +424,23 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         if let Some(price1) = self.get_dex_price(pair1, flipped_pool) {
             let mut bad = false;
-            self.failed_pairs.retain(|r_block, s| {
-                if block != *r_block {
-                    return true
-                }
-                s.retain(|key| {
-                    let p = key.get_pair();
-                    let gt = key.get_goes_through();
-                    if p == pair1 && gt == flipped_pool {
-                        bad = true;
-                        false
-                    } else {
-                        true
-                    }
-                });
-
-                !s.is_empty()
-            });
+            // self.failed_pairs.retain(|r_block, s| {
+            //     if block != *r_block {
+            //         return true
+            //     }
+            //     s.retain(|key| {
+            //         let p = key.get_pair();
+            //         let gt = key.get_goes_through();
+            //         if p == pair1 && gt == flipped_pool {
+            //             bad = true;
+            //             false
+            //         } else {
+            //             true
+            //         }
+            //     });
+            //
+            //     !s.is_empty()
+            // });
 
             if !bad {
                 let price1 = DexPrices {
@@ -479,23 +479,23 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         if let (Some(price0_pre), Some(price0_post)) = (price0_pre, price0_post) {
             let mut bad = false;
-            self.failed_pairs.retain(|r_block, s| {
-                if block != *r_block {
-                    return true
-                }
-                s.retain(|key| {
-                    let p = key.get_pair();
-                    let gt = key.get_goes_through();
-                    if p == pair1 && gt == flipped_pool {
-                        bad = true;
-                        false
-                    } else {
-                        true
-                    }
-                });
-
-                !s.is_empty()
-            });
+            // self.failed_pairs.retain(|r_block, s| {
+            //     if block != *r_block {
+            //         return true
+            //     }
+            //     s.retain(|key| {
+            //         let p = key.get_pair();
+            //         let gt = key.get_goes_through();
+            //         if p == pair1 && gt == flipped_pool {
+            //             bad = true;
+            //             false
+            //         } else {
+            //             true
+            //         }
+            //     });
+            //
+            //     !s.is_empty()
+            // });
 
             if !bad {
                 self.store_dex_price(
@@ -525,23 +525,23 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
             let mut bad = false;
-            self.failed_pairs.retain(|r_block, s| {
-                if block != *r_block {
-                    return true
-                }
-                s.retain(|key| {
-                    let p = key.get_pair();
-                    let gt = key.get_goes_through();
-                    if p == pair1 && gt == flipped_pool {
-                        bad = true;
-                        false
-                    } else {
-                        true
-                    }
-                });
-
-                !s.is_empty()
-            });
+            // self.failed_pairs.retain(|r_block, s| {
+            //     if block != *r_block {
+            //         return true
+            //     }
+            //     s.retain(|key| {
+            //         let p = key.get_pair();
+            //         let gt = key.get_goes_through();
+            //         if p == pair1 && gt == flipped_pool {
+            //             bad = true;
+            //             false
+            //         } else {
+            //             true
+            //         }
+            //     });
+            //
+            //     !s.is_empty()
+            // });
             if !bad {
                 self.store_dex_price(
                     block,
