@@ -67,7 +67,6 @@ pub use graphs::{
 };
 use itertools::Itertools;
 use malachite::{
-    natural::conversion::digits::general_digits,
     num::basic::traits::{One, Zero},
     Rational,
 };
@@ -632,7 +631,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .unique_by(|(_, pair)| *pair)
             .map(|(block, pair)| {
                 self.lazy_loader.full_failure(pair);
-                tracing::info!(?pair, "failed state query dep, requerying");
+                tracing::debug!(?pair, "failed state query dep, requerying");
                 RequeryPairs {
                     pair,
                     extends_pair: None,
@@ -1105,7 +1104,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let general_tasks_done = self.general_tasks.tasks_for_block(self.completed_block) == 0;
         let completed_block_lt_cur = self.completed_block < self.current_block;
 
-        tracing::info!(
+        tracing::debug!(
             ?lazy_done,
             ?graph_verification_done,
             ?general_tasks_done,
