@@ -94,7 +94,7 @@ impl SubgraphVerifier {
 
                 let processing_block =self.processing_subgraph
                     .iter()
-                    .filter(|(_, b)| **b == block).collect::Vec<_>>();
+                    .filter(|(_, b)| **b == block).collect::<Vec<_>>();
         tracing::info!(?processing_block,"Processing");
 
         self.pending_subgraphs
