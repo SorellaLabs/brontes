@@ -67,6 +67,7 @@ pub use graphs::{
 };
 use itertools::Itertools;
 use malachite::{
+    natural::conversion::digits::general_digits,
     num::basic::traits::{One, Zero},
     Rational,
 };
@@ -1094,22 +1095,24 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 }
             })
             .collect_vec();
-
-        // self.par_rundown(
-        //     rem_block
-        //         .into_iter()
-        //         .zip(vec![self.completed_block].into_iter().cycle())
-        //         .collect_vec(),
-        // );
     }
 
     fn can_progress(&self) -> bool {
-        self.lazy_loader.can_progress(&self.completed_block)
-            && self
-                .graph_manager
-                .verification_done_for_block(self.completed_block)
-            && self.general_tasks.tasks_for_block(self.completed_block) == 0
-            && self.completed_block < self.current_block
+        let lazy_done = self.lazy_loader.can_progress(&self.completed_block);
+        let graph_verification_done = self
+            .graph_manager
+            .verification_done_for_block(self.completed_block);
+        let general_tasks_done = self.general_tasks.tasks_for_block(self.completed_block) == 0;
+        let completed_block_lt_cur = self.completed_block < self.current_block;
+
+        tracing::info!(
+            ?lazy_done,
+            ?graph_verification_done,
+            ?general_tasks_done,
+            ?completed_block_lt_cur
+        );
+
+        lazy_done && graph_verification_done && general_tasks_done && completed_block_lt_cur
     }
 
     /// lets the state loader know if  it should be pre processing more blocks.
