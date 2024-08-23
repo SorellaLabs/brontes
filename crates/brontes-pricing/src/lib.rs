@@ -76,7 +76,7 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tracing::{debug, error, info};
+use tracing::{debug, error, error_span, info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 /// STATES:
@@ -636,10 +636,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 None
             })
             .flatten()
-            .unique()
+            .unique_by(|(_, pair)| *pair)
             .map(|(block, pair)| {
                 self.lazy_loader.full_failure(pair);
-                tracing::debug!(?pair, "failed state query dep, requerying");
+                tracing::info!(?pair, "failed state query dep, requerying");
                 RequeryPairs {
                     pair,
                     extends_pair: None,
@@ -753,11 +753,11 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 // add regularly
                 if edges.is_empty() {
                     tracing::debug!(?pair, ?extends_pair, "no edges found, aborting");
+                    // abort as there is no more routes this subgraph can take
                     return None
-                    // // this cause problems
-                    // return Some((pair, block))
                 }
 
+                // if we can add to subgraph to keep searching
                 let Some((id, need_state, force_rundown)) =
                     self.add_subgraph(pair, extends_pair, block, edges, frayed_ext)
                 else {
@@ -818,24 +818,28 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         &mut self,
         new_subgraphs: Vec<(PairWithFirstPoolHop, Option<Pair>, u64, Vec<SubGraphEdge>, bool)>,
     ) {
-        let verify = new_subgraphs
-            .into_iter()
-            .filter_map(|(pair, extend, block, edges, frayed_ext)| {
-                let (id, need_state, ..) =
-                    self.add_subgraph(pair, extend, block, edges, frayed_ext)?;
+        let span = error_span!("finish rundown");
 
-                if !need_state {
-                    return Some((block, id, pair))
-                }
-                None
-            })
-            .collect_vec();
+        span.in_scope(|| {
+            let verify = new_subgraphs
+                .into_iter()
+                .filter_map(|(pair, extend, block, edges, frayed_ext)| {
+                    let (id, need_state, ..) =
+                        self.add_subgraph(pair, extend, block, edges, frayed_ext)?;
 
-        if verify.is_empty() {
-            return
-        }
+                    if !need_state {
+                        return Some((block, id, pair))
+                    }
+                    None
+                })
+                .collect_vec();
 
-        self.try_verify_subgraph(verify);
+            if verify.is_empty() {
+                return
+            }
+
+            self.try_verify_subgraph(verify);
+        });
     }
 
     /// rundown occurs when we have hit a attempt limit for trying to find high
@@ -854,6 +858,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             execute_on!(async_pricing, {
                 let res = pairs
                     .into_iter()
+                    .unique_by(|(pair, _)| *pair)
                     .filter_map(|(pair, block)| {
                         // if the rundown was forced. this means that we don't need to be so
                         // aggressive with the ign

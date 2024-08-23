@@ -133,6 +133,7 @@ impl SubgraphVerifier {
         if graph.subgraph.is_disjoint() {
             self.subgraph_verification_state.remove(pair);
             self.pending_subgraphs.remove(pair);
+
             tracing::debug!(%pair, "subgraph is disjoint");
             return true
         }
@@ -337,17 +338,16 @@ impl SubgraphVerifier {
                     pair,
                     block,
                     frayed,
-                    self.pending_subgraphs.remove(&pair).or_else(|| {
-                        tracing::warn!(?pair, "not found in pending subgraphs");
-                        None
-                    }),
+                    self.pending_subgraphs
+                        .remove(&pair)
+                        .expect("tried to fetch subgraph not there"),
                     price,
                     quote,
                 )
             })
             .filter_map(|(pair, block, _, subgraph, price, quote)| {
                 self.processing_subgraph.insert(pair, block);
-                let mut subgraph = subgraph?;
+                let mut subgraph = subgraph;
                 subgraph.iters += 1;
 
                 Some((pair, block, subgraph.in_rundown, subgraph, price, quote))
