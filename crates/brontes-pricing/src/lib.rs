@@ -76,7 +76,7 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tracing::{debug, error, error_span, info};
+use tracing::{debug, error, error_span, info, instrument};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 /// STATES:
@@ -1006,6 +1006,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     /// if the state loader isn't loading anything and we still have pending
     /// pairs,
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_flush_out_pending_verification")]
+    #[instrument(skip_all, level = "error")]
     fn try_flush_out_pending_verification(&mut self) {
         if !self.lazy_loader.can_progress(&self.completed_block) {
             return
