@@ -44,9 +44,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct SubgraphVerifier {
     pending_subgraphs:           FastHashMap<PairWithFirstPoolHop, Subgraph>,
-    /// because we take the subgraph while where processing we mark it here so
-    /// we don't re-create subgraphs.
-    processing_subgraph:         FastHashMap<PairWithFirstPoolHop, u64>,
     /// pruned edges of a subgraph that didn't meet liquidity params.
     /// these are stored as in the case we have a subgraph that all critical
     /// edges are below the liq threshold. we want to select the highest liq
@@ -75,7 +72,6 @@ impl SubgraphVerifier {
     pub fn new() -> Self {
         Self {
             pending_subgraphs:           FastHashMap::default(),
-            processing_subgraph:         FastHashMap::default(),
             subgraph_verification_state: FastHashMap::default(),
         }
     }
@@ -87,16 +83,10 @@ impl SubgraphVerifier {
     }
 
     pub fn has_go_through(&self, pair: PairWithFirstPoolHop) -> bool {
-        self.pending_subgraphs.contains_key(&pair) || self.processing_subgraph.contains_key(&pair)
+        self.pending_subgraphs.contains_key(&pair)
     }
 
     pub fn get_rem_for_block(&self, block: u64) -> Vec<PairWithFirstPoolHop> {
-
-                let processing_block =self.processing_subgraph
-                    .iter()
-                    .filter(|(_, b)| **b == block).collect::<Vec<_>>();
-        tracing::info!(?processing_block,"Processing");
-
         self.pending_subgraphs
             .iter()
             .filter(|(_, v)| v.block == block)
@@ -109,12 +99,6 @@ impl SubgraphVerifier {
             .values()
             .filter(|v| v.block == block)
             .map(|v| v.block)
-            .chain(
-                self.processing_subgraph
-                    .iter()
-                    .filter(|(_, b)| **b == block)
-                    .map(|(_, b)| *b),
-            )
             .count()
             == 0
     }
@@ -123,7 +107,6 @@ impl SubgraphVerifier {
         self.pending_subgraphs
             .get(&pair)
             .map(|s| s.block == block)
-            .or_else(|| self.processing_subgraph.get(&pair).map(|b| *b == block))
             .unwrap_or(false)
     }
 
@@ -341,8 +324,6 @@ impl SubgraphVerifier {
                     .filter(|(k, _)| !(ignores.contains(k)))
                     .collect::<FastHashMap<_, _>>();
 
-                self.processing_subgraph.remove(&pair);
-
                 if result.should_abandon {
                     self.subgraph_verification_state.remove(&pair);
                     tracing::trace!(?pair, "aborting");
@@ -388,7 +369,6 @@ impl SubgraphVerifier {
                 )
             })
             .filter_map(|(pair, block, _, subgraph, price, quote)| {
-                self.processing_subgraph.insert(pair, block);
                 let mut subgraph = subgraph;
                 subgraph.iters += 1;
 
