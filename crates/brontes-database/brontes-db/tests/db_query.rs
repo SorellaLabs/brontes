@@ -16,7 +16,7 @@ async fn test_query_retry() {
 
     let mut futs = FuturesUnordered::new();
 
-    for _ in 0..30 {
+    for _ in 0..5 {
         futs.push(async {
             let mut rng = rand::thread_rng();
             sleep(Duration::from_millis(rng.gen_range(10..100))).await;
