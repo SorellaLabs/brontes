@@ -41,6 +41,7 @@ pub mod function_call_bench;
 mod graphs;
 pub mod pending_tasks;
 pub mod protocols;
+pub mod states;
 mod subgraph_query;
 pub mod types;
 use std::{
@@ -75,9 +76,16 @@ use malachite::{
 use protocols::lazy::{LazyExchangeLoader, LazyResult, LoadResult};
 pub use protocols::{Protocol, *};
 use subgraph_query::*;
-use tracing::{debug, debug_span, error, info};
+use tracing::{debug, error, info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
+/// STATES:
+/// - Create ( all new graph data ) ( entry )
+///
+/// - LOAD ( loads create data )
+/// - VERIFY (verify subgraph )
+/// - FRAYED ENDS ( requery to close connections in graph )
+/// - RE-Create (  re create graph )
 use crate::types::PoolState;
 /// max movement of price in the block before its considered invalid.
 /// currently %98 movement from start price.
@@ -1289,6 +1297,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         cx.waker().wake_by_ref();
+        tracing::debug!("loop");
         if let Some(new_prices) = self.poll_state_processing(cx) {
             return new_prices
         }

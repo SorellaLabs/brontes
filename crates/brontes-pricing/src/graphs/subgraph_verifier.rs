@@ -195,8 +195,6 @@ impl SubgraphVerifier {
             .get_mut(&pair)
             .or_else(|| {
                 tracing::warn!(?pair, "missing pending subgraph");
-                let _ = self.subgraph_verification_state.remove(&pair);
-                let _ = self.processing_subgraph.remove(&pair);
                 None
             })?
             .in_rundown = true;
@@ -206,8 +204,6 @@ impl SubgraphVerifier {
             .get_mut(&pair)
             .or_else(|| {
                 tracing::warn!(?pair, "missing state");
-                let _ = self.pending_subgraphs.remove(&pair);
-                let _ = self.processing_subgraph.remove(&pair);
                 None
             })?;
 
