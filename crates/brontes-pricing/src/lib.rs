@@ -1018,7 +1018,6 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         {
             return
         }
-        tracing::info!("run verification or remove");
 
         let rem_block = self
             .graph_manager
