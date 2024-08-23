@@ -849,10 +849,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     .filter_map(|(pair, block)| {
                         // if the rundown was forced. this means that we don't need to be so
                         // aggressive with the ign
-                        let ignores = graph_manager
-                            .verify_subgraph_on_new_path_failure(pair)
-                            .unwrap_or_default();
-
+                        let ignores = graph_manager.verify_subgraph_on_new_path_failure(pair)?;
                         let extends = graph_manager.subgraph_extends(pair);
 
                         if ignores.is_empty() {

@@ -203,7 +203,7 @@ impl SubgraphVerifier {
             .subgraph_verification_state
             .get_mut(&pair)
             .or_else(|| {
-                tracing::debug!(?pair, "missing state");
+                tracing::warn!(?pair, "missing state");
                 None
             })?;
 
