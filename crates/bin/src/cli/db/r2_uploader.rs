@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use brontes_database::libmdbx::{
-    rclone_wrapper::RCloneWrapper, LibmdbxPartitioner, LibmdbxReadWriter, FULL_RANGE_NAME,
+    rclone_wrapper::RCloneWrapper, LibmdbxInit, LibmdbxPartitioner, LibmdbxReadWriter,
+    FULL_RANGE_NAME,
 };
 use clap::Parser;
 
@@ -24,14 +25,21 @@ impl R2Uploader {
     pub async fn execute(self, database_path: String, ctx: CliContext) -> eyre::Result<()> {
         let r2wrapper = RCloneWrapper::new(self.r2_config_name.clone()).await?;
 
+        let db = LibmdbxReadWriter::init_db(&database_path, None, &ctx.task_executor, true)?;
+
         let start_block = if let Some(b) = self.start_block {
             b
         } else {
             tracing::info!("Grabbing most recent r2 snapshot");
-            r2wrapper.get_most_recent_partition_block().await?
+            r2wrapper
+                .get_most_recent_partition_block()
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(err=%e,"using databases first block");
+                    db.get_db_range().expect("empty libmdbx").0
+                })
         };
 
-        let db = LibmdbxReadWriter::init_db(&database_path, None, &ctx.task_executor, true)?;
         tracing::info!("Partitioning new data into respective files");
 
         if let Err(e) = LibmdbxPartitioner::new(
