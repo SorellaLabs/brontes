@@ -5,6 +5,7 @@ use brontes_types::{
         quotes::{CexQuote, CexQuotesConverter},
         CexExchange,
     },
+    init_thread_pools,
     pair::Pair,
 };
 use malachite::Rational;
@@ -13,6 +14,7 @@ use shared::fetch_test_data;
 
 #[brontes_macros::test]
 async fn test_cex_quote_conversion() {
+    init_thread_pools(32);
     let client = Clickhouse::new_default(None).await;
     let range = CexRangeOrArbitrary::Range(18264694, 18264795);
     let (block_times, symbols, quotes, best_cex_per_pair) =
