@@ -1104,7 +1104,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let general_tasks_done = self.general_tasks.tasks_for_block(self.completed_block) == 0;
         let completed_block_lt_cur = self.completed_block < self.current_block;
 
-        tracing::debug!(
+        tracing::trace!(
             ?lazy_done,
             ?graph_verification_done,
             ?general_tasks_done,
