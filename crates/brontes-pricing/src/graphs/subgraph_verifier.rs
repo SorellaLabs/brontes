@@ -91,6 +91,12 @@ impl SubgraphVerifier {
     }
 
     pub fn get_rem_for_block(&self, block: u64) -> Vec<PairWithFirstPoolHop> {
+
+                let processing_block =self.processing_subgraph
+                    .iter()
+                    .filter(|(_, b)| **b == block).collect::Vec<_>>();
+        tracing::info!(?processing_block,"Processing");
+
         self.pending_subgraphs
             .iter()
             .filter(|(_, v)| v.block == block)
