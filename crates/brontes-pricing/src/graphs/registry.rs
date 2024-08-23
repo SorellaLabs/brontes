@@ -186,9 +186,11 @@ impl SubGraphRegistry {
                     self.pending_finalized_graphs
                         .values()
                         .filter_map(|sg| {
-                            sg.sub_graphs
-                                .get(&pair.ordered())
-                                .map(|s| s.get(&gt.ordered()).is_some())
+                            sg.sub_graphs.get(&pair.ordered()).map(|s| {
+                                s.get(&gt.ordered())
+                                    .filter(|s| s.should_use_for_new())
+                                    .is_some()
+                            })
                         })
                         .any(|f| f),
                 )
