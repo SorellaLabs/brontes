@@ -11,6 +11,7 @@ use crate::{
         block_times::{BlockTimes, CexBlockTimes},
         cex::{cex_symbols::CexSymbols, trades::CexTradeMap, CexExchange},
     },
+    execute_on,
     serde_utils::{cex_exchange, trade_type},
     FastHashMap,
 };
@@ -99,64 +100,66 @@ impl CexTradesConverter {
                     .push(trade)
             });
 
-        block_num_map
-            .into_par_iter()
-            .map(|(block_num, trades)| {
-                let mut exchange_map = FastHashMap::default();
+        execute_on!(download, {
+            block_num_map
+                .into_par_iter()
+                .map(|(block_num, trades)| {
+                    let mut exchange_map = FastHashMap::default();
 
-                trades.into_iter().for_each(|trade| {
-                    exchange_map
-                        .entry(trade.exchange)
-                        .or_insert(Vec::new())
-                        .push(trade);
-                });
+                    trades.into_iter().for_each(|trade| {
+                        exchange_map
+                            .entry(trade.exchange)
+                            .or_insert(Vec::new())
+                            .push(trade);
+                    });
 
-                let cex_price_map = exchange_map
-                    .into_iter()
-                    .map(|(exch, trades)| {
-                        let mut exchange_symbol_map = FastHashMap::default();
+                    let cex_price_map = exchange_map
+                        .into_iter()
+                        .map(|(exch, trades)| {
+                            let mut exchange_symbol_map = FastHashMap::default();
 
-                        trades.into_iter().for_each(|trade| {
-                            let symbols = self.symbols.get(&trade.symbol).unwrap().clone();
+                            trades.into_iter().for_each(|trade| {
+                                let symbols = self.symbols.get(&trade.symbol).unwrap().clone();
 
-                            // there is a case were we have multiple addresses for
-                            // same symbol so this covers it.
-                            let mut seen = vec![];
-                            for mut symbol in symbols {
-                                if seen.contains(&symbol.address_pair) {
-                                    continue
-                                } else {
-                                    seen.push(symbol.address_pair)
+                                // there is a case were we have multiple addresses for
+                                // same symbol so this covers it.
+                                let mut seen = vec![];
+                                for mut symbol in symbols {
+                                    if seen.contains(&symbol.address_pair) {
+                                        continue
+                                    } else {
+                                        seen.push(symbol.address_pair)
+                                    }
+
+                                    if symbol.address_pair.1
+                                        == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
+                                    {
+                                        symbol.address_pair.1 = USDC_ADDRESS;
+                                    }
+
+                                    if symbol.address_pair.0
+                                        == hex!("15D4c048F83bd7e37d49eA4C83a07267Ec4203dA")
+                                        && trade.timestamp > 1684220400000000
+                                    {
+                                        symbol.address_pair.0 = Address::from(hex!(
+                                            "d1d2Eb1B1e90B638588728b4130137D262C87cae"
+                                        ))
+                                    }
+
+                                    exchange_symbol_map
+                                        .entry(symbol.address_pair)
+                                        .or_insert(Vec::new())
+                                        .push(trade.clone().into());
                                 }
+                            });
 
-                                if symbol.address_pair.1
-                                    == hex!("2f6081e3552b1c86ce4479b80062a1dda8ef23e3")
-                                {
-                                    symbol.address_pair.1 = USDC_ADDRESS;
-                                }
+                            (exch, exchange_symbol_map)
+                        })
+                        .collect::<FastHashMap<_, _>>();
 
-                                if symbol.address_pair.0
-                                    == hex!("15D4c048F83bd7e37d49eA4C83a07267Ec4203dA")
-                                    && trade.timestamp > 1684220400000000
-                                {
-                                    symbol.address_pair.0 = Address::from(hex!(
-                                        "d1d2Eb1B1e90B638588728b4130137D262C87cae"
-                                    ))
-                                }
-
-                                exchange_symbol_map
-                                    .entry(symbol.address_pair)
-                                    .or_insert(Vec::new())
-                                    .push(trade.clone().into());
-                            }
-                        });
-
-                        (exch, exchange_symbol_map)
-                    })
-                    .collect::<FastHashMap<_, _>>();
-
-                (block_num, CexTradeMap(cex_price_map))
-            })
-            .collect()
+                    (block_num, CexTradeMap(cex_price_map))
+                })
+                .collect()
+        })
     }
 }

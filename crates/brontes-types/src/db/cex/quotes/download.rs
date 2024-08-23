@@ -13,6 +13,7 @@ use crate::{
         block_times::{BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
     },
+    execute_on,
     pair::Pair,
     serde_utils::cex_exchange,
     FastHashMap,
@@ -74,19 +75,21 @@ impl CexQuotesConverter {
 
         let most_liquid_exchange_for_pair = &self.process_best_cex_venues();
 
-        block_num_map_with_pairs
-            .into_par_iter()
-            .map(|((block_num, block_time), quotes)| {
-                let price_map = self.create_price_map(quotes, block_time);
-                (
-                    block_num,
-                    CexPriceMap {
-                        quotes:         price_map,
-                        most_liquid_ex: most_liquid_exchange_for_pair.clone(),
-                    },
-                )
-            })
-            .collect()
+        execute_on!(download, {
+            block_num_map_with_pairs
+                .into_par_iter()
+                .map(|((block_num, block_time), quotes)| {
+                    let price_map = self.create_price_map(quotes, block_time);
+                    (
+                        block_num,
+                        CexPriceMap {
+                            quotes:         price_map,
+                            most_liquid_ex: most_liquid_exchange_for_pair.clone(),
+                        },
+                    )
+                })
+                .collect()
+        })
     }
 
     pub fn create_price_map(
@@ -215,38 +218,40 @@ impl CexQuotesConverter {
         block_time: u64,
         exchange_symbol_map: FastHashMap<Pair, Vec<usize>>,
     ) -> FastHashMap<Pair, Vec<CexQuote>> {
-        exchange_symbol_map
-            .into_par_iter()
-            .filter_map(|(pair, quotes_indices)| {
-                if quotes_indices.is_empty() {
-                    return None
-                }
+        execute_on!(download, {
+            exchange_symbol_map
+                .into_par_iter()
+                .filter_map(|(pair, quotes_indices)| {
+                    if quotes_indices.is_empty() {
+                        return None
+                    }
 
-                let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
+                    let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
 
-                let mut quote_iter = quotes_indices
-                    .into_iter()
-                    .map(|q| self.quotes[q].clone())
-                    .peekable();
+                    let mut quote_iter = quotes_indices
+                        .into_iter()
+                        .map(|q| self.quotes[q].clone())
+                        .peekable();
 
-                let mut last_quote = quote_iter.next();
+                    let mut last_quote = quote_iter.next();
 
-                for time in QUOTE_TIME_BOUNDARY {
-                    while let Some(peeked) = quote_iter.peek() {
-                        if peeked.timestamp > block_time + time * 1_000_000 {
-                            break
+                    for time in QUOTE_TIME_BOUNDARY {
+                        while let Some(peeked) = quote_iter.peek() {
+                            if peeked.timestamp > block_time + time * 1_000_000 {
+                                break
+                            }
+                            last_quote = quote_iter.next();
                         }
-                        last_quote = quote_iter.next();
+
+                        if let Some(quote) = &last_quote {
+                            result.push(quote.clone().into());
+                        }
                     }
 
-                    if let Some(quote) = &last_quote {
-                        result.push(quote.clone().into());
-                    }
-                }
-
-                Some((pair, result))
-            })
-            .collect()
+                    Some((pair, result))
+                })
+                .collect()
+        })
     }
 }
 
