@@ -27,7 +27,7 @@ use petgraph::{
     prelude::*,
     visit::{VisitMap, Visitable},
 };
-use tracing::error;
+use tracing::{error, instrument};
 
 use crate::{types::ProtocolState, Pair};
 
@@ -373,6 +373,7 @@ impl PairSubGraph {
         self.last_block_for_pricing.store(block, SeqCst);
     }
 
+    #[instrument(skip_all, level = "debug")]
     pub fn has_valid_liquidity<T: ProtocolState>(
         &mut self,
         start: Address,
@@ -412,6 +413,7 @@ impl PairSubGraph {
         true
     }
 
+    #[instrument(skip_all, level = "debug")]
     pub fn rundown_subgraph_check<T: ProtocolState>(
         &mut self,
         start: Address,
