@@ -7,15 +7,18 @@ use crate::{
 pub enum PendingHeavyCalcs {
     SubgraphVerification(Vec<(PairWithFirstPoolHop, u64, VerificationOutcome, Subgraph)>),
     StateQuery(ParStateQueryRes, bool),
-    Rundown(Vec<(PairWithFirstPoolHop, Option<Pair>, u64, Vec<SubGraphEdge>, bool)>),
+    Rundown(Vec<RundownArgs>),
 }
+
+type CalcFut = Pin<Box<dyn Future<Output = (usize, PendingHeavyCalcs)> + Send>>;
+pub type RundownArgs = (PairWithFirstPoolHop, Option<Pair>, u64, Vec<SubGraphEdge>, bool);
 
 /// wrapper around a future unordered that allows us to query info about the
 /// specific tasks
 #[derive(Default)]
 pub struct PendingTaskManager {
     id:      usize,
-    futures: FuturesUnordered<Pin<Box<dyn Future<Output = (usize, PendingHeavyCalcs)> + Send>>>,
+    futures: FuturesUnordered<CalcFut>,
     info:    FastHashMap<usize, Vec<TaskInfo>>,
 }
 

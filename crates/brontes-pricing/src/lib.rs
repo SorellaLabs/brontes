@@ -28,7 +28,7 @@ use brontes_types::{
     BrontesTaskExecutor, UnboundedYapperReceiver,
 };
 use futures::{stream::FuturesUnordered, Future, FutureExt, StreamExt};
-use pending_tasks::{PendingTaskManager, TaskInfo};
+use pending_tasks::{PendingTaskManager, RundownArgs, TaskInfo};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::{
@@ -817,10 +817,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         );
     }
 
-    fn finish_rundown(
-        &mut self,
-        new_subgraphs: Vec<(PairWithFirstPoolHop, Option<Pair>, u64, Vec<SubGraphEdge>, bool)>,
-    ) {
+    fn finish_rundown(&mut self, new_subgraphs: Vec<RundownArgs>) {
         let span = error_span!("finish rundown");
 
         span.in_scope(|| {
