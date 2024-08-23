@@ -1022,6 +1022,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             return
         }
 
+        tracing::info!("trying flush");
         self.par_rundown(
             rem_block
                 .into_iter()
