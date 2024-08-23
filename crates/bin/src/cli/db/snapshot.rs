@@ -13,6 +13,7 @@ use fs_extra::dir::{move_dir, CopyOptions};
 use futures::{stream::StreamExt, Stream};
 use indicatif::MultiProgress;
 use itertools::Itertools;
+use malachite::strings::ToDebugString;
 use reqwest::Url;
 use tar::Archive;
 
@@ -38,14 +39,14 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
         let ranges_avail = self.get_available_ranges(&client).await?;
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
-        fs_extra::dir::create_all(&brontes_db_path, false)?;
+        fs_extra::dir::create_all(&brontes_db_endpoint, false)?;
 
         let curl_queries = self
-            .meets_space_requirement(&client, ranges_to_download, &brontes_db_path)
+            .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
             .await?;
 
         // download db tarball
@@ -97,11 +98,11 @@ impl Snapshot {
         if self.should_merge() {
             tracing::info!(
                 "all partitions downloaded, merging into the current db at: {}",
-                brontes_db_path
+                brontes_db_endpoint
             );
 
             let final_db =
-                LibmdbxReadWriter::init_db(brontes_db_path, None, &ctx.task_executor, false)?;
+                LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
 
             let db = cloned_download_dir.clone();
             let ex = ctx.task_executor.clone();
@@ -138,13 +139,15 @@ impl Snapshot {
         match (self.start_block, self.end_block) {
             (None, None) => Ok(RangeOrFull::Full),
             (Some(start), None) => {
+                let available_ranges = ranges_avail.to_debug_string();
+
                 let ranges = ranges_avail
                     .into_iter()
                     .filter(|BlockRangeList { end_block, .. }| end_block >= &start)
                     .collect_vec();
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}",
+                        "no data available for the set range: {:?}-{:?}, {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -152,6 +155,7 @@ impl Snapshot {
                 Ok(RangeOrFull::Range(ranges))
             }
             (None, Some(end)) => {
+                let available_ranges = ranges_avail.to_debug_string();
                 let ranges = ranges_avail
                     .into_iter()
                     .filter(|BlockRangeList { start_block, .. }| start_block <= &end)
@@ -159,7 +163,7 @@ impl Snapshot {
 
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}",
+                        "no data available for the set range: {:?}-{:?}, {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -168,6 +172,7 @@ impl Snapshot {
                 Ok(RangeOrFull::Range(ranges))
             }
             (Some(start), Some(end)) => {
+                let available_ranges = ranges_avail.to_debug_string();
                 let ranges = ranges_avail
                     .into_iter()
                     .filter(|BlockRangeList { start_block, end_block }| {
@@ -177,7 +182,7 @@ impl Snapshot {
 
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}",
+                        "no data available for the set range: {:?}-{:?}, {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -207,7 +212,7 @@ impl Snapshot {
         &self,
         client: &reqwest::Client,
         ranges: RangeOrFull,
-        brontes_db_path: &String,
+        brontes_db_endpoint: &String,
     ) -> eyre::Result<Vec<DbRequestWithBytes>> {
         let mut new_db_size = 0u64;
         let mut res = vec![];
@@ -262,7 +267,7 @@ impl Snapshot {
         }
 
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
-        let storage_available = fs2::free_space(brontes_db_path)?;
+        let storage_available = fs2::free_space(brontes_db_endpoint)?;
 
         if storage_available >= new_db_size {
             Ok(res)
