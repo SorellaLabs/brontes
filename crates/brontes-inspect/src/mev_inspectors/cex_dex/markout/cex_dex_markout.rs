@@ -878,6 +878,6 @@ mod tests {
             .with_expected_profit_usd(15.25)
             .with_gas_paid_usd(17.79);
 
-        inspector_util.assert_no_mev(config).await.unwrap();
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
