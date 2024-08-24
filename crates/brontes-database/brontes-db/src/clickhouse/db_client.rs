@@ -1092,6 +1092,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_get_cex_quotes_timestamp() {
+        init_thread_pools(32);
         let test_db = Clickhouse::new_default(Some(0)).await;
         let cex_quotes_for_block = test_db
             .get_cex_prices(CexRangeOrArbitrary::Timestamp {
@@ -1106,6 +1107,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_get_cex_trades_timestamp() {
+        init_thread_pools(32);
         let test_db = Clickhouse::new_default(Some(0)).await;
         let cex_trades_for_block = test_db
             .get_cex_trades(CexRangeOrArbitrary::Timestamp {
