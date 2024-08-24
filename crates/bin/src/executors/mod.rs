@@ -568,7 +568,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
     fn state_to_initialize(&self, end: u64) -> StateToInitialize {
         match &self.range_type {
             RangeType::SingleRange { start_block, from_db_tip, .. } => {
-                let start_block = if from_db_tip {
+                let start_block = if *from_db_tip {
                     self.libmdbx.get_most_recent_block().unwrap()
                 } else {
                     start_block.unwrap()
