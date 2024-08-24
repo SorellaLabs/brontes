@@ -567,10 +567,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     fn state_to_initialize(&self, end: u64) -> StateToInitialize {
         match &self.range_type {
-            RangeType::SingleRange { start_block, .. } => self
-                .libmdbx
-                .state_to_initialize(start_block.unwrap(), end)
-                .unwrap(),
+            RangeType::SingleRange { start_block, from_db_tip, .. } => {
+                let start_block = if from_db_tip {
+                    self.libmdbx.get_most_recent_block().unwrap()
+                } else {
+                    start_block.unwrap()
+                };
+                self.libmdbx.state_to_initialize(start_block, end).unwrap()
+            }
             RangeType::MultipleRanges(ranges) => {
                 let mut state_to_init = StateToInitialize::default();
                 for (start_block, end_block) in ranges {
