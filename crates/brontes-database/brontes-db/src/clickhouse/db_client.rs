@@ -456,7 +456,7 @@ impl ClickhouseHandle for Clickhouse {
 
         if cex_quotes_for_block.is_empty() {
             tracing::error!("loaded zero cex quotes. check backend");
-            return eyre::eyre!("error loading cex quotes")
+            return Err(eyre::eyre!("error loading cex quotes"))
         }
 
         let cex_quotes = cex_quotes_for_block.remove(0);
