@@ -400,6 +400,10 @@ impl StateToInitialize {
 }
 
 impl LibmdbxReader for LibmdbxReadWriter {
+    fn get_most_recent_block(&self) -> eyre::Result<u64> {
+        self.get_highest_block_number()
+    }
+
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"get_dex_quotes")]
     fn get_dex_quotes(&self, block: u64) -> eyre::Result<DexQuotes> {
         self.fetch_dex_quotes(block)

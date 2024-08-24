@@ -32,6 +32,9 @@ pub struct RunArgs {
     /// killed
     #[arg(long, short)]
     pub end_block:            Option<u64>,
+    /// starts running at tip from where brontes was last left at.
+    #[arg(long, default_value_t = false)]
+    pub from_db_tip:          bool,
     /// Optional Multiple Ranges, format: "start1-end1 start2-end2 ..."
     /// Use this if you want to specify the exact, non continuous block ranges
     /// you want to run
@@ -224,6 +227,7 @@ impl RunArgs {
                 start_block:   self.start_block,
                 end_block:     self.end_block,
                 back_from_tip: self.behind_tip,
+                from_db_tip:   self.from_db_tip,
             })
         }
     }
