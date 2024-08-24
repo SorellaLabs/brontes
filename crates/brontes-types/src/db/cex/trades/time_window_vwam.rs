@@ -190,7 +190,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_intermediary_vol = true;
                 }
 
-                tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, ?intermediary, ?volume, "trying via intermediary");
+                tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, ?pair0, ?pair1, ?intermediary, ?volume, "trying via intermediary");
                 let first_leg = self.get_vwap_price(
                     config,
                     exchanges,
