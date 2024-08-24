@@ -182,28 +182,16 @@ impl<'a> TimeWindowTrades<'a> {
                 let pair0 = Pair(pair.0, *intermediary);
                 let pair1 = Pair(*intermediary, pair.1);
 
-                let mut bypass_intermediary_vol = false;
 
-                // bypass volume requirements for stable pairs
-                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS
-                || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS {
-                    bypass_intermediary_vol = true;
-                }
-
-                tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?pair, ?pair0, ?pair1, ?intermediary, ?volume, "trying via intermediary");
-                let first_leg = self.get_vwap_price(
-                    config,
-                    exchanges,
-                    pair0,
-                    volume,
-                    block_timestamp,
-                    bypass_vol || bypass_intermediary_vol,
-                    dex_swap,
-                    tx_hash,
-                )?;
-
-                // Volume of second leg
-                let second_leg_volume = &first_leg.global.price_maker * volume;
+                tracing::debug!(
+                    target: "brontes_types::db::cex::time_window_vwam",
+                    ?pair,
+                    ?pair0,
+                    ?pair1,
+                    ?intermediary,
+                    ?volume,
+                    "trying via intermediary"
+                );
 
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
@@ -215,12 +203,39 @@ impl<'a> TimeWindowTrades<'a> {
                     config,
                     exchanges,
                     pair1,
-                    &second_leg_volume,
+                    volume,
+                    // &second_leg_volume,
                     block_timestamp,
                     bypass_vol || bypass_intermediary_vol,
                     dex_swap,
                     tx_hash,
                 )?;
+
+                let first_leg_volume = &second_leg.global.price_maker * volume;
+                tracing::debug!(
+                    target: "brontes_types::db::cex::time_window_vwam",
+                    ?first_leg_volume);
+
+                let mut bypass_intermediary_vol = false;
+
+                // bypass volume requirements for stable pairs
+                if pair0.0 == USDC_ADDRESS && pair0.1 == USDT_ADDRESS
+                || pair0.0 == USDT_ADDRESS && pair0.1 == USDC_ADDRESS {
+                    bypass_intermediary_vol = true;
+                }
+
+                let first_leg = self.get_vwap_price(
+                    config,
+                    exchanges,
+                    pair0,
+                    &first_leg_volume,
+                    block_timestamp,
+                    bypass_vol || bypass_intermediary_vol,
+                    dex_swap,
+                    tx_hash,
+                )?;
+
+
 
                 let price = first_leg * second_leg;
 
