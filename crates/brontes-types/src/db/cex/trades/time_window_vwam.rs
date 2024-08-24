@@ -193,6 +193,8 @@ impl<'a> TimeWindowTrades<'a> {
                     "trying via intermediary"
                 );
 
+                let mut bypass_intermediary_vol = false;
+
                 bypass_intermediary_vol = false;
                 if pair1.0 == USDT_ADDRESS && pair1.1 == USDC_ADDRESS
                 || pair1.0 == USDC_ADDRESS && pair1.1 == USDT_ADDRESS{
