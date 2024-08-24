@@ -464,7 +464,9 @@ impl<'a> TimeWindowTrades<'a> {
                 .map(|t| t.timestamp);
 
             let time_before = min.clone().map(|min| block_timestamp - min);
-            let time_after = min.clone().map(|max| max as isize - block_timestamp as isize);
+            let time_after = max
+                .clone()
+                .map(|max| max as isize - block_timestamp as isize);
 
             tracing::debug!(
                 target: "brontes_types::db::cex::time_window_vwam",
