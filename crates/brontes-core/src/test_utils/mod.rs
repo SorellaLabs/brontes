@@ -241,6 +241,7 @@ impl TraceLoader {
         // we calculate the offset from the current block that we need
         let offsets = (window / 12) as u64;
         let mut trades = Vec::new();
+        tracing::debug!(?offsets);
         for block in block - offsets..=block + offsets {
             if let Ok(res) = self.libmdbx.get_cex_trades(block) {
                 trades.push(res);

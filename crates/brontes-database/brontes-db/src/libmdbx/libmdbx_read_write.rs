@@ -406,12 +406,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
-        let mut trades = CexTradeMap::default();
-        for current_block in block..=block + 5 {
-            let block_trades = self.fetch_trades(current_block)?;
-            trades.merge_in_map(block_trades);
-        }
-        Ok(trades)
+        Ok(self.fetch_trades(current_block)?)
     }
 
     fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
