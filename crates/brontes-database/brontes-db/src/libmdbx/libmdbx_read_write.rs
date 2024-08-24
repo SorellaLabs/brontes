@@ -406,7 +406,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
     }
 
     fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
-        Ok(self.fetch_trades(current_block)?)
+        Ok(self.fetch_trades(block)?)
     }
 
     fn has_dex_quotes(&self, block_num: u64) -> eyre::Result<bool> {
