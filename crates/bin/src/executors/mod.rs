@@ -253,7 +253,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 let start_block = if *from_db_tip {
                     self.libmdbx
                         .get_most_recent_block()
-                        .unwrap_or(start_block.unwrap())
+                        .unwrap_or_else(|| start_block.unwrap())
                 } else {
                     start_block.unwrap()
                 };
