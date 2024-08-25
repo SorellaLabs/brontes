@@ -467,7 +467,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         if cex_quote.price_maker == Rational::ZERO || swap.amount_out == Rational::ZERO {
             return None
         }
-        tracing::debug!(target: "brontes_types::db::cex::time_window_vwam", ?cex_quote);
 
         let pairs_price = ExchangeLegCexPrice {
             token0: swap.token_in.address,
@@ -496,7 +495,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &swap.amount_in,
                 &swap.amount_out,
                 &output_of_cex_trade_maker,
-                cex_quote.was_intermediary
+                cex_quote.was_intermediary,
             );
             return None
         }
