@@ -452,28 +452,29 @@ impl<'a> TimeWindowTrades<'a> {
             "have trades"
         );
         for (_, trades) in &trades {
-            // let min = trades
-            //     .iter()
-            //     .min_by_key(|t| t.timestamp)
-            //     .map(|t| t.timestamp);
-            // let max = trades
-            //     .iter()
-            //     .max_by_key(|t| t.timestamp)
-            //     .map(|t| t.timestamp);
-            //
-            // let time_before = min.clone().map(|min| block_timestamp - min);
-            // let time_after = max
-            //     .clone()
-            //     .map(|max| max as isize - block_timestamp as isize);
-            //
-            // tracing::debug!(
-            //     target: "brontes_types::db::cex::time_window_vwam",
-            //     ?block_timestamp,
-            //     ?time_before,
-            //     ?time_after,
-            //     ?min,
-            //     ?max
-            // );
+            let min = trades
+                .iter()
+                .min_by_key(|t| t.timestamp)
+                .map(|t| t.timestamp);
+            let max = trades
+                .iter()
+                .max_by_key(|t| t.timestamp)
+                .map(|t| t.timestamp);
+
+            let time_before = min.clone().map(|min| block_timestamp - min);
+            let time_after = max
+                .clone()
+                .map(|max| max as isize - block_timestamp as isize);
+
+            tracing::debug!(
+                target: "brontes_types::db::cex::time_window_vwam",
+                ?block_timestamp,
+                ?time_before,
+                ?time_after,
+                ?min,
+                ?max
+
+            );
 
             trace!(
                 target: "brontes_types::db::cex::time_window_vwam",
