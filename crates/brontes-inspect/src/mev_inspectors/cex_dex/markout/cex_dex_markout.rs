@@ -882,7 +882,7 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-// 
+    //
     #[brontes_macros::test]
     async fn test_trades_comp_weth_weird() {
         // should be there if intermediary. however thats failing
