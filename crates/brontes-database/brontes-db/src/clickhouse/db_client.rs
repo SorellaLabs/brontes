@@ -707,8 +707,7 @@ impl ClickhouseHandle for Clickhouse {
         debug!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
-            tracing::warn!("No block times found, returning empty result");
-            return Ok(vec![])
+            eyre::bail!("No block times found");
         }
 
         debug!("Querying CEX symbols");
