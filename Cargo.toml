@@ -193,6 +193,7 @@ flate2 = "1.0.30"
 [profile.release]
 lto = "thin"
 strip = "debuginfo"
+overflow-checks = true 
 
 [profile.debug-fast]
 inherits = "release"
