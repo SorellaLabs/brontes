@@ -780,11 +780,12 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_eth_dai() {
-        // no trades in db
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
         let tx = hex!("60cbfc1b8b72479259c236e0ef17ffeade286f7c7821a03f6c180340b694f9c7").into();
-        let config =
-            InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(0.082)
+            .with_gas_paid_usd(4.44);
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
