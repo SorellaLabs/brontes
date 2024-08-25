@@ -495,6 +495,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &swap.amount_in,
                 &swap.amount_out,
                 &output_of_cex_trade_maker,
+                cex_quote.was_intermediary
             );
             return None
         }
