@@ -427,6 +427,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         tx_info: &TxInfo,
         price_calculation_type: PriceCalcType,
     ) -> Option<ArbLeg> {
+        tracing::debug!("profit classifier");
         let (output_of_cex_trade_maker, output_of_cex_trade_taker) =
             (&cex_quote.price_maker * &swap.amount_out, &cex_quote.price_taker * &swap.amount_out);
 
