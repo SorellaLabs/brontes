@@ -1302,7 +1302,7 @@ impl LibmdbxReadWriter {
     pub fn get_highest_block_number(&self) -> eyre::Result<u64> {
         self.db
             .ro_tx()?
-            .cursor_read::<TxTraces>()?
+            .cursor_read::<MevBlocks>()?
             .last()?
             .map(|v| v.0)
             .ok_or_else(|| eyre::eyre!("no max block found"))
