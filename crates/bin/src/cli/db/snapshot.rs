@@ -38,14 +38,14 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
+    pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
         let ranges_avail = self.get_available_ranges(&client).await?;
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
-        fs_extra::dir::create_all(&brontes_db_path, false)?;
+        fs_extra::dir::create_all(&brontes_db_endpoint, false)?;
 
         let curl_queries = self
-            .meets_space_requirement(&client, ranges_to_download, &brontes_db_path)
+            .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
             .await?;
 
         // download db tarball
@@ -97,11 +97,11 @@ impl Snapshot {
         if self.should_merge() {
             tracing::info!(
                 "all partitions downloaded, merging into the current db at: {}",
-                brontes_db_path
+                brontes_db_endpoint
             );
 
             let final_db =
-                LibmdbxReadWriter::init_db(brontes_db_path, None, &ctx.task_executor, false)?;
+                LibmdbxReadWriter::init_db(brontes_db_endpoint, None, &ctx.task_executor, false)?;
 
             let db = cloned_download_dir.clone();
             let ex = ctx.task_executor.clone();
@@ -135,6 +135,14 @@ impl Snapshot {
     // returns a error if the data isn't available.
     // NOTE: assumes r2 data is continuous
     fn ranges_to_download(&self, ranges_avail: Vec<BlockRangeList>) -> eyre::Result<RangeOrFull> {
+        if ranges_avail.is_empty() {
+            eyre::bail!("currently no snapshots are available for download");
+        }
+
+        let earliest_start = ranges_avail.first().unwrap().start_block;
+        let latest_end = ranges_avail.last().unwrap().end_block;
+        let available_ranges = format!("{}-{}", earliest_start, latest_end);
+
         match (self.start_block, self.end_block) {
             (None, None) => Ok(RangeOrFull::Full),
             (Some(start), None) => {
@@ -144,7 +152,8 @@ impl Snapshot {
                     .collect_vec();
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}",
+                        "no data available for the set range: {:?}-{:?}\n ranges with data: \
+                         {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -159,7 +168,8 @@ impl Snapshot {
 
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}",
+                        "no data available for the set range: {:?}-{:?}\n ranges with data: \
+                         {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -177,7 +187,8 @@ impl Snapshot {
 
                 if ranges.is_empty() {
                     eyre::bail!(
-                        "no data available for the set range: {:?}-{:?}",
+                        "no data available for the set range: {:?}-{:?}\n ranges with data: \
+                         {available_ranges}",
                         self.start_block,
                         self.end_block
                     )
@@ -207,7 +218,7 @@ impl Snapshot {
         &self,
         client: &reqwest::Client,
         ranges: RangeOrFull,
-        brontes_db_path: &String,
+        brontes_db_endpoint: &String,
     ) -> eyre::Result<Vec<DbRequestWithBytes>> {
         let mut new_db_size = 0u64;
         let mut res = vec![];
@@ -262,7 +273,7 @@ impl Snapshot {
         }
 
         tracing::info!("new db size {}mb", new_db_size / BYTES_TO_MB);
-        let storage_available = fs2::free_space(brontes_db_path)?;
+        let storage_available = fs2::free_space(brontes_db_endpoint)?;
 
         if storage_available >= new_db_size {
             Ok(res)

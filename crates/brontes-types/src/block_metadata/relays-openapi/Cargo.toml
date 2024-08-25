@@ -1,0 +1,16 @@
+[package]
+name = "relays-openapi"
+version = "0.1.0"
+authors = ["OpenAPI Generator team and contributors"]
+description = "API specification for MEV-Boost PBS relays. "
+license = "CC0-1.0"
+edition = "2018"
+
+[dependencies]
+serde = "^1.0"
+serde_derive = "^1.0"
+serde_json = "^1.0"
+url = "^2.2"
+[dependencies.reqwest]
+version = "^0.11"
+features = ["json", "multipart"]

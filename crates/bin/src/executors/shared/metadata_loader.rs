@@ -24,6 +24,7 @@ use brontes_types::{
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
+use reth_primitives::BlockHash;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
@@ -96,6 +97,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
     //TODO: remove unecessary dex pricing query
     pub fn load_metadata_for_tree<DB: LibmdbxReader + DBWriter>(
         &mut self,
+        block_hash: BlockHash,
         tree: BlockTree<Action>,
         libmdbx: &'static DB,
         quote_asset: Address,
@@ -106,7 +108,14 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         if !generate_dex_pricing && self.clickhouse.is_none() {
             self.load_metadata_with_dex_prices(tree, libmdbx, block, quote_asset);
         } else if let Some(clickhouse) = self.clickhouse {
-            self.load_metadata_from_clickhouse(tree, libmdbx, clickhouse, block, quote_asset);
+            self.load_metadata_from_clickhouse(
+                tree,
+                libmdbx,
+                clickhouse,
+                block,
+                block_hash,
+                quote_asset,
+            );
         } else if self.force_no_dex_pricing {
             self.load_metadata_force_no_dex_pricing(tree, libmdbx, block, quote_asset);
         } else {
@@ -240,6 +249,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         libmdbx: &'static DB,
         clickhouse: &'static CH,
         block: u64,
+        block_hash: BlockHash,
         quote_asset: Address,
     ) {
         tracing::debug!(?block, "spawning clickhouse fut");
@@ -254,7 +264,16 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
 
             //fetch metadata till it works
             let mut meta = loop {
-                if let Ok(res) = clickhouse.get_metadata(block, quote_asset).await {
+                if let Ok(res) = clickhouse
+                    .get_metadata(
+                        block,
+                        tree.header.timestamp,
+                        block_hash,
+                        tree.get_hashes(),
+                        quote_asset,
+                    )
+                    .await
+                {
                     break res
                 } else {
                     tracing::warn!(

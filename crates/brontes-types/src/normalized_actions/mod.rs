@@ -318,7 +318,7 @@ impl Action {
             Action::Swap(s) => s.pool,
             Action::SwapWithFee(s) => s.pool,
             Action::FlashLoan(f) => f.pool,
-            Action::Aggregator(_) => Address::ZERO,
+            Action::Aggregator(a) => a.to,
             Action::Batch(b) => b.settlement_contract,
             Action::Mint(m) => m.pool,
             Action::Burn(b) => b.pool,

@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
@@ -6,6 +6,7 @@ use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
+    block_metadata::Relays,
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
@@ -16,7 +17,7 @@ use brontes_types::{
             BestCexPerPair,
         },
         dex::{DexQuotes, DexQuotesWithBlockNumber},
-        metadata::{BlockMetadata, Metadata},
+        metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         normalized_actions::TransactionRoot,
         searcher::SearcherInfo,
         token_info::{TokenInfo, TokenInfoWithAddress},
@@ -38,25 +39,22 @@ use db_interfaces::{
 };
 use eyre::Result;
 use itertools::Itertools;
+use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
 
 use super::{
     cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE,
-    RAW_CEX_QUOTES, RAW_CEX_TRADES,
+    P2P_OBSERVATIONS, PRIVATE_FLOW, RAW_CEX_QUOTES, RAW_CEX_TRADES,
 };
 #[cfg(feature = "local-clickhouse")]
 use super::{BLOCK_TIMES, CEX_SYMBOLS};
 #[cfg(feature = "local-clickhouse")]
 use crate::libmdbx::cex_utils::CexRangeOrArbitrary;
 use crate::{
-    clickhouse::const_sql::{BLOCK_INFO, CRIT_INIT_TABLES},
-    libmdbx::{
-        determine_eth_prices,
-        tables::{BlockInfoData, CexPriceData},
-        types::LibmdbxData,
-    },
+    clickhouse::const_sql::CRIT_INIT_TABLES,
+    libmdbx::{determine_eth_prices, tables::CexPriceData, types::LibmdbxData},
     CompressedTable,
 };
 
@@ -325,6 +323,97 @@ impl Clickhouse {
             }
         }
     }
+
+    async fn query_optional_with_retry<Q, P>(
+        &self,
+        query: impl AsRef<str> + Send,
+        params: &P,
+    ) -> Result<Option<Q>, DatabaseError>
+    where
+        Q: ClickhouseQuery,
+        P: BindParameters + Send + Sync,
+    {
+        let retry_strategy = ExponentialBuilder::default()
+            .with_max_times(10)
+            .with_min_delay(Duration::from_millis(100))
+            .with_max_delay(Duration::from_secs(30));
+
+        let mut try_count = 1;
+        let res = (|| async {
+            self.client
+                .query_one_optional::<Q, P>(query.as_ref(), params)
+                .await
+        })
+        .retry(&retry_strategy)
+        .when(|e| match e {
+            DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Network(_))) => true,
+            DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(BadResponse(s)))
+                if s.to_string().contains("MEMORY_LIMIT_EXCEEDED") =>
+            {
+                true
+            }
+            _ => false,
+        })
+        .notify(|err, dur| {
+            warn!(
+                "Query failed after {} attempt(s).  Retrying in {:?}... Error: {}",
+                try_count, dur, err
+            );
+            try_count += 1;
+        })
+        .await;
+        match res {
+            Ok(result) => Ok(result),
+            Err(err) => {
+                error!("Query failed after maximum retries - final Error: {}", err);
+                Err(DatabaseError::ClickhouseError(ClickhouseError::ClickhouseNative(Custom(
+                    "Query failed after maximum retries".to_string(),
+                ))))
+            }
+        }
+    }
+
+    pub async fn get_private_flow(
+        &self,
+        mut tx_hashes_in_block: Vec<TxHash>,
+    ) -> eyre::Result<Vec<TxHash>> {
+        if tx_hashes_in_block.is_empty() {
+            return Ok(Vec::new())
+        }
+
+        let public_txs = self
+            .query_many_with_retry(
+                PRIVATE_FLOW,
+                &(tx_hashes_in_block
+                    .iter()
+                    .map(|tx| format!("{:?}", tx).to_lowercase())
+                    .collect::<Vec<_>>()),
+            )
+            .await?
+            .into_iter()
+            .map(|tx: String| TxHash::from_str(&tx))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if !public_txs.is_empty() {
+            tx_hashes_in_block.retain(|tx| !public_txs.contains(tx));
+            Ok(tx_hashes_in_block)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    pub async fn get_earliest_p2p_observation(
+        &self,
+        block_number: u64,
+        block_hash: BlockHash,
+    ) -> eyre::Result<Option<u64>> {
+        Ok(self
+            .query_optional_with_retry::<u64, _>(
+                P2P_OBSERVATIONS,
+                &(block_number, format!("{:?}", block_hash).to_lowercase()),
+            )
+            .await?)
+    }
 }
 
 impl ClickhouseHandle for Clickhouse {
@@ -333,17 +422,42 @@ impl ClickhouseHandle for Clickhouse {
         Ok(res)
     }
 
-    async fn get_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
-        let block_meta = self
-            .client
-            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-            .await
-            .unwrap()
-            .value;
+    async fn get_metadata(
+        &self,
+        block_num: u64,
+        block_timestamp: u64,
+        block_hash: BlockHash,
+        tx_hashes_in_block: Vec<TxHash>,
+        quote_asset: Address,
+    ) -> eyre::Result<Metadata> {
+        let (relay, p2p_timestamp, private_flow) = tokio::try_join!(
+            Relays::get_relay_metadata(block_num, block_hash),
+            self.get_earliest_p2p_observation(block_num, block_hash),
+            self.get_private_flow(tx_hashes_in_block)
+        )
+        .inspect_err(|e| {
+            tracing::error!("error getting block metadata - {:?}", e);
+        })?;
+
+        let block_meta = BlockMetadataInner::make_new(
+            block_hash,
+            block_timestamp,
+            relay,
+            p2p_timestamp,
+            private_flow,
+        );
 
         let mut cex_quotes_for_block = self
-            .get_cex_prices(CexRangeOrArbitrary::Range(block_num, block_num))
+            .get_cex_prices(CexRangeOrArbitrary::Timestamp {
+                block_number: block_num,
+                block_timestamp,
+            })
             .await?;
+
+        if cex_quotes_for_block.is_empty() {
+            tracing::error!("loaded zero cex quotes. check backend");
+            return Err(eyre::eyre!("error loading cex quotes"))
+        }
 
         let cex_quotes = cex_quotes_for_block.remove(0);
         let eth_price = determine_eth_prices(
@@ -446,11 +560,13 @@ impl ClickhouseHandle for Clickhouse {
 
                 self.client.query_many(query, &()).await?
             }
+            CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
+                vec![BlockTimes { block_number, timestamp: block_timestamp * 1000000 }]
+            }
         };
 
         if block_times.is_empty() {
-            tracing::error!(?range_or_arbitrary, "no block times found");
-            return Ok(vec![])
+            eyre::bail!("No block times found");
         }
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
@@ -518,6 +634,23 @@ impl ClickhouseHandle for Clickhouse {
 
                 self.query_many_with_retry(query, &()).await?
             }
+            CexRangeOrArbitrary::Timestamp { block_number: _, block_timestamp } => {
+                let start_time =
+                    (block_timestamp * 1000000) as f64 - (MAX_MARKOUT_TIME * SECONDS_TO_US);
+                let end_time =
+                    (block_timestamp * 1000000) as f64 + (MAX_MARKOUT_TIME * SECONDS_TO_US);
+
+                let mut query = RAW_CEX_QUOTES.to_string();
+                query = query.replace(
+                    "c.timestamp >= ? AND c.timestamp < ?",
+                    &format!(
+                        "c.timestamp >= {} AND c.timestamp < {} AND ({})",
+                        start_time, end_time, exchanges_str
+                    ),
+                );
+
+                self.query_many_with_retry(query, &()).await?
+            }
         };
 
         let price_converter = CexQuotesConverter::new(block_times, symbols, data, symbol_rank);
@@ -565,13 +698,15 @@ impl ClickhouseHandle for Clickhouse {
                 );
                 self.client.query_many(query, &()).await?
             }
+            CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
+                vec![BlockTimes { block_number, timestamp: block_timestamp * 1000000 }]
+            }
         };
 
         debug!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
-            tracing::warn!("No block times found, returning empty result");
-            return Ok(vec![])
+            eyre::bail!("No block times found");
         }
 
         debug!("Querying CEX symbols");
@@ -632,6 +767,21 @@ impl ClickhouseHandle for Clickhouse {
                     "c.timestamp >= ? AND c.timestamp < ?",
                     &format!("({query_mod}) AND ({exchanges_str})"),
                 );
+                self.query_many_with_retry(query, &()).await?
+            }
+
+            CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
+                let mut query = RAW_CEX_TRADES.to_string();
+                let query_mod = BlockTimes { block_number, timestamp: block_timestamp * 1000000 }
+                    .convert_to_timestamp_query(6.0 * SECONDS_TO_US, 6.0 * SECONDS_TO_US);
+
+                debug!("Querying raw CEX trades for block number {block_number}");
+
+                query = query.replace(
+                    "c.timestamp >= ? AND c.timestamp < ?",
+                    &format!("({query_mod}) AND ({exchanges_str})"),
+                );
+
                 self.query_many_with_retry(query, &()).await?
             }
         };
@@ -702,11 +852,18 @@ impl Clickhouse {
 
                 query = query.replace(
                     "month >= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))) AND \
-                     (month <= toStartOfMonth(toDateTime(? / 1000000) - toIntervalMonth(1))",
+                     (month <= toStartOfMonth(toDateTime(? / 1000000) + toIntervalMonth(1))",
                     &format!("month in (select arrayJoin([{}]) as month)", times),
                 );
 
                 self.query_many_with_retry(query, &()).await?
+            }
+            CexRangeOrArbitrary::Timestamp { block_number: _, block_timestamp } => {
+                self.query_many_with_retry(
+                    MOST_VOLUME_PAIR_EXCHANGE,
+                    &(block_timestamp * 1000000, block_timestamp * 1000000),
+                )
+                .await?
             }
         })
     }
@@ -718,6 +875,9 @@ impl Clickhouse {
         let (start, end) = match range {
             CexRangeOrArbitrary::Range(start, end) => (start, end),
             CexRangeOrArbitrary::Arbitrary(_) => panic!("Arbitrary range not supported"),
+            CexRangeOrArbitrary::Timestamp { .. } => {
+                panic!("timestamp based block times not supported")
+            }
         };
 
         debug!(target = "b", "Querying block times for range: start={}, end={}", start, end);
@@ -839,6 +999,7 @@ mod tests {
     use alloy_primitives::{hex, Uint};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
+        block_metadata::RelayBlockMetadata,
         db::{cex::CexExchange, dex::DexPrices, DbDataWithRunId},
         init_thread_pools,
         mev::{
@@ -861,13 +1022,100 @@ mod tests {
     use super::*;
 
     #[brontes_macros::test]
-    async fn test_block_info_query() {
-        let test_db = ClickhouseTestClient { client: Clickhouse::new_default(None).await.client };
-        let _ = test_db
-            .client
-            .query_one::<BlockInfoData, _>(BLOCK_INFO, &(19000000))
+    async fn test_get_private_flow() {
+        let tx_hashes = [
+            "0x0000000000051fd2c9e99dcb6037d17950a377f21e10ae13f7e3ff0487b74e97",
+            "0x00000000000aac1650b3ebdc98ff4cf0f5c295a37fa04eddde156d75cac48222",
+        ]
+        .iter()
+        .map(|t| TxHash::from_str(t).unwrap())
+        .collect();
+
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let private_flow = test_db.get_private_flow(tx_hashes).await.unwrap();
+
+        assert_eq!(
+            private_flow,
+            vec![TxHash::from_str(
+                "0x0000000000051fd2c9e99dcb6037d17950a377f21e10ae13f7e3ff0487b74e97"
+            )
+            .unwrap()]
+        );
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_earliest_p2p_observation() {
+        let block_number = 19000000;
+        let block_hash = BlockHash::from_str(
+            "0xcf384012b91b081230cdf17a3f7dd370d8e67056058af6b272b3d54aa2714fac",
+        )
+        .unwrap();
+
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let earliest_p2p = test_db
+            .get_earliest_p2p_observation(block_number, block_hash)
             .await
             .unwrap();
+
+        assert_eq!(earliest_p2p, Some(1705173444789));
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_relay_metadata() {
+        let block_number = 19000000;
+        let block_hash = BlockHash::from_str(
+            "0xcf384012b91b081230cdf17a3f7dd370d8e67056058af6b272b3d54aa2714fac",
+        )
+        .unwrap();
+
+        let relay_meta = Relays::get_relay_metadata(block_number, block_hash)
+            .await
+            .unwrap();
+
+        if relay_meta.is_some() {
+            assert_eq!(
+                relay_meta,
+                Some(RelayBlockMetadata {
+                    block_number,
+                    relay_timestamp: Some(1705173443953),
+                    proposer_fee_recipient: Address::from_str(
+                        "0x992a7a7d9267d114959dd0c9d072d965c4f54419"
+                    )
+                    .unwrap(),
+                    proposer_mev_reward: 83855601164275442
+                })
+            );
+        }
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_cex_quotes_timestamp() {
+        init_thread_pools(32);
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let cex_quotes_for_block = test_db
+            .get_cex_prices(CexRangeOrArbitrary::Timestamp {
+                block_number:    19000000,
+                block_timestamp: 1705173443,
+            })
+            .await
+            .unwrap();
+
+        assert!(!cex_quotes_for_block.is_empty());
+    }
+
+    #[brontes_macros::test]
+    async fn test_get_cex_trades_timestamp() {
+        init_thread_pools(32);
+        let test_db = Clickhouse::new_default(Some(0)).await;
+        let cex_trades_for_block = test_db
+            .get_cex_trades(CexRangeOrArbitrary::Timestamp {
+                block_number:    19000000,
+                block_timestamp: 1705173443,
+            })
+            .await
+            .unwrap();
+
+        assert!(!cex_trades_for_block.is_empty());
     }
 
     async fn load_tree() -> Arc<BlockTree<Action>> {

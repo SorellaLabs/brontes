@@ -41,6 +41,10 @@ serde_repr.workspace = true
 # database
 clickhouse = { workspace = true, features = ["tls"] }
 
+
+# openapi
+relays-openapi = { path = "./src/block_metadata/relays-openapi" }
+
 # misc
 phf.workspace = true
 strum = { workspace = true, features = ["derive"] }

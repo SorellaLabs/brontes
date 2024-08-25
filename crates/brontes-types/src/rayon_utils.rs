@@ -11,6 +11,9 @@ pub fn init_thread_pools(max_tasks: usize) {
     // inspector runtime ~ 50ms
     let inspect_tasks = max_tasks;
 
+    let downalod_tasks = (max_tasks as f64 * 0.50) as usize + 1;
+
+    init_download_thread_pool(downalod_tasks);
     init_pricing_thread_pool(pricing_tasks);
     init_inspect_threadpool(inspect_tasks);
 }
@@ -31,6 +34,9 @@ macro_rules! execute_on {
     (target=$t:tt, $($block:tt)+) => {
         execute_on!($t, { $($block)+ })
     };
+    (download, $block:block) => {
+        $crate::execute_on_download_thread_pool(|| $block)
+    };
     (pricing, $block:block) => {
         ::brontes_types::execute_on_pricing_thread_pool(|| $block)
     };
@@ -40,6 +46,28 @@ macro_rules! execute_on {
     (async_inspect, $block:block) => {
         ::brontes_types::execute_on_inspect_thread_pool_async(move || $block)
     };
+}
+
+static RAYON_DOWNLOAD_THREADPOOL: OnceLock<rayon::ThreadPool> = OnceLock::new();
+
+fn init_download_thread_pool(threads: usize) {
+    let threadpool = rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .thread_name(|idx| format!("DB-DOWNLOAD: {}", idx))
+        .build()
+        .unwrap();
+
+    let _ = RAYON_DOWNLOAD_THREADPOOL.set(threadpool);
+}
+pub fn execute_on_download_thread_pool<OP, R>(op: OP) -> R
+where
+    OP: FnOnce() -> R + Send,
+    R: Send,
+{
+    RAYON_DOWNLOAD_THREADPOOL
+        .get()
+        .expect("threadpool not initialized")
+        .install(op)
 }
 
 /// ThreadPool for pricing operations

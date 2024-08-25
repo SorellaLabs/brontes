@@ -24,7 +24,7 @@ use futures::future::join_all;
 use indicatif::MultiProgress;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
-use reth_primitives::{Header, B256};
+use reth_primitives::{BlockHash, Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::init_db;
@@ -73,7 +73,7 @@ impl TraceLoader {
     pub async fn trace_block(
         &self,
         block: u64,
-    ) -> Result<(Vec<TxTrace>, Header), TraceLoaderError> {
+    ) -> Result<(BlockHash, Vec<TxTrace>, Header), TraceLoaderError> {
         if let Some(traces) = self.tracing_provider.clone().execute_block(block).await {
             Ok(traces)
         } else {
@@ -227,7 +227,7 @@ impl TraceLoader {
         &self,
         block: u64,
     ) -> Result<BlockTracesWithHeaderAnd<()>, TraceLoaderError> {
-        let (traces, header) = self.trace_block(block).await?;
+        let (_, traces, header) = self.trace_block(block).await?;
         Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
     }
 
@@ -237,7 +237,7 @@ impl TraceLoader {
         end_block: u64,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<()>>, TraceLoaderError> {
         join_all((start_block..=end_block).map(|block| async move {
-            let (traces, header) = self.trace_block(block).await?;
+            let (_, traces, header) = self.trace_block(block).await?;
             Ok(BlockTracesWithHeaderAnd { traces, header, block, other: () })
         }))
         .await
@@ -249,7 +249,7 @@ impl TraceLoader {
         &self,
         block: u64,
     ) -> Result<BlockTracesWithHeaderAnd<Metadata>, TraceLoaderError> {
-        let (traces, header) = self.trace_block(block).await?;
+        let (_, traces, header) = self.trace_block(block).await?;
         let metadata = self.get_metadata(block, false).await?;
 
         Ok(BlockTracesWithHeaderAnd { block, traces, header, other: metadata })
@@ -261,7 +261,7 @@ impl TraceLoader {
         end_block: u64,
     ) -> Result<Vec<BlockTracesWithHeaderAnd<Metadata>>, TraceLoaderError> {
         join_all((start_block..=end_block).map(|block| async move {
-            let (traces, header) = self.trace_block(block).await?;
+            let (_, traces, header) = self.trace_block(block).await?;
             let metadata = self.get_metadata(block, false).await?;
             Ok(BlockTracesWithHeaderAnd { traces, header, block, other: metadata })
         }))
@@ -279,7 +279,7 @@ impl TraceLoader {
             .get_tracer()
             .block_and_tx_index(tx_hash)
             .await?;
-        let (traces, header) = self.trace_block(block).await?;
+        let (_, traces, header) = self.trace_block(block).await?;
         let trace = traces[tx_idx].clone();
 
         Ok(TxTracesWithHeaderAnd { block, tx_hash, trace, header, other: () })
@@ -297,7 +297,7 @@ impl TraceLoader {
                 .get_tracer()
                 .block_and_tx_index(tx_hash)
                 .await?;
-            let (traces, header) = self.trace_block(block).await?;
+            let (_, traces, header) = self.trace_block(block).await?;
             let trace = traces[tx_idx].clone();
 
             Ok::<_, TraceLoaderError>(TxTracesWithHeaderAnd {
@@ -351,7 +351,7 @@ impl TraceLoader {
             .get_tracer()
             .block_and_tx_index(tx_hash)
             .await?;
-        let (traces, header) = self.trace_block(block).await?;
+        let (_, traces, header) = self.trace_block(block).await?;
         let metadata = self.get_metadata(block, false).await?;
         let trace = traces[tx_idx].clone();
 
@@ -368,7 +368,7 @@ impl TraceLoader {
                 .get_tracer()
                 .block_and_tx_index(tx_hash)
                 .await?;
-            let (traces, header) = self.trace_block(block).await?;
+            let (_, traces, header) = self.trace_block(block).await?;
             let metadata = self.get_metadata(block, false).await?;
             let trace = traces[tx_idx].clone();
 

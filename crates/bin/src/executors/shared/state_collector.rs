@@ -21,13 +21,15 @@ use brontes_types::{
 };
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
-use reth_primitives::Header;
+use reth_primitives::{BlockHash, Header};
 use tracing::{span, trace, Instrument, Level};
 
 use super::{metadata_loader::MetadataLoader, multi_block_window::MultiBlockWindow};
 
-type CollectionFut<'a> = Pin<Box<dyn Future<Output = eyre::Result<BlockTree<Action>>> + Send + 'a>>;
-type ExecutionFut<'a> = Pin<Box<dyn Future<Output = Option<(Vec<TxTrace>, Header)>> + Send + 'a>>;
+type CollectionFut<'a> =
+    Pin<Box<dyn Future<Output = eyre::Result<(BlockHash, BlockTree<Action>)>> + Send + 'a>>;
+type ExecutionFut<'a> =
+    Pin<Box<dyn Future<Output = Option<(BlockHash, Vec<TxTrace>, Header)>> + Send + 'a>>;
 
 pub struct StateCollector<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> {
     mark_as_finished: Arc<AtomicBool>,
@@ -84,8 +86,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         classifier: &'static Classifier<'static, T, DB>,
         id: usize,
         metrics: Option<GlobalRangeMetrics>,
-    ) -> eyre::Result<BlockTree<Action>> {
-        let Some((traces, header)) = fut.await else {
+    ) -> eyre::Result<(BlockHash, BlockTree<Action>)> {
+        let Some((block_hash, traces, header)) = fut.await else {
             classifier.block_load_failure(block);
             return Err(eyre!("no traces found {block}"))
         };
@@ -110,7 +112,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
                 .unwrap()
         };
 
-        Ok(res)
+        Ok((block_hash, res))
     }
 
     pub fn fetch_state_for(&mut self, block: u64, id: usize, metrics: Option<GlobalRangeMetrics>) {
@@ -141,11 +143,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Some(mut collection_future) = self.collection_future.take() {
             match collection_future.poll_unpin(cx) {
-                Poll::Ready(Ok(tree)) => {
+                Poll::Ready(Ok((block_hash, tree))) => {
                     let db = self.db;
                     let quote_asset = self.quote_asset;
                     self.metadata_fetcher
-                        .load_metadata_for_tree(tree, db, quote_asset);
+                        .load_metadata_for_tree(block_hash, tree, db, quote_asset);
 
                     cx.waker().wake_by_ref();
                 }
