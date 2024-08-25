@@ -882,4 +882,17 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+// 
+    #[brontes_macros::test]
+    async fn test_trades_comp_weth_weird() {
+        // should be there if intermediary. however thats failing
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+        let tx = hex!("2ec4532727c365fe10773df7a249db071114b3b9071dae291a512015fc0ddcb7").into();
+        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(15.25)
+            .with_gas_paid_usd(17.79);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
