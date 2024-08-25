@@ -337,6 +337,7 @@ impl<'a> TimeWindowTrades<'a> {
         }
 
         if &trade_volume_global < vol {
+            tracing::info!(?inter, ?bypass_vol);
             log_insufficient_trade_volume(
                 pair,
                 dex_swap,
