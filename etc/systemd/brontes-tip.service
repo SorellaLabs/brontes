@@ -1,0 +1,12 @@
+[Unit]
+Description=brontes-tip
+
+[Service]
+ExecStart=/home/shared/bin/brontes run -i AtomicArb,CexDex,Jit,Liquidations,Sandwich,SearcherActivity,JitCexDex -r 8000 --from-db-tip
+EnvironmentFile=/etc/systemd/system/brontes-tip.conf
+
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
