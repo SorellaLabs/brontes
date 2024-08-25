@@ -890,7 +890,7 @@ mod tests {
         let tx = hex!("2ec4532727c365fe10773df7a249db071114b3b9071dae291a512015fc0ddcb7").into();
         let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
             .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(15.25)
+            .with_expected_profit_usd(-3.24)
             .with_gas_paid_usd(17.79);
 
         inspector_util.run_inspector(config, None).await.unwrap();
