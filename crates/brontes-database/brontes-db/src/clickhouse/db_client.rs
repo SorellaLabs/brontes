@@ -566,8 +566,7 @@ impl ClickhouseHandle for Clickhouse {
         };
 
         if block_times.is_empty() {
-            tracing::error!(?range_or_arbitrary, "no block times found");
-            return Ok(vec![])
+            eyre::bail!("No block times found");
         }
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
