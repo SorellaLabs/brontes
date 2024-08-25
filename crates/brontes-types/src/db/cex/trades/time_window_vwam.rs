@@ -284,7 +284,6 @@ impl<'a> TimeWindowTrades<'a> {
 
                 // See explanation of trade representation in the book
                 let adjusted_trade = trade.adjust_for_direction(trade_data.direction);
-                tracing::trace!(?adjusted_trade);
 
                 let (m_fee, t_fee) = trade.exchange.fees();
 
