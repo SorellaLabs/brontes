@@ -25,7 +25,10 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
-use brontes_core::decoding::{Parser, TracingProvider};
+use brontes_core::{
+    decoding::{Parser, TracingProvider},
+    LibmdbxReader,
+};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
@@ -145,7 +148,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         if self.is_snapshot {
             let (start_block, db_end_block) = self.libmdbx.get_db_range()?;
             if should_run_tip_inspector
-                || self.range_type.get_start_block() < Some(start_block)
+                || self.range_type.get_start_block(self.libmdbx) < Some(start_block)
                 || end_block > db_end_block
             {
                 eyre::bail!(
@@ -170,7 +173,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
                 })
                 .await;
         } else {
-            if self.range_type.get_start_block().is_some() {
+            if self.range_type.get_start_block(self.libmdbx).is_some() {
                 self.build_range_executors(executor.clone(), end_block, pricing_metrics.clone())
                     .for_each(|block_range| {
                         futures.push(executor.spawn_critical_with_graceful_shutdown_signal(
@@ -200,9 +203,13 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
         let metrics = FinishedRange::default();
         metrics.running_ranges.increment(futures.len() as f64);
-        metrics
-            .total_set_range
-            .increment(end_block - self.range_type.get_start_block().unwrap_or(end_block));
+        metrics.total_set_range.increment(
+            end_block
+                - self
+                    .range_type
+                    .get_start_block(self.libmdbx)
+                    .unwrap_or(end_block),
+        );
 
         Ok(Brontes { futures, metrics })
     }
@@ -242,8 +249,16 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         pricing_metrics: Option<DexPricingMetrics>,
     ) -> impl Stream<Item = RangeExecutorWithPricing<T, DB, CH, P>> + '_ {
         let chunks = match &self.range_type {
-            RangeType::SingleRange { start_block, end_block: _, back_from_tip: _ } => {
-                self.calculate_chunks(start_block.unwrap(), end_block)
+            RangeType::SingleRange { start_block, from_db_tip, .. } => {
+                let start_block = if *from_db_tip {
+                    self.libmdbx
+                        .get_most_recent_block()
+                        .unwrap_or_else(|_| start_block.unwrap())
+                } else {
+                    start_block.unwrap()
+                };
+
+                self.calculate_chunks(start_block, end_block)
             }
             RangeType::MultipleRanges(ranges) => ranges.clone(),
         };
@@ -552,10 +567,14 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 
     fn state_to_initialize(&self, end: u64) -> StateToInitialize {
         match &self.range_type {
-            RangeType::SingleRange { start_block, end_block: _, back_from_tip: _ } => self
-                .libmdbx
-                .state_to_initialize(start_block.unwrap(), end)
-                .unwrap(),
+            RangeType::SingleRange { start_block, from_db_tip, .. } => {
+                let start_block = if *from_db_tip {
+                    self.libmdbx.get_most_recent_block().unwrap()
+                } else {
+                    start_block.unwrap()
+                };
+                self.libmdbx.state_to_initialize(start_block, end).unwrap()
+            }
             RangeType::MultipleRanges(ranges) => {
                 let mut state_to_init = StateToInitialize::default();
                 for (start_block, end_block) in ranges {
@@ -574,7 +593,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         self.cli_only
             .then(|| {
                 let total_blocks = match &self.range_type {
-                    RangeType::SingleRange { start_block, end_block, back_from_tip: _ } => {
+                    RangeType::SingleRange { start_block, end_block, .. } => {
                         let start = start_block.as_ref().copied()?;
                         let end = end_block.as_ref().copied()?;
                         end.saturating_sub(start).saturating_add(1)
@@ -615,7 +634,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 #[cfg(feature = "sorella-server")]
 fn calculate_buffer_size(state_to_init: &StateToInitialize, max_tasks: usize) -> usize {
     if state_to_init.ranges_to_init.is_empty() {
-        return (max_tasks / 4).clamp(4, 30);
+        return (max_tasks / 4).clamp(4, 30)
     }
 
     let initializing_cex = state_to_init.ranges_to_init.contains_key(&Tables::CexPrice)
@@ -654,14 +673,24 @@ impl Future for Brontes {
 }
 
 pub enum RangeType {
-    SingleRange { start_block: Option<u64>, end_block: Option<u64>, back_from_tip: u64 },
+    SingleRange {
+        start_block:   Option<u64>,
+        end_block:     Option<u64>,
+        back_from_tip: u64,
+        from_db_tip:   bool,
+    },
     MultipleRanges(Vec<(u64, u64)>),
 }
 
 impl RangeType {
-    fn get_start_block(&self) -> Option<u64> {
+    fn get_start_block<DB: LibmdbxReader>(&self, db: &DB) -> Option<u64> {
         match self {
-            RangeType::SingleRange { start_block, .. } => *start_block,
+            RangeType::SingleRange { start_block, from_db_tip, .. } => {
+                if !from_db_tip {
+                    return *start_block
+                }
+                db.get_most_recent_block().ok()
+            }
             RangeType::MultipleRanges(ranges) => Some(ranges.first().unwrap().0),
         }
     }
