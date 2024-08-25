@@ -25,14 +25,13 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_classifier::Classifier;
-use brontes_core::{
-    decoding::{Parser, TracingProvider},
-    LibmdbxReader,
-};
+use brontes_core::decoding::{Parser, TracingProvider};
 use brontes_database::libmdbx::LibmdbxInit;
 use brontes_inspect::Inspector;
 use brontes_pricing::{BrontesBatchPricer, GraphManager, LoadState};
-use brontes_types::{BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver};
+use brontes_types::{
+    db::traits::LibmdbxReader, BrontesTaskExecutor, FastHashMap, UnboundedYapperReceiver,
+};
 use futures::{stream::FuturesUnordered, Future, StreamExt};
 use indicatif::MultiProgress;
 use itertools::Itertools;
