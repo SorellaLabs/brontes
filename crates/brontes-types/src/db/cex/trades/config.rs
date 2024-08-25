@@ -26,8 +26,8 @@ impl Default for CexDexTradeConfig {
         Self {
             initial_vwap_pre_block_us:         50_000,
             initial_vwap_post_block_us:        50_000,
-            max_vwap_pre_block_us:             5_000_000,
-            max_vwap_post_block_us:            8_000_000,
+            max_vwap_pre_block_us:             10_000_000,
+            max_vwap_post_block_us:            20_000_000,
             vwap_scaling_diff_us:              300_000,
             vwap_time_step_us:                 10_000,
             use_block_time_weights_vwap:       false,

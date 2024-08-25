@@ -232,18 +232,6 @@ impl InspectorTestUtils {
             }
         };
 
-        if config.expected_mev_type == Inspectors::CexDexMarkout {
-            if let Ok(trades) = self
-                .classifier_inspector
-                .get_cex_trades(tree.header.number)
-                .await
-            {
-                metadata.cex_trades = Some(trades);
-            } else {
-                panic!("Failed to fetch Cex Trades")
-            }
-        }
-
         if metadata.dex_quotes.is_none() {
             metadata.dex_quotes = quotes;
         }
@@ -360,18 +348,6 @@ impl InspectorTestUtils {
                 res.unwrap_or_else(|_| Metadata::default())
             }
         };
-
-        if config.inspectors.contains(&Inspectors::CexDexMarkout) {
-            if let Ok(trades) = self
-                .classifier_inspector
-                .get_cex_trades(tree.header.number)
-                .await
-            {
-                metadata.cex_trades = Some(trades);
-            } else {
-                panic!("Failed to fetch Cex Trades")
-            }
-        }
 
         if let Some(quotes) = quotes {
             metadata.dex_quotes = Some(quotes);

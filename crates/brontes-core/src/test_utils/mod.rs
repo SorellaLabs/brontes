@@ -204,7 +204,7 @@ impl TraceLoader {
                 self.tracing_provider.get_tracer(),
                 Tables::CexTrades,
                 false,
-                Some((block - 2, block + 4)),
+                Some((block - 5, block + 5)),
                 tables,
                 false,
             )
@@ -407,18 +407,6 @@ impl TraceLoader {
         .await
         .into_iter()
         .collect()
-    }
-
-    pub async fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
-        if let Ok(trades) = self.libmdbx.get_cex_trades(block) {
-            Ok(trades)
-        } else {
-            self.fetch_missing_trades(block)
-                .await
-                .expect("Failed to fetch missing trades");
-
-            self.libmdbx.get_cex_trades(block)
-        }
     }
 }
 
