@@ -319,8 +319,8 @@ impl<'a> TimeWindowTrades<'a> {
                 *end_time = walker.max_timestamp;
             }
 
-            if walker.get_min_time_delta(block_timestamp) >= config.max_optimistic_pre_block_us
-                || walker.get_max_time_delta(block_timestamp) >= config.max_optimistic_post_block_us
+            if walker.get_min_time_delta(block_timestamp) >= config.max_vwap_pre_block_us
+                || walker.get_max_time_delta(block_timestamp) >= config.max_vwap_post_block_us
             {
                 break
             }
