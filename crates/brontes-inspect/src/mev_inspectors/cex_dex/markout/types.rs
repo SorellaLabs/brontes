@@ -137,7 +137,7 @@ impl CexDexProcessing {
 
     pub fn construct_max_profit_route(&mut self) -> Option<()> {
         if self.per_exchange_pnl.iter().all(Option::is_none) {
-            return None;
+            return None
         }
 
         let num_legs = self.dex_swaps.len();
@@ -446,7 +446,7 @@ pub struct PossibleCexDex {
 impl PossibleCexDex {
     pub fn from_arb_legs(arb_legs: Vec<Option<ArbLeg>>) -> Option<Self> {
         if arb_legs.iter().all(Option::is_none) {
-            return None;
+            return None
         }
 
         let mut aggregate_pnl_maker = Rational::ZERO;
@@ -667,11 +667,12 @@ pub fn log_cex_trade_price_delta(
     dex_amount_in: &Rational,
     dex_amount_out: &Rational,
     cex_output: &Rational,
-    was_inter: bool
+    was_inter: bool,
 ) {
     let mut arb_ratio = Rational::ZERO;
-    if dex_amount_in != &Rational::ZERO {
-        arb_ratio = cex_output.clone() / dex_amount_in;
+    if cex_output != &Rational::ZERO {
+        // in / out
+        arb_ratio =  dex_amount_in / cex_output.clone();
     }
 
     let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
