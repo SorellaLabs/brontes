@@ -214,7 +214,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             let metrics = self.metrics.clone();
 
             async move {
-                let block_count = start - end + 1;
+                let block_count = end - start + 1;
 
                 let data = metrics
                     .measure_query(T::NAME, block_count, || d(start, end + 1, clickhouse))
