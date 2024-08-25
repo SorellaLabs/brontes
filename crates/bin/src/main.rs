@@ -20,7 +20,10 @@ use tracing::{error, info};
 use tracing_subscriber::filter::Directive;
 
 fn main() -> eyre::Result<()> {
-    dotenv::dotenv().expect("Failed to load .env file");
+    if dotenv::dotenv().is_err() {
+        eprintln!("Failed to load .env file");
+    };
+
     fdlimit::raise_fd_limit().unwrap();
     #[cfg(all(feature = "dhat-heap", not(feature = "jemalloc")))]
     let _profiler = dhat::Profiler::new_heap();

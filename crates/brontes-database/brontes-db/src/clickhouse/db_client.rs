@@ -430,24 +430,14 @@ impl ClickhouseHandle for Clickhouse {
         tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
     ) -> eyre::Result<Metadata> {
-        // let block_meta = self
-        //     .client
-        //     .query_one::<BlockInfoData, _>(BLOCK_INFO, &(block_num))
-        //     .await
-        //     .unwrap()
-        //     .value;
-
-        let (relay, p2p_timestamp, private_flow) = match tokio::try_join!(
+        let (relay, p2p_timestamp, private_flow) = tokio::try_join!(
             Relays::get_relay_metadata(block_num, block_hash),
             self.get_earliest_p2p_observation(block_num, block_hash),
             self.get_private_flow(tx_hashes_in_block)
-        ) {
-            Ok(v) => v,
-            Err(e) => {
-                tracing::error!("error getting block metadata - {:?}", e);
-                return Err(e)
-            }
-        };
+        )
+        .inspect_err(|e| {
+            tracing::error!("error getting block metadata - {:?}", e);
+        })?;
 
         let block_meta = BlockMetadataInner::make_new(
             block_hash,
@@ -463,6 +453,11 @@ impl ClickhouseHandle for Clickhouse {
                 block_timestamp,
             })
             .await?;
+
+        if cex_quotes_for_block.is_empty() {
+            tracing::error!("loaded zero cex quotes. check backend");
+            return Err(eyre::eyre!("error loading cex quotes"))
+        }
 
         let cex_quotes = cex_quotes_for_block.remove(0);
         let eth_price = determine_eth_prices(
@@ -571,8 +566,7 @@ impl ClickhouseHandle for Clickhouse {
         };
 
         if block_times.is_empty() {
-            tracing::error!(?range_or_arbitrary, "no block times found");
-            return Ok(vec![])
+            eyre::bail!("No block times found");
         }
 
         let symbols: Vec<CexSymbols> = self.client.query_many(CEX_SYMBOLS, &()).await?;
@@ -712,8 +706,7 @@ impl ClickhouseHandle for Clickhouse {
         debug!("Retrieved {} block times", block_times.len());
 
         if block_times.is_empty() {
-            tracing::warn!("No block times found, returning empty result");
-            return Ok(vec![])
+            eyre::bail!("No block times found");
         }
 
         debug!("Querying CEX symbols");
@@ -1097,6 +1090,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_get_cex_quotes_timestamp() {
+        init_thread_pools(32);
         let test_db = Clickhouse::new_default(Some(0)).await;
         let cex_quotes_for_block = test_db
             .get_cex_prices(CexRangeOrArbitrary::Timestamp {
@@ -1111,6 +1105,7 @@ mod tests {
 
     #[brontes_macros::test]
     async fn test_get_cex_trades_timestamp() {
+        init_thread_pools(32);
         let test_db = Clickhouse::new_default(Some(0)).await;
         let cex_trades_for_block = test_db
             .get_cex_trades(CexRangeOrArbitrary::Timestamp {
