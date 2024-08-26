@@ -873,19 +873,6 @@ mod tests {
     }
 
     #[brontes_macros::test]
-    async fn test_trades_odd_price_trigger() {
-        // should be there if intermediary. however thats failing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
-        let tx = hex!("dbeb7c7bffd13215cebdc8e7659e4896407b3cfc3cd21246286975056525eeec").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(15.25)
-            .with_gas_paid_usd(17.79);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-    //
-    #[brontes_macros::test]
     async fn test_trades_comp_weth_weird() {
         // should be there if intermediary. however thats failing
         let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;

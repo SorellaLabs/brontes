@@ -468,10 +468,8 @@ impl<'a> TimeWindowTrades<'a> {
                 .map(|t| t.timestamp);
 
             let time_before = min
-                .clone()
                 .map(|min| block_timestamp as isize - min as isize);
             let time_after = max
-                .clone()
                 .map(|max| max as isize - block_timestamp as isize);
 
             tracing::debug!(
