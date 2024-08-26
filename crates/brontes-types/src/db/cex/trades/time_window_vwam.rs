@@ -258,7 +258,7 @@ impl<'a> TimeWindowTrades<'a> {
         tx_hash: FixedBytes<32>,
         inter: bool,
     ) -> Option<WindowExchangePrice> {
-        let trade_data = self.get_trades(exchanges, pair, dex_swap, tx_hash, block_timestamp)?;
+        let trade_data = self.get_trades(exchanges, pair, dex_swap, tx_hash)?;
 
         let mut walker = PairTradeWalker::new(
             trade_data.trades,
@@ -424,7 +424,6 @@ impl<'a> TimeWindowTrades<'a> {
         pair: Pair,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
-        block_timestamp: u64,
     ) -> Option<TradeData<'a>> {
         let (mut indices, mut trades) = self.query_trades(exchanges, &pair);
 
@@ -458,30 +457,6 @@ impl<'a> TimeWindowTrades<'a> {
             "have trades"
         );
         for (_, trades) in &trades {
-            let min = trades
-                .iter()
-                .min_by_key(|t| t.timestamp)
-                .map(|t| t.timestamp);
-            let max = trades
-                .iter()
-                .max_by_key(|t| t.timestamp)
-                .map(|t| t.timestamp);
-
-            let time_before = min
-                .map(|min| block_timestamp as isize - min as isize);
-            let time_after = max
-                .map(|max| max as isize - block_timestamp as isize);
-
-            tracing::debug!(
-                target: "brontes_types::db::cex::time_window_vwam",
-                ?block_timestamp,
-                ?time_before,
-                ?time_after,
-                ?min,
-                ?max
-
-            );
-
             trace!(
                 target: "brontes_types::db::cex::time_window_vwam",
                 trade_qty = %trades.len(),

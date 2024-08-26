@@ -11,7 +11,7 @@ members = [
   "crates/brontes-database/brontes-db",
   "crates/brontes-macros",
   "crates/brontes-pricing",
-  "crates/brontes-database/libmdbx-rs"
+  "crates/brontes-database/libmdbx-rs",
 ]
 
 resolver = "2"
@@ -34,7 +34,7 @@ brontes-pricing = { path = "./crates/brontes-pricing/" }
 reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/brontes-tracing" }
 brontes-analytics = { path = "./crates/brontes-analytics" }
-brontes-libmdbx= { path = "./crates/brontes-database/libmdbx-rs" }
+brontes-libmdbx = { path = "./crates/brontes-database/libmdbx-rs" }
 
 # Reth
 reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "ac29b4b" }
@@ -193,7 +193,6 @@ flate2 = "1.0.30"
 [profile.release]
 lto = "thin"
 strip = "debuginfo"
-overflow-checks = true 
 
 [profile.debug-fast]
 inherits = "release"
