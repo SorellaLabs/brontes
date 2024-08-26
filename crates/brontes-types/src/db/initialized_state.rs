@@ -78,10 +78,8 @@ impl InitializedStateMeta {
 
     #[inline(always)]
     pub fn apply_reset_key(&mut self, flag: u16) {
-        if self.is_initialized(flag) {
-            // reset the data at the given offset
-            self.0 &= u16::MAX ^ (DATA_PRESENT << flag);
-        }
+        // reset the data at the given offset
+        self.0 &= u16::MAX ^ (DATA_PRESENT << flag);
     }
 }
 
