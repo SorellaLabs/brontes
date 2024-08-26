@@ -624,8 +624,10 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into()).with_expected_profit_usd(1.0).with_gas_paid_usd(1.0);
+            .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into())
+            .with_expected_profit_usd(1.0)
+            .with_gas_paid_usd(1.0);
 
-        inspector_util.assert_no_mev(config).await.unwrap();
+        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
