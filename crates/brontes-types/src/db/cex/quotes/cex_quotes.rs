@@ -110,7 +110,8 @@ impl CexPriceMap {
             .get(pair)
             .or_else(|| self.most_liquid_ex.get(&pair.flip()))
             .and_then(|exchanges| {
-                tracing::debug!(?pair, ?exchanges);
+
+                tracing::debug!(?pair, ?exchanges, "{:#?}", self.most_liquid_ex);
                 for exchange in exchanges {
                     tracing::debug!(?exchange, ?pair);
                     let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
