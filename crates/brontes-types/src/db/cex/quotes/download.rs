@@ -140,6 +140,9 @@ impl CexQuotesConverter {
                     .find_map(|exchange| self.symbols.get(&(*exchange, pair_ex.symbol.clone())))?;
 
                 let pair = correct_usdc_address(&symbol.address_pair);
+                if pair_ex.symbol == "ETHUSDT" {
+                    tracing::info!(?pair_ex, ?symbol);
+                }
 
                 Some((pair, pair_ex.clone().exchange))
             })
