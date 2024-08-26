@@ -354,7 +354,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
     fn is_cross_pair_or_stable_arb(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
         let res = tx_info
-            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 20 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private
             || tx_info.gas_details.coinbase_transfer.is_some();
@@ -368,7 +368,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
     fn is_long_tail(&self, tx_info: &TxInfo, multiplier: u64) -> bool {
         let res = tx_info
-            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 10 * multiplier)
+            .is_searcher_of_type_with_count_threshold(MevType::AtomicArb, 100 * multiplier)
             || tx_info.is_labelled_searcher_of_type(MevType::AtomicArb)
             || tx_info.is_private && tx_info.gas_details.coinbase_transfer.is_some()
             || tx_info.mev_contract.is_some();
