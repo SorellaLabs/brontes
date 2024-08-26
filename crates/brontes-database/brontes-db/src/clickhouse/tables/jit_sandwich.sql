@@ -77,7 +77,6 @@ CREATE TABLE mev.jit_sandwich ON CLUSTER eth_cluster0
     ),
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/jit_sandwich', '{replica}', `run_id`)
+ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/mev_jit_sandwich', '{replica}')
 PRIMARY KEY (`block_number`, `frontrun_tx_hash`)
 ORDER BY (`block_number`, `frontrun_tx_hash` )
-
