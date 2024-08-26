@@ -158,8 +158,8 @@ impl RunArgs {
             .inspectors
             .as_ref()
             .map(|f| {
-                f.len() == 1 && f.contains(&Inspectors::CexDex)
-                    || f.contains(&Inspectors::CexDexMarkout)
+                f.len() == 1
+                    && (f.contains(&Inspectors::CexDex) || f.contains(&Inspectors::CexDexMarkout))
             })
             .unwrap_or(false);
 

@@ -262,6 +262,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                 .try_fetch_builder_info(tree.header.beneficiary)
                 .expect("failed to fetch builder info table in libmdbx");
 
+            tracing::info!("fetching meta");
             //fetch metadata till it works
             let mut meta = loop {
                 if let Ok(res) = clickhouse
@@ -337,7 +338,6 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         if self.force_no_dex_pricing {
-            tracing::info!("no edex pricing");
             if let Some(res) = self.result_buf.pop_front() {
                 return Poll::Ready(Some(res))
             }
