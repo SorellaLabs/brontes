@@ -164,7 +164,7 @@ pub fn filter_and_count_bundles(
             })
             .collect();
 
-        if mev_type != MevType::CexDexTrades {
+        if mev_type != MevType::CexDexTrades && mev_type != MevType::SearcherTx {
             // Update  for this MEV type
             let count = filtered_bundles.len() as u64;
             mev_count.bundle_count += count; // Increment total MEV count
