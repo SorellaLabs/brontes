@@ -1,5 +1,6 @@
 use std::mem;
 
+use crate::constants::WETH_ADDRESS;
 use alloy_primitives::{hex, Address};
 use clickhouse::Row;
 use itertools::Itertools;
