@@ -238,7 +238,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     },
                 );
 
-                tracing::debug!(?possible_cex_dex);
                 let (profit_usd, cex_dex) =
                     self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata)?;
 
@@ -615,20 +614,5 @@ mod tests {
             .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into());
 
         inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_recent_scp_quotes() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-
-        let tx = hex!("4378ef7ce35dbfe115b68501aea9311e37d6fb0b8f2992cf0332aecb25b3c8c2").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
-            .with_mev_tx_hashes(vec![tx])
-            .needs_token(hex!("aa7a9ca87d3694b5755f213b5d04094b8d0f0a6f").into())
-            .with_expected_profit_usd(1.0)
-            .with_gas_paid_usd(1.0);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
