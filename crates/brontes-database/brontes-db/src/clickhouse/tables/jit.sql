@@ -51,6 +51,6 @@ CREATE TABLE mev.jit ON CLUSTER eth_cluster0
     ),
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/mev/jit', '{replica}', `run_id`)
+ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/jit', '{replica}')
 PRIMARY KEY (`block_number`, `backrun_burn_tx_hash`)
 ORDER BY (`block_number`, `backrun_burn_tx_hash`)
