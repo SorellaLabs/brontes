@@ -54,7 +54,6 @@ utils!(
         Copy,
         Eq,
         Hash,
-        Serialize,
         Deserialize,
         rSerialize,
         rDeserialize,
@@ -176,6 +175,15 @@ impl Protocol {
             "pancakeswapv3" => Protocol::PancakeSwapV3,
             _ => Protocol::Unknown,
         }
+    }
+}
+
+impl Serialize for Protocol {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        Serialize::serialize(&self.to_string(), serializer)
     }
 }
 
