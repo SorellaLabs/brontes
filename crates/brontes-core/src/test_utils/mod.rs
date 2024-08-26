@@ -14,7 +14,10 @@ use brontes_database::{
 use brontes_metrics::ParserMetricEvents;
 use brontes_types::{
     constants::USDT_ADDRESS,
-    db::{cex::trades::CexTradeMap, metadata::Metadata},
+    db::{
+        cex::trades::{window_loader::CexWindow, CexTradeMap},
+        metadata::Metadata,
+    },
     init_thread_pools,
     structured_trace::TxTrace,
     traits::TracingProvider,
@@ -46,6 +49,7 @@ use crate::decoding::parser::TraceParser;
 #[cfg(not(feature = "local-reth"))]
 use crate::local_provider::LocalProvider;
 
+const WINDOW_TIME_SEC: usize = 20;
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
     pub libmdbx:          &'static LibmdbxReadWriter,
@@ -173,7 +177,7 @@ impl TraceLoader {
                 self.tracing_provider.get_tracer(),
                 Tables::CexTrades,
                 false,
-                Some((block - 2, block + 4)),
+                Some((block - 10, block + 10)),
                 tables,
                 false
             ),
@@ -200,7 +204,7 @@ impl TraceLoader {
                 self.tracing_provider.get_tracer(),
                 Tables::CexTrades,
                 false,
-                Some((block - 2, block + 4)),
+                Some((block - 5, block + 5)),
                 tables,
                 false,
             )
@@ -215,12 +219,38 @@ impl TraceLoader {
         block_num: u64,
         quote_asset: Address,
     ) -> eyre::Result<Metadata> {
-        self.libmdbx.get_metadata(block_num, quote_asset)
+        let mut meta = self.libmdbx.get_metadata(block_num, quote_asset)?;
+        meta.cex_trades = Some(self.load_cex_trades(block_num));
+
+        Ok(meta)
     }
 
     pub fn test_metadata(&self, block_num: u64, quote_asset: Address) -> eyre::Result<Metadata> {
-        self.libmdbx
-            .get_metadata_no_dex_price(block_num, quote_asset)
+        let mut meta = self
+            .libmdbx
+            .get_metadata_no_dex_price(block_num, quote_asset)?;
+        meta.cex_trades = Some(self.load_cex_trades(block_num));
+
+        Ok(meta)
+    }
+
+    fn load_cex_trades(&self, block: u64) -> CexTradeMap {
+        let mut cex_window = CexWindow::new(WINDOW_TIME_SEC);
+        let window = cex_window.get_window_lookahead();
+        // given every download is -6 + 6 around the block
+        // we calculate the offset from the current block that we need
+        let offsets = (window / 12) as u64;
+        let mut trades = Vec::new();
+        tracing::debug!(?offsets);
+        for block in block - offsets..=block + offsets {
+            if let Ok(res) = self.libmdbx.get_cex_trades(block) {
+                trades.push(res);
+            }
+        }
+        let last_block = block + offsets;
+        cex_window.init(last_block, trades);
+
+        cex_window.cex_trade_map()
     }
 
     pub async fn get_block_traces_with_header(
@@ -377,18 +407,6 @@ impl TraceLoader {
         .await
         .into_iter()
         .collect()
-    }
-
-    pub async fn get_cex_trades(&self, block: u64) -> eyre::Result<CexTradeMap> {
-        if let Ok(trades) = self.libmdbx.get_cex_trades(block) {
-            Ok(trades)
-        } else {
-            self.fetch_missing_trades(block)
-                .await
-                .expect("Failed to fetch missing trades");
-
-            self.libmdbx.get_cex_trades(block)
-        }
     }
 }
 

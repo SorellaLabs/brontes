@@ -119,6 +119,7 @@ impl<'a> SortedTrades<'a> {
                     volume:           Rational::ZERO,
                     final_start_time: 0,
                     final_end_time:   0,
+                    was_intermediary: false,
                 },
             })
         }
@@ -133,6 +134,7 @@ impl<'a> SortedTrades<'a> {
                 quality.as_ref(),
                 dex_swap,
                 tx_hash,
+                false,
             )
             .or_else(|| {
                 self.get_optimistic_via_intermediary(
@@ -192,6 +194,7 @@ impl<'a> SortedTrades<'a> {
                     quality,
                     dex_swap,
                     tx_hash,
+                    true
                 )?;
                 let new_vol = volume
                     * ((&first_leg.global.price_maker + &first_leg.global.price_taker) / R2);
@@ -211,6 +214,7 @@ impl<'a> SortedTrades<'a> {
                     quality,
                     dex_swap,
                     tx_hash,
+                    true
                 )?;
 
                 let price = first_leg * second_leg;
@@ -230,6 +234,7 @@ impl<'a> SortedTrades<'a> {
         quality: Option<&FastHashMap<CexExchange, FastHashMap<Pair, usize>>>,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
+        was_inter: bool,
     ) -> Option<OptimisticPrice> {
         // Populate Map of Assumed Execution Quality by Exchange
         // - We're making the assumption that the arbitrageur isn't executing *every*
@@ -339,6 +344,7 @@ impl<'a> SortedTrades<'a> {
             volume:           trade_volume,
             final_start_time: global_start_time,
             final_end_time:   global_end_time,
+            was_intermediary: was_inter,
         };
 
         let price = OptimisticPrice { trades_used: optimistic_trades, pairs: vec![pair], global };

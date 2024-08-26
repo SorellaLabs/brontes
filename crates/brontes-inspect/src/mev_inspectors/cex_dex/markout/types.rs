@@ -137,7 +137,7 @@ impl CexDexProcessing {
 
     pub fn construct_max_profit_route(&mut self) -> Option<()> {
         if self.per_exchange_pnl.iter().all(Option::is_none) {
-            return None;
+            return None
         }
 
         let num_legs = self.dex_swaps.len();
@@ -446,7 +446,7 @@ pub struct PossibleCexDex {
 impl PossibleCexDex {
     pub fn from_arb_legs(arb_legs: Vec<Option<ArbLeg>>) -> Option<Self> {
         if arb_legs.iter().all(Option::is_none) {
-            return None;
+            return None
         }
 
         let mut aggregate_pnl_maker = Rational::ZERO;
@@ -667,6 +667,7 @@ pub fn log_cex_trade_price_delta(
     dex_amount_in: &Rational,
     dex_amount_out: &Rational,
     cex_output: &Rational,
+    was_inter: bool,
 ) {
     let mut arb_ratio = Rational::ZERO;
     if dex_amount_in != &Rational::ZERO {
@@ -690,6 +691,7 @@ pub fn log_cex_trade_price_delta(
            * Token Out: https://etherscan.io/address/{}\n\
          - Tx Hash: https://etherscan.io/tx/{:?}\n\
          - Price Calculation Type: {}\n\
+         - Was calcuated with Intermediary: {}\n\
          - \x1b[1;31mWarning:\x1b[0m The CEX trade output is more than 2x the DEX input, indicating a potentially invalid trade or extreme market inefficiency.",
         token_in_symbol,
         token_out_symbol,
@@ -703,7 +705,8 @@ pub fn log_cex_trade_price_delta(
         token_in_address,
         token_out_address,
         tx_hash,
-        price_calculation_type
+        price_calculation_type,
+        was_inter
     );
 }
 

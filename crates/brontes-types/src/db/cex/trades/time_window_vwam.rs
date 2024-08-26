@@ -35,6 +35,7 @@ pub struct ExchangePath {
     // window results
     pub final_start_time: u64,
     pub final_end_time:   u64,
+    pub was_intermediary: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -148,7 +149,7 @@ impl<'a> TimeWindowTrades<'a> {
 
         let res = self
             .get_vwap_price(
-                config, exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash,
+                config, exchanges, pair, volume, timestamp, bypass_vol, dex_swap, tx_hash, false,
             )
             .or_else(|| {
                 self.get_vwap_price_via_intermediary(
@@ -200,6 +201,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_vol || bypass_intermediary_vol,
                     dex_swap,
                     tx_hash,
+                    true
                 )?;
 
                 // Volume of second leg
@@ -220,6 +222,7 @@ impl<'a> TimeWindowTrades<'a> {
                     bypass_vol || bypass_intermediary_vol,
                     dex_swap,
                     tx_hash,
+                    true
                 )?;
 
                 let price = first_leg * second_leg;
@@ -253,6 +256,7 @@ impl<'a> TimeWindowTrades<'a> {
         bypass_vol: bool,
         dex_swap: &NormalizedSwap,
         tx_hash: FixedBytes<32>,
+        inter: bool,
     ) -> Option<WindowExchangePrice> {
         let trade_data = self.get_trades(exchanges, pair, dex_swap, tx_hash)?;
 
@@ -290,8 +294,8 @@ impl<'a> TimeWindowTrades<'a> {
                 let (
                     vxp_maker,
                     vxp_taker,
-                    trade_volume_ex,
                     trade_volume_weight,
+                    trade_volume_ex,
                     start_time,
                     end_time,
                 ) = exchange_vxp.entry(trade.exchange).or_insert((
@@ -318,8 +322,8 @@ impl<'a> TimeWindowTrades<'a> {
                 *end_time = walker.max_timestamp;
             }
 
-            if walker.get_min_time_delta(block_timestamp) >= config.max_optimistic_pre_block_us
-                || walker.get_max_time_delta(block_timestamp) >= config.max_optimistic_post_block_us
+            if walker.get_min_time_delta(block_timestamp) >= config.max_vwap_pre_block_us
+                || walker.get_max_time_delta(block_timestamp) >= config.max_vwap_post_block_us
             {
                 break
             }
@@ -332,7 +336,7 @@ impl<'a> TimeWindowTrades<'a> {
             walker.expand_time_bounds(min_expand, config.vwap_time_step_us);
         }
 
-        if &trade_volume_global < vol && !bypass_vol {
+        if &trade_volume_global < vol || !bypass_vol {
             log_insufficient_trade_volume(
                 pair,
                 dex_swap,
@@ -369,6 +373,7 @@ impl<'a> TimeWindowTrades<'a> {
                 price_taker:      taker_price,
                 final_end_time:   end_time,
                 final_start_time: start_time,
+                was_intermediary: inter,
             };
 
             global_start_time = min(global_start_time, start_time);
@@ -401,6 +406,7 @@ impl<'a> TimeWindowTrades<'a> {
             price_taker:      global_taker,
             final_start_time: global_start_time,
             final_end_time:   global_end_time,
+            was_intermediary: inter,
         };
 
         let window_exchange_prices = WindowExchangePrice {
