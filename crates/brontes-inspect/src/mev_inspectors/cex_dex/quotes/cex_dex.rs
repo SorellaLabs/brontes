@@ -238,6 +238,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     },
                 );
 
+                tracing::debug!(?possible_cex_dex);
                 let (profit_usd, cex_dex) =
                     self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata)?;
 
