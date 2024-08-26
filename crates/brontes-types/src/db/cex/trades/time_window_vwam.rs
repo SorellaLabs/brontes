@@ -336,7 +336,7 @@ impl<'a> TimeWindowTrades<'a> {
             walker.expand_time_bounds(min_expand, config.vwap_time_step_us);
         }
 
-        if &trade_volume_global < vol  || !bypass_vol{
+        if &trade_volume_global < vol || !bypass_vol {
             log_insufficient_trade_volume(
                 pair,
                 dex_swap,
@@ -363,6 +363,7 @@ impl<'a> TimeWindowTrades<'a> {
             }
             let maker_price = vxp_maker / &trade_vol_weight;
             let taker_price = vxp_taker / &trade_vol_weight;
+            tracing::info!(?maker_price, ?taker_price);
 
             global_maker += &maker_price * &trade_vol;
             global_taker += &taker_price * &trade_vol;
