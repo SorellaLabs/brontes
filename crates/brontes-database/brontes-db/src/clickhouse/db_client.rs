@@ -584,6 +584,11 @@ impl ClickhouseHandle for Clickhouse {
         let symbol_rank = self
             .fetch_symbol_rank(&block_times, &range_or_arbitrary)
             .await?;
+        let v = symbol_rank
+            .iter()
+            .filter(|f| f.symbol.contains("ETH") || f.symbol.contains("WETH"))
+            .collect::<FastHashMap<_, _>>();
+        tracing::debug!("{:#?}", v);
 
         tracing::trace!("Successfully fetched symbol ranks");
 
