@@ -3,6 +3,7 @@ use std::mem;
 use alloy_primitives::{hex, Address};
 use clickhouse::Row;
 use itertools::Itertools;
+use malachite::natural::arithmetic::mod_shr;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 
@@ -74,6 +75,13 @@ impl CexQuotesConverter {
         let block_num_map_with_pairs = self.create_block_num_map_with_pairs();
 
         let most_liquid_exchange_for_pair = &self.process_best_cex_venues();
+
+        let v = most_liquid_exchange_for_pair
+            .iter()
+            .filter(|(f, _)| f.0 == WETH_ADDRESS)
+            .collect::<FastHashMap<_, _>>();
+
+        tracing::debug!("{:#?}", v);
 
         execute_on!(download, {
             block_num_map_with_pairs
