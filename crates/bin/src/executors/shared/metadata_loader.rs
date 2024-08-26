@@ -252,7 +252,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         block_hash: BlockHash,
         quote_asset: Address,
     ) {
-        tracing::debug!(?block, "spawning clickhouse fut");
+        tracing::info!(?block, "spawning clickhouse fut");
         let window = self.cex_window_data.get_window_lookahead();
         // given every download is -6 + 6 around the block
         // we calculate the offset from the current block that we need
