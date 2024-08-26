@@ -294,8 +294,8 @@ impl<'a> TimeWindowTrades<'a> {
                 let (
                     vxp_maker,
                     vxp_taker,
-                    trade_volume_ex,
                     trade_volume_weight,
+                    trade_volume_ex,
                     start_time,
                     end_time,
                 ) = exchange_vxp.entry(trade.exchange).or_insert((
@@ -363,7 +363,6 @@ impl<'a> TimeWindowTrades<'a> {
             }
             let maker_price = vxp_maker / &trade_vol_weight;
             let taker_price = vxp_taker / &trade_vol_weight;
-            tracing::info!(?maker_price, ?taker_price);
 
             global_maker += &maker_price * &trade_vol;
             global_taker += &taker_price * &trade_vol;
