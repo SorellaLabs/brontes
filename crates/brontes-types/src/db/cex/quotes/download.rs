@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use super::{CexPriceMap, CexQuote};
 use crate::{
-    constants::{USDC_ADDRESS, WETH_ADDRESS},
+    constants::USDC_ADDRESS,
     db::{
         block_times::{BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
