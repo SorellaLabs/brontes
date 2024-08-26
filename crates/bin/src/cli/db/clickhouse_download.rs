@@ -47,6 +47,7 @@ impl ClickhouseDownload {
     }
 
     async fn run(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
+        brontes_types::init_thread_pools(100);
         let libmdbx = static_object(load_libmdbx(&ctx.task_executor, brontes_db_path.clone())?);
         debug!(target: "brontes::db::clickhouse-download", "made libmdbx");
         let cex_config = CexDownloadConfig::default();
