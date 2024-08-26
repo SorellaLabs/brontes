@@ -50,61 +50,61 @@ impl Clear {
     };
 }
 
-        self.tables.iter().for_each(|table| {
-            clear_table!(
-                table,
-                CexPrice,
-                CexTrades,
-                InitializedState,
-                BlockInfo,
-                DexPrice,
-                MevBlocks,
-                TokenDecimals,
-                AddressToProtocolInfo,
-                PoolCreationBlocks,
-                Builder,
-                AddressMeta,
-                SearcherEOAs,
-                SearcherContracts,
-                TxTraces
-            )
-        });
+        // self.tables.iter().for_each(|table| {
+        //     clear_table!(
+        //         table,
+        //         CexPrice,
+        //         CexTrades,
+        //         InitializedState,
+        //         BlockInfo,
+        //         DexPrice,
+        //         MevBlocks,
+        //         TokenDecimals,
+        //         AddressToProtocolInfo,
+        //         PoolCreationBlocks,
+        //         Builder,
+        //         AddressMeta,
+        //         SearcherEOAs,
+        //         SearcherContracts,
+        //         TxTraces
+        //     )
+        // });
 
-        if self.clear_cex_quotes_flags
-            || self.clear_cex_trades_flags
-            || self.clear_tx_traces_flags
-            || self.clear_metadata_flags
-            || self.clear_dex_pricing_flags
-        {
-            db.view_db(|tx| {
-                let mut cur = tx.new_cursor::<InitializedState>()?;
-                let walker = cur.walk_range(..)?;
-                let mut updated_res = Vec::new();
+        // if self.clear_cex_quotes_flags
+        //     || self.clear_cex_trades_flags
+        //     || self.clear_tx_traces_flags
+        //     || self.clear_metadata_flags
+        //     || self.clear_dex_pricing_flags
+        // {
+        db.view_db(|tx| {
+            let mut cur = tx.new_cursor::<InitializedState>()?;
+            let walker = cur.walk_range(..)?;
+            let mut updated_res = Vec::new();
 
-                for item in walker.flatten() {
-                    let mut key = item.1;
-                    if self.clear_dex_pricing_flags {
-                        key.apply_reset_key(DEX_PRICE_FLAG);
-                    }
-                    if self.clear_metadata_flags {
-                        key.apply_reset_key(META_FLAG);
-                    }
-                    if self.clear_tx_traces_flags {
-                        key.apply_reset_key(TRACE_FLAG);
-                    }
-                    if self.clear_cex_quotes_flags {
-                        key.apply_reset_key(CEX_QUOTES_FLAG);
-                    }
-                    if self.clear_cex_trades_flags {
-                        key.apply_reset_key(CEX_TRADES_FLAG);
-                    }
+            for item in walker.flatten() {
+                let mut key = item.1;
+                // if self.clear_dex_pricing_flags {
+                //     key.apply_reset_key(DEX_PRICE_FLAG);
+                // }
+                // if self.clear_metadata_flags {
+                //     key.apply_reset_key(META_FLAG);
+                // }
+                // if self.clear_tx_traces_flags {
+                //     key.apply_reset_key(TRACE_FLAG);
+                // }
+                // if self.clear_cex_quotes_flags {
+                key.apply_reset_key(CEX_QUOTES_FLAG);
+                // }
+                // if self.clear_cex_trades_flags {
+                //     key.apply_reset_key(CEX_TRADES_FLAG);
+                // }
 
-                    updated_res.push(InitializedStateData::new(item.0, item.1));
-                }
-                db.write_table(&updated_res)?;
-                Ok(())
-            })?;
-        }
+                updated_res.push(InitializedStateData::new(item.0, item.1));
+            }
+            db.write_table(&updated_res)?;
+            Ok(())
+        })?;
+        // }
 
         Ok(())
     }
