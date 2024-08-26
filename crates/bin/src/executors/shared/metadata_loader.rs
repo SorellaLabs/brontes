@@ -337,6 +337,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         if self.force_no_dex_pricing {
+            tracing::info!("no edex pricing");
             if let Some(res) = self.result_buf.pop_front() {
                 return Poll::Ready(Some(res))
             }
