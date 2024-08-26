@@ -22,7 +22,7 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
     `arb_type` String,
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/atomic', '{replica}')
+ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/atomic_arbs', '{replica}')
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
 

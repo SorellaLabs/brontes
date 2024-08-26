@@ -92,6 +92,6 @@ CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
     ),
     `run_id` UInt64
 )
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/mev_cex_dex', '{replica}')
+ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/cex_dex', '{replica}')
 PRIMARY KEY (block_number, tx_hash)
 ORDER BY (block_number, tx_hash)

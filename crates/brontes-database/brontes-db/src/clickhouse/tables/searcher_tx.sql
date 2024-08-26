@@ -15,6 +15,6 @@ CREATE TABLE mev.searcher_tx ON CLUSTER eth_cluster0
     `gas_details` Tuple(Nullable(UInt128), UInt128, UInt128, UInt128),
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/mev_searcher_tx', '{replica}')
+ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/searcher_tx', '{replica}')
 PRIMARY KEY (`block_number`,`tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
