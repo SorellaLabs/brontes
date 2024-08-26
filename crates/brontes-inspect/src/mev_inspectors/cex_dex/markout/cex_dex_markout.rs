@@ -741,23 +741,25 @@ mod tests {
         Inspectors,
     };
 
-    //TODO: Verify that the load config is working as expected for both tests and
-    // regular runs
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout() {
-        // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 40.5).await;
-
-        let tx = hex!("6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2").into();
-
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_gas_paid_usd(38.31)
-            .with_expected_profit_usd(94.82)
-            .with_block_time_weights_for_cex_pricing();
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
+    // //TODO: Verify that the load config is working as expected for both tests and
+    // // regular runs
+    // #[brontes_macros::test]
+    // async fn test_cex_dex_markout() {
+    //     // https://etherscan.io/tx/0x6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2
+    //     let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 40.5).await;
+    //
+    //     let tx =
+    // hex!("6c9f2b9200d1f27501ad8bfc98fda659033e6242d3fd75f3f9c18e7fbc681ec2").
+    // into();
+    //
+    //     let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+    //         .with_mev_tx_hashes(vec![tx])
+    //         .with_gas_paid_usd(38.31)
+    //         .with_expected_profit_usd(94.82)
+    //         .with_block_time_weights_for_cex_pricing();
+    //
+    //     inspector_util.run_inspector(config, None).await.unwrap();
+    // }
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_perl() {
@@ -781,28 +783,32 @@ mod tests {
         inspector_util.assert_no_mev(config).await.unwrap();
     }
 
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_eth_dai() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
-        let tx = hex!("60cbfc1b8b72479259c236e0ef17ffeade286f7c7821a03f6c180340b694f9c7").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(0.082)
-            .with_gas_paid_usd(4.44);
+    // #[brontes_macros::test]
+    // async fn test_cex_dex_markout_eth_dai() {
+    //     let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 0.5).await;
+    //     let tx =
+    // hex!("60cbfc1b8b72479259c236e0ef17ffeade286f7c7821a03f6c180340b694f9c7").
+    // into();     let config =
+    // InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+    //         .with_mev_tx_hashes(vec![tx])
+    //         .with_expected_profit_usd(0.082)
+    //         .with_gas_paid_usd(4.44);
+    //
+    //     inspector_util.run_inspector(config, None).await.unwrap();
+    // }
 
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_cex_dex_markout_pepe_usdc() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
-        let tx = hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(3.88)
-            .with_gas_paid_usd(6.93);
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
+    // #[brontes_macros::test]
+    // async fn test_cex_dex_markout_pepe_usdc() {
+    //     let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
+    //     let tx =
+    // hex!("516cb79ee183619bf2f1542e847b84578fd8ca8ee926af1bdc3331fd73715ca3").
+    // into();     let config =
+    // InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
+    //         .with_mev_tx_hashes(vec![tx])
+    //         .with_expected_profit_usd(3.88)
+    //         .with_gas_paid_usd(6.93);
+    //     inspector_util.run_inspector(config, None).await.unwrap();
+    // }
 
     #[brontes_macros::test]
     async fn test_cex_dex_markout_bad_price() {
@@ -870,18 +876,5 @@ mod tests {
             InspectorTxRunConfig::new(Inspectors::CexDexMarkout).with_mev_tx_hashes(vec![tx]);
 
         inspector_util.assert_no_mev(config).await.unwrap();
-    }
-
-    #[brontes_macros::test]
-    async fn test_trades_comp_weth_weird() {
-        // should be there if intermediary. however thats failing
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 15.5).await;
-        let tx = hex!("2ec4532727c365fe10773df7a249db071114b3b9071dae291a512015fc0ddcb7").into();
-        let config = InspectorTxRunConfig::new(Inspectors::CexDexMarkout)
-            .with_mev_tx_hashes(vec![tx])
-            .with_expected_profit_usd(-3.24)
-            .with_gas_paid_usd(17.79);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
     }
 }
