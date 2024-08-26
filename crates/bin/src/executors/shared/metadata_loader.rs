@@ -25,6 +25,7 @@ use brontes_types::{
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
 use reth_primitives::BlockHash;
+use tracing::error;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
@@ -94,7 +95,6 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                     .unwrap_or(true))
     }
 
-    //TODO: remove unecessary dex pricing query
     pub fn load_metadata_for_tree<DB: LibmdbxReader + DBWriter>(
         &mut self,
         block_hash: BlockHash,
@@ -252,7 +252,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         block_hash: BlockHash,
         quote_asset: Address,
     ) {
-        tracing::debug!(?block, "spawning clickhouse fut");
+        tracing::info!(?block, "spawning clickhouse fut");
         let window = self.cex_window_data.get_window_lookahead();
         // given every download is -6 + 6 around the block
         // we calculate the offset from the current block that we need
@@ -273,6 +273,9 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                         quote_asset,
                     )
                     .await
+                    .inspect_err(|e| {
+                        error!(err=?e);
+                    })
                 {
                     break res
                 } else {
@@ -295,6 +298,9 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                         ),
                     )
                     .await
+                    .inspect_err(|e| {
+                        error!(err=?e);
+                    })
                 {
                     let mut trades = CexTradeMap::default();
                     for range in ranges.into_iter().sorted_unstable_by_key(|k| k.key) {
