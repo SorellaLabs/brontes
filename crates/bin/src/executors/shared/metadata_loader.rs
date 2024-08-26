@@ -287,6 +287,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             };
+            tracing::info!("got metadata");
 
             // fetch trades till it works
             let trades = loop {
@@ -317,6 +318,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             };
+            tracing::info!("got trades");
 
             meta.cex_trades = Some(trades);
             meta.builder_info = builder_info;
