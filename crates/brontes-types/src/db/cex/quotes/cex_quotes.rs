@@ -34,6 +34,7 @@ use tracing::error;
 
 use super::types::CexQuote;
 use crate::{
+    constants::WETH_ADDRESS,
     db::{
         cex::{quotes::CexQuoteRedefined, trades::Direction, CexExchange},
         redefined_types::malachite::RationalRedefined,
@@ -110,8 +111,13 @@ impl CexPriceMap {
             .get(pair)
             .or_else(|| self.most_liquid_ex.get(&pair.flip()))
             .and_then(|exchanges| {
+                let v = self
+                    .most_liquid_ex
+                    .iter()
+                    .filter(|(f, _)| f.0 == WETH_ADDRESS)
+                    .collect::<FastHashMap<_,_>>();
 
-                tracing::debug!(?pair, ?exchanges, "{:#?}", self.most_liquid_ex);
+                tracing::debug!(?pair, ?exchanges, "{:#?}", v);
                 for exchange in exchanges {
                     tracing::debug!(?exchange, ?pair);
                     let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
