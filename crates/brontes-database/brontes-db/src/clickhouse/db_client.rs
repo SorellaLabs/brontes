@@ -587,7 +587,7 @@ impl ClickhouseHandle for Clickhouse {
         let v = symbol_rank
             .iter()
             .filter(|f| f.symbol.contains("ETH") || f.symbol.contains("WETH"))
-            .collect::<FastHashMap<_, _>>();
+            .collect::<Vec<_>>();
         tracing::debug!("{:#?}", v);
 
         tracing::trace!("Successfully fetched symbol ranks");
