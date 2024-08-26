@@ -25,5 +25,3 @@ SELECT
 FROM aggregated_exchanges
 ORDER BY timestamp
 
-
-1724643071000000
