@@ -1,6 +1,5 @@
 use std::mem;
 
-use crate::constants::WETH_ADDRESS;
 use alloy_primitives::{hex, Address};
 use clickhouse::Row;
 use itertools::Itertools;
@@ -10,7 +9,7 @@ use serde::Deserialize;
 
 use super::{CexPriceMap, CexQuote};
 use crate::{
-    constants::USDC_ADDRESS,
+    constants::{USDC_ADDRESS, WETH_ADDRESS},
     db::{
         block_times::{BlockTimes, CexBlockTimes},
         cex::{BestCexPerPair, CexExchange, CexSymbols},
@@ -149,13 +148,17 @@ impl CexQuotesConverter {
                     .find_map(|exchange| self.symbols.get(&(*exchange, pair_ex.symbol.clone())))?;
 
                 let pair = correct_usdc_address(&symbol.address_pair);
-                if pair_ex.symbol == "ETHUSDT" {
-                    tracing::info!(?pair_ex, ?symbol);
-                }
 
                 Some((pair, pair_ex.clone().exchange))
             })
-            .collect()
+            .fold(FastHashMap::default(), |mut acc, (pair, exchange)| {
+                let e = acc.entry(pair).or_default();
+                // if we have same pair but more exchanges, use this
+                if e.len() < exchange.len() {
+                    *e = exchange;
+                }
+                acc
+            })
     }
 
     pub fn create_block_num_map_with_pairs(
