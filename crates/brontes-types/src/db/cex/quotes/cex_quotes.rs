@@ -34,7 +34,6 @@ use tracing::error;
 
 use super::types::CexQuote;
 use crate::{
-    constants::WETH_ADDRESS,
     db::{
         cex::{quotes::CexQuoteRedefined, trades::Direction, CexExchange},
         redefined_types::malachite::RationalRedefined,
