@@ -143,7 +143,14 @@ impl CexQuotesConverter {
 
                 Some((pair, pair_ex.clone().exchange))
             })
-            .collect()
+            .fold(FastHashMap::default(), |mut acc, (pair, exchange)| {
+                let e = acc.entry(pair).or_default();
+                // if we have same pair but more exchanges, use this
+                if e.len() < exchange.len() {
+                    *e = exchange;
+                }
+                acc
+            })
     }
 
     pub fn create_block_num_map_with_pairs(
