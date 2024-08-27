@@ -678,8 +678,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 if i_hash.iter().any(|hash| j_hash.contains(hash)) {
                     let bundle_0 = &bundles[i].1;
                     let bundle_1 = &bundles[j].1;
-                    tracing::trace!(header1=?bundle_0.header,header2=?bundle_1.header, "compairing headers");
-
+                    tracing::trace!(
+                        "comparing headers\n header1={:#?} \n header2={:#?}",
+                        bundle_0.header,
+                        bundle_1.header
+                    );
 
                     if i_hash.len() > j_hash.len() {
                         removals.push(j);
