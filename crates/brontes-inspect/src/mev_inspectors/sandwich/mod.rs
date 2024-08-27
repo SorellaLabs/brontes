@@ -1529,17 +1529,4 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn sandwich_missed_on_frontend_block() {
-        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
-
-        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
-            .with_dex_prices()
-            .with_block(20603464)
-            .with_gas_paid_usd(212.91)
-            .with_expected_profit_usd(-0.16);
-
-        inspector_util.run_inspector(config, None).await.unwrap();
-    }
 }

@@ -35,7 +35,6 @@ use brontes_types::{
     mev::Mev,
     BlockData, FastHashMap, MultiBlockData,
 };
-use clickhouse::InsertRow;
 use itertools::Itertools;
 use tracing::{span, Level};
 
@@ -168,9 +167,7 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
     // per mev_type
     let sorted_mev = sorted_mev
         .into_iter()
-        .map(|(mev_type, bundles)| {
-            (mev_type, SharedInspectorUtils::<DB>::dedup_bundles(bundles))
-        })
+        .map(|(mev_type, bundles)| (mev_type, SharedInspectorUtils::<DB>::dedup_bundles(bundles)))
         .collect();
 
     let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
