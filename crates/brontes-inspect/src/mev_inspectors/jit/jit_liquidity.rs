@@ -64,46 +64,44 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-            self.possible_jit_set(tree.clone())
-                .into_iter()
-                .filter_map(
-                    |PossibleJitWithInfo {
-                         inner:
-                             PossibleJit {
-                                 frontrun_txes, backrun_tx, executor_contract, victims, ..
-                             },
-                         victim_info,
-                         backrun,
-                         front_runs,
-                     }| {
-                        let searcher_actions = self.get_searcher_actions(
-                            frontrun_txes.iter().chain([backrun_tx].iter()),
-                            tree.clone(),
-                        );
+        self.possible_jit_set(tree.clone())
+            .into_iter()
+            .filter_map(
+                |PossibleJitWithInfo {
+                     inner:
+                         PossibleJit { frontrun_txes, backrun_tx, executor_contract, victims, .. },
+                     victim_info,
+                     backrun,
+                     front_runs,
+                 }| {
+                    let searcher_actions = self.get_searcher_actions(
+                        frontrun_txes.iter().chain([backrun_tx].iter()),
+                        tree.clone(),
+                    );
 
-                        tracing::trace!(?frontrun_txes, ?backrun_tx, "checking if jit");
+                    tracing::trace!(?frontrun_txes, ?backrun_tx, "checking if jit");
 
-                        if searcher_actions.is_empty() {
-                            tracing::trace!("no searcher actions found");
-                            return None
-                        }
+                    if searcher_actions.is_empty() {
+                        tracing::trace!("no searcher actions found");
+                        return None
+                    }
 
-                        let victim_actions =
-                            self.get_victim_actions(victims, tree.clone(), executor_contract)?;
+                    let victim_actions =
+                        self.get_victim_actions(victims, tree.clone(), executor_contract)?;
 
-                        self.calculate_jit(
-                            front_runs,
-                            backrun,
-                            metadata.clone(),
-                            searcher_actions,
-                            victim_actions,
-                            victim_info,
-                            0,
-                        )
-                    },
-                )
-                .flatten()
-                .collect::<Vec<_>>(),
+                    self.calculate_jit(
+                        front_runs,
+                        backrun,
+                        metadata.clone(),
+                        searcher_actions,
+                        victim_actions,
+                        victim_info,
+                        0,
+                    )
+                },
+            )
+            .flatten()
+            .collect::<Vec<_>>()
     }
 
     fn get_searcher_actions<'a>(
