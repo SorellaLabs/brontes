@@ -29,9 +29,7 @@ impl ActionCmp<Action> for Action {
                 }
                 user
             }
-            action => {
-                false
-            }
+            _ => false,
         }
     }
 }
