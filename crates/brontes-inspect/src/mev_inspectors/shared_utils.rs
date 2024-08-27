@@ -654,7 +654,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// when a duplicate arises, we will always take the bundle
     /// with more transactions as it is the most correct
     #[allow(clippy::comparison_chain)]
-    pub(crate) fn dedup_bundles(&self, bundles: Vec<Bundle>) -> Vec<Bundle> {
+    pub fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
         let mut bundles = bundles
             .into_iter()
             .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))
@@ -676,6 +676,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 let i_hash = &bundles[i].0;
                 let j_hash = &bundles[j].0;
                 if i_hash.iter().any(|hash| j_hash.contains(hash)) {
+                    let bundle_0 = &bundles[i].1;
+                    let bundle_1 = &bundles[j].1;
+                    tracing::trace!(
+                        "comparing headers\n header1={:#?} \n header2={:#?}",
+                        bundle_0.header,
+                        bundle_1.header
+                    );
+
                     if i_hash.len() > j_hash.len() {
                         removals.push(j);
                     } else if i_hash.len() < j_hash.len() {

@@ -57,7 +57,7 @@ use utils::{
 
 const DISCOVERY_PRIORITY_FEE_MULTIPLIER: f64 = 2.0;
 
-use crate::{discovery::DiscoveryInspector, Inspector};
+use crate::{discovery::DiscoveryInspector, shared_utils::SharedInspectorUtils, Inspector};
 
 #[derive(Debug)]
 pub struct ComposerResults {
@@ -162,6 +162,13 @@ fn on_orchestra_resolution<DB: LibmdbxReader>(
             );
         },
     );
+
+    // now that we have deduplicated cross bundles. we deduplicate
+    // per mev_type
+    let sorted_mev = sorted_mev
+        .into_iter()
+        .map(|(mev_type, bundles)| (mev_type, SharedInspectorUtils::<DB>::dedup_bundles(bundles)))
+        .collect();
 
     let (mev_count, mut filtered_bundles) = filter_and_count_bundles(sorted_mev);
 

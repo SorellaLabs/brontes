@@ -29,10 +29,7 @@ impl ActionCmp<Action> for Action {
                 }
                 user
             }
-            action => {
-                tracing::trace!(?action, ?other, "no action cmp impl for given action");
-                false
-            }
+            _ => false,
         }
     }
 }
