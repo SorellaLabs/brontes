@@ -1522,7 +1522,6 @@ mod tests {
                 hex!("bd63a22a0d3c4420ed3896210ba1f885ce4ef6ba34307feea8da2f439355ebe9").into(),
                 hex!("9ce374bad9cce46ea66d121662c0ec3df7915e39f196550c97d6327b61f992ed").into(),
                 // dummy txes
-
                 hex!("fdf29e171f20338790f11532916d036a20639aa54d4ddaade9110c3648cb3ba2").into(),
                 hex!("6001e701e5c8ea7fde68f5ad8e924b9a98be9cf2cb7d5da6e7c19f0494a3b95f").into(),
                 hex!("4ac28bf53a251da80c95eee1a992c6d5c3292b4f8011be2f1987d32e42c69b29").into(),

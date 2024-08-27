@@ -28,12 +28,6 @@ fn accounting_calc(accounting: &mut Accounting, next: Action) {
         .iter()
         .all(|i| !i.is_same_coverage(&next))
     {
-        tracing::trace!(
-            "accounted for {:#?}\n\n\n new non accounted for: {:#?}",
-            accounting.accounted_for_actions,
-            next
-        );
-
         next.apply_token_deltas(&mut accounting.delta_map);
         accounting.accounted_for_actions.push(next);
     }
