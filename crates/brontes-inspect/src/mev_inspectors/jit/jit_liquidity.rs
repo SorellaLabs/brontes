@@ -64,7 +64,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        self.utils.dedup_bundles(
             self.possible_jit_set(tree.clone())
                 .into_iter()
                 .filter_map(
@@ -105,7 +104,6 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 )
                 .flatten()
                 .collect::<Vec<_>>(),
-        )
     }
 
     fn get_searcher_actions<'a>(

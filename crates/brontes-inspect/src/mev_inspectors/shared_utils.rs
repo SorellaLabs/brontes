@@ -654,7 +654,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     /// when a duplicate arises, we will always take the bundle
     /// with more transactions as it is the most correct
     #[allow(clippy::comparison_chain)]
-    pub(crate) fn dedup_bundles(&self, bundles: Vec<Bundle>) -> Vec<Bundle> {
+    pub fn dedup_bundles(bundles: Vec<Bundle>) -> Vec<Bundle> {
         let mut bundles = bundles
             .into_iter()
             .map(|bundle| (bundle.data.mev_transaction_hashes(), bundle))

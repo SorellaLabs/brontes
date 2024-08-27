@@ -85,20 +85,18 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             Action::is_nested_action,
         ]);
 
-        self.utils.dedup_bundles(
-            self.get_possible_sandwich(tree.clone())
-                .into_iter()
-                .filter_map(|ps| {
-                    self.collect_baseline_sandwich_data(
-                        tree.clone(),
-                        search_args.clone(),
-                        ps,
-                        metadata.clone(),
-                    )
-                })
-                .flatten()
-                .collect::<Vec<_>>(),
-        )
+        self.get_possible_sandwich(tree.clone())
+            .into_iter()
+            .filter_map(|ps| {
+                self.collect_baseline_sandwich_data(
+                    tree.clone(),
+                    search_args.clone(),
+                    ps,
+                    metadata.clone(),
+                )
+            })
+            .flatten()
+            .collect::<Vec<_>>()
     }
 
     fn collect_baseline_sandwich_data(

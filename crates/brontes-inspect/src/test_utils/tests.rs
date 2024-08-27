@@ -23,7 +23,7 @@
 
 use alloy_primitives::{Address, TxHash};
 use brontes_classifier::test_utils::{ClassifierTestUtils, ClassifierTestUtilsError};
-use brontes_core::TraceLoaderError;
+use brontes_core::{LibmdbxReadWriter, TraceLoaderError};
 pub use brontes_types::constants::*;
 use brontes_types::{
     db::{
@@ -38,7 +38,7 @@ use brontes_types::{
 };
 use thiserror::Error;
 
-use crate::{composer::run_block_inspection, Inspectors};
+use crate::{composer::run_block_inspection, shared_utils::SharedInspectorUtils, Inspectors};
 
 type StateTests = Option<Box<dyn for<'a> Fn(&'a Bundle)>>;
 
@@ -263,7 +263,8 @@ impl InspectorTestUtils {
 
         let data = BlockData { metadata: metadata.into(), tree: tree.into() };
         let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
-        let mut results = inspector.inspect_block(multi);
+        let results = inspector.inspect_block(multi);
+        let mut results = SharedInspectorUtils::<LibmdbxReadWriter>::dedup_bundles(results);
 
         assert_eq!(
             results.len(),
