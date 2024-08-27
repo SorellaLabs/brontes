@@ -86,6 +86,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             Tables::Builder,
             Tables::AddressMeta,
         ];
+        self.load_config().await?;
 
         #[cfg(feature = "local-clickhouse")]
         {
@@ -109,7 +110,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             .buffer_unordered(10)
             .collect::<Vec<_>>()
             .await;
-        self.load_config().await?;
 
         Ok(())
     }
