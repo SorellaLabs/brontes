@@ -1536,9 +1536,13 @@ mod tests {
 
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
-            .with_block(18805413)
             .with_gas_paid_usd(81.00)
-            .with_expected_profit_usd(586.48);
+            .with_expected_profit_usd(586.48)
+            .with_mev_tx_hashes(vec![
+                hex!("ea3cab6588f5938b43be49a95f8a7868223a9bdc951d685cb8816547f4263f30").into(),
+                hex!("29a867b4e9d6737d0056d18b098377abd3164c889432bc84f2e2365f1e1b15bd").into(),
+                hex!("90cfeb98e6879f674621fb1d276d64d7b084b721217bac9e1a384a34f5c3dbe3").into(),
+            ]);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
