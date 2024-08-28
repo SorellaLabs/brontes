@@ -106,7 +106,7 @@ impl Relays {
                 match relay.get_winning_bid(block_number, block_hash).await {
                     Ok(r) => Some(r),
                     Err(e) => {
-                        tracing::error!(%relay, "error getting bids - {:?}", e);
+                        tracing::warn!(%relay, "error getting bids - {:?}", e);
                         None
                     }
                 }
@@ -129,7 +129,7 @@ impl Relays {
             match relay.get_payload(block_number).await {
                 Ok(r) => Some(r),
                 Err(e) => {
-                    tracing::error!(%relay, "error getting payloads - {:?}", e);
+                    tracing::warn!(%relay, "error getting payloads - {:?}", e);
                     None
                 }
             }
