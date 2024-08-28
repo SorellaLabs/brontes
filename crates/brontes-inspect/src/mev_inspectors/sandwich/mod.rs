@@ -1546,4 +1546,17 @@ mod tests {
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
+
+    #[brontes_macros::test]
+    async fn atomic_that_is_sando_block() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 1.0).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
+            .with_dex_prices()
+            .with_gas_paid_usd(81.00)
+            .with_expected_profit_usd(503.044)
+            .with_block(18805413);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 }
