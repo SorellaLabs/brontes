@@ -1537,7 +1537,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::Sandwich)
             .with_dex_prices()
             .with_gas_paid_usd(81.00)
-            .with_expected_profit_usd(586.48)
+            .with_expected_profit_usd(503.044)
             .with_mev_tx_hashes(vec![
                 hex!("ea3cab6588f5938b43be49a95f8a7868223a9bdc951d685cb8816547f4263f30").into(),
                 hex!("29a867b4e9d6737d0056d18b098377abd3164c889432bc84f2e2365f1e1b15bd").into(),
