@@ -7,8 +7,6 @@ edition = "2021"
 
 [dependencies]
 
-# poirot
-
 # async
 tokio = { workspace = true, features = ["full", "tracing"] }
 futures.workspace = true
