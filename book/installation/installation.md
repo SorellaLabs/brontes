@@ -49,7 +49,7 @@ For users focusing on historical data without chain tip updates:
 
 1. Download the Brontes libmdbx snapshot:
    ```sh
-   brontes db snapshot -s $start_block$ -e $end_block$
+   brontes db download-snapshot -s $start_block$ -e $end_block$
    ```
    **Note**: For the full range since the merge block, omit `-s` and `-e` flags. This is **strongly** recommended for large ranges as it downloads the complete database instead of multiple partitions, significantly speeding up the process.
 
