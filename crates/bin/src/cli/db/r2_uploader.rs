@@ -46,6 +46,18 @@ impl R2Uploader {
                 })
         };
 
+        if self.full_db {
+            tracing::info!("uploading full database");
+            if let Err(e) = r2wrapper
+                .tar_ball_dir(&PathBuf::from(database_path), Some(FULL_RANGE_NAME))
+                .await
+            {
+                tracing::error!(error=%e);
+                return Ok(())
+            }
+            tracing::info!("uploading files completed");
+        }
+
         tracing::info!("Partitioning new data into respective files");
 
         if let Err(e) = LibmdbxPartitioner::new(
@@ -70,18 +82,6 @@ impl R2Uploader {
         {
             tracing::error!(error=%e);
             return Ok(())
-        }
-
-        if self.full_db {
-            tracing::info!("uploading full database");
-            if let Err(e) = r2wrapper
-                .tar_ball_dir(&PathBuf::from(database_path), Some(FULL_RANGE_NAME))
-                .await
-            {
-                tracing::error!(error=%e);
-                return Ok(())
-            }
-            tracing::info!("uploading files completed");
         }
 
         Ok(())

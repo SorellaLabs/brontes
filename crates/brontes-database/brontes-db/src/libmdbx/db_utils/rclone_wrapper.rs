@@ -156,7 +156,9 @@ impl RCloneWrapper {
         }
 
         if !Command::new("tar")
-            .arg("-czvf")
+            .arg("--use-compress-program=")
+            .arg("pigz -k ")
+            .arg("-cf")
             .arg(format!("/tmp/{directory_name}.tar.gz"))
             .arg("-C")
             .arg("/tmp/")
