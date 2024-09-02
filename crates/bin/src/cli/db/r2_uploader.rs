@@ -22,7 +22,7 @@ pub struct R2Uploader {
     /// should also upload full db
     #[clap(short, long, default_value_t = false)]
     full_db:             bool,
-    /// the amount of dbs to parition at a time
+    /// the amount of dbs to partition at a time
     #[clap(short, long, default_value_t = 10)]
     rayon_tasks:         usize,
 }

@@ -11,6 +11,7 @@ pub fn merge_libmdbx_dbs(
     final_db: LibmdbxReadWriter,
     partition_db_folder: &PathBuf,
     executor: BrontesTaskExecutor,
+    max_merge_tasks: usize,
 ) -> eyre::Result<()> {
     let files = get_dir_content(partition_db_folder)?;
     let multi = MultiProgress::default();
@@ -18,32 +19,38 @@ pub fn merge_libmdbx_dbs(
     let directory_count = files.directories.len() as u64;
     let total_progress_bar = total_merge_bar(&multi, directory_count);
 
-    files
-        .directories
-        .par_iter()
-        .filter(|dir_name| *dir_name != partition_db_folder.to_str().unwrap())
-        .filter_map(|path| LibmdbxReadWriter::init_db(path, None, &executor, false).ok())
-        .try_for_each(|db| {
-            move_tables_to_partition!(FULL_RANGE db, final_db, Some(multi.clone()),
-            CexPrice,
-            CexTrades,
-            BlockInfo,
-            MevBlocks,
-            InitializedState,
-            PoolCreationBlocks,
-            TxTraces,
-            AddressMeta,
-            SearcherEOAs,
-            SearcherContracts,
-            Builder,
-            AddressToProtocolInfo,
-            TokenDecimals,
-            DexPrice
-            );
-            total_progress_bar.inc(1);
+    let pool = rayon::ThreadPoolBuilder::default()
+        .num_threads(max_merge_tasks)
+        .build()?;
 
-            eyre::Ok(())
-        })
+    pool.install(|| {
+        files
+            .directories
+            .par_iter()
+            .filter(|dir_name| *dir_name != partition_db_folder.to_str().unwrap())
+            .filter_map(|path| LibmdbxReadWriter::init_db(path, None, &executor, false).ok())
+            .try_for_each(|db| {
+                move_tables_to_partition!(FULL_RANGE db, final_db, Some(multi.clone()),
+                CexPrice,
+                CexTrades,
+                BlockInfo,
+                MevBlocks,
+                InitializedState,
+                PoolCreationBlocks,
+                TxTraces,
+                AddressMeta,
+                SearcherEOAs,
+                SearcherContracts,
+                Builder,
+                AddressToProtocolInfo,
+                TokenDecimals,
+                DexPrice
+                );
+                total_progress_bar.inc(1);
+
+                eyre::Ok(())
+            })
+    })
 }
 
 pub fn total_merge_bar(mutli_bar: &MultiProgress, count: u64) -> ProgressBar {

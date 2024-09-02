@@ -28,13 +28,16 @@ const BYTES_TO_MB: u64 = 1_000_000;
 pub struct Snapshot {
     /// Snapshot endpoint
     #[arg(long, default_value = "https://data.brontes.xyz/")]
-    pub endpoint:    Url,
+    pub endpoint:         Url,
     /// Optional start block
     #[arg(long, short)]
-    pub start_block: Option<u64>,
+    pub start_block:      Option<u64>,
     /// Optional end block
     #[arg(long, short)]
-    pub end_block:   Option<u64>,
+    pub end_block:        Option<u64>,
+    /// the amount of dbs to merge at a time
+    #[clap(short, long, default_value_t = 10)]
+    rayon_tasks_db_merge: usize,
 }
 
 impl Snapshot {
@@ -107,7 +110,7 @@ impl Snapshot {
             let ex = ctx.task_executor.clone();
             ctx.task_executor
                 .spawn_blocking(async move {
-                    merge_libmdbx_dbs(final_db, &db, ex).unwrap();
+                    merge_libmdbx_dbs(final_db, &db, ex, self.rayon_tasks_db_merge).unwrap();
                 })
                 .await?;
 
