@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use brontes_types::BrontesTaskExecutor;
 use fs_extra::dir::get_dir_content;
+use indicatif::MultiProgress;
 use rayon::iter::*;
 
 use crate::{libmdbx::LibmdbxReadWriter, move_tables_to_partition, *};
@@ -12,6 +13,7 @@ pub fn merge_libmdbx_dbs(
     executor: BrontesTaskExecutor,
 ) -> eyre::Result<()> {
     let files = get_dir_content(partition_db_folder)?;
+    let multi = MultiProgress::default();
     // we can par this due to the single reader and not have any read locks.
     files
         .directories
@@ -19,7 +21,7 @@ pub fn merge_libmdbx_dbs(
         .filter(|dir_name| *dir_name != partition_db_folder.to_str().unwrap())
         .filter_map(|path| LibmdbxReadWriter::init_db(path, None, &executor, false).ok())
         .try_for_each(|db| {
-            move_tables_to_partition!(FULL_RANGE db, final_db,
+            move_tables_to_partition!(FULL_RANGE db, final_db, Some(multi.clone()),
             CexPrice,
             CexTrades,
             BlockInfo,
