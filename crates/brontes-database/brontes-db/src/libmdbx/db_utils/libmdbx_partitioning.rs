@@ -69,7 +69,7 @@ impl LibmdbxPartitioner {
         Self { parent_db, start_block, partition_db_folder, executor }
     }
 
-    pub fn execute(self) -> eyre::Result<()> {
+    pub fn execute(self, tasks: usize) -> eyre::Result<()> {
         // cleanup
         let mut start_block = self.start_block;
         let end_block = self.parent_db.get_db_range()?.1;
@@ -84,37 +84,42 @@ impl LibmdbxPartitioner {
             start_block += DEFAULT_PARTITION_SIZE
         }
         tracing::info!(?ranges, "partitioning db into ranges");
+        let pool = rayon::ThreadPoolBuilder::default()
+            .num_threads(tasks)
+            .build()?;
 
         // because we are just doing read operations. we can do all this in parallel
-        ranges
-            .par_iter()
-            .try_for_each(|BlockRangeList { start_block, end_block }| {
-                let mut path = self.partition_db_folder.clone();
-                path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
-                tracing::info!(?path, "creating path");
-                fs_extra::dir::create_all(&path, false)?;
-                let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
-                tracing::info!("database opened");
+        pool.install(|| {
+            ranges
+                .par_iter()
+                .try_for_each(|BlockRangeList { start_block, end_block }| {
+                    let mut path = self.partition_db_folder.clone();
+                    path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
+                    tracing::info!(?path, "creating path");
+                    fs_extra::dir::create_all(&path, false)?;
+                    let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
+                    tracing::info!("database opened");
 
-                move_tables_to_partition!(
-                    BLOCK_RANGE
-                    self.parent_db,
-                    db,
-                    *start_block,
-                    *end_block,
-                    None,
-                    CexPrice,
-                    CexTrades,
-                    BlockInfo,
-                    MevBlocks,
-                    InitializedState,
-                    PoolCreationBlocks,
-                    TxTraces
-                );
-                // manually dex pricing
-                self.parent_db
-                    .write_dex_price_range(*start_block, *end_block, &db, None)
-            })?;
+                    move_tables_to_partition!(
+                        BLOCK_RANGE
+                        self.parent_db,
+                        db,
+                        *start_block,
+                        *end_block,
+                        None,
+                        CexPrice,
+                        CexTrades,
+                        BlockInfo,
+                        MevBlocks,
+                        InitializedState,
+                        PoolCreationBlocks,
+                        TxTraces
+                    );
+                    // manually dex pricing
+                    self.parent_db
+                        .write_dex_price_range(*start_block, *end_block, &db, None)
+                })
+        })?;
 
         // move over full range tables
         let mut path = self.partition_db_folder.clone();
