@@ -43,7 +43,11 @@ pub struct Snapshot {
 impl Snapshot {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
-        let ranges_avail = self.get_available_ranges(&client).await?;
+        let ranges_avail = self.get_available_ranges(&client).await.map_err(|_| {
+            eyre::eyre!(
+                "failed to fetch available ranges. this normally means new data is being uploaded"
+            )
+        })?;
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
         fs_extra::dir::create_all(&brontes_db_endpoint, false)?;
 
