@@ -116,8 +116,11 @@ impl LibmdbxPartitioner {
                         TxTraces
                     );
                     // manually dex pricing
-                    self.parent_db
-                        .write_dex_price_range(*start_block, *end_block, &db, None)
+                    let r =
+                        self.parent_db
+                            .write_dex_price_range(*start_block, *end_block, &db, None);
+                    drop(db);
+                    r
                 })
                 .collect::<Vec<_>>()
         });
