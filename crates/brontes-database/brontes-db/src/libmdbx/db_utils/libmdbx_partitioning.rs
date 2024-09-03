@@ -89,10 +89,10 @@ impl LibmdbxPartitioner {
             .build()?;
 
         // because we are just doing read operations. we can do all this in parallel
-        pool.install(|| {
+        let errors = pool.install(|| {
             ranges
                 .par_iter()
-                .try_for_each(|BlockRangeList { start_block, end_block }| {
+                .map(|BlockRangeList { start_block, end_block }| {
                     let mut path = self.partition_db_folder.clone();
                     path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
                     tracing::info!(?path, "creating path");
@@ -119,7 +119,13 @@ impl LibmdbxPartitioner {
                     self.parent_db
                         .write_dex_price_range(*start_block, *end_block, &db, None)
                 })
-        })?;
+                .collect::<Vec<_>>()
+        });
+
+        let error_count = errors.iter().filter(|f| f.is_err()).count();
+        if error_count != 0 {
+            tracing::warn!(%error_count, "failed to partition some ranges");
+        }
 
         // move over full range tables
         let mut path = self.partition_db_folder.clone();
