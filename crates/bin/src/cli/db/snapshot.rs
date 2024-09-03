@@ -43,17 +43,24 @@ pub struct Snapshot {
 impl Snapshot {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
-        let ranges_avail = self.get_available_ranges(&client).await.map_err(|_| {
-            eyre::eyre!(
-                "failed to fetch available ranges. this normally means new data is being uploaded"
-            )
-        })?;
+        let ranges_avail = self
+            .get_available_ranges(&client)
+            .await
+            .inspect_err(|_| {
+                tracing::error!(
+                    "failed to fetch available ranges. this normally means new data is being \
+                     uploaded"
+                )
+            })
+            .unwrap_or_default();
+
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
         fs_extra::dir::create_all(&brontes_db_endpoint, false)?;
 
         let curl_queries = self
             .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
-            .await?;
+            .await
+            .map_err(|_| eyre::eyre!("failed to query the space that the needed databases use"))?;
 
         // download db tarball
         let multi_bar = MultiProgress::new();
@@ -142,6 +149,10 @@ impl Snapshot {
     // returns a error if the data isn't available.
     // NOTE: assumes r2 data is continuous
     fn ranges_to_download(&self, ranges_avail: Vec<BlockRangeList>) -> eyre::Result<RangeOrFull> {
+        if self.start_block.is_none() && self.end_block.is_none() {
+            return Ok(RangeOrFull::Full)
+        }
+
         if ranges_avail.is_empty() {
             eyre::bail!("currently no snapshots are available for download");
         }
