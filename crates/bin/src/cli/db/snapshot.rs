@@ -60,7 +60,7 @@ impl Snapshot {
         let curl_queries = self
             .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
             .await
-            .map_err(|_| eyre::eyre!("failed to query the space that the needed databases use"))?;
+            .map_err(|e| eyre::eyre!("meeting space requirement failed, error={}", e))?;
 
         // download db tarball
         let multi_bar = MultiProgress::new();
