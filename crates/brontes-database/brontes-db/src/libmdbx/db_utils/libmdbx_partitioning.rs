@@ -88,6 +88,25 @@ impl LibmdbxPartitioner {
             .num_threads(tasks)
             .build()?;
 
+        // move over full range tables
+        let mut path = self.partition_db_folder.clone();
+        path.push(format!("{PARTITION_FILE_NAME}-full-range-tables/",));
+        fs_extra::dir::create_all(&path, false)?;
+        let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
+
+        move_tables_to_partition!(
+            FULL_RANGE
+            self.parent_db,
+            db,
+            None,
+            AddressMeta,
+            SearcherEOAs,
+            SearcherContracts,
+            Builder,
+            AddressToProtocolInfo,
+            TokenDecimals
+        );
+
         // because we are just doing read operations. we can do all this in parallel
         pool.install(|| {
             ranges
@@ -123,25 +142,6 @@ impl LibmdbxPartitioner {
                     r
                 })
         })?;
-
-        // move over full range tables
-        let mut path = self.partition_db_folder.clone();
-        path.push(format!("{PARTITION_FILE_NAME}-full-range-tables/",));
-        fs_extra::dir::create_all(&path, false)?;
-        let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
-
-        move_tables_to_partition!(
-            FULL_RANGE
-            self.parent_db,
-            db,
-            None,
-            AddressMeta,
-            SearcherEOAs,
-            SearcherContracts,
-            Builder,
-            AddressToProtocolInfo,
-            TokenDecimals
-        );
 
         Ok(())
     }
