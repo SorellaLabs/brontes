@@ -109,9 +109,8 @@ impl LibmdbxPartitioner {
 
         // because we are just doing read operations. we can do all this in parallel
         pool.install(|| {
-            ranges
-                .par_iter()
-                .try_for_each(|BlockRangeList { start_block, end_block }| {
+            ranges.par_iter().enumerate().try_for_each(
+                |BlockRangeList { start_block, end_block }| {
                     let mut path = self.partition_db_folder.clone();
                     path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
                     tracing::info!(?path, "creating path");
@@ -140,7 +139,8 @@ impl LibmdbxPartitioner {
                             .write_dex_price_range(*start_block, *end_block, &db, None);
                     drop(db);
                     r
-                })
+                },
+            )
         })?;
 
         Ok(())
@@ -295,8 +295,8 @@ where
             if batch.len() == batch_size {
                 db.write_partitioned_range_data::<T, D>(std::mem::take(&mut batch))
                     .expect("failed to write partitioned data");
+                pb.as_ref().inspect(|p| p.inc(batch_size as u64));
             }
-            pb.as_ref().inspect(|p| p.inc(batch_size as u64));
         }
 
         let rem = batch.len();
