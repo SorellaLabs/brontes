@@ -45,7 +45,9 @@ impl RCloneWrapper {
             .await?
             .into_iter()
             .filter_map(|mut file_names| {
-                if file_names.ends_with("brontes-db-partition-full-range-tables.tar.gz") {
+                if file_names.ends_with("brontes-db-partition-full-range-tables.tar.gz")
+                    || file_names.ends_with("brontes-complete-range.tar.gz")
+                {
                     return None
                 }
 
@@ -258,6 +260,7 @@ impl RCloneWrapper {
         .await;
 
         // upload ranges for downloader
+        tracing::info!("update block range list");
         self.update_block_range_file().await?;
 
         Ok(())
