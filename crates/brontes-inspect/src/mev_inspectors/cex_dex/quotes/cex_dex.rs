@@ -615,5 +615,4 @@ mod tests {
 
         inspector_util.assert_no_mev(config).await.unwrap();
     }
-
 }

@@ -16,7 +16,12 @@ pub fn merge_libmdbx_dbs(
     let files = get_dir_content(partition_db_folder)?;
     let multi = MultiProgress::default();
     // we can par this due to the single reader and not have any read locks.
-    let directory_count = files.directories.len() as u64;
+    let directory_count = files
+        .directories
+        .iter()
+        .filter(|dir_name| *dir_name != partition_db_folder.to_str().unwrap())
+        .count() as u64;
+
     let total_progress_bar = total_merge_bar(&multi, directory_count);
 
     let pool = rayon::ThreadPoolBuilder::default()

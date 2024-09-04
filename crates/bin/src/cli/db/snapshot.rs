@@ -94,6 +94,7 @@ impl Snapshot {
                                 &mb,
                             )
                             .await?;
+                            tracing::info!("download of file complete, decompressing");
                             Self::handle_downloaded_file(&download_dir)?;
 
                             eyre::Ok(())
@@ -313,6 +314,7 @@ impl Snapshot {
         archive.unpack(&unpack)?;
 
         fs_extra::file::remove(tarball_location)?;
+        tracing::info!("decompressing complete");
 
         Ok(())
     }
