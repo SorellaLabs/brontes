@@ -45,7 +45,9 @@ impl RCloneWrapper {
             .await?
             .into_iter()
             .filter_map(|mut file_names| {
-                if file_names.ends_with("brontes-db-partition-full-range-tables.tar.gz") {
+                if file_names.ends_with("brontes-db-partition-full-range-tables.tar.gz")
+                    || file_names.ends_with("brontes-complete-range.tar.gz")
+                {
                     return None
                 }
 
@@ -156,7 +158,9 @@ impl RCloneWrapper {
         }
 
         if !Command::new("tar")
-            .arg("-czvf")
+            .arg("-I")
+            .arg("pigz")
+            .arg("-cf")
             .arg(format!("/tmp/{directory_name}.tar.gz"))
             .arg("-C")
             .arg("/tmp/")
@@ -170,11 +174,13 @@ impl RCloneWrapper {
         }
 
         // get the tarball file size and write that
+        tracing::info!("tarball finished");
         let file_size = filesize::file_real_size(format!("/tmp/{directory_name}.tar.gz"))?;
 
         let mut file = File::create(format!("/tmp/{directory_name}-byte-count.txt"))?;
         write!(&mut file, "{}", file_size).unwrap();
 
+        tracing::info!("uploading tarball");
         // upload to the r2 bucket using rclone
         self.upload_tarball(directory_name).await;
         Ok(())
@@ -254,6 +260,7 @@ impl RCloneWrapper {
         .await;
 
         // upload ranges for downloader
+        tracing::info!("update block range list");
         self.update_block_range_file().await?;
 
         Ok(())

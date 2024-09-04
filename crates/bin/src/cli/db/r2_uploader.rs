@@ -19,13 +19,19 @@ pub struct R2Uploader {
     /// Path to db partition folder
     #[clap(short, long, default_value = "/home/data/brontes-db-partitions/")]
     partition_db_folder: PathBuf,
+    /// should also upload full db
+    #[clap(short, long, default_value_t = false)]
+    full_db:             bool,
+    /// the amount of dbs to partition at a time
+    #[clap(short, long, default_value_t = 10)]
+    rayon_tasks:         usize,
 }
 
 impl R2Uploader {
     pub async fn execute(self, database_path: String, ctx: CliContext) -> eyre::Result<()> {
         let r2wrapper = RCloneWrapper::new(self.r2_config_name.clone()).await?;
 
-        let db = LibmdbxReadWriter::init_db(&database_path, None, &ctx.task_executor, true)?;
+        let db = LibmdbxReadWriter::init_db(&database_path, None, &ctx.task_executor, false)?;
 
         let start_block = if let Some(b) = self.start_block {
             b
@@ -40,6 +46,18 @@ impl R2Uploader {
                 })
         };
 
+        if self.full_db {
+            tracing::info!("uploading full database");
+            if let Err(e) = r2wrapper
+                .tar_ball_dir(&PathBuf::from(database_path), Some(FULL_RANGE_NAME))
+                .await
+            {
+                tracing::error!(error=%e);
+                return Ok(())
+            }
+            tracing::info!("uploading files completed");
+        }
+
         tracing::info!("Partitioning new data into respective files");
 
         if let Err(e) = LibmdbxPartitioner::new(
@@ -48,7 +66,7 @@ impl R2Uploader {
             start_block,
             ctx.task_executor.clone(),
         )
-        .execute()
+        .execute(self.rayon_tasks)
         {
             tracing::error!(error=%e);
             return Ok(())
@@ -65,17 +83,6 @@ impl R2Uploader {
             tracing::error!(error=%e);
             return Ok(())
         }
-
-        tracing::info!("uploading full database");
-        if let Err(e) = r2wrapper
-            .tar_ball_dir(&PathBuf::from(database_path), Some(FULL_RANGE_NAME))
-            .await
-        {
-            tracing::error!(error=%e);
-            return Ok(())
-        }
-
-        tracing::info!("uploading files completed");
 
         Ok(())
     }

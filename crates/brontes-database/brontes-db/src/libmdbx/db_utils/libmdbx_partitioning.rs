@@ -7,6 +7,7 @@ use std::{
 
 use brontes_types::{db::dex::make_filter_key_range, BrontesTaskExecutor};
 use futures::FutureExt;
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use libmdbx::libmdbx_writer::InitTables;
 use rayon::iter::*;
 use tokio::sync::Notify;
@@ -25,23 +26,23 @@ pub const DEFAULT_PARTITION_SIZE: u64 = 50_400;
 
 #[macro_export]
 macro_rules! move_tables_to_partition {
-    (BLOCK_RANGE $parent_db:expr, $db:expr, $start_block:expr,$end_block:expr,
+    (BLOCK_RANGE $parent_db:expr, $db:expr, $start_block:expr,$end_block:expr, $pb:expr,
      $($table_name:ident),*) => {
         $(
             tracing::info!(start_block=%$start_block, end_block=%$end_block,
                            "loading data from table: {}", stringify!($table_name));
             ::paste::paste!(
                 $parent_db.write_partition_range_data::<$table_name,
-                [<$table_name Data>]>($start_block, $end_block, &$db)?;
+                [<$table_name Data>]>($start_block, $end_block, &$db,$pb)?;
             );
         )*
     };
-    (FULL_RANGE $parent_db:expr, $db:expr, $($table_name:ident),*) => {
+    (FULL_RANGE $parent_db:expr, $db:expr,$pb:expr, $($table_name:ident),*) => {
         $(
             tracing::info!("loading data from table: {}", stringify!($table_name));
             ::paste::paste!(
                 $parent_db.write_critical_data::
-                <$table_name, [<$table_name Data>]>(&$db)?;
+                <$table_name, [<$table_name Data>]>(&$db, $pb.clone())?;
             );
         )*
     }
@@ -68,7 +69,7 @@ impl LibmdbxPartitioner {
         Self { parent_db, start_block, partition_db_folder, executor }
     }
 
-    pub fn execute(self) -> eyre::Result<()> {
+    pub fn execute(self, tasks: usize) -> eyre::Result<()> {
         // cleanup
         let mut start_block = self.start_block;
         let end_block = self.parent_db.get_db_range()?.1;
@@ -83,36 +84,9 @@ impl LibmdbxPartitioner {
             start_block += DEFAULT_PARTITION_SIZE
         }
         tracing::info!(?ranges, "partitioning db into ranges");
-
-        // because we are just doing read operations. we can do all this in parallel
-        ranges
-            .par_iter()
-            .try_for_each(|BlockRangeList { start_block, end_block }| {
-                let mut path = self.partition_db_folder.clone();
-                path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
-                tracing::info!(?path, "creating path");
-                fs_extra::dir::create_all(&path, false)?;
-                let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
-                tracing::info!("database opened");
-
-                move_tables_to_partition!(
-                    BLOCK_RANGE
-                    self.parent_db,
-                    db,
-                    *start_block,
-                    *end_block,
-                    CexPrice,
-                    CexTrades,
-                    BlockInfo,
-                    MevBlocks,
-                    InitializedState,
-                    PoolCreationBlocks,
-                    TxTraces
-                );
-                // manually dex pricing
-                self.parent_db
-                    .write_dex_price_range(*start_block, *end_block, &db)
-            })?;
+        let pool = rayon::ThreadPoolBuilder::default()
+            .num_threads(tasks)
+            .build()?;
 
         // move over full range tables
         let mut path = self.partition_db_folder.clone();
@@ -124,6 +98,7 @@ impl LibmdbxPartitioner {
             FULL_RANGE
             self.parent_db,
             db,
+            None,
             AddressMeta,
             SearcherEOAs,
             SearcherContracts,
@@ -131,6 +106,42 @@ impl LibmdbxPartitioner {
             AddressToProtocolInfo,
             TokenDecimals
         );
+
+        // because we are just doing read operations. we can do all this in parallel
+        pool.install(|| {
+            ranges
+                .par_iter()
+                .try_for_each(|BlockRangeList { start_block, end_block }| {
+                    let mut path = self.partition_db_folder.clone();
+                    path.push(format!("{PARTITION_FILE_NAME}-{start_block}-{end_block}/"));
+                    tracing::info!(?path, "creating path");
+                    fs_extra::dir::create_all(&path, false)?;
+                    let db = LibmdbxReadWriter::init_db(path, None, &self.executor, false)?;
+                    tracing::info!("database opened");
+
+                    move_tables_to_partition!(
+                        BLOCK_RANGE
+                        self.parent_db,
+                        db,
+                        *start_block,
+                        *end_block,
+                        None,
+                        CexPrice,
+                        CexTrades,
+                        BlockInfo,
+                        MevBlocks,
+                        InitializedState,
+                        PoolCreationBlocks,
+                        TxTraces
+                    );
+                    // manually dex pricing
+                    let r =
+                        self.parent_db
+                            .write_dex_price_range(*start_block, *end_block, &db, None);
+                    drop(db);
+                    r
+                })
+        })?;
 
         Ok(())
     }
@@ -142,6 +153,7 @@ impl LibmdbxReadWriter {
         start_block: u64,
         end_block: u64,
         write_db: &LibmdbxReadWriter,
+        pb: Option<&ProgressBar>,
     ) -> eyre::Result<()>
     where
         T: CompressedTable<Key = u64>,
@@ -158,6 +170,7 @@ impl LibmdbxReadWriter {
                 .map(|value| (value.0, value.1)),
             write_db,
             500,
+            pb,
         );
         Ok(())
     }
@@ -168,6 +181,7 @@ impl LibmdbxReadWriter {
         start_block: u64,
         end_block: u64,
         write_db: &LibmdbxReadWriter,
+        pb: Option<&ProgressBar>,
     ) -> eyre::Result<()> {
         let tx = self.db.no_timeout_ro_tx()?;
         let mut cur = tx.cursor_read::<DexPrice>()?;
@@ -181,12 +195,17 @@ impl LibmdbxReadWriter {
                 .map(|value| (value.0, value.1)),
             write_db,
             500,
+            pb,
         );
 
         Ok(())
     }
 
-    pub fn write_critical_data<T, D>(&self, write_db: &LibmdbxReadWriter) -> eyre::Result<()>
+    pub fn write_critical_data<T, D>(
+        &self,
+        write_db: &LibmdbxReadWriter,
+        mult_pb: Option<MultiProgress>,
+    ) -> eyre::Result<()>
     where
         T: CompressedTable,
         T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -194,13 +213,25 @@ impl LibmdbxReadWriter {
         InitTables: From<Vec<D>>,
     {
         let tx = self.db.no_timeout_ro_tx()?;
+        let entries = tx.entries::<T>()? as u64;
         let mut cur = tx.cursor_read::<T>()?;
+
+        let pb = mult_pb
+            .as_ref()
+            .map(|multi| add_merge_progress_bar(multi, entries, T::NAME));
 
         TmpWriter::<T, D>::batch_write_to_db(
             cur.walk(None)?.flatten().map(|val| (val.0, val.1)),
             write_db,
             500,
+            pb.as_ref(),
         );
+
+        mult_pb.inspect(|mult| {
+            let pb = pb.unwrap();
+            pb.finish_and_clear();
+            mult.remove(&pb);
+        });
 
         Ok(())
     }
@@ -253,7 +284,7 @@ where
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
     D: LibmdbxData<T> + From<(T::Key, T::DecompressedValue)>,
 {
-    fn batch_write_to_db(self, db: &LibmdbxReadWriter, batch_size: usize)
+    fn batch_write_to_db(self, db: &LibmdbxReadWriter, batch_size: usize, pb: Option<&ProgressBar>)
     where
         Self: Sized,
         InitTables: From<Vec<D>>,
@@ -264,11 +295,31 @@ where
             if batch.len() == batch_size {
                 db.write_partitioned_range_data::<T, D>(std::mem::take(&mut batch))
                     .expect("failed to write partitioned data");
+                pb.as_ref().inspect(|p| p.inc(batch_size as u64));
             }
         }
 
+        let rem = batch.len();
         // write final amount that wasn't batched
         db.write_partitioned_range_data::<T, D>(batch)
             .expect("failed to write partitioned data");
+        pb.as_ref().inspect(|p| p.inc(rem as u64));
     }
+}
+
+pub fn add_merge_progress_bar(mutli_bar: &MultiProgress, blocks: u64, table: &str) -> ProgressBar {
+    let progress_bar =
+        ProgressBar::with_draw_target(Some(blocks), ProgressDrawTarget::stderr_with_hz(50));
+    progress_bar.set_style(
+        ProgressStyle::with_template(
+            "{msg}\n[{elapsed_precise}] [{wide_bar:.green/red}] {pos}/{len} ({percent}%)",
+        )
+        .unwrap()
+        .progress_chars("#>-")
+        .with_key("percent", |state: &ProgressState, f: &mut dyn std::fmt::Write| {
+            write!(f, "{:.1}", state.fraction() * 100.0).unwrap()
+        }),
+    );
+    progress_bar.set_message(format!("table: {}", table));
+    mutli_bar.add(progress_bar)
 }

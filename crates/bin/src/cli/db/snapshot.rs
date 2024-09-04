@@ -28,25 +28,39 @@ const BYTES_TO_MB: u64 = 1_000_000;
 pub struct Snapshot {
     /// Snapshot endpoint
     #[arg(long, default_value = "https://data.brontes.xyz/")]
-    pub endpoint:    Url,
+    pub endpoint:         Url,
     /// Optional start block
     #[arg(long, short)]
-    pub start_block: Option<u64>,
+    pub start_block:      Option<u64>,
     /// Optional end block
     #[arg(long, short)]
-    pub end_block:   Option<u64>,
+    pub end_block:        Option<u64>,
+    /// the amount of dbs to merge at a time
+    #[clap(short, long, default_value_t = 10)]
+    rayon_tasks_db_merge: usize,
 }
 
 impl Snapshot {
     pub async fn execute(self, brontes_db_endpoint: String, ctx: CliContext) -> eyre::Result<()> {
         let client = reqwest::Client::new();
-        let ranges_avail = self.get_available_ranges(&client).await?;
+        let ranges_avail = self
+            .get_available_ranges(&client)
+            .await
+            .inspect_err(|_| {
+                tracing::error!(
+                    "failed to fetch available ranges. this normally means new data is being \
+                     uploaded"
+                )
+            })
+            .unwrap_or_default();
+
         let ranges_to_download = self.ranges_to_download(ranges_avail)?;
         fs_extra::dir::create_all(&brontes_db_endpoint, false)?;
 
         let curl_queries = self
             .meets_space_requirement(&client, ranges_to_download, &brontes_db_endpoint)
-            .await?;
+            .await
+            .map_err(|e| eyre::eyre!("meeting space requirement failed, error={}", e))?;
 
         // download db tarball
         let multi_bar = MultiProgress::new();
@@ -80,6 +94,7 @@ impl Snapshot {
                                 &mb,
                             )
                             .await?;
+                            tracing::info!("download of file complete, decompressing");
                             Self::handle_downloaded_file(&download_dir)?;
 
                             eyre::Ok(())
@@ -107,7 +122,7 @@ impl Snapshot {
             let ex = ctx.task_executor.clone();
             ctx.task_executor
                 .spawn_blocking(async move {
-                    merge_libmdbx_dbs(final_db, &db, ex).unwrap();
+                    merge_libmdbx_dbs(final_db, &db, ex, self.rayon_tasks_db_merge).unwrap();
                 })
                 .await?;
 
@@ -135,6 +150,10 @@ impl Snapshot {
     // returns a error if the data isn't available.
     // NOTE: assumes r2 data is continuous
     fn ranges_to_download(&self, ranges_avail: Vec<BlockRangeList>) -> eyre::Result<RangeOrFull> {
+        if self.start_block.is_none() && self.end_block.is_none() {
+            return Ok(RangeOrFull::Full)
+        }
+
         if ranges_avail.is_empty() {
             eyre::bail!("currently no snapshots are available for download");
         }
@@ -295,6 +314,7 @@ impl Snapshot {
         archive.unpack(&unpack)?;
 
         fs_extra::file::remove(tarball_location)?;
+        tracing::info!("decompressing complete");
 
         Ok(())
     }
