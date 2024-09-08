@@ -95,9 +95,14 @@ impl ClickhouseBuffered {
                             if insert_data.is_empty() {
                                 panic!("you did this wrong idiot");
                             }
-                            client
+
+                            while let Err(e) = client
                                 .insert_many::<$table_id>(&insert_data)
-                                .await?
+                                .await {
+                                    tracing::warn!(error=%e, "failed to insert results to clickhouse, retrying");
+                                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
+                            }
                         },
                     )+
                 }
