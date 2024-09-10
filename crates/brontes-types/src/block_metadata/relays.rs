@@ -122,28 +122,20 @@ impl Relays {
             .into_iter()
             .min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms))
         {
-            return Ok(Some(best_bid.try_into()?))
-        }
-
-        if let Some(pl) = futures::future::join_all(Relays::iter().map(|relay| async move {
+            Ok(Some(best_bid.try_into()?))
+        } else {
+            /*
+            try's to the get the ultrasound relay payload as their bid might not have the right hash.
+             */
+            let relay = Relays::UltraSound;
             match relay.get_payload(block_number).await {
-                Ok(r) => Some(r),
+                Ok(r) => Ok(r.map(TryInto::try_into).transpose()?),
                 Err(e) => {
                     tracing::warn!(%relay, "error getting payloads - {:?}", e);
-                    None
+                    Ok(None)
                 }
             }
-        }))
-        .await
-        .into_iter()
-        .flatten()
-        .flatten()
-        .next()
-        {
-            return Ok(Some(pl.try_into()?))
         }
-
-        Ok(None)
     }
 
     async fn get_winning_bid(
