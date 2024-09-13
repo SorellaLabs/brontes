@@ -96,12 +96,19 @@ impl ClickhouseBuffered {
                                 panic!("you did this wrong idiot");
                             }
 
+                            let mut cnt = 0;
                             while let Err(e) = client
                                 .insert_many::<$table_id>(&insert_data)
                                 .await {
-                                    tracing::warn!(error=%e, "failed to insert results to clickhouse, retrying");
+                                    cnt +=1;
+                                    let table_name = stringify!($table_id);
+                                    tracing::warn!(error=%e, table=%table_name, "failed to insert results to clickhouse, retrying");
                                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
+                                    if cnt == 20 {
+                                        tracing::error!(error=%e, table=%table_name, "max insert retry limit hit. aborting");
+                                        break;
+                                    }
                             }
                         },
                     )+
