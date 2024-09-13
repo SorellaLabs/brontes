@@ -53,7 +53,7 @@ relays!(
     ],
     [
         Titan,
-        19083692,
+        15885217,
         "https://0x8c4ed5e24fe5c6ae21018437bde147693f68cda427cd1122cf20819c30eda7ed74f72dece09bb313f2a1855595ab677d@global.titanrelay.xyz"
 
     ],
@@ -61,11 +61,6 @@ relays!(
         AgnosticGnosis,
         16691069,
         "https://0xa7ab7a996c8584251c8f925da3170bdfd6ebc75d50f5ddc4050a6fdc77f2a3b5fce2cc750d0865e05d7228af97d69561@agnostic-relay.net"
-    ],
-    [
-        EdenNetwork,
-        15885217,
-        "https://0xb3ee7afcf27f1f1259ac1787876318c6584ee353097a50ed84f51a1f21a323b3736f271a895c7ce918c038e4265918be@relay.edennetwork.io"
     ],
     [
         BloxrouteMaxProfit,
@@ -122,28 +117,20 @@ impl Relays {
             .into_iter()
             .min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms))
         {
-            return Ok(Some(best_bid.try_into()?))
-        }
-
-        if let Some(pl) = futures::future::join_all(Relays::iter().map(|relay| async move {
+            Ok(Some(best_bid.try_into()?))
+        } else {
+            /*
+            try's to the get the ultrasound relay payload as their bid might not have the right hash.
+             */
+            let relay = Relays::UltraSound;
             match relay.get_payload(block_number).await {
-                Ok(r) => Some(r),
+                Ok(r) => Ok(r.map(TryInto::try_into).transpose()?),
                 Err(e) => {
                     tracing::warn!(%relay, "error getting payloads - {:?}", e);
-                    None
+                    Ok(None)
                 }
             }
-        }))
-        .await
-        .into_iter()
-        .flatten()
-        .flatten()
-        .next()
-        {
-            return Ok(Some(pl.try_into()?))
         }
-
-        Ok(None)
     }
 
     async fn get_winning_bid(
