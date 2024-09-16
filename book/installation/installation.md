@@ -31,7 +31,7 @@ Requirements vary based on your setup:
    - Compile the software in the cloned directory. This is the base command for a standard setup:
      ```sh
      cd brontes
-     RUSTFLAGS="-C target-cpu=native" cargo install --path crates/bin --profile maxperf
+     RUSTFLAGS="-C target-cpu=native" cargo install --path crates/bin --profile maxperf --locked
      ```
    - **Note**: The `RUSTFLAGS` environment variable & `maxperf` profile is optional but recommended for performance improvements. We strongly recommend **against** including them when running tests or debugging.
 

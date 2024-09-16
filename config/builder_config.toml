@@ -97,8 +97,6 @@ name = "Tokka Builder"
 fund = "Tokka Labs"
 searchers_contracts = ["0x919f9173E2Dc833Ec708812B4f1CB11B1a17eFDe"]
 
-
-
 [builders."0xedcb63f859905be353d85d53041e9697dbea5f81"]
 name = "Builder+"
 pub_keys = ["0x8042acb1f21ff5ee9d0035c2ea5d9a09c3810b048ba28f89e9a94e8e76c5fdd5bebce9b88af4e489ccd1daf735b829bb"]
@@ -124,3 +122,5 @@ searchers_contracts = ["0xb0baBabE78a9be0810fAdf99Dd2eD31ed12568bE", "0x000000e1
 
 [builders."0x690b9a9e9aa1c9db991c7721a92d351db4fac990"]
 name = "builder0x69"
+
+# 0xFDe0d1575Ed8E06FBf36256bcdfA1F359281455A is yoink frontrunner / i can haz block
