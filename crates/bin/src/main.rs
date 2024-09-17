@@ -1,6 +1,9 @@
 use std::{env, error::Error, time::Duration};
 
-use tracing_subscriber::Layer;
+use brontes_tracing::BoxedLayer;
+use log_report_layer::TelegramConfig;
+use tracing::Level;
+use tracing_subscriber::{Layer, Registry};
 
 #[cfg(all(feature = "jemalloc", unix))]
 #[global_allocator]
@@ -70,10 +73,36 @@ fn run() -> eyre::Result<()> {
 }
 
 fn init_tracing(verbosity: Directive) {
-    let layers = vec![
-        brontes_tracing::stdout(verbosity),
-        brontes_metrics::error_layer::BrontesErrorMetrics::default().boxed(),
-    ];
+    let layers = if cfg!(feature = "sorella-server") {
+        vec![
+            brontes_tracing::stdout(verbosity),
+            brontes_metrics::error_layer::BrontesErrorMetrics::default().boxed(),
+            initialize_telegram_error_layer(),
+        ]
+    } else {
+        vec![
+            brontes_tracing::stdout(verbosity),
+            brontes_metrics::error_layer::BrontesErrorMetrics::default().boxed(),
+        ]
+    };
 
     brontes_tracing::init(layers);
+}
+
+fn initialize_telegram_error_layer() -> BoxedLayer<Registry> {
+    // build
+    let bot_token = std::env::var("BOT_ID").unwrap();
+    let chat_id = std::env::var("CHAT_ID").unwrap();
+    let tag_users = std::env::var("USERS_TO_TAG")
+        .unwrap()
+        .split(',')
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    let client = reqwest::blocking::Client::new();
+    let telegram =
+        TelegramConfig::new("Brontes".to_string(), tag_users, bot_token, chat_id, client)
+            .build_layer(vec![Level::ERROR]);
+
+    telegram.boxed()
 }

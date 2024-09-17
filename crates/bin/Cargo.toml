@@ -34,7 +34,7 @@ tokio = { workspace = true }
 async-scoped = { version = "0.7.1", features = ["use-tokio"] }
 futures.workspace = true
 
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["blocking"] }
 # Reth
 reth-tasks.workspace = true
 reth-rpc.workspace = true
@@ -98,6 +98,7 @@ itertools.workspace = true
 fdlimit = "0.3.0"
 dhat = "0.3.3"
 
+log-report-layer = { git = "https://github.com/SorellaLabs/log-report-layer" }
 serde = { workspace = true, features = ["derive"] }
 db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", features = [
   "test-utils",
