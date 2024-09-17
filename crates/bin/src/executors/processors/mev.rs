@@ -30,6 +30,7 @@ pub struct MevProcessor;
 impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
+    #[allow(unused_variables)]
     async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &'static DB,
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
