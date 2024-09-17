@@ -98,6 +98,7 @@ itertools.workspace = true
 fdlimit = "0.3.0"
 dhat = "0.3.3"
 
+log-report-layer = { git = "https://github.com/SorellaLabs/log-report-layer" }
 serde = { workspace = true, features = ["derive"] }
 db-interfaces = { git = "https://github.com/SorellaLabs/db-interfaces", features = [
   "test-utils",
