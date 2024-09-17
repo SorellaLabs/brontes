@@ -1555,6 +1555,7 @@ dependencies = [
  "indicatif",
  "indoc",
  "itertools 0.11.0",
+ "log-report-layer",
  "malachite",
  "metrics-process",
  "num_cpus",
@@ -5458,6 +5459,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
+name = "log-report-layer"
+version = "0.1.0"
+source = "git+https://github.com/SorellaLabs/log-report-layer#7f7be4d600ee46662eb521f1667e2a0f627f65c0"
+dependencies = [
+ "eyre",
+ "reqwest 0.12.5",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lru"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7649,6 +7662,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2 0.4.5",
