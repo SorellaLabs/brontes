@@ -30,6 +30,7 @@ pub struct MevProcessor;
 impl Processor for MevProcessor {
     type InspectType = Vec<Bundle>;
 
+    #[allow(unused_variables)]
     async fn process_results<DB: DBWriter + LibmdbxReader>(
         db: &'static DB,
         inspectors: &'static [&dyn Inspector<Result = Self::InspectType>],
@@ -48,10 +49,6 @@ impl Processor for MevProcessor {
         {
             let inner_tree = Arc::unwrap_or_clone(tree.clone());
             insert_tree(db, inner_tree, metadata.block_num).await;
-        }
-
-        if tree.tx_roots.is_empty() {
-            return
         }
 
         let ComposerResults { block_details, mev_details, block_analysis, .. } =
