@@ -1,9 +1,9 @@
 use std::{env, error::Error, time::Duration};
 
 use brontes_tracing::BoxedLayer;
-use tracing_subscriber::{Layer, Registry};
 use log_report_layer::TelegramConfig;
 use tracing::Level;
+use tracing_subscriber::{Layer, Registry};
 
 #[cfg(all(feature = "jemalloc", unix))]
 #[global_allocator]
