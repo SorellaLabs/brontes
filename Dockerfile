@@ -6,9 +6,9 @@ RUN apt-get update && apt-get -y upgrade && apt-get install -y libclang-dev pkg-
 RUN cargo install cargo-chef
 WORKDIR /app
 
+COPY . .
 
 FROM chef AS planner
-COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -23,9 +23,7 @@ COPY . .
 RUN cargo +nightly build --release --features "$FEATURES"
 
 FROM alpine AS runtime
-RUN addgroup -S myuser && adduser -S myuser -G myuser
 COPY --from=builder /app/target/release/brontes /usr/local/bin/brontes
-USER myuser
 
 EXPOSE 6923
 ENTRYPOINT ["/usr/local/bin/brontes"]

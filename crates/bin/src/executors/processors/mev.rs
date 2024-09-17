@@ -50,10 +50,6 @@ impl Processor for MevProcessor {
             insert_tree(db, inner_tree, metadata.block_num).await;
         }
 
-        if tree.tx_roots.is_empty() {
-            return
-        }
-
         let ComposerResults { block_details, mev_details, block_analysis, .. } =
             execute_on!(async_inspect, { run_block_inspection(inspectors, data, db) }).await;
 
