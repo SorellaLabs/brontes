@@ -75,7 +75,7 @@ fn init_tracing(verbosity: Directive) {
         vec![
             brontes_tracing::stdout(verbosity),
             brontes_metrics::error_layer::BrontesErrorMetrics::default().boxed(),
-            initialize_telegram_error_layer()
+            initialize_telegram_error_layer(),
         ]
     } else {
         vec![

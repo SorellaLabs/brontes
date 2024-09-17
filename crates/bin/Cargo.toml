@@ -34,7 +34,7 @@ tokio = { workspace = true }
 async-scoped = { version = "0.7.1", features = ["use-tokio"] }
 futures.workspace = true
 
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["blocking"] }
 # Reth
 reth-tasks.workspace = true
 reth-rpc.workspace = true
