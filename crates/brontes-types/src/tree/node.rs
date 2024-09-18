@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use reth_primitives::Address;
-use tracing::error;
+use tracing::{error, warn};
 
 use super::{types::NodeWithDataRef, NodeData};
 use crate::{
@@ -105,7 +105,7 @@ impl Node {
             if let Some(inner) = self.inner.first_mut() {
                 return inner.get_all_children_for_complex_classification(head, nodes)
             }
-            error!("was not able to find node in tree for complex classification");
+            warn!("was not able to find node in tree for complex classification");
             return
         }
 

@@ -6,7 +6,7 @@ use brontes_types::{
 };
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::Address;
-use tracing::error;
+use tracing::warn;
 
 #[derive(Debug, Default)]
 pub struct PossibleCexDex {
@@ -110,7 +110,7 @@ pub fn log_cex_dex_quote_delta(
 
     let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
 
-    error!(
+    warn!(
         "\n\x1b[1;35mSignificant Cex-Dex quote discrepancy detected for {} - {} on {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap:\x1b[0m\n\
            * Rate: {:.7}\n\
