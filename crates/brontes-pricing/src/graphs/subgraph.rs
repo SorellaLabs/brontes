@@ -12,7 +12,10 @@ use std::{
 };
 
 use alloy_primitives::Address;
-use brontes_types::{price_graph_types::*, FastHashMap, FastHashSet};
+use brontes_types::{
+    normalized_actions::comparison::SubordinateAction, price_graph_types::*, FastHashMap,
+    FastHashSet,
+};
 use itertools::Itertools;
 use malachite::{
     num::{
@@ -103,6 +106,7 @@ pub struct PairSubGraph {
     /// will generate a new subgrpah.
     remove_at:              Option<u64>,
 }
+type Liquidity = Rational;
 
 impl PairSubGraph {
     pub fn init(
@@ -865,6 +869,14 @@ impl PairSubGraph {
         }
 
         node_price.remove(&goal).is_none()
+    }
+
+    pub fn first_hop_connections(&self) -> usize {
+        let start: NodeIndex<u16> = self.start_node.into();
+        self.graph
+            .edges_directed(start, Direction::Outgoing)
+            .collect_vec()
+            .len()
     }
 
     pub fn dijkstra_path<T>(&self, state: &FastHashMap<Address, &T>) -> Option<Rational>

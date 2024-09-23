@@ -222,7 +222,7 @@ impl GraphManager {
         self.subgraph_verifier.get_subgraph_extends(pair)
     }
 
-    pub fn get_price(&mut self, pair: Pair, goes_through: Pair) -> Option<Rational> {
+    pub fn get_price(&mut self, pair: Pair, goes_through: Pair) -> Option<(Rational, usize)> {
         let span = error_span!("price generation for block");
         span.in_scope(|| {
             self.sub_graph_registry.get_price(
@@ -267,6 +267,7 @@ impl GraphManager {
                             (
                                 self.sub_graph_registry
                                     .get_price_all(jump_pair.flip(), &state)
+                                    .map(|f|f.0)
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,
                             )
@@ -320,6 +321,7 @@ impl GraphManager {
                                         jump_pair.flip(),
                                         &self.graph_state.finalized_state(),
                                     )
+                                    .map(|f|f.0)
                                     .unwrap_or(Rational::ONE),
                                 jump_pair.0,
                             )
