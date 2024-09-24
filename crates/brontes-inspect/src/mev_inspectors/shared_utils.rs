@@ -446,7 +446,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 (!mev_addresses.contains(address))
                     .then(|| price.clone().unwrap_or_default())
                     // if mev address, return value
-                    .or_else(|| price)
+                    .or(price)
             },
         )?;
 
