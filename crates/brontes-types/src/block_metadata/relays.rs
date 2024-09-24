@@ -1,8 +1,12 @@
+use std::collections::HashSet;
+
 use relays_openapi::apis::{
     configuration::Configuration,
     data_api::{get_delivered_payloads, get_received_bids},
 };
 use reth_primitives::BlockHash;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use strum::IntoEnumIterator;
 
 use super::RelayBlockMetadata;
@@ -138,14 +142,38 @@ impl Relays {
         block_number: u64,
         block_hash: String,
     ) -> eyre::Result<Option<RelayBid>> {
-        let bids = self
+        let mut bids = self
             .get_received_bids(None, None, Some(block_number.to_string()), None, None)
             .await?;
 
-        Ok(bids
-            .into_iter()
-            .filter(|bid| bid.block_hash.to_lowercase() == block_hash.to_lowercase())
-            .min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms)))
+        let find_winning_bid = |bids: Vec<RelayBid>| {
+            bids.into_iter()
+                .filter(|bid| bid.block_hash.to_lowercase() == block_hash.to_lowercase())
+                .min_by(|a, b| a.timestamp_ms.cmp(&b.timestamp_ms))
+        };
+
+        if let Some(winning_bid) = find_winning_bid(bids.clone()) {
+            Ok(Some(winning_bid))
+        } else if matches!(self, Relays::UltraSound) {
+            let slots = bids.iter().map(|bid| bid.slot).collect::<HashSet<_>>();
+            let adj_bids = get_ultrasound_adj(slots).await?;
+
+            bids.iter_mut().for_each(|bid| {
+                adj_bids.iter().for_each(|adj_bid| {
+                    if adj_bid.submitted_block_hash == bid.block_hash
+                        && adj_bid.submitted_value == bid.value
+                        && adj_bid.builder_pubkey == bid.builder_pubkey
+                    {
+                        bid.block_hash = adj_bid.adjusted_block_hash.clone();
+                        bid.value = adj_bid.adjusted_value;
+                    }
+                })
+            });
+
+            Ok(find_winning_bid(bids))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn get_payload(self, block_number: u64) -> eyre::Result<Option<RelayPayload>> {
@@ -218,4 +246,43 @@ impl Relays {
             .map(|payload| RelayPayload::new(payload, *self))
             .collect())
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UltrasoundAdjBidResponse {
+    pub data: Vec<UltrasoundAdjBid>,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UltrasoundAdjBid {
+    pub adjusted_block_hash:   String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub adjusted_value:        u128,
+    pub block_number:          u64,
+    pub builder_pubkey:        String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub delta:                 u128,
+    pub submitted_block_hash:  String,
+    pub submitted_received_at: String,
+    #[serde_as(as = "DisplayFromStr")]
+    pub submitted_value:       u128,
+}
+
+async fn get_ultrasound_adj(slots: HashSet<u64>) -> eyre::Result<Vec<UltrasoundAdjBid>> {
+    let client = &reqwest::Client::new();
+
+    let adjusted = futures::future::join_all(slots.into_iter().map(|slot| async move {
+        let url = format!(
+            "https://relay-analytics.ultrasound.money/ultrasound/v1/data/adjustments?slot={slot}"
+        );
+
+        let bid: UltrasoundAdjBidResponse = client.get(url).send().await?.json().await?;
+        Ok::<_, eyre::ErrReport>(bid.data)
+    }))
+    .await
+    .into_iter()
+    .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(adjusted.into_iter().flatten().collect())
 }
