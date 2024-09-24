@@ -652,7 +652,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             return Some(pct)
                         }
 
-                        None
+                        Some(pct)
                     })
             })
             .collect_vec();
