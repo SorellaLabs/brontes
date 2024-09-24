@@ -148,6 +148,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             MevType::AtomicArb,
         );
 
+        let gas_used = info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
+
         let rev = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::Average,
@@ -161,9 +164,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             has_dex_price = false;
             Some(Rational::ZERO)
         };
-
-        let gas_used = info.gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
         let mut profit = rev
             .map(|rev| rev - &gas_used_usd)

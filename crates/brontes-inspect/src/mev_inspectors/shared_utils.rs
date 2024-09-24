@@ -628,7 +628,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         };
 
 
-                        if pct > max_price_diff  && min_connected < CONNECTION_TH  && min_liquid < LOW_LIQ_TH {
+                        if pct > max_price_diff
+                            && min_connected < CONNECTION_TH
+                                && min_liquid < LOW_LIQ_TH {
                             self.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     mev_type,

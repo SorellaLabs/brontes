@@ -9,7 +9,6 @@ use std::{
         atomic::{AtomicU64, Ordering::SeqCst},
         Arc,
     },
-    u128,
 };
 
 use alloy_primitives::Address;
