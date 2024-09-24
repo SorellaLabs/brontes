@@ -32,6 +32,7 @@ use malachite::{
 use reth_primitives::TxHash;
 
 const CONNECTION_TH: usize = 2;
+const _LOW_LIQ_TH: Rational = Rational::const_from_unsigned(30_000u64);
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
@@ -575,6 +576,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         if swaps.is_empty() {
             return true
         }
+
         let pcts = tokens
             .flat_map(|token| {
                 swaps
@@ -595,7 +597,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             .as_ref()?
                             .price_at(Pair(swap.token_out.address, self.quote), idx)?;
 
-                        let min_connected = std::cmp::min(am_in_price.first_hop_connections, am_out_price.first_hop_connections);
+                        let min_connected = std::cmp::min(
+                            am_in_price.first_hop_connections,
+                            am_out_price.first_hop_connections,
+                        );
 
                         // we reciprocal amount out because we won't have pricing for quote <> token
                         // out but we will have flipped
@@ -617,7 +622,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                         };
 
-                        if pct > max_price_diff  && min_connected < CONNECTION_TH {
+                        if pct > max_price_diff && min_connected < CONNECTION_TH {
                             self.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     mev_type,

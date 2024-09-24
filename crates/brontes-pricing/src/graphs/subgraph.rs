@@ -893,7 +893,7 @@ impl PairSubGraph {
                 let mut min_liq = Rational::from(1_000_000_000u128);
 
                 for pool in pools {
-                    let Some(pool_e) =  state.get(&pool.pool_addr)  else { continue };
+                    let Some(pool_e) = state.get(&pool.pool_addr) else { continue };
                     let (_, quote) = pool_e.tvl(pool.get_base_token());
                     if min_liq > quote {
                         min_liq = quote;

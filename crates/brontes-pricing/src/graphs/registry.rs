@@ -280,9 +280,9 @@ impl SubGraphRegistry {
 
             let price = next_price * &default_price;
             if unordered_pair.eq_unordered(&complete_pair) {
-                Some((price, connections))
+                Some((price, liq, connections))
             } else {
-                Some((price.reciprocal(), connections))
+                Some((price.reciprocal(), liq, connections))
             }
         } else {
             Some((default_price, liq, connections))
