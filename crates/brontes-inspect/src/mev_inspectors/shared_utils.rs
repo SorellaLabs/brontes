@@ -64,7 +64,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         cex: bool,
         at_or_before: bool,
-        filter_fn: impl Fn(Address, Option<Rational>) -> Option<Rational>,
+        filter_fn: impl Fn(&Address, Option<Rational>) -> Option<Rational>,
     ) -> Option<FastHashMap<Address, Rational>> {
         let mut usd_deltas = FastHashMap::default();
 
@@ -87,6 +87,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .1
                 } else if at_or_before {
                     filter_fn(
+                        address,
                         metadata
                             .dex_quotes
                             .as_ref()?
@@ -96,6 +97,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                     )?
                 } else {
                     filter_fn(
+                        address,
                         metadata
                             .dex_quotes
                             .as_ref()?
@@ -441,7 +443,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             at_or_before,
             |address, price| {
                 // if not mev address, we just zero
-                (!mev_addresses.contains(&address))
+                (!mev_addresses.contains(address))
                     .then(|| price.clone().unwrap_or_default())
                     // if mev address, return value
                     .or_else(|| price)
