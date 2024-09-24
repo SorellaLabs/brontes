@@ -147,6 +147,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             MAX_PRICE_DIFF,
             MevType::AtomicArb,
         );
+        tracing::info!(?has_valid_pricing);
 
         let rev = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
