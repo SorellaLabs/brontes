@@ -617,21 +617,18 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                         let pct = if effective_price > dex_pricing_rate {
                             if effective_price == Rational::ZERO {
-                                tracing::info!("zero price");
                                 return None
                             }
                             (&effective_price - &dex_pricing_rate) / &effective_price
                         } else {
                             if dex_pricing_rate == Rational::ZERO {
-                                tracing::info!("zero price");
                                 return None
                             }
                             (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                         };
 
-                        tracing::info!(connections=?min_connected, liq=?min_liquid.clone().to_float());
 
-                        if pct > max_price_diff { // && min_connected < CONNECTION_TH  && min_liquid < LOW_LIQ_TH {
+                        if pct > max_price_diff  && min_connected < CONNECTION_TH  && min_liquid < LOW_LIQ_TH {
                             self.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     mev_type,
