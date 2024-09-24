@@ -64,6 +64,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         cex: bool,
         at_or_before: bool,
+        filter_fn: impl Fn(Address, Option<Rational>) -> Option<Rational>,
     ) -> Option<FastHashMap<Address, Rational>> {
         let mut usd_deltas = FastHashMap::default();
 
@@ -85,19 +86,23 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .price_maker
                         .1
                 } else if at_or_before {
-                    metadata
-                        .dex_quotes
-                        .as_ref()?
-                        .price_at_or_before(pair, tx_position as usize)
-                        .map(|price| price.get_price(at))?
-                        .clone()
+                    filter_fn(
+                        metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at_or_before(pair, tx_position as usize)
+                            .map(|price| price.get_price(at))
+                            .clone(),
+                    )?
                 } else {
-                    metadata
-                        .dex_quotes
-                        .as_ref()?
-                        .price_at(pair, tx_position as usize)
-                        .map(|price| price.get_price(at))?
-                        .clone()
+                    filter_fn(
+                        metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(pair, tx_position as usize)
+                            .map(|price| price.get_price(at))
+                            .clone(),
+                    )?
                 };
 
                 let usd_amount = amount.clone() * price.clone();
@@ -147,47 +152,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 .filter(&filter_actions)
                 .collect::<Vec<_>>()
         })
-    }
-
-    /// defaults to zero for price if doesn't exist
-    pub fn get_available_usd_deltas(
-        &self,
-        tx_index: u64,
-        at: PriceAt,
-        mev_addresses: &FastHashSet<Address>,
-        deltas: &AddressDeltas,
-        metadata: Arc<Metadata>,
-    ) -> Rational {
-        let mut usd_deltas = FastHashMap::default();
-
-        for (address, token_deltas) in deltas {
-            for (token_addr, amount) in token_deltas {
-                if amount == &Rational::ZERO {
-                    continue
-                }
-
-                let pair = Pair(*token_addr, self.quote);
-                let price = metadata
-                    .dex_quotes
-                    .as_ref()
-                    .and_then(|dq| {
-                        dq.price_at(pair, tx_index as usize)
-                            .map(|price| price.get_price(at))
-                    })
-                    .unwrap_or_default();
-
-                let usd_amount = amount.clone() * price;
-
-                *usd_deltas.entry(*address).or_insert(Rational::ZERO) += usd_amount;
-            }
-        }
-
-        let sum = usd_deltas
-            .iter()
-            .filter_map(|(address, delta)| mev_addresses.contains(address).then_some(delta))
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        sum
     }
 
     /// tries to convert transfer over to swaps
@@ -468,8 +432,21 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         at_or_before: bool,
     ) -> Option<Rational> {
-        let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index, at, deltas, metadata.clone(), false, at_or_before)?;
+        let addr_usd_deltas = self.usd_delta_by_address(
+            tx_index,
+            at,
+            deltas,
+            metadata.clone(),
+            false,
+            at_or_before,
+            |address, price| {
+                // if not mev address, we just zero
+                (!mev_addresses.contains(&address))
+                    .then(|| price.clone().unwrap_or_default())
+                    // if mev address, return value
+                    .or_else(|| price)
+            },
+        )?;
 
         let sum = addr_usd_deltas
             .iter()
