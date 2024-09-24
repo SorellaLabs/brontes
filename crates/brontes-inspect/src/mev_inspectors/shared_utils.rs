@@ -31,6 +31,9 @@ use malachite::{
 };
 use reth_primitives::TxHash;
 
+const CONNECTION_TH: usize = 2;
+const LOW_LIQ_TH: Rational = Rational::const_from_unsigned(50_000u64);
+
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
@@ -61,6 +64,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         cex: bool,
         at_or_before: bool,
+        filter_fn: impl Fn(&Address, Option<Rational>) -> Option<Rational>,
     ) -> Option<FastHashMap<Address, Rational>> {
         let mut usd_deltas = FastHashMap::default();
 
@@ -82,19 +86,25 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .price_maker
                         .1
                 } else if at_or_before {
-                    metadata
-                        .dex_quotes
-                        .as_ref()?
-                        .price_at_or_before(pair, tx_position as usize)
-                        .map(|price| price.get_price(at))?
-                        .clone()
+                    filter_fn(
+                        address,
+                        metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at_or_before(pair, tx_position as usize)
+                            .map(|price| price.get_price(at))
+                            .clone(),
+                    )?
                 } else {
-                    metadata
-                        .dex_quotes
-                        .as_ref()?
-                        .price_at(pair, tx_position as usize)
-                        .map(|price| price.get_price(at))?
-                        .clone()
+                    filter_fn(
+                        address,
+                        metadata
+                            .dex_quotes
+                            .as_ref()?
+                            .price_at(pair, tx_position as usize)
+                            .map(|price| price.get_price(at))
+                            .clone(),
+                    )?
                 };
 
                 let usd_amount = amount.clone() * price.clone();
@@ -144,47 +154,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 .filter(&filter_actions)
                 .collect::<Vec<_>>()
         })
-    }
-
-    /// defaults to zero for price if doesn't exist
-    pub fn get_available_usd_deltas(
-        &self,
-        tx_index: u64,
-        at: PriceAt,
-        mev_addresses: &FastHashSet<Address>,
-        deltas: &AddressDeltas,
-        metadata: Arc<Metadata>,
-    ) -> Rational {
-        let mut usd_deltas = FastHashMap::default();
-
-        for (address, token_deltas) in deltas {
-            for (token_addr, amount) in token_deltas {
-                if amount == &Rational::ZERO {
-                    continue
-                }
-
-                let pair = Pair(*token_addr, self.quote);
-                let price = metadata
-                    .dex_quotes
-                    .as_ref()
-                    .and_then(|dq| {
-                        dq.price_at(pair, tx_index as usize)
-                            .map(|price| price.get_price(at))
-                    })
-                    .unwrap_or_default();
-
-                let usd_amount = amount.clone() * price;
-
-                *usd_deltas.entry(*address).or_insert(Rational::ZERO) += usd_amount;
-            }
-        }
-
-        let sum = usd_deltas
-            .iter()
-            .filter_map(|(address, delta)| mev_addresses.contains(address).then_some(delta))
-            .fold(Rational::ZERO, |acc, delta| acc + delta);
-
-        sum
     }
 
     /// tries to convert transfer over to swaps
@@ -465,8 +434,21 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: Arc<Metadata>,
         at_or_before: bool,
     ) -> Option<Rational> {
-        let addr_usd_deltas =
-            self.usd_delta_by_address(tx_index, at, deltas, metadata.clone(), false, at_or_before)?;
+        let addr_usd_deltas = self.usd_delta_by_address(
+            tx_index,
+            at,
+            deltas,
+            metadata.clone(),
+            false,
+            at_or_before,
+            |address, price| {
+                // if not mev address, we just zero
+                (!mev_addresses.contains(address))
+                    .then(|| price.clone().unwrap_or_default())
+                    // if mev address, return value
+                    .or(price)
+            },
+        )?;
 
         let sum = addr_usd_deltas
             .iter()
@@ -573,6 +555,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         if swaps.is_empty() {
             return true
         }
+
         let pcts = tokens
             .flat_map(|token| {
                 swaps
@@ -593,12 +576,23 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             .as_ref()?
                             .price_at(Pair(swap.token_out.address, self.quote), idx)?;
 
+                        let min_connected = std::cmp::min(
+                            am_in_price.first_hop_connections,
+                            am_out_price.first_hop_connections,
+                        );
+
+                        let min_liquid = std::cmp::min(
+                            am_out_price.pool_liquidity.clone(),
+                            am_in_price.pool_liquidity.clone(),
+                        );
+
                         // we reciprocal amount out because we won't have pricing for quote <> token
                         // out but we will have flipped
                         let dex_pricing_rate =
                             (am_out_price.get_price(PriceAt::Average).reciprocal()
                                 * am_in_price.get_price(PriceAt::Average))
                             .reciprocal();
+
 
                         let pct = if effective_price > dex_pricing_rate {
                             if effective_price == Rational::ZERO {
@@ -612,7 +606,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                         };
 
-                        if pct > max_price_diff {
+
+                        if pct > max_price_diff
+                            && min_connected < CONNECTION_TH
+                                && min_liquid < LOW_LIQ_TH {
                             self.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     mev_type,
@@ -630,9 +627,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                 price_delta_pct = %format!("{:.2}%", price_delta_pct),
                                 "Price delta of {price_delta_pct:.2}% exceeds threshold for {mev_type:?} MEV"
                             );
+                            return Some(pct)
                         }
+                        None
 
-                        Some(pct)
                     })
             })
             .collect_vec();

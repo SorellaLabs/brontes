@@ -270,21 +270,22 @@ impl SubGraphRegistry {
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
-    ) -> Option<Rational> {
-        let (next, complete_pair, default_price) =
+    ) -> Option<(Rational, Rational, usize)> {
+        let (next, complete_pair, default_price, connections, liq) =
             self.get_price_once(unordered_pair, goes_through, edge_state)?;
 
         if let Some(next) = next {
-            let next_price = self.get_price_all(next, edge_state)?;
+            // extend is assuemed stable
+            let (next_price, ..) = self.get_price_all(next, edge_state)?;
 
             let price = next_price * &default_price;
             if unordered_pair.eq_unordered(&complete_pair) {
-                Some(price)
+                Some((price, liq, connections))
             } else {
-                Some(price.reciprocal())
+                Some((price.reciprocal(), liq, connections))
             }
         } else {
-            Some(default_price)
+            Some((default_price, liq, connections))
         }
     }
 
@@ -293,7 +294,7 @@ impl SubGraphRegistry {
         unordered_pair: Pair,
         goes_through: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
-    ) -> Option<(Option<Pair>, Pair, Rational)> {
+    ) -> Option<(Option<Pair>, Pair, Rational, usize, Rational)> {
         let pair = unordered_pair.ordered();
 
         self.sub_graphs
@@ -301,7 +302,13 @@ impl SubGraphRegistry {
             .and_then(|g| g.get(&goes_through.ordered()))
             .map(|graph| {
                 tracing::debug!("has graph for goes through");
-                Some((graph.extends_to(), graph.complete_pair(), graph.fetch_price(edge_state)?))
+                Some((
+                    graph.extends_to(),
+                    graph.complete_pair(),
+                    graph.fetch_price(edge_state)?,
+                    graph.first_hop_connections(),
+                    graph.first_hop_min_liq(edge_state).unwrap_or_default(),
+                ))
             })
             // this can happen when we have pools with a token that only has that one pool.
             // this causes a one way and we can't process price. Instead, in this case
@@ -310,7 +317,7 @@ impl SubGraphRegistry {
             .or_else(|| {
                 Some(
                     self.get_price_all(unordered_pair, edge_state)
-                        .map(|price| (None, unordered_pair, price)),
+                        .map(|(price, con, e)| (None, unordered_pair, price, con, e)),
                 )
             })
             .flatten()
@@ -321,8 +328,10 @@ impl SubGraphRegistry {
         &self,
         unordered_pair: Pair,
         edge_state: &FastHashMap<Address, &PoolState>,
-    ) -> Option<Rational> {
+    ) -> Option<(Rational, usize, Rational)> {
         let pair = unordered_pair.ordered();
+        let mut connections = 0;
+        let mut min_liq = Rational::ZERO;
 
         self.sub_graphs.get(&pair).and_then(|f| {
             let mut cnt = Rational::ZERO;
@@ -335,6 +344,14 @@ impl SubGraphRegistry {
                 let Some(next) = graph.fetch_price(edge_state) else {
                     continue;
                 };
+
+                if min_liq == Rational::ZERO {
+                    min_liq = graph.first_hop_min_liq(edge_state).unwrap_or_default();
+                } else if let Some(liq) = graph.first_hop_min_liq(edge_state) {
+                    min_liq = std::cmp::min(min_liq, liq);
+                }
+
+                connections += graph.first_hop_connections();
                 let default_pair = graph.get_unordered_pair();
 
                 // ensure all graph pairs are accumulated in the same way
@@ -345,7 +362,7 @@ impl SubGraphRegistry {
                 };
                 cnt += Rational::ONE;
             }
-            (cnt != Rational::ZERO).then(|| acc / cnt)
+            (cnt != Rational::ZERO).then(|| (acc / cnt, connections, min_liq))
         })
     }
 }

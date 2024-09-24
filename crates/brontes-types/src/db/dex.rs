@@ -45,14 +45,19 @@ use crate::{
     Archive
 ))]
 pub struct DexPrices {
-    pub pre_state:    Rational,
-    pub post_state:   Rational,
+    pub pre_state:             Rational,
+    pub post_state:            Rational,
+    pub pool_liquidity:        Rational,
     /// tells us what variant of pricing for this pool we are looking at
-    pub goes_through: Pair,
+    pub goes_through:          Pair,
     /// lets us know if this price was generated from a transfer. This allows
     /// us to choose a swap that will have a correct goes through for the given
     /// tx over a transfer which will be less accurate on price
-    pub is_transfer:  bool,
+    pub is_transfer:           bool,
+    /// how many connections (pairs) does the address we are trying to price
+    /// have. If it is only 1. then we highly discount the accuracy of the
+    /// price.
+    pub first_hop_connections: usize,
 }
 
 impl Display for DexPrices {
@@ -118,10 +123,12 @@ impl DexQuotes {
 
         if pair.0 == pair.1 {
             return Some(DexPrices {
-                pre_state:    Rational::ONE,
-                post_state:   Rational::ONE,
-                goes_through: Pair::default(),
-                is_transfer:  false,
+                pre_state:             Rational::ONE,
+                post_state:            Rational::ONE,
+                pool_liquidity:        Rational::from(1_000_000),
+                first_hop_connections: usize::MAX,
+                goes_through:          Pair::default(),
+                is_transfer:           false,
             })
         }
 
@@ -155,10 +162,12 @@ impl DexQuotes {
 
         if pair.0 == pair.1 {
             return Some(DexPrices {
-                pre_state:    Rational::ONE,
-                post_state:   Rational::ONE,
-                goes_through: Pair::default(),
-                is_transfer:  false,
+                pre_state:             Rational::ONE,
+                post_state:            Rational::ONE,
+                first_hop_connections: usize::MAX,
+                pool_liquidity:        Rational::from(1_000_000),
+                goes_through:          Pair::default(),
+                is_transfer:           false,
             })
         }
 
@@ -182,10 +191,12 @@ impl DexQuotes {
 
         if pair.0 == pair.1 {
             return Some(DexPrices {
-                pre_state:    Rational::ONE,
-                post_state:   Rational::ONE,
-                goes_through: Pair::default(),
-                is_transfer:  false,
+                pre_state:             Rational::ONE,
+                post_state:            Rational::ONE,
+                first_hop_connections: usize::MAX,
+                pool_liquidity:        Rational::from(1_000_000),
+                goes_through:          Pair::default(),
+                is_transfer:           false,
             })
         }
 
@@ -311,7 +322,17 @@ pub struct DexQuoteWithIndex {
 
 type DexPriceQuotesVec = (
     u64,
-    Vec<((String, String), ((Vec<u64>, Vec<u64>), (Vec<u64>, Vec<u64>), (String, String), bool))>,
+    Vec<(
+        (String, String),
+        (
+            (Vec<u64>, Vec<u64>),
+            (Vec<u64>, Vec<u64>),
+            (Vec<u64>, Vec<u64>),
+            (String, String),
+            bool,
+            u64,
+        ),
+    )>,
 );
 
 impl<'de> Deserialize<'de> for DexQuoteWithIndex {
@@ -328,26 +349,39 @@ impl<'de> Deserialize<'de> for DexQuoteWithIndex {
         let val = des
             .1
             .into_iter()
-            .map(|((pair0, pair1), ((pre_num, pre_den), (post_num, post_den), (g0, g1), t))| {
-                (
-                    Pair(Address::from_str(&pair0).unwrap(), Address::from_str(&pair1).unwrap()),
-                    DexPrices {
-                        pre_state:    Rational::from_naturals(
-                            Natural::from_owned_limbs_asc(pre_num),
-                            Natural::from_owned_limbs_asc(pre_den),
+            .map(
+                |(
+                    (pair0, pair1),
+                    ((pre_num, pre_den), (post_num, post_den), (liq_num, liq_den), (g0, g1), t, c),
+                )| {
+                    (
+                        Pair(
+                            Address::from_str(&pair0).unwrap(),
+                            Address::from_str(&pair1).unwrap(),
                         ),
-                        post_state:   Rational::from_naturals(
-                            Natural::from_owned_limbs_asc(post_num),
-                            Natural::from_owned_limbs_asc(post_den),
-                        ),
-                        goes_through: Pair(
-                            Address::from_str(&g0).unwrap(),
-                            Address::from_str(&g1).unwrap(),
-                        ),
-                        is_transfer:  t,
-                    },
-                )
-            })
+                        DexPrices {
+                            pre_state:             Rational::from_naturals(
+                                Natural::from_owned_limbs_asc(pre_num),
+                                Natural::from_owned_limbs_asc(pre_den),
+                            ),
+                            post_state:            Rational::from_naturals(
+                                Natural::from_owned_limbs_asc(post_num),
+                                Natural::from_owned_limbs_asc(post_den),
+                            ),
+                            pool_liquidity:        Rational::from_naturals(
+                                Natural::from_owned_limbs_asc(liq_num),
+                                Natural::from_owned_limbs_asc(liq_den),
+                            ),
+                            goes_through:          Pair(
+                                Address::from_str(&g0).unwrap(),
+                                Address::from_str(&g1).unwrap(),
+                            ),
+                            is_transfer:           t,
+                            first_hop_connections: c as usize,
+                        },
+                    )
+                },
+            )
             .collect::<Vec<_>>();
         Ok(Self { tx_idx: des.0 as u16, quote: val })
     }

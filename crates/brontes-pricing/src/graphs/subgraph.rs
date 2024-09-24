@@ -317,7 +317,7 @@ impl PairSubGraph {
         &self,
         edge_state: &FastHashMap<Address, &T>,
     ) -> Option<Rational> {
-        self.dijkstra_path(edge_state)
+        self.dijkstra_path(self.start_node.into(), edge_state)
     }
 
     pub fn get_all_pools(&self) -> impl Iterator<Item = &Vec<SubGraphEdge>> + '_ {
@@ -867,12 +867,53 @@ impl PairSubGraph {
         node_price.remove(&goal).is_none()
     }
 
-    pub fn dijkstra_path<T>(&self, state: &FastHashMap<Address, &T>) -> Option<Rational>
+    /// shows how well the given node is.
+    pub fn first_hop_connections(&self) -> usize {
+        let start: NodeIndex<u16> = self.start_node.into();
+        self.graph
+            .edges_directed(start, Direction::Outgoing)
+            .flat_map(|f| f.weight())
+            .count()
+    }
+
+    /// returns the pools liquidity in quote token for the other token that we
+    /// are requesting price for. this allows us to have a good ref to how
+    /// accurate the price is
+    pub fn first_hop_min_liq<T: ProtocolState>(
+        &self,
+        state: &FastHashMap<Address, &T>,
+    ) -> Option<Rational> {
+        let start: NodeIndex<u16> = self.start_node.into();
+        self.graph
+            .edges_directed(start, Direction::Outgoing)
+            .map(|f| (f.weight(), f.target()))
+            .filter_map(|(pools, asset)| {
+                let quote_price = self.dijkstra_path(asset, state)?;
+                let mut min_liq = Rational::from(1_000_000_000u128);
+
+                for pool in pools {
+                    let Some(pool_e) = state.get(&pool.pool_addr) else { continue };
+                    let (_, quote) = pool_e.tvl(pool.get_base_token());
+                    if min_liq > quote {
+                        min_liq = quote;
+                    }
+                }
+
+                Some(quote_price * min_liq)
+            })
+            // dijkstra_path will take the most liquid path so we assume this will be taken
+            .max()
+    }
+
+    pub fn dijkstra_path<T>(
+        &self,
+        start: NodeIndex<u16>,
+        state: &FastHashMap<Address, &T>,
+    ) -> Option<Rational>
     where
         T: ProtocolState,
     {
         let graph = &self.graph;
-        let start: NodeIndex<u16> = self.start_node.into();
         let goal: NodeIndex<u16> = self.end_node.into();
 
         let mut visited = graph.visit_map();
@@ -880,6 +921,7 @@ impl PairSubGraph {
         let mut node_price = FastHashMap::default();
         let mut visit_next = BinaryHeap::new();
         let zero_score = Rational::ZERO;
+
         scores.insert(start, zero_score.clone());
         visit_next.push(MinScored(zero_score, (start, Rational::ONE)));
 

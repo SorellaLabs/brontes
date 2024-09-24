@@ -69,11 +69,8 @@ use tracing::{debug, error, info};
 use types::{DexPriceMsg, PairWithFirstPoolHop, PoolUpdate};
 
 use crate::types::PoolState;
-/// max movement of price in the block before its considered invalid.
-/// currently %90 movement from start price.
-/// If WETH was at 3000$usd. to trigger this. the final price
-/// of the pool would have to end at $350
-const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(9, 10);
+
+const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(99_999, 100_000);
 
 pub struct BrontesBatchPricer<T: TracingProvider> {
     range_id:        usize,
@@ -297,9 +294,13 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         });
     }
 
-    fn get_dex_price(&mut self, pool_pair: Pair, goes_through: Pair) -> Option<Rational> {
+    fn get_dex_price(
+        &mut self,
+        pool_pair: Pair,
+        goes_through: Pair,
+    ) -> Option<(Rational, Rational, usize)> {
         if pool_pair.0 == pool_pair.1 {
-            return Some(Rational::ONE)
+            return Some((Rational::ONE, Rational::from(1_000_000), usize::MAX))
         }
         self.graph_manager.get_price(pool_pair, goes_through)
     }
@@ -371,7 +372,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
         let flipped_pool = pool_pair.flip();
 
-        if let Some(price0) = self.get_dex_price(pair0, pool_pair) {
+        if let Some((price0, pool_liq, connections)) = self.get_dex_price(pair0, pool_pair) {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -395,15 +396,17 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             if !bad {
                 let price0 = DexPrices {
                     post_state: price0.clone(),
+                    pool_liquidity: pool_liq,
                     pre_state: price0,
                     goes_through: pool_pair,
+                    first_hop_connections: connections,
                     is_transfer,
                 };
                 self.store_dex_price(block, tx_idx, pair0, price0);
             }
         };
 
-        if let Some(price1) = self.get_dex_price(pair1, flipped_pool) {
+        if let Some((price1, pool_liq, connections)) = self.get_dex_price(pair1, flipped_pool) {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -427,7 +430,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 let price1 = DexPrices {
                     post_state: price1.clone(),
                     pre_state: price1,
+                    pool_liquidity: pool_liq,
                     goes_through: flipped_pool,
+                    first_hop_connections: connections,
                     is_transfer,
                 };
                 self.store_dex_price(block, tx_idx, pair1, price1);
@@ -458,7 +463,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         let price0_post = self.get_dex_price(pair0, pool_pair);
         let price1_post = self.get_dex_price(pair1, flipped_pool);
 
-        if let (Some(price0_pre), Some(price0_post)) = (price0_pre, price0_post) {
+        if let (Some((price0_pre, _, con)), Some((price0_post, pool_liq, _))) =
+            (price0_pre, price0_post)
+        {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -487,6 +494,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         pre_state: price0_pre,
                         post_state: price0_post,
                         goes_through: pool_pair,
+                        pool_liquidity: pool_liq,
+                        first_hop_connections: con,
                         is_transfer,
                     },
                 );
@@ -503,7 +512,9 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             debug!(?tx_idx, ?block, ?pair0, ?pool_pair, "no pricing for pair");
         }
 
-        if let (Some(price1_pre), Some(price1_post)) = (price1_pre, price1_post) {
+        if let (Some((price1_pre, _, con)), Some((price1_post, pool_liq, _))) =
+            (price1_pre, price1_post)
+        {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
@@ -531,6 +542,8 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         pre_state: price1_pre,
                         post_state: price1_post,
                         goes_through: flipped_pool,
+                        pool_liquidity: pool_liq,
+                        first_hop_connections: con,
                         is_transfer,
                     },
                 );

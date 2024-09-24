@@ -21,7 +21,7 @@ use crate::{
     shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT, MIN_PROFIT,
 };
 
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99995, 100000);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99, 100);
 
 // figure out why
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
@@ -148,6 +148,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             MevType::AtomicArb,
         );
 
+        let gas_used = info.gas_details.gas_paid();
+        let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
+
         let rev = if let Some(rev) = self.utils.get_deltas_usd(
             info.tx_index,
             PriceAt::Average,
@@ -161,9 +164,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             has_dex_price = false;
             Some(Rational::ZERO)
         };
-
-        let gas_used = info.gas_details.gas_paid();
-        let gas_used_usd = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
         let mut profit = rev
             .map(|rev| rev - &gas_used_usd)
@@ -725,6 +725,23 @@ mod tests {
             .needs_tokens(vec![WETH_ADDRESS])
             .with_expected_profit_usd(70154.70)
             .with_gas_paid_usd(1458.25);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_not_zero_on_non_mev() {
+        let inspector_util = InspectorTestUtils::new(USDC_ADDRESS, 5.5).await;
+
+        let config = InspectorTxRunConfig::new(Inspectors::AtomicArb)
+            .with_mev_tx_hashes(vec![hex!(
+                "e4e6860fc2ae666c417a088caa96f62da073a8f4fb08ef74faf831407b84f0af"
+            )
+            .into()])
+            .with_dex_prices()
+            .needs_tokens(vec![WETH_ADDRESS])
+            .with_expected_profit_usd(11.218)
+            .with_gas_paid_usd(51.14);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
