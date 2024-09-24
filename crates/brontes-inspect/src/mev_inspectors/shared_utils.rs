@@ -32,7 +32,7 @@ use malachite::{
 use reth_primitives::TxHash;
 
 const CONNECTION_TH: usize = 2;
-const LOW_LIQ_TH: Rational = Rational::const_from_unsigned(30_000u64);
+const LOW_LIQ_TH: Rational = Rational::const_from_unsigned(50_000u64);
 
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
@@ -629,8 +629,8 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             );
                             return Some(pct)
                         }
+                        None
 
-                        Some(pct)
                     })
             })
             .collect_vec();
