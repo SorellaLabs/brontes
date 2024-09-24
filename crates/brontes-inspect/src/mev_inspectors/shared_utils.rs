@@ -31,6 +31,8 @@ use malachite::{
 };
 use reth_primitives::TxHash;
 
+const CONNECTION_TH: usize = 2;
+
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
@@ -593,12 +595,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             .as_ref()?
                             .price_at(Pair(swap.token_out.address, self.quote), idx)?;
 
+                        let min_connected = std::cmp::min(am_in_price.first_hop_connections, am_out_price.first_hop_connections);
+
                         // we reciprocal amount out because we won't have pricing for quote <> token
                         // out but we will have flipped
                         let dex_pricing_rate =
                             (am_out_price.get_price(PriceAt::Average).reciprocal()
                                 * am_in_price.get_price(PriceAt::Average))
                             .reciprocal();
+
 
                         let pct = if effective_price > dex_pricing_rate {
                             if effective_price == Rational::ZERO {
@@ -612,7 +617,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                             (&dex_pricing_rate - &effective_price) / &dex_pricing_rate
                         };
 
-                        if pct > max_price_diff {
+                        if pct > max_price_diff  && min_connected < CONNECTION_TH {
                             self.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     mev_type,
@@ -630,9 +635,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                 price_delta_pct = %format!("{:.2}%", price_delta_pct),
                                 "Price delta of {price_delta_pct:.2}% exceeds threshold for {mev_type:?} MEV"
                             );
+                            return Some(pct)
                         }
 
-                        Some(pct)
+                        None
+
                     })
             })
             .collect_vec();

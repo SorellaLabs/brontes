@@ -21,7 +21,7 @@ use crate::{
     shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT, MIN_PROFIT,
 };
 
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99995, 100000);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(995, 1000);
 
 // figure out why
 pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {

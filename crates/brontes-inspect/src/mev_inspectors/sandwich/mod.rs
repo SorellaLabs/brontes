@@ -33,7 +33,7 @@ type VictimSetActions = Option<Vec<Vec<(Vec<NormalizedSwap>, Vec<NormalizedTrans
 /// the price difference was more than 90% between dex pricing and effective
 /// price, we put this so high due to the inner swap price manipulation
 /// effect that sandwich has
-const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(99995, 100000);
+const MAX_PRICE_DIFF: Rational = Rational::const_from_unsigneds(995, 1000);
 const MAX_NON_SWAP_FRONTRUN: Rational = Rational::const_from_unsigned(5000);
 
 pub struct SandwichInspector<'db, DB: LibmdbxReader> {
