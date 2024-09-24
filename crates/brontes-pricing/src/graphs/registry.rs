@@ -307,7 +307,7 @@ impl SubGraphRegistry {
                     graph.complete_pair(),
                     graph.fetch_price(edge_state)?,
                     graph.first_hop_connections(),
-                    graph.first_hop_min_liq(edge_state)?,
+                    graph.first_hop_min_liq(edge_state).unwrap_or_default(),
                 ))
             })
             // this can happen when we have pools with a token that only has that one pool.
