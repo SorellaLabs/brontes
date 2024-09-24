@@ -631,7 +631,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
                         tracing::info!(connections=?min_connected, liq=?min_liquid.clone().to_float());
 
-                        if pct > max_price_diff && min_connected < CONNECTION_TH  && min_liquid < LOW_LIQ_TH {
+                        if pct > max_price_diff { // && min_connected < CONNECTION_TH  && min_liquid < LOW_LIQ_TH {
                             self.get_metrics().inspect(|m| {
                                 m.bad_dex_pricing(
                                     mev_type,
