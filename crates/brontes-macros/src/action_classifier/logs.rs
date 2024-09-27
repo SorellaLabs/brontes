@@ -433,7 +433,7 @@ impl<'a> LogData<'a> {
                     )*
                     );
 
-                    ::tracing::error!(?call_info,
+                    ::tracing::warn!(?call_info,
                                       ?self,
                                       "decoding a default log failed, this should never occur,
                                       please make a issue if you come across this"

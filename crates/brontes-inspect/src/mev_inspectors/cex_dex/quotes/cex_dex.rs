@@ -120,7 +120,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexQuotesInspector<'_, DB> {
         let BlockData { metadata, tree } = block;
 
         if metadata.cex_quotes.quotes.is_empty() {
-            tracing::error!("no cex quotes for this block");
+            tracing::warn!("no cex quotes for this block");
             return vec![]
         }
 

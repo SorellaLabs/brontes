@@ -146,7 +146,7 @@ impl Node {
             return last.get_all_children_for_complex_classification(head, nodes)
         }
 
-        error!("was not able to find node in tree, should be unreachable");
+        warn!("was not able to find node in tree, should be unreachable");
     }
 
     pub fn modify_node_if_contains_childs<F, V: NormalizedAction>(
@@ -410,7 +410,7 @@ impl Node {
             if let Some(inner) = self.inner.first_mut() {
                 return inner.clear_node_data(index, data)
             }
-            error!("was not able to find node in tree for clearing node data");
+            warn!("was not able to find node in tree for clearing node data");
             return
         }
 
@@ -449,7 +449,7 @@ impl Node {
             return last.clear_node_data(index, data)
         }
 
-        error!("was not able to find node in tree, should be unreachable");
+        warn!("was not able to find node in tree, should be unreachable");
     }
 
     pub fn remove_node_and_children<V: NormalizedAction>(
@@ -469,7 +469,7 @@ impl Node {
             if let Some(inner) = self.inner.first_mut() {
                 return inner.remove_node_and_children(index, data)
             }
-            error!("was not able to find node in tree for removing node data");
+            warn!("was not able to find node in tree for removing node data");
             return
         }
 
@@ -508,7 +508,7 @@ impl Node {
             return last.remove_node_and_children(index, data)
         }
 
-        error!("was not able to find node in tree, should be unreachable");
+        warn!("was not able to find node in tree, should be unreachable");
     }
 
     // only grabs the lowest subset of specified actions

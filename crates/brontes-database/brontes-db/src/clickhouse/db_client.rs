@@ -436,7 +436,7 @@ impl ClickhouseHandle for Clickhouse {
             self.get_private_flow(tx_hashes_in_block)
         )
         .inspect_err(|e| {
-            tracing::error!("error getting block metadata - {:?}", e);
+            tracing::warn!("error getting block metadata - {:?}", e);
         })?;
 
         let block_meta = BlockMetadataInner::make_new(
@@ -455,7 +455,7 @@ impl ClickhouseHandle for Clickhouse {
             .await?;
 
         if cex_quotes_for_block.is_empty() {
-            tracing::error!("loaded zero cex quotes. check backend");
+            tracing::warn!("loaded zero cex quotes. check backend");
             return Err(eyre::eyre!("error loading cex quotes"))
         }
 

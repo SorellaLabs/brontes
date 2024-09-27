@@ -30,7 +30,7 @@ use redefined::{Redefined, RedefinedConvert};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 #[allow(unused_imports)]
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
-use tracing::error;
+use tracing::warn;
 
 use super::types::CexQuote;
 use crate::{
@@ -533,7 +533,7 @@ fn log_significant_price_difference(
     intermediary: &str,
     tx_hash: Option<&TxHash>,
 ) {
-    error!(
+    warn!(
         "   \n\x1b[1;31mSignificant price difference detected for {} - {} on {}:\x1b[0m\n\
                 - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
                 - \x1b[1;34mCEX Combined Quote:\x1b[0m {:.6}\n\
@@ -565,7 +565,7 @@ fn log_significant_cross_exchange_vmap_difference(
     token_out_address: &Address,
     token_in_address: &Address,
 ) {
-    error!(
+    warn!(
         "   \n\x1b[1;31mSignificant price difference in cross exchange VMAP detected for {} - {} on VWAP:\x1b[0m\n\
                 - \x1b[1;34mDEX Swap Rate:\x1b[0m {:.6}\n\
                 - \x1b[1;34mCEX VMAP Quote:\x1b[0m {:.6}\n\

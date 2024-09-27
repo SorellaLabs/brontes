@@ -14,6 +14,6 @@ CREATE TABLE brontes.dex_price_mapping ON CLUSTER eth_cluster0
     )),
     `last_updated` UInt64 DEFAULT now()
 )
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/dex_price_mapping', '{replica}', `last_updated`)
+ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/dex_price_mapping_new', '{replica}', `last_updated`)
 PRIMARY KEY (`block_number`, `tx_idx`)
 ORDER BY(`block_number`, `tx_idx`)
