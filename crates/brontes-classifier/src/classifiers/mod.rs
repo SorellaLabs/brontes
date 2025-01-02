@@ -41,6 +41,9 @@ pub use clipper::*;
 pub mod dodo;
 pub use dodo::*;
 
+pub mod maverick_v2;
+pub use maverick_v2::*;
+
 discovery_dispatch!(
     DiscoveryClassifier,
     SushiSwapV2Discovery,
@@ -63,7 +66,8 @@ discovery_dispatch!(
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
     BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery
+    BalancerV1SmartPoolDiscovery,
+    MaverickV2PoolDiscovery
 );
 
 action_dispatch!(
@@ -208,5 +212,6 @@ action_dispatch!(
     DodoSellSharesCall,
     DodoSellBaseCall,
     DodoSellQuoteCall,
-    DodoFlashLoanCall
+    DodoFlashLoanCall,
+    MaverickV2SwapCall,
 );

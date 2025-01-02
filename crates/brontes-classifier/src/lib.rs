@@ -66,6 +66,7 @@ sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProv
 sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
 sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
 sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
+sol!(MaverickV2Pool, "./classifier-abis/maverick_v2/MaverickV2Pool.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
@@ -83,7 +84,7 @@ sol!(BalancerV1SmartPoolFactory, "./classifier-abis/balancer/BalancerV1CrpFactor
 sol!(DodoDVMFactory, "./classifier-abis/dodo/DVMFactory.json");
 sol!(DodoDPPFactory, "./classifier-abis/dodo/DPPFactory.json");
 sol!(DodoDSPFactory, "./classifier-abis/dodo/DSPFactory.json");
-
+sol!(MaverickV2Factory, "./classifier-abis/maverick_v2/MaverickV2Factory.json");
 // Balancer Pool Interfaces
 sol! {
     enum SwapKind {

@@ -101,6 +101,7 @@ utils!(
         ClipperExchange,
         PropellerLabsSolver,
         Dodo,
+        MaverickV2,
         #[default]
         Unknown,
     }
@@ -146,6 +147,7 @@ impl Protocol {
             Protocol::ClipperExchange => ("ClipperExchange", ""),
             Protocol::PropellerLabsSolver => ("Propeller Labs Solver", ""),
             Protocol::Dodo => ("Dodo", "V1/V2"),
+            Protocol::MaverickV2 => ("Maverick", "V2"),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
@@ -173,6 +175,7 @@ impl Protocol {
             "dodov1/v2" => Protocol::Dodo,
             "pancakeswapv2" => Protocol::PancakeSwapV2,
             "pancakeswapv3" => Protocol::PancakeSwapV3,
+            "maverickv2" => Protocol::MaverickV2,
             _ => Protocol::Unknown,
         }
     }
@@ -230,6 +233,7 @@ impl fmt::Display for Protocol {
                 Protocol::ClipperExchange => "Clipper",
                 Protocol::PropellerLabsSolver => "Propeller Labs",
                 Protocol::Dodo => "Dodo",
+                Protocol::MaverickV2 => "Maverick V2",
                 Protocol::Unknown => "Unknown",
             }
         )
