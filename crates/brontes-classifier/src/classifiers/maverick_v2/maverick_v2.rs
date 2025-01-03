@@ -148,7 +148,7 @@ mod tests {
             TokenInfoWithAddress::weth(),
         ];
 
-        classifier_utils.ensure_token(token[0].clone());
+        classifier_utils.ensure_token(tokens[0].clone());
 
         classifier_utils.ensure_protocol(
             Protocol::MaverickV2,

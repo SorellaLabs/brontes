@@ -66,8 +66,7 @@ discovery_dispatch!(
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
     BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery,
-    MaverickV2PoolDiscovery
+    BalancerV1SmartPoolDiscovery
 );
 
 action_dispatch!(
@@ -214,4 +213,10 @@ action_dispatch!(
     DodoSellQuoteCall,
     DodoFlashLoanCall,
     MaverickV2SwapCall,
+    MaverickV2AddLiquidityCall,
+    MaverickV2RemoveLiquidityCall,
+    MaverickV2Create_0Call,
+    MaverickV2Create_1Call,
+    MaverickV2CreatePermissioned_0Call,
+    MaverickV2CreatePermissioned_1Call
 );
