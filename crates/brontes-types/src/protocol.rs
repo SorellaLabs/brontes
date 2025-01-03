@@ -105,6 +105,7 @@ utils!(
         CamelotV2,
         CamelotV3,
         Dexalot,
+        LFJ,
         #[default]
         Unknown,
     }
@@ -154,6 +155,7 @@ impl Protocol {
             Protocol::CamelotV2 => ("Camelot", "V2"),
             Protocol::CamelotV3 => ("Camelot", "V3"),
             Protocol::Dexalot => ("Dexalot", ""),
+            Protocol::LFJ => ("LFJ", "V2"),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
@@ -185,6 +187,7 @@ impl Protocol {
             "camelotv2" => Protocol::CamelotV2,
             "camelotv3" => Protocol::CamelotV3,
             "dexalot" => Protocol::Dexalot,
+            "lfj" => Protocol::LFJ,
             _ => Protocol::Unknown,
         }
     }
@@ -246,6 +249,7 @@ impl fmt::Display for Protocol {
                 Protocol::CamelotV2 => "Camelot V2",
                 Protocol::CamelotV3 => "Camelot V3",
                 Protocol::Dexalot => "Dexalot",
+                Protocol::LFJ => "LFJ",
                 Protocol::Unknown => "Unknown",
             }
         )

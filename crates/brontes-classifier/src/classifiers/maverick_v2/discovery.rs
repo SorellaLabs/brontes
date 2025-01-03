@@ -117,7 +117,7 @@ mod tests {
 
         let new_pool = Action::NewPool(NormalizedNewPool {
             trace_index:  1,
-            protocol:     Protocol::Dodo,
+            protocol:     Protocol::MaverickV2,
             pool_address: Address::new(hex!("ea2c9470aec6251ef10a28d783ab877d17706bc4")),
             tokens:       vec![
                 Address::new(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")),

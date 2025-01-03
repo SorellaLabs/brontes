@@ -1,0 +1,248 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "swapForY",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "swap",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "amountsOut",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "liquidityConfigs",
+        "type": "bytes32[]"
+      },
+      {
+        "internalType": "address",
+        "name": "refundTo",
+        "type": "address"
+      }
+    ],
+    "name": "mint",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "amountsReceived",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "amountsLeft",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "liquidityMinted",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "amountsToBurn",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "burn",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "amounts",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "collectProtocolFees",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "collectedProtocolFees",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "feeRecipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "protocolFees",
+        "type": "bytes32"
+      }
+    ],
+    "name": "CollectedProtocolFees",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "id",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "amountsIn",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "amountsOut",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint24",
+        "name": "volatilityAccumulator",
+        "type": "uint24"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "totalFees",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "protocolFees",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Swap",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32[]",
+        "name": "amounts",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "DepositedToBins",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32[]",
+        "name": "amounts",
+        "type": "bytes32[]"
+      }
+    ],
+    "name": "WithdrawnFromBins",
+    "type": "event"
+  }
+]

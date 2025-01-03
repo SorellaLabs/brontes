@@ -50,6 +50,9 @@ pub use camelot::*;
 pub mod dexalot;
 pub use dexalot::*;
 
+pub mod lfj;
+pub use lfj::*;
+
 discovery_dispatch!(
     DiscoveryClassifier,
     SushiSwapV2Discovery,
@@ -58,21 +61,21 @@ discovery_dispatch!(
     UniswapV3Discovery,
     PancakeSwapV3Discovery,
     PancakeSwapV2Discovery,
-    CurveV1MetaDiscovery,
+    // CurveV1MetaDiscovery,
     CurveV2PlainDiscovery0,
     CurveV2PlainDiscovery1,
     CurveV2PlainDiscovery2,
     CurveV2MetaDiscovery0,
     CurveV2MetaDiscovery1,
-    CurvecrvUSDPlainDiscovery0,
-    CurvecrvUSDPlainDiscovery1,
-    CurvecrvUSDPlainDiscovery2,
-    CurvecrvUSDMetaDiscovery0,
-    CurvecrvUSDMetaDiscovery1,
+    // CurvecrvUSDPlainDiscovery0,
+    // CurvecrvUSDPlainDiscovery1,
+    // CurvecrvUSDPlainDiscovery2,
+    // CurvecrvUSDMetaDiscovery0,
+    // CurvecrvUSDMetaDiscovery1,
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
-    BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery,
+    // BalancerV1CoreDiscovery,
+    // BalancerV1SmartPoolDiscovery,
     CamelotV2Discovery,
     CamelotV3Discovery
 );
@@ -232,4 +235,9 @@ action_dispatch!(
     CamelotV3SwapCall,
     DexalotPartialSwapCall,
     DexalotSimpleSwapCall,
+    LFJCreateLBPairCall,
+    LFJSwapCall,
+    LFJMintCall,
+    LFJBurnCall,
+    LFJCollectProtocolFeesCall
 );
