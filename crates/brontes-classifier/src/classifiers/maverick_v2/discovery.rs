@@ -135,31 +135,4 @@ mod tests {
             .await
             .unwrap();
     }
-
-    #[brontes_macros::test]
-    async fn test_dodo_dpp_discovery() {
-        let classifier_utils = ClassifierTestUtils::new().await;
-        let tx =
-            B256::from(hex!("6268fa8c5bf169e319d9e16734adc34199c8b0d7256bd9cec6aa18b7c18f1bcc"));
-
-        let new_pool = Action::NewPool(NormalizedNewPool {
-            trace_index:  10,
-            protocol:     Protocol::Dodo,
-            pool_address: Address::new(hex!("0b16EeAb0f35f07011886F3e72A8cd468a0009ed")),
-            tokens:       vec![
-                Address::new(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")),
-                Address::new(hex!("9d71CE49ab8A0E6D2a1e7BFB89374C9392FD6804")),
-            ],
-        });
-
-        classifier_utils
-            .contains_action(
-                tx,
-                0,
-                new_pool,
-                TreeSearchBuilder::default().with_action(Action::is_new_pool),
-            )
-            .await
-            .unwrap();
-    }
 }
