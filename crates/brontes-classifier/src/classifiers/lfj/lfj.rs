@@ -137,15 +137,18 @@ action_impl!(
     Protocol::LFJ,
     crate::LFJPair::collectProtocolFeesCall,
     Collect,
-    [Collect],
+    [CollectedProtocolFees],
     call_data: true,
     return_data: true,
+    logs: true,
     |
     info: CallInfo,
     call_data: collectProtocolFeesCall,
     return_data: collectProtocolFeesReturn,
+    _logs: LFJCollectProtocolFeesCallLogs,
     db_tx: &DB
     | {
+        let logs=_logs.collected_protocol_fees_field?;
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token_0, token_1] = [details.token0, details.token1];
 
@@ -155,12 +158,12 @@ action_impl!(
         let collected_protocol_fees = return_data.collectedProtocolFees;
 
         // Extract the lower and upper 16 bytes from the 32-byte array
-        let lower_16_bytes = &collected_protocol_fees[0..16];
-        let upper_16_bytes = &collected_protocol_fees[16..32];
+        let lower_16_bytes: [u8; 16] = collected_protocol_fees[0..16].try_into().expect("slice with incorrect length");
+        let upper_16_bytes: [u8; 16] = collected_protocol_fees[16..32].try_into().expect("slice with incorrect length");
 
         // Convert each 16-byte array into a U256
-        let lower_u256 = U256::from_be_bytes(lower_16_bytes.try_into().expect("slice with incorrect length"));
-        let upper_u256 = U256::from_be_bytes(upper_16_bytes.try_into().expect("slice with incorrect length"));
+        let lower_u256 = U256::from_be_bytes(lower_16_bytes);
+        let upper_u256 = U256::from_be_bytes(upper_16_bytes);
 
         let am0 = lower_u256.to_scaled_rational(t0_info.decimals);
         let am1 = upper_u256.to_scaled_rational(t1_info.decimals);
@@ -169,7 +172,7 @@ action_impl!(
             protocol: Protocol::LFJ,
             trace_index: info.trace_idx,
             from: info.from_address,
-            recipient: call_data.to,
+            recipient: logs.feeRecipient,
             pool: info.target_address,
             token: vec![t0_info, t1_info],
             amount: vec![am0, am1],
@@ -184,7 +187,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Action, Protocol::UniswapV3,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Action, Protocol::LFJ,
         TreeSearchBuilder,
     };
 
