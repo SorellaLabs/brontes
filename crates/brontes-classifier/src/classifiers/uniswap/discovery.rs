@@ -5,7 +5,7 @@ use brontes_pricing::Protocol;
 discovery_impl!(
     UniswapV2Discovery,
     crate::UniswapV2Factory::createPairCall,
-    0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f,
+    0xf1D7CC64Fb4452F05c498126312eBE29f30Fbcf9,
     |deployed_address: Address, trace_index: u64, call_data: createPairCall, _| async move {
         let mut token_a = call_data.tokenA;
         let mut token_b = call_data.tokenB;
