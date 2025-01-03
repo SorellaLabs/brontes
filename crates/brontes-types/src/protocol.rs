@@ -104,6 +104,7 @@ utils!(
         MaverickV2,
         CamelotV2,
         CamelotV3,
+        Dexalot,
         #[default]
         Unknown,
     }
@@ -152,6 +153,7 @@ impl Protocol {
             Protocol::MaverickV2 => ("Maverick", "V2"),
             Protocol::CamelotV2 => ("Camelot", "V2"),
             Protocol::CamelotV3 => ("Camelot", "V3"),
+            Protocol::Dexalot => ("Dexalot", ""),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
@@ -182,6 +184,7 @@ impl Protocol {
             "maverickv2" => Protocol::MaverickV2,
             "camelotv2" => Protocol::CamelotV2,
             "camelotv3" => Protocol::CamelotV3,
+            "dexalot" => Protocol::Dexalot,
             _ => Protocol::Unknown,
         }
     }
@@ -242,6 +245,7 @@ impl fmt::Display for Protocol {
                 Protocol::MaverickV2 => "Maverick V2",
                 Protocol::CamelotV2 => "Camelot V2",
                 Protocol::CamelotV3 => "Camelot V3",
+                Protocol::Dexalot => "Dexalot",
                 Protocol::Unknown => "Unknown",
             }
         )

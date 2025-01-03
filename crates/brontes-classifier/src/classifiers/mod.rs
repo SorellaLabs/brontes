@@ -47,6 +47,9 @@ pub use maverick_v2::*;
 pub mod camelot;
 pub use camelot::*;
 
+pub mod dexalot;
+pub use dexalot::*;
+
 discovery_dispatch!(
     DiscoveryClassifier,
     SushiSwapV2Discovery,
@@ -226,5 +229,7 @@ action_dispatch!(
     MaverickV2CreatePermissioned_1Call,
     CamelotV2Swap_0Call,
     CamelotV2Swap_1Call,
-    CamelotV3SwapCall
+    CamelotV3SwapCall,
+    DexalotPartialSwapCall,
+    DexalotSimpleSwapCall,
 );

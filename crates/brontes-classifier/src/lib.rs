@@ -69,6 +69,7 @@ sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
 sol!(MaverickV2Pool, "./classifier-abis/maverick_v2/MaverickV2Pool.json");
 sol!(CamelotV2, "./classifier-abis/CamelotV2Pair.json");
 sol!(CamelotV3, "./classifier-abis/Algebra1_9Pool.json");
+sol!(Dexalot, "./classifier-abis/Dexalot.json");
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
