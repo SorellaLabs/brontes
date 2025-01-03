@@ -102,6 +102,8 @@ utils!(
         PropellerLabsSolver,
         Dodo,
         MaverickV2,
+        CamelotV2,
+        CamelotV3,
         #[default]
         Unknown,
     }
@@ -148,6 +150,8 @@ impl Protocol {
             Protocol::PropellerLabsSolver => ("Propeller Labs Solver", ""),
             Protocol::Dodo => ("Dodo", "V1/V2"),
             Protocol::MaverickV2 => ("Maverick", "V2"),
+            Protocol::CamelotV2 => ("Camelot", "V2"),
+            Protocol::CamelotV3 => ("Camelot", "V3"),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
@@ -176,6 +180,8 @@ impl Protocol {
             "pancakeswapv2" => Protocol::PancakeSwapV2,
             "pancakeswapv3" => Protocol::PancakeSwapV3,
             "maverickv2" => Protocol::MaverickV2,
+            "camelotv2" => Protocol::CamelotV2,
+            "camelotv3" => Protocol::CamelotV3,
             _ => Protocol::Unknown,
         }
     }
@@ -234,6 +240,8 @@ impl fmt::Display for Protocol {
                 Protocol::PropellerLabsSolver => "Propeller Labs",
                 Protocol::Dodo => "Dodo",
                 Protocol::MaverickV2 => "Maverick V2",
+                Protocol::CamelotV2 => "Camelot V2",
+                Protocol::CamelotV3 => "Camelot V3",
                 Protocol::Unknown => "Unknown",
             }
         )

@@ -44,6 +44,9 @@ pub use dodo::*;
 pub mod maverick_v2;
 pub use maverick_v2::*;
 
+pub mod camelot;
+pub use camelot::*;
+
 discovery_dispatch!(
     DiscoveryClassifier,
     SushiSwapV2Discovery,
@@ -66,7 +69,9 @@ discovery_dispatch!(
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
     BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery
+    BalancerV1SmartPoolDiscovery,
+    CamelotV2Discovery,
+    CamelotV3Discovery
 );
 
 action_dispatch!(
@@ -218,5 +223,8 @@ action_dispatch!(
     MaverickV2Create_0Call,
     MaverickV2Create_1Call,
     MaverickV2CreatePermissioned_0Call,
-    MaverickV2CreatePermissioned_1Call
+    MaverickV2CreatePermissioned_1Call,
+    CamelotV2Swap_0Call,
+    CamelotV2Swap_1Call,
+    CamelotV3SwapCall
 );

@@ -169,12 +169,12 @@ mod tests {
             pool:        Address::new(hex!("57dae55c697929ffb920942ad25b10908eddc56e")),
             token_in:    tokens[0].clone(),
             token_out:   tokens[1].clone(),
-            amount_in:   vec![U256::from_str("704897023978838744")
+            amount_in:   U256::from_str("704897023978838744")
                 .unwrap()
-                .to_scaled_rational(18)],
-            amount_out:  vec![U256::from_str("704897023978838744")
+                .to_scaled_rational(18),
+            amount_out:  U256::from_str("704897023978838744")
                 .unwrap()
-                .to_scaled_rational(18)],
+                .to_scaled_rational(18),
             msg_value:   U256::ZERO,
         });
 
