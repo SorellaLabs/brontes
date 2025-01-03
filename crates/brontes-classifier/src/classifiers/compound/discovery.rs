@@ -2,6 +2,24 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedNewPool, structured_trace::CallInfo};
 
+/// governor -(execute)-> comet factory -(deploy)-> comet (based on comet
+/// so based on the clone calldata we can extract the tokens
+/// configurator)
+action_impl!(
+    Protocol::CompoundV3,
+    crate::CometConfigurator::setConfigurationCall,
+    NewPool,
+    [],
+    call_data: true,
+    |info: CallInfo, call_data:CompoundV3SetConfigurationCall, _| {
+        Ok(NormalizedNewPool {
+            trace_index: info.trace_idx,
+            protocol: Protocol::CompoundV3,
+            pool_address: call_data.cometProxy,
+            tokens: vec![call_data.newConfiguration.baseToken]
+        })
+    }
+);
 action_impl!(
     Protocol::CompoundV2,
     crate::CErc20Delegate::initialize_0Call,
