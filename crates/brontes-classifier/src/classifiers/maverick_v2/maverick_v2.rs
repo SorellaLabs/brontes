@@ -1,6 +1,8 @@
 use brontes_macros::action_impl;
 use brontes_types::{
-    normalized_actions::NormalizedSwap, structured_trace::CallInfo, Protocol, ToScaledRational,
+    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap},
+    structured_trace::CallInfo,
+    Protocol, ToScaledRational,
 };
 use reth_primitives::U256;
 
@@ -44,6 +46,75 @@ action_impl!(
             amount_in,
             amount_out,
             msg_value: info.msg_value
+        })
+    }
+);
+
+action_impl!(
+    Protocol::MaverickV2,
+    crate::MaverickV2Pool::addLiquidityCall,
+    Mint,
+    [PoolAddLiquidity],
+    return_data: true,
+    logs: true,
+    call_data: true,
+    |
+     info: CallInfo,
+     call_data: addLiquidityCall,
+     return_data: addLiquidityReturn, _logs: MaverickV2AddLiquidityCallLogs,  db_tx: &DB| {
+
+        let token_0_delta=return_data.tokenAAmount;
+        let token_1_delta=return_data.tokenBAmount;
+
+        let details=db_tx.get_protocol_details_sorted(info.target_address)?;
+        let [token_0, token_1]=[details.token0, details.token1];
+
+        let t0_info=db_tx.try_fetch_token_info(token_0)?;
+        let t1_info=db_tx.try_fetch_token_info(token_1)?;
+
+        let am0=token_0_delta.to_scaled_rational(t0_info.decimals);
+        let am1=token_1_delta.to_scaled_rational(t1_info.decimals);
+        Ok(NormalizedMint {
+            protocol: Protocol::MaverickV2,
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: call_data.recipient,
+            pool: info.target_address,
+            token: vec![t0_info, t1_info],
+            amount: vec![am0, am1],
+        })
+    }
+);
+
+action_impl!(
+    Protocol::MaverickV2,
+    crate::MaverickV2Pool::removeLiquidityCall,
+    Burn,
+    [PoolRemoveLiquidity],
+    return_data: true,
+    |
+    info: CallInfo,
+    return_data: removeLiquidityReturn,
+    db_tx: &DB| {
+        let token_0_delta: U256 = return_data.tokenAOut;
+        let token_1_delta: U256 = return_data.tokenBOut;
+        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+        let [token_0, token_1] = [details.token0, details.token1];
+
+        let t0_info = db_tx.try_fetch_token_info(token_0)?;
+        let t1_info = db_tx.try_fetch_token_info(token_1)?;
+
+        let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
+        let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
+
+        Ok(NormalizedBurn {
+            protocol: Protocol::MaverickV2,
+            trace_index: info.trace_idx,
+            from: info.from_address,
+            recipient: info.from_address,
+            pool: info.target_address,
+            token: vec![t0_info, t1_info],
+            amount: vec![am0, am1],
         })
     }
 );
@@ -113,6 +184,72 @@ mod tests {
                 0,
                 eq_action,
                 TreeSearchBuilder::default().with_action(Action::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_maverick_v2_mints() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let mint =
+            B256::from(hex!("0089210683170b3f17201c8abeafdc4c022a26c7af1e44d351556eaa48d0fee8"));
+
+        let eq_action = Action::Mint(NormalizedMint {
+            protocol:    Protocol::MaverickV2,
+            trace_index: 21,
+            from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
+            token:       vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
+            amount:      vec![
+                U256::from_str("102642322850")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                U256::from_str("250137480130")
+                    .unwrap()
+                    .to_scaled_rational(6),
+            ],
+        });
+
+        classifier_utils
+            .contains_action(
+                mint,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Action::is_mint),
+            )
+            .await
+            .unwrap();
+    }
+
+    #[brontes_macros::test]
+    async fn test_maverick_v2_burn() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let burn =
+            B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
+
+        let eq_action = Action::Burn(NormalizedBurn {
+            protocol:    Protocol::MaverickV2,
+            trace_index: 12,
+            from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
+            pool:        Address::new(hex!("3416cF6C708Da44DB2624D63ea0AAef7113527C6")),
+            token:       vec![TokenInfoWithAddress::usdc(), TokenInfoWithAddress::usdt()],
+            amount:      vec![
+                U256::from_str("347057356182")
+                    .unwrap()
+                    .to_scaled_rational(6),
+                U256::from_str("5793599811").unwrap().to_scaled_rational(6),
+            ],
+        });
+
+        classifier_utils
+            .contains_action(
+                burn,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Action::is_burn),
             )
             .await
             .unwrap();
