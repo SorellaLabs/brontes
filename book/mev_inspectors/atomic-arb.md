@@ -178,4 +178,4 @@ Valid if both of these conditions are met:
 > The `requirement_multiplier` adjusts the threshold for required previous arbitrages:
 >
 > - 1 with reliable pricing data
-> - 2 otherwise. This allows for more stringent classification when we have don't have reliable pricing data.
+> - 2 otherwise. This allows for more stringent classification when we don't have reliable pricing data.
