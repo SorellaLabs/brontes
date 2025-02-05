@@ -463,8 +463,12 @@ impl LibmdbxReader for LibmdbxReadWriter {
         block_num: u64,
         quote_asset: Address,
     ) -> eyre::Result<Metadata> {
-        let block_meta = self.fetch_block_metadata(block_num)?;
-        let cex_quotes = self.fetch_cex_quotes(block_num)?;
+        let block_meta = self
+            .fetch_block_metadata(block_num)
+            .map_err(|e| eyre::eyre!("failed to get block info: {e:?}"))?;
+        let cex_quotes = self
+            .fetch_cex_quotes(block_num)
+            .map_err(|e| eyre::eyre!("failed to cex quotes: {e:?}"))?;
 
         let eth_price =
             determine_eth_prices(&cex_quotes, block_meta.block_timestamp * 1_000_000, quote_asset);
