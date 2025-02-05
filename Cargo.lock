@@ -1049,6 +1049,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-rate-limiter"
+version = "0.1.0"
+source = "git+https://github.com/jnoorchashm37/async-rate-limiter#08ae53b19cb9db2496c6fbcd0691a2361e6ed477"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
 name = "async-scoped"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1700,6 +1708,7 @@ dependencies = [
  "alloy-rlp",
  "arbitrary",
  "arrow",
+ "async-rate-limiter",
  "async-trait",
  "auto_impl",
  "backon",

@@ -106,6 +106,7 @@ alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b86
 tokio = { version = "1.13.0", features = ["full", "tracing"] }
 futures = "0.3.28"
 async-trait = "0.1.73"
+async-rate-limiter = { git = "https://github.com/jnoorchashm37/async-rate-limiter" }
 
 #Tracing
 tracing = "0.1.37"

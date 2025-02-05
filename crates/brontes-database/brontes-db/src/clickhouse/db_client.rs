@@ -2,6 +2,7 @@ use std::{fmt::Debug, str::FromStr};
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
+use async_rate_limiter::{RateLimiter, RateLimiterBuilder, TimeUnit};
 use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
@@ -66,6 +67,7 @@ pub struct Clickhouse {
     pub tip:                 bool,
     pub run_id:              u64,
     pub client:              ClickhouseClient<BrontesClickhouseTables>,
+    pub rate_limiter:        RateLimiter,
     pub cex_download_config: CexDownloadConfig,
     pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
 }
@@ -79,7 +81,16 @@ impl Clickhouse {
         run_id: Option<u64>,
     ) -> Self {
         let client = config.build();
-        let mut this = Self { client, cex_download_config, buffered_insert_tx, tip, run_id: 0 };
+        let mut this = Self {
+            client,
+            cex_download_config,
+            buffered_insert_tx,
+            tip,
+            run_id: 0,
+            rate_limiter: RateLimiterBuilder::new(TimeUnit::Minute(1))
+                .with_attempts(6)
+                .build(),
+        };
 
         this.run_id = if let Some(run_id) = run_id {
             run_id
@@ -382,12 +393,15 @@ impl Clickhouse {
         }
 
         let public_txs = self
-            .query_many_with_retry(
-                PRIVATE_FLOW,
-                &(tx_hashes_in_block
-                    .iter()
-                    .map(|tx| format!("{:?}", tx).to_lowercase())
-                    .collect::<Vec<_>>()),
+            .rate_limiter
+            .run_with(
+                self.query_many_with_retry(
+                    PRIVATE_FLOW,
+                    &(tx_hashes_in_block
+                        .iter()
+                        .map(|tx| format!("{:?}", tx).to_lowercase())
+                        .collect::<Vec<_>>()),
+                ),
             )
             .await?
             .into_iter()
@@ -408,10 +422,11 @@ impl Clickhouse {
         block_hash: BlockHash,
     ) -> eyre::Result<Option<u64>> {
         Ok(self
-            .query_optional_with_retry::<u64, _>(
+            .rate_limiter
+            .run_with(self.query_optional_with_retry::<u64, _>(
                 P2P_OBSERVATIONS,
                 &(block_number, format!("{:?}", block_hash).to_lowercase()),
-            )
+            ))
             .await?)
     }
 }
