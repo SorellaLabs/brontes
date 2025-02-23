@@ -22,7 +22,7 @@ pub struct ParsedLogConfig {
 
 pub struct LogData<'a> {
     exchange_name:          &'a Ident,
-    action_type:            &'a Ident,
+    action_types:           &'a Vec<Ident>,
     mod_path:               Path,
     log_config:             &'a [LogConfig],
     include_delegated_logs: bool,
@@ -31,7 +31,7 @@ pub struct LogData<'a> {
 impl<'a> LogData<'a> {
     pub fn new(
         exchange_name: &'a Ident,
-        action_type: &'a Ident,
+        action_types: &'a Vec<Ident>,
         fn_call_path: &'a Path,
         log_config: &'a [LogConfig],
         include_delegated_logs: bool,
@@ -40,7 +40,7 @@ impl<'a> LogData<'a> {
         mod_path.segments.pop().unwrap();
         mod_path.segments.pop_punct();
 
-        Self { action_type, exchange_name, log_config, mod_path, include_delegated_logs }
+        Self { action_types, exchange_name, log_config, mod_path, include_delegated_logs }
     }
 
     fn parse_log_config(&self) -> ParsedLogConfig {
@@ -92,7 +92,14 @@ impl<'a> LogData<'a> {
             Ident::new(&(self.exchange_name.to_string() + "Logs"), Span::call_site());
 
         let log_return_builder_struct_name = Ident::new(
-            &(self.exchange_name.to_string() + &self.action_type.to_string() + "Builder"),
+            &(self.exchange_name.to_string()
+                + &self
+                    .action_types
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<_>>()
+                    .join("")
+                + "Builder"),
             Span::call_site(),
         );
 
