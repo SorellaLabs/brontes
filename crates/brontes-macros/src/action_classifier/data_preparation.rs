@@ -23,7 +23,7 @@ impl<'a> CallDataParsing<'a> {
         return_data: bool,
         include_delegated_logs: bool,
         exchange_name: &'a Ident,
-        action_types: &'a Vec<Ident>,
+        action_type: &'a Ident,
         fn_call_path: &'a Path,
         log_config: &'a [LogConfig],
         closure: ExprClosure,
@@ -33,7 +33,7 @@ impl<'a> CallDataParsing<'a> {
         let log_data = if logs {
             Some(LogData::new(
                 exchange_name,
-                action_types,
+                action_type,
                 fn_call_path,
                 log_config,
                 include_delegated_logs,

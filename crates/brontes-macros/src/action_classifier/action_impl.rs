@@ -14,7 +14,7 @@ pub struct ActionMacro {
     // required for all
     protocol_path:          Path,
     path_to_call:           Path,
-    action_types:           Vec<Ident>,
+    action_type:            Ident,
     exchange_name_w_call:   Ident,
     log_types:              Vec<LogConfig>,
     /// whether we want logs or not
@@ -34,7 +34,7 @@ impl ActionMacro {
         let Self {
             exchange_name_w_call,
             protocol_path,
-            action_types,
+            action_type,
             path_to_call,
             log_types,
             give_logs,
@@ -50,7 +50,7 @@ impl ActionMacro {
             give_returns,
             include_delegated_logs,
             &exchange_name_w_call,
-            &action_types,
+            &action_type,
             &path_to_call,
             &log_types,
             call_function,
@@ -70,36 +70,18 @@ impl ActionMacro {
         call.value_mut().ident = Ident::new(&solidity, call.span());
         return_import.segments.push(call.into_value());
 
-        let dex_price_return = if action_types
-            .iter()
-            .map(|t| t.to_string())
-            .collect::<Vec<_>>()
-            .join("")
-            .to_lowercase()
-            .as_str()
+        let dex_price_return = if action_type.to_string().to_lowercase().as_str()
             == "poolconfigupdate"
         {
             quote!(Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result)))
         } else {
-            let action_match = action_types
-                .iter()
-                .map(|t| {
-                    quote! {
-                        action => ::brontes_types::normalized_actions::Action::#t(action),
-                    }
-                })
-                .collect::<Vec<_>>();
             quote!(
-                let action = match result{
-                    #( #action_match )*
-                    _ => return Err(eyre::eyre!("Invalid action type")),
-                };
                 Ok(::brontes_pricing::types::DexPriceMsg::Update(
                     ::brontes_pricing::types::PoolUpdate {
                         block,
                         tx_idx,
                         logs: call_info.logs.clone().to_vec(),
-                        action
+                        action: ::brontes_types::normalized_actions::Action::#action_type(result)
                     },
                 ))
             )
@@ -151,8 +133,7 @@ impl Parse for ActionMacro {
         let path_to_call = parse_decode_fn_path(&mut input)?;
         input.parse::<Token![,]>()?;
 
-        // Parse action types separated by '|'
-        let action_types = parse_action_types(&mut input)?;
+        let action_type: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
 
         let possible_logs = parse_logs(&mut input)?;
@@ -184,7 +165,7 @@ impl Parse for ActionMacro {
             give_logs: logs,
             give_call_data: call_data,
             include_delegated_logs,
-            action_types,
+            action_type,
             protocol_path,
             exchange_name_w_call,
         })
@@ -289,19 +270,6 @@ fn parse_decode_fn_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path
     }
 
     Ok(fn_path)
-}
-fn parse_action_types(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<Ident>> {
-    let mut action_types = Vec::new();
-    while !input.peek(Token![,]) {
-        let action_type: Ident = input.parse()?;
-        action_types.push(action_type);
-        if input.peek(Token![|]) {
-            input.parse::<Token![|]>()?;
-        } else {
-            break;
-        }
-    }
-    Ok(action_types)
 }
 
 fn parse_logs(input: &mut syn::parse::ParseStream) -> syn::Result<Vec<LogConfig>> {
