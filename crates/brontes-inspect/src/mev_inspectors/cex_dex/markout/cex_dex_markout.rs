@@ -34,7 +34,7 @@ use malachite::{
     },
     Rational,
 };
-use reth_primitives::Address;
+use alloy_primitives::Address;
 use tracing::trace;
 
 use super::{

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, TxHash};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -29,7 +29,6 @@ use malachite::{
     },
     Rational,
 };
-use reth_primitives::TxHash;
 
 const CONNECTION_TH: usize = 2;
 const LOW_LIQ_TH: Rational = Rational::const_from_unsigned(50_000u64);

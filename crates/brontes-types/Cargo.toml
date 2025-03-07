@@ -6,18 +6,18 @@ edition = "2021"
 
 [dependencies]
 # reth 
-reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 reth-codecs.workspace = true
 reth-tasks.workspace = true
 reth-db.workspace = true
 async-trait.workspace = true
-reth-interfaces.workspace = true
 reth-rpc.workspace = true
 
 # alloy
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 alloy-rpc-types.workspace = true
+alloy-rpc-types-trace.workspace = true
+alloy-rpc-types-beacon.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -55,7 +55,22 @@ alloy-sol-macro.workspace = true
 alloy-dyn-abi.workspace = true
 alloy-rlp.workspace = true
 parking_lot.workspace = true
-derive_more.workspace = true
+derive_more = { workspace = true, features = [
+  "as_ref",
+  "add",
+  "add_assign",
+  "not",
+  "deref",
+  "deref_mut",
+  "from",
+  "from_str",
+  "index",
+  "index_mut",
+  "into",
+  "into_iterator",
+  "display",
+  "deref",
+] }
 dyn-clone = "1.0.16"
 itertools.workspace = true
 rkyv.workspace = true
@@ -96,8 +111,6 @@ brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
-
-
 
 
 [features]

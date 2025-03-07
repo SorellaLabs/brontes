@@ -282,7 +282,7 @@ pub mod vec_bls_pub_key {
 
     use std::{fmt::Debug, str::FromStr};
 
-    use reth_rpc_types::beacon::BlsPublicKey;
+    use alloy_rpc_types_beacon::BlsPublicKey;
     use serde::{
         de::{Deserialize, Deserializer},
         ser::{Serialize, Serializer},

@@ -24,7 +24,7 @@ macro_rules! implement_table_value_codecs_with_zc {
         impl reth_db::table::Compress for $table_value {
             type Compressed = Vec<u8>;
 
-            fn compress_to_buf<B: reth_primitives::bytes::BufMut + AsMut<[u8]>>(self, buf: &mut B) {
+            fn compress_to_buf<B: alloy_primitives::bytes::BufMut + AsMut<[u8]>>(&self, buf: &mut B) {
                 let mut encoded = Vec::new();
                 alloy_rlp::Encodable::encode(&self, &mut encoded);
                 let encoded_compressed = zstd::encode_all(&*encoded, 0).unwrap();
@@ -34,8 +34,8 @@ macro_rules! implement_table_value_codecs_with_zc {
         }
 
         impl reth_db::table::Decompress for $table_value {
-            fn decompress<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-                let binding = value.as_ref().to_vec();
+            fn decompress(value: &[u8]) -> Result<Self, reth_db::DatabaseError> {
+                let binding = value.to_vec();
 
                 let encoded_decompressed = zstd::decode_all(&*binding).unwrap();
                 let buf = &mut encoded_decompressed.as_slice();

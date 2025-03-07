@@ -1,28 +1,23 @@
 use std::cmp::min;
 
-use alloy_rpc_types::AnyReceiptEnvelope;
+use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256, U256};
+use alloy_rpc_types::{
+    state::StateOverride, AnyReceiptEnvelope, BlockId, BlockNumberOrTag, BlockOverrides, Header,
+    Log, ReceiptEnvelope, TransactionReceipt, TransactionRequest,
+};
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
-use reth_primitives::{
-    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
-    B256, U256,
-};
+use reth_primitives::Bytecode;
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB};
-use reth_rpc::eth::{
-    error::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError},
-    EthTransactions,
-};
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
-};
-use revm::{
-    primitives::{
-        db::DatabaseRef, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, TransactTo, TxEnv,
-    },
-    Database,
-};
+// use reth_rpc_eth_types::{
+//      AnyReceiptEnvelope, BlockId, BlockNumberOrTag, BlockOverrides,
+//     EthApiError, EthResult, EthTransactions, Log, RevertError, RpcInvalidTransactionError,
+//     TransactionReceipt, TransactionRequest,
+// };
+use reth_rpc_eth_types::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError};
+use revm::Database;
 use revm_primitives::ExecutionResult;
 
 use crate::TracingClient;
@@ -91,7 +86,7 @@ impl TracingProvider for TracingClient {
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>> {
+    ) -> eyre::Result<Option<Vec<ReceiptEnvelope<Log>>>> {
         Ok(self
             .api
             .block_receipts(BlockId::Number(number))
@@ -141,7 +136,7 @@ impl TracingProvider for TracingClient {
             None => self.provider_factory.latest(),
         }?;
 
-        let bytecode = provider.account_code(address)?;
+        let bytecode = provider.account_code(&address)?;
 
         Ok(bytecode)
     }

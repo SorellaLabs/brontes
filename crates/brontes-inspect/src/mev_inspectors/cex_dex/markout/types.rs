@@ -17,7 +17,7 @@ use brontes_types::{
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::Address;
+use alloy_primitives::Address;
 use strum::Display;
 use tracing::warn;
 

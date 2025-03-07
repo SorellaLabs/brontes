@@ -5,8 +5,8 @@ use alloy_primitives::{Address, Bytes, LogData, U256, U64};
 use alloy_rpc_types_trace::{
     geth::{CallFrame, CallLogFrame, GethDefaultTracingOptions, StructLog},
     parity::{
-        Action, ActionType, CallAction, CallOutput, CreateAction, CreateOutput, SelfdestructAction,
-        TraceOutput, TransactionTrace,
+        Action, ActionType, CallAction, CallOutput, CreateAction, CreateOutput, CreationMethod,
+        SelfdestructAction, TraceOutput, TransactionTrace,
     },
 };
 use revm::interpreter::{opcode, CallContext, CallScheme, CreateScheme, InstructionResult, OpCode};
@@ -216,12 +216,12 @@ impl CallTraceNode {
         match self.kind() {
             CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
                 TraceOutput::Call(CallOutput {
-                    gas_used: U64::from(self.trace.gas_used),
+                    gas_used: self.trace.gas_used,
                     output:   self.trace.output.clone(),
                 })
             }
             CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
-                gas_used: U64::from(self.trace.gas_used),
+                gas_used: self.trace.gas_used,
                 code:     self.trace.output.clone(),
                 address:  self.trace.address,
             }),
@@ -282,16 +282,17 @@ impl CallTraceNode {
                     from:      self.trace.caller,
                     to:        self.trace.address,
                     value:     self.trace.value,
-                    gas:       U64::from(self.trace.gas_limit),
+                    gas:       self.trace.gas_limit,
                     input:     self.trace.data.clone(),
                     call_type: self.kind().into(),
                 })
             }
             CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
-                from:  self.trace.caller,
-                value: self.trace.value,
-                gas:   U64::from(self.trace.gas_limit),
-                init:  self.trace.data.clone(),
+                from:            self.trace.caller,
+                value:           self.trace.value,
+                gas:             self.trace.gas_limit,
+                init:            self.trace.data.clone(),
+                creation_method: CreationMethod::default(),
             }),
         }
     }
@@ -330,10 +331,12 @@ impl CallTraceNode {
             call_frame.logs = self
                 .logs
                 .iter()
-                .map(|log| CallLogFrame {
-                    address: Some(self.execution_address()),
-                    topics:  Some(log.topics().to_vec()),
-                    data:    Some(log.data.clone()),
+                .enumerate()
+                .map(|(i, log)| CallLogFrame {
+                    address:  Some(self.execution_address()),
+                    topics:   Some(log.topics().to_vec()),
+                    data:     Some(log.data.clone()),
+                    position: Some(i as u64),
                 })
                 .collect();
         }
@@ -359,6 +362,9 @@ pub enum CallKind {
     Create,
     /// Represents a contract creation operation using the CREATE2 opcode.
     Create2,
+    ExtCall,
+    ExtStaticCall,
+    ExtDelegateCall,
 }
 
 impl CallKind {
@@ -413,6 +419,9 @@ impl From<CallScheme> for CallKind {
             CallScheme::StaticCall => Self::StaticCall,
             CallScheme::CallCode => Self::CallCode,
             CallScheme::DelegateCall => Self::DelegateCall,
+            CallScheme::ExtCall => Self::ExtCall,
+            CallScheme::ExtStaticCall => Self::ExtStaticCall,
+            CallScheme::ExtDelegateCall => Self::ExtDelegateCall,
         }
     }
 }

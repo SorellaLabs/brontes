@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_primitives::{Address, Bytes};
+use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolCall;
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
@@ -10,7 +10,6 @@ use brontes_types::{
     ToScaledRational,
 };
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::U256;
 
 alloy_sol_macro::sol!(
     function transfer(address, uint) returns(bool);

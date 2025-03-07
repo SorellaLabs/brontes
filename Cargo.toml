@@ -37,70 +37,74 @@ brontes-analytics = { path = "./crates/brontes-analytics" }
 brontes-libmdbx = { path = "./crates/brontes-database/libmdbx-rs" }
 
 # Reth
-reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "ac29b4b" }
-reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "ac29b4b" }
-reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "ac29b4b" }
-reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "ac29b4b" }
-reth-rpc-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-types", rev = "ac29b4b" }
-reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "ac29b4b" }
-reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "ac29b4b" }
-reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "ac29b4b" }
-reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "ac29b4b" }
-reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "ac29b4b" }
-reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "ac29b4b" }
-reth-blockchain-tree = { git = "https://github.com/paradigmxyz/reth", package = "reth-blockchain-tree", rev = "ac29b4b" }
-reth-node-core = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-core", rev = "ac29b4b" }
-reth-beacon-consensus = { git = "https://github.com/paradigmxyz/reth", package = "reth-beacon-consensus", rev = "ac29b4b" }
-reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "ac29b4b" }
-reth-interfaces = { git = "https://github.com/paradigmxyz/reth", package = "reth-interfaces", features = [
-  "test-utils",
-], rev = "ac29b4b" }
+reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "916b2415" }
+reth-node-types = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-types", rev = "916b2415" }
+reth-tasks = { git = "https://github.com/paradigmxyz/reth", package = "reth-tasks", rev = "916b2415" }
+reth-rpc = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc", rev = "916b2415" }
+reth-rpc-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-api", rev = "916b2415" }
+reth-rpc-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-rpc-builder", rev = "916b2415" }
+reth-provider = { git = "https://github.com/paradigmxyz/reth", package = "reth-provider", rev = "916b2415" }
+reth-transaction-pool = { git = "https://github.com/paradigmxyz/reth", package = "reth-transaction-pool", rev = "916b2415" }
+reth-chainspec = { git = "https://github.com/paradigmxyz/reth", package = "reth-chainspec", rev = "916b2415" }
+reth-network-api = { git = "https://github.com/paradigmxyz/reth", package = "reth-network-api", rev = "916b2415" }
+reth-primitives = { git = "https://github.com/paradigmxyz/reth", package = "reth-primitives", rev = "916b2415" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", package = "reth-db", rev = "916b2415" }
+reth-node-core = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-core", rev = "916b2415" }
+reth-revm = { git = "https://github.com/paradigmxyz/reth", package = "reth-revm", rev = "916b2415" }
 reth-stages = { git = "https://github.com/paradigmxyz/reth", package = "reth-stages", features = [
   "test-utils",
-], rev = "ac29b4b" }
-reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "ac29b4b" }
-reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "ac29b4b" }
-reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "ac29b4b" }
-reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "ac29b4b" }
-reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "ac29b4b" }
-reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "ac29b4b" }
-reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", rev = "ac29b4b" }
+], rev = "916b2415" }
+reth-trie = { git = "https://github.com/paradigmxyz/reth", package = "reth-trie", rev = "916b2415" }
+reth-libmdbx = { git = "https://github.com/paradigmxyz/reth", package = "reth-libmdbx", rev = "916b2415" }
+reth-eth-wire = { git = "https://github.com/paradigmxyz/reth", package = "reth-eth-wire", rev = "916b2415" }
+reth-payload-builder = { git = "https://github.com/paradigmxyz/reth", package = "reth-payload-builder", rev = "916b2415" }
+reth-metrics = { git = "https://github.com/paradigmxyz/reth", package = "reth-metrics", rev = "916b2415" }
+reth-codecs = { git = "https://github.com/paradigmxyz/reth", package = "reth-codecs", rev = "916b2415" }
+reth-codecs-derive = { git = "https://github.com/paradigmxyz/reth", rev = "916b2415" }
+reth-rpc-eth-types = { git = "https://github.com/paradigmxyz/reth", rev = "916b2415" }
+reth-rpc-server-types = { git = "https://github.com/paradigmxyz/reth", rev = "916b2415" }
 
 # ruint
 ruint = "1.9.0"
 
 # revm
-revm = { version = "8.0.0", features = [
+revm = { git = "https://github.com/bluealloy/revm.git", version = "20.0.0-alpha.1", features = [
   "std",
   "secp256k1",
+  "optional_balance_check",
+  "optional_block_gas_limit",
 ], default-features = false }
-revm-primitives = { version = "3.1", features = [
+revm-primitives = { version = "1.0.0-alpha.1", features = [
   "std",
 ], default-features = false }
-revm-inspectors = { git = "https://github.com/paradigmxyz/evm-inspectors", rev = "dc614ee" }
+revm-inspector = { version = "1.0.0-alpha.1", default-features = false }
 
 
 # Alloy
-alloy-sol-types = { version = "0.7.0", features = ["json"] }
-alloy-sol-macro = { version = "0.7.0", features = ["json"] }
+alloy-sol-types = { version = "0.8.15", features = ["json"] }
+alloy-sol-macro = { version = "0.8.15", features = ["json"] }
 alloy-rlp = { version = "0.3.4" }
 alloy-rlp-derive = { version = "0.3.4" }
-alloy-primitives = { version = "0.7.0", features = ["rlp"] }
+alloy-primitives = { version = "0.8.21", features = ["rlp"] }
 alloy-json-abi = "0.7.0"
 alloy-dyn-abi = "0.7.0 "
 
 # Alloy core
-alloy-provider = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695", features = [
+alloy-provider = { version = "0.11.1", default-features = false, features = [
+  "ipc",
+  "ws",
+  "pubsub",
   "reqwest",
 ] }
-alloy-transport-http = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
-alloy-transport = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
-alloy-network = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
-alloy-json-rpc = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
-alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695", features = [
-  "jsonrpsee-types",
-] }
-alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
+alloy-transport-http = { version = "0.11.1" }
+alloy-transport = { version = "0.11.1" }
+alloy-network = { version = "0.11.1" }
+alloy-json-rpc = { version = "0.11.1" }
+alloy-rpc-types = { version = "0.11.1", features = ["jsonrpsee-types", "eth"] }
+alloy-rpc-types-trace = "0.11.1"
+alloy-rpc-types-beacon = "0.11.1"
+alloy-rpc-client = { version = "0.11.1" }
+
 
 # Async
 tokio = { version = "1.13.0", features = ["full", "tracing"] }
@@ -129,7 +133,7 @@ thiserror = "1.0.44"
 eyre = "0.6.8"
 
 # http/rpc
-hyper = "0.14.25"
+hyper = { version = "0.14.25", features = ["server"] }
 hyper-tls = "0.5.0"
 reqwest = "0.12.2"
 
@@ -169,7 +173,7 @@ toml = "0.8.2"
 auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
-derive_more = "0.99.17"
+derive_more = { version = "2.0", default-features = false }
 rkyv = { git = "https://github.com/rkyv/rkyv.git", branch = "0.7-hashbrown-0.14", features = [
   "validation",
 ] }
@@ -189,6 +193,23 @@ fs_extra = "1.3.0"
 filesize = "0.2.0"
 tar = "0.4.41"
 flate2 = "1.0.30"
+
+
+[patch.crates-io]
+alloy-evm = { git = "https://github.com/alloy-rs/evm", rev = "04fa394" }
+revm = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-bytecode = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-database = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-state = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-primitives = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-interpreter = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-inspector = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-context = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-context-interface = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-database-interface = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-specification = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-optimism = { git = "https://github.com/bluealloy/revm", rev = "a8a9893b" }
+revm-inspectors = { git = "https://github.com/paradigmxyz/revm-inspectors", rev = "8900c2b" }
 
 
 [profile.release]

@@ -5,7 +5,7 @@ use dashmap::DashMap;
 use metrics::{Counter, Gauge};
 use prometheus::{HistogramVec, IntCounterVec};
 use reth_metrics::Metrics;
-use reth_primitives::Address;
+use alloy_primitives::Address;
 
 #[derive(Clone)]
 pub struct OutlierMetrics {

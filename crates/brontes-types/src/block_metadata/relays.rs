@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
+use alloy_primitives::BlockHash;
 use relays_openapi::apis::{
     configuration::Configuration,
     data_api::{get_delivered_payloads, get_received_bids},
 };
-use reth_primitives::BlockHash;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use strum::IntoEnumIterator;

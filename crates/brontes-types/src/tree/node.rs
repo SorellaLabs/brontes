@@ -1,5 +1,5 @@
+use alloy_primitives::Address;
 use itertools::Itertools;
-use reth_primitives::Address;
 use tracing::{error, warn};
 
 use super::{types::NodeWithDataRef, NodeData};

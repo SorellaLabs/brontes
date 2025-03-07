@@ -4,7 +4,7 @@ use brontes_types::{
     structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
-use reth_primitives::U256;
+use alloy_primitives::U256;
 
 action_impl!(
     Protocol::Dodo,

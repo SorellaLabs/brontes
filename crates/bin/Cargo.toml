@@ -39,17 +39,13 @@ reqwest = { workspace = true, features = ["blocking"] }
 reth-tasks.workspace = true
 reth-rpc.workspace = true
 reth-rpc-api.workspace = true
-reth-rpc-types.workspace = true
 reth-provider.workspace = true
 reth-node-core.workspace = true
 reth-transaction-pool.workspace = true
 reth-network-api.workspace = true
 reth-primitives.workspace = true
 reth-db.workspace = true
-reth-blockchain-tree.workspace = true
-reth-beacon-consensus.workspace = true
 #reth-revm.workspace = true
-reth-interfaces.workspace = true
 
 # Alloy
 alloy-primitives.workspace = true

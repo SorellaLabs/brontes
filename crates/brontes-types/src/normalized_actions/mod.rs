@@ -18,6 +18,7 @@ use ::clickhouse::DbRow;
 use accounting::{AddressDeltas, TokenAccounting};
 pub use aggregator::*;
 use alloy_primitives::{Address, Bytes, Log};
+use alloy_rpc_types_trace::parity::Action as TraceAction;
 pub use batch::*;
 use clickhouse::InsertRow;
 pub use eth_transfer::*;
@@ -27,7 +28,6 @@ pub use liquidation::*;
 pub use liquidity::*;
 pub use multi_callframe::*;
 pub use pool::*;
-use reth_rpc_types::trace::parity::Action as TraceAction;
 pub use self_destruct::*;
 pub use swaps::*;
 pub use transfer::*;
@@ -327,10 +327,10 @@ impl Action {
             Action::Liquidation(c) => c.pool,
             Action::SelfDestruct(c) => c.get_refund_address(),
             Action::Unclassified(t) => match &t.trace.action {
-                reth_rpc_types::trace::parity::Action::Call(c) => c.to,
-                reth_rpc_types::trace::parity::Action::Create(_) => Address::ZERO,
-                reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
-                reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
+                alloy_rpc_types_trace::parity::Action::Call(c) => c.to,
+                alloy_rpc_types_trace::parity::Action::Create(_) => Address::ZERO,
+                alloy_rpc_types_trace::parity::Action::Reward(_) => Address::ZERO,
+                alloy_rpc_types_trace::parity::Action::Selfdestruct(s) => s.address,
             },
             Action::EthTransfer(t) => t.to,
             Action::NewPool(p) => p.pool_address,
@@ -353,10 +353,10 @@ impl Action {
             Action::Liquidation(c) => c.liquidator,
             Action::SelfDestruct(c) => c.get_address(),
             Action::Unclassified(t) => match &t.trace.action {
-                reth_rpc_types::trace::parity::Action::Call(c) => c.to,
-                reth_rpc_types::trace::parity::Action::Create(_) => Address::ZERO,
-                reth_rpc_types::trace::parity::Action::Reward(_) => Address::ZERO,
-                reth_rpc_types::trace::parity::Action::Selfdestruct(s) => s.address,
+                alloy_rpc_types_trace::parity::Action::Call(c) => c.to,
+                alloy_rpc_types_trace::parity::Action::Create(_) => Address::ZERO,
+                alloy_rpc_types_trace::parity::Action::Reward(_) => Address::ZERO,
+                alloy_rpc_types_trace::parity::Action::Selfdestruct(s) => s.address,
             },
             Action::EthTransfer(t) => t.from,
             Action::Revert => unreachable!(),

@@ -1,20 +1,21 @@
 use std::fmt::Debug;
 
-use alloy_primitives::{Address, Log, B256, U256};
+use alloy_primitives::{Address, Bytes, B256, U256};
+use alloy_rpc_types::TransactionInfo;
+use alloy_rpc_types_trace::parity::*;
 use arena::{CallTraceArena, PushTraceKind};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use config::TracingInspectorConfig;
-use reth_primitives::{Bytes, U64};
-use reth_rpc_types::{trace::parity::*, TransactionInfo};
 use revm::{
-    inspectors::GasInspector,
+    bytecode::opcode::{self, OpCode},
     interpreter::{
-        opcode, CallInputs, CallOutcome, CallScheme, CreateInputs, CreateOutcome,
-        InstructionResult, Interpreter, InterpreterResult, OpCode,
+        CallInputs, CallOutcome, CallScheme, CreateInputs, CreateOutcome, InstructionResult,
+        Interpreter, InterpreterResult,
     },
-    primitives::{ExecutionResult, SpecId},
-    Database, EvmContext, Inspector, JournalEntry,
+    Context, Database, Inspector, JournalEntry,
 };
+use revm_inspector::inspectors::GasInspector;
+use revm_primitives::{Log, SpecId};
 use types::{
     CallKind, CallTrace, CallTraceNode, CallTraceStep, LogCallOrder, RecordedMemory, StorageChange,
     StorageChangeReason,
@@ -115,7 +116,7 @@ impl BrontesTracingInspector {
     #[inline]
     fn is_precompile_call<DB: Database>(
         &self,
-        context: &EvmContext<DB>,
+        context: &Context<DB>,
         to: &Address,
         value: U256,
     ) -> bool {
@@ -228,7 +229,7 @@ impl BrontesTracingInspector {
     /// This expects an existing trace [Self::start_trace_on_call]
     fn fill_trace_on_call_end<DB: Database>(
         &mut self,
-        context: &mut EvmContext<DB>,
+        context: &mut DB,
         result: InterpreterResult,
         created_address: Option<Address>,
     ) {
@@ -421,7 +422,11 @@ impl BrontesTracingInspector {
             let logs = node
                 .logs
                 .iter()
-                .map(|log| Log { address: node.trace.address, data: log.clone() })
+                .map(|log| Log {
+                    address: node.trace.address,
+                    data:    log.clone(),
+                    topics:  log.topics(),
+                })
                 .collect::<Vec<_>>();
 
             let msg_sender = if let Action::Call(c) = &trace.action {
@@ -550,35 +555,44 @@ impl BrontesTracingInspector {
 
     pub(crate) fn parity_action(&self, node: &CallTraceNode) -> Action {
         match node.trace.kind {
-            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
-                Action::Call(CallAction {
-                    from:      node.trace.caller,
-                    to:        node.trace.address,
-                    value:     node.trace.value,
-                    gas:       U64::from(node.trace.gas_limit),
-                    input:     node.trace.data.clone(),
-                    call_type: node.trace.kind.into(),
-                })
-            }
+            CallKind::Call
+            | CallKind::StaticCall
+            | CallKind::CallCode
+            | CallKind::DelegateCall
+            | CallKind::ExtCall
+            | CallKind::ExtStaticCall
+            | CallKind::ExtDelegateCall => Action::Call(CallAction {
+                from:      node.trace.caller,
+                to:        node.trace.address,
+                value:     node.trace.value,
+                gas:       node.trace.gas_limit,
+                input:     node.trace.data.clone(),
+                call_type: node.trace.kind.into(),
+            }),
             CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
-                from:  node.trace.caller,
-                value: node.trace.value,
-                gas:   U64::from(node.trace.gas_limit),
-                init:  node.trace.data.clone(),
+                from:            node.trace.caller,
+                value:           node.trace.value,
+                gas:             node.trace.gas_limit,
+                init:            node.trace.data.clone(),
+                creation_method: CreationMethod::default(),
             }),
         }
     }
 
     pub(crate) fn parity_trace_output(&self, node: &CallTraceNode) -> TraceOutput {
         match node.trace.kind {
-            CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
-                TraceOutput::Call(CallOutput {
-                    gas_used: U64::from(node.trace.gas_used),
-                    output:   node.trace.output.clone(),
-                })
-            }
+            CallKind::Call
+            | CallKind::StaticCall
+            | CallKind::CallCode
+            | CallKind::DelegateCall
+            | CallKind::ExtCall
+            | CallKind::ExtStaticCall
+            | CallKind::ExtDelegateCall => TraceOutput::Call(CallOutput {
+                gas_used: node.trace.gas_used,
+                output:   node.trace.output.clone(),
+            }),
             CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
-                gas_used: U64::from(node.trace.gas_used),
+                gas_used: node.trace.gas_used,
                 code:     node.trace.output.clone(),
                 address:  node.trace.address,
             }),
@@ -617,30 +631,30 @@ impl BrontesTracingInspector {
     }
 }
 
-impl<DB> Inspector<DB> for BrontesTracingInspector
+impl<DB> Inspector<Context<DB>> for BrontesTracingInspector
 where
     DB: Database,
 {
     #[inline]
     fn initialize_interp(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
-        self.gas_inspector.initialize_interp(interp, context)
+        self.gas_inspector.initialize_interp(interp, context.tx.g)
     }
 
-    fn step(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+    fn step(&mut self, interp: &mut Interpreter, context: &mut DB) {
         self.gas_inspector.step(interp, context);
         if self.config.record_steps {
             self.start_step(interp, context);
         }
     }
 
-    fn step_end(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+    fn step_end(&mut self, interp: &mut Interpreter, context: &mut Context<DB>) {
         self.gas_inspector.step_end(interp, context);
         if self.config.record_steps {
             self.fill_step_on_step_end(interp, context);
         }
     }
 
-    fn log(&mut self, context: &mut EvmContext<DB>, log: &Log) {
+    fn log(&mut self, interp: &mut Interpreter, context: &mut DB, log: &mut Log) {
         self.gas_inspector.log(context, log);
 
         let trace_idx = self.last_trace_idx();
@@ -652,11 +666,7 @@ where
         }
     }
 
-    fn call(
-        &mut self,
-        context: &mut EvmContext<DB>,
-        inputs: &mut CallInputs,
-    ) -> Option<CallOutcome> {
+    fn call(&mut self, context: &mut DB, inputs: &mut CallInputs) -> Option<CallOutcome> {
         self.gas_inspector.call(context, inputs);
 
         // determine correct `from` and `to` based on the call scheme
@@ -699,24 +709,13 @@ where
         None
     }
 
-    fn call_end(
-        &mut self,
-        context: &mut EvmContext<DB>,
-        inputs: &CallInputs,
-        outcome: CallOutcome,
-    ) -> CallOutcome {
-        let outcome = self.gas_inspector.call_end(context, inputs, outcome);
+    fn call_end(&mut self, context: &mut DB, inputs: &CallInputs, outcome: &mut CallOutcome) {
+        self.gas_inspector.call_end(outcome);
 
         self.fill_trace_on_call_end(context, outcome.result.clone(), None);
-
-        outcome
     }
 
-    fn create(
-        &mut self,
-        context: &mut EvmContext<DB>,
-        inputs: &mut CreateInputs,
-    ) -> Option<CreateOutcome> {
+    fn create(&mut self, context: &mut DB, inputs: &mut CreateInputs) -> Option<CreateOutcome> {
         self.gas_inspector.create(context, inputs);
 
         let _ = context.load_account(inputs.caller);
@@ -742,11 +741,11 @@ where
     /// result of the create.
     fn create_end(
         &mut self,
-        context: &mut EvmContext<DB>,
+        context: &mut DB,
         inputs: &CreateInputs,
-        outcome: CreateOutcome,
+        outcome: &mut CreateOutcome,
     ) -> CreateOutcome {
-        let outcome = self.gas_inspector.create_end(context, inputs, outcome);
+        self.gas_inspector.create_end(&mut outcome);
 
         self.fill_trace_on_call_end(context, outcome.result.clone(), outcome.address);
 
@@ -774,6 +773,9 @@ impl From<CallKind> for CallType {
             CallKind::CallCode => CallType::CallCode,
             CallKind::DelegateCall => CallType::DelegateCall,
             CallKind::Create | CallKind::Create2 => CallType::None,
+            CallKind::ExtCall => CallType::Call,
+            CallKind::ExtStaticCall => CallType::StaticCall,
+            CallKind::ExtDelegateCall => CallType::DelegateCall,
         }
     }
 }

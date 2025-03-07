@@ -1,7 +1,7 @@
+use alloy_primitives::Address;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedAggregator, structured_trace::CallInfo};
-use reth_primitives::Address;
 
 action_impl!(
     Protocol::OneInchFusion,

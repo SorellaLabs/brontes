@@ -49,7 +49,7 @@ mod tests {
         normalized_actions::{Action, NormalizedTransfer},
         TreeSearchBuilder,
     };
-    use reth_primitives::U256;
+    use alloy_primitives::U256;
 
     use super::*;
 

@@ -1,6 +1,6 @@
 use std::{collections::hash_map::Entry, sync::Arc};
 
-use alloy_primitives::{Address, B256};
+use alloy_primitives::{Address, TxHash, B256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -15,7 +15,6 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::TxHash;
 
 use super::types::{PossibleJit, PossibleJitWithInfo};
 use crate::{

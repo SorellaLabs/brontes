@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, U256};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
@@ -13,7 +13,6 @@ use brontes_types::{
 };
 use eyre::Error;
 use malachite::Rational;
-use reth_primitives::U256;
 
 use crate::BalancerV2Vault::PoolBalanceChanged;
 

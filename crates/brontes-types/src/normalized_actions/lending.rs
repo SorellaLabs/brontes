@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 
-use alloy_primitives::U256;
+use alloy_primitives::{Address, U256};
 use clickhouse::Row;
 use malachite::Rational;
-use reth_primitives::Address;
 use serde::{Deserialize, Serialize};
 
 use crate::{db::token_info::TokenInfoWithAddress, FastHashMap, Protocol};

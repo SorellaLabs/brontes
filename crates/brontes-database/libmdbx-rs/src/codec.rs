@@ -71,7 +71,7 @@ impl TableObject for () {
 }
 
 /// If you don't need the data itself, just its length.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Deref, DerefMut)]
+#[derive(Clone, Copy, std::fmt::Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Deref, DerefMut)]
 pub struct ObjectLength(pub usize);
 
 impl TableObject for ObjectLength {

@@ -19,7 +19,6 @@ reth-metrics.workspace = true
 alloy-primitives.workspace = true
 reth-primitives.workspace = true
 colored.workspace = true
-reth-interfaces.workspace = true
 # metrics
 metrics-exporter-prometheus.workspace = true
 metrics-util.workspace = true

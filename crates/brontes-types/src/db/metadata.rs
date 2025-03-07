@@ -1,8 +1,7 @@
-use alloy_primitives::{Address, TxHash, U256};
+use alloy_primitives::{Address, BlockHash, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
-use reth_primitives::BlockHash;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use serde_with::serde_as;

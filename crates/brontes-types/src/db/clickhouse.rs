@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use alloy_json_abi::JsonAbi;
+use alloy_primitives::{Address, B256, U256};
 use clickhouse::{fixed_string::FixedString, Row};
-use reth_primitives::{Address, B256, U256};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 

@@ -1,5 +1,5 @@
+use alloy_primitives::{Address, U256};
 use clickhouse::Row;
-use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{AddressDeltas, TokenAccounting};

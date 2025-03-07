@@ -1,11 +1,10 @@
 use std::{fmt, fmt::Display};
 
-use alloy_primitives::TxHash;
+use alloy_primitives::{Address, TxHash, B256};
 use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
 use redefined::self_convert_redefined;
-use reth_primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
 
 use super::Node;

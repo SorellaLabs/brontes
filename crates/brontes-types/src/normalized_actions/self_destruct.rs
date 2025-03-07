@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
+use alloy_primitives::{Address, U256};
+use alloy_rpc_types_trace::parity::SelfdestructAction;
 use clickhouse::Row;
-use reth_primitives::{Address, U256};
-use reth_rpc_types::trace::parity::SelfdestructAction;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]

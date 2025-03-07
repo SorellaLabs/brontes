@@ -37,7 +37,6 @@ async-scoped = { version = "0.7.1", features = ["use-tokio"] }
 
 # reth
 reth-primitives.workspace = true
-reth-rpc-types.workspace = true
 
 # tracing
 tracing.workspace = true

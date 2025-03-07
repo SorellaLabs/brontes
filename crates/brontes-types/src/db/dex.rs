@@ -395,10 +395,7 @@ impl From<DexQuote> for Vec<(Pair, DexPrices)> {
 
 implement_table_value_codecs_with_zc!(DexQuoteWithIndexRedefined);
 
-wrap_fixed_bytes!(
-    extra_derives: [],
-    pub struct DexKey<10>;
-);
+wrap_fixed_bytes!(pub struct DexKey<10>;);
 
 impl reth_db::table::Encode for DexKey {
     type Encoded = [u8; 10];
@@ -409,8 +406,8 @@ impl reth_db::table::Encode for DexKey {
 }
 
 impl reth_db::table::Decode for DexKey {
-    fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, DatabaseError> {
-        Ok(DexKey::from_slice(value.as_ref()))
+    fn decode(value: &[u8]) -> Result<Self, DatabaseError> {
+        Ok(DexKey::from_slice(value))
     }
 }
 
