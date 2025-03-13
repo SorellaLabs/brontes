@@ -56,7 +56,7 @@ impl DiscoveryFill {
         } else {
             libmdbx.client.max_traced_block().await?
         };
-        let end_block = parser.get_latest_block_number().unwrap();
+        let end_block = parser.get_latest_block_number().await.unwrap();
 
         let bar = ProgressBar::with_draw_target(
             Some(end_block - start_block),

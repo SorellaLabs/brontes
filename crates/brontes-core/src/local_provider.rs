@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_provider::{Provider, RootProvider};
+use alloy_provider::{debug::DebugApi, Provider, RootProvider};
 use alloy_rpc_types::AnyReceiptEnvelope;
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
@@ -10,7 +10,11 @@ use reth_primitives::{
     B256,
 };
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
+    state::StateOverride,
+    trace::geth::{
+        GethDebugBuiltInTracerType, GethDebugTracerType, GethDebugTracingOptions, GethTrace,
+    },
+    BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
 
 #[derive(Debug, Clone)]
@@ -22,6 +26,19 @@ pub struct LocalProvider {
 impl LocalProvider {
     pub fn new(url: String, retries: u8) -> Self {
         Self { provider: Arc::new(RootProvider::new_http(url.parse().unwrap())), retries }
+    }
+}
+
+pub fn from_geth_trace(trace: GethTrace) -> TxTrace {
+    match trace {
+        GethTrace::NoopTracer(noop) => {
+            println!("noop tracer: {:?}", noop);
+            TxTrace::new(0, vec![], B256::ZERO, 0, 0, 0, false)
+        }
+        _ => {
+            println!("other tracer: {:?}", trace);
+            TxTrace::new(0, vec![], B256::ZERO, 0, 0, 0, false)
+        }
     }
 }
 
@@ -69,11 +86,36 @@ impl TracingProvider for LocalProvider {
         self.provider.get_block_number().await.map_err(Into::into)
     }
 
-    async fn replay_block_transactions(&self, _: BlockId) -> eyre::Result<Option<Vec<TxTrace>>> {
-        unreachable!(
-            "Currently we use a custom tracing model which does not allow for 
-                     a local trace to occur"
-        );
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> eyre::Result<Option<Vec<TxTrace>>> {
+        let mut trace_options = GethDebugTracingOptions::default();
+        let tracer = GethDebugTracerType::BuiltInTracer(GethDebugBuiltInTracerType::NoopTracer);
+        trace_options.tracer = Some(tracer);
+
+        match block_id {
+            BlockId::Hash(hash) => {
+                let traces = self
+                    .provider
+                    .debug_trace_block_by_hash(hash.block_hash, trace_options)
+                    .await?;
+                let tx_traces: Vec<TxTrace> = traces.into_iter().map(|t| from_geth_trace(t)).collect_vec();
+                Ok(Some(tx_traces))
+            }
+            BlockId::Number(number) => {
+                if !number.is_number() {
+                    Ok(None)
+                } else {
+                    let traces = self
+                        .provider
+                        .debug_trace_block_by_number(number.as_number().unwrap(), trace_options)
+                        .await?;
+                    let tx_traces: Vec<TxTrace> = traces.into_iter().map(|t| from_geth_trace(t)).collect_vec();
+                    Ok(Some(tx_traces))
+                }
+            }
+        }
     }
 
     async fn block_receipts(
