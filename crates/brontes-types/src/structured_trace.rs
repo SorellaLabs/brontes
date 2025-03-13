@@ -48,7 +48,7 @@ impl TraceActions for TransactionTraceWithLogs {
         }
     }
 
-    fn get_create_output(&self) -> Address {
+    fn get_create_output(&self) -> Address { 
         match &self.trace.result {
             Some(TraceOutput::Create(o)) => o.address,
             _ => Address::default(),

@@ -246,7 +246,7 @@ impl CallTraceNode {
     pub fn geth_selfdestruct_call_trace(&self) -> Option<CallFrame> {
         if self.is_selfdestruct() {
             Some(CallFrame {
-                typ: "SELFDESTRUCT".to_string(),
+            typ: "SELFDESTRUCT".to_string(),
                 from: self.trace.caller,
                 to: self.trace.selfdestruct_refund_target,
                 value: Some(self.trace.value),

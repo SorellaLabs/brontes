@@ -126,7 +126,7 @@ const_format = { version = "0.2.32", features = ["rust_1_64"] }
 vergen = { version = "8.0.0", features = ["build", "cargo", "git", "gitcl"] }
 
 [features]
-default = ["brontes-core/default", "brontes-classifier/default", "jemalloc"]
+default = ["brontes-core/default", "brontes-classifier/default", "jemalloc", "local-reth", "local-clickhouse"]
 
 jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
