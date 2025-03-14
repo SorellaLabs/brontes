@@ -208,8 +208,7 @@ pub(crate) fn create_txn_env(
     // Ensure that if versioned hashes are set, they're not empty
     if request
         .blob_versioned_hashes
-        .as_ref()
-        .map_or(false, |hashes| hashes.is_empty())
+        .as_ref().is_some_and(|hashes| hashes.is_empty())
     {
         return Err(RpcInvalidTransactionError::BlobTransactionMissingBlobHashes.into())
     }
@@ -244,7 +243,7 @@ pub(crate) fn create_txn_env(
             block_env.blob_gasprice().map(U256::from),
         )?;
 
-    let gas_limit = gas.unwrap_or_else(|| block_env.gas_limit.min(u64::MAX));
+    let gas_limit = gas.unwrap_or_else(|| block_env.gas_limit);
     let env = TxEnv {
         gas_limit: gas_limit
             .try_into()

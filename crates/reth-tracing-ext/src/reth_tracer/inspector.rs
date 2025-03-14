@@ -216,7 +216,7 @@ impl BrontesTracingInspector {
             0,
             push_kind,
             CallTrace {
-                depth: context.journaled_state.depth() as usize,
+                depth: context.journaled_state.depth(),
                 address,
                 kind,
                 data: input_data,
