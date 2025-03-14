@@ -218,10 +218,10 @@ impl PairSubGraph {
     pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &FastHashMap<Address, &T>) -> bool {
         self.graph
             .edge_weights()
-            .map(|weight| {
+            .any(|weight| {
                 weight
                     .iter()
-                    .map(|edge| {
+                    .any(|edge| {
                         let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
                         let tvl_added = r0 + r1;
                         let start_tvl = self.start_nodes_liq.get(&edge.pool_addr).unwrap();
@@ -232,9 +232,7 @@ impl PairSubGraph {
                             false
                         }
                     })
-                    .any(|n| n)
             })
-            .any(|n| n)
     }
 
     // returns list of pools we already have so we can derement there state tracker.
