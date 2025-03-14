@@ -165,8 +165,7 @@ impl<V: NormalizedAction> Root<V> {
             || is_classified
             || emits_logs && searcher_contract_info.is_none()
             || contract_type
-                .as_ref()
-                .map_or(false, |ct| !ct.could_be_mev_contract())
+                .as_ref().is_some_and(|ct| !ct.could_be_mev_contract())
         {
             return Ok(TxInfo::new(
                 block_number,

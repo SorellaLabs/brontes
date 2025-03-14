@@ -30,8 +30,7 @@ pub struct AddressMetadata {
 impl AddressMetadata {
     pub fn is_verified(&self) -> bool {
         self.contract_info
-            .as_ref()
-            .map_or(false, |c| c.verified_contract.unwrap_or(false))
+            .as_ref().is_some_and(|c| c.verified_contract.unwrap_or(false))
     }
 
     pub fn describe(&self) -> Option<String> {
@@ -95,14 +94,12 @@ impl AddressMetadata {
 
     fn is_cex(&self) -> bool {
         self.address_type
-            .as_deref()
-            .map_or(false, |t| t.eq_ignore_ascii_case("cex"))
+            .as_deref().is_some_and(|t| t.eq_ignore_ascii_case("cex"))
     }
 
     fn is_aggregator(&self) -> bool {
         self.address_type
-            .as_deref()
-            .map_or(false, |t| t.eq_ignore_ascii_case("aggregator"))
+            .as_deref().is_some_and(|t| t.eq_ignore_ascii_case("aggregator"))
     }
 
     fn is_cex_exchange(&self) -> bool {

@@ -262,7 +262,7 @@ pub struct TimeBasketQueue<'a> {
     trades:            Vec<CexTrades>,
 }
 
-impl<'a> TimeBasketQueue<'a> {
+impl TimeBasketQueue<'_> {
     pub(crate) fn new(
         trade_data: OptimisticTradeData,
         block_timestamp: u64,
@@ -394,8 +394,8 @@ impl<'a> TimeBasketQueue<'a> {
     }
 }
 
-unsafe impl<'a> Send for CexTradePtr<'a> {}
-unsafe impl<'a> Sync for CexTradePtr<'a> {}
+unsafe impl Send for CexTradePtr<'_> {}
+unsafe impl Sync for CexTradePtr<'_> {}
 
 impl<'ptr> CexTradePtr<'ptr> {
     pub(crate) fn new(raw: &CexTrades) -> Self {
