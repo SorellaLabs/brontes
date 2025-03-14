@@ -198,18 +198,18 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 #[derive(Debug)]
 pub struct BlockPnL {
     // ETH profit made by the block builder (in wei)
-    pub builder_eth_profit:      i128,
+    pub builder_eth_profit: i128,
     // Amount of ETH paid by the builder to sponsor transactions in the block
-    pub builder_sponsorship:     i128,
+    pub builder_sponsorship: i128,
     // USD profit of the builders searchers
-    pub builder_mev_profit_usd:  f64,
+    pub builder_mev_profit_usd: f64,
     // ETH reward paid to the proposer (in wei)
-    pub mev_reward:              Option<u128>,
+    pub mev_reward: Option<u128>,
     // Address of the proposer fee recipient
-    pub proposer_fee_recipient:  Option<Address>,
+    pub proposer_fee_recipient: Option<Address>,
     // Gas & Tips paid to the builder by it's own vertically integrated
     // searchers
-    pub builder_searcher_tip:    u128,
+    pub builder_searcher_tip: u128,
     // If the block was bid adjusted using ultrasound's bid adjustment
     pub ultrasound_bid_adjusted: bool,
 }
@@ -314,16 +314,16 @@ fn proposer_payment(
         let from_address = root.get_from_address();
         let to_address = root.get_to_address();
 
-        let from_match = from_address == builder_address
-            || collateral_address.map_or(false, |addr| from_address == addr);
+        let from_match =
+            from_address == builder_address || (collateral_address == Some(from_address));
 
-        let to_match = proposer_fee_recipient.map_or(false, |addr| to_address == addr);
-
-        let is_from_collateral = collateral_address.map_or(false, |addr| from_address == addr);
-
-        if from_match || to_match {
+        if from_match || proposer_fee_recipient == Some(to_address) {
             if let Action::EthTransfer(transfer) = root.get_root_action() {
-                return Some((transfer.value.to(), Some(transfer.to), is_from_collateral))
+                return Some((
+                    transfer.value.to(),
+                    Some(transfer.to),
+                    collateral_address == Some(from_address),
+                ));
             }
         }
         None
@@ -333,7 +333,7 @@ fn proposer_payment(
 /// Accounts for the profit made by the builders vertically integrated searchers
 fn calculate_mev_searching_profit(bundles: &[Bundle], builder_info: &BuilderInfo) -> (f64, u128) {
     if builder_info.searchers_eoas.is_empty() && builder_info.searchers_contracts.is_empty() {
-        return (0.0, 0)
+        return (0.0, 0);
     }
     bundles
         .iter()
@@ -403,10 +403,10 @@ fn calculate_builder_sponsorship_amount(
 }
 
 pub struct BlockPreprocessing {
-    total_gas_used:         u128,
-    total_priority_fee:     u128,
-    total_bribe:            u128,
-    builder_address:        Address,
+    total_gas_used: u128,
+    total_priority_fee: u128,
+    total_bribe: u128,
+    builder_address: Address,
     gas_details_by_address: FastHashMap<Address, GasDetails>,
 }
 
