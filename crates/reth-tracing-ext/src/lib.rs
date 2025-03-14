@@ -17,6 +17,7 @@ use reth_provider::{
     ProviderFactory,
 };
 use reth_rpc::{DebugApi, EthApi, EthFilter, TraceApi};
+use reth_rpc_eth_api::helpers::Trace;
 use reth_rpc_eth_types::{
     EthResult, EthStateCache, EthStateCacheConfig, FeeHistoryCache, FeeHistoryCacheConfig, GasCap,
     GasPriceOracle, GasPriceOracleConfig,
@@ -36,6 +37,7 @@ use reth_transaction_pool::{
     TransactionValidationTaskExecutor,
 };
 use revm::inspector::inspectors::GasInspector;
+// use revm::inspector::inspectors::GasInspector;
 
 mod provider;
 pub mod reth_tracer;
@@ -139,13 +141,15 @@ impl TracingClient {
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let insp_setup = || BrontesTracingInspector {
             config:                TracingInspectorConfig {
-                record_logs:              true,
-                record_steps:             false,
-                record_state_diff:        false,
-                record_stack_snapshots:   StackSnapshotType::None,
-                record_memory_snapshots:  false,
-                record_call_return_data:  true,
-                exclude_precompile_calls: true,
+                record_logs:                 true,
+                record_steps:                false,
+                record_state_diff:           false,
+                record_stack_snapshots:      StackSnapshotType::None,
+                record_memory_snapshots:     false,
+                exclude_precompile_calls:    true,
+                record_returndata_snapshots: false,
+                record_opcodes_filter:       None,
+                record_immediate_bytes:      false,
             },
             traces:                CallTraceArena::default(),
             trace_stack:           Vec::new(),
@@ -155,11 +159,19 @@ impl TracingClient {
             spec_id:               None,
         };
 
-        self.api
-            .trace_block_with_inspector(block_id, insp_setup, move |tx_info, inspector, res, _, _| {
-                Ok(inspector.into_trace_results(tx_info, &res))
-            })
-            .await
+        let t =
+            self.api
+                .trace_block_inspector(
+                    block_id,
+                    None,
+                    insp_setup,
+                    move |tx_info, inspector, res, _, _| {
+                        Ok(inspector.into_trace_results(tx_info, &res))
+                    },
+                )
+                .await;
+
+        Ok(())
     }
 }
 

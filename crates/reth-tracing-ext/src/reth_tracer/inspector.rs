@@ -1,28 +1,38 @@
 use std::fmt::Debug;
 
-use alloy_primitives::{Address, Bytes, B256, U256};
+use alloy_primitives::{Address, Bytes, Log, B256, U256};
 use alloy_rpc_types::TransactionInfo;
 use alloy_rpc_types_trace::parity::*;
 use arena::{CallTraceArena, PushTraceKind};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use config::TracingInspectorConfig;
 use revm::{
-    bytecode::opcode::{self, OpCode},
+    bytecode::opcode::{self, immediate_size, OpCode},
+    context::{result::ExecutionResult, BlockEnv, CfgEnv, ContextTr, Journal, JournalTr, TxEnv},
+    inspector::{inspectors::GasInspector, Inspector, JournalExt},
     interpreter::{
-        CallInputs, CallOutcome, CallScheme, CreateInputs, CreateOutcome, InstructionResult,
+        interpreter_types::{
+            Immediates, InputsTr, Jumps, LoopControl, ReturnData, RuntimeFlag, SubRoutineStack,
+        },
+        CallInputs, CallOutcome, CallScheme, CreateInputs, CreateOutcome, Host, InstructionResult,
         Interpreter, InterpreterResult,
     },
-    Context, Database, Inspector, JournalEntry,
+    primitives::hardfork::SpecId,
+    Context, Database, JournalEntry,
 };
-use revm_inspector::inspectors::GasInspector;
-use revm_primitives::{Log, SpecId};
 use types::{
-    CallKind, CallTrace, CallTraceNode, CallTraceStep, LogCallOrder, RecordedMemory, StorageChange,
+    CallKind, CallTrace, CallTraceNode, CallTraceStep, RecordedMemory, StorageChange,
     StorageChangeReason,
 };
-use utils::{gas_used, stack_push_count};
+use utils::gas_used;
 
-use super::{arena, config, types, utils};
+use super::{
+    arena, config,
+    types::{self, CallLog, TraceMemberOrder},
+    utils,
+};
+
+pub type EvmContext<DB> = Context<BlockEnv, TxEnv, CfgEnv, DB>;
 
 /// An inspector that collects call traces.
 ///
@@ -116,11 +126,11 @@ impl BrontesTracingInspector {
     #[inline]
     fn is_precompile_call<DB: Database>(
         &self,
-        context: &Context<DB>,
+        context: &EvmContext<DB>,
         to: &Address,
         value: U256,
     ) -> bool {
-        if context.precompiles.contains_key(to) {
+        if context.journaled_state.precompiles.contains(to) {
             // only if this is _not_ the root call
             return self.is_deep() && value.is_zero()
         }
@@ -195,11 +205,11 @@ impl BrontesTracingInspector {
             // transaction, because initialization costs are already subtracted
             // from gas_limit For the root call this value should use the
             // transaction's gas limit See <https://github.com/paradigmxyz/reth/issues/3678> and <https://github.com/ethereum/go-ethereum/pull/27029>
-            gas_limit = context.env.tx.gas_limit;
+            gas_limit = context.tx.gas_limit;
 
             // we set the spec id here because we only need to do this once and this
             // condition is hit exactly once
-            self.spec_id = Some(context.spec_id());
+            self.spec_id = Some(context.cfg.spec);
         }
 
         self.trace_stack.push(self.traces.push_trace(
@@ -229,7 +239,7 @@ impl BrontesTracingInspector {
     /// This expects an existing trace [Self::start_trace_on_call]
     fn fill_trace_on_call_end<DB: Database>(
         &mut self,
-        context: &mut DB,
+        context: &mut EvmContext<DB>,
         result: InterpreterResult,
         created_address: Option<Address>,
     ) {
@@ -241,7 +251,7 @@ impl BrontesTracingInspector {
         if trace_idx == 0 {
             // this is the root call which should get the gas used of the transaction
             // refunds are applied after execution, which is when the root call ends
-            trace.gas_used = gas_used(context.spec_id(), gas.spent(), gas.refunded() as u64);
+            trace.gas_used = gas_used(context.cfg.spec, gas.spent(), gas.refunded() as u64);
         } else {
             trace.gas_used = gas.spent();
         }
@@ -266,113 +276,150 @@ impl BrontesTracingInspector {
     ///
     /// This expects an existing [CallTrace], in other words, this panics if not
     /// within the context of a call.
-    fn start_step<DB: Database>(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+    #[cold]
+    fn start_step<CTX: ContextTr>(&mut self, interp: &mut Interpreter, context: &mut CTX) {
         let trace_idx = self.last_trace_idx();
         let trace = &mut self.traces.arena[trace_idx];
 
-        self.step_stack
-            .push(StackStep { trace_idx, step_idx: trace.trace.steps.len() });
+        let step_idx = trace.trace.steps.len();
+        // We always want an OpCode, even it is unknown because it could be an
+        // additional opcode that not a known constant.
+        let op = unsafe { OpCode::new_unchecked(interp.bytecode.opcode()) };
 
-        let memory = self
-            .config
-            .record_memory_snapshots
-            .then(|| RecordedMemory::new(interp.shared_memory.context_memory().to_vec()))
-            .unwrap_or_default();
-        let stack = if self.config.record_stack_snapshots.is_full() {
+        let record = self.config.should_record_opcode(op);
+
+        self.step_stack
+            .push(StackStep { trace_idx, step_idx, record });
+
+        if !record {
+            return;
+        }
+
+        // Reuse the memory from the previous step if:
+        // - there is not opcode filter -- in this case we cannot rely on the order of
+        //   steps
+        // - it exists and has not modified memory
+        let memory = self.config.record_memory_snapshots.then(|| {
+            if self.config.record_opcodes_filter.is_none() {
+                if let Some(prev) = trace.trace.steps.last() {
+                    if !prev.op.modifies_memory() {
+                        if let Some(memory) = &prev.memory {
+                            return memory.clone();
+                        }
+                    }
+                }
+            }
+            RecordedMemory::new(interp.memory.borrow().context_memory())
+        });
+
+        let stack = if self.config.record_stack_snapshots.is_all()
+            || self.config.record_stack_snapshots.is_full()
+        {
             Some(interp.stack.data().clone())
         } else {
             None
         };
+        let returndata = self
+            .config
+            .record_returndata_snapshots
+            .then(|| interp.return_data.buffer().to_vec().into())
+            .unwrap_or_default();
 
-        // we always want an OpCode, even it is unknown because it could be an
-        // additional opcode that not a known constant
-        let op = unsafe { OpCode::new_unchecked(interp.current_opcode()) };
+        let gas_used = gas_used(
+            interp.runtime_flag.spec_id(),
+            interp.control.gas.spent(),
+            interp.control.gas.refunded() as u64,
+        );
+
+        let mut immediate_bytes = None;
+        if self.config.record_immediate_bytes {
+            let size = interp.bytecode.read_u8();
+            if size != 0 {
+                immediate_bytes = Some(
+                    interp.bytecode.read_slice(size as usize + 1)[1..]
+                        .to_vec()
+                        .into(),
+                );
+            }
+        }
 
         trace.trace.steps.push(CallTraceStep {
-            depth: context.journaled_state.depth(),
-            pc: interp.program_counter(),
+            depth: context.journal().depth() as u64,
+            pc: interp.bytecode.pc(),
+            code_section_idx: interp.sub_routine.routine_idx(),
             op,
-            contract: interp.contract.address,
+            contract: interp.input.target_address(),
             stack,
             push_stack: None,
-            memory_size: memory.len(),
             memory,
-            gas_remaining: self.gas_inspector.gas_remaining(),
-            gas_refund_counter: interp.gas.refunded() as u64,
+            returndata,
+            gas_remaining: interp.control.gas().remaining(),
+            gas_refund_counter: interp.control.gas().refunded() as u64,
+            gas_used,
+            decoded: None,
+            immediate_bytes,
 
             // fields will be populated end of call
             gas_cost: 0,
             storage_change: None,
             status: InstructionResult::Continue,
         });
+
+        trace.ordering.push(TraceMemberOrder::Step(step_idx));
     }
 
     /// Fills the current trace with the output of a step.
     ///
     /// Invoked on [Inspector::step_end].
-    fn fill_step_on_step_end<DB: Database>(
+    #[cold]
+    fn fill_step_on_step_end<CTX: ContextTr<Journal: JournalExt>>(
         &mut self,
-        interp: &Interpreter,
-        context: &EvmContext<DB>,
+        interp: &mut Interpreter,
+        context: &mut CTX,
     ) {
-        let StackStep { trace_idx, step_idx } = self
+        let StackStep { trace_idx, step_idx, record } = self
             .step_stack
             .pop()
             .expect("can't fill step without starting a step first");
+
+        if !record {
+            return;
+        }
+
         let step = &mut self.traces.arena[trace_idx].trace.steps[step_idx];
 
-        if self.config.record_stack_snapshots.is_pushes() {
-            let num_pushed = stack_push_count(step.op);
-            let start = interp.stack.len() - num_pushed;
+        if self.config.record_stack_snapshots.is_all()
+            || self.config.record_stack_snapshots.is_pushes()
+        {
+            let start = interp.stack.len() - step.op.outputs() as usize;
             step.push_stack = Some(interp.stack.data()[start..].to_vec());
         }
 
-        if self.config.record_memory_snapshots {
-            // resize memory so opcodes that allocated memory is correctly displayed
-            if interp.shared_memory.len() > step.memory.len() {
-                step.memory.resize(interp.shared_memory.len());
-            }
-        }
         if self.config.record_state_diff {
             let op = step.op.get();
 
-            let journal_entry = context
-                .journaled_state
-                .journal
-                .last()
-                // This should always work because revm initializes it as `vec![vec![]]`
-                // See [JournaledState::new](revm::JournaledState)
-                .expect("exists; initialized with vec")
-                .last();
+            let journal_entry = context.journal_ref().last_journal().last();
 
             step.storage_change = match (op, journal_entry) {
                 (
                     opcode::SLOAD | opcode::SSTORE,
-                    Some(JournalEntry::StorageChange { address, key, had_value }),
+                    Some(JournalEntry::StorageChanged { address, key, had_value }),
                 ) => {
                     // SAFETY: (Address,key) exists if part if StorageChange
-                    let value = context.journaled_state.state[address].storage[key].present_value();
+                    let value =
+                        context.journal_ref().evm_state()[address].storage[key].present_value();
                     let reason = match op {
                         opcode::SLOAD => StorageChangeReason::SLOAD,
                         opcode::SSTORE => StorageChangeReason::SSTORE,
                         _ => unreachable!(),
                     };
-                    let change = StorageChange { key: *key, value, had_value: *had_value, reason };
+                    let change =
+                        StorageChange { key: *key, value, had_value: Some(*had_value), reason };
                     Some(change)
                 }
                 _ => None,
             };
         }
-
-        // The gas cost is the difference between the recorded gas remaining at the
-        // start of the step the remaining gas here, at the end of the step.
-        // TODO: Figure out why this can overflow. https://github.com/paradigmxyz/evm-inspectors/pull/38
-        step.gas_cost = step
-            .gas_remaining
-            .saturating_sub(self.gas_inspector.gas_remaining());
-
-        // set the status
-        step.status = interp.instruction_result;
     }
 }
 
@@ -422,11 +469,7 @@ impl BrontesTracingInspector {
             let logs = node
                 .logs
                 .iter()
-                .map(|log| Log {
-                    address: node.trace.address,
-                    data:    log.clone(),
-                    topics:  log.topics(),
-                })
+                .map(|log| Log { address: node.trace.address, data: log.clone() })
                 .collect::<Vec<_>>();
 
             let msg_sender = if let Action::Call(c) = &trace.action {
@@ -465,7 +508,10 @@ impl BrontesTracingInspector {
 
             traces.push(TransactionTraceWithLogs {
                 trace,
-                logs,
+                logs: logs
+                    .iter()
+                    .map(|l| Log { address: l.address, data: l.raw_log.clone() })
+                    .collect(),
                 msg_sender,
                 decoded_data: None,
                 trace_idx: node.idx as u64,
@@ -554,49 +600,51 @@ impl BrontesTracingInspector {
     }
 
     pub(crate) fn parity_action(&self, node: &CallTraceNode) -> Action {
-        match node.trace.kind {
-            CallKind::Call
-            | CallKind::StaticCall
-            | CallKind::CallCode
-            | CallKind::DelegateCall
-            | CallKind::ExtCall
-            | CallKind::ExtStaticCall
-            | CallKind::ExtDelegateCall => Action::Call(CallAction {
-                from:      node.trace.caller,
-                to:        node.trace.address,
-                value:     node.trace.value,
-                gas:       node.trace.gas_limit,
-                input:     node.trace.data.clone(),
-                call_type: node.trace.kind.into(),
-            }),
-            CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
-                from:            node.trace.caller,
-                value:           node.trace.value,
-                gas:             node.trace.gas_limit,
-                init:            node.trace.data.clone(),
-                creation_method: CreationMethod::default(),
-            }),
-        }
+        node.parity_action()
+        // match  {
+        //     CallKind::Call
+        //     | CallKind::StaticCall
+        //     | CallKind::CallCode
+        //     | CallKind::DelegateCall
+        //     | CallKind::ExtCall
+        //     | CallKind::ExtStaticCall
+        //     | CallKind::ExtDelegateCall => Action::Call(CallAction {
+        //         from:      node.trace.caller,
+        //         to:        node.trace.address,
+        //         value:     node.trace.value,
+        //         gas:       node.trace.gas_limit,
+        //         input:     node.trace.data.clone(),
+        //         call_type: node.trace.kind.into(),
+        //     }),
+        //     CallKind::Create | CallKind::Create2 =>
+        // Action::Create(CreateAction {         from:
+        // node.trace.caller,         value:           node.trace.value,
+        //         gas:             node.trace.gas_limit,
+        //         init:            node.trace.data.clone(),
+        //         creation_method: CreationMethod::default(),
+        //     }),
+        // }
     }
 
     pub(crate) fn parity_trace_output(&self, node: &CallTraceNode) -> TraceOutput {
-        match node.trace.kind {
-            CallKind::Call
-            | CallKind::StaticCall
-            | CallKind::CallCode
-            | CallKind::DelegateCall
-            | CallKind::ExtCall
-            | CallKind::ExtStaticCall
-            | CallKind::ExtDelegateCall => TraceOutput::Call(CallOutput {
-                gas_used: node.trace.gas_used,
-                output:   node.trace.output.clone(),
-            }),
-            CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
-                gas_used: node.trace.gas_used,
-                code:     node.trace.output.clone(),
-                address:  node.trace.address,
-            }),
-        }
+        node.parity_trace_output()
+        // match node.trace.kind {
+        //     CallKind::Call
+        //     | CallKind::StaticCall
+        //     | CallKind::CallCode
+        //     | CallKind::DelegateCall
+        //     | CallKind::ExtCall
+        //     | CallKind::ExtStaticCall
+        //     | CallKind::ExtDelegateCall => TraceOutput::Call(CallOutput {
+        //         gas_used: node.trace.gas_used,
+        //         output:   node.trace.output.clone(),
+        //     }),
+        //     CallKind::Create | CallKind::Create2 =>
+        // TraceOutput::Create(CreateOutput {         gas_used:
+        // node.trace.gas_used,         code:
+        // node.trace.output.clone(),         address:
+        // node.trace.address,     }),
+        // }
     }
 
     /// Returns the error message if it is an erroneous result.
@@ -631,61 +679,68 @@ impl BrontesTracingInspector {
     }
 }
 
-impl<DB> Inspector<Context<DB>> for BrontesTracingInspector
+impl<DB> Inspector<EvmContext<DB>> for BrontesTracingInspector
 where
     DB: Database,
 {
     #[inline]
     fn initialize_interp(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
-        self.gas_inspector.initialize_interp(interp, context.tx.g)
+        self.gas_inspector.initialize_interp(interp.control.gas())
     }
 
-    fn step(&mut self, interp: &mut Interpreter, context: &mut DB) {
-        self.gas_inspector.step(interp, context);
+    fn step(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+        self.gas_inspector.step(interp.control.gas());
         if self.config.record_steps {
             self.start_step(interp, context);
         }
     }
 
-    fn step_end(&mut self, interp: &mut Interpreter, context: &mut Context<DB>) {
-        self.gas_inspector.step_end(interp, context);
+    fn step_end(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+        self.gas_inspector.step_end(interp.control.gas_mut());
         if self.config.record_steps {
             self.fill_step_on_step_end(interp, context);
         }
     }
 
-    fn log(&mut self, interp: &mut Interpreter, context: &mut DB, log: &mut Log) {
-        self.gas_inspector.log(context, log);
+    fn log(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>, log: Log) {
+        self.gas_inspector.journal.log(context, log);
+        // context.log(log.clone());
 
         let trace_idx = self.last_trace_idx();
         let trace = &mut self.traces.arena[trace_idx];
 
         if self.config.record_logs {
-            trace.ordering.push(LogCallOrder::Log(trace.logs.len()));
-            trace.logs.push(log.data.clone());
+            trace.ordering.push(TraceMemberOrder::Log(trace.logs.len()));
+            trace
+                .logs
+                .push(CallLog::from(log.clone()).with_position(trace.children.len() as u64));
         }
     }
 
-    fn call(&mut self, context: &mut DB, inputs: &mut CallInputs) -> Option<CallOutcome> {
-        self.gas_inspector.call(context, inputs);
+    fn call(
+        &mut self,
+        context: &mut EvmContext<DB>,
+        inputs: &mut CallInputs,
+    ) -> Option<CallOutcome> {
+        // self.gas_inspector.call(context, inputs);
 
         // determine correct `from` and `to` based on the call scheme
-        let (from, to) = match inputs.context.scheme {
+        let (from, to) = match inputs.scheme {
             CallScheme::DelegateCall | CallScheme::CallCode => {
-                (inputs.context.address, inputs.context.code_address)
+                (inputs.target_address, inputs.bytecode_address)
             }
-            _ => (inputs.context.caller, inputs.context.address),
+            _ => (inputs.caller, inputs.target_address),
         };
 
-        let value = if matches!(inputs.context.scheme, CallScheme::DelegateCall) {
+        let value = if matches!(inputs.scheme, CallScheme::DelegateCall) {
             // for delegate calls we need to use the value of the top trace
             if let Some(parent) = self.active_trace() {
                 parent.trace.value
             } else {
-                inputs.transfer.value
+                inputs.call_value()
             }
         } else {
-            inputs.transfer.value
+            inputs.call_value()
         };
 
         // if calls to precompiles should be excluded, check whether this is a call to a
@@ -700,7 +755,7 @@ where
             to,
             inputs.input.clone(),
             value,
-            inputs.context.scheme.into(),
+            inputs.scheme.into(),
             from,
             inputs.gas_limit,
             maybe_precompile,
@@ -709,16 +764,25 @@ where
         None
     }
 
-    fn call_end(&mut self, context: &mut DB, inputs: &CallInputs, outcome: &mut CallOutcome) {
+    fn call_end(
+        &mut self,
+        context: &mut EvmContext<DB>,
+        _inputs: &CallInputs,
+        outcome: &mut CallOutcome,
+    ) {
         self.gas_inspector.call_end(outcome);
 
         self.fill_trace_on_call_end(context, outcome.result.clone(), None);
     }
 
-    fn create(&mut self, context: &mut DB, inputs: &mut CreateInputs) -> Option<CreateOutcome> {
-        self.gas_inspector.create(context, inputs);
+    fn create(
+        &mut self,
+        context: &mut EvmContext<DB>,
+        inputs: &mut CreateInputs,
+    ) -> Option<CreateOutcome> {
+        // self.gas_inspector.create(context, inputs);
 
-        let _ = context.load_account(inputs.caller);
+        let _ = context.journaled_state.load_account(inputs.caller);
         let nonce = context.journaled_state.account(inputs.caller).info.nonce;
         self.start_trace_on_call(
             context,
@@ -741,15 +805,13 @@ where
     /// result of the create.
     fn create_end(
         &mut self,
-        context: &mut DB,
+        context: &mut EvmContext<DB>,
         inputs: &CreateInputs,
         outcome: &mut CreateOutcome,
-    ) -> CreateOutcome {
-        self.gas_inspector.create_end(&mut outcome);
+    ) {
+        self.gas_inspector.create_end(outcome);
 
         self.fill_trace_on_call_end(context, outcome.result.clone(), outcome.address);
-
-        outcome
     }
 
     fn selfdestruct(&mut self, _contract: Address, target: Address, _value: U256) {
@@ -759,23 +821,19 @@ where
     }
 }
 
+/// Struct keeping track of internal inspector steps stack.
 #[derive(Clone, Copy, Debug)]
-pub struct StackStep {
+pub(crate) struct StackStep {
+    /// Whether this step should be recorded.
+    ///
+    /// This is set to `false` if [OpcodeFilter] is configured and this step's
+    /// opcode is not enabled for tracking
+    record:    bool,
+    /// Idx of the trace node this step belongs.
     trace_idx: usize,
+    /// Idx of this step in the [CallTrace::steps].
+    ///
+    /// Please note that if `record` is `false`, this will still contain a
+    /// value, but the step will not appear in the steps list.
     step_idx:  usize,
-}
-
-impl From<CallKind> for CallType {
-    fn from(item: CallKind) -> Self {
-        match item {
-            CallKind::Call => CallType::Call,
-            CallKind::StaticCall => CallType::StaticCall,
-            CallKind::CallCode => CallType::CallCode,
-            CallKind::DelegateCall => CallType::DelegateCall,
-            CallKind::Create | CallKind::Create2 => CallType::None,
-            CallKind::ExtCall => CallType::Call,
-            CallKind::ExtStaticCall => CallType::StaticCall,
-            CallKind::ExtDelegateCall => CallType::DelegateCall,
-        }
-    }
 }

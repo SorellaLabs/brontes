@@ -2,24 +2,26 @@ use std::cmp::min;
 
 use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256, U256};
 use alloy_rpc_types::{
-    state::StateOverride, AnyReceiptEnvelope, BlockId, BlockNumberOrTag, BlockOverrides, Header,
-    Log, ReceiptEnvelope, TransactionReceipt, TransactionRequest,
+    state::StateOverride, AccessList, AnyReceiptEnvelope, BlockId, BlockNumberOrTag,
+    BlockOverrides, Header, Log, ReceiptEnvelope, TransactionReceipt, TransactionRequest,
 };
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
 use reth_primitives::Bytecode;
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
-use reth_revm::{database::StateProviderDatabase, db::CacheDB};
+use reth_revm::{
+    context::{result::ExecutionResult, Block, BlockEnv, CfgEnv},
+    database::StateProviderDatabase,
+    db::CacheDB,
+};
 use reth_rpc_api::EthApiServer;
-// use reth_rpc_eth_types::{
-//      AnyReceiptEnvelope, BlockId, BlockNumberOrTag, BlockOverrides,
-//     EthApiError, EthResult, EthTransactions, Log, RevertError, RpcInvalidTransactionError,
-//     TransactionReceipt, TransactionRequest,
-// };
+use reth_rpc_eth_api::helpers::{Call, LoadState};
 use reth_rpc_eth_types::{EthApiError, EthResult, RevertError, RpcInvalidTransactionError};
-use revm::Database;
-use revm_primitives::ExecutionResult;
+use revm::{Database, DatabaseRef};
+use revm_primitives::TxEnv;
 
+// use revm::{context::Block, Database, DatabaseRef};
+// use revm_primitives::TxEnv;
 use crate::TracingClient;
 
 #[async_trait::async_trait]
@@ -42,10 +44,16 @@ impl TracingProvider for TracingClient {
         request: TransactionRequest,
         block_number: BlockId,
     ) -> eyre::Result<Bytes> {
-        let (cfg, block_env, at) = self.api.evm_env_at(block_number).await?;
-        let state = self.api.state_at(at)?;
+        let (cfg, at) = self.api.evm_env_at(block_number).await?;
+        let state = self.api.state_at_block_id(at)?;
         let mut db = CacheDB::new(StateProviderDatabase::new(state));
-        let env = prepare_call_env(cfg, block_env, request, self.api.call_gas_limit(), &mut db)?;
+        let env = prepare_call_env(
+            cfg.cfg_env,
+            cfg.block_env,
+            request,
+            self.api.call_gas_limit(),
+            &mut db,
+        )?;
         let (res, _) = self.api.transact(&mut db, env)?;
 
         Ok(ensure_success(res.result)?)
@@ -143,7 +151,7 @@ impl TracingProvider for TracingClient {
 }
 
 pub(crate) fn prepare_call_env<DB>(
-    mut cfg: CfgEnvWithHandlerCfg,
+    mut cfg: CfgEnv,
     block: BlockEnv,
     request: TransactionRequest,
     gas_limit: u64,
@@ -196,6 +204,7 @@ pub(crate) fn build_call_evm_env(
     request: TransactionRequest,
 ) -> EthResult<EnvWithHandlerCfg> {
     let tx = create_txn_env(&block, request)?;
+    // CfgEnv:
     Ok(EnvWithHandlerCfg::new_with_cfg_env(cfg, block, tx))
 }
 
@@ -234,13 +243,13 @@ pub(crate) fn create_txn_env(
             gas_price.map(U256::from),
             max_fee_per_gas.map(U256::from),
             max_priority_fee_per_gas.map(U256::from),
-            block_env.basefee,
+            U256::from(block_env.basefee),
             blob_versioned_hashes.as_deref(),
             max_fee_per_blob_gas.map(U256::from),
-            block_env.get_blob_gasprice().map(U256::from),
+            block_env.blob_gasprice().map(U256::from),
         )?;
 
-    let gas_limit = gas.unwrap_or_else(|| block_env.gas_limit.min(U256::from(u64::MAX)).to());
+    let gas_limit = gas.unwrap_or_else(|| block_env.gas_limit.min(u64::MAX));
     let env = TxEnv {
         gas_limit: gas_limit
             .try_into()
@@ -254,7 +263,7 @@ pub(crate) fn create_txn_env(
         data: input.try_into_unique_input()?.unwrap_or_default(),
         chain_id,
         access_list: access_list
-            .map(reth_rpc_types::AccessList::into_flattened)
+            .map(AccessList::into_flattened)
             .unwrap_or_default(),
         // EIP-4844 fields
         blob_hashes: blob_versioned_hashes.unwrap_or_default(),
