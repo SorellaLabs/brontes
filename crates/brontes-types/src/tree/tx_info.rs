@@ -106,10 +106,12 @@ impl TxInfo {
 
     pub fn is_searcher_of_type(&self, mev_type: MevType) -> bool {
         self.searcher_eoa_info
-            .as_ref().is_some_and(|info| info.is_searcher_of_type(mev_type))
+            .as_ref()
+            .is_some_and(|info| info.is_searcher_of_type(mev_type))
             || self
                 .searcher_contract_info
-                .as_ref().is_some_and(|info| info.is_searcher_of_type(mev_type))
+                .as_ref()
+                .is_some_and(|info| info.is_searcher_of_type(mev_type))
     }
 
     pub fn is_searcher_of_type_with_count_threshold(
@@ -118,18 +120,22 @@ impl TxInfo {
         threshold: u64,
     ) -> bool {
         self.searcher_eoa_info
-            .as_ref().is_some_and(|info| info.is_searcher_of_type_with_threshold(mev_type, threshold))
+            .as_ref()
+            .is_some_and(|info| info.is_searcher_of_type_with_threshold(mev_type, threshold))
             || self
                 .searcher_contract_info
-                .as_ref().is_some_and(|info| info.is_searcher_of_type_with_threshold(mev_type, threshold))
+                .as_ref()
+                .is_some_and(|info| info.is_searcher_of_type_with_threshold(mev_type, threshold))
     }
 
     pub fn is_labelled_searcher_of_type(&self, mev_type: MevType) -> bool {
         self.searcher_eoa_info
-            .as_ref().is_some_and(|info| info.is_labelled_searcher_of_type(mev_type))
+            .as_ref()
+            .is_some_and(|info| info.is_labelled_searcher_of_type(mev_type))
             || self
                 .searcher_contract_info
-                .as_ref().is_some_and(|info| info.is_labelled_searcher_of_type(mev_type))
+                .as_ref()
+                .is_some_and(|info| info.is_labelled_searcher_of_type(mev_type))
     }
 
     pub fn is_private(&self) -> bool {

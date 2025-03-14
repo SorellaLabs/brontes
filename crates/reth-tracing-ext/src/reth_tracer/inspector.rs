@@ -132,7 +132,7 @@ impl BrontesTracingInspector {
     ) -> bool {
         if context.journaled_state.precompiles.contains(to) {
             // only if this is _not_ the root call
-            return self.is_deep() && value.is_zero()
+            return self.is_deep() && value.is_zero();
         }
         false
     }
@@ -456,7 +456,7 @@ impl BrontesTracingInspector {
         block_number: u64,
     ) -> Option<Vec<TransactionTraceWithLogs>> {
         if self.traces.nodes().is_empty() {
-            return None
+            return None;
         }
 
         let mut traces: Vec<TransactionTraceWithLogs> =
@@ -549,12 +549,12 @@ impl BrontesTracingInspector {
     fn trace_address(&self, nodes: &[CallTraceNode], idx: usize) -> Vec<usize> {
         if idx == 0 {
             // root call has empty traceAddress
-            return vec![]
+            return vec![];
         }
         let mut graph = vec![];
         let mut node = &nodes[idx];
         if node.trace.maybe_precompile.unwrap_or(false) {
-            return graph
+            return graph;
         }
         while let Some(parent) = node.parent {
             // the index of the child call in the arena

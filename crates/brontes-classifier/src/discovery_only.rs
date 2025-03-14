@@ -23,7 +23,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct DiscoveryOnlyClassifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx: &'db DB,
+    libmdbx:  &'db DB,
     provider: Arc<T>,
 }
 
@@ -84,10 +84,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                         private: false,
                         total_msg_value_transfers: vec![],
                         gas_details: GasDetails {
-                            coinbase_transfer: None,
-                            gas_used: trace.gas_used,
+                            coinbase_transfer:   None,
+                            gas_used:            trace.gas_used,
                             effective_gas_price: trace.effective_price,
-                            priority_fee: trace.effective_price
+                            priority_fee:        trace.effective_price
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(action)]),

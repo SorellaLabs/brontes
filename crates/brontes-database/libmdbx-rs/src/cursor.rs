@@ -383,7 +383,7 @@ where
     {
         let res: Result<Option<((), ())>> = self.set_range(key);
         if let Err(error) = res {
-            return Iter::Err(Some(error))
+            return Iter::Err(Some(error));
         };
         Iter::new(self, reth_mdbx_sys::MDBX_GET_CURRENT, reth_mdbx_sys::MDBX_NEXT)
     }
@@ -418,7 +418,7 @@ where
     {
         let res: Result<Option<((), ())>> = self.set_range(key);
         if let Err(error) = res {
-            return IterDup::Err(Some(error))
+            return IterDup::Err(Some(error));
         };
         IterDup::new(self, reth_mdbx_sys::MDBX_GET_CURRENT)
     }
@@ -435,7 +435,7 @@ where
             Ok(Some(_)) => (),
             Ok(None) => {
                 let _: Result<Option<((), ())>> = self.last();
-                return Iter::new(self, reth_mdbx_sys::MDBX_NEXT, reth_mdbx_sys::MDBX_NEXT)
+                return Iter::new(self, reth_mdbx_sys::MDBX_NEXT, reth_mdbx_sys::MDBX_NEXT);
             }
             Err(error) => return Iter::Err(Some(error)),
         };

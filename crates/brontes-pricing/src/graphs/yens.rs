@@ -16,11 +16,11 @@ pub use crate::graphs::dijkstras::*;
 #[derive(Eq, PartialEq, Debug)]
 struct Path<N: Eq + Hash + Clone, E: Eq + Hash + Clone, C: Zero + Ord + Copy> {
     /// The nodes along the path
-    nodes: Vec<N>,
+    nodes:   Vec<N>,
     /// wieghts,
     weights: Vec<E>,
     /// The total cost of the path
-    cost: C,
+    cost:    C,
 }
 
 impl<N, E, C> PartialOrd for Path<N, E, C>

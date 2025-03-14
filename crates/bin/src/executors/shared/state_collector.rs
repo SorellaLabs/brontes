@@ -89,7 +89,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     ) -> eyre::Result<(BlockHash, BlockTree<Action>)> {
         let Some((block_hash, traces, header)) = fut.await else {
             classifier.block_load_failure(block);
-            return Err(eyre!("no traces found {block}"))
+            return Err(eyre!("no traces found {block}"));
         };
 
         trace!("Got {} traces + header", traces.len());
@@ -153,7 +153,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 }
                 Poll::Ready(Err(e)) => {
                     tracing::error!(error = %e, "state collector");
-                    return Poll::Ready(None)
+                    return Poll::Ready(None);
                 }
                 Poll::Pending => {
                     self.collection_future = Some(collection_future);
@@ -165,7 +165,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             && self.metadata_fetcher.is_finished()
             && self.collection_future.is_none()
         {
-            return Poll::Ready(None)
+            return Poll::Ready(None);
         }
 
         self.metadata_fetcher

@@ -350,9 +350,9 @@ where
 }
 
 struct SmallestHolder<K> {
-    cost: K,
+    cost:  K,
     index: usize,
-    hops: usize,
+    hops:  usize,
 }
 
 impl<K: PartialEq> PartialEq for SmallestHolder<K> {

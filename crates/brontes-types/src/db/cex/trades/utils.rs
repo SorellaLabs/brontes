@@ -78,7 +78,7 @@ impl<'a> PairTradeWalker<'a> {
 
         for (exchange, trades) in &self.trades {
             let Some((lower_idx, upper_idx)) = self.exchange_ptrs.get_mut(exchange) else {
-                continue
+                continue;
             };
 
             // Gets trades before the block timestamp that are within the current pre block
@@ -90,11 +90,11 @@ impl<'a> PairTradeWalker<'a> {
                         trade_res.push(CexTradePtr::new(next_trade));
                         *lower_idx -= 1;
                     } else {
-                        break
+                        break;
                     }
 
                     if *lower_idx == 0 {
-                        break
+                        break;
                     }
                 }
             }
@@ -109,11 +109,11 @@ impl<'a> PairTradeWalker<'a> {
                         trade_res.push(CexTradePtr::new(next_trade));
                         *upper_idx += 1;
                     } else {
-                        break
+                        break;
                     }
 
                     if *upper_idx == max {
-                        break
+                        break;
                     }
                 }
             }
@@ -160,14 +160,14 @@ impl<'a> TradeBasket<'a> {
                 final_trade.amount = remaining_volume;
                 trades_used.push(final_trade);
                 remaining_volume = Rational::ZERO;
-                break
+                break;
             } else {
                 trades_used.push(trade_data.clone());
                 remaining_volume -= &trade_data.amount;
             }
 
             if remaining_volume == Rational::ZERO {
-                break
+                break;
             }
         }
 
@@ -189,7 +189,7 @@ impl<'a> SortedTrades<'a> {
 
         for (ex, pairs) in trade_map.iter() {
             if !exchanges.contains(ex) || pair.0 == pair.1 {
-                continue
+                continue;
             }
 
             for (ex_pair, trades) in pairs.iter() {
@@ -199,7 +199,7 @@ impl<'a> SortedTrades<'a> {
                     || pair.1 == ex_pair.0
                     || pair.1 == ex_pair.1)
                 {
-                    continue
+                    continue;
                 }
 
                 consolidated_trades
@@ -318,7 +318,7 @@ impl TimeBasketQueue<'_> {
             while self.indexes.1 < self.trades.len() {
                 let trade = &self.trades[self.indexes.1];
                 if trade.timestamp > self.current_post_time {
-                    break
+                    break;
                 }
                 basket_trades.push(CexTradePtr::new(trade));
                 basket_volume += &trade.amount;
@@ -343,7 +343,7 @@ impl TimeBasketQueue<'_> {
 
             // Break if we've reached the max timestamp
             if self.current_post_time >= self.max_timestamp {
-                break
+                break;
             }
         }
     }
@@ -363,7 +363,7 @@ impl TimeBasketQueue<'_> {
             while self.indexes.0 > 0 {
                 let trade = &self.trades[self.indexes.0];
                 if trade.timestamp < self.current_pre_time {
-                    break
+                    break;
                 }
                 basket_trades.push(CexTradePtr::new(trade));
                 basket_volume += &trade.amount;
@@ -388,7 +388,7 @@ impl TimeBasketQueue<'_> {
 
             // Break if we've reached the min timestamp
             if self.current_pre_time <= self.min_timestamp {
-                break
+                break;
             }
         }
     }

@@ -43,7 +43,7 @@ impl TracingProvider for LocalProvider {
                 .block(block_number.unwrap_or(BlockId::latest()))
                 .await;
             if res.is_ok() || attempts > self.retries {
-                return res.map_err(Into::into)
+                return res.map_err(Into::into);
             }
             attempts += 1
         }

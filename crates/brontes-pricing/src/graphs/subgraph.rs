@@ -216,23 +216,19 @@ impl PairSubGraph {
     /// checks to see if the liquidity of any pool has dropped by over 50%.
     /// if this has happened, will send the pair for reverification
     pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &FastHashMap<Address, &T>) -> bool {
-        self.graph
-            .edge_weights()
-            .any(|weight| {
-                weight
-                    .iter()
-                    .any(|edge| {
-                        let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
-                        let tvl_added = r0 + r1;
-                        let start_tvl = self.start_nodes_liq.get(&edge.pool_addr).unwrap();
+        self.graph.edge_weights().any(|weight| {
+            weight.iter().any(|edge| {
+                let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
+                let tvl_added = r0 + r1;
+                let start_tvl = self.start_nodes_liq.get(&edge.pool_addr).unwrap();
 
-                        if tvl_added < *start_tvl && start_tvl != &Rational::ZERO {
-                            tvl_added / start_tvl <= Rational::ONE_HALF
-                        } else {
-                            false
-                        }
-                    })
+                if tvl_added < *start_tvl && start_tvl != &Rational::ZERO {
+                    tvl_added / start_tvl <= Rational::ONE_HALF
+                } else {
+                    false
+                }
             })
+        })
     }
 
     // returns list of pools we already have so we can derement there state tracker.
@@ -266,7 +262,7 @@ impl PairSubGraph {
                     edge_weight.push(edge);
                 }
                 has.push(edge.pool_addr);
-                continue
+                continue;
             }
 
             connections.entry((addr0, addr1)).or_default().push(edge);
@@ -338,9 +334,9 @@ impl PairSubGraph {
         let node1 = (*n1).into();
 
         if let Some(edge) = self.graph.find_edge(node0, node1) {
-            return add_edge(&mut self.graph, edge, edge_info, true)
+            return add_edge(&mut self.graph, edge, edge_info, true);
         } else if let Some(edge) = self.graph.find_edge(node1, node0) {
-            return add_edge(&mut self.graph, edge, edge_info, false)
+            return add_edge(&mut self.graph, edge, edge_info, false);
         } else {
             let d0 = PoolPairInfoDirection { info: edge_info, token_0_in: true };
             let d1 = PoolPairInfoDirection { info: edge_info, token_0_in: false };
@@ -358,7 +354,7 @@ impl PairSubGraph {
     pub fn is_expired_subgraph(&self, block: u64) -> bool {
         let last = self.last_block_for_pricing.load(SeqCst);
         if last > block {
-            return false
+            return false;
         }
         (block - last) > INACTIVE_REMOVAL_PERIOD
     }
@@ -375,7 +371,7 @@ impl PairSubGraph {
         block: u64,
     ) {
         if self.remove_at.is_some() {
-            return
+            return;
         }
 
         let result = self.run_bfs_with_liquidity_params(start, start_price, state, true);
@@ -485,7 +481,7 @@ impl PairSubGraph {
 
                 let node_weights = edge.weight();
                 if node_weights.is_empty() {
-                    return None
+                    return None;
                 }
 
                 for info in node_weights {
@@ -524,7 +520,7 @@ impl PairSubGraph {
                 }
 
                 if weight == Rational::ZERO {
-                    return None
+                    return None;
                 }
 
                 let local_weighted_price = pxw / weight;
@@ -749,7 +745,7 @@ impl PairSubGraph {
         while let Some((next_edge, prev_price)) = visit_next.pop_front() {
             let id = next_edge.id();
             if visited.contains(&id) {
-                continue
+                continue;
             }
             visited.insert(id);
 
@@ -784,7 +780,7 @@ impl PairSubGraph {
         while let Some(next_edge) = visit_next.pop_front() {
             let id = next_edge.id();
             if visited.contains(&id) {
-                continue
+                continue;
             }
             visited.insert(id);
 
@@ -803,7 +799,7 @@ impl PairSubGraph {
                         .unwrap()
                         .0,
                 );
-                continue
+                continue;
             }
             visit_next.extend(next_edges);
         }
@@ -829,17 +825,17 @@ impl PairSubGraph {
 
         while let Some(MinScored(node_score, node)) = visit_next.pop() {
             if visited.is_visited(&node) {
-                continue
+                continue;
             }
 
             if goal == node {
-                break
+                break;
             }
 
             for edge in graph.edges(node) {
                 let next = edge.target();
                 if visited.is_visited(&next) {
-                    continue
+                    continue;
                 }
 
                 let next_score = &node_score + Rational::ONE;
@@ -925,11 +921,11 @@ impl PairSubGraph {
 
         while let Some(MinScored(node_score, (node, price))) = visit_next.pop() {
             if visited.is_visited(&node) {
-                continue
+                continue;
             }
 
             if goal == node {
-                break
+                break;
             }
 
             for edge in graph.edges(node) {
@@ -937,7 +933,7 @@ impl PairSubGraph {
 
                 let next = edge.target();
                 if visited.is_visited(&next) {
-                    continue
+                    continue;
                 }
 
                 let mut pxw = Rational::ZERO;
@@ -968,7 +964,7 @@ impl PairSubGraph {
                 }
 
                 if weight == Rational::ZERO {
-                    continue
+                    continue;
                 }
 
                 let local_weighted_price = pxw / weight;
@@ -1013,7 +1009,7 @@ fn add_edge(
         .iter()
         .any(|w| w.pool_addr == { edge_info }.pool_addr)
     {
-        return false
+        return false;
     }
 
     let new_edge =

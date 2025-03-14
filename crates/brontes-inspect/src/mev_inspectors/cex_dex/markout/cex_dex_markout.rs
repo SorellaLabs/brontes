@@ -48,8 +48,8 @@ pub const FILTER_THRESHOLD: u64 = 20;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
-    pub utils: SharedInspectorUtils<'db, DB>,
-    trade_config: CexDexTradeConfig,
+    pub utils:     SharedInspectorUtils<'db, DB>,
+    trade_config:  CexDexTradeConfig,
     cex_exchanges: Vec<CexExchange>,
 }
 

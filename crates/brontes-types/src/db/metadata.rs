@@ -91,10 +91,10 @@ impl Metadata {
         self.cex_quotes.quotes.iter().for_each(|(exchange, pairs)| {
             pairs.keys().for_each(|key| {
                 let Ok(token0) = db.try_fetch_token_info(key.0).map(|s| s.symbol.clone()) else {
-                    return
+                    return;
                 };
                 let Ok(token1) = db.try_fetch_token_info(key.1).map(|s| s.symbol.clone()) else {
-                    return
+                    return;
                 };
                 if &token0 == "WETH" && &token1 == "USDT" {
                     tracing::info!(?exchange, "{}-{} in quotes", token0, token1);
@@ -116,7 +116,7 @@ impl Metadata {
     /// falls back to DEX quotes using the average block price.
     pub fn get_eth_price(&self, quote_token: Address) -> Rational {
         if self.block_metadata.eth_prices != Rational::ZERO {
-            return self.block_metadata.eth_prices.clone()
+            return self.block_metadata.eth_prices.clone();
         }
 
         self.dex_quotes

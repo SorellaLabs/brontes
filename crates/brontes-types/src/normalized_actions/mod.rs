@@ -306,7 +306,7 @@ impl Action {
     pub fn get_calldata(&self) -> Option<Bytes> {
         if let Action::Unclassified(u) = &self {
             if let TraceAction::Call(call) = &u.trace.action {
-                return Some(call.input.clone())
+                return Some(call.input.clone());
             }
         }
 
@@ -458,7 +458,7 @@ impl Action {
 
     pub fn is_static_call(&self) -> bool {
         if let Self::Unclassified(u) = &self {
-            return u.is_static_call()
+            return u.is_static_call();
         }
         false
     }

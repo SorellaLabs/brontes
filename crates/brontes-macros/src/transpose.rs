@@ -6,7 +6,7 @@ pub fn parse(item: DeriveInput) -> syn::Result<TokenStream> {
     let data = if let Data::Struct(ref i) = item.data {
         i
     } else {
-        return Err(syn::Error::new(item.span(), "only supports structs"))
+        return Err(syn::Error::new(item.span(), "only supports structs"));
     };
 
     let d_name = &item.ident;

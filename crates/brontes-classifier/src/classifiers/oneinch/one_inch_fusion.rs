@@ -17,7 +17,7 @@ action_impl!(
             recipient:     Address::default(),
             child_actions: vec![],
             msg_value:     info.msg_value,
-        })
+        });
     }
 );
 

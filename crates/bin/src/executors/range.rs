@@ -147,7 +147,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle, P: 
                 }
                 None => {
                     cx.waker().wake_by_ref();
-                    break
+                    break;
                 }
             }
         }

@@ -630,7 +630,7 @@ impl LibmdbxWriter {
             .into_iter()
             .for_each(|(table, values)| {
                 if values.is_empty() {
-                    return
+                    return;
                 }
                 match table {
                     Tables::DexPrice => {

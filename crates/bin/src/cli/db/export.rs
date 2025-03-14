@@ -45,11 +45,11 @@ impl Export {
                 Ok(Ok(_)) => (),
                 Ok(Err(e)) => {
                     error!("Failed to export table: {}", e);
-                    return Err(e)
+                    return Err(e);
                 }
                 Err(e) => {
                     error!("Task failed: {}", e);
-                    return Err(eyre::eyre!("Task failed: {}", e))
+                    return Err(eyre::eyre!("Task failed: {}", e));
                 }
             }
         }

@@ -134,7 +134,7 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
             return Err(AmmError::CallError(eyre::eyre!(
                 "pool bytecode was empty {:?}",
                 pool.address
-            )))
+            )));
         }
         let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode().as_ref()));
         let (token0, token1, fee, tick_spacing) = extract_uni_v3_immutables(pool_bytecode)?;

@@ -113,7 +113,7 @@ impl InspectorBenchUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|(t, _)| t.header.number).collect(),
-            ))
+            ));
         }
 
         let (tree, prices) = trees.remove(0);
@@ -226,7 +226,7 @@ impl InspectorBenchUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|t| t.header.number).collect(),
-            ))
+            ));
         }
 
         let tree = trees.remove(0);
@@ -279,7 +279,7 @@ impl InspectorBenchUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|(t, _)| t.header.number).collect(),
-            ))
+            ));
         }
         let (tree, prices) = trees.remove(0);
 

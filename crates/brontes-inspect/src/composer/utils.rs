@@ -198,18 +198,18 @@ fn update_mev_count(mev_count: &mut MevCount, mev_type: MevType, count: u64) {
 #[derive(Debug)]
 pub struct BlockPnL {
     // ETH profit made by the block builder (in wei)
-    pub builder_eth_profit: i128,
+    pub builder_eth_profit:      i128,
     // Amount of ETH paid by the builder to sponsor transactions in the block
-    pub builder_sponsorship: i128,
+    pub builder_sponsorship:     i128,
     // USD profit of the builders searchers
-    pub builder_mev_profit_usd: f64,
+    pub builder_mev_profit_usd:  f64,
     // ETH reward paid to the proposer (in wei)
-    pub mev_reward: Option<u128>,
+    pub mev_reward:              Option<u128>,
     // Address of the proposer fee recipient
-    pub proposer_fee_recipient: Option<Address>,
+    pub proposer_fee_recipient:  Option<Address>,
     // Gas & Tips paid to the builder by it's own vertically integrated
     // searchers
-    pub builder_searcher_tip: u128,
+    pub builder_searcher_tip:    u128,
     // If the block was bid adjusted using ultrasound's bid adjustment
     pub ultrasound_bid_adjusted: bool,
 }
@@ -403,10 +403,10 @@ fn calculate_builder_sponsorship_amount(
 }
 
 pub struct BlockPreprocessing {
-    total_gas_used: u128,
-    total_priority_fee: u128,
-    total_bribe: u128,
-    builder_address: Address,
+    total_gas_used:         u128,
+    total_priority_fee:     u128,
+    total_bribe:            u128,
+    builder_address:        Address,
     gas_details_by_address: FastHashMap<Address, GasDetails>,
 }
 

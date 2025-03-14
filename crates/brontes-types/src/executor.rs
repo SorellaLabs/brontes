@@ -131,7 +131,7 @@ impl BrontesTaskManager {
                 .unwrap_or(false)
             {
                 debug!("graceful shutdown timed out");
-                return false
+                return false;
             }
             std::hint::spin_loop();
         }

@@ -86,7 +86,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         if liqs.is_empty() {
             tracing::debug!("no liquidation events");
-            return None
+            return None;
         }
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();

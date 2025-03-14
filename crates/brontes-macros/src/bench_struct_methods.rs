@@ -22,14 +22,14 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
         .ok()
         .flatten()
     else {
-        return Err(syn::Error::new(attr.span(), "invalid ptr to function call struct"))
+        return Err(syn::Error::new(attr.span(), "invalid ptr to function call struct"));
     };
 
     let attrs = item.attrs;
     let vis = item.vis;
     let mut sig = item.sig;
     if sig.asyncness.is_some() {
-        return Err(syn::Error::new(sig.asyncness.span(), "function must not be async"))
+        return Err(syn::Error::new(sig.asyncness.span(), "function must not be async"));
     }
     sig.asyncness = None;
     let block = item.block;

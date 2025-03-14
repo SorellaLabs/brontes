@@ -32,10 +32,10 @@ type ClassifyData<V> = Option<(usize, Vec<MultiCallFrameClassification<V>>)>;
 
 #[derive(Debug, Clone)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots: Vec<Root<V>>,
-    pub header: Header,
+    pub tx_roots:             Vec<Root<V>>,
+    pub header:               Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee: f64,
+    pub avg_priority_fee:     f64,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {

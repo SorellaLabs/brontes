@@ -121,7 +121,7 @@ impl<'a> SortedTrades<'a> {
                     final_end_time:   0,
                     was_intermediary: false,
                 },
-            })
+            });
         }
 
         let res = self
@@ -261,7 +261,7 @@ impl<'a> SortedTrades<'a> {
                 || baskets_queue.get_max_time_delta(block_timestamp)
                     >= config.max_optimistic_post_block_us
             {
-                break
+                break;
             }
 
             let min_expand = (baskets_queue.get_max_time_delta(block_timestamp)
@@ -333,9 +333,9 @@ impl<'a> SortedTrades<'a> {
 
         if &trade_volume < volume && !bypass_vol {
             log_insufficient_trade_volume(pair, dex_swap, &tx_hash, trade_volume, volume.clone());
-            return None
+            return None;
         } else if trade_volume == Rational::ZERO {
-            return None
+            return None;
         }
 
         let global = ExchangePath {

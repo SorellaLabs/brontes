@@ -68,7 +68,7 @@ impl NormalizedSwap {
     /// Calculates the exchange rate for a given DEX swap
     pub fn swap_rate(&self) -> Rational {
         if self.amount_out == Rational::ZERO {
-            return Rational::ZERO
+            return Rational::ZERO;
         }
 
         &self.amount_in / &self.amount_out

@@ -40,7 +40,7 @@ impl MultiCallFrameClassifier for MakerDss {
                                     if t.amount >= this.amounts[i] {
                                         repay_transfers.push(t.clone());
                                         nodes_to_prune.push(index);
-                                        continue
+                                        continue;
                                     }
                                 }
                             }
@@ -49,7 +49,7 @@ impl MultiCallFrameClassifier for MakerDss {
                         }
                         _ => {
                             warn!("Maker DSS flashloan, unknown call");
-                            continue
+                            continue;
                         }
                     }
                 }

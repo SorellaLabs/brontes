@@ -175,25 +175,25 @@ impl Parse for ActionMacro {
 fn parse_closure(input: &mut syn::parse::ParseStream) -> syn::Result<ExprClosure> {
     let call_function: ExprClosure = input.parse()?;
     if call_function.asyncness.is_some() {
-        return Err(syn::Error::new(input.span(), "closure cannot be async"))
+        return Err(syn::Error::new(input.span(), "closure cannot be async"));
     }
 
     if !input.is_empty() {
         return Err(syn::Error::new(
             input.span(),
             "There should be no values after the call function",
-        ))
+        ));
     }
 
     if call_function.asyncness.is_some() {
-        return Err(syn::Error::new(input.span(), "closure cannot be async"))
+        return Err(syn::Error::new(input.span(), "closure cannot be async"));
     }
 
     if !input.is_empty() {
         return Err(syn::Error::new(
             input.span(),
             "There should be no values after the call function",
-        ))
+        ));
     }
 
     Ok(call_function)
@@ -241,7 +241,7 @@ fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path>
         return Err(syn::Error::new(
             protocol_path.span(),
             "incorrect path, Should be Protocol::<ProtocolVarient>",
-        ))
+        ));
     }
 
     let should_protocol = &protocol_path.segments[protocol_path.segments.len() - 2].ident;
@@ -249,7 +249,7 @@ fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path>
         return Err(syn::Error::new(
             should_protocol.span(),
             "incorrect path, Should be Protocol::<ProtocolVarient>",
-        ))
+        ));
     }
     Ok(protocol_path)
 }
@@ -266,7 +266,7 @@ fn parse_decode_fn_path(input: &mut syn::parse::ParseStream) -> syn::Result<Path
         return Err(syn::Error::new(
             fn_path.span(),
             "incorrect path, Should be <crate>::<path_to>::ProtocolModName::FnCall",
-        ))
+        ));
     }
 
     Ok(fn_path)

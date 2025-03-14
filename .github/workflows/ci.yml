@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - main
+      - rust-patch
   pull_request:
     branches: [main]
 
@@ -36,7 +37,7 @@ jobs:
           RUSTFLAGS: -D warnings
 
   build:
-    name: "build and fmt"
+    name: "build"
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -46,7 +47,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85.0
-          components: clippy,rustfmt
+          components: clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -63,8 +64,25 @@ jobs:
         env:
           RUSTFLAGS: -D warnings
 
-      - name: "cargo fmt"
-        run: cargo fmt --all --check
+  cargo-fmt:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check-Out
+        uses: actions/checkout@v4
+
+      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+        shell: bash
+      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+        shell: bash
+
+      - name: Install Nightly
+        run: |
+          rustup toolchain install nightly
+          rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
+
+      - name: cargo +nightly fmt
+        run: cargo +nightly fmt --all -- --check
 
   test:
     runs-on: ubuntu-latest

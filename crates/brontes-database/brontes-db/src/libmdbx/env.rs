@@ -44,9 +44,9 @@ impl DatabaseEnvKind {
 #[derive(Clone, Debug, Default)]
 pub struct DatabaseArguments {
     /// Client version that accesses the database.
-    client_version: ClientVersion,
+    client_version:                ClientVersion,
     /// Database log level. If [None], the default value is used.
-    log_level: Option<LogLevel>,
+    log_level:                     Option<LogLevel>,
     /// Maximum duration of a read transaction. If [None], the default value is
     /// used.
     max_read_transaction_duration: Option<MaxReadTransactionDuration>,
@@ -77,7 +77,7 @@ pub struct DatabaseArguments {
     ///
     /// This flag affects only at environment opening but can't be changed
     /// after.
-    exclusive: Option<bool>,
+    exclusive:                     Option<bool>,
 }
 
 impl DatabaseArguments {
@@ -153,11 +153,11 @@ impl DatabaseEnv {
         inner_env.set_max_dbs(256);
         inner_env.set_geometry(Geometry {
             // Maximum database size of 4 TB
-            size: Some(0..(4000 * GIGABYTE)),
+            size:             Some(0..(4000 * GIGABYTE)),
             // We grow the database in increments of a gigabyte
-            growth_step: Some(GIGABYTE as isize),
+            growth_step:      Some(GIGABYTE as isize),
             shrink_threshold: Some(GIGABYTE as isize),
-            page_size: Some(PageSize::Set(default_page_size())),
+            page_size:        Some(PageSize::Set(default_page_size())),
         });
         #[cfg(not(windows))]
         {

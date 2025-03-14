@@ -126,7 +126,7 @@ impl CexTradesConverter {
                                 let mut seen = vec![];
                                 for mut symbol in symbols {
                                     if seen.contains(&symbol.address_pair) {
-                                        continue
+                                        continue;
                                     } else {
                                         seen.push(symbol.address_pair)
                                     }

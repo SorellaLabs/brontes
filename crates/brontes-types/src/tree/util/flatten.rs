@@ -33,11 +33,11 @@ impl<
                 let now = ret.pop();
                 self.extra.extend(ret);
                 if now.is_none() {
-                    continue
+                    continue;
                 }
-                return now
+                return now;
             } else {
-                return Some(item)
+                return Some(item);
             }
         }
 

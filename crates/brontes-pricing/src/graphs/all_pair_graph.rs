@@ -86,7 +86,7 @@ impl AllPairGraph {
             .sorted()
             .for_each(|((pool_addr, dex), pair)| {
                 if !dex.has_state_updater() {
-                    return
+                    return;
                 }
                 // because this is undirected, doesn't matter what order the nodes are connected
                 // so we sort so we can just have a collection of edges for just one
@@ -206,7 +206,7 @@ impl AllPairGraph {
     ) -> (Vec<Vec<Vec<SubGraphEdge>>>, Option<Pair>) {
         if pair.0 == pair.1 {
             error!("Invalid pair, both tokens have the same address");
-            return (vec![], None)
+            return (vec![], None);
         }
 
         let Some(start_idx) = first_hop
@@ -215,7 +215,7 @@ impl AllPairGraph {
         else {
             let addr = pair.0;
             debug!(?addr, "no start node for address");
-            return (vec![], None)
+            return (vec![], None);
         };
 
         let second_idx = first_hop.and_then(|fh| self.token_to_index.get(&fh.1));
@@ -223,7 +223,7 @@ impl AllPairGraph {
         let Some(end_idx) = self.token_to_index.get(&pair.1) else {
             let addr = pair.1;
             debug!(?addr, "no end node for address");
-            return (vec![], None)
+            return (vec![], None);
         };
 
         let mut indexes = possible_extensions
@@ -244,7 +244,7 @@ impl AllPairGraph {
                     .into_iter()
                     .filter(|f| {
                         if f.weight().iter().all(|e| e.insert_block > block) {
-                            return false
+                            return false;
                         }
 
                         let edge = f.weight().first().unwrap();

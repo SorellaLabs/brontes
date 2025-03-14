@@ -70,9 +70,9 @@ impl CexDB {
         let exchanges_to_use = &cex_config.exchanges_to_use;
 
         let pair_exists = exchanges_to_use.iter().any(|exchange| {
-            cex_trades.get(exchange).is_some_and(|pairs| {
-                pairs.contains_key(&pair) || pairs.contains_key(&pair.flip())
-            })
+            cex_trades
+                .get(exchange)
+                .is_some_and(|pairs| pairs.contains_key(&pair) || pairs.contains_key(&pair.flip()))
         });
 
         if !pair_exists {
@@ -224,7 +224,7 @@ struct TradeStats {
 }
 fn print_trade_stats(stats: &[TradeStats]) {
     if stats.is_empty() {
-        return
+        return;
     }
 
     let symbol = &stats[0].symbol;

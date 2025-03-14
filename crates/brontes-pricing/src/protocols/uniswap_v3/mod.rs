@@ -125,18 +125,18 @@ pub const MINT_EVENT_SIGNATURE: B256 = FixedBytes([
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UniswapV3Pool {
-    pub address: Address,
-    pub token_a: Address,
+    pub address:          Address,
+    pub token_a:          Address,
     pub token_a_decimals: u8,
-    pub token_b: Address,
+    pub token_b:          Address,
     pub token_b_decimals: u8,
-    pub liquidity: u128,
-    pub sqrt_price: U256,
-    pub fee: u32,
-    pub tick: i32,
-    pub tick_spacing: i32,
-    pub tick_bitmap: FastHashMap<i16, U256>,
-    pub ticks: FastHashMap<i32, Info>,
+    pub liquidity:        u128,
+    pub sqrt_price:       U256,
+    pub fee:              u32,
+    pub tick:             i32,
+    pub tick_spacing:     i32,
+    pub tick_bitmap:      FastHashMap<i16, U256>,
+    pub ticks:            FastHashMap<i32, Info>,
 
     // non v3 native state
     pub reserve_0: U256,
@@ -146,8 +146,8 @@ pub struct UniswapV3Pool {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Info {
     pub liquidity_gross: u128,
-    pub liquidity_net: i128,
-    pub initialized: bool,
+    pub liquidity_net:   i128,
+    pub initialized:     bool,
 }
 
 impl Info {
@@ -500,12 +500,12 @@ impl UniswapV3Pool {
 #[derive(Default)]
 pub struct StepComputations {
     pub sqrt_price_start_x_96: U256,
-    pub tick_next: i32,
-    pub initialized: bool,
-    pub sqrt_price_next_x96: U256,
-    pub amount_in: U256,
-    pub amount_out: U256,
-    pub fee_amount: U256,
+    pub tick_next:             i32,
+    pub initialized:           bool,
+    pub sqrt_price_next_x96:   U256,
+    pub amount_in:             U256,
+    pub amount_out:            U256,
+    pub fee_amount:            U256,
 }
 
 pub struct Tick {

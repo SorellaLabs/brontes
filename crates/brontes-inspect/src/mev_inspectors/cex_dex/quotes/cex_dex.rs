@@ -121,7 +121,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexQuotesInspector<'_, DB> {
 
         if metadata.cex_quotes.quotes.is_empty() {
             tracing::warn!("no cex quotes for this block");
-            return vec![]
+            return vec![];
         }
 
         self.utils
@@ -171,7 +171,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 // Return early if this is an defi automation contract
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
                     if contract_type.is_defi_automation() {
-                        return None
+                        return None;
                     }
                 }
 
@@ -208,7 +208,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 if dex_swaps.is_empty() {
                     trace!(    target: "brontes::cex-dex-quotes",
                 "no dex swaps found\n Tx: {}", format_etherscan_url(&tx_info.tx_hash));
-                    return None
+                    return None;
                 }
 
                 if self.is_triangular_arb(&dex_swaps) {
@@ -221,7 +221,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                         m.branch_filtering_trigger(MevType::CexDexQuotes, "is_triangular_arb")
                     });
 
-                    return None
+                    return None;
                 }
 
                 let mut possible_cex_dex: CexDexProcessing =
@@ -342,13 +342,13 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         // Amount * base_to_quote = USDT amount
         let base_to_quote = if token_price == Rational::ZERO {
             trace!("Token price is zero");
-            return None
+            return None;
         } else {
             token_price.clone().reciprocal()
         };
 
         if maker_taker_mid.0 == Rational::ZERO || swap.amount_out == Rational::ZERO {
-            return None
+            return None;
         }
 
         let pairs_price = ExchangeLegCexPrice {
@@ -376,7 +376,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 &swap.amount_out,
                 &output_of_cex_trade_maker,
             );
-            return None
+            return None;
         }
 
         Some((
@@ -516,7 +516,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         // Not enough swaps to form a cycle, thus cannot be an atomic triangular
         // arbitrage.
         if dex_swaps.len() < 2 {
-            return false
+            return false;
         }
 
         let original_token = dex_swaps[0].token_in.address;
@@ -541,7 +541,8 @@ pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
         }
     } else if tx_info
         .contract_type
-        .as_ref().is_some_and(|c| c.is_mev_contract())
+        .as_ref()
+        .is_some_and(|c| c.is_mev_contract())
     {
         base_diff += 1;
     }

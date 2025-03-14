@@ -42,7 +42,7 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
     } else if depositCall::abi_decode(&calldata, false).is_ok() {
         (token, from, value)
     } else {
-        return Err(eyre::eyre!("failed to decode transfer for token: {:?}", token))
+        return Err(eyre::eyre!("failed to decode transfer for token: {:?}", token));
     };
 
     if db.try_fetch_token_info(token).is_err() {

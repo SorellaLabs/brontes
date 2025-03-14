@@ -22,7 +22,7 @@ pub fn remove_swap_transfers(tree: &mut BlockTree<Action>) {
                         || (&transfer.amount + &transfer.fee) == swap_data.amount_out)
                         && (transfer.to == swap_data.pool || transfer.from == swap_data.pool)
                     {
-                        return Some(*index)
+                        return Some(*index);
                     }
                     None
                 })
@@ -49,7 +49,7 @@ pub fn remove_mint_transfers(tree: &mut BlockTree<Action>) {
                     };
                     for (amount, token) in mint_data.amount.iter().zip(&mint_data.token) {
                         if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                            return Some(*index)
+                            return Some(*index);
                         }
                     }
                     None
@@ -78,7 +78,7 @@ pub fn remove_burn_transfers(tree: &mut BlockTree<Action>) {
                     };
                     for (amount, token) in burn_data.amount.iter().zip(&burn_data.token) {
                         if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                            return Some(*index)
+                            return Some(*index);
                         }
                     }
                     None
@@ -107,7 +107,7 @@ pub fn remove_collect_transfers(tree: &mut BlockTree<Action>) {
                     };
                     for (amount, token) in collect_data.amount.iter().zip(&collect_data.token) {
                         if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                            return Some(*index)
+                            return Some(*index);
                         }
                     }
                     None

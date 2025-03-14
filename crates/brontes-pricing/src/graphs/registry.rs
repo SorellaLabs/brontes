@@ -80,7 +80,7 @@ impl SubGraphRegistry {
                     self.metrics
                         .as_ref()
                         .inspect(|m| m.active_subgraphs.decrement(1.0));
-                    return false
+                    return false;
                 }
                 true
             });
@@ -200,7 +200,7 @@ impl SubGraphRegistry {
         let mut removals = FastHashMap::default();
         self.sub_graphs.retain(|k, v| {
             if k != &pair.ordered() {
-                return true
+                return true;
             }
             v.retain(|gt, s| {
                 let res = gt != &goes_through.ordered();
@@ -254,7 +254,7 @@ impl SubGraphRegistry {
         self.sub_graphs.iter_mut().for_each(|(g_pair, sub)| {
             // wrong pair, then retain
             if *g_pair != pair.ordered() {
-                return
+                return;
             }
 
             sub.iter_mut().for_each(|(goes_through, graph)| {
@@ -338,7 +338,7 @@ impl SubGraphRegistry {
             let mut acc = Rational::ZERO;
             for graph in f.values() {
                 if graph.extends_to().is_some() {
-                    continue
+                    continue;
                 };
 
                 let Some(next) = graph.fetch_price(edge_state) else {

@@ -48,7 +48,7 @@ impl RCloneWrapper {
                 if file_names.ends_with("brontes-db-partition-full-range-tables.tar.gz")
                     || file_names.ends_with("brontes-complete-range.tar.gz")
                 {
-                    return None
+                    return None;
                 }
 
                 tracing::info!(?file_names);

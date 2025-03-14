@@ -57,7 +57,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>>> DownloadBufWriterWithProgr
         if has >= rem && self.file.can_write() {
             let bytes_to_write = self.buffer.drain(..).chain(bytes).collect::<Vec<u8>>();
             self.file.write(bytes_to_write);
-            return
+            return;
         }
 
         self.buffer.extend(bytes);
@@ -121,7 +121,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>> + Unpin> Future
                     this.file.write(bytes_to_write);
                     // reschedule to start polling write
                     cx.waker().wake_by_ref();
-                    return Poll::Pending
+                    return Poll::Pending;
                 }
                 // waiting for a prev batch to finish writing
                 Poll::Ready(None) if !this.buffer.is_empty() && !this.file.can_write() => {
@@ -133,7 +133,7 @@ impl<S: Stream<Item = Result<Bytes, reqwest::Error>> + Unpin> Future
             work -= 1;
             if work == 0 || this.is_over_buffer() {
                 cx.waker().wake_by_ref();
-                return Poll::Pending
+                return Poll::Pending;
             }
         }
     }

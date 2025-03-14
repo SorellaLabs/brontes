@@ -65,7 +65,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
         multizip((hashes, transfers, tx_info))
             .filter_map(|(tx_hash, transfers, info)| {
                 if transfers.is_empty() {
-                    return None
+                    return None;
                 }
                 let info = info?;
 

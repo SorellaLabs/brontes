@@ -114,7 +114,7 @@ impl CexPriceMap {
                     tracing::debug!(?exchange, ?pair);
                     let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
                     if res.is_some() {
-                        return res
+                        return res;
                     }
                 }
                 None
@@ -147,7 +147,7 @@ impl CexPriceMap {
         _max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
-            return Some(FeeAdjustedQuote::default_one_to_one())
+            return Some(FeeAdjustedQuote::default_one_to_one());
         }
 
         self.quotes
@@ -165,7 +165,7 @@ impl CexPriceMap {
             .and_then(|(adjusted_quotes, direction)| {
                 if adjusted_quotes.is_empty() {
                     tracing::debug!(?pair, ?exchange, "no quotes");
-                    return None
+                    return None;
                 }
 
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
@@ -226,7 +226,7 @@ impl CexPriceMap {
                     );
 
                     if quote2.price_maker.0 == Rational::ZERO {
-                        return None
+                        return None;
                     }
 
                     let normalized_bbo_amount: (Rational, Rational) = (
@@ -272,7 +272,7 @@ impl CexPriceMap {
     ///   price is reciprocated to match the requested pair ordering.
     pub fn get_vm_quote(&self, pair: &Pair, exchange: &CexExchange) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
-            return Some(FeeAdjustedQuote::default_one_to_one())
+            return Some(FeeAdjustedQuote::default_one_to_one());
         }
 
         self.quotes
@@ -554,7 +554,10 @@ fn log_significant_price_difference(
         dex_swap.token_out.address,
         intermediary,
         dex_swap.token_in.address,
-        tx_hash.map_or(String::new(), |hash| format!("- Transaction Hash: https://etherscan.io/tx/{}", hash))
+        tx_hash.map_or(String::new(), |hash| format!(
+            "- Transaction Hash: https://etherscan.io/tx/{}",
+            hash
+        ))
     );
 }
 

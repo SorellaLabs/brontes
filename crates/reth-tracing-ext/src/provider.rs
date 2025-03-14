@@ -295,7 +295,7 @@ where
             .checked_sub(env.value)
             // Return error if the caller has insufficient funds.
             .ok_or_else(|| RpcInvalidTransactionError::InsufficientFunds {
-                cost: env.value,
+                cost:    env.value,
                 balance: account_balance,
             })?
             // Calculate the amount of gas the caller can afford with the specified gas price.
@@ -315,9 +315,9 @@ pub(crate) struct CallFees {
     ///
     /// `gasPrice` for legacy,
     /// `maxFeePerGas` for EIP-1559
-    gas_price: U256,
+    gas_price:                U256,
     /// Max Fee per Blob gas for EIP-4844 transactions
-    max_fee_per_blob_gas: Option<U256>,
+    max_fee_per_blob_gas:     Option<U256>,
 }
 
 // === impl CallFees ===

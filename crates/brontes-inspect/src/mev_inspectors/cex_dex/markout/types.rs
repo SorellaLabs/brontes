@@ -139,7 +139,7 @@ impl CexDexProcessing {
 
     pub fn construct_max_profit_route(&mut self) -> Option<()> {
         if self.per_exchange_pnl.iter().all(Option::is_none) {
-            return None
+            return None;
         }
 
         let num_legs = self.dex_swaps.len();
@@ -170,7 +170,8 @@ impl CexDexProcessing {
 
         self.per_exchange_pnl.retain(|possible_cex_dex| {
             possible_cex_dex
-                .as_ref().is_some_and(|cex_dex| cex_dex.arb_legs.iter().all(Option::is_some))
+                .as_ref()
+                .is_some_and(|cex_dex| cex_dex.arb_legs.iter().all(Option::is_some))
         });
 
         Some(())
@@ -447,7 +448,7 @@ pub struct PossibleCexDex {
 impl PossibleCexDex {
     pub fn from_arb_legs(arb_legs: Vec<Option<ArbLeg>>) -> Option<Self> {
         if arb_legs.iter().all(Option::is_none) {
-            return None
+            return None;
         }
 
         let mut aggregate_pnl_maker = Rational::ZERO;

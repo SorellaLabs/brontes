@@ -112,7 +112,7 @@ impl TraceLoader {
             tracing::info!("fetched missing data");
             return self
                 .test_metadata(block, USDT_ADDRESS)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block));
         }
     }
 
@@ -521,13 +521,13 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
         tracing::info!("no highest block found");
         write_fn(0);
 
-        return true
+        return true;
     };
     // try load file.
     let Ok(cache_data) = std::fs::read_to_string(".test_cache.json") else {
         tracing::info!("no .test_cache.json found");
         write_fn(max_block);
-        return true
+        return true;
     };
 
     let stats: CritTablesCache = serde_json::from_str(&cache_data).unwrap();

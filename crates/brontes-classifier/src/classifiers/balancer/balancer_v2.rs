@@ -115,7 +115,7 @@ fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
 
     for (i, &token_address) in logs.tokens.iter().enumerate() {
         if logs.deltas[i].is_zero() {
-            continue
+            continue;
         }
 
         let token = db.try_fetch_token_info(token_address)?;

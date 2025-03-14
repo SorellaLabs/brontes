@@ -95,7 +95,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
             // if all libmdbx tables have more entries, we don't init
             if libmdbx_cnt.all_greater(clickhouse_cnt) {
-                return Ok(())
+                return Ok(());
             }
         }
 
@@ -230,7 +230,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     Err(e) => {
                         info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e);
                         metrics.increment_query_errors(T::NAME, &e);
-                        return Ok::<(), eyre::Report>(())
+                        return Ok::<(), eyre::Report>(());
                     }
                 }
 
@@ -293,7 +293,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                     }
                     Err(e) => {
                         info!(target: "brontes::init", "{} -- Error Writing -- {:?}", T::NAME, e);
-                        return Ok::<(), eyre::Report>(())
+                        return Ok::<(), eyre::Report>(());
                     }
                 }
 
@@ -320,7 +320,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     fn build_critical_state_progress_bar(table_count: u64) -> Option<ProgressBar> {
         if table_count == 0 {
-            return None
+            return None;
         }
 
         let progress_bar =

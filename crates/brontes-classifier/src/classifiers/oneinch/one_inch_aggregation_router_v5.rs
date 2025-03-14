@@ -62,7 +62,7 @@ action_impl!(
             recipient:     info.msg_sender,
             child_actions: vec![],
             msg_value:     info.msg_value,
-        })
+        });
     }
 );
 

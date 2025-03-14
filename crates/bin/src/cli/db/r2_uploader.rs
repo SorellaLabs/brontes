@@ -53,7 +53,7 @@ impl R2Uploader {
                 .await
             {
                 tracing::error!(error=%e);
-                return Ok(())
+                return Ok(());
             }
             tracing::info!("uploading files completed");
         }
@@ -69,7 +69,7 @@ impl R2Uploader {
         .execute(self.rayon_tasks)
         {
             tracing::error!(error=%e);
-            return Ok(())
+            return Ok(());
         }
 
         tracing::info!(
@@ -81,7 +81,7 @@ impl R2Uploader {
             .await
         {
             tracing::error!(error=%e);
-            return Ok(())
+            return Ok(());
         }
 
         Ok(())

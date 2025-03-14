@@ -25,7 +25,7 @@ impl ActionCmp<Action> for Action {
             Action::Batch(b) => {
                 let user = b.user_swaps.iter().any(|b| b.is_superior_action(other));
                 if let Some(swaps) = &b.solver_swaps {
-                    return user || swaps.iter().any(|b| b.is_superior_action(other))
+                    return user || swaps.iter().any(|b| b.is_superior_action(other));
                 }
                 user
             }
@@ -79,7 +79,7 @@ impl ActionCmp<NormalizedTransfer> for NormalizedMint {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
         for (amount, token) in self.amount.iter().zip(&self.token) {
             if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                return true
+                return true;
             }
         }
 
@@ -100,7 +100,7 @@ impl ActionCmp<NormalizedTransfer> for NormalizedCollect {
     fn is_superior_action(&self, transfer: &NormalizedTransfer) -> bool {
         for (amount, token) in self.amount.iter().zip(&self.token) {
             if transfer.amount.eq(amount) && transfer.token.eq(token) {
-                return true
+                return true;
             }
         }
 

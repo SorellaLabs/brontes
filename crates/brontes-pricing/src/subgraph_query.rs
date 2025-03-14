@@ -96,7 +96,7 @@ pub fn par_state_query(graph: &GraphManager, pairs: Vec<RequeryPairs>) -> ParSta
                     None,
                 );
 
-                return StateQueryRes { pair, extends_pair, edges: vec![edges], block }
+                return StateQueryRes { pair, extends_pair, edges: vec![edges], block };
             }
 
             StateQueryRes {
@@ -172,7 +172,7 @@ fn queue_loading_returns(
     pair: Pair,
 ) -> Option<NewGraphDetails> {
     if pair.0 == pair.1 {
-        return None
+        return None;
     }
 
     // if we can extend another graph and we don't have a direct pair with a quote
