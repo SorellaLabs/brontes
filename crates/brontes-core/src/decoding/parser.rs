@@ -6,9 +6,9 @@ use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
 use alloy_primitives::BlockHash;
-#[cfg(feature = "dyn-decode")]
-use alloy_rpc_types::trace::parity::Action;
 use alloy_rpc_types::{BlockNumberOrTag, Log};
+#[cfg(feature = "dyn-decode")]
+use alloy_rpc_types_trace::parity::Action;
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
@@ -25,16 +25,16 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 pub struct TraceParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx:               &'static DB,
-    pub tracer:            Arc<T>,
+    libmdbx: &'static DB,
+    pub tracer: Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<ParserMetricEvents>>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for TraceParser<T, DB> {
     fn clone(&self) -> Self {
         Self {
-            libmdbx:    self.libmdbx,
-            tracer:     self.tracer.clone(),
+            libmdbx: self.libmdbx,
+            tracer: self.tracer.clone(),
             metrics_tx: self.metrics_tx.clone(),
         }
     }
@@ -66,7 +66,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         let receipts = self.get_receipts(block_num).await;
 
         if parity_trace.0.is_none() && receipts.0.is_none() {
-            return
+            return;
         }
 
         #[cfg(feature = "dyn-decode")]
@@ -89,7 +89,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             cnt += 1;
             if cnt > 20 {
                 error!(%block_num, "attempted 20 inserts for db but all failed");
-                break
+                break;
             }
 
             tokio::time::sleep(Duration::from_secs(3)).await;
@@ -108,12 +108,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
                 error!(%block_num, "failed to get block hash for block");
             }
 
-            return block_hash.map(|b| (b, res.0, res.1))
+            return block_hash.map(|b| (b, res.0, res.1));
         }
         #[cfg(not(feature = "local-reth"))]
         {
             tracing::error!("no block found in db");
-            return None
+            return None;
         }
 
         let parity_trace = self.trace_block(block_num).await;
@@ -128,7 +128,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             let _ = self
                 .metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
-            return None
+            return None;
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
@@ -175,12 +175,12 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
                 error!(%block_num, "failed to get block hash for block");
             }
 
-            return block_hash.map(|b| (b, res.0, res.1))
+            return block_hash.map(|b| (b, res.0, res.1));
         }
         #[cfg(not(feature = "local-reth"))]
         {
             tracing::error!("no block found in db");
-            return None
+            return None;
         }
 
         let parity_trace = self.trace_block(block_num).await;
@@ -195,7 +195,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             let _ = self
                 .metrics_tx
                 .send(TraceMetricEvent::BlockMetricRecieved(parity_trace.1).into());
-            return None
+            return None;
         }
         #[cfg(feature = "dyn-decode")]
         let traces = self
