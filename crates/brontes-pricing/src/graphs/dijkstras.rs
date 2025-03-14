@@ -115,7 +115,6 @@ const MAX_OTHER_PATHS: usize = 3;
 // {
 //     dijkstra_internal(start, &mut successors, path_value, &mut success)
 // }
-
 pub(crate) fn dijkstra_internal<N, C, E, FN, FS, PV>(
     start: &N,
     second: Option<&N>,
@@ -186,22 +185,22 @@ where
 
     'outer: while let Some(SmallestHolder { cost, index, hops }) = to_see.pop() {
         if hops >= MAX_LEN {
-            continue
+            continue;
         }
 
         if i == max_iter {
             tracing::debug!("max iter on dijkstra hit");
-            break
+            break;
         }
 
         let (node, _) = parents.get_index(index).unwrap();
         if visited.contains(node) {
-            continue
+            continue;
         }
 
         if stop(node) {
             target_reached = Some(index);
-            break
+            break;
         }
 
         let successors = successors(node);
@@ -213,7 +212,7 @@ where
                 checked_second = successor == second;
 
                 if !checked_second {
-                    continue
+                    continue;
                 }
                 true
             } else {
@@ -223,7 +222,7 @@ where
             i += 1;
 
             if visited.contains(successor) {
-                continue
+                continue;
             }
 
             let new_cost = cost + *move_cost;
@@ -241,7 +240,7 @@ where
                         n = e.index();
                         e.insert((index, new_cost, value));
                     } else {
-                        continue
+                        continue;
                     }
                 }
             }
@@ -250,13 +249,13 @@ where
             // we don't want to prove we have the shortest path
             if q_break {
                 target_reached = Some(n);
-                break 'outer
+                break 'outer;
             }
 
             to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
 
             if break_after {
-                break
+                break;
             }
         }
 
@@ -266,7 +265,7 @@ where
                 i += 1;
 
                 if visited.contains(&successor) {
-                    continue
+                    continue;
                 }
 
                 let new_cost = cost + move_cost;
@@ -284,14 +283,14 @@ where
                             n = e.index();
                             e.insert((index, new_cost, value));
                         } else {
-                            continue
+                            continue;
                         }
                     }
                 }
 
                 if q_break {
                     target_reached = Some(n);
-                    break 'outer
+                    break 'outer;
                 }
 
                 to_see.push(SmallestHolder { cost: new_cost, index: n, hops: hops + 1 });
@@ -351,9 +350,9 @@ where
 }
 
 struct SmallestHolder<K> {
-    cost:  K,
+    cost: K,
     index: usize,
-    hops:  usize,
+    hops: usize,
 }
 
 impl<K: PartialEq> PartialEq for SmallestHolder<K> {

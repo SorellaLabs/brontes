@@ -16,11 +16,11 @@ pub use crate::graphs::dijkstras::*;
 #[derive(Eq, PartialEq, Debug)]
 struct Path<N: Eq + Hash + Clone, E: Eq + Hash + Clone, C: Zero + Ord + Copy> {
     /// The nodes along the path
-    nodes:   Vec<N>,
+    nodes: Vec<N>,
     /// wieghts,
     weights: Vec<E>,
     /// The total cost of the path
-    cost:    C,
+    cost: C,
 }
 
 impl<N, E, C> PartialOrd for Path<N, E, C>
@@ -105,7 +105,6 @@ where
 /// );
 /// assert!(empty.is_empty());
 /// ```
-
 pub fn yen<N, C, E, FN, FS, FSE, PV>(
     start: &N,
     second: Option<&N>,
@@ -137,7 +136,7 @@ where
     // if we are extending another pair, we don't need any other routes as
     // the extension route has done most of the heavy lifting
     if is_extension || n.last().filter(|node| ends.contains_key(node)).is_some() {
-        return vec![(e, c)]
+        return vec![(e, c)];
     }
 
     // A vector containing our paths.
@@ -152,14 +151,14 @@ where
     for ki in 0..(iter_k - 1) {
         if routes.len() <= ki || routes.len() == iter_k {
             // We have no more routes to explore, or we have found enough.
-            break
+            break;
         }
 
         if SystemTime::now().duration_since(start).unwrap() > extra_path_timeout
             && k.map(|k| k >= routes.len()).unwrap_or(true)
         {
             tracing::debug!("timeout for extra routes hit");
-            break
+            break;
         }
         // Take the most recent route to explore new spurs.
         let previous = &routes[ki].nodes;
@@ -212,7 +211,7 @@ where
                         // Mark as visited
                         visited.insert(path.nodes.clone());
                         // Build a min-heap
-                        return Some(Reverse(path))
+                        return Some(Reverse(path));
                     }
                 }
                 None
@@ -237,7 +236,7 @@ where
                     };
                     routes.push(k_route.0);
                 } else {
-                    break // Other routes have higher cost
+                    break; // Other routes have higher cost
                 }
             }
         }
