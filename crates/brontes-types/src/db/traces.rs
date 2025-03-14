@@ -79,7 +79,7 @@ pub struct LogRedefined {
 #[redefined_attr(to_source = "LogData::new_unchecked(self.topics.iter().copied().map(Into::into).\
                               collect(), self.data.into())")]
 pub struct LogDataRedefined {
-    // #[redefined(func = "src.topics().iter().copied().map(Into::into).collect()")]
+    #[redefined(func = "src.topics().to_vec()")]
     pub topics: Vec<FixedBytesRedefined<32>>,
     pub data: BytesRedefined,
 }
