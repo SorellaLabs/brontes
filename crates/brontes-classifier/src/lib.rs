@@ -48,7 +48,7 @@ sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/balancer/BalancerV1Pool.json");
 sol!(BalancerV2Vault, "./classifier-abis/balancer/BalancerV2Vault.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
-sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
+// sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/maker/MakerPSM.json");
 sol!(MakerDssFlash, "./classifier-abis/maker/MakerDssFlash.json");
@@ -56,16 +56,17 @@ sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 sol!(OneInchAggregationRouterV5, "./classifier-abis/OneInchAggregationRouterV5.json");
 sol!(OneInchFusionSettlement, "./classifier-abis/OneInchFusionSettlement.json");
 sol!(ClipperExchange, "./classifier-abis/ClipperExchange.json");
-sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
+// sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
 sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
 sol!(ZeroXUniswapV3Feature, "./classifier-abis/zero-x/ZeroXUniswapV3Feature.json");
 sol!(ZeroXTransformERC20Feature, "./classifier-abis/zero-x/ZeroXTransformERC20Feature.json");
 sol!(ZeroXPancakeSwapFeature, "./classifier-abis/zero-x/ZeroXPancakeSwapFeature.json");
-sol!(ZeroXOtcOrdersFeature, "./classifier-abis/zero-x/ZeroXOtcOrdersFeature.json");
+// sol!(ZeroXOtcOrdersFeature,
+// "./classifier-abis/zero-x/ZeroXOtcOrdersFeature.json");
 sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProviderFeature.json");
-sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
+// sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
 sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
-sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
+// sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");

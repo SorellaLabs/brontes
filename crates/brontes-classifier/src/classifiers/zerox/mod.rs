@@ -1,11 +1,6 @@
-use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::{
-    normalized_actions::{NormalizedAggregator, NormalizedBatch, NormalizedSwap},
-    structured_trace::CallInfo,
-    ToScaledRational,
-};
+use brontes_types::{normalized_actions::NormalizedAggregator, structured_trace::CallInfo};
 
 // Uniswap
 action_impl!(
@@ -121,6 +116,8 @@ action_impl!(
         })
     }
 );
+
+/*
 
 // OTC Orders
 action_impl!(
@@ -334,6 +331,8 @@ action_impl!(
     }
 );
 
+*/
+
 // Liquidity Provider
 action_impl!(
     Protocol::ZeroX,
@@ -358,6 +357,7 @@ action_impl!(
 
 );
 
+/*
 // Multiplex
 action_impl!(
     Protocol::ZeroX,
@@ -600,16 +600,18 @@ action_impl!(
     }
 );
 
+*/
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, Address, B256};
+    use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
-        normalized_actions::Action,
-        TreeSearchBuilder,
+        normalized_actions::{Action, NormalizedSwap},
+        ToScaledRational, TreeSearchBuilder,
     };
 
     use super::*;

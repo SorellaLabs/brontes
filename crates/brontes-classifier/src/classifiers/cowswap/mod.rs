@@ -1,3 +1,5 @@
+/*
+
 use alloy_primitives::{Address, U256};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_macros::action_impl;
@@ -10,7 +12,8 @@ use brontes_types::{
 use eyre::Error;
 use Protocol::Cowswap;
 
-use crate::CowswapGPv2Settlement::Trade;
+
+ use crate::CowswapGPv2Settlement::Trade;
 
 fn create_normalized_swap<DB: LibmdbxReader + DBWriter>(
     trade: &Trade,
@@ -159,3 +162,6 @@ mod tests {
             .unwrap();
     }
 }
+
+
+*/

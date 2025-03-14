@@ -18,6 +18,36 @@ use crate::BalancerV2Vault::PoolBalanceChanged;
 
 action_impl!(
     Protocol::BalancerV2,
+    crate::IGeneralPool::onSwapCall,
+    Swap,
+    [..],
+    call_data: true,
+    return_data: true,
+    |info: CallInfo, call_data: onSwapCall, return_data: onSwapReturn, db: &DB| {
+        let pool = pool_id_to_address(call_data.swapRequest.poolId);
+        let token_in = db.try_fetch_token_info(call_data.swapRequest.tokenIn)?;
+        let token_out = db.try_fetch_token_info(call_data.swapRequest.tokenOut)?;
+        let amount_in = call_data.swapRequest.amount.to_scaled_rational(token_in.decimals);
+        let amount_out = return_data.amount.to_scaled_rational(token_out.decimals);
+
+        Ok(NormalizedSwap {
+            protocol: Protocol::BalancerV2,
+            trace_index: info.trace_idx,
+            from: call_data.swapRequest.from,
+            recipient: call_data.swapRequest.to,
+            pool,
+            token_in,
+            amount_in,
+            token_out,
+            amount_out,
+            msg_value: U256::ZERO,
+        })
+    }
+);
+
+/*
+action_impl!(
+    Protocol::BalancerV2,
     crate::IGeneralPool::onSwap_0Call,
     Swap,
     [..],
@@ -73,6 +103,8 @@ action_impl!(
         })
     }
 );
+
+*/
 
 fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
     logs: &PoolBalanceChanged,

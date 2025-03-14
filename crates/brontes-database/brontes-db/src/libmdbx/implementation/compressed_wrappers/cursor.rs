@@ -151,7 +151,7 @@ where
         key: T::Key,
         value: T::DecompressedValue,
     ) -> Result<(), DatabaseError> {
-        self.0.upsert(key, value.into())
+        self.0.upsert(key, &(value.into()))
     }
 
     pub fn insert(
@@ -159,7 +159,7 @@ where
         key: T::Key,
         value: T::DecompressedValue,
     ) -> Result<(), DatabaseError> {
-        self.0.insert(key, value.into())
+        self.0.insert(key, &(value.into()))
     }
 
     pub fn append(
@@ -167,7 +167,7 @@ where
         key: T::Key,
         value: T::DecompressedValue,
     ) -> Result<(), DatabaseError> {
-        self.0.append(key, value.into())
+        self.0.append(key, &(value.into()))
     }
 
     pub fn delete_current(&mut self) -> Result<(), DatabaseError> {

@@ -7,14 +7,14 @@ use arena::{CallTraceArena, PushTraceKind};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use config::TracingInspectorConfig;
 use revm::{
-    bytecode::opcode::{self, immediate_size, OpCode},
-    context::{result::ExecutionResult, BlockEnv, CfgEnv, ContextTr, Journal, JournalTr, TxEnv},
+    bytecode::opcode::{self, OpCode},
+    context::{result::ExecutionResult, BlockEnv, CfgEnv, ContextTr, JournalTr, TxEnv},
     inspector::{inspectors::GasInspector, Inspector, JournalExt},
     interpreter::{
         interpreter_types::{
             Immediates, InputsTr, Jumps, LoopControl, ReturnData, RuntimeFlag, SubRoutineStack,
         },
-        CallInputs, CallOutcome, CallScheme, CreateInputs, CreateOutcome, Host, InstructionResult,
+        CallInputs, CallOutcome, CallScheme, CreateInputs, CreateOutcome, InstructionResult,
         Interpreter, InterpreterResult,
     },
     primitives::hardfork::SpecId,
@@ -644,7 +644,7 @@ where
     DB: Database,
 {
     #[inline]
-    fn initialize_interp(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>) {
+    fn initialize_interp(&mut self, interp: &mut Interpreter, _: &mut EvmContext<DB>) {
         self.gas_inspector.initialize_interp(interp.control.gas())
     }
 
@@ -662,7 +662,7 @@ where
         }
     }
 
-    fn log(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>, log: Log) {
+    fn log(&mut self, _: &mut Interpreter, _: &mut EvmContext<DB>, log: Log) {
         let trace_idx = self.last_trace_idx();
         let trace = &mut self.traces.arena[trace_idx];
 
@@ -763,7 +763,7 @@ where
     fn create_end(
         &mut self,
         context: &mut EvmContext<DB>,
-        inputs: &CreateInputs,
+        _: &CreateInputs,
         outcome: &mut CreateOutcome,
     ) {
         self.gas_inspector.create_end(outcome);
@@ -780,7 +780,7 @@ where
 
 /// Struct keeping track of internal inspector steps stack.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct StackStep {
+pub struct StackStep {
     /// Whether this step should be recorded.
     ///
     /// This is set to `false` if [OpcodeFilter] is configured and this step's

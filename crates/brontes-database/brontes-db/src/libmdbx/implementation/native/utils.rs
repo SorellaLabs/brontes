@@ -51,7 +51,7 @@ where
 
 pub(crate) fn uncompressable_ref_util<T: Table>(
     key: T::Key,
-    value: T::Value,
+    value: &T::Value,
 ) -> (Vec<u8>, Vec<u8>) {
     if let Some(val) = value.uncompressable_ref() {
         (key.encode().into(), val.to_vec())

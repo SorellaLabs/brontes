@@ -9,9 +9,9 @@ pub mod errors;
 pub use db_client::*;
 #[cfg(feature = "local-clickhouse")]
 pub mod split_db;
+use alloy_primitives::{Address, BlockHash, TxHash};
 #[cfg(feature = "local-clickhouse")]
 pub use db_interfaces::clickhouse::config::ClickhouseConfig;
-use reth_primitives::{Address, BlockHash, TxHash};
 #[cfg(feature = "local-clickhouse")]
 pub use split_db::*;
 #[cfg(not(feature = "local-clickhouse"))]

@@ -4,8 +4,8 @@ use alloy_consensus::Header;
 use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256, U256};
 use alloy_rpc_types::{
-    state::StateOverride, AccessList, AnyReceiptEnvelope, BlockId, BlockNumberOrTag,
-    BlockOverrides, Log, ReceiptEnvelope, TransactionReceipt, TransactionRequest,
+    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, Log, ReceiptEnvelope,
+    TransactionRequest,
 };
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
@@ -18,7 +18,7 @@ use reth_rpc_eth_types::{EthApiError, EthResult, RevertError, RpcInvalidTransact
 use revm::{
     context::{result::ExecutionResult, Block, BlockEnv, CfgEnv, TxEnv},
     database::CacheDB,
-    Context, Database, DatabaseRef,
+    Database, DatabaseRef,
 };
 use revm_primitives::TxKind;
 

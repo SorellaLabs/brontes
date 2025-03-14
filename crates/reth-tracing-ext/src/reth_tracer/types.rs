@@ -1,7 +1,5 @@
 //! Types for representing call trace items.
 
-use std::collections::VecDeque;
-
 pub use alloy_primitives::Log;
 use alloy_primitives::{Address, Bytes, FixedBytes, LogData, U256};
 use alloy_rpc_types_trace::{
@@ -12,7 +10,7 @@ use alloy_rpc_types_trace::{
     },
 };
 use revm::{
-    bytecode::opcode::{self, OpCode},
+    bytecode::opcode::OpCode,
     interpreter::{CallScheme, CreateScheme, InstructionResult},
 };
 
@@ -252,39 +250,6 @@ impl CallTraceNode {
         } else {
             self.trace.address
         }
-    }
-
-    /// Pushes all steps onto the stack in reverse order
-    /// so that the first step is on top of the stack
-    pub(crate) fn push_steps_on_stack<'a>(
-        &'a self,
-        stack: &mut VecDeque<CallTraceStepStackItem<'a>>,
-    ) {
-        stack.extend(self.call_step_stack().into_iter().rev());
-    }
-
-    /// Returns a list of all steps in this trace in the order they were
-    /// executed
-    ///
-    /// If the step is a call, the id of the child trace is set.
-    pub(crate) fn call_step_stack(&self) -> Vec<CallTraceStepStackItem<'_>> {
-        let mut stack = Vec::with_capacity(self.trace.steps.len());
-        let mut child_id = 0;
-        for step in self.trace.steps.iter() {
-            let mut item = CallTraceStepStackItem { trace_node: self, step, call_child_id: None };
-
-            // If the opcode is a call, put the child trace on the stack
-            if step.is_calllike_op() {
-                // The opcode of this step is a call but it's possible that this step resulted
-                // in a revert or out of gas error in which case there's no actual child call executed and recorded: <https://github.com/paradigmxyz/reth/issues/3915>
-                if let Some(call_id) = self.children.get(child_id).copied() {
-                    item.call_child_id = Some(call_id);
-                    child_id += 1;
-                }
-            }
-            stack.push(item);
-        }
-        stack
     }
 
     /// Returns true if this is a call to a precompile
@@ -604,16 +569,6 @@ impl From<CallKind> for CallType {
     }
 }
 
-pub(crate) struct CallTraceStepStackItem<'a> {
-    /// The trace node that contains this step
-    pub(crate) trace_node:    &'a CallTraceNode,
-    /// The step that this stack item represents
-    pub(crate) step:          &'a CallTraceStep,
-    /// The index of the child call in the CallArena if this step's opcode is a
-    /// call
-    pub(crate) call_child_id: Option<usize>,
-}
-
 /// Ordering enum for calls, logs and steps
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TraceMemberOrder {
@@ -693,79 +648,6 @@ pub struct CallTraceStep {
     pub immediate_bytes:    Option<Bytes>,
     /// Optional complementary decoded step data.
     pub decoded:            Option<DecodedTraceStep>,
-}
-
-// === impl CallTraceStep ===
-
-impl CallTraceStep {
-    /// Converts this step into a geth [StructLog]
-    ///
-    /// This sets memory and stack capture based on the `opts` parameter.
-    pub(crate) fn convert_to_geth_struct_log(&self, opts: &GethDefaultTracingOptions) -> StructLog {
-        let mut log = StructLog {
-            depth:          self.depth,
-            error:          self.as_error(),
-            gas:            self.gas_remaining,
-            gas_cost:       self.gas_cost,
-            op:             self.op.to_string(),
-            pc:             self.pc as u64,
-            refund_counter: (self.gas_refund_counter > 0).then_some(self.gas_refund_counter),
-            // Filled, if not disabled manually
-            stack:          None,
-            // Filled in `CallTraceArena::geth_trace` as a result of compounding all slot changes
-            return_data:    None,
-            // Filled via trace object
-            storage:        None,
-            // Only enabled if `opts.enable_memory` is true
-            memory:         None,
-            // This is None in the rpc response
-            memory_size:    None,
-        };
-
-        if opts.is_stack_enabled() {
-            log.stack.clone_from(&self.stack);
-        }
-
-        if opts.is_memory_enabled() {
-            log.memory = self.memory.as_ref().map(RecordedMemory::memory_chunks);
-        }
-
-        log
-    }
-
-    /// Returns true if the step is a STOP opcode
-    #[inline]
-    pub(crate) const fn is_stop(&self) -> bool {
-        matches!(self.op.get(), opcode::STOP)
-    }
-
-    /// Returns true if the step is a call operation, any of
-    /// CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE, CREATE2
-    #[inline]
-    pub(crate) const fn is_calllike_op(&self) -> bool {
-        matches!(
-            self.op.get(),
-            opcode::CALL
-                | opcode::DELEGATECALL
-                | opcode::STATICCALL
-                | opcode::CREATE
-                | opcode::CALLCODE
-                | opcode::CREATE2
-        )
-    }
-
-    // Returns true if the status code is an error or revert, See
-    // [InstructionResult::Revert]
-    #[inline]
-    pub(crate) const fn is_error(&self) -> bool {
-        self.status as u8 >= InstructionResult::Revert as u8
-    }
-
-    /// Returns the error message if it is an erroneous result.
-    #[inline]
-    pub(crate) fn as_error(&self) -> Option<String> {
-        self.is_error().then(|| format!("{:?}", self.status))
-    }
 }
 
 /// Represents the source of a storage change - e.g., whether it came
@@ -851,27 +733,5 @@ impl RecordedMemory {
 impl AsRef<[u8]> for RecordedMemory {
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
-    }
-}
-
-#[cfg(feature = "serde")]
-mod opcode_serde {
-    use serde::{Deserialize, Deserializer, Serializer};
-
-    use super::OpCode;
-
-    pub(super) fn serialize<S>(op: &OpCode, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_u8(op.get())
-    }
-
-    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<OpCode, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let op = u8::deserialize(deserializer)?;
-        Ok(OpCode::new(op).unwrap_or_else(|| OpCode::new(revm::bytecode::opcode::INVALID).unwrap()))
     }
 }

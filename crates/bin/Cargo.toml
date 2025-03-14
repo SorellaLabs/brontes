@@ -38,7 +38,11 @@ reqwest = { workspace = true, features = ["blocking"] }
 # Reth
 reth-tasks.workspace = true
 reth-rpc.workspace = true
+reth-storage-errors.workspace = true
+reth-chainspec.workspace = true
+reth-node-types.workspace = true
 reth-rpc-api.workspace = true
+reth-node-ethereum.workspace = true
 reth-provider.workspace = true
 reth-node-core.workspace = true
 reth-transaction-pool.workspace = true
@@ -53,6 +57,7 @@ alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-sol-types = { workspace = true, features = ["json"] }
 
 alloy-provider.workspace = true
+alloy-consensus.workspace = true
 alloy-transport-http.workspace = true
 alloy-transport.workspace = true
 alloy-network.workspace = true

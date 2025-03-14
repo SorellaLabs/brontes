@@ -1,17 +1,18 @@
 use std::time::Duration;
 
+use alloy_consensus::ReceiptEnvelope;
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
+use alloy_primitives::BlockHash;
+#[cfg(feature = "dyn-decode")]
+use alloy_rpc_types::trace::parity::Action;
+use alloy_rpc_types::{BlockNumberOrTag, Log};
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
 use futures::future::join_all;
-use reth_primitives::BlockHash;
-#[cfg(feature = "dyn-decode")]
-use reth_rpc_types::trace::parity::Action;
-use reth_rpc_types::{AnyReceiptEnvelope, Log, TransactionReceipt};
 use tracing::error;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
@@ -290,7 +291,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     pub(crate) async fn get_receipts(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>, BlockStats) {
+    ) -> (Option<Vec<ReceiptEnvelope<Log>>>, BlockStats) {
         let tx_receipts = self
             .tracer
             .block_receipts(BlockNumberOrTag::Number(block_num))
@@ -313,7 +314,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         &self,
         block_trace: Vec<TxTrace>,
         #[cfg(feature = "dyn-decode")] dyn_json: FastHashMap<Address, JsonAbi>,
-        block_receipts: Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>,
+        block_receipts: Vec<ReceiptEnvelope<Log>>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
         let mut stats = BlockStats::new(block_num, None);
@@ -321,17 +322,15 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         let (traces, tx_stats): (Vec<_>, Vec<_>) =
             join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
                 |(trace, receipt)| {
-                    let tx_hash = trace.tx_hash;
-
                     self.parse_transaction(
-                        trace,
+                        trace.clone(),
                         #[cfg(feature = "dyn-decode")]
                         &dyn_json,
                         block_num,
-                        tx_hash,
-                        receipt.transaction_index.unwrap(),
-                        receipt.gas_used,
-                        receipt.effective_gas_price,
+                        trace.tx_hash,
+                        trace.tx_index,
+                        receipt.cumulative_gas_used() as u128,
+                        trace.effective_price,
                     )
                 },
             ))

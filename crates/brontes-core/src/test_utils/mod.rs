@@ -2,7 +2,8 @@
 use std::sync::OnceLock;
 use std::{collections::hash_map::Entry, env, fs::OpenOptions, io::Write, sync::Arc};
 
-use alloy_primitives::Address;
+use alloy_consensus::Header;
+use alloy_primitives::{Address, BlockHash, B256};
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
@@ -27,7 +28,6 @@ use futures::future::join_all;
 use indicatif::MultiProgress;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
-use reth_primitives::{BlockHash, Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::init_db;

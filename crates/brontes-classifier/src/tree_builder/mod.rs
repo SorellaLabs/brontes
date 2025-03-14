@@ -15,6 +15,9 @@ use malachite::{num::basic::traits::Zero, Rational};
 
 mod tree_pruning;
 pub(crate) mod utils;
+use alloy_consensus::Header;
+use alloy_primitives::Address;
+use alloy_rpc_types_trace::parity::{Action as TraceAction, CallType};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -26,8 +29,6 @@ use brontes_types::{
 use futures::future::join_all;
 use itertools::Itertools;
 use malachite::num::arithmetic::traits::Abs;
-use reth_primitives::{Address, Header};
-use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, trace};
 use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};

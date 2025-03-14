@@ -6,10 +6,10 @@ use ::serde::{
     Deserialize, Serialize,
 };
 use ahash::HashSet;
+use alloy_primitives::B256;
 use colored::Colorize;
 use malachite::Rational;
 use redefined::{self_convert_redefined, Redefined};
-use alloy_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde_with::serde_as;
 use strum::Display;

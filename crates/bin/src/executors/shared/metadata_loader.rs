@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, BlockHash};
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{
@@ -24,7 +24,6 @@ use brontes_types::{
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
-use reth_primitives::BlockHash;
 use tracing::error;
 
 use super::dex_pricing::WaitingForPricerFuture;

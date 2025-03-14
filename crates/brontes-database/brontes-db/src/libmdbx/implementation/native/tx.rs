@@ -168,7 +168,11 @@ impl<K: TransactionKind> DbTx for LibmdbxTx<K> {
         &self,
         key: &<T::Key as Encode>::Encoded,
     ) -> Result<Option<T::Value>, DatabaseError> {
-        self.get(key.decode())
+        self.inner
+            .get(self.get_dbi::<T>()?, key.as_ref())
+            .map_err(|e| DatabaseError::Read(e.into()))?
+            .map(decode_one::<T>)
+            .transpose()
     }
 }
 

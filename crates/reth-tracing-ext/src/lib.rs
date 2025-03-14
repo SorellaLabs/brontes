@@ -33,8 +33,7 @@ use reth_tracer::{
 };
 use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
-    EthPooledTransaction, EthTransactionValidator, Pool, PoolConfig,
-    TransactionValidationTaskExecutor,
+    EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 use revm::inspector::inspectors::GasInspector;
 // use revm::inspector::inspectors::GasInspector;
@@ -88,12 +87,6 @@ impl TracingClient {
 
         let transaction_validator = EthTransactionValidatorBuilder::new(provider.clone())
             .build_with_tasks(task_executor.clone(), NoopBlobStore::default());
-
-        let tx_pool = Pool::eth_pool(
-            transaction_validator.clone(),
-            NoopBlobStore::default(),
-            PoolConfig::default(),
-        );
 
         let tx_pool = reth_transaction_pool::Pool::eth_pool(
             transaction_validator,

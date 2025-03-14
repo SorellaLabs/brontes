@@ -16,6 +16,7 @@ brontes-database.workspace = true
 brontes-pricing.workspace = true
 brontes-core.workspace = true
 alloy-primitives.workspace = true
+alloy-consensus.workspace = true
 
 # async
 tokio.workspace = true
@@ -25,6 +26,8 @@ futures.workspace = true
 alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-rlp.workspace = true
+alloy-rpc-types-trace.workspace = true
+
 
 # reth
 alloy-rpc-types.workspace = true

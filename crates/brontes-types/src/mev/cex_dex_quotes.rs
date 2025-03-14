@@ -6,8 +6,8 @@ use ::serde::{
     Deserialize, Serialize,
 };
 use ahash::HashSet;
-use redefined::Redefined;
 use alloy_primitives::B256;
+use redefined::Redefined;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde_with::serde_as;
 

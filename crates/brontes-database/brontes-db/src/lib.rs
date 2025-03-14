@@ -1,7 +1,6 @@
 #![feature(trivial_bounds)]
 #![feature(associated_type_defaults)]
 #![feature(const_trait_impl)]
-#![feature(noop_waker)]
 
 pub mod clickhouse;
 pub mod libmdbx;

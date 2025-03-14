@@ -4,9 +4,11 @@ use clap::Parser;
 use comfy_table::{Cell, Row, Table as ComfyTable};
 use eyre::WrapErr;
 use human_bytes::human_bytes;
+use reth_chainspec::MAINNET;
 use reth_db::{database::Database, mdbx, open_db, DatabaseEnv};
-use reth_primitives::ChainSpec;
-use reth_provider::ProviderFactory;
+use reth_node_ethereum::EthereumNode;
+use reth_node_types::NodeTypesWithDBAdapter;
+use reth_provider::{providers::StaticFileProvider, ProviderFactory};
 
 #[derive(Parser, Debug)]
 /// The arguments for the `brontes db table-stats` command
@@ -20,13 +22,16 @@ impl Stats {
     /// Execute `db stats` command
     pub fn execute(self, db_path: String) -> eyre::Result<()> {
         let db_path = Path::new(&db_path);
-        let chain = Arc::new(ChainSpec::default());
+        let mut static_files_path = db_path.to_path_buf();
+        static_files_path.push("static_files");
 
+        let static_file_provider = StaticFileProvider::read_only(static_files_path.clone(), true)?;
+
+        let chain = MAINNET.clone();
         let db = Arc::new(open_db(db_path, Default::default())?);
-
-        let mut statis_files_path = db_path.to_path_buf();
-        statis_files_path.push("static_files");
-        let provider_factory = ProviderFactory::new(db, chain.clone(), statis_files_path)?;
+        let provider_factory: ProviderFactory<
+            NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>,
+        > = ProviderFactory::new(db.clone(), chain.clone(), static_file_provider);
 
         self.run(&provider_factory)?;
 
@@ -34,7 +39,10 @@ impl Stats {
     }
 
     /// Execute `db stats` command
-    fn run(self, provider_factory: &ProviderFactory<Arc<DatabaseEnv>>) -> eyre::Result<()> {
+    fn run(
+        self,
+        provider_factory: &ProviderFactory<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>,
+    ) -> eyre::Result<()> {
         let db_stats_table = self.db_stats_table(provider_factory)?;
         println!("{db_stats_table}");
 
@@ -43,7 +51,7 @@ impl Stats {
 
     fn db_stats_table(
         &self,
-        provider_factory: &ProviderFactory<Arc<DatabaseEnv>>,
+        provider_factory: &ProviderFactory<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>,
     ) -> eyre::Result<ComfyTable> {
         let mut table = ComfyTable::new();
         table.load_preset(comfy_table::presets::ASCII_MARKDOWN);

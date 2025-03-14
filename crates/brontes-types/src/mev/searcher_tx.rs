@@ -2,9 +2,9 @@ use std::fmt::Debug;
 
 use ::serde::ser::Serializer;
 use ahash::{HashSet, HashSetExt};
+use alloy_primitives::B256;
 use clickhouse::DbRow;
 use redefined::Redefined;
-use alloy_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;

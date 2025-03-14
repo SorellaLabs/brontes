@@ -1,9 +1,6 @@
-use alloy_primitives::{hex, Bytes};
+use alloy_primitives::hex;
 use alloy_sol_types::{ContractError, GenericRevertReason};
-use revm::{
-    primitives::{hardfork::SpecId, KECCAK_EMPTY},
-    DatabaseRef,
-};
+use revm::primitives::hardfork::SpecId;
 
 /// Formats memory data into a list of 32-byte hex-encoded chunks.
 ///
@@ -28,29 +25,6 @@ pub(crate) fn convert_memory(data: &[u8]) -> Vec<String> {
 pub(crate) fn gas_used(spec: SpecId, spent: u64, refunded: u64) -> u64 {
     let refund_quotient = if SpecId::is_enabled_in(spec, SpecId::LONDON) { 5 } else { 2 };
     spent - (refunded).min(spent / refund_quotient)
-}
-
-/// Loads the code for the given account from the account itself or the database
-///
-/// Returns None if the code hash is the KECCAK_EMPTY hash
-#[inline]
-pub(crate) fn load_account_code<DB: DatabaseRef>(
-    db: DB,
-    db_acc: &revm::state::AccountInfo,
-) -> Option<Bytes> {
-    db_acc
-        .code
-        .as_ref()
-        .map(|code| code.original_bytes())
-        .or_else(|| {
-            if db_acc.code_hash == KECCAK_EMPTY {
-                None
-            } else {
-                db.code_by_hash_ref(db_acc.code_hash)
-                    .ok()
-                    .map(|code| code.original_bytes())
-            }
-        })
 }
 
 /// Returns a non-empty revert reason if the output is a revert/error.

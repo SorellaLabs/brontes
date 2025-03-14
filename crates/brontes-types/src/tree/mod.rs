@@ -1,7 +1,7 @@
 use std::{panic::AssertUnwindSafe, sync::Arc};
 
+use alloy_consensus::Header;
 use alloy_primitives::B256;
-use alloy_rpc_types::Header;
 use itertools::Itertools;
 use statrs::statistics::Statistics;
 use tracing::{error, info, span, Level};

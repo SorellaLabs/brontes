@@ -1,6 +1,6 @@
 use alloy_primitives::{Address, FixedBytes, Log, B256, U256};
+use alloy_rpc_types_trace::parity::Action;
 use hex_literal::hex;
-use reth_rpc_types::trace::parity::Action;
 
 pub(crate) fn get_coinbase_transfer(builder: Address, action: &Action) -> Option<u128> {
     match action {

@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -34,7 +34,6 @@ use malachite::{
     },
     Rational,
 };
-use alloy_primitives::Address;
 use tracing::trace;
 
 use super::{

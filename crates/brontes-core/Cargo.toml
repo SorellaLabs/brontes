@@ -18,6 +18,7 @@ reth-transaction-pool.workspace = true
 reth-network-api.workspace = true
 reth-db.workspace = true
 reth-metrics.workspace = true
+reth-storage-errors.workspace = true
 reth-tracing-ext.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 brontes-types.workspace = true
@@ -36,6 +37,7 @@ malachite.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro.workspace = true
+alloy-consensus.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }

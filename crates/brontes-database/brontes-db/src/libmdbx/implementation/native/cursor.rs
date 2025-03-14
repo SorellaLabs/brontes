@@ -209,7 +209,7 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
     /// the subkeys are the same. So if you want to properly upsert, you'll
     /// need to `seek_exact` & `delete_current` if the key+subkey was found,
     /// before calling `upsert`.
-    fn upsert(&mut self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
+    fn upsert(&mut self, key: T::Key, value: &T::Value) -> Result<(), DatabaseError> {
         let (key, value) = uncompressable_ref_util::<T>(key, value);
         self.inner
             .put(&key, &value, WriteFlags::UPSERT)
@@ -224,7 +224,7 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
             })
     }
 
-    fn insert(&mut self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
+    fn insert(&mut self, key: T::Key, value: &T::Value) -> Result<(), DatabaseError> {
         let (key, value) = uncompressable_ref_util::<T>(key, value);
         self.inner
             .put(&key, &value, WriteFlags::NO_OVERWRITE)
@@ -242,7 +242,7 @@ impl<T: Table> DbCursorRW<T> for LibmdbxCursor<T, RW> {
     /// Appends the data to the end of the table. Consequently, the append
     /// operation will fail if the inserted key is less than the last table
     /// key
-    fn append(&mut self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
+    fn append(&mut self, key: T::Key, value: &T::Value) -> Result<(), DatabaseError> {
         let (key, value) = uncompressable_ref_util::<T>(key, value);
         self.inner
             .put(&key, &value, WriteFlags::APPEND)
@@ -272,7 +272,7 @@ impl<T: DupSort> DbDupCursorRW<T> for LibmdbxCursor<T, RW> {
     }
 
     fn append_dup(&mut self, key: T::Key, value: T::Value) -> Result<(), DatabaseError> {
-        let (key, value) = uncompressable_ref_util::<T>(key, value);
+        let (key, value) = uncompressable_ref_util::<T>(key, &value);
         self.inner
             .put(&key, &value, WriteFlags::APPEND_DUP)
             .map_err(|e| {

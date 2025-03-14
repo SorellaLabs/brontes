@@ -6,7 +6,7 @@ use brontes_libmdbx::RO;
 use brontes_types::init_thread_pools;
 use clap::Parser;
 use itertools::Itertools;
-use reth_interfaces::db::DatabaseErrorInfo;
+use reth_storage_errors::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]
 pub struct DatabaseQuery {
