@@ -125,18 +125,18 @@ pub const MINT_EVENT_SIGNATURE: B256 = FixedBytes([
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UniswapV3Pool {
-    pub address:          Address,
-    pub token_a:          Address,
+    pub address: Address,
+    pub token_a: Address,
     pub token_a_decimals: u8,
-    pub token_b:          Address,
+    pub token_b: Address,
     pub token_b_decimals: u8,
-    pub liquidity:        u128,
-    pub sqrt_price:       U256,
-    pub fee:              u32,
-    pub tick:             i32,
-    pub tick_spacing:     i32,
-    pub tick_bitmap:      FastHashMap<i16, U256>,
-    pub ticks:            FastHashMap<i32, Info>,
+    pub liquidity: u128,
+    pub sqrt_price: U256,
+    pub fee: u32,
+    pub tick: i32,
+    pub tick_spacing: i32,
+    pub tick_bitmap: FastHashMap<i16, U256>,
+    pub ticks: FastHashMap<i32, Info>,
 
     // non v3 native state
     pub reserve_0: U256,
@@ -146,8 +146,8 @@ pub struct UniswapV3Pool {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Info {
     pub liquidity_gross: u128,
-    pub liquidity_net:   i128,
-    pub initialized:     bool,
+    pub liquidity_net: i128,
+    pub initialized: bool,
 }
 
 impl Info {
@@ -190,7 +190,7 @@ impl UpdatableProtocol for UniswapV3Pool {
         if self.liquidity <= 10_000 {
             return Err(ArithmeticError::UniswapV3MathError(
                 uniswap_v3_math::error::UniswapV3MathError::LiquidityTooLow(self.liquidity),
-            ))
+            ));
         }
 
         let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
@@ -249,7 +249,7 @@ impl UniswapV3Pool {
         pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::NoStateError(pair_address))
+            return Err(AmmError::NoStateError(pair_address));
         }
 
         Ok(pool)
@@ -263,7 +263,7 @@ impl UniswapV3Pool {
         provider: Arc<M>,
     ) {
         if tick_amount.is_negative() {
-            return
+            return;
         }
 
         if self.tick == 0 {
@@ -294,7 +294,7 @@ impl UniswapV3Pool {
         .0;
 
         for tick in ticks {
-            self.update_tick(tick.tick, tick.liquidityNet, tick.initialized);
+            self.update_tick(tick.tick.as_i32(), tick.liquidityNet, tick.initialized);
         }
     }
 
@@ -345,8 +345,8 @@ impl UniswapV3Pool {
 
         #[cfg(feature = "uni-v3-ticks")]
         self.modify_position(
-            burn_event.tickLower,
-            burn_event.tickUpper,
+            burn_event.tickLower.as_i32(),
+            burn_event.tickUpper.as_i32(),
             -(burn_event.amount as i128),
         );
 
@@ -360,7 +360,11 @@ impl UniswapV3Pool {
         self.reserve_1 += mint_event.amount1;
 
         #[cfg(feature = "uni-v3-ticks")]
-        self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
+        self.modify_position(
+            mint_event.tickLower.as_i32(),
+            mint_event.tickUpper.as_i32(),
+            mint_event.amount as i128,
+        );
 
         Ok(())
     }
@@ -496,12 +500,12 @@ impl UniswapV3Pool {
 #[derive(Default)]
 pub struct StepComputations {
     pub sqrt_price_start_x_96: U256,
-    pub tick_next:             i32,
-    pub initialized:           bool,
-    pub sqrt_price_next_x96:   U256,
-    pub amount_in:             U256,
-    pub amount_out:            U256,
-    pub fee_amount:            U256,
+    pub tick_next: i32,
+    pub initialized: bool,
+    pub sqrt_price_next_x96: U256,
+    pub amount_in: U256,
+    pub amount_out: U256,
+    pub fee_amount: U256,
 }
 
 pub struct Tick {

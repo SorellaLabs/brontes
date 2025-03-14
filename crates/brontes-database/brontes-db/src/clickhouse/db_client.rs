@@ -1,7 +1,9 @@
-use std::{fmt::Debug, str::FromStr};
+use std::fmt::Debug;
+use std::str::FromStr;
 
 use ::clickhouse::DbRow;
 use alloy_primitives::Address;
+use alloy_primitives::{BlockHash, TxHash};
 use async_rate_limiter::{RateLimiter, RateLimiterBuilder, TimeUnit};
 use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
@@ -40,7 +42,6 @@ use db_interfaces::{
 };
 use eyre::Result;
 use itertools::Itertools;
-use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
@@ -64,12 +65,12 @@ const MAX_MARKOUT_TIME: f64 = 300.0;
 
 #[derive(Clone)]
 pub struct Clickhouse {
-    pub tip:                 bool,
-    pub run_id:              u64,
-    pub client:              ClickhouseClient<BrontesClickhouseTables>,
-    pub rate_limiter:        RateLimiter,
+    pub tip: bool,
+    pub run_id: u64,
+    pub client: ClickhouseClient<BrontesClickhouseTables>,
+    pub rate_limiter: RateLimiter,
     pub cex_download_config: CexDownloadConfig,
-    pub buffered_insert_tx:  Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
+    pub buffered_insert_tx: Option<UnboundedSender<Vec<BrontesClickhouseData>>>,
 }
 
 impl Clickhouse {
@@ -389,7 +390,7 @@ impl Clickhouse {
         mut tx_hashes_in_block: Vec<TxHash>,
     ) -> eyre::Result<Vec<TxHash>> {
         if tx_hashes_in_block.is_empty() {
-            return Ok(Vec::new())
+            return Ok(Vec::new());
         }
 
         let public_txs = self
@@ -471,7 +472,7 @@ impl ClickhouseHandle for Clickhouse {
 
         if cex_quotes_for_block.is_empty() {
             tracing::warn!("loaded zero cex quotes. check backend");
-            return Err(eyre::eyre!("error loading cex quotes"))
+            return Err(eyre::eyre!("error loading cex quotes"));
         }
 
         let cex_quotes = cex_quotes_for_block.remove(0);
@@ -827,7 +828,7 @@ impl Clickhouse {
         if block_times.is_empty() {
             return Err(DatabaseError::from(clickhouse::error::Error::Custom(
                 "Nothing to query, block times are empty".to_string(),
-            )))
+            )));
         }
         Ok(match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {
@@ -990,11 +991,11 @@ where
 
 #[derive(Debug, Serialize, Deserialize, clickhouse::Row)]
 pub struct ClickhouseCritTableCount {
-    pub pool_creation:       u64,
+    pub pool_creation: u64,
     pub address_to_protocol: u64,
-    pub tokens:              u64,
-    pub builder:             u64,
-    pub address_meta:        u64,
+    pub tokens: u64,
+    pub builder: u64,
+    pub address_meta: u64,
 }
 
 impl ClickhouseCritTableCount {
@@ -1109,7 +1110,7 @@ mod tests {
         let test_db = Clickhouse::new_default(Some(0)).await;
         let cex_quotes_for_block = test_db
             .get_cex_prices(CexRangeOrArbitrary::Timestamp {
-                block_number:    19000000,
+                block_number: 19000000,
                 block_timestamp: 1705173443,
             })
             .await
@@ -1124,7 +1125,7 @@ mod tests {
         let test_db = Clickhouse::new_default(Some(0)).await;
         let cex_trades_for_block = test_db
             .get_cex_trades(CexRangeOrArbitrary::Timestamp {
-                block_number:    19000000,
+                block_number: 19000000,
                 block_timestamp: 1705173443,
             })
             .await
@@ -1153,8 +1154,8 @@ mod tests {
 
         let case0 = DexQuotesWithBlockNumber {
             block_number: Default::default(),
-            tx_idx:       Default::default(),
-            quote:        Some(case0_map),
+            tx_idx: Default::default(),
+            quote: Some(case0_map),
         };
 
         db.insert_one::<BrontesDex_Price_Mapping>(&case0)
@@ -1218,41 +1219,39 @@ mod tests {
 
     async fn cex_dex_quotes(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let swap = NormalizedSwap {
-            protocol:    Protocol::UniswapV2,
-            from:        hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
-            recipient:   hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
-            pool:        hex!("88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").into(),
-            token_in:    TokenInfoWithAddress::weth(),
-            token_out:   TokenInfoWithAddress::usdc(),
-            amount_in:   Rational::from_unsigneds(
+            protocol: Protocol::UniswapV2,
+            from: hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
+            recipient: hex!("a69babef1ca67a37ffaf7a485dfff3382056e78c").into(),
+            pool: hex!("88e6a0c2ddd26feeb64f039a2c41296fcb3f5640").into(),
+            token_in: TokenInfoWithAddress::weth(),
+            token_out: TokenInfoWithAddress::usdc(),
+            amount_in: Rational::from_unsigneds(
                 3122757495341445439573u128,
                 1000000000000000000u128,
             ),
-            amount_out:  Rational::from_unsigneds(1254253571443u64, 250000u64),
+            amount_out: Rational::from_unsigneds(1254253571443u64, 250000u64),
             trace_index: 2,
-            msg_value:   Uint::from(0),
+            msg_value: Uint::from(0),
         };
 
         let case0 = CexDexQuote {
-            tx_hash:           hex!(
-                "ba217d10561a1cd6c52830dcc673886901e69ddb4db5e50c83f39ff0cfd14377"
-            )
-            .into(),
-            block_timestamp:   1694364587,
-            block_number:      18107273,
-            swaps:             vec![swap],
+            tx_hash: hex!("ba217d10561a1cd6c52830dcc673886901e69ddb4db5e50c83f39ff0cfd14377")
+                .into(),
+            block_timestamp: 1694364587,
+            block_number: 18107273,
+            swaps: vec![swap],
             instant_mid_price: vec![0.0006263290093187073],
-            t2_mid_price:      vec![0.0006263290093187073],
-            t12_mid_price:     vec![0.0006263290093187073],
-            t30_mid_price:     vec![0.0006263290093187073],
-            t60_mid_price:     vec![0.0006263290093187073],
-            t300_mid_price:    vec![0.0006263290093187073],
-            exchange:          CexExchange::Binance,
-            pnl:               12951.829205242997,
-            gas_details:       GasDetails {
-                coinbase_transfer:   Some(11419369165096275986),
-                priority_fee:        0,
-                gas_used:            271686,
+            t2_mid_price: vec![0.0006263290093187073],
+            t12_mid_price: vec![0.0006263290093187073],
+            t30_mid_price: vec![0.0006263290093187073],
+            t60_mid_price: vec![0.0006263290093187073],
+            t300_mid_price: vec![0.0006263290093187073],
+            exchange: CexExchange::Binance,
+            pnl: 12951.829205242997,
+            gas_details: GasDetails {
+                coinbase_transfer: Some(11419369165096275986),
+                priority_fee: 0,
+                gas_used: 271686,
                 effective_gas_price: 8875282233,
             },
         };
@@ -1352,20 +1351,20 @@ mod tests {
 
     async fn pools(db: &ClickhouseTestClient<BrontesClickhouseTables>) {
         let case0 = ProtocolInfoClickhouse {
-            protocol:         "NONE".to_string(),
+            protocol: "NONE".to_string(),
             protocol_subtype: "NONE".to_string(),
-            address:          "0x229b8325bb9Ac04602898B7e8989998710235d5f"
+            address: "0x229b8325bb9Ac04602898B7e8989998710235d5f"
                 .to_string()
                 .into(),
-            tokens:           vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
+            tokens: vec!["0x229b8325bb9Ac04602898B7e8989998710235d5f"
                 .to_string()
                 .into()],
-            curve_lp_token:   Some(
+            curve_lp_token: Some(
                 "0x229b8325bb9Ac04602898B7e8989998710235d5f"
                     .to_string()
                     .into(),
             ),
-            init_block:       0,
+            init_block: 0,
         };
 
         db.insert_one::<EthereumPools>(&case0).await.unwrap();

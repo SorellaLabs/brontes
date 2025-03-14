@@ -187,16 +187,16 @@ impl Libmdbx {
             let tx = self.ro_tx()?;
             let mut cur = i(start.clone(), &tx)?;
             while time.elapsed() < Duration::from_secs(30) {
-                let call_res = f(&mut cur)?;
-                match call_res {
-                    Some(val) => res.push(val),
-                    None => return Ok(res),
+                if let Some(call_res) = f(&mut cur)? {
+                    res.push(call_res)
+                } else {
+                    return Ok(res);
                 }
             }
             if let Some(key) = cur.prev()? {
                 start = Some(key.0);
             } else {
-                return Ok(res)
+                return Ok(res);
             }
             tracing::info!("recycling tx on long lived read");
             tx.commit()?;
