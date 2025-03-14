@@ -70,7 +70,7 @@ impl CexDB {
         let exchanges_to_use = &cex_config.exchanges_to_use;
 
         let pair_exists = exchanges_to_use.iter().any(|exchange| {
-            cex_trades.get(exchange).map_or(false, |pairs| {
+            cex_trades.get(exchange).is_some_and(|pairs| {
                 pairs.contains_key(&pair) || pairs.contains_key(&pair.flip())
             })
         });
