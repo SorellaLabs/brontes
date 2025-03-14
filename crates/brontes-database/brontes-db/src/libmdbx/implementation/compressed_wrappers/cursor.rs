@@ -210,7 +210,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> Iterator for CompressedWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> Iterator for CompressedWalker<'_, T, CURSOR>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -238,7 +238,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> CompressedWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> CompressedWalker<'_, T, CURSOR>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -281,7 +281,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> CompressedReverseWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> CompressedReverseWalker<'_, T, CURSOR>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -292,7 +292,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> Iterator for CompressedReverseWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> Iterator for CompressedReverseWalker<'_, T, CURSOR>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -322,7 +322,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> Iterator for CompressedRangeWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> Iterator for CompressedRangeWalker<'_, T, CURSOR>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -354,7 +354,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> CompressedRangeWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> CompressedRangeWalker<'_, T, CURSOR>
 where
     T: CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -382,7 +382,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> CompressedDupWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> CompressedDupWalker<'_, T, CURSOR>
 where
     T: DupSort + CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,
@@ -393,7 +393,7 @@ where
     }
 }
 
-impl<'cursor, T, CURSOR> Iterator for CompressedDupWalker<'cursor, T, CURSOR>
+impl<T, CURSOR> Iterator for CompressedDupWalker<'_, T, CURSOR>
 where
     T: DupSort + CompressedTable,
     T::Value: From<T::DecompressedValue> + Into<T::DecompressedValue>,

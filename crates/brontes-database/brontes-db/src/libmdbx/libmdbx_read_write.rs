@@ -263,7 +263,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
 
                     let mut sft_cnt = 0;
                     // if the range starts with a zero. set the start_block if it isn't
-                    if range & 1 << 127 == 0 && range_start_block.is_none() {
+                    if range & (1 << 127) == 0 && range_start_block.is_none() {
                         range_start_block = Some(start_block + (i * 128));
                         sft_cnt += 1;
                         // move to left once
