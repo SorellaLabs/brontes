@@ -541,8 +541,7 @@ pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
         }
     } else if tx_info
         .contract_type
-        .as_ref()
-        .map_or(false, |c| c.is_mev_contract())
+        .as_ref().is_some_and(|c| c.is_mev_contract())
     {
         base_diff += 1;
     }

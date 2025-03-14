@@ -668,8 +668,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .is_searcher_of_type_with_count_threshold(MevType::CexDexTrades, FILTER_THRESHOLD)
                 || info
                     .contract_type
-                    .as_ref()
-                    .map_or(false, |contract_type| contract_type.could_be_mev_contract()));
+                    .as_ref().is_some_and(|contract_type| contract_type.could_be_mev_contract()));
 
         let is_cex_dex_based_on_historical_activity =
             is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
@@ -720,8 +719,7 @@ pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
         }
     } else if tx_info
         .contract_type
-        .as_ref()
-        .map_or(false, |c| c.is_mev_contract())
+        .as_ref().is_some_and(|c| c.is_mev_contract())
     {
         base_diff += 2;
     }

@@ -170,8 +170,7 @@ impl CexDexProcessing {
 
         self.per_exchange_pnl.retain(|possible_cex_dex| {
             possible_cex_dex
-                .as_ref()
-                .map_or(false, |cex_dex| cex_dex.arb_legs.iter().all(Option::is_some))
+                .as_ref().is_some_and(|cex_dex| cex_dex.arb_legs.iter().all(Option::is_some))
         });
 
         Some(())

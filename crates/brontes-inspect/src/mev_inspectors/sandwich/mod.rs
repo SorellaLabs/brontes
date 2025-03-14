@@ -987,13 +987,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
                         if !hashes
                             .iter()
-                            .map(|v| {
+                            .any(|v| {
                                 let tree = &(*tree.clone());
                                 let d = tree.get_root(*v).unwrap().get_root_action();
 
                                 d.is_revert() || mev_executor_contract == d.get_to_address()
                             })
-                            .any(|d| d)
                         {
                             Some(swap)
                         } else {
