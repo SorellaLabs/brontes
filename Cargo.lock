@@ -2038,7 +2038,7 @@ dependencies = [
  "criterion",
  "dashmap 5.5.3",
  "db-interfaces",
- "derive_more 0.99.19",
+ "derive_more 2.0.1",
  "dotenv",
  "eyre",
  "filesize",

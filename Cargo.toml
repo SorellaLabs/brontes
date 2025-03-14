@@ -179,7 +179,7 @@ toml = "0.8.2"
 auto_impl = "1.1.0"
 strum = "0.25.0"
 serial_test = "2.0.0"
-derive_more = { version = "2.0", default-features = false }
+derive_more = { version = "2.0", features = ["full"] }
 rkyv = { git = "https://github.com/rkyv/rkyv.git", branch = "0.7-hashbrown-0.14", features = [
   "validation",
 ] }
