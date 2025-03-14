@@ -246,9 +246,7 @@ pub(crate) fn create_txn_env(
 
     let gas_limit = gas.unwrap_or(block_env.gas_limit);
     let env = TxEnv {
-        gas_limit: gas_limit
-            .try_into()
-            .map_err(|_| RpcInvalidTransactionError::GasUintOverflow)?,
+        gas_limit,
         nonce: nonce.unwrap_or_default(),
         caller: from.unwrap_or_default(),
         gas_price: gas_price.to(),
@@ -257,9 +255,6 @@ pub(crate) fn create_txn_env(
         data: input.try_into_unique_input()?.unwrap_or_default(),
         chain_id,
         access_list: access_list.unwrap_or_default(),
-        // .map(AccessList::into_flattened)
-        // .unwrap_or_default(),
-        // EIP-4844 fields
         blob_hashes: blob_versioned_hashes.unwrap_or_default(),
         max_fee_per_blob_gas: max_fee_per_blob_gas.unwrap_or_default().to(),
         tx_type: transaction_type.unwrap_or_default(),
