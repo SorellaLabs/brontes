@@ -100,7 +100,7 @@ humansize = "2.1.3"
 # hashing
 ahash = "0.8.11"
 once_cell = "1.19.0"
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["json"] }
 
 [dev-dependencies]
 dotenv.workspace = true
