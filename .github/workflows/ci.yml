@@ -81,6 +81,9 @@ jobs:
           rustup toolchain install nightly
           rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
 
+      - name: cargo build
+        run: cargo build --workspace --all-features
+
       - name: cargo +nightly fmt
         run: cargo +nightly fmt --all -- --check
 
