@@ -12,6 +12,13 @@ use metrics_util::layers::{PrefixLayer, Stack};
 use prometheus::{Encoder, TextEncoder};
 use reth_metrics::metrics::Unit;
 
+macro_rules! my_counter {
+    ($name:literal, $value:expr) => {
+        let key = [("value", ($value as f64).to_string())];
+        metrics::counter!($name, &key);
+    };
+}
+
 pub(crate) trait Hook: Fn() + Send + Sync {}
 impl<T: Fn() + Send + Sync> Hook for T {}
 
@@ -217,13 +224,13 @@ fn collect_io_stats() {
         return;
     };
 
-    metrics::counter!("io.rchar", io.rchar);
-    metrics::counter!("io.wchar", io.wchar);
-    metrics::counter!("io.syscr", io.syscr);
-    metrics::counter!("io.syscw", io.syscw);
-    metrics::counter!("io.read_bytes", io.read_bytes);
-    metrics::counter!("io.write_bytes", io.write_bytes);
-    metrics::counter!("io.cancelled_write_bytes", io.cancelled_write_bytes);
+    my_counter!("io.rchar", io.rchar);
+    my_counter!("io.wchar", io.wchar);
+    my_counter!("io.syscr", io.syscr);
+    my_counter!("io.syscw", io.syscw);
+    my_counter!("io.read_bytes", io.read_bytes);
+    my_counter!("io.write_bytes", io.write_bytes);
+    my_counter!("io.cancelled_write_bytes", io.cancelled_write_bytes);
 }
 
 #[cfg(target_os = "linux")]
