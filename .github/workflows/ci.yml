@@ -2,7 +2,7 @@ on:
   push:
     branches:
       - main
-      - rust-patch
+      - reth-patch
   pull_request:
     branches: [main]
 
