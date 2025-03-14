@@ -48,8 +48,8 @@ pub const FILTER_THRESHOLD: u64 = 20;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
-    pub utils:     SharedInspectorUtils<'db, DB>,
-    trade_config:  CexDexTradeConfig,
+    pub utils: SharedInspectorUtils<'db, DB>,
+    trade_config: CexDexTradeConfig,
     cex_exchanges: Vec<CexExchange>,
 }
 
@@ -86,7 +86,7 @@ impl<DB: LibmdbxReader> Inspector for CexDexMarkoutInspector<'_, DB> {
 
         if metadata.cex_trades.is_none() {
             tracing::warn!("no cex trades for block: {}", block.metadata.block_num);
-            return vec![]
+            return vec![];
         }
 
         self.utils
@@ -123,7 +123,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .filter_map(|(actions, tx_info)| {
                 let tx_info = tx_info?;
                 if self.should_filter_tx(&tx_info) {
-                    return None
+                    return None;
                 }
 
                 if actions.iter().any(Action::is_batch) {
@@ -147,7 +147,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 self.utils.get_metrics().inspect(|m| {
                     m.branch_filtering_trigger(MevType::CexDexTrades, "is_defi_automation")
                 });
-                return true
+                return true;
             }
         }
         false
@@ -197,7 +197,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             self.utils.get_metrics().inspect(|m| {
                 m.branch_filtering_trigger(MevType::CexDexTrades, "is_triangular_arb")
             });
-            return None
+            return None;
         }
 
         self.process_swaps(dex_swaps, tx_info, metadata, deltas, false)
@@ -247,7 +247,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 "no dex swaps found\n Tx: {}",
                 format_etherscan_url(&tx_info.tx_hash)
             );
-            return None
+            return None;
         }
 
         let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
@@ -402,7 +402,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .collect();
 
         if arb_legs_and_trades.is_empty() {
-            return None
+            return None;
         }
 
         let (arb_legs, trade_details): (Vec<_>, Vec<_>) = arb_legs_and_trades.into_iter().unzip();
@@ -459,13 +459,13 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         // Amount * base_to_quote = USDT amount
         let base_to_quote = if token_price == Rational::ZERO {
             trace!("Token price is zero");
-            return None
+            return None;
         } else {
             token_price.clone().reciprocal()
         };
 
         if cex_quote.price_maker == Rational::ZERO || swap.amount_out == Rational::ZERO {
-            return None
+            return None;
         }
 
         let pairs_price = ExchangeLegCexPrice {
@@ -497,7 +497,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 &output_of_cex_trade_maker,
                 cex_quote.was_intermediary,
             );
-            return None
+            return None;
         }
 
         Some(ArbLeg {
@@ -605,7 +605,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     /// # Returns
     /// A `PossibleCexDex` instance representing the finalized arbitrage
     /// opportunity after accounting for gas costs.
-
     pub fn gas_accounting(
         &self,
         cex_dex: &mut CexDexProcessing,
@@ -668,7 +667,8 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 .is_searcher_of_type_with_count_threshold(MevType::CexDexTrades, FILTER_THRESHOLD)
                 || info
                     .contract_type
-                    .as_ref().is_some_and(|contract_type| contract_type.could_be_mev_contract()));
+                    .as_ref()
+                    .is_some_and(|contract_type| contract_type.could_be_mev_contract()));
 
         let is_cex_dex_based_on_historical_activity =
             is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
@@ -694,7 +694,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     pub fn is_triangular_arb(&self, dex_swaps: &[NormalizedSwap]) -> bool {
         // Not enough swaps to form a cycle, thus cannot be arbitrage.
         if dex_swaps.len() < 2 {
-            return false
+            return false;
         }
 
         let original_token = dex_swaps[0].token_in.address;
@@ -719,7 +719,8 @@ pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
         }
     } else if tx_info
         .contract_type
-        .as_ref().is_some_and(|c| c.is_mev_contract())
+        .as_ref()
+        .is_some_and(|c| c.is_mev_contract())
     {
         base_diff += 2;
     }
