@@ -5,7 +5,6 @@ use tokio::task::JoinHandle;
 
 /// executes tasks on the runtime
 /// used for a thread pool for the simulator
-
 pub struct Executor;
 
 impl Executor {
