@@ -47,7 +47,6 @@ use crate::{
 /// Sequence:
 /// Represents various MEV sandwich attack strategies, including standard
 /// sandwiches and more complex variations like the "Big Mac Sandwich."
-
 ///
 /// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
 /// Sequence:
@@ -60,45 +59,45 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Sandwich {
-    pub block_number:             u64,
+    pub block_number: u64,
     /// Transaction hashes of the frontrunning transactions.
     /// Supports multiple transactions for complex sandwich scenarios.
-    pub frontrun_tx_hash:         Vec<B256>,
+    pub frontrun_tx_hash: Vec<B256>,
     /// Swaps executed in each frontrunning transaction.
     /// Nested vectors represent multiple swaps within each transaction.
-    pub frontrun_swaps:           Vec<Vec<NormalizedSwap>>,
+    pub frontrun_swaps: Vec<Vec<NormalizedSwap>>,
     /// Gas details for each frontrunning transaction.
     #[redefined(same_fields)]
-    pub frontrun_gas_details:     Vec<GasDetails>,
+    pub frontrun_gas_details: Vec<GasDetails>,
     /// Transaction hashes of the victim transactions, logically grouped by
     /// their corresponding frontrunning transaction. Each outer vector
     /// index corresponds to a frontrun transaction, grouping victims targeted
     /// by that specific frontrun.
-    pub victim_swaps_tx_hashes:   Vec<Vec<B256>>,
+    pub victim_swaps_tx_hashes: Vec<Vec<B256>>,
     /// Swaps executed by victims, each outer vector corresponds to a victim
     /// transaction.
-    pub victim_swaps:             Vec<Vec<NormalizedSwap>>,
+    pub victim_swaps: Vec<Vec<NormalizedSwap>>,
     /// Gas details for each victim transaction.
     #[redefined(same_fields)]
     pub victim_swaps_gas_details: Vec<GasDetails>,
     /// Transaction hashes of the backrunning transactions.
-    pub backrun_tx_hash:          B256,
+    pub backrun_tx_hash: B256,
     /// Swaps executed in each backrunning transaction.
-    pub backrun_swaps:            Vec<NormalizedSwap>,
+    pub backrun_swaps: Vec<NormalizedSwap>,
     /// Gas details for each backrunning transaction.
     #[redefined(same_fields)]
-    pub backrun_gas_details:      GasDetails,
+    pub backrun_gas_details: GasDetails,
 }
 
 /// calcuation for the loss per user
 #[derive(Debug, Deserialize, PartialEq, Clone, Default)]
 pub struct VictimLossAmount {
-    pub tx_hash:           B256,
-    pub vicitim_eoa:       Address,
-    pub token:             TokenInfoWithAddress,
+    pub tx_hash: B256,
+    pub vicitim_eoa: Address,
+    pub token: TokenInfoWithAddress,
     pub token_amount_lost: Rational,
     /// is zero if we don't have a price for the given token
-    pub amount_lost_usd:   Rational,
+    pub amount_lost_usd: Rational,
 }
 
 impl Mev for Sandwich {
