@@ -1964,6 +1964,7 @@ dependencies = [
  "alloy-primitives 0.8.23",
  "alloy-provider",
  "alloy-rpc-types",
+ "alloy-rpc-types-trace",
  "alloy-sol-macro 0.8.23",
  "alloy-sol-types 0.8.23",
  "alloy-transport-http",

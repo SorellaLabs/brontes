@@ -1,6 +1,6 @@
 use alloy_dyn_abi::*;
 use alloy_json_abi::JsonAbi;
-use alloy_rpc_types::trace::parity::{Action, TraceOutput, TransactionTrace};
+use alloy_rpc_types_trace::parity::{Action, TraceOutput, TransactionTrace};
 use brontes_types::structured_trace::{DecodedCallData, DecodedParams};
 
 use crate::errors::TraceParseError;

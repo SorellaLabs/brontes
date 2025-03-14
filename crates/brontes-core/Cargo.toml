@@ -44,6 +44,7 @@ alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-provider.workspace = true
 alloy-transport-http.workspace = true
 alloy-rpc-types.workspace = true
+alloy-rpc-types-trace = { workspace = true, optional = true }
 
 # Serde 
 serde.workspace = true
@@ -80,7 +81,7 @@ criterion = { version = "0.5", features = ["async", "async_tokio"] }
 
 [features]
 default = []
-dyn-decode = []
+dyn-decode = ["dep:alloy-rpc-types-trace"]
 tests = []
 local-reth = [
   "brontes-types/local-reth",
