@@ -3,7 +3,7 @@
 pub use alloy_primitives::Log;
 use alloy_primitives::{Address, Bytes, FixedBytes, LogData, U256};
 use alloy_rpc_types_trace::{
-    geth::{CallFrame, CallLogFrame, GethDefaultTracingOptions, StructLog},
+    geth::{CallFrame, CallLogFrame},
     parity::{
         Action, ActionType, CallAction, CallOutput, CallType, CreateAction, CreateOutput,
         CreationMethod, SelfdestructAction, TraceOutput, TransactionTrace,
@@ -25,18 +25,18 @@ pub struct DecodedCallData {
     /// The function signature.
     pub signature: String,
     /// The function arguments.
-    pub args:      Vec<String>,
+    pub args: Vec<String>,
 }
 
 /// Additional decoded data enhancing the [CallTrace].
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DecodedCallTrace {
     /// Optional decoded label for the call.
-    pub label:       Option<String>,
+    pub label: Option<String>,
     /// Optional decoded return data.
     pub return_data: Option<String>,
     /// Optional decoded call data.
-    pub call_data:   Option<DecodedCallData>,
+    pub call_data: Option<DecodedCallData>,
 }
 
 /// A trace of a call with optional decoded data.
@@ -185,7 +185,7 @@ impl CallTrace {
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DecodedCallLog {
     /// The decoded event name.
-    pub name:   Option<String>,
+    pub name: Option<String>,
     /// The decoded log parameters, a vector of the parameter name (e.g. foo)
     /// and the parameter value (e.g. 0x9d3...45ca).
     pub params: Option<Vec<(String, String)>>,
@@ -195,9 +195,9 @@ pub struct DecodedCallLog {
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CallLog {
     /// The raw log data.
-    pub raw_log:  LogData,
+    pub raw_log: LogData,
     /// Optional complementary decoded log data.
-    pub decoded:  DecodedCallLog,
+    pub decoded: DecodedCallLog,
     /// The position of the log relative to subcalls within the same trace.
     pub position: u64,
 }
@@ -207,8 +207,8 @@ impl From<Log> for CallLog {
     fn from(log: Log) -> Self {
         Self {
             position: Default::default(),
-            raw_log:  log.data,
-            decoded:  DecodedCallLog { name: None, params: None },
+            raw_log: log.data,
+            decoded: DecodedCallLog { name: None, params: None },
         }
     }
 }
@@ -226,15 +226,15 @@ impl CallLog {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CallTraceNode {
     /// Parent node index in the arena
-    pub parent:   Option<usize>,
+    pub parent: Option<usize>,
     /// Children node indexes in the arena
     pub children: Vec<usize>,
     /// This node's index in the arena
-    pub idx:      usize,
+    pub idx: usize,
     /// The call trace
-    pub trace:    CallTrace,
+    pub trace: CallTrace,
     /// Recorded logs, if enabled
-    pub logs:     Vec<CallLog>,
+    pub logs: Vec<CallLog>,
     /// Ordering of child calls and logs
     pub ordering: Vec<TraceMemberOrder>,
 }
@@ -306,13 +306,13 @@ impl CallTraceNode {
             | CallKind::DelegateCall
             | CallKind::AuthCall => TraceOutput::Call(CallOutput {
                 gas_used: self.trace.gas_used,
-                output:   self.trace.output.clone(),
+                output: self.trace.output.clone(),
             }),
             CallKind::Create | CallKind::Create2 | CallKind::EOFCreate => {
                 TraceOutput::Create(CreateOutput {
                     gas_used: self.trace.gas_used,
-                    code:     self.trace.output.clone(),
-                    address:  self.trace.address,
+                    code: self.trace.output.clone(),
+                    address: self.trace.address,
                 })
             }
         }
@@ -322,9 +322,9 @@ impl CallTraceNode {
     pub fn parity_selfdestruct_action(&self) -> Option<Action> {
         self.is_selfdestruct().then(|| {
             Action::Selfdestruct(SelfdestructAction {
-                address:        self.trace.selfdestruct_address.unwrap_or_default(),
+                address: self.trace.selfdestruct_address.unwrap_or_default(),
                 refund_address: self.trace.selfdestruct_refund_target.unwrap_or_default(),
-                balance:        self
+                balance: self
                     .trace
                     .selfdestruct_transferred_value
                     .unwrap_or_default(),
@@ -369,19 +369,19 @@ impl CallTraceNode {
             | CallKind::CallCode
             | CallKind::DelegateCall
             | CallKind::AuthCall => Action::Call(CallAction {
-                from:      self.trace.caller,
-                to:        self.trace.address,
-                value:     self.trace.value,
-                gas:       self.trace.gas_limit,
-                input:     self.trace.data.clone(),
+                from: self.trace.caller,
+                to: self.trace.address,
+                value: self.trace.value,
+                gas: self.trace.gas_limit,
+                input: self.trace.data.clone(),
                 call_type: self.kind().into(),
             }),
             CallKind::Create | CallKind::Create2 | CallKind::EOFCreate => {
                 Action::Create(CreateAction {
-                    from:            self.trace.caller,
-                    value:           self.trace.value,
-                    gas:             self.trace.gas_limit,
-                    init:            self.trace.data.clone(),
+                    from: self.trace.caller,
+                    value: self.trace.value,
+                    gas: self.trace.gas_limit,
+                    init: self.trace.data.clone(),
                     creation_method: self.kind().into(),
                 })
             }
@@ -391,18 +391,18 @@ impl CallTraceNode {
     /// Converts this call trace into an _empty_ geth [CallFrame]
     pub fn geth_empty_call_frame(&self, include_logs: bool) -> CallFrame {
         let mut call_frame = CallFrame {
-            typ:           self.trace.kind.to_string(),
-            from:          self.trace.caller,
-            to:            Some(self.trace.address),
-            value:         Some(self.trace.value),
-            gas:           U256::from(self.trace.gas_limit),
-            gas_used:      U256::from(self.trace.gas_used),
-            input:         self.trace.data.clone(),
-            output:        (!self.trace.output.is_empty()).then(|| self.trace.output.clone()),
-            error:         None,
+            typ: self.trace.kind.to_string(),
+            from: self.trace.caller,
+            to: Some(self.trace.address),
+            value: Some(self.trace.value),
+            gas: U256::from(self.trace.gas_limit),
+            gas_used: U256::from(self.trace.gas_used),
+            input: self.trace.data.clone(),
+            output: (!self.trace.output.is_empty()).then(|| self.trace.output.clone()),
+            error: None,
             revert_reason: None,
-            calls:         Default::default(),
-            logs:          Default::default(),
+            calls: Default::default(),
+            logs: Default::default(),
         };
 
         if self.trace.kind.is_static_call() {
@@ -432,9 +432,9 @@ impl CallTraceNode {
                 .logs
                 .iter()
                 .map(|log| CallLogFrame {
-                    address:  Some(self.execution_address()),
-                    topics:   Some(log.raw_log.topics().to_vec()),
-                    data:     Some(log.raw_log.data.clone()),
+                    address: Some(self.execution_address()),
+                    topics: Some(log.raw_log.topics().to_vec()),
+                    data: Some(log.raw_log.data.clone()),
                     position: Some(log.position),
                 })
                 .collect();
@@ -584,9 +584,9 @@ pub enum TraceMemberOrder {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DecodedInternalCall {
     /// Name of the internal function.
-    pub func_name:   String,
+    pub func_name: String,
     /// Input arguments of the internal function.
-    pub args:        Option<Vec<String>>,
+    pub args: Option<Vec<String>>,
     /// Optional decoded return data.
     pub return_data: Option<Vec<String>>,
 }
@@ -609,45 +609,45 @@ pub enum DecodedTraceStep {
 pub struct CallTraceStep {
     // Fields filled in `step`
     /// Call depth
-    pub depth:              u64,
+    pub depth: u64,
     /// Program counter before step execution
-    pub pc:                 usize,
+    pub pc: usize,
     /// Code section index before step execution
-    pub code_section_idx:   usize,
+    pub code_section_idx: usize,
     /// Opcode to be executed
-    pub op:                 OpCode,
+    pub op: OpCode,
     /// Current contract address
-    pub contract:           Address,
+    pub contract: Address,
     /// Stack before step execution
-    pub stack:              Option<Vec<U256>>,
+    pub stack: Option<Vec<U256>>,
     /// The new stack items placed by this step if any
-    pub push_stack:         Option<Vec<U256>>,
+    pub push_stack: Option<Vec<U256>>,
     /// Memory before step execution.
     ///
     /// This will be `None` only if memory capture is disabled.
-    pub memory:             Option<RecordedMemory>,
+    pub memory: Option<RecordedMemory>,
     /// Returndata before step execution
-    pub returndata:         Bytes,
+    pub returndata: Bytes,
     /// Remaining gas before step execution
-    pub gas_remaining:      u64,
+    pub gas_remaining: u64,
     /// Gas refund counter before step execution
     pub gas_refund_counter: u64,
     /// Total gas used before step execution
-    pub gas_used:           u64,
+    pub gas_used: u64,
     // Fields filled in `step_end`
     /// Gas cost of step execution
-    pub gas_cost:           u64,
+    pub gas_cost: u64,
     /// Change of the contract state after step execution (effect of the
     /// SLOAD/SSTORE instructions)
-    pub storage_change:     Option<StorageChange>,
+    pub storage_change: Option<StorageChange>,
     /// Final status of the step
     ///
     /// This is set after the step was executed.
-    pub status:             InstructionResult,
+    pub status: InstructionResult,
     /// Immediate bytes of the step
-    pub immediate_bytes:    Option<Bytes>,
+    pub immediate_bytes: Option<Bytes>,
     /// Optional complementary decoded step data.
-    pub decoded:            Option<DecodedTraceStep>,
+    pub decoded: Option<DecodedTraceStep>,
 }
 
 /// Represents the source of a storage change - e.g., whether it came
@@ -671,13 +671,13 @@ pub enum StorageChangeReason {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct StorageChange {
     /// key of the storage slot
-    pub key:       U256,
+    pub key: U256,
     /// Current value of the storage slot
-    pub value:     U256,
+    pub value: U256,
     /// The previous value of the storage slot, if any
     pub had_value: Option<U256>,
     /// How this storage was accessed
-    pub reason:    StorageChangeReason,
+    pub reason: StorageChangeReason,
 }
 
 /// Represents the memory captured during execution

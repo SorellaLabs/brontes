@@ -1,8 +1,3 @@
-#![feature(trait_alias)]
-#![feature(trivial_bounds)]
-#![feature(const_type_id)]
-#![feature(core_intrinsics)]
-#![feature(const_for)]
 #![allow(internal_features)]
 #![allow(clippy::type_complexity)]
 #![allow(unexpected_cfgs)]

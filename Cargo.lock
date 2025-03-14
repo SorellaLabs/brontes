@@ -3282,7 +3282,7 @@ dependencies = [
 [[package]]
 name = "db-interfaces"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#738d9e2581d63eb568774516b153ffe5c927e3ff"
+source = "git+https://github.com/SorellaLabs/db-interfaces#f08e9be67afb3f902e26fd4e039edf752cab12ae"
 dependencies = [
  "chrono",
  "clickhouse",
@@ -3308,7 +3308,7 @@ dependencies = [
 [[package]]
 name = "db-interfaces-macros"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/db-interfaces#738d9e2581d63eb568774516b153ffe5c927e3ff"
+source = "git+https://github.com/SorellaLabs/db-interfaces#f08e9be67afb3f902e26fd4e039edf752cab12ae"
 dependencies = [
  "dotenv",
  "itertools 0.11.0",
@@ -8004,7 +8004,7 @@ checksum = "d3edd4d5d42c92f0a659926464d4cce56b562761267ecf0f469d85b7de384175"
 [[package]]
 name = "redefined"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/redefined#d00ea479224a2d50ed525aec93591cf497b3f852"
+source = "git+https://github.com/SorellaLabs/redefined#031c3b67ba806baa396fc53652f18f5a8da8cbb6"
 dependencies = [
  "redefined-derive",
 ]
@@ -8012,7 +8012,7 @@ dependencies = [
 [[package]]
 name = "redefined-derive"
 version = "0.1.0"
-source = "git+https://github.com/SorellaLabs/redefined#d00ea479224a2d50ed525aec93591cf497b3f852"
+source = "git+https://github.com/SorellaLabs/redefined#031c3b67ba806baa396fc53652f18f5a8da8cbb6"
 dependencies = [
  "futures",
  "proc-macro2",
