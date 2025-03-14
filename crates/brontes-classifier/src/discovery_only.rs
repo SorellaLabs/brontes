@@ -23,12 +23,12 @@ use crate::{
 
 #[derive(Debug)]
 pub struct DiscoveryOnlyClassifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx:  &'db DB,
+    libmdbx: &'db DB,
     provider: Arc<T>,
 }
 
-impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone
-    for DiscoveryOnlyClassifier<'db, T, DB>
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone
+    for DiscoveryOnlyClassifier<'_, T, DB>
 {
     fn clone(&self) -> Self {
         Self { libmdbx: self.libmdbx, provider: self.provider.clone() }
@@ -56,7 +56,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                             empty = trace.trace.is_empty(),
                             is_success = trace.is_success
                         );
-                        return
+                        return;
                     }
 
                     let root_trace = trace.trace.remove(0);
@@ -84,10 +84,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                         private: false,
                         total_msg_value_transfers: vec![],
                         gas_details: GasDetails {
-                            coinbase_transfer:   None,
-                            gas_used:            trace.gas_used,
+                            coinbase_transfer: None,
+                            gas_used: trace.gas_used,
                             effective_gas_price: trace.effective_price,
-                            priority_fee:        trace.effective_price
+                            priority_fee: trace.effective_price
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(action)]),
@@ -159,7 +159,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         trace_index: u64,
     ) {
         if trace.trace.error.is_some() {
-            return
+            return;
         }
         match trace.action_type() {
             TraceAction::Call(_) => {
@@ -190,7 +190,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         trace_index: u64,
     ) {
         if trace.is_static_call() {
-            return
+            return;
         }
 
         let mut call_info = trace.get_callframe_info();
@@ -241,7 +241,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         block: u64,
     ) {
         if trace.is_delegate_call() {
-            return
+            return;
         };
 
         // Attempt to decode the transfer
@@ -303,7 +303,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
             .collect::<Vec<_>>();
 
         if search_data.is_empty() {
-            return
+            return;
         }
 
         join_all(
