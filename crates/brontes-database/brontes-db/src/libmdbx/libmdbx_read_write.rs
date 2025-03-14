@@ -34,7 +34,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools;
 use malachite::Rational;
 use reth_db::table::{Compress, Encode};
-use reth_interfaces::db::LogLevel;
+use reth_storage_errors::db::LogLevel;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tracing::{info, instrument};
 

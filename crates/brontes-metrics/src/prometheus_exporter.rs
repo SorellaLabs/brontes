@@ -120,37 +120,43 @@ fn collect_memory_stats() {
     if let Ok(value) = stats::active::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.active"))
     {
-        gauge!("jemalloc.active", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.active", &key);
     }
 
     if let Ok(value) = stats::allocated::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.allocated"))
     {
-        gauge!("jemalloc.allocated", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.allocated", &key);
     }
 
     if let Ok(value) = stats::mapped::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.mapped"))
     {
-        gauge!("jemalloc.mapped", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.mapped", &key);
     }
 
     if let Ok(value) = stats::metadata::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.metadata"))
     {
-        gauge!("jemalloc.metadata", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.metadata", &key);
     }
 
     if let Ok(value) = stats::resident::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.resident"))
     {
-        gauge!("jemalloc.resident", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.resident", &key);
     }
 
     if let Ok(value) = stats::retained::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.retained"))
     {
-        gauge!("jemalloc.retained", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.retained", &key);
     }
 }
 

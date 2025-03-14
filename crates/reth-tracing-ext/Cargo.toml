@@ -20,6 +20,7 @@ reth-network-api.workspace = true
 reth-primitives.workspace = true
 reth-db.workspace = true
 reth-revm.workspace = true
+alloy-consensus.workspace = true
 alloy-primitives.workspace = true
 alloy-sol-types.workspace = true
 alloy-rpc-types-trace.workspace = true
@@ -30,6 +31,7 @@ reth-rpc-eth-api.workspace = true
 reth-rpc-server-types.workspace = true
 brontes-types.workspace = true
 revm-inspector.workspace = true
+alloy-evm.workspace = true
 # revm-interpreter.workspace = true
 tracing.workspace = true
 

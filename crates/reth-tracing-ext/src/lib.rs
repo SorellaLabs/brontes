@@ -71,7 +71,8 @@ impl TracingClient {
         static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
-        let static_file_provider = StaticFileProvider::read_only(static_files_path.clone(), true)?;
+        let static_file_provider =
+            StaticFileProvider::read_only(static_files_path.clone(), true).unwrap();
 
         let provider_factory: ProviderFactory<
             NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>,
@@ -113,7 +114,7 @@ impl TracingClient {
             GasCap::default(),
             DEFAULT_MAX_SIMULATE_BLOCKS,
             DEFAULT_ETH_PROOF_WINDOW,
-            BlockingTaskPool::new(ThreadPoolBuilder::new().build()?),
+            BlockingTaskPool::new(ThreadPoolBuilder::new().build().unwrap()),
             FeeHistoryCache::new(FeeHistoryCacheConfig::default()),
             EthEvmConfig::new(chain.clone()),
             DEFAULT_PROOF_PERMITS,
@@ -169,9 +170,9 @@ impl TracingClient {
                         Ok(inspector.into_trace_results(tx_info, &res))
                     },
                 )
-                .await;
+                .await?;
 
-        Ok(())
+        Ok(t)
     }
 }
 

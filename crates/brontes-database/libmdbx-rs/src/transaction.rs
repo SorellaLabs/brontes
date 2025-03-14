@@ -6,10 +6,10 @@ use std::{
     time::Duration,
 };
 
-use ffi::{mdbx_txn_renew, MDBX_txn_flags_t, MDBX_TXN_RDONLY, MDBX_TXN_READWRITE};
 use indexmap::IndexSet;
 use libc::{c_uint, c_void};
 use parking_lot::{Mutex, MutexGuard};
+use reth_mdbx_sys::{mdbx_txn_renew, MDBX_txn_flags_t, MDBX_TXN_RDONLY, MDBX_TXN_READWRITE};
 
 use crate::{
     database::Database,
@@ -71,9 +71,9 @@ where
     K: TransactionKind,
 {
     pub(crate) fn new(env: Environment) -> Result<Self> {
-        let mut txn: *mut ffi::MDBX_txn = ptr::null_mut();
+        let mut txn: *mut reth_mdbx_sys::MDBX_txn = ptr::null_mut();
         unsafe {
-            mdbx_result(ffi::mdbx_txn_begin_ex(
+            mdbx_result(reth_mdbx_sys::mdbx_txn_begin_ex(
                 env.env_ptr(),
                 ptr::null_mut(),
                 K::OPEN_FLAGS,
@@ -84,7 +84,7 @@ where
         }
     }
 
-    pub(crate) fn new_from_ptr(env: Environment, txn_ptr: *mut ffi::MDBX_txn) -> Self {
+    pub(crate) fn new_from_ptr(env: Environment, txn_ptr: *mut reth_mdbx_sys::MDBX_txn) -> Self {
         let txn = TransactionPtr::new(txn_ptr);
 
         #[cfg(feature = "read-tx-timeouts")]
@@ -111,7 +111,7 @@ where
     #[inline]
     pub fn txn_execute<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(*mut ffi::MDBX_txn) -> T,
+        F: FnOnce(*mut reth_mdbx_sys::MDBX_txn) -> T,
     {
         self.inner.txn_execute(f)
     }
@@ -119,7 +119,7 @@ where
     /// Returns a copy of the raw pointer to the underlying MDBX transaction.
     #[doc(hidden)]
     #[cfg(test)]
-    pub fn txn(&self) -> *mut ffi::MDBX_txn {
+    pub fn txn(&self) -> *mut reth_mdbx_sys::MDBX_txn {
         self.inner.txn.txn
     }
 
@@ -130,7 +130,7 @@ where
 
     /// Returns the transaction id.
     pub fn id(&self) -> Result<u64> {
-        self.txn_execute(|txn| unsafe { ffi::mdbx_txn_id(txn) })
+        self.txn_execute(|txn| unsafe { reth_mdbx_sys::mdbx_txn_id(txn) })
     }
 
     /// Gets an item from a database.
@@ -141,18 +141,19 @@ where
     /// returned. Retrieval of other items requires the use of
     /// [Cursor]. If the item is not in the database, then
     /// [None] will be returned.
-    pub fn get<Key>(&self, dbi: ffi::MDBX_dbi, key: &[u8]) -> Result<Option<Key>>
+    pub fn get<Key>(&self, dbi: reth_mdbx_sys::MDBX_dbi, key: &[u8]) -> Result<Option<Key>>
     where
         Key: TableObject,
     {
-        let key_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
-        let mut data_val: ffi::MDBX_val = ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
+        let key_val: reth_mdbx_sys::MDBX_val =
+            reth_mdbx_sys::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
+        let mut data_val: reth_mdbx_sys::MDBX_val =
+            reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
 
         self.txn_execute(|txn| unsafe {
-            match ffi::mdbx_get(txn, dbi, &key_val, &mut data_val) {
-                ffi::MDBX_SUCCESS => Key::decode_val::<K>(txn, data_val).map(Some),
-                ffi::MDBX_NOTFOUND => Ok(None),
+            match reth_mdbx_sys::mdbx_get(txn, dbi, &key_val, &mut data_val) {
+                reth_mdbx_sys::MDBX_SUCCESS => Key::decode_val::<K>(txn, data_val).map(Some),
+                reth_mdbx_sys::MDBX_NOTFOUND => Ok(None),
                 err_code => Err(Error::from_err_code(err_code)),
             }
         })?
@@ -180,7 +181,7 @@ where
 
                     let mut latency = CommitLatency::new();
                     mdbx_result(unsafe {
-                        ffi::mdbx_txn_commit_ex(txn, latency.mdb_commit_latency())
+                        reth_mdbx_sys::mdbx_txn_commit_ex(txn, latency.mdb_commit_latency())
                     })
                     .map(|v| (v, latency))
                 } else {
@@ -232,7 +233,12 @@ where
         let mut flags: c_uint = 0;
         unsafe {
             self.txn_execute(|txn| {
-                mdbx_result(ffi::mdbx_dbi_flags_ex(txn, db.dbi(), &mut flags, ptr::null_mut()))
+                mdbx_result(reth_mdbx_sys::mdbx_dbi_flags_ex(
+                    txn,
+                    db.dbi(),
+                    &mut flags,
+                    ptr::null_mut(),
+                ))
             })??;
         }
 
@@ -247,11 +253,16 @@ where
     }
 
     /// Retrieves database statistics by the given dbi.
-    pub fn db_stat_with_dbi(&self, dbi: ffi::MDBX_dbi) -> Result<Stat> {
+    pub fn db_stat_with_dbi(&self, dbi: reth_mdbx_sys::MDBX_dbi) -> Result<Stat> {
         unsafe {
             let mut stat = Stat::new();
             self.txn_execute(|txn| {
-                mdbx_result(ffi::mdbx_dbi_stat(txn, dbi, stat.mdb_stat(), size_of::<Stat>()))
+                mdbx_result(reth_mdbx_sys::mdbx_dbi_stat(
+                    txn,
+                    dbi,
+                    stat.mdb_stat(),
+                    size_of::<Stat>(),
+                ))
             })??;
             Ok(stat)
         }
@@ -263,7 +274,7 @@ where
     }
 
     /// Open a new cursor on the given dbi.
-    pub fn cursor_with_dbi(&self, dbi: ffi::MDBX_dbi) -> Result<Cursor<K>> {
+    pub fn cursor_with_dbi(&self, dbi: reth_mdbx_sys::MDBX_dbi) -> Result<Cursor<K>> {
         Cursor::new(self.clone(), dbi)
     }
 
@@ -304,7 +315,7 @@ where
     /// The transaction pointer itself.
     txn:         TransactionPtr,
     /// A set of database handles that are primed for permaopen.
-    primed_dbis: Mutex<IndexSet<ffi::MDBX_dbi>>,
+    primed_dbis: Mutex<IndexSet<reth_mdbx_sys::MDBX_dbi>>,
     /// Whether the transaction has committed.
     committed:   AtomicBool,
     env:         Environment,
@@ -328,7 +339,7 @@ where
     #[inline]
     fn txn_execute<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(*mut ffi::MDBX_txn) -> T,
+        F: FnOnce(*mut reth_mdbx_sys::MDBX_txn) -> T,
     {
         self.txn.txn_execute_fail_on_timeout(f)
     }
@@ -349,7 +360,7 @@ where
                         self.env.txn_manager().remove_active_read_transaction(txn);
 
                         unsafe {
-                            ffi::mdbx_txn_abort(txn);
+                            reth_mdbx_sys::mdbx_txn_abort(txn);
                         }
                     } else {
                         let (sender, rx) = sync_channel(0);
@@ -396,19 +407,21 @@ impl Transaction<RW> {
     /// item if duplicates are allowed ([DatabaseFlags::DUP_SORT]).
     pub fn put(
         &self,
-        dbi: ffi::MDBX_dbi,
+        dbi: reth_mdbx_sys::MDBX_dbi,
         key: impl AsRef<[u8]>,
         data: impl AsRef<[u8]>,
         flags: WriteFlags,
     ) -> Result<()> {
         let key = key.as_ref();
         let data = data.as_ref();
-        let key_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
-        let mut data_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: data.len(), iov_base: data.as_ptr() as *mut c_void };
+        let key_val: reth_mdbx_sys::MDBX_val =
+            reth_mdbx_sys::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
+        let mut data_val: reth_mdbx_sys::MDBX_val = reth_mdbx_sys::MDBX_val {
+            iov_len:  data.len(),
+            iov_base: data.as_ptr() as *mut c_void,
+        };
         mdbx_result(self.txn_execute(|txn| unsafe {
-            ffi::mdbx_put(txn, dbi, &key_val, &mut data_val, flags.bits())
+            reth_mdbx_sys::mdbx_put(txn, dbi, &key_val, &mut data_val, flags.bits())
         })?)?;
 
         Ok(())
@@ -425,18 +438,18 @@ impl Transaction<RW> {
         flags: WriteFlags,
     ) -> Result<&mut [u8]> {
         let key = key.as_ref();
-        let key_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
-        let mut data_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: len, iov_base: ptr::null_mut::<c_void>() };
+        let key_val: reth_mdbx_sys::MDBX_val =
+            reth_mdbx_sys::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
+        let mut data_val: reth_mdbx_sys::MDBX_val =
+            reth_mdbx_sys::MDBX_val { iov_len: len, iov_base: ptr::null_mut::<c_void>() };
         unsafe {
             mdbx_result(self.txn_execute(|txn| {
-                ffi::mdbx_put(
+                reth_mdbx_sys::mdbx_put(
                     txn,
                     db.dbi(),
                     &key_val,
                     &mut data_val,
-                    flags.bits() | ffi::MDBX_RESERVE,
+                    flags.bits() | reth_mdbx_sys::MDBX_RESERVE,
                 )
             })?)?;
             Ok(slice::from_raw_parts_mut(data_val.iov_base as *mut u8, data_val.iov_len))
@@ -455,14 +468,14 @@ impl Transaction<RW> {
     /// Returns `true` if the key/value pair was present.
     pub fn del(
         &self,
-        dbi: ffi::MDBX_dbi,
+        dbi: reth_mdbx_sys::MDBX_dbi,
         key: impl AsRef<[u8]>,
         data: Option<&[u8]>,
     ) -> Result<bool> {
         let key = key.as_ref();
-        let key_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
-        let data_val: Option<ffi::MDBX_val> = data.map(|data| ffi::MDBX_val {
+        let key_val: reth_mdbx_sys::MDBX_val =
+            reth_mdbx_sys::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
+        let data_val: Option<reth_mdbx_sys::MDBX_val> = data.map(|data| reth_mdbx_sys::MDBX_val {
             iov_len:  data.len(),
             iov_base: data.as_ptr() as *mut c_void,
         });
@@ -470,9 +483,9 @@ impl Transaction<RW> {
         mdbx_result({
             self.txn_execute(|txn| {
                 if let Some(d) = data_val {
-                    unsafe { ffi::mdbx_del(txn, dbi, &key_val, &d) }
+                    unsafe { reth_mdbx_sys::mdbx_del(txn, dbi, &key_val, &d) }
                 } else {
-                    unsafe { ffi::mdbx_del(txn, dbi, &key_val, ptr::null()) }
+                    unsafe { reth_mdbx_sys::mdbx_del(txn, dbi, &key_val, ptr::null()) }
                 }
             })?
         })
@@ -484,8 +497,8 @@ impl Transaction<RW> {
     }
 
     /// Empties the given database. All items will be removed.
-    pub fn clear_db(&self, dbi: ffi::MDBX_dbi) -> Result<()> {
-        mdbx_result(self.txn_execute(|txn| unsafe { ffi::mdbx_drop(txn, dbi, false) })?)?;
+    pub fn clear_db(&self, dbi: reth_mdbx_sys::MDBX_dbi) -> Result<()> {
+        mdbx_result(self.txn_execute(|txn| unsafe { reth_mdbx_sys::mdbx_drop(txn, dbi, false) })?)?;
 
         Ok(())
     }
@@ -496,7 +509,7 @@ impl Transaction<RW> {
     /// Caller must close ALL other [Database] and [Cursor] instances pointing
     /// to the same dbi BEFORE calling this function.
     pub unsafe fn drop_db(&self, db: Database) -> Result<()> {
-        mdbx_result(self.txn_execute(|txn| ffi::mdbx_drop(txn, db.dbi(), true))?)?;
+        mdbx_result(self.txn_execute(|txn| reth_mdbx_sys::mdbx_drop(txn, db.dbi(), true))?)?;
 
         Ok(())
     }
@@ -509,7 +522,7 @@ impl Transaction<RO> {
     /// Caller must close ALL other [Database] and [Cursor] instances pointing
     /// to the same dbi BEFORE calling this function.
     pub unsafe fn close_db(&self, db: Database) -> Result<()> {
-        mdbx_result(ffi::mdbx_dbi_close(self.env().env_ptr(), db.dbi()))?;
+        mdbx_result(reth_mdbx_sys::mdbx_dbi_close(self.env().env_ptr(), db.dbi()))?;
 
         Ok(())
     }
@@ -541,13 +554,13 @@ impl Transaction<RW> {
 /// A shareable pointer to an MDBX transaction.
 #[derive(Debug, Clone)]
 pub(crate) struct TransactionPtr {
-    txn:       *mut ffi::MDBX_txn,
+    txn:       *mut reth_mdbx_sys::MDBX_txn,
     timed_out: Arc<AtomicBool>,
     lock:      Arc<Mutex<()>>,
 }
 
 impl TransactionPtr {
-    fn new(txn: *mut ffi::MDBX_txn) -> Self {
+    fn new(txn: *mut reth_mdbx_sys::MDBX_txn) -> Self {
         Self { txn, timed_out: Arc::new(AtomicBool::new(false)), lock: Arc::new(Mutex::new(())) }
     }
 
@@ -590,7 +603,7 @@ impl TransactionPtr {
     #[inline]
     pub(crate) fn txn_execute_fail_on_timeout<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(*mut ffi::MDBX_txn) -> T,
+        F: FnOnce(*mut reth_mdbx_sys::MDBX_txn) -> T,
     {
         let _lck = self.lock();
 
@@ -612,7 +625,7 @@ impl TransactionPtr {
     #[inline]
     fn txn_execute_renew_on_timeout<F, T>(&self, f: F) -> Result<T>
     where
-        F: FnOnce(*mut ffi::MDBX_txn) -> T,
+        F: FnOnce(*mut reth_mdbx_sys::MDBX_txn) -> T,
     {
         let _lck = self.lock();
 
@@ -632,17 +645,17 @@ impl TransactionPtr {
 /// Inner struct stores this info in 1/65536 of seconds units.
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct CommitLatency(ffi::MDBX_commit_latency);
+pub struct CommitLatency(reth_mdbx_sys::MDBX_commit_latency);
 
 impl CommitLatency {
     /// Create a new CommitLatency with zero'd inner struct
-    /// `ffi::MDBX_commit_latency`.
+    /// `reth_mdbx_sys::MDBX_commit_latency`.
     pub(crate) fn new() -> Self {
         unsafe { Self(std::mem::zeroed()) }
     }
 
-    /// Returns a mut pointer to `ffi::MDBX_commit_latency`.
-    pub(crate) fn mdb_commit_latency(&mut self) -> *mut ffi::MDBX_commit_latency {
+    /// Returns a mut pointer to `reth_mdbx_sys::MDBX_commit_latency`.
+    pub(crate) fn mdb_commit_latency(&mut self) -> *mut reth_mdbx_sys::MDBX_commit_latency {
         &mut self.0
     }
 }

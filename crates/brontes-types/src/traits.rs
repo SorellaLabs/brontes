@@ -1,6 +1,7 @@
+use alloy_consensus::Header;
 use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256};
 use alloy_rpc_types::{
-    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, Header, Log, ReceiptEnvelope,
+    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, Log, ReceiptEnvelope,
     TransactionRequest,
 };
 use reth_primitives::Bytecode;

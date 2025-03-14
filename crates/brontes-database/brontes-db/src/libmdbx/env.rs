@@ -7,12 +7,11 @@ use brontes_libmdbx::{
     PageSize, SyncMode,
 };
 use reth_db::{
-    database_metrics::{DatabaseMetadata, DatabaseMetadataValue},
-    models::client_version::ClientVersion,
     tables::{TableType, Tables},
-    DatabaseError,
+    ClientVersion, DatabaseError,
 };
-use reth_interfaces::db::LogLevel;
+use reth_storage_errors::db::LogLevel;
+
 const GIGABYTE: usize = 1024 * 1024 * 1024;
 
 /// MDBX allows up to 32767 readers (`MDBX_READERS_LIMIT`), but we limit it to
@@ -126,11 +125,11 @@ pub struct DatabaseEnv {
     inner: Environment,
 }
 
-impl DatabaseMetadata for DatabaseEnv {
-    fn metadata(&self) -> DatabaseMetadataValue {
-        DatabaseMetadataValue::new(self.freelist().ok())
-    }
-}
+// impl DatabaseMetadata for DatabaseEnv {
+//     fn metadata(&self) -> DatabaseMetadataValue {
+//         DatabaseMetadataValue::new(self.freelist().ok())
+//     }
+// }
 
 impl DatabaseEnv {
     /// Opens the database at the specified path with the given `EnvKind`.

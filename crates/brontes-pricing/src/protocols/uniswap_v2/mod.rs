@@ -78,8 +78,8 @@ impl UpdatableProtocol for UniswapV2Pool {
         if event_signature == SYNC_EVENT_SIGNATURE {
             let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false)?;
 
-            self.reserve_0 = sync_event.reserve0;
-            self.reserve_1 = sync_event.reserve1;
+            self.reserve_0 = sync_event.reserve0.to();
+            self.reserve_1 = sync_event.reserve1.to();
 
             Ok(())
         } else {

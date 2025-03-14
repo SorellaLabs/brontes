@@ -16,6 +16,7 @@ brontes-types.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 reth-metrics.workspace = true
+reth-storage-errors.workspace = true
 alloy-primitives.workspace = true
 reth-primitives.workspace = true
 colored.workspace = true

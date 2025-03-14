@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use prometheus::{Histogram, HistogramVec, IntCounterVec, IntGauge, IntGaugeVec};
-use reth_interfaces::db::DatabaseError;
+use reth_storage_errors::db::DatabaseError;
 
 #[derive(Clone)]
 pub struct LibmdbxWriterMetrics {
@@ -148,6 +148,7 @@ impl LibmdbxWriterMetrics {
             DatabaseError::Decode => "Decode",
             DatabaseError::Stats(_) => "Stats",
             DatabaseError::LogLevelUnavailable(_) => "LogLevelUnavailable",
+            DatabaseError::Other(_) => "Other",
         };
 
         self.write_error_types

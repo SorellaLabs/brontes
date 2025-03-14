@@ -29,11 +29,12 @@ alloy-json-abi = { workspace = true, features = ["serde_json"] }
 
 # reth
 reth-primitives.workspace = true
+reth-storage-errors.workspace = true
 reth-libmdbx = { workspace = true, features = [
   "return-borrowed",
   "read-tx-timeouts",
 ] }
-reth-mdbx-sys = { git = "https://github.com/paradigmxyz/reth", rev = "916b2415" }
+reth-mdbx-sys.workspace = true
 reth-db.workspace = true
 reth-rpc.workspace = true
 alloy-rpc-types.workspace = true
@@ -56,7 +57,7 @@ rand = "0.8.5"
 modular-bitfield = "0.11.2"
 bytes = "1.5"
 zstd = "0.13"
-chrono = "0.4.40"
+chrono = "0.4.39"
 dashmap = "5.5.3"
 polars.workspace = true
 arrow.workspace = true

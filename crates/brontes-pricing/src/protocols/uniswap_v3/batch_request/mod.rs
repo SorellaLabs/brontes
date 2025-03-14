@@ -3,12 +3,12 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, Bytes, FixedBytes, U256};
+use alloy_primitives::{aliases::I24, hex, Address, Bytes, FixedBytes, StorageValue, U256};
+use alloy_rpc_types::{request::TransactionInput, TransactionRequest};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
-use reth_primitives::{Address, Bytecode, StorageValue};
-use reth_rpc_types::{request::TransactionInput, TransactionRequest};
+use reth_primitives::Bytecode;
 
 mod test_bytecodes;
 use super::UniswapV3Pool;
@@ -136,7 +136,7 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
                 pool.address
             )))
         }
-        let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode.as_ref()));
+        let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode().as_ref()));
         let (token0, token1, fee, tick_spacing) = extract_uni_v3_immutables(pool_bytecode)?;
         pool.fee = fee;
         pool.tick_spacing = tick_spacing;
@@ -178,9 +178,9 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
     tick_constructorCall::new((
         pool.address,
         zero_for_one,
-        tick_start,
+        I24::unchecked_from(tick_start),
         num_ticks,
-        pool.tick_spacing,
+        I24::unchecked_from(pool.tick_spacing),
     ))
     .abi_encode_raw(&mut bytecode);
 

@@ -601,50 +601,10 @@ impl BrontesTracingInspector {
 
     pub(crate) fn parity_action(&self, node: &CallTraceNode) -> Action {
         node.parity_action()
-        // match  {
-        //     CallKind::Call
-        //     | CallKind::StaticCall
-        //     | CallKind::CallCode
-        //     | CallKind::DelegateCall
-        //     | CallKind::ExtCall
-        //     | CallKind::ExtStaticCall
-        //     | CallKind::ExtDelegateCall => Action::Call(CallAction {
-        //         from:      node.trace.caller,
-        //         to:        node.trace.address,
-        //         value:     node.trace.value,
-        //         gas:       node.trace.gas_limit,
-        //         input:     node.trace.data.clone(),
-        //         call_type: node.trace.kind.into(),
-        //     }),
-        //     CallKind::Create | CallKind::Create2 =>
-        // Action::Create(CreateAction {         from:
-        // node.trace.caller,         value:           node.trace.value,
-        //         gas:             node.trace.gas_limit,
-        //         init:            node.trace.data.clone(),
-        //         creation_method: CreationMethod::default(),
-        //     }),
-        // }
     }
 
     pub(crate) fn parity_trace_output(&self, node: &CallTraceNode) -> TraceOutput {
         node.parity_trace_output()
-        // match node.trace.kind {
-        //     CallKind::Call
-        //     | CallKind::StaticCall
-        //     | CallKind::CallCode
-        //     | CallKind::DelegateCall
-        //     | CallKind::ExtCall
-        //     | CallKind::ExtStaticCall
-        //     | CallKind::ExtDelegateCall => TraceOutput::Call(CallOutput {
-        //         gas_used: node.trace.gas_used,
-        //         output:   node.trace.output.clone(),
-        //     }),
-        //     CallKind::Create | CallKind::Create2 =>
-        // TraceOutput::Create(CreateOutput {         gas_used:
-        // node.trace.gas_used,         code:
-        // node.trace.output.clone(),         address:
-        // node.trace.address,     }),
-        // }
     }
 
     /// Returns the error message if it is an erroneous result.
@@ -703,9 +663,6 @@ where
     }
 
     fn log(&mut self, interp: &mut Interpreter, context: &mut EvmContext<DB>, log: Log) {
-        self.gas_inspector.journal.log(context, log);
-        // context.log(log.clone());
-
         let trace_idx = self.last_trace_idx();
         let trace = &mut self.traces.arena[trace_idx];
 

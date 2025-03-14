@@ -3,7 +3,6 @@
 #![feature(const_type_id)]
 #![feature(core_intrinsics)]
 #![feature(const_for)]
-#![feature(const_mut_refs)]
 #![allow(internal_features)]
 #![allow(clippy::type_complexity)]
 

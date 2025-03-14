@@ -1,5 +1,5 @@
 use bitflags::bitflags;
-use ffi::*;
+use reth_mdbx_sys::*;
 
 /// MDBX sync mode
 #[derive(Clone, Copy, Debug)]
@@ -163,52 +163,52 @@ pub struct EnvironmentFlags {
 
 impl EnvironmentFlags {
     /// Configures the mdbx flags to use when opening the environment.
-    pub(crate) fn make_flags(&self) -> ffi::MDBX_env_flags_t {
+    pub(crate) fn make_flags(&self) -> reth_mdbx_sys::MDBX_env_flags_t {
         let mut flags = 0;
 
         if self.no_sub_dir {
-            flags |= ffi::MDBX_NOSUBDIR;
+            flags |= reth_mdbx_sys::MDBX_NOSUBDIR;
         }
 
         if self.exclusive {
-            flags |= ffi::MDBX_EXCLUSIVE;
+            flags |= reth_mdbx_sys::MDBX_EXCLUSIVE;
         }
 
         if self.accede {
-            flags |= ffi::MDBX_ACCEDE;
+            flags |= reth_mdbx_sys::MDBX_ACCEDE;
         }
 
         match self.mode {
             Mode::ReadOnly => {
-                flags |= ffi::MDBX_RDONLY;
+                flags |= reth_mdbx_sys::MDBX_RDONLY;
             }
             Mode::ReadWrite { sync_mode } => {
                 flags |= match sync_mode {
-                    SyncMode::Durable => ffi::MDBX_SYNC_DURABLE,
-                    SyncMode::NoMetaSync => ffi::MDBX_NOMETASYNC,
-                    SyncMode::SafeNoSync => ffi::MDBX_SAFE_NOSYNC,
-                    SyncMode::UtterlyNoSync => ffi::MDBX_UTTERLY_NOSYNC,
+                    SyncMode::Durable => reth_mdbx_sys::MDBX_SYNC_DURABLE,
+                    SyncMode::NoMetaSync => reth_mdbx_sys::MDBX_NOMETASYNC,
+                    SyncMode::SafeNoSync => reth_mdbx_sys::MDBX_SAFE_NOSYNC,
+                    SyncMode::UtterlyNoSync => reth_mdbx_sys::MDBX_UTTERLY_NOSYNC,
                 };
             }
         }
 
         if self.no_rdahead {
-            flags |= ffi::MDBX_NORDAHEAD;
+            flags |= reth_mdbx_sys::MDBX_NORDAHEAD;
         }
 
         if self.no_meminit {
-            flags |= ffi::MDBX_NOMEMINIT;
+            flags |= reth_mdbx_sys::MDBX_NOMEMINIT;
         }
 
         if self.coalesce {
-            flags |= ffi::MDBX_COALESCE;
+            flags |= reth_mdbx_sys::MDBX_COALESCE;
         }
 
         if self.liforeclaim {
-            flags |= ffi::MDBX_LIFORECLAIM;
+            flags |= reth_mdbx_sys::MDBX_LIFORECLAIM;
         }
 
-        flags |= ffi::MDBX_NOTLS;
+        flags |= reth_mdbx_sys::MDBX_NOTLS;
 
         flags
     }

@@ -1,12 +1,12 @@
 use std::{borrow::Cow, fmt, marker::PhantomData, mem, ptr};
-extern crate ffi;
-use ffi::{
+extern crate reth_mdbx_sys;
+use libc::c_void;
+use reth_mdbx_sys::{
     MDBX_cursor_op, MDBX_FIRST, MDBX_FIRST_DUP, MDBX_GET_BOTH, MDBX_GET_BOTH_RANGE,
     MDBX_GET_CURRENT, MDBX_GET_MULTIPLE, MDBX_LAST, MDBX_LAST_DUP, MDBX_NEXT, MDBX_NEXT_DUP,
     MDBX_NEXT_MULTIPLE, MDBX_NEXT_NODUP, MDBX_PREV, MDBX_PREV_DUP, MDBX_PREV_MULTIPLE,
     MDBX_PREV_NODUP, MDBX_SET, MDBX_SET_KEY, MDBX_SET_LOWERBOUND, MDBX_SET_RANGE,
 };
-use libc::c_void;
 
 use crate::{
     error::{mdbx_result, Error, Result},
@@ -22,18 +22,18 @@ where
     K: TransactionKind,
 {
     txn:    Transaction<K>,
-    cursor: *mut ffi::MDBX_cursor,
+    cursor: *mut reth_mdbx_sys::MDBX_cursor,
 }
 
 impl<K> Cursor<K>
 where
     K: TransactionKind,
 {
-    pub(crate) fn new(txn: Transaction<K>, dbi: ffi::MDBX_dbi) -> Result<Self> {
-        let mut cursor: *mut ffi::MDBX_cursor = ptr::null_mut();
+    pub(crate) fn new(txn: Transaction<K>, dbi: reth_mdbx_sys::MDBX_dbi) -> Result<Self> {
+        let mut cursor: *mut reth_mdbx_sys::MDBX_cursor = ptr::null_mut();
         unsafe {
             txn.txn_execute(|txn_ptr| {
-                mdbx_result(ffi::mdbx_cursor_open(txn_ptr, dbi, &mut cursor))
+                mdbx_result(reth_mdbx_sys::mdbx_cursor_open(txn_ptr, dbi, &mut cursor))
             })??;
         }
         Ok(Self { txn, cursor })
@@ -41,9 +41,9 @@ where
 
     fn new_at_position(other: &Self) -> Result<Self> {
         unsafe {
-            let cursor = ffi::mdbx_cursor_create(ptr::null_mut());
+            let cursor = reth_mdbx_sys::mdbx_cursor_create(ptr::null_mut());
 
-            let res = ffi::mdbx_cursor_copy(other.cursor(), cursor);
+            let res = reth_mdbx_sys::mdbx_cursor_copy(other.cursor(), cursor);
 
             let s = Self { txn: other.txn.clone(), cursor };
 
@@ -57,7 +57,7 @@ where
     ///
     /// The caller **must** ensure that the pointer is not used after the
     /// lifetime of the cursor.
-    pub fn cursor(&self) -> *mut ffi::MDBX_cursor {
+    pub fn cursor(&self) -> *mut reth_mdbx_sys::MDBX_cursor {
         self.cursor
     }
 
@@ -95,7 +95,7 @@ where
             let key_ptr = key_val.iov_base;
             let data_ptr = data_val.iov_base;
             self.txn.txn_execute(|txn| {
-                let v = mdbx_result(ffi::mdbx_cursor_get(
+                let v = mdbx_result(reth_mdbx_sys::mdbx_cursor_get(
                     self.cursor,
                     &mut key_val,
                     &mut data_val,
@@ -355,7 +355,7 @@ where
         Key: TableObject,
         Value: TableObject,
     {
-        Iter::new(self, ffi::MDBX_NEXT, ffi::MDBX_NEXT)
+        Iter::new(self, reth_mdbx_sys::MDBX_NEXT, reth_mdbx_sys::MDBX_NEXT)
     }
 
     /// Iterate over database items starting from the beginning of the database.
@@ -368,7 +368,7 @@ where
         Key: TableObject,
         Value: TableObject,
     {
-        Iter::new(self, ffi::MDBX_FIRST, ffi::MDBX_NEXT)
+        Iter::new(self, reth_mdbx_sys::MDBX_FIRST, reth_mdbx_sys::MDBX_NEXT)
     }
 
     /// Iterate over database items starting from the given key.
@@ -385,7 +385,7 @@ where
         if let Err(error) = res {
             return Iter::Err(Some(error))
         };
-        Iter::new(self, ffi::MDBX_GET_CURRENT, ffi::MDBX_NEXT)
+        Iter::new(self, reth_mdbx_sys::MDBX_GET_CURRENT, reth_mdbx_sys::MDBX_NEXT)
     }
 
     /// Iterate over duplicate database items. The iterator will begin with the
@@ -396,7 +396,7 @@ where
         Key: TableObject,
         Value: TableObject,
     {
-        IterDup::new(self, ffi::MDBX_NEXT)
+        IterDup::new(self, reth_mdbx_sys::MDBX_NEXT)
     }
 
     /// Iterate over duplicate database items starting from the beginning of the
@@ -406,7 +406,7 @@ where
         Key: TableObject,
         Value: TableObject,
     {
-        IterDup::new(self, ffi::MDBX_FIRST)
+        IterDup::new(self, reth_mdbx_sys::MDBX_FIRST)
     }
 
     /// Iterate over duplicate items in the database starting from the given
@@ -420,7 +420,7 @@ where
         if let Err(error) = res {
             return IterDup::Err(Some(error))
         };
-        IterDup::new(self, ffi::MDBX_GET_CURRENT)
+        IterDup::new(self, reth_mdbx_sys::MDBX_GET_CURRENT)
     }
 
     /// Iterate over the duplicates of the item in the database with the given
@@ -435,11 +435,11 @@ where
             Ok(Some(_)) => (),
             Ok(None) => {
                 let _: Result<Option<((), ())>> = self.last();
-                return Iter::new(self, ffi::MDBX_NEXT, ffi::MDBX_NEXT)
+                return Iter::new(self, reth_mdbx_sys::MDBX_NEXT, reth_mdbx_sys::MDBX_NEXT)
             }
             Err(error) => return Iter::Err(Some(error)),
         };
-        Iter::new(self, ffi::MDBX_GET_CURRENT, ffi::MDBX_NEXT_DUP)
+        Iter::new(self, reth_mdbx_sys::MDBX_GET_CURRENT, reth_mdbx_sys::MDBX_NEXT_DUP)
     }
 }
 
@@ -447,13 +447,15 @@ impl Cursor<RW> {
     /// Puts a key/data pair into the database. The cursor will be positioned at
     /// the new data item, or on failure usually near it.
     pub fn put(&mut self, key: &[u8], data: &[u8], flags: WriteFlags) -> Result<()> {
-        let key_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
-        let mut data_val: ffi::MDBX_val =
-            ffi::MDBX_val { iov_len: data.len(), iov_base: data.as_ptr() as *mut c_void };
+        let key_val: reth_mdbx_sys::MDBX_val =
+            reth_mdbx_sys::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
+        let mut data_val: reth_mdbx_sys::MDBX_val = reth_mdbx_sys::MDBX_val {
+            iov_len:  data.len(),
+            iov_base: data.as_ptr() as *mut c_void,
+        };
         mdbx_result(unsafe {
             self.txn.txn_execute(|_| {
-                ffi::mdbx_cursor_put(self.cursor, &key_val, &mut data_val, flags.bits())
+                reth_mdbx_sys::mdbx_cursor_put(self.cursor, &key_val, &mut data_val, flags.bits())
             })?
         })?;
 
@@ -469,7 +471,7 @@ impl Cursor<RW> {
     pub fn del(&mut self, flags: WriteFlags) -> Result<()> {
         mdbx_result(unsafe {
             self.txn
-                .txn_execute(|_| ffi::mdbx_cursor_del(self.cursor, flags.bits()))?
+                .txn_execute(|_| reth_mdbx_sys::mdbx_cursor_del(self.cursor, flags.bits()))?
         })?;
 
         Ok(())
@@ -502,17 +504,18 @@ where
 {
     fn drop(&mut self) {
         self.txn
-            .txn_execute(|_| unsafe { ffi::mdbx_cursor_close(self.cursor) })
+            .txn_execute(|_| unsafe { reth_mdbx_sys::mdbx_cursor_close(self.cursor) })
             .unwrap()
     }
 }
 
-unsafe fn slice_to_val(slice: Option<&[u8]>) -> ffi::MDBX_val {
+unsafe fn slice_to_val(slice: Option<&[u8]>) -> reth_mdbx_sys::MDBX_val {
     match slice {
-        Some(slice) => {
-            ffi::MDBX_val { iov_len: slice.len(), iov_base: slice.as_ptr() as *mut c_void }
-        }
-        None => ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() },
+        Some(slice) => reth_mdbx_sys::MDBX_val {
+            iov_len:  slice.len(),
+            iov_base: slice.as_ptr() as *mut c_void,
+        },
+        None => reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() },
     }
 }
 
@@ -544,10 +547,10 @@ where
 
         /// The first operation to perform when the consumer calls
         /// [Iter::next()].
-        op: ffi::MDBX_cursor_op,
+        op: reth_mdbx_sys::MDBX_cursor_op,
 
         /// The next and subsequent operations to perform.
-        next_op: ffi::MDBX_cursor_op,
+        next_op: reth_mdbx_sys::MDBX_cursor_op,
 
         _marker: PhantomData<(&'cur (), Key, Value)>,
     },
@@ -560,7 +563,11 @@ where
     Value: TableObject,
 {
     /// Creates a new iterator backed by the given cursor.
-    fn new(cursor: Cursor<K>, op: ffi::MDBX_cursor_op, next_op: ffi::MDBX_cursor_op) -> Self {
+    fn new(
+        cursor: Cursor<K>,
+        op: reth_mdbx_sys::MDBX_cursor_op,
+        next_op: reth_mdbx_sys::MDBX_cursor_op,
+    ) -> Self {
         IntoIter::Ok { cursor, op, next_op, _marker: Default::default() }
     }
 }
@@ -576,13 +583,18 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Ok { cursor, op, next_op, .. } => {
-                let mut key = ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
-                let mut data = ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
+                let mut key = reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
+                let mut data = reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
                 let op = mem::replace(op, *next_op);
                 unsafe {
                     let result = cursor.txn.txn_execute(|txn| {
-                        match ffi::mdbx_cursor_get(cursor.cursor(), &mut key, &mut data, op) {
-                            ffi::MDBX_SUCCESS => {
+                        match reth_mdbx_sys::mdbx_cursor_get(
+                            cursor.cursor(),
+                            &mut key,
+                            &mut data,
+                            op,
+                        ) {
+                            reth_mdbx_sys::MDBX_SUCCESS => {
                                 let key = match Key::decode_val::<K>(txn, key) {
                                     Ok(v) => v,
                                     Err(e) => return Some(Err(e)),
@@ -596,7 +608,7 @@ where
                             // MDBX_ENODATA can occur when the cursor was previously sought to a
                             // non-existent value, e.g. iter_from with a
                             // key greater than all values in the database.
-                            ffi::MDBX_NOTFOUND | ffi::MDBX_ENODATA => None,
+                            reth_mdbx_sys::MDBX_NOTFOUND | reth_mdbx_sys::MDBX_ENODATA => None,
                             error => Some(Err(Error::from_err_code(error))),
                         }
                     });
@@ -636,10 +648,10 @@ where
 
         /// The first operation to perform when the consumer calls
         /// [Iter::next()].
-        op: ffi::MDBX_cursor_op,
+        op: reth_mdbx_sys::MDBX_cursor_op,
 
         /// The next and subsequent operations to perform.
-        next_op: ffi::MDBX_cursor_op,
+        next_op: reth_mdbx_sys::MDBX_cursor_op,
 
         _marker: PhantomData<fn(&'cur (), K, Key, Value)>,
     },
@@ -654,8 +666,8 @@ where
     /// Creates a new iterator backed by the given cursor.
     fn new(
         cursor: &'cur mut Cursor<K>,
-        op: ffi::MDBX_cursor_op,
-        next_op: ffi::MDBX_cursor_op,
+        op: reth_mdbx_sys::MDBX_cursor_op,
+        next_op: reth_mdbx_sys::MDBX_cursor_op,
     ) -> Self {
         Iter::Ok { cursor, op, next_op, _marker: Default::default() }
     }
@@ -672,13 +684,18 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Iter::Ok { cursor, op, next_op, .. } => {
-                let mut key = ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
-                let mut data = ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
+                let mut key = reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
+                let mut data = reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
                 let op = mem::replace(op, *next_op);
                 unsafe {
                     let result = cursor.txn.txn_execute(|txn| {
-                        match ffi::mdbx_cursor_get(cursor.cursor(), &mut key, &mut data, op) {
-                            ffi::MDBX_SUCCESS => {
+                        match reth_mdbx_sys::mdbx_cursor_get(
+                            cursor.cursor(),
+                            &mut key,
+                            &mut data,
+                            op,
+                        ) {
+                            reth_mdbx_sys::MDBX_SUCCESS => {
                                 let key = match Key::decode_val::<K>(txn, key) {
                                     Ok(v) => v,
                                     Err(e) => return Some(Err(e)),
@@ -692,7 +709,7 @@ where
                             // MDBX_NODATA can occur when the cursor was previously sought to a
                             // non-existent value, e.g. iter_from with a
                             // key greater than all values in the database.
-                            ffi::MDBX_NOTFOUND | ffi::MDBX_ENODATA => None,
+                            reth_mdbx_sys::MDBX_NOTFOUND | reth_mdbx_sys::MDBX_ENODATA => None,
                             error => Some(Err(Error::from_err_code(error))),
                         }
                     });
@@ -773,19 +790,20 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             IterDup::Ok { cursor, op, .. } => {
-                let mut key = ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
-                let mut data = ffi::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
-                let op = mem::replace(op, ffi::MDBX_NEXT_NODUP);
+                let mut key = reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
+                let mut data = reth_mdbx_sys::MDBX_val { iov_len: 0, iov_base: ptr::null_mut() };
+                let op = mem::replace(op, reth_mdbx_sys::MDBX_NEXT_NODUP);
 
                 let result = cursor.txn.txn_execute(|_| {
-                    let err_code =
-                        unsafe { ffi::mdbx_cursor_get(cursor.cursor(), &mut key, &mut data, op) };
+                    let err_code = unsafe {
+                        reth_mdbx_sys::mdbx_cursor_get(cursor.cursor(), &mut key, &mut data, op)
+                    };
 
-                    (err_code == ffi::MDBX_SUCCESS).then(|| {
+                    (err_code == reth_mdbx_sys::MDBX_SUCCESS).then(|| {
                         IntoIter::new(
                             Cursor::new_at_position(&**cursor).unwrap(),
-                            ffi::MDBX_GET_CURRENT,
-                            ffi::MDBX_NEXT_DUP,
+                            reth_mdbx_sys::MDBX_GET_CURRENT,
+                            reth_mdbx_sys::MDBX_NEXT_DUP,
                         )
                     })
                 });

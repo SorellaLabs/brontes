@@ -28,12 +28,11 @@ pub use libmdbx_read_write::{
 };
 use reth_db::{
     is_database_empty,
-    models::client_version::ClientVersion,
     transaction::DbTx,
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
-    DatabaseError,
+    ClientVersion, DatabaseError,
 };
-use reth_interfaces::db::LogLevel;
+use reth_storage_errors::db::LogLevel;
 use tables::*;
 use tracing::info;
 

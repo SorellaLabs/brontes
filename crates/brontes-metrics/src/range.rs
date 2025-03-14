@@ -99,8 +99,8 @@ impl GlobalRangeMetrics {
             total_blocks_range,
             block_tracing_throughput: block_tracing,
             classification_throughput: tree_builder,
-            completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
-            processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
+            completed_blocks: metrics::counter!("brontes_total_completed_blocks"),
+            processing_run_time_ms: metrics::histogram!("brontes_processing_runtime_ms"),
         }
     }
 

@@ -313,7 +313,7 @@ impl UniswapV3Pool {
     ) -> Result<i32, AmmError> {
         let call = IUniswapV3Pool::tickSpacingCall::new(());
         let res = make_call_request(call, &middleware, self.address, None).await?;
-        Ok(res._0)
+        Ok(res._0.as_i32())
     }
 
     pub async fn get_tick<M: TracingProvider>(
@@ -321,7 +321,7 @@ impl UniswapV3Pool {
         middleware: Arc<M>,
         block: u64,
     ) -> Result<i32, AmmError> {
-        Ok(self.get_slot_0(middleware, block).await?._1)
+        Ok(self.get_slot_0(middleware, block).await?._1.as_i32())
     }
 
     pub async fn get_slot_0<M: TracingProvider>(
@@ -471,9 +471,9 @@ impl UniswapV3Pool {
             self.reserve_1 -= swap_event.amount1.unsigned_abs();
         }
 
-        self.sqrt_price = swap_event.sqrtPriceX96;
+        self.sqrt_price = U256::from(swap_event.sqrtPriceX96);
         self.liquidity = swap_event.liquidity;
-        self.tick = swap_event.tick;
+        self.tick = swap_event.tick.as_i32();
 
         Ok(())
     }

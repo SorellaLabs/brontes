@@ -10,14 +10,24 @@ use crate::{
 };
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct TxnPtr(pub(crate) *mut ffi::MDBX_txn);
+pub(crate) struct TxnPtr(pub(crate) *mut reth_mdbx_sys::MDBX_txn);
 unsafe impl Send for TxnPtr {}
 unsafe impl Sync for TxnPtr {}
 
 pub(crate) enum TxnManagerMessage {
-    Begin { parent: TxnPtr, flags: ffi::MDBX_txn_flags_t, sender: SyncSender<Result<TxnPtr>> },
-    Abort { tx: TxnPtr, sender: SyncSender<Result<bool>> },
-    Commit { tx: TxnPtr, sender: SyncSender<Result<(bool, CommitLatency)>> },
+    Begin {
+        parent: TxnPtr,
+        flags:  reth_mdbx_sys::MDBX_txn_flags_t,
+        sender: SyncSender<Result<TxnPtr>>,
+    },
+    Abort {
+        tx:     TxnPtr,
+        sender: SyncSender<Result<bool>>,
+    },
+    Commit {
+        tx:     TxnPtr,
+        sender: SyncSender<Result<(bool, CommitLatency)>>,
+    },
 }
 
 /// Manages transactions by doing two things:
@@ -51,11 +61,11 @@ impl TxnManager {
     /// the result on the provided channel.
     ///
     /// - [TxnManagerMessage::Begin] opens a new transaction with
-    ///   [ffi::mdbx_txn_begin_ex]
+    ///   [reth_mdbx_sys::mdbx_txn_begin_ex]
     /// - [TxnManagerMessage::Abort] aborts a transaction with
-    ///   [ffi::mdbx_txn_abort]
+    ///   [reth_mdbx_sys::mdbx_txn_abort]
     /// - [TxnManagerMessage::Commit] commits a transaction with
-    ///   [ffi::mdbx_txn_commit_ex]
+    ///   [reth_mdbx_sys::mdbx_txn_commit_ex]
     fn start_message_listener(&self, env: EnvPtr, rx: Receiver<TxnManagerMessage>) {
         std::thread::spawn(move || {
             #[allow(clippy::redundant_locals)]
@@ -64,9 +74,9 @@ impl TxnManager {
                 match rx.recv() {
                     Ok(msg) => match msg {
                         TxnManagerMessage::Begin { parent, flags, sender } => {
-                            let mut txn: *mut ffi::MDBX_txn = ptr::null_mut();
+                            let mut txn: *mut reth_mdbx_sys::MDBX_txn = ptr::null_mut();
                             let res = mdbx_result(unsafe {
-                                ffi::mdbx_txn_begin_ex(
+                                reth_mdbx_sys::mdbx_txn_begin_ex(
                                     env.0,
                                     parent.0,
                                     flags,
@@ -79,7 +89,7 @@ impl TxnManager {
                         }
                         TxnManagerMessage::Abort { tx, sender } => {
                             sender
-                                .send(mdbx_result(unsafe { ffi::mdbx_txn_abort(tx.0) }))
+                                .send(mdbx_result(unsafe { reth_mdbx_sys::mdbx_txn_abort(tx.0) }))
                                 .unwrap();
                         }
                         TxnManagerMessage::Commit { tx, sender } => {
@@ -87,7 +97,10 @@ impl TxnManager {
                                 .send({
                                     let mut latency = CommitLatency::new();
                                     mdbx_result(unsafe {
-                                        ffi::mdbx_txn_commit_ex(tx.0, latency.mdb_commit_latency())
+                                        reth_mdbx_sys::mdbx_txn_commit_ex(
+                                            tx.0,
+                                            latency.mdb_commit_latency(),
+                                        )
                                     })
                                     .map(|v| (v, latency))
                                 })
@@ -145,7 +158,7 @@ mod read_transactions {
         /// Adds a new transaction to the list of active read transactions.
         pub(crate) fn add_active_read_transaction(
             &self,
-            ptr: *mut ffi::MDBX_txn,
+            ptr: *mut reth_mdbx_sys::MDBX_txn,
             tx: TransactionPtr,
         ) {
             if let Some(read_transactions) = &self.read_transactions {
@@ -156,7 +169,7 @@ mod read_transactions {
         /// Removes a transaction from the list of active read transactions.
         pub(crate) fn remove_active_read_transaction(
             &self,
-            ptr: *mut ffi::MDBX_txn,
+            ptr: *mut reth_mdbx_sys::MDBX_txn,
         ) -> Option<(usize, (TransactionPtr, Instant))> {
             self.read_transactions.as_ref()?.remove_active(ptr)
         }
@@ -192,14 +205,14 @@ mod read_transactions {
         }
 
         /// Adds a new transaction to the list of active read transactions.
-        pub(super) fn add_active(&self, ptr: *mut ffi::MDBX_txn, tx: TransactionPtr) {
+        pub(super) fn add_active(&self, ptr: *mut reth_mdbx_sys::MDBX_txn, tx: TransactionPtr) {
             let _ = self.active.insert(ptr as usize, (tx, Instant::now()));
         }
 
         /// Removes a transaction from the list of active read transactions.
         pub(super) fn remove_active(
             &self,
-            ptr: *mut ffi::MDBX_txn,
+            ptr: *mut reth_mdbx_sys::MDBX_txn,
         ) -> Option<(usize, (TransactionPtr, Instant))> {
             self.timed_out_not_aborted.remove(&(ptr as usize));
             self.active.remove(&(ptr as usize))
@@ -239,7 +252,8 @@ mod read_transactions {
                                 // and assume that it is unique.
                                 //
                                 // See https://erthink.github.io/libmdbx/group__c__transactions.html#gae9f34737fe60b0ba538d5a09b6a25c8d for more info.
-                                let result = mdbx_result(unsafe { ffi::mdbx_txn_reset(txn_ptr) });
+                                let result =
+                                    mdbx_result(unsafe { reth_mdbx_sys::mdbx_txn_reset(txn_ptr) });
                                 if result.is_ok() {
                                     tx.set_timed_out();
                                 }

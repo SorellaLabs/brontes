@@ -14,7 +14,7 @@ use reth_db::{
     table::{DupSort, Encode, Table},
     DatabaseError, DatabaseWriteOperation,
 };
-use reth_interfaces::db::DatabaseWriteError;
+use reth_storage_errors::db::DatabaseWriteError;
 
 use super::utils::{decode_one, decode_value, decoder, uncompressable_ref_util};
 
