@@ -1,0 +1,312 @@
+{
+  "contractName": "Liquidator",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "solidAccountOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "solidAccountNumber",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "liquidAccountOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "liquidAccountNumber",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "heldMarket",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "owedMarket",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "value",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct Types.Wei",
+              "name": "deltaWei",
+              "type": "tuple"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint128",
+                  "name": "value",
+                  "type": "uint128"
+                }
+              ],
+              "internalType": "struct Types.Par",
+              "name": "newPar",
+              "type": "tuple"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct Events.BalanceUpdate",
+          "name": "solidHeldUpdate",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "value",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct Types.Wei",
+              "name": "deltaWei",
+              "type": "tuple"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint128",
+                  "name": "value",
+                  "type": "uint128"
+                }
+              ],
+              "internalType": "struct Types.Par",
+              "name": "newPar",
+              "type": "tuple"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct Events.BalanceUpdate",
+          "name": "solidOwedUpdate",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "value",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct Types.Wei",
+              "name": "deltaWei",
+              "type": "tuple"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint128",
+                  "name": "value",
+                  "type": "uint128"
+                }
+              ],
+              "internalType": "struct Types.Par",
+              "name": "newPar",
+              "type": "tuple"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct Events.BalanceUpdate",
+          "name": "liquidHeldUpdate",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "value",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct Types.Wei",
+              "name": "deltaWei",
+              "type": "tuple"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint128",
+                  "name": "value",
+                  "type": "uint128"
+                }
+              ],
+              "internalType": "struct Types.Par",
+              "name": "newPar",
+              "type": "tuple"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct Events.BalanceUpdate",
+          "name": "liquidOwedUpdate",
+          "type": "tuple"
+        }
+      ],
+      "name": "LogLiquidate",
+      "type": "event"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "number",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct Account.Info[]",
+          "name": "accounts",
+          "type": "tuple[]"
+        },
+        {
+          "components": [
+            {
+              "internalType": "enum Actions.ActionType",
+              "name": "actionType",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint256",
+              "name": "accountId",
+              "type": "uint256"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "bool",
+                  "name": "sign",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "enum Types.AssetDenomination",
+                  "name": "denomination",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "enum Types.AssetReference",
+                  "name": "ref",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "value",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct Types.AssetAmount",
+              "name": "amount",
+              "type": "tuple"
+            },
+            {
+              "internalType": "uint256",
+              "name": "primaryMarketId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "secondaryMarketId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "otherAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "otherAccountId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct Actions.ActionArgs[]",
+          "name": "actions",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "operate",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+}

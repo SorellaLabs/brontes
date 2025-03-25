@@ -31,6 +31,8 @@ pub use classifiers::*;
 
 // Actions
 sol!(UniswapV2, "./classifier-abis/UniswapV2.json");
+sol!(UniswapV4, "./classifier-abis/UniswapV4.json");
+
 sol!(SushiSwapV2, "./classifier-abis/SushiSwapV2.json");
 sol!(UniswapV3, "./classifier-abis/UniswapV3.json");
 sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
@@ -72,9 +74,21 @@ sol!(CamelotV2, "./classifier-abis/CamelotV2Pair.json");
 sol!(CamelotV3, "./classifier-abis/Algebra1_9Pool.json");
 sol!(Dexalot, "./classifier-abis/Dexalot.json");
 sol!(LFJPair, "./classifier-abis/LFJ/ILBPair.json");
+sol!(PendleMarketV3, "./classifier-abis/pendle_v2/PendleMarketV3.json");
+sol!(PendlePrincipalToken, "./classifier-abis/pendle_v2/PendlePrincipalToken.json");
+sol!(PendleYieldToken, "./classifier-abis/pendle_v2/PendleYieldToken.json");
+sol!(PendleSYToken, "./classifier-abis/pendle_v2/IStandardizedYield.json");
+sol!(GMXV1, "./classifier-abis/gmx_v1/Router.json");
+sol!(BalancerV3Vault, "./classifier-abis/balancer/BalancerV3Vault.json");
+sol!(FluidDexT1, "./classifier-abis/fluid/FluidDexT1.json");
+sol!(FluidLending, "./classifier-abis/fluid/FluidLending.json");
+sol!(DolomiteLiquidator, "./classifier-abis/dolomite/Liquidator.json");
+
 // Discovery
+sol!(BalancerV3VaultExtension, "./classifier-abis/balancer/BalancerV3VaultExtension.json");
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
 sol!(UniswapV3Factory, "./classifier-abis/UniswapV3Factory.json");
+sol!(UniswapV4Factory, "./classifier-abis/UniswapV4.json");
 sol!(CurveV1MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV1.json");
 sol!(CurveV2MetapoolFactory, "./classifier-abis/CurveMetapoolFactoryV2.json");
 sol!(CurvecrvUSDFactory, "./classifier-abis/CurveCRVUSDFactory.json");
@@ -93,6 +107,10 @@ sol!(MaverickV2Factory, "./classifier-abis/maverick_v2/MaverickV2Factory.json");
 sol!(CamelotV2Factory, "./classifier-abis/CamelotV2Factory.json");
 sol!(CamelotV3Factory, "./classifier-abis/Algebra1_9Factory.json");
 sol!(LFJFactory, "./classifier-abis/LFJ/ILBFactory.json");
+sol!(PendleMarketV3Factory, "./classifier-abis/pendle_v2/PendleMarketFactoryV3.json");
+sol!(PendleYieldContractFactory, "./classifier-abis/pendle_v2/PendleYieldContractFactory.json");
+sol!(FluidDexFactory, "./classifier-abis/fluid/FluidDexFactory.json");
+sol!(DolomiteAdmin, "./classifier-abis/dolomite/Admin.json");
 // Balancer Pool Interfaces
 sol! {
     enum SwapKind {

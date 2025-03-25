@@ -11,7 +11,7 @@ action_impl!(
     NewPool,
     [],
     call_data: true,
-    |info: CallInfo, call_data:CompoundV3SetConfigurationCall, _| {
+    |info: CallInfo, call_data:setConfigurationCall, _| {
         Ok(NormalizedNewPool {
             trace_index: info.trace_idx,
             protocol: Protocol::CompoundV3,

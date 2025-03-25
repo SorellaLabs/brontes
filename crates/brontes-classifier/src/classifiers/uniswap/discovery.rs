@@ -1,4 +1,5 @@
-use alloy_primitives::Address;
+use alloy_primitives::{keccak256, Address, U256};
+use alloy_sol_types::{sol_data, SolType};
 use brontes_macros::discovery_impl;
 use brontes_pricing::Protocol;
 
@@ -38,6 +39,45 @@ discovery_impl!(
             pool_address: deployed_address,
             trace_index,
             protocol: Protocol::UniswapV3,
+            tokens: vec![token_a, token_b],
+        }]
+    }
+);
+
+discovery_impl!(
+    UniswapV4Discovery,
+    crate::UniswapV4Factory::initializeCall,
+    0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32,
+    |deployed_address: Address, trace_index: u64, call_data: initializeCall, _| async move {
+        let mut token_a = call_data.key.currency0;
+        let mut token_b = call_data.key.currency1;
+
+        if token_a > token_b {
+            std::mem::swap(&mut token_a, &mut token_b)
+        }
+
+        let pool_key = call_data.key;
+        type PoolKey = (
+            sol_data::Address,
+            sol_data::Address,
+            sol_data::Uint<256>,
+            sol_data::Uint<256>,
+            sol_data::Address,
+        );
+
+        let encoded_data = PoolKey::abi_encode(&(
+            pool_key.currency0,
+            pool_key.currency1,
+            U256::from(pool_key.fee),
+            U256::from(pool_key.tickSpacing as u64),
+            pool_key.hooks,
+        ));
+        let target_address = Address::from_slice(&keccak256(&encoded_data)[..20]);
+
+        vec![NormalizedNewPool {
+            pool_address: target_address,
+            trace_index,
+            protocol: Protocol::UniswapV4,
             tokens: vec![token_a, token_b],
         }]
     }
