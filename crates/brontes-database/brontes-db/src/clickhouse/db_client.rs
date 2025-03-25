@@ -103,6 +103,7 @@ impl Clickhouse {
     }
 
     pub async fn new_default(run_id: Option<u64>) -> Self {
+        tracing::info!(target: "brontes", "creating clickhouse client (new default)");
         Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false, run_id)
             .await
     }
