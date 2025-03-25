@@ -5,6 +5,7 @@ use std::{
 };
 
 use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
+use chainspec::ARBITRUM_ONE;
 use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
@@ -34,7 +35,9 @@ use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
+
 mod provider;
+mod chainspec;
 pub mod reth_tracer;
 
 pub type Provider = BlockchainProvider<
@@ -63,7 +66,7 @@ impl TracingClient {
         task_executor: BrontesTaskExecutor,
         static_files_path: PathBuf,
     ) -> Self {
-        let chain = MAINNET.clone();
+        let chain = ARBITRUM_ONE.clone();
         let provider_factory =
             ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), static_files_path)
                 .expect("failed to start provider factory");
