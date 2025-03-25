@@ -65,13 +65,15 @@ action_impl!(
 
         let tokens=protocol_details.get_tokens();
 
-        let held_market_id=log_data.heldMarket.try_into().unwrap();
-        let owed_market_id=log_data.owedMarket.try_into().unwrap();
+        let held_market_idx = usize::try_from(log_data.heldMarket.low_u64()).unwrap();
+        let owed_market_idx = usize::try_from(log_data.owedMarket.low_u64()).unwrap();
 
         // collateral market
-        let collateral_info = db.try_fetch_token_info(*tokens.get(&held_market_id)?)?;
+        let collateral_token=tokens.get(&held_market_idx).clone();
+        let debt_token=tokens.get(&owed_market_idx).clone();
+        let collateral_info = db.try_fetch_token_info(collateral_token)?;
         // debt market
-        let debt_info = db.try_fetch_token_info(*tokens.get(&owed_market_id)?)?;
+        let debt_info = db.try_fetch_token_info(debt_token)?;
         let covered_debt = log_data.solidHeldUpdate.deltaWei.value.to_scaled_rational(debt_info.decimals);
         let liquidated_collateral = log_data.solidOwedUpdate.deltaWei.value.to_scaled_rational(collateral_info.decimals);
 
