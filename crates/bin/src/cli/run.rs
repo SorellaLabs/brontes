@@ -142,13 +142,17 @@ impl RunArgs {
         let tip = static_object(load_tip_database(libmdbx)?);
         tracing::info!(target: "brontes", "initialized libmdbx database");
 
+        tracing::info!(target: "brontes", "loading time window");
         let load_window = self.load_time_window();
+        tracing::info!(target: "brontes", "loaded time window");
 
+        tracing::info!(target: "brontes", "loading cex download config");
         let cex_download_config = CexDownloadConfig::new(
             // the run time window. notably we download the max window
             (load_window as u64, load_window as u64),
             self.cex_exchanges.clone(),
         );
+        tracing::info!(target: "brontes", "loaded cex download config");
 
         let range_type = self.get_range_type()?;
         let clickhouse = static_object(load_clickhouse(cex_download_config, self.run_id).await?);
@@ -178,9 +182,12 @@ impl RunArgs {
             self.with_metrics,
         );
 
+        tracing::info!(target: "brontes", "loading tracing provider");
         let tracer =
             get_tracing_provider(Path::new(&reth_db_path), max_tasks, task_executor.clone());
+        tracing::info!(target: "brontes", "loaded tracing provider");
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
+        tracing::info!(target: "brontes", "loaded parser");
 
         let executor = task_executor.clone();
         let result = executor

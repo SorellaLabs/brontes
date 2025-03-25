@@ -950,6 +950,9 @@ pub fn clickhouse_config() -> db_interfaces::clickhouse::config::ClickhouseConfi
     );
     let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
+    tracing::info!(target: "brontes", "clickhouse url: {}", url);
+    tracing::info!(target: "brontes", "clickhouse user: {}", user);
+    tracing::info!(target: "brontes", "clickhouse pass: {}", pass);
 
     db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None)
 }

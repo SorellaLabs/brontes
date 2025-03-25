@@ -64,6 +64,7 @@ pub async fn load_database(
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
     tracing::info!("Loaded database from {}", &db_endpoint);
+    tracing::info!("Creating clickhouse client");
     let mut clickhouse = Clickhouse::new_default(run_id).await;
     tracing::info!("Created clickhouse client");
     clickhouse.buffered_insert_tx = Some(tx);
