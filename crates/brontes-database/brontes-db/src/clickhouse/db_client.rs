@@ -95,9 +95,11 @@ impl Clickhouse {
         this.run_id = if let Some(run_id) = run_id {
             run_id
         } else {
+            tracing::info!(target: "brontes", "getting and inc run_id");
             this.get_and_inc_run_id()
                 .await
                 .expect("failed to set run_id")
+            tracing::info!(target: "brontes", "set run_id: {}", this.run_id);
         };
         this
     }
