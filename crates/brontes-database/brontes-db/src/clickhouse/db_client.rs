@@ -21,7 +21,7 @@ use brontes_types::{
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         normalized_actions::TransactionRoot,
         searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress},
+        token_info::{TokenInfo, TokenInfoWithAddress}, RunId,
     },
     mev::{Bundle, BundleData, MevBlock},
     normalized_actions::Action,
@@ -116,15 +116,18 @@ impl Clickhouse {
     }
 
     pub async fn get_and_inc_run_id(&self) -> eyre::Result<u64> {
-        let id = (self
+        let id: RunId = (self
             .client
             .query_one::<u64, _>("select max(run_id) from brontes.run_id", &())
             .await?
             + 1)
         .into();
 
+        tracing::info!(target: "brontes", "inserting run_id: {}", id.run_id);
+
         self.client.insert_one::<BrontesRun_Id>(&id).await?;
 
+        tracing::info!(target: "brontes", "inserted run_id: {}", id.run_id);
         Ok(id.run_id)
     }
 
