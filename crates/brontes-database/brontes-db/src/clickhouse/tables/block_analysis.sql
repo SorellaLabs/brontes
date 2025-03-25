@@ -443,6 +443,6 @@ CREATE TABLE brontes.block_analysis
     
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/block_analysis', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (`block_number`)
 ORDER BY (`block_number`)
