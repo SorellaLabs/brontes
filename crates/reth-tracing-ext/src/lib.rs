@@ -13,7 +13,7 @@ use reth_blockchain_tree::{
 use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
 use reth_node_ethereum::EthEvmConfig;
-use reth_primitives::{BlockId, PruneModes, MAINNET};
+use reth_primitives::{BlockId, PruneModes};
 use reth_provider::{providers::BlockchainProvider, ProviderFactory};
 use reth_revm::{inspectors::GasInspector, EvmProcessorFactory};
 use reth_rpc::{
@@ -36,8 +36,8 @@ use reth_transaction_pool::{
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
 
-mod provider;
 mod chainspec;
+mod provider;
 pub mod reth_tracer;
 
 pub type Provider = BlockchainProvider<
