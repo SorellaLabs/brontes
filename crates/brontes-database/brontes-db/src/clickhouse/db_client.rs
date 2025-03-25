@@ -116,12 +116,18 @@ impl Clickhouse {
     }
 
     pub async fn get_and_inc_run_id(&self) -> eyre::Result<u64> {
-        let id: RunId = (self
+        tracing::info!(target: "brontes", "getting and inc run_id");
+        let id: RunId = match self
             .client
             .query_one::<u64, _>("select max(run_id) from brontes.run_id", &())
-            .await?
-            + 1)
-        .into();
+            .await
+        {
+            Ok(max_id) => (max_id + 1).into(),
+            Err(err) => {
+                eprintln!("Error retrieving max run_id: {}. Using default value 1.", err);
+                1u64.into()
+            }
+        };
 
         tracing::info!(target: "brontes", "inserting run_id: {}", id.run_id);
 
