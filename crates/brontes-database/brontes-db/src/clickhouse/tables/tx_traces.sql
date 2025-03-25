@@ -1,11 +1,11 @@
 CREATE TABLE brontes_api.tx_traces 
 (
-    `block_number` Uint64,
+    `block_number` UInt64,
     `tx_hash` String,
     `traces` Blob,
-    `gas_used` Uint64,
-    `effective_price` Uint64,
-    `tx_index` Uint64,
+    `gas_used` UInt64,
+    `effective_price` UInt64,
+    `tx_index` UInt64,
     `is_success` Boolean,
     `created_at` Timestamp,
 )
