@@ -21,7 +21,7 @@ use brontes_types::{
         metadata::{BlockMetadata, BlockMetadataInner, Metadata},
         normalized_actions::TransactionRoot,
         searcher::SearcherInfo,
-        token_info::{TokenInfo, TokenInfoWithAddress}, RunId,
+        token_info::{TokenInfo, TokenInfoWithAddress},
     },
     mev::{Bundle, BundleData, MevBlock},
     normalized_actions::Action,
@@ -95,18 +95,14 @@ impl Clickhouse {
         this.run_id = if let Some(run_id) = run_id {
             run_id
         } else {
-            tracing::info!(target: "brontes", "getting and inc run_id");
-            let r = this.get_and_inc_run_id()
+            this.get_and_inc_run_id()
                 .await
-                .expect("failed to set run_id");
-            tracing::info!(target: "brontes", "run_id: {}", r);
-            r
+                .expect("failed to set run_id")
         };
         this
     }
 
     pub async fn new_default(run_id: Option<u64>) -> Self {
-        tracing::info!(target: "brontes", "creating clickhouse client (new default)");
         Clickhouse::new(clickhouse_config(), Default::default(), Default::default(), false, run_id)
             .await
     }
@@ -116,24 +112,15 @@ impl Clickhouse {
     }
 
     pub async fn get_and_inc_run_id(&self) -> eyre::Result<u64> {
-        tracing::info!(target: "brontes", "getting and inc run_id");
-        let id: RunId = match self
+        let id = (self
             .client
             .query_one::<u64, _>("select max(run_id) from brontes.run_id", &())
-            .await
-        {
-            Ok(max_id) => (max_id + 1).into(),
-            Err(err) => {
-                eprintln!("Error retrieving max run_id: {}. Using default value 1.", err);
-                1u64.into()
-            }
-        };
-
-        tracing::info!(target: "brontes", "inserting run_id: {}", id.run_id);
+            .await?
+            + 1)
+        .into();
 
         self.client.insert_one::<BrontesRun_Id>(&id).await?;
 
-        tracing::info!(target: "brontes", "inserted run_id: {}", id.run_id);
         Ok(id.run_id)
     }
 
@@ -963,9 +950,6 @@ pub fn clickhouse_config() -> db_interfaces::clickhouse::config::ClickhouseConfi
     );
     let user = std::env::var("CLICKHOUSE_USER").expect("CLICKHOUSE_USER not found in .env");
     let pass = std::env::var("CLICKHOUSE_PASS").expect("CLICKHOUSE_PASS not found in .env");
-    tracing::info!(target: "brontes", "clickhouse url: {}", url);
-    tracing::info!(target: "brontes", "clickhouse user: {}", user);
-    tracing::info!(target: "brontes", "clickhouse pass: {}", pass);
 
     db_interfaces::clickhouse::config::ClickhouseConfig::new(user, pass, url, true, None)
 }

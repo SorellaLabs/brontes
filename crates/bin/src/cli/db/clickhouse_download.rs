@@ -62,12 +62,11 @@ impl ClickhouseDownload {
 
         let initializer = LibmdbxInitializer::new(libmdbx, clickhouse, tracer, true);
 
-        debug!(target: "brontes::db::clickhouse-download", "made initializer");
         let bar = ProgressBar::with_draw_target(
             Some(self.end_block - self.start_block),
             ProgressDrawTarget::stderr_with_hz(100),
         );
-        debug!(target: "brontes::db::clickhouse-download", "made bar");
+
         let pre = std::time::Instant::now();
         initializer
             .initialize(
