@@ -123,7 +123,11 @@ pub async fn load_clickhouse(
 pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let url = format!("{db_endpoint}:{db_port}");
+    let url = if db_port.is_empty() {
+        db_endpoint
+    } else {
+        format!("{db_endpoint}:{db_port}")
+    };
     LocalProvider::new(url, 5)
 }
 
