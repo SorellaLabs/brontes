@@ -1,4 +1,4 @@
-CREATE TABLE mev.bundle_header ON CLUSTER eth_cluster0
+CREATE TABLE mev.bundle_header 
 (
     `block_number` UInt64,
     `tx_index` UInt64,
@@ -18,6 +18,6 @@ CREATE TABLE mev.bundle_header ON CLUSTER eth_cluster0
     ),
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/bundle_header', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
