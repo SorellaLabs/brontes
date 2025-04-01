@@ -58,12 +58,16 @@ pub async fn load_database(
     hr: Option<HeartRateMonitor>,
     run_id: Option<u64>,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
+    tracing::info!("Loading database from {}", db_endpoint);
     let inner = LibmdbxReadWriter::init_db(db_endpoint.clone(), None, executor, true)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
+    tracing::info!("Loaded database from {}", &db_endpoint);
     let mut clickhouse = Clickhouse::new_default(run_id).await;
+    tracing::info!("Created clickhouse client");
     clickhouse.buffered_insert_tx = Some(tx);
+    tracing::info!("Set buffered insert tx");
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
 }
