@@ -184,7 +184,7 @@ jobs:
 
   cleanup:
     name: "Cleanup"
-    # needs: [test, it-test]
+    needs: [test, it-test]
     if: always()
     runs-on: ubuntu-latest
     steps:
