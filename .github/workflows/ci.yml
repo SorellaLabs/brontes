@@ -111,7 +111,7 @@ jobs:
         id: run_tests
         continue-on-error: true
         run: |
-          ssh brontes-reth -tt "bash --login -c '
+          ssh -i ~/.ssh/brontes-ci brontes-ci@${{ secrets.IP }} -tt "bash --login -c '
             source ~/.bashrc
             cd \$HOME
             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
@@ -124,7 +124,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          ssh brontes-reth -tt "bash --login -c '
+          ssh -i ~/.ssh/brontes-ci brontes-ci@${{ secrets.IP }} -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
@@ -158,7 +158,7 @@ jobs:
         id: run_it_tests
         continue-on-error: true
         run: |
-          ssh brontes-reth -tt "bash --login -c '
+          ssh -i ~/.ssh/brontes-ci brontes-ci@${{ secrets.IP }} -tt "bash --login -c '
             source ~/.bashrc
             cd \$HOME
             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
@@ -172,7 +172,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          ssh brontes-reth -tt "bash --login -c '
+          ssh -i ~/.ssh/brontes-ci brontes-ci@${{ secrets.IP }} -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
@@ -197,7 +197,7 @@ jobs:
 
       - name: Run cleanup
         run: |
-          ssh brontes-reth -tt "bash --login -c '
+          ssh -i ~/.ssh/brontes-ci brontes-ci@${{ secrets.IP }} -tt "bash --login -c '
             set -x
             rm -rf \$HOME/*/
             echo \"Cleanup completed\"
