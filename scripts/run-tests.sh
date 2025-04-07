@@ -1,7 +1,7 @@
 #!/bin/sh
 
 setup() {
-  if rustup default nightly; then : ; else return 1; fi
+  if rustup default 1.85.0; then : ; else return 1; fi
   
   echo "setting up db at /home/brontes-ci/data/$2"
   mkdir -p "/home/brontes-ci/data/$2"
