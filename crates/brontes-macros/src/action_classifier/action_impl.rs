@@ -12,21 +12,21 @@ use super::{data_preparation::CallDataParsing, logs::LogConfig, ACTION_SIG_NAME}
 
 pub struct ActionMacro {
     // required for all
-    protocol_path: Path,
-    path_to_call: Path,
-    action_type: Ident,
-    exchange_name_w_call: Ident,
-    log_types: Vec<LogConfig>,
+    protocol_path:          Path,
+    path_to_call:           Path,
+    action_type:            Ident,
+    exchange_name_w_call:   Ident,
+    log_types:              Vec<LogConfig>,
     /// whether we want logs or not
-    give_logs: bool,
+    give_logs:              bool,
     /// whether we want return data or not
-    give_returns: bool,
+    give_returns:           bool,
     /// whether we want call_data or not
-    give_call_data: bool,
+    give_call_data:         bool,
     // whether we pass down logs from delegate call in the same call frame
     include_delegated_logs: bool,
     /// The closure that we use to construct the normalized type
-    call_function: ExprClosure,
+    call_function:          ExprClosure,
 }
 
 impl ActionMacro {

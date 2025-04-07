@@ -58,8 +58,8 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api: RethApi,
-    pub trace: RethTrace,
+    pub api:              RethApi,
+    pub trace:            RethTrace,
     pub provider_factory: RethProviderFactory,
 }
 impl TracingClient {
@@ -134,23 +134,23 @@ impl TracingClient {
         block_id: BlockId,
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let insp_setup = || BrontesTracingInspector {
-            config: TracingInspectorConfig {
-                record_logs: true,
-                record_steps: false,
-                record_state_diff: false,
-                record_stack_snapshots: StackSnapshotType::None,
-                record_memory_snapshots: false,
-                exclude_precompile_calls: true,
+            config:                TracingInspectorConfig {
+                record_logs:                 true,
+                record_steps:                false,
+                record_state_diff:           false,
+                record_stack_snapshots:      StackSnapshotType::None,
+                record_memory_snapshots:     false,
+                exclude_precompile_calls:    true,
                 record_returndata_snapshots: false,
-                record_opcodes_filter: None,
-                record_immediate_bytes: false,
+                record_opcodes_filter:       None,
+                record_immediate_bytes:      false,
             },
-            traces: CallTraceArena::default(),
-            trace_stack: Vec::new(),
-            step_stack: Vec::new(),
+            traces:                CallTraceArena::default(),
+            trace_stack:           Vec::new(),
+            step_stack:            Vec::new(),
             last_call_return_data: None,
-            gas_inspector: GasInspector::default(),
-            spec_id: None,
+            gas_inspector:         GasInspector::default(),
+            spec_id:               None,
         };
 
         let t =
@@ -172,7 +172,7 @@ impl TracingClient {
 #[derive(Debug, Clone, Copy)]
 pub struct StackStep {
     _trace_idx: usize,
-    _step_idx: usize,
+    _step_idx:  usize,
 }
 
 /// Opens up an existing database at the specified path.

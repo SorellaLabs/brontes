@@ -7,7 +7,7 @@ use super::ACTION_SIG_NAME;
 pub struct ActionDispatch {
     // required for all
     struct_name: Ident,
-    rest: Vec<Ident>,
+    rest:        Vec<Ident>,
 }
 
 impl ActionDispatch {
