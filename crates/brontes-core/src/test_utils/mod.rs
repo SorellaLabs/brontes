@@ -52,10 +52,10 @@ use crate::local_provider::LocalProvider;
 const WINDOW_TIME_SEC: usize = 20;
 /// Functionality to load all state needed for any testing requirements
 pub struct TraceLoader {
-    pub libmdbx:          &'static LibmdbxReadWriter,
+    pub libmdbx: &'static LibmdbxReadWriter,
     pub tracing_provider: TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter>,
     // store so when we trace we don't get a closed rx error
-    _metrics:             UnboundedReceiver<ParserMetricEvents>,
+    _metrics: UnboundedReceiver<ParserMetricEvents>,
 }
 
 impl TraceLoader {
@@ -349,8 +349,8 @@ impl TraceLoader {
                 Entry::Vacant(v) => {
                     let entry = BlockTracesWithHeaderAnd {
                         traces: vec![res.trace],
-                        block:  res.block,
-                        other:  (),
+                        block: res.block,
+                        other: (),
                         header: res.header,
                     };
                     v.insert(entry);
@@ -423,18 +423,18 @@ pub enum TraceLoaderError {
 }
 
 pub struct TxTracesWithHeaderAnd<T> {
-    pub block:   u64,
+    pub block: u64,
     pub tx_hash: B256,
-    pub trace:   TxTrace,
-    pub header:  Header,
-    pub other:   T,
+    pub trace: TxTrace,
+    pub header: Header,
+    pub other: T,
 }
 
 pub struct BlockTracesWithHeaderAnd<T> {
-    pub block:  u64,
+    pub block: u64,
     pub traces: Vec<TxTrace>,
     pub header: Header,
-    pub other:  T,
+    pub other: T,
 }
 
 // done because we can only have 1 instance of libmdbx or we error
@@ -478,7 +478,7 @@ pub async fn get_db_handle(handle: Handle) -> &'static LibmdbxReadWriter {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CritTablesCache {
     pub biggest_block: u64,
-    pub tables:        FastHashMap<Tables, usize>,
+    pub tables: FastHashMap<Tables, usize>,
 }
 
 fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
@@ -542,9 +542,13 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
 
 #[cfg(feature = "local-reth")]
 pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
+    use std::path::Path;
+
     RETH_DB_HANDLE
         .get_or_init(|| {
-            let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+            let mut db_path =
+                Path::new(&env::var("DB_PATH").expect("No DB_PATH in .env")).to_path_buf();
+            db_path.push("db");
             Arc::new(init_db(db_path).unwrap())
         })
         .clone()
@@ -573,10 +577,11 @@ pub async fn init_trace_parser(
 ) -> TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
 
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-    let db_path = std::path::Path::new(&db_path);
-    let mut static_files = db_path.to_path_buf();
-    static_files.pop();
+    let mut db_path =
+        std::path::Path::new(&env::var("DB_PATH").expect("No DB_PATH in .env")).to_path_buf();
+    let mut static_files = db_path.clone();
+
+    db_path.push("db");
     static_files.push("static_files");
 
     let client = TracingClient::new_with_db(
