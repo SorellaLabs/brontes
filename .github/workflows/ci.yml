@@ -103,17 +103,15 @@ jobs:
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/
-          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion
-          chmod 600 ~/.ssh/bastion
-          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server
-          chmod 600 ~/.ssh/brontes_server
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
+          chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo test
         id: run_tests
         continue-on-error: true
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             source ~/.bashrc
             cd \$HOME
             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
@@ -126,7 +124,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
@@ -152,17 +150,15 @@ jobs:
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/
-          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion
-          chmod 600 ~/.ssh/bastion
-          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server
-          chmod 600 ~/.ssh/brontes_server
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
+          chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo it test
         id: run_it_tests
         continue-on-error: true
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             source ~/.bashrc
             cd \$HOME
             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
@@ -176,7 +172,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
@@ -195,15 +191,13 @@ jobs:
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/
-          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion
-          chmod 600 ~/.ssh/bastion
-          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server
-          chmod 600 ~/.ssh/brontes_server
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
+          chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: Run cleanup
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             set -x
             rm -rf \$HOME/*/
             echo \"Cleanup completed\"
