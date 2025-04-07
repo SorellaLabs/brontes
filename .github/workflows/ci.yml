@@ -9,88 +9,88 @@ on:
 name: CI
 
 jobs:
-  clippy:
-    name: "clippy"
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  # clippy:
+  #   name: "clippy"
+  #   if: github.event.pull_request.draft == false
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
       
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: 1.85.0
-          components: clippy,rustfmt
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: 1.85.0
+  #         components: clippy,rustfmt
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-          key: "clippy-stable"
+  #     - uses: Swatinem/rust-cache@v2
+  #       with:
+  #         cache-on-failure: true
+  #         key: "clippy-stable"
 
-      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
-        shell: bash
-      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
-        shell: bash
+  #     - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+  #       shell: bash
+  #     - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+  #       shell: bash
 
-      # - name: "clippy all"
-      #   run: cargo clippy --workspace --lib --examples --tests --benches --all-features
-      #   env:
-      #     RUSTFLAGS: -D warnings
+  #     - name: "clippy all"
+  #       run: cargo clippy --workspace --lib --examples --tests --benches --all-features
+  #       env:
+  #         RUSTFLAGS: -D warnings
 
-  build:
-    name: "build"
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
+  # build:
+  #   name: "build"
+  #   if: github.event.pull_request.draft == false
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 30
+  #   steps:
+  #     - uses: actions/checkout@v4
       
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: 1.85.0
-          components: clippy
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: 1.85.0
+  #         components: clippy
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: "buildfmt-stable"
-          cache-on-failure: true
+  #     - uses: Swatinem/rust-cache@v2
+  #       with:
+  #         key: "buildfmt-stable"
+  #         cache-on-failure: true
 
-      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
-        shell: bash
-      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
-        shell: bash
+  #     - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+  #       shell: bash
+  #     - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+  #       shell: bash
 
-      # - name: "build stable"
-      #   run: cargo build --workspace --all-features
-      #   env:
-      #     RUSTFLAGS: -D warnings
+  #     - name: "build stable"
+  #       run: cargo build --workspace --all-features
+  #       env:
+  #         RUSTFLAGS: -D warnings
 
-  fmt:
-    name: fmt
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check-Out
-        uses: actions/checkout@v4
+  # fmt:
+  #   name: fmt
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check-Out
+  #       uses: actions/checkout@v4
 
-      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
-        shell: bash
-      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
-        shell: bash
+  #     - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+  #       shell: bash
+  #     - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+  #       shell: bash
 
-      # - name: Install Nightly
-      #   run: |
-      #     rustup toolchain install nightly
-      #     rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
+  #     - name: Install Nightly
+  #       run: |
+  #         rustup toolchain install nightly
+  #         rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
 
-      # - name: cargo build
-      #   run: cargo build --workspace --all-features
+  #     - name: cargo build
+  #       run: cargo build --workspace --all-features
 
-      # - name: cargo +nightly fmt
-      #   run: cargo +nightly fmt --all -- --check
+  #     - name: cargo +nightly fmt
+  #       run: cargo +nightly fmt --all -- --check
 
   test:
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    needs: [clippy, build, fmt]
+    # needs: [clippy, build, fmt]
     strategy:
       fail-fast: false
       matrix:
@@ -138,7 +138,7 @@ jobs:
   it-test:
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    needs: [clippy, build, fmt]
+    # needs: [clippy, build, fmt]
     strategy:
       fail-fast: false
       matrix:
