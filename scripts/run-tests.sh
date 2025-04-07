@@ -52,6 +52,3 @@ if [ "$3" = "$BENCH" ]; then
 fi 
 
 teardown $2
-
-
-
