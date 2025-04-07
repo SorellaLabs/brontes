@@ -40,7 +40,7 @@ BENCH="bench";
 
 # we put these in different folders so that if you're on a branch and change these, they will run the branch version
 if [ "$3" = "$IT" ]; then 
-  if cargo run -j 20 --features $4 -- run --start-block 18300000 --end-block 18300002 --skip-prometheus; then : ; else teardown $2; exit 1; fi
+  if cargo run -j 20 --features $4 -- run --start-block 18300000 --end-block 18300002 --skip-prometheus -vvvvv; then : ; else teardown $2; exit 1; fi
 fi 
 
 if [ "$3" = "$TEST" ]; then 
