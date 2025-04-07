@@ -146,6 +146,7 @@ tests = [
 local-reth = [
   "brontes-core/local-reth",
   "brontes-database/local-reth",
+  "brontes-classifier/local-reth",
   "brontes-types/local-reth",
   "brontes-pricing/local-reth",
   "brontes-inspect/local-reth",
