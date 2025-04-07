@@ -103,7 +103,7 @@ jobs:
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/
-          ssh-keyscan -H 34.86.106.7 >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.BRONTES_IP }} >> ~/.ssh/known_hosts
           echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
           chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
@@ -151,7 +151,7 @@ jobs:
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/
-          ssh-keyscan -H 34.86.106.7 >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.BRONTES_IP }} >> ~/.ssh/known_hosts
           echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
           chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
@@ -193,7 +193,7 @@ jobs:
       - name: Init ssh config
         run: |
           mkdir ~/.ssh/
-          ssh-keyscan -H 34.86.106.7 >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.BRONTES_IP }} >> ~/.ssh/known_hosts
           echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
           chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
