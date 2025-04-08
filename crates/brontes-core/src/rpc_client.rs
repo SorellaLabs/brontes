@@ -127,6 +127,10 @@ impl RpcClient {
         // Parse the text back to JSON
         let response: JsonRpcResponse = serde_json::from_str(&response_text)?;
 
+        // Debug print the response text
+        tracing::info!(target: "rpc_client", "raw response: {}", response_text);
+
+      
         if let Some(error) = response.error {
             return Err(RpcError::RpcError { code: error.code, message: error.message });
         }
