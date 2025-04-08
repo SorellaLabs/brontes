@@ -188,19 +188,8 @@ impl RpcClient {
         let params = json!([format!("0x{:x}", block_number), trace_options]);
         
         // First try to parse as a single TraceResult
-        let result: Result<TraceResult, RpcError> = self.call("debug_traceBlockByNumber", params.clone()).await;
-        match result {
-            Ok(single_trace) => {
-                tracing::info!(target: "rpc_client", "Successfully parsed single trace result");
-                Ok(single_trace.result)
-            },
-            Err(RpcError::JsonError(_)) => {
-                // If that fails, try parsing as Vec<TraceResult>
-                tracing::info!(target: "rpc_client", "Trying to parse as array of traces");
-                let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByNumber", params).await;
-                result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
-            },
-            Err(e) => Err(e),
-        }
+        let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByNumber", params).await;
+        tracing::info!(target: "rpc_client", "debug_trace_block_by_number result: {:?}", result);
+        result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
     }
 }
