@@ -144,11 +144,13 @@ impl RpcClient {
         block_number: u64,
         trace_options: TraceOptions,
     ) -> Result<TxTrace, RpcError> {
+        tracing::info!(target: "rpc_client", "debug_trace_block_by_number: {:?}", block_number);
         let params = json!([
             format!("0x{:x}", block_number),
             trace_options
         ]);
-
-        self.call("debug_traceBlockByNumber", params).await
+        let result = self.call("debug_traceBlockByNumber", params).await; 
+        tracing::info!(target: "rpc_client", "debug_trace_block_by_number result: {:?}", result);
+        result
     }
 }

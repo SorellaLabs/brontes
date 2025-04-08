@@ -101,7 +101,8 @@ impl TracingProvider for LocalProvider {
                         .rpc_client
                         .debug_trace_block_by_number(number.as_number().unwrap(), trace_options)
                     .await?;
-                        Ok(Some(vec![trace]))
+                    tracing::info!(target: "brontes", "replayed block transactions: {:?}", trace);
+                    Ok(Some(vec![trace]))
                 } else {
                     tracing::error!(target: "brontes", "number is not a numeric: {:?}", number);
                     Ok(None)
