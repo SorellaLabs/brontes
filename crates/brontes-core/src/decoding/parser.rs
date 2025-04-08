@@ -25,16 +25,16 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 pub struct TraceParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx:               &'static DB,
-    pub tracer:            Arc<T>,
+    libmdbx: &'static DB,
+    pub tracer: Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<ParserMetricEvents>>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for TraceParser<T, DB> {
     fn clone(&self) -> Self {
         Self {
-            libmdbx:    self.libmdbx,
-            tracer:     self.tracer.clone(),
+            libmdbx: self.libmdbx,
+            tracer: self.tracer.clone(),
             metrics_tx: self.metrics_tx.clone(),
         }
     }

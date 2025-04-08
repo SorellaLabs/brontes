@@ -45,21 +45,21 @@ pub type EvmContext<DB> = Context<BlockEnv, TxEnv, CfgEnv, DB>;
 #[derive(Clone, Debug)]
 pub struct BrontesTracingInspector {
     /// Configures what and how the inspector records traces.
-    pub config:                TracingInspectorConfig,
+    pub config: TracingInspectorConfig,
     /// Records all call traces
-    pub traces:                CallTraceArena,
+    pub traces: CallTraceArena,
     /// Tracks active calls
-    pub trace_stack:           Vec<usize>,
+    pub trace_stack: Vec<usize>,
     /// Tracks active steps
-    pub step_stack:            Vec<StackStep>,
+    pub step_stack: Vec<StackStep>,
     /// Tracks the return value of the last call
     pub last_call_return_data: Option<Bytes>,
     /// The gas inspector used to track remaining gas.
-    pub gas_inspector:         GasInspector,
+    pub gas_inspector: GasInspector,
     /// The spec id of the EVM.
     ///
     /// This is filled during execution.
-    pub spec_id:               Option<SpecId>,
+    pub spec_id: Option<SpecId>,
 }
 
 // === impl TracingInspector ===
@@ -590,9 +590,9 @@ impl BrontesTracingInspector {
     pub(crate) fn parity_selfdestruct_action(&self, node: &CallTraceNode) -> Option<Action> {
         if node.trace.selfdestruct_refund_target.is_some() {
             Some(Action::Selfdestruct(SelfdestructAction {
-                address:        node.trace.address,
+                address: node.trace.address,
                 refund_address: node.trace.selfdestruct_refund_target.unwrap_or_default(),
-                balance:        node.trace.value,
+                balance: node.trace.value,
             }))
         } else {
             None
@@ -785,12 +785,12 @@ pub struct StackStep {
     ///
     /// This is set to `false` if [OpcodeFilter] is configured and this step's
     /// opcode is not enabled for tracking
-    record:    bool,
+    record: bool,
     /// Idx of the trace node this step belongs.
     trace_idx: usize,
     /// Idx of this step in the [CallTrace::steps].
     ///
     /// Please note that if `record` is `false`, this will still contain a
     /// value, but the step will not appear in the steps list.
-    step_idx:  usize,
+    step_idx: usize,
 }
