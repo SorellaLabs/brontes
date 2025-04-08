@@ -87,22 +87,22 @@ impl TracingProvider for LocalProvider {
         match block_id {
             BlockId::Hash(hash) => {
                 let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
-                let trace = self
+                let traces = self
                     .rpc_client
                     .debug_trace_block_by_hash(hash.block_hash, trace_options)
                     .await?;
-                tracing::info!(target: "brontes", "replayed block transactions: {:?}", trace);
-                Ok(Some(vec![trace]))
+                tracing::info!(target: "brontes", "replayed block transactions: {:?}", traces);
+                Ok(Some(traces))
             }
             BlockId::Number(number) => {
                 let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
                 if number.is_number() {
-                    let trace = self
+                    let traces = self
                         .rpc_client
                         .debug_trace_block_by_number(number.as_number().unwrap(), trace_options)
                     .await?;
-                    tracing::info!(target: "brontes", "replayed block transactions: {:?}", trace);
-                    Ok(Some(vec![trace]))
+                    tracing::info!(target: "brontes", "replayed block transactions: {:?}", traces);
+                    Ok(Some(traces))
                 } else {
                     tracing::error!(target: "brontes", "number is not a numeric: {:?}", number);
                     Ok(None)
