@@ -260,7 +260,7 @@ fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, B256};
+    use alloy_primitives::{hex, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{db::token_info::TokenInfo, normalized_actions::Action, TreeSearchBuilder};
 
