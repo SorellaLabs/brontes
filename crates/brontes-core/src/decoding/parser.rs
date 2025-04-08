@@ -1,12 +1,11 @@
 use std::time::Duration;
 
-use alloy_consensus::ReceiptEnvelope;
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
 use alloy_primitives::BlockHash;
-use alloy_rpc_types::{BlockNumberOrTag, Log, TransactionReceipt};
+use alloy_rpc_types::{BlockNumberOrTag, TransactionReceipt};
 #[cfg(feature = "dyn-decode")]
 use alloy_rpc_types_trace::parity::Action;
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
@@ -25,16 +24,16 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 pub struct TraceParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx:               &'static DB,
-    pub tracer:            Arc<T>,
+    libmdbx: &'static DB,
+    pub tracer: Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<ParserMetricEvents>>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for TraceParser<T, DB> {
     fn clone(&self) -> Self {
         Self {
-            libmdbx:    self.libmdbx,
-            tracer:     self.tracer.clone(),
+            libmdbx: self.libmdbx,
+            tracer: self.tracer.clone(),
             metrics_tx: self.metrics_tx.clone(),
         }
     }
@@ -329,7 +328,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
                         block_num,
                         trace.tx_hash,
                         trace.tx_index,
-                        receipt.into_inner().cumulative_gas_used() as u128,
+                        receipt.inner.cumulative_gas_used() as u128,
                         receipt.effective_gas_price,
                     )
                 },
