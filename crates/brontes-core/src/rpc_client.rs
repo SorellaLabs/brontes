@@ -111,7 +111,7 @@ impl RpcClient {
             tracing::error!(target: "rpc_client", "Failed to serialize request: {}", e);
             String::from("Failed to serialize request")
         });
-        tracing::debug!(target: "rpc_client", "Raw request JSON: {}", request_json);
+        tracing::info!(target: "rpc_client", "Raw request JSON: {}", request_json);
         
         let response = self
             .client
@@ -122,7 +122,7 @@ impl RpcClient {
             
         // Debug print the raw response text
         let response_text = response.text().await?;
-        tracing::debug!(target: "rpc_client", "Raw response: {}", response_text);
+        tracing::info!(target: "rpc_client", "Raw response: {}", response_text);
         
         // Parse the text back to JSON
         let response: JsonRpcResponse = serde_json::from_str(&response_text)?;
