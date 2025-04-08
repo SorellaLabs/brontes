@@ -109,9 +109,14 @@ impl RpcClient {
             .post(&self.endpoint)
             .json(&request)
             .send()
-            .await?
-            .json::<JsonRpcResponse>()
             .await?;
+            
+        // Debug print the raw response text
+        let response_text = response.text().await?;
+        tracing::debug!(target: "rpc_client", "Raw response: {}", response_text);
+        
+        // Parse the text back to JSON
+        let response: JsonRpcResponse = serde_json::from_str(&response_text)?;
 
         if let Some(error) = response.error {
             return Err(RpcError::RpcError { code: error.code, message: error.message });
