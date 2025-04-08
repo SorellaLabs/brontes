@@ -103,6 +103,9 @@ impl RpcClient {
             id: self.id.load(Ordering::SeqCst),
         };
         self.id.fetch_add(1, Ordering::SeqCst);
+        
+        // Debug print the request
+        tracing::debug!(target: "rpc_client", "Request: {}", serde_json::to_string(&request).unwrap_or_default());
 
         let response = self
             .client

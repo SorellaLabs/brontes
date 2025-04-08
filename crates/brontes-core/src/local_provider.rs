@@ -86,7 +86,7 @@ impl TracingProvider for LocalProvider {
         tracing::info!(target: "brontes", "replaying block transactions: {:?}", block_id);
         match block_id {
             BlockId::Hash(hash) => {
-                let trace_options = TraceOptions { tracer: "callTracer".to_string() };
+                let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
                 let trace = self
                     .rpc_client
                     .debug_trace_block_by_hash(hash.block_hash, trace_options)
@@ -95,7 +95,7 @@ impl TracingProvider for LocalProvider {
                 Ok(Some(vec![trace]))
             }
             BlockId::Number(number) => {
-                let trace_options = TraceOptions { tracer: "callTracer".to_string() };
+                let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
                 if number.is_number() {
                     let trace = self
                         .rpc_client
