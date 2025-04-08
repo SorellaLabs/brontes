@@ -105,6 +105,13 @@ impl RpcClient {
         };
         tracing::info!(target: "rpc_client", "request: {:?}", request);
         self.id.fetch_add(1, Ordering::SeqCst);
+
+        // Debug print the raw request JSON
+        let request_json = serde_json::to_string_pretty(&request).unwrap_or_else(|e| {
+            tracing::error!(target: "rpc_client", "Failed to serialize request: {}", e);
+            String::from("Failed to serialize request")
+        });
+        tracing::debug!(target: "rpc_client", "Raw request JSON: {}", request_json);
         
         let response = self
             .client
