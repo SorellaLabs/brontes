@@ -13,7 +13,7 @@ use reth_primitives::Bytecode;
 #[derive(Clone)]
 pub struct LocalProvider {
     provider: Arc<RootProvider>,
-    retries: u8,
+    retries:  u8,
 }
 
 impl LocalProvider {
@@ -103,27 +103,27 @@ impl TracingProvider for LocalProvider {
             .ok_or_else(err)?;
 
         let header = Header {
-            requests_hash: block.header.requests_hash,
-            number: block.header.number,
-            base_fee_per_gas: block.header.base_fee_per_gas,
-            mix_hash: block.header.mix_hash,
-            withdrawals_root: block.header.withdrawals_root,
+            requests_hash:            block.header.requests_hash,
+            number:                   block.header.number,
+            base_fee_per_gas:         block.header.base_fee_per_gas,
+            mix_hash:                 block.header.mix_hash,
+            withdrawals_root:         block.header.withdrawals_root,
             parent_beacon_block_root: block.header.parent_beacon_block_root,
-            nonce: block.header.nonce,
-            gas_used: block.header.gas_used as u64,
-            gas_limit: block.header.gas_limit as u64,
-            timestamp: block.header.timestamp,
-            difficulty: block.header.difficulty,
-            state_root: block.header.state_root,
-            parent_hash: block.header.parent_hash,
-            receipts_root: block.header.receipts_root,
-            transactions_root: block.header.transactions_root,
-            logs_bloom: block.header.logs_bloom,
-            extra_data: block.header.extra_data.clone(),
-            blob_gas_used: block.header.blob_gas_used,
-            excess_blob_gas: block.header.excess_blob_gas,
-            ommers_hash: block.header.ommers_hash,
-            beneficiary: block.header.beneficiary,
+            nonce:                    block.header.nonce,
+            gas_used:                 block.header.gas_used as u64,
+            gas_limit:                block.header.gas_limit as u64,
+            timestamp:                block.header.timestamp,
+            difficulty:               block.header.difficulty,
+            state_root:               block.header.state_root,
+            parent_hash:              block.header.parent_hash,
+            receipts_root:            block.header.receipts_root,
+            transactions_root:        block.header.transactions_root,
+            logs_bloom:               block.header.logs_bloom,
+            extra_data:               block.header.extra_data.clone(),
+            blob_gas_used:            block.header.blob_gas_used,
+            excess_blob_gas:          block.header.excess_blob_gas,
+            ommers_hash:              block.header.ommers_hash,
+            beneficiary:              block.header.beneficiary,
         };
 
         Ok(Some(header))
