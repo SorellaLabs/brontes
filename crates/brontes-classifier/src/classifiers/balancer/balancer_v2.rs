@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, FixedBytes, U256};
+use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
@@ -6,7 +6,7 @@ use brontes_types::{
     db::token_info::TokenInfoWithAddress,
     normalized_actions::{
         NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedNewPool,
-        NormalizedPoolConfigUpdate, NormalizedSwap,
+        NormalizedPoolConfigUpdate,
     },
     structured_trace::CallInfo,
     ToScaledRational,
@@ -16,6 +16,7 @@ use malachite::Rational;
 
 use crate::BalancerV2Vault::PoolBalanceChanged;
 
+/*
 action_impl!(
     Protocol::BalancerV2,
     crate::IGeneralPool::onSwapCall,
@@ -45,7 +46,7 @@ action_impl!(
     }
 );
 
-/*
+
 action_impl!(
     Protocol::BalancerV2,
     crate::IGeneralPool::onSwap_0Call,
@@ -261,13 +262,11 @@ mod tests {
 
     use alloy_primitives::{hex, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{
-        constants::WETH_ADDRESS, db::token_info::TokenInfo, normalized_actions::Action,
-        Protocol::BalancerV2, TreeSearchBuilder,
-    };
+    use brontes_types::{db::token_info::TokenInfo, normalized_actions::Action, TreeSearchBuilder};
 
     use super::*;
 
+    /*
     #[brontes_macros::test]
     async fn test_balancer_v2_swap() {
         let classifier_utils = ClassifierTestUtils::new().await;
@@ -276,7 +275,7 @@ mod tests {
 
         classifier_utils.ensure_token(TokenInfoWithAddress {
             address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
-            inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
+            inner: TokenInfo { decimals: 9, symbol: "SATS".to_string() },
         });
 
         classifier_utils.ensure_protocol(
@@ -292,20 +291,20 @@ mod tests {
 
         // Minimal swap
         let eq_action = Action::Swap(NormalizedSwap {
-            protocol:    BalancerV2,
+            protocol: BalancerV2,
             trace_index: 1,
-            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
-            token_in:    TokenInfoWithAddress::weth(),
-            amount_in:   U256::from_str("10000000000000000")
+            from: Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            recipient: Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            pool: Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
+            token_in: TokenInfoWithAddress::weth(),
+            amount_in: U256::from_str("10000000000000000")
                 .unwrap()
                 .to_scaled_rational(18),
-            token_out:   TokenInfoWithAddress {
+            token_out: TokenInfoWithAddress {
                 address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
-                inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
+                inner: TokenInfo { decimals: 9, symbol: "SATS".to_string() },
             },
-            amount_out:  U256::from_str("7727102831493")
+            amount_out: U256::from_str("7727102831493")
                 .unwrap()
                 .to_scaled_rational(9),
 
@@ -322,6 +321,7 @@ mod tests {
             .await
             .unwrap();
     }
+    */
 
     #[brontes_macros::test]
     async fn test_balancer_v2_flash_loan() {
@@ -331,27 +331,27 @@ mod tests {
 
         classifier_utils.ensure_token(TokenInfoWithAddress {
             address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
-            inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+            inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() },
         });
 
         let eq_action = Action::FlashLoan(NormalizedFlashLoan {
-            protocol:          Protocol::BalancerV2,
-            trace_index:       3,
-            from:              Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
-            pool:              Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
+            protocol: Protocol::BalancerV2,
+            trace_index: 3,
+            from: Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
+            pool: Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8")),
             receiver_contract: Address::new(hex!("97c1a26482099363cb055f0f3ca1d6057fe55447")),
-            assets:            vec![TokenInfoWithAddress {
+            assets: vec![TokenInfoWithAddress {
                 address: Address::new(hex!("c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")),
-                inner:   TokenInfo { decimals: 18, symbol: "WETH".to_string() },
+                inner: TokenInfo { decimals: 18, symbol: "WETH".to_string() },
             }],
-            amounts:           vec![U256::from_str("653220647374307183")
+            amounts: vec![U256::from_str("653220647374307183")
                 .unwrap()
                 .to_scaled_rational(18)],
-            aave_mode:         None,
-            child_actions:     vec![],
-            repayments:        vec![],
-            fees_paid:         vec![],
-            msg_value:         U256::ZERO,
+            aave_mode: None,
+            child_actions: vec![],
+            repayments: vec![],
+            fees_paid: vec![],
+            msg_value: U256::ZERO,
         });
 
         classifier_utils
@@ -374,20 +374,20 @@ mod tests {
 
         classifier_utils.ensure_token(TokenInfoWithAddress {
             address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
-            inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+            inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() },
         });
 
         let eq_action = Action::Mint(NormalizedMint {
-            protocol:    Protocol::BalancerV2,
+            protocol: Protocol::BalancerV2,
             trace_index: 0,
-            from:        Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")),
-            recipient:   Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")),
-            pool:        Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")),
-            token:       vec![TokenInfoWithAddress {
+            from: Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")),
+            recipient: Address::new(hex!("750c31d2290c456fcca1c659b6add80e7a88f881")),
+            pool: Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")),
+            token: vec![TokenInfoWithAddress {
                 address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
-                inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+                inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() },
             }],
-            amount:      vec![U256::from_str("1935117712922949743")
+            amount: vec![U256::from_str("1935117712922949743")
                 .unwrap()
                 .to_scaled_rational(18)],
         });
@@ -411,40 +411,40 @@ mod tests {
 
         classifier_utils.ensure_token(TokenInfoWithAddress {
             address: Address::new(hex!("bf5495efe5db9ce00f80364c8b423567e58d2110")),
-            inner:   TokenInfo { decimals: 18, symbol: "ezETH".to_string() },
+            inner: TokenInfo { decimals: 18, symbol: "ezETH".to_string() },
         });
 
         classifier_utils.ensure_token(TokenInfoWithAddress {
             address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
-            inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+            inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() },
         });
 
         classifier_utils.ensure_token(TokenInfoWithAddress {
             address: Address::new(hex!("fae103dc9cf190ed75350761e95403b7b8afa6c0")),
-            inner:   TokenInfo { decimals: 18, symbol: "rswETH".to_string() },
+            inner: TokenInfo { decimals: 18, symbol: "rswETH".to_string() },
         });
 
         let eq_action = Action::Burn(NormalizedBurn {
-            protocol:    Protocol::BalancerV2,
+            protocol: Protocol::BalancerV2,
             trace_index: 0,
-            from:        Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")),
-            recipient:   Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")),
-            pool:        Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")),
-            token:       vec![
+            from: Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")),
+            recipient: Address::new(hex!("f4283d13ba1e17b33bb3310c3149136a2ef79ef7")),
+            pool: Address::new(hex!("848a5564158d84b8A8fb68ab5D004Fae11619A54")),
+            token: vec![
                 TokenInfoWithAddress {
                     address: Address::new(hex!("bf5495efe5db9ce00f80364c8b423567e58d2110")),
-                    inner:   TokenInfo { decimals: 18, symbol: "ezETH".to_string() },
+                    inner: TokenInfo { decimals: 18, symbol: "ezETH".to_string() },
                 },
                 TokenInfoWithAddress {
                     address: Address::new(hex!("cd5fe23c85820f7b72d0926fc9b05b43e359b7ee")),
-                    inner:   TokenInfo { decimals: 18, symbol: "weETH".to_string() },
+                    inner: TokenInfo { decimals: 18, symbol: "weETH".to_string() },
                 },
                 TokenInfoWithAddress {
                     address: Address::new(hex!("fae103dc9cf190ed75350761e95403b7b8afa6c0")),
-                    inner:   TokenInfo { decimals: 18, symbol: "rswETH".to_string() },
+                    inner: TokenInfo { decimals: 18, symbol: "rswETH".to_string() },
                 },
             ],
-            amount:      vec![
+            amount: vec![
                 U256::from_str("471937215318872937")
                     .unwrap()
                     .to_scaled_rational(18),
