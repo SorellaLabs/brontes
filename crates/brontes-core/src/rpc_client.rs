@@ -129,6 +129,12 @@ impl RpcClient {
 
         // Debug print the response text
         tracing::info!(target: "rpc_client", "raw response: {}", response_text);
+        // Debug print the response result
+        if let Some(ref result) = response.result {
+            tracing::info!(target: "rpc_client", "response result: {}", result);
+        } else {
+            tracing::info!(target: "rpc_client", "response result: None");
+        }
 
       
         if let Some(error) = response.error {
