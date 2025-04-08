@@ -1,12 +1,13 @@
-use std::fmt;
+use std::{
+    fmt,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
+use brontes_types::structured_trace::TxTrace;
 use reqwest::{Client, Error as ReqwestError};
 use reth_primitives::{hex, B256};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use brontes_types::structured_trace::TxTrace;
-use std::sync::atomic::{AtomicU64, Ordering};
-
 
 #[derive(Debug)]
 pub enum RpcError {
@@ -75,12 +76,19 @@ pub struct RpcClient {
     id:       AtomicU64,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TraceResult {
+    #[serde(rename = "txHash")]
+    pub tx_hash: B256,
+    pub result: Vec<TxTrace>,
+}
+
 impl Clone for RpcClient {
     fn clone(&self) -> Self {
         Self {
             endpoint: self.endpoint.clone(),
-            client: self.client.clone(),
-            id: AtomicU64::new(self.id.load(Ordering::SeqCst)),
+            client:   self.client.clone(),
+            id:       AtomicU64::new(self.id.load(Ordering::SeqCst)),
         }
     }
 }
@@ -106,32 +114,22 @@ impl RpcClient {
         tracing::info!(target: "rpc_client", "request: {:?}", request);
         self.id.fetch_add(1, Ordering::SeqCst);
 
-        // Debug print the raw request JSON
-        let request_json = serde_json::to_string_pretty(&request).unwrap_or_else(|e| {
-            tracing::error!(target: "rpc_client", "Failed to serialize request: {}", e);
-            String::from("Failed to serialize request")
-        });
-        tracing::info!(target: "rpc_client", "Raw request JSON: {}", request_json);
-        
         let response = self
             .client
             .post(&self.endpoint)
             .json(&request)
             .send()
             .await?;
-            
+
         // Debug print the raw response text
         let response_text = response.text().await?;
-        tracing::info!(target: "rpc_client", "Raw response: {}", response_text);
-        
+
         // Parse the text back to JSON
         let response: JsonRpcResponse = serde_json::from_str(&response_text)?;
 
         if let Some(error) = response.error {
             return Err(RpcError::RpcError { code: error.code, message: error.message });
         }
-
-        tracing::info!(target: "rpc_client", "response: {:?}", response);
 
         if let Some(result) = response.result {
             Ok(serde_json::from_value(result)?)
@@ -146,13 +144,10 @@ impl RpcClient {
         trace_options: TraceOptions,
     ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash: {:?}", block_hash);
-        let params = json!([
-            format!("0x{}", hex::encode(block_hash.0)),
-            trace_options
-        ]);
-        let result = self.call("debug_traceBlockByHash", params).await;
+        let params = json!([format!("0x{}", hex::encode(block_hash.0)), trace_options]);
+        let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByHash", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash result: {:?}", result);
-        result
+        result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
     }
 
     pub async fn debug_trace_block_by_number(
@@ -161,12 +156,9 @@ impl RpcClient {
         trace_options: TraceOptions,
     ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_number: {:?}", block_number);
-        let params = json!([
-            format!("0x{:x}", block_number),
-            trace_options
-        ]);
-        let result = self.call("debug_traceBlockByNumber", params).await; 
+        let params = json!([format!("0x{:x}", block_number), trace_options]);
+        let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByNumber", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_number result: {:?}", result);
-        result
+        result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
     }
 }
