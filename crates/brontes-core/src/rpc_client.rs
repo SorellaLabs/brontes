@@ -142,8 +142,13 @@ impl RpcClient {
         }
 
         if let Some(result) = response.result {
-            // Debug print the result value
+            // Debug print the result value and its type
             tracing::info!(target: "rpc_client", "Raw result value: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string()));
+            tracing::info!(target: "rpc_client", "Result type: {}", if result.is_array() { "array" } 
+                else if result.is_object() { "object" } 
+                else if result.is_string() { "string" }
+                else if result.is_number() { "number" }
+                else { "other" });
             
             // Try to deserialize into the requested type
             match serde_json::from_value::<T>(result) {
@@ -181,8 +186,21 @@ impl RpcClient {
     ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_number: {:?}", block_number);
         let params = json!([format!("0x{:x}", block_number), trace_options]);
-        let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByNumber", params).await;
-        tracing::info!(target: "rpc_client", "debug_trace_block_by_number result: {:?}", result);
-        result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
+        
+        // First try to parse as a single TraceResult
+        let result: Result<TraceResult, RpcError> = self.call("debug_traceBlockByNumber", params.clone()).await;
+        match result {
+            Ok(single_trace) => {
+                tracing::info!(target: "rpc_client", "Successfully parsed single trace result");
+                Ok(single_trace.result)
+            },
+            Err(RpcError::JsonError(_)) => {
+                // If that fails, try parsing as Vec<TraceResult>
+                tracing::info!(target: "rpc_client", "Trying to parse as array of traces");
+                let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByNumber", params).await;
+                result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
+            },
+            Err(e) => Err(e),
+        }
     }
 }
