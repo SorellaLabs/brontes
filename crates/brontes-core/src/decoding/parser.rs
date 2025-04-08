@@ -109,11 +109,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
 
             return block_hash.map(|b| (b, res.0, res.1))
         }
-        #[cfg(not(feature = "local-reth"))]
-        {
-            tracing::error!("no block found in db");
-            return None
-        }
 
         let parity_trace = self.trace_block(block_num).await;
         let receipts = self.get_receipts(block_num).await;
@@ -175,11 +170,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             }
 
             return block_hash.map(|b| (b, res.0, res.1))
-        }
-        #[cfg(not(feature = "local-reth"))]
-        {
-            tracing::error!("no block found in db");
-            return None
         }
 
         let parity_trace = self.trace_block(block_num).await;

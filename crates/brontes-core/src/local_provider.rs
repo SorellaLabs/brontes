@@ -11,9 +11,6 @@ use reth_primitives::{
 };
 use reth_rpc_types::{
     state::StateOverride,
-    trace::geth::{
-        GethDebugBuiltInTracerType, GethDebugTracerType, GethDebugTracingOptions, GethTrace,
-    },
     BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
 
