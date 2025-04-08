@@ -96,17 +96,16 @@ impl RpcClient {
         method: &str,
         params: Value,
     ) -> Result<T, RpcError> {
+        tracing::info!(target: "rpc_client", "calling method: {:?}", method);
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             method: method.to_string(),
             params,
             id: self.id.load(Ordering::SeqCst),
         };
+        tracing::info!(target: "rpc_client", "request: {:?}", request);
         self.id.fetch_add(1, Ordering::SeqCst);
         
-        // Debug print the request
-        tracing::debug!(target: "rpc_client", "Request: {}", serde_json::to_string(&request).unwrap_or_default());
-
         let response = self
             .client
             .post(&self.endpoint)
