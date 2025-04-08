@@ -131,6 +131,8 @@ impl RpcClient {
             return Err(RpcError::RpcError { code: error.code, message: error.message });
         }
 
+        tracing::info!(target: "rpc_client", "response: {:?}", response);
+
         if let Some(result) = response.result {
             Ok(serde_json::from_value(result)?)
         } else {
@@ -142,7 +144,7 @@ impl RpcClient {
         &self,
         block_hash: B256,
         trace_options: TraceOptions,
-    ) -> Result<TxTrace, RpcError> {
+    ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash: {:?}", block_hash);
         let params = json!([
             format!("0x{}", hex::encode(block_hash.0)),
@@ -157,7 +159,7 @@ impl RpcClient {
         &self,
         block_number: u64,
         trace_options: TraceOptions,
-    ) -> Result<TxTrace, RpcError> {
+    ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_number: {:?}", block_number);
         let params = json!([
             format!("0x{:x}", block_number),
