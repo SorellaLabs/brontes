@@ -120,22 +120,44 @@ impl RpcClient {
             .json(&request)
             .send()
             .await?;
-
-        // Debug print the raw response text
+            
         let response_text = response.text().await?;
-
+        
+        // Debug print the raw response text
+        tracing::info!(target: "rpc_client", "Raw response text: {}", response_text);
+        
         // Parse the text back to JSON
-        let response: JsonRpcResponse = serde_json::from_str(&response_text)?;
-      
+        let response: JsonRpcResponse = match serde_json::from_str(&response_text) {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!(target: "rpc_client", "Failed to parse JSON-RPC response: {}", e);
+                return Err(RpcError::JsonError(e));
+            }
+        };
+        tracing::info!(target: "rpc_client", "Parsed JSON-RPC response: {:?}", response);
+
         if let Some(error) = response.error {
+            tracing::error!(target: "rpc_client", "RPC error: {:?}", error);
             return Err(RpcError::RpcError { code: error.code, message: error.message });
         }
 
         if let Some(result) = response.result {
             // Debug print the result value
-            tracing::info!(target: "rpc_client", "parsing result: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string()));
-            Ok(serde_json::from_value(result)?)
+            tracing::info!(target: "rpc_client", "Raw result value: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string()));
+            
+            // Try to deserialize into the requested type
+            match serde_json::from_value::<T>(result) {
+                Ok(value) => {
+                    tracing::info!(target: "rpc_client", "Successfully deserialized into requested type");
+                    Ok(value)
+                },
+                Err(e) => {
+                    tracing::error!(target: "rpc_client", "Failed to deserialize into requested type: {}", e);
+                    Err(RpcError::JsonError(e))
+                }
+            }
         } else {
+            tracing::error!(target: "rpc_client", "No result or error in response");
             Err(RpcError::UnexpectedResponse("No result or error in response".to_string()))
         }
     }
@@ -150,7 +172,6 @@ impl RpcClient {
         let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByHash", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash result: {:?}", result);
         result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
-
     }
 
     pub async fn debug_trace_block_by_number(
