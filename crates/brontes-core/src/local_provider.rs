@@ -91,6 +91,7 @@ impl TracingProvider for LocalProvider {
                     .rpc_client
                     .debug_trace_block_by_hash(hash.block_hash, trace_options)
                     .await?;
+                tracing::info!(target: "brontes", "replayed block transactions: {:?}", trace);
                 Ok(Some(vec![trace]))
             }
             BlockId::Number(number) => {
