@@ -17,28 +17,23 @@ use reth_rpc_types::{
     BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
 
+use crate::rpc_client::{RpcClient, TraceOptions};
+
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
-    provider: Arc<RootProvider<Http<reqwest::Client>>>,
-    retries:  u8,
+    provider:   Arc<RootProvider<Http<reqwest::Client>>>,
+    rpc_client: Arc<RpcClient>,
+    retries:    u8,
 }
 
 impl LocalProvider {
     pub fn new(url: String, retries: u8) -> Self {
         tracing::info!(target: "brontes", "creating local provider with url: {}", url);
-        Self { provider: Arc::new(RootProvider::new_http(url.parse().unwrap())), retries }
-    }
-}
 
-pub fn from_geth_trace(trace: GethTrace) -> TxTrace {
-    match trace {
-        GethTrace::NoopTracer(noop) => {
-            println!("noop tracer: {:?}", noop);
-            TxTrace::new(0, vec![], B256::ZERO, 0, 0, 0, false)
-        }
-        _ => {
-            println!("other tracer: {:?}", trace);
-            TxTrace::new(0, vec![], B256::ZERO, 0, 0, 0, false)
+        Self {
+            provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
+            rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
+            retries,
         }
     }
 }
@@ -91,29 +86,26 @@ impl TracingProvider for LocalProvider {
         &self,
         block_id: BlockId,
     ) -> eyre::Result<Option<Vec<TxTrace>>> {
-        let mut trace_options = GethDebugTracingOptions::default();
-        let tracer = GethDebugTracerType::BuiltInTracer(GethDebugBuiltInTracerType::NoopTracer);
-        trace_options.tracer = Some(tracer);
-
         match block_id {
             BlockId::Hash(hash) => {
-                let traces = self
-                    .provider
+                let trace_options = TraceOptions { tracer: "callTracer".to_string() };
+                let trace = self
+                    .rpc_client
                     .debug_trace_block_by_hash(hash.block_hash, trace_options)
                     .await?;
-                let tx_traces: Vec<TxTrace> = traces.into_iter().map(|t| from_geth_trace(t)).collect_vec();
-                Ok(Some(tx_traces))
+                Ok(Some(vec![trace]))
             }
             BlockId::Number(number) => {
-                if !number.is_number() {
-                    Ok(None)
-                } else {
-                    let traces = self
-                        .provider
+                let trace_options = TraceOptions { tracer: "callTracer".to_string() };
+                if number.is_number() {
+                    let trace = self
+                        .rpc_client
                         .debug_trace_block_by_number(number.as_number().unwrap(), trace_options)
-                        .await?;
-                    let tx_traces: Vec<TxTrace> = traces.into_iter().map(|t| from_geth_trace(t)).collect_vec();
-                    Ok(Some(tx_traces))
+                    .await?;
+                        Ok(Some(vec![trace]))
+                } else {
+                    tracing::error!(target: "brontes", "number is not a numeric: {:?}", number);
+                    Ok(None)
                 }
             }
         }
