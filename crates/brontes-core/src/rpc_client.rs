@@ -126,16 +126,6 @@ impl RpcClient {
 
         // Parse the text back to JSON
         let response: JsonRpcResponse = serde_json::from_str(&response_text)?;
-
-        // Debug print the response text
-        tracing::info!(target: "rpc_client", "raw response: {}", response_text);
-        // Debug print the response result
-        if let Some(ref result) = response.result {
-            tracing::info!(target: "rpc_client", "response result: {}", result);
-        } else {
-            tracing::info!(target: "rpc_client", "response result: None");
-        }
-
       
         if let Some(error) = response.error {
             return Err(RpcError::RpcError { code: error.code, message: error.message });
@@ -143,7 +133,7 @@ impl RpcClient {
 
         if let Some(result) = response.result {
             // Debug print the result value
-            tracing::info!(target: "rpc_client", "parsing result: {}", result);
+            tracing::info!(target: "rpc_client", "parsing result: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string()));
             Ok(serde_json::from_value(result)?)
         } else {
             Err(RpcError::UnexpectedResponse("No result or error in response".to_string()))
