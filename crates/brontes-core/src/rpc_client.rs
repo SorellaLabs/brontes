@@ -142,6 +142,8 @@ impl RpcClient {
         }
 
         if let Some(result) = response.result {
+            // Debug print the result value
+            tracing::info!(target: "rpc_client", "parsing result: {}", result);
             Ok(serde_json::from_value(result)?)
         } else {
             Err(RpcError::UnexpectedResponse("No result or error in response".to_string()))
@@ -158,6 +160,7 @@ impl RpcClient {
         let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByHash", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash result: {:?}", result);
         result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
+
     }
 
     pub async fn debug_trace_block_by_number(
