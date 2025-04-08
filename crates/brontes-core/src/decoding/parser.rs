@@ -110,6 +110,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             return block_hash.map(|b| (b, res.0, res.1))
         }
 
+        tracing::info!(target: "brontes", "no block found in db, tracing block: {:?}", block_num);
         let parity_trace = self.trace_block(block_num).await;
         let receipts = self.get_receipts(block_num).await;
 
@@ -255,6 +256,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
 
     #[cfg(not(feature = "dyn-decode"))]
     pub(crate) async fn trace_block(&self, block_num: u64) -> (Option<Vec<TxTrace>>, BlockStats) {
+        tracing::info!(target: "brontes", "tracing block: {:?}", block_num);
         let merged_trace = self
             .tracer
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)))

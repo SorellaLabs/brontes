@@ -74,6 +74,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
+        tracing::info!(target: "brontes", "executing block: {:?}", block_num);
+
         if let Some(metrics) = metrics {
             Box::pin(metrics.block_tracing(id, move || Box::pin(parser.execute_block(block_num))))
                 as ParserFuture
