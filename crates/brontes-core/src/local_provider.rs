@@ -4,7 +4,8 @@ use alloy_consensus::{Header, ReceiptEnvelope};
 use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256};
 use alloy_provider::{Provider, RootProvider};
 use alloy_rpc_types::{
-    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, Log, TransactionRequest,
+    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, Log, TransactionReceipt,
+    TransactionRequest,
 };
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use itertools::Itertools;
@@ -78,12 +79,8 @@ impl TracingProvider for LocalProvider {
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<ReceiptEnvelope<Log>>>> {
-        Ok(self
-            .provider
-            .get_block_receipts(number.into())
-            .await?
-            .map(|t| t.into_iter().map(|tx| tx.inner).collect_vec()))
+    ) -> eyre::Result<Option<Vec<TransactionReceipt>>> {
+        Ok(self.provider.get_block_receipts(number.into()).await?)
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {

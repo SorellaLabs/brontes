@@ -4,7 +4,7 @@ use alloy_consensus::Header;
 use alloy_evm::EvmEnv;
 use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256, U256};
 use alloy_rpc_types::{
-    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, Log, ReceiptEnvelope,
+    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, TransactionReceipt,
     TransactionRequest,
 };
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
@@ -92,12 +92,8 @@ impl TracingProvider for TracingClient {
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<ReceiptEnvelope<Log>>>> {
-        Ok(self
-            .api
-            .block_receipts(BlockId::Number(number))
-            .await?
-            .map(|t| t.into_iter().map(|t| t.inner).collect::<Vec<_>>()))
+    ) -> eyre::Result<Option<Vec<TransactionReceipt>>> {
+        Ok(self.api.block_receipts(BlockId::Number(number)).await?)
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {

@@ -6,7 +6,7 @@ use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::Address;
 use alloy_primitives::BlockHash;
-use alloy_rpc_types::{BlockNumberOrTag, Log};
+use alloy_rpc_types::{BlockNumberOrTag, Log, TransactionReceipt};
 #[cfg(feature = "dyn-decode")]
 use alloy_rpc_types_trace::parity::Action;
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
@@ -25,16 +25,16 @@ use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 pub struct TraceParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx: &'static DB,
-    pub tracer: Arc<T>,
+    libmdbx:               &'static DB,
+    pub tracer:            Arc<T>,
     pub(crate) metrics_tx: Arc<UnboundedSender<ParserMetricEvents>>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for TraceParser<T, DB> {
     fn clone(&self) -> Self {
         Self {
-            libmdbx: self.libmdbx,
-            tracer: self.tracer.clone(),
+            libmdbx:    self.libmdbx,
+            tracer:     self.tracer.clone(),
             metrics_tx: self.metrics_tx.clone(),
         }
     }
@@ -291,7 +291,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     pub(crate) async fn get_receipts(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<ReceiptEnvelope<Log>>>, BlockStats) {
+    ) -> (Option<Vec<TransactionReceipt>>, BlockStats) {
         let tx_receipts = self
             .tracer
             .block_receipts(BlockNumberOrTag::Number(block_num))
@@ -314,7 +314,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         &self,
         block_trace: Vec<TxTrace>,
         #[cfg(feature = "dyn-decode")] dyn_json: FastHashMap<Address, JsonAbi>,
-        block_receipts: Vec<ReceiptEnvelope<Log>>,
+        block_receipts: Vec<TransactionReceipt>,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
         let mut stats = BlockStats::new(block_num, None);
@@ -329,8 +329,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
                         block_num,
                         trace.tx_hash,
                         trace.tx_index,
-                        receipt.cumulative_gas_used() as u128,
-                        trace.effective_price,
+                        receipt.into_inner().cumulative_gas_used() as u128,
+                        receipt.effective_gas_price,
                     )
                 },
             ))
