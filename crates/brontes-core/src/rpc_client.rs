@@ -129,12 +129,14 @@ impl RpcClient {
         block_hash: B256,
         trace_options: TraceOptions,
     ) -> Result<TxTrace, RpcError> {
+        tracing::info!(target: "rpc_client", "debug_trace_block_by_hash: {:?}", block_hash);
         let params = json!([
             format!("0x{}", hex::encode(block_hash.0)),
             trace_options
         ]);
-
-        self.call("debug_traceBlockByHash", params).await
+        let result = self.call("debug_traceBlockByHash", params).await;
+        tracing::info!(target: "rpc_client", "debug_trace_block_by_hash result: {:?}", result);
+        result
     }
 
     pub async fn debug_trace_block_by_number(
