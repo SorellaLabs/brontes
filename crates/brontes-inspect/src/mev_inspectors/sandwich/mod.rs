@@ -293,7 +293,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         println!(
-            "bribe_usd: {} Eth price: {} Quote Token: {}",
+            "Frontrun Txees: {} Backrun tx: {} bribe_usd: {} Eth price: {} Quote Token: {}",
+            frontrun_tx_hash,
+            backrun_info.tx_hash,
             gas_used.clone(),
             metadata.get_eth_price(self.utils.quote).to_float(),
             self.utils.quote
