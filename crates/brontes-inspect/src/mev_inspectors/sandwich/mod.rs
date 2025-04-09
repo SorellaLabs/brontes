@@ -294,9 +294,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         println!(
             "bribe_usd: {} Eth price: {} Quote Token: {}",
-            gas_used.clone().to_float(),
+            gas_used.clone(),
             metadata.get_eth_price(self.utils.quote).to_float(),
-            self.utils.quote.to_float()
+            self.utils.quote
         );
 
         let gas_used = metadata.get_gas_price_usd(gas_used, self.utils.quote);
