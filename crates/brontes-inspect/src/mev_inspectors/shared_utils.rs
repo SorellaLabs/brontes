@@ -319,11 +319,6 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             })
             .sum::<f64>();
 
-        println!(
-            "bribe_usd: {bribe_usd} gas price: {}",
-            metadata.get_gas_price_usd(1, self.quote).to_float()
-        );
-
         let fund = info
             .get_searcher_contract_info()
             .map(|i| i.fund)

@@ -294,6 +294,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
 
         let gas_used = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
+        println!(
+            "bribe_usd: {} gas price: {}",
+            gas_used.clone().to_float(),
+            metadata.get_gas_price_usd(1, self.utils.quote).to_float()
+        );
+
         let searcher_deltas = searcher_actions
             .into_iter()
             .flatten()
