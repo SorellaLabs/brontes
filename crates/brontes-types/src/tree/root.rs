@@ -361,6 +361,10 @@ impl GasDetails {
     pub fn gas_paid(&self) -> u128 {
         let mut gas = self.gas_used * self.effective_gas_price;
 
+        print!("Gas paid: {} ", gas);
+
+        println!("Effective Gas Price: {}", self.effective_gas_price);
+
         if let Some(coinbase) = self.coinbase_transfer {
             gas += coinbase
         }
