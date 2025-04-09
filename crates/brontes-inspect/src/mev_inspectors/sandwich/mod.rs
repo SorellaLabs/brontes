@@ -293,7 +293,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .sum::<u128>();
 
         println!(
-            "Frontrun Txees: {} Backrun tx: {} bribe_usd: {} Eth price: {} Quote Token: {}",
+            "Frontrun Txees: {} Backrun tx: {} bribe_usd: {} Eth price: {} Quote Token: {} Number 
+             of possible frontruns: {}",
             frontrun_tx_hash
                 .iter()
                 .map(|tx| tx.to_string())
@@ -302,7 +303,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             backrun_info.tx_hash,
             gas_used.clone(),
             metadata.get_eth_price(self.utils.quote).to_float(),
-            self.utils.quote
+            self.utils.quote,
+            frontrun_tx_hash.len(),
         );
 
         let gas_used = metadata.get_gas_price_usd(gas_used, self.utils.quote);
