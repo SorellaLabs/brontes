@@ -292,6 +292,8 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|g| g.gas_paid())
             .sum::<u128>();
 
+        println!("Backrun gas details:", backrun_info.gas_details);
+
         println!(
             "Frontrun Txees: {} Backrun tx: {} bribe_usd: {} Eth price: {} Quote Token: {} Number 
              of possible frontruns: {}",
