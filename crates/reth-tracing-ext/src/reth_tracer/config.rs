@@ -49,8 +49,6 @@ impl OpcodeFilter {
     }
 }
 
-/// Gives guidance to the [TracingInspector](crate::tracing::TracingInspector).
-///
 /// Use [TracingInspectorConfig::default_parity] or
 /// [TracingInspectorConfig::default_geth] to get the default configs for
 /// specific styles of traces.
@@ -213,8 +211,7 @@ impl TracingInspectorConfig {
     /// [PrestateTracer](alloy_rpc_types_trace::geth::PreStateFrame).
     ///
     /// Note: This currently returns [Self::none] because the prestate tracer
-    /// result currently relies on the execution result entirely, see
-    /// [GethTraceBuilder::geth_prestate_traces](crate::tracing::geth::GethTraceBuilder::geth_prestate_traces)
+    /// result currently relies on the execution result entirely
     #[inline]
     pub const fn from_geth_prestate_config(_config: &PreStateConfig) -> Self {
         Self::none()

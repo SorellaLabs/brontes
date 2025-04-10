@@ -1,9 +1,6 @@
 use super::types::{CallTrace, CallTraceNode, TraceMemberOrder};
 
 /// An arena of recorded traces.
-///
-/// This type will be populated via the
-/// [TracingInspector](super::TracingInspector).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CallTraceArena {
     /// The arena of recorded trace nodes
