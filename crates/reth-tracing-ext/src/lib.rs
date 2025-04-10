@@ -120,7 +120,16 @@ impl TracingClient {
     }
 
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
-        let db = Arc::new(init_db(db_path).unwrap());
+        let db = match init_db(db_path) {
+            Ok(db_env) => Arc::new(db_env),
+            Err(e) => {
+                tracing::error!(path = ?db_path, error = %e, "Failed to initialize Reth database");
+                panic!(
+                    "Critical error: Could not open Reth database at path {:?}. Error: {}",
+                    db_path, e
+                );
+            }
+        };
         let mut static_files = db_path.to_path_buf();
         static_files.pop();
         static_files.push("static_files");
