@@ -292,23 +292,6 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .map(|g| g.gas_paid())
             .sum::<u128>();
 
-        println!("Backrun gas details: {}", backrun_info.gas_details);
-
-        println!(
-            "Frontrun Txees: {} Backrun tx: {} bribe_usd: {} Eth price: {} Quote Token: {} Number 
-             of possible frontruns: {}",
-            frontrun_tx_hash
-                .iter()
-                .map(|tx| tx.to_string())
-                .collect::<Vec<_>>()
-                .join(" "),
-            backrun_info.tx_hash,
-            gas_used.clone(),
-            metadata.get_eth_price(self.utils.quote).to_float(),
-            self.utils.quote,
-            frontrun_tx_hash.len(),
-        );
-
         let gas_used = metadata.get_gas_price_usd(gas_used, self.utils.quote);
 
         let searcher_deltas = searcher_actions

@@ -16,6 +16,7 @@ use crate::libmdbx::{
     tables::{Tables, NUM_TABLES},
 };
 
+#[derive(Debug)]
 pub(crate) struct LibmdbxTx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
     inner:      Transaction<K>,

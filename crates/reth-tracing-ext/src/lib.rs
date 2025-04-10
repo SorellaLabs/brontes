@@ -19,8 +19,8 @@ use reth_provider::{
 use reth_rpc::{DebugApi, EthApi, EthFilter, TraceApi};
 use reth_rpc_eth_api::helpers::Trace;
 use reth_rpc_eth_types::{
-    EthResult, EthStateCache, EthStateCacheConfig, FeeHistoryCache, FeeHistoryCacheConfig, GasCap,
-    GasPriceOracle, GasPriceOracleConfig,
+    EthConfig, EthResult, EthStateCache, EthStateCacheConfig, FeeHistoryCache,
+    FeeHistoryCacheConfig, GasCap, GasPriceOracle, GasPriceOracleConfig,
 };
 use reth_rpc_server_types::constants::{
     DEFAULT_ETH_PROOF_WINDOW, DEFAULT_MAX_SIMULATE_BLOCKS, DEFAULT_PROOF_PERMITS,
@@ -114,7 +114,7 @@ impl TracingClient {
         );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as usize);
-        let trace = TraceApi::new(api.clone(), tracing_call_guard);
+        let trace = TraceApi::new(api.clone(), tracing_call_guard, EthConfig::default());
 
         Self { api, trace, provider_factory }
     }
