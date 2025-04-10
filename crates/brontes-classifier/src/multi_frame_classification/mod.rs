@@ -14,7 +14,7 @@ use batch::{Cowswap, UniswapX, ZeroXBatch};
 use brontes_types::normalized_actions::{Action, MultiCallFrameClassification, MultiFrameRequest};
 use flash_loan::{BalancerV2, MakerDss};
 use itertools::Itertools;
-use liquidations::{AaveV2, AaveV3};
+use liquidations::{AaveV2, AaveV3Pool};
 use tracing::debug;
 
 use self::flash_loan::Dodo;
@@ -43,7 +43,7 @@ pub fn parse_multi_frame_requests(
             Cowswap::KEY => Cowswap::create_classifier(request),
             BalancerV2::KEY => BalancerV2::create_classifier(request),
             AaveV2::KEY => AaveV2::create_classifier(request),
-            AaveV3::KEY => AaveV3::create_classifier(request),
+            AaveV3Pool::KEY => AaveV3Pool::create_classifier(request),
             ZeroXAgg::KEY => ZeroXAgg::create_classifier(request),
             ZeroXBatch::KEY => ZeroXBatch::create_classifier(request),
             MakerDss::KEY => MakerDss::create_classifier(request),

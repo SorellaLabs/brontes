@@ -37,7 +37,7 @@ sol!(SushiSwapV3, "./classifier-abis/SushiSwapV3.json");
 sol!(PancakeSwapV2, "./classifier-abis/PancakeSwapV2.json");
 sol!(PancakeSwapV3, "./classifier-abis/PancakeSwapV3.json");
 sol!(CurveBase2, "./classifier-abis/CurveBase2.json");
-//sol!(CurveLido2, "./classifier-abis/CurveBase2Lido.json");
+sol!(CurveLido2, "./classifier-abis/CurveBase2Lido.json");
 sol!(CurveBase3, "./classifier-abis/CurveBase3.json");
 sol!(CurveBase4, "./classifier-abis/CurveBase4.json");
 sol!(CurveV1MetapoolImpl, "./classifier-abis/CurveV1MetapoolImpl.json");
@@ -47,8 +47,13 @@ sol!(CurvecrvUSDPlainImpl, "./classifier-abis/CurvecrvUSDPlainImpl.json");
 sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/balancer/BalancerV1Pool.json");
 sol!(BalancerV2Vault, "./classifier-abis/balancer/BalancerV2Vault.json");
-sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
-// sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
+sol!(AaveV2Pool, "./classifier-abis/AaveV2Pool.json");
+
+mod aave_v3_bindings {
+    use alloy_sol_types::sol;
+    sol!(AaveV3Pool, "./classifier-abis/AaveV3.json");
+}
+
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/maker/MakerPSM.json");
 sol!(MakerDssFlash, "./classifier-abis/maker/MakerDssFlash.json");
@@ -56,17 +61,18 @@ sol!(CompoundV2CToken, "./classifier-abis/CompoundV2CToken.json");
 sol!(OneInchAggregationRouterV5, "./classifier-abis/OneInchAggregationRouterV5.json");
 sol!(OneInchFusionSettlement, "./classifier-abis/OneInchFusionSettlement.json");
 sol!(ClipperExchange, "./classifier-abis/ClipperExchange.json");
-// sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
-sol!(ZeroXUniswapFeaure, "./classifier-abis/zero-x/ZeroXUniswapFeature.json");
-sol!(ZeroXUniswapV3Feature, "./classifier-abis/zero-x/ZeroXUniswapV3Feature.json");
-sol!(ZeroXTransformERC20Feature, "./classifier-abis/zero-x/ZeroXTransformERC20Feature.json");
-sol!(ZeroXPancakeSwapFeature, "./classifier-abis/zero-x/ZeroXPancakeSwapFeature.json");
-// sol!(ZeroXOtcOrdersFeature,
-// "./classifier-abis/zero-x/ZeroXOtcOrdersFeature.json");
-sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProviderFeature.json");
-// sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
+
+mod cow_swap_bindings {
+    use alloy_sol_types::sol;
+    sol!(CowswapGPv2Settlement, "./classifier-abis/cowswap/GPv2Settlement.json");
+}
+sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
+
 sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
-// sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
+mod dodo_dsp_pool_bindings {
+    use alloy_sol_types::sol;
+    sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
+}
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");

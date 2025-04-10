@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, U256};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
@@ -6,7 +6,7 @@ use brontes_types::{
     db::token_info::TokenInfoWithAddress,
     normalized_actions::{
         NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedNewPool,
-        NormalizedPoolConfigUpdate,
+        NormalizedPoolConfigUpdate, NormalizedSwap,
     },
     structured_trace::CallInfo,
     ToScaledRational,
@@ -16,7 +16,6 @@ use malachite::Rational;
 
 use crate::BalancerV2Vault::PoolBalanceChanged;
 
-/*
 action_impl!(
     Protocol::BalancerV2,
     crate::IGeneralPool::onSwapCall,
@@ -46,7 +45,7 @@ action_impl!(
     }
 );
 
-
+/*
 action_impl!(
     Protocol::BalancerV2,
     crate::IGeneralPool::onSwap_0Call,
@@ -104,9 +103,7 @@ action_impl!(
         })
     }
 );
-
 */
-
 fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
     logs: &PoolBalanceChanged,
     db: &DB,

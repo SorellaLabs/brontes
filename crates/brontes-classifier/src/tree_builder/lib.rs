@@ -43,7 +43,7 @@ sol!(CurveCryptoSwap, "./classifier-abis/CurveCryptoSwap.json");
 sol!(BalancerV1, "./classifier-abis/balancer/BalancerV1Pool.json");
 sol!(BalancerV2Vault, "./classifier-abis/balancer/BalancerV2Vault.json");
 sol!(AaveV2, "./classifier-abis/AaveV2Pool.json");
-sol!(AaveV3, "./classifier-abis/AaveV3Pool.json");
+sol!(AaveV3Pool, "./classifier-abis/AaveV3PoolPool.json");
 sol!(UniswapX, "./classifier-abis/UniswapXExclusiveDutchOrderReactor.json");
 sol!(MakerPSM, "./classifier-abis/maker/MakerPSM.json");
 sol!(MakerDssFlash, "./classifier-abis/maker/MakerDssFlash.json");

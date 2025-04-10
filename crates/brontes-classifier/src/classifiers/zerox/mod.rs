@@ -1,11 +1,16 @@
+use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
-use brontes_types::{normalized_actions::NormalizedAggregator, structured_trace::CallInfo};
+use brontes_types::{
+    normalized_actions::{NormalizedAggregator, NormalizedBatch, NormalizedSwap},
+    structured_trace::CallInfo,
+    ToScaledRational,
+};
 
 // Uniswap
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXUniswapFeaure::sellToUniswapCall,
+    crate::ZeroXInterface::sellToUniswapCall,
     Aggregator,
     [],
     |info: CallInfo, _| {
@@ -24,7 +29,7 @@ action_impl!(
 // Uniswap V3
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXUniswapV3Feature::sellEthForTokenToUniswapV3Call,
+    crate::ZeroXInterface::sellEthForTokenToUniswapV3Call,
     Aggregator,
     [],
     call_data: true,
@@ -43,7 +48,7 @@ action_impl!(
 
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXUniswapV3Feature::sellTokenForEthToUniswapV3Call,
+    crate::ZeroXInterface::sellTokenForEthToUniswapV3Call,
     Aggregator,
     [],
     call_data: true,
@@ -62,7 +67,7 @@ action_impl!(
 
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXUniswapV3Feature::sellTokenForTokenToUniswapV3Call,
+    crate::ZeroXInterface::sellTokenForTokenToUniswapV3Call,
     Aggregator,
     [],
     call_data: true,
@@ -82,7 +87,7 @@ action_impl!(
 // Transform
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXTransformERC20Feature::transformERC20Call,
+    crate::ZeroXInterface::transformERC20Call,
     Aggregator,
     [],
     |info: CallInfo, _| {
@@ -101,7 +106,7 @@ action_impl!(
 // PancakeSwap
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXPancakeSwapFeature::sellToPancakeSwapCall,
+    crate::ZeroXInterface::sellToPancakeSwapCall,
     Aggregator,
     [],
     |info: CallInfo, _| {
@@ -117,12 +122,10 @@ action_impl!(
     }
 );
 
-/*
-
 // OTC Orders
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXOtcOrdersFeature::fillOtcOrderCall,
+    crate::ZeroXInterface::fillOtcOrderCall,
     Swap,
     [OtcOrderFilled],
     logs: true,
@@ -155,7 +158,7 @@ action_impl!(
 
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXOtcOrdersFeature::fillOtcOrderForEthCall,
+    crate::ZeroXInterface::fillOtcOrderForEthCall,
     Swap,
     [OtcOrderFilled],
     logs: true,
@@ -188,7 +191,7 @@ action_impl!(
 
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXOtcOrdersFeature::fillOtcOrderWithEthCall,
+    crate::ZeroXInterface::fillOtcOrderWithEthCall,
     Swap,
     [OtcOrderFilled],
     logs: true,
@@ -221,7 +224,7 @@ action_impl!(
 
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXOtcOrdersFeature::fillTakerSignedOtcOrderCall,
+    crate::ZeroXInterface::fillTakerSignedOtcOrderCall,
     Swap,
     [OtcOrderFilled],
     logs: true,
@@ -254,7 +257,7 @@ action_impl!(
 
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXOtcOrdersFeature::fillTakerSignedOtcOrderForEthCall,
+    crate::ZeroXInterface::fillTakerSignedOtcOrderForEthCall,
     Swap,
     [OtcOrderFilled],
     logs: true,
@@ -287,7 +290,7 @@ action_impl!(
 
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXOtcOrdersFeature::batchFillTakerSignedOtcOrdersCall,
+    crate::ZeroXInterface::batchFillTakerSignedOtcOrdersCall,
     Batch,
     [..OtcOrderFilled*],
     logs: true,
@@ -331,12 +334,10 @@ action_impl!(
     }
 );
 
-*/
-
 // Liquidity Provider
 action_impl!(
     Protocol::ZeroX,
-    crate::ZeroXLiquidityProviderFeature::sellToLiquidityProviderCall,
+    crate::ZeroXInterface::sellToLiquidityProviderCall,
     Aggregator,
     [LiquidityProviderSwap],
     logs: true,
@@ -357,7 +358,6 @@ action_impl!(
 
 );
 
-/*
 // Multiplex
 action_impl!(
     Protocol::ZeroX,
@@ -599,8 +599,6 @@ action_impl!(
         })
     }
 );
-
-*/
 
 #[cfg(test)]
 mod tests {

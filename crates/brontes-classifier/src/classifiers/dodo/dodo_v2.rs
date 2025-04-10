@@ -1,6 +1,7 @@
+use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_types::{
-    normalized_actions::{NormalizedFlashLoan, NormalizedSwap},
+    normalized_actions::{NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedSwap},
     structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
@@ -105,10 +106,9 @@ action_impl!(
     }
 );
 
-/*
 action_impl!(
     Protocol::Dodo,
-    crate::DodoDSPPool::buySharesCall,
+    crate::dodo_dsp_pool_bindings::DodoDSPPool::buySharesCall,
     Mint,
     [],
     return_data: true,
@@ -148,7 +148,7 @@ action_impl!(
 
 action_impl!(
     Protocol::Dodo,
-    crate::DodoDSPPool::sellSharesCall,
+    crate::dodo_dsp_pool_bindings::DodoDSPPool::sellSharesCall,
     Burn,
     [],
     call_data: true,
@@ -185,9 +185,6 @@ action_impl!(
         })
     }
 );
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -260,7 +257,6 @@ mod tests {
             .unwrap();
     }
 
-
     #[brontes_macros::test]
     async fn test_dodo_sell_shares() {
         let classifier_utils = ClassifierTestUtils::new().await;
@@ -315,7 +311,6 @@ mod tests {
             .await
             .unwrap();
     }
-
 
     // Tested but couldn't find a transaction that was less than 300 lines of
     // trace. #[brontes_macros::test]
@@ -377,5 +372,3 @@ mod tests {
     //         .unwrap();
     // }
 }
-
-*/
