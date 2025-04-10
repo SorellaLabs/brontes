@@ -1320,6 +1320,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum PollResult {
     State(PoolUpdate),
     DiscoveredPool,

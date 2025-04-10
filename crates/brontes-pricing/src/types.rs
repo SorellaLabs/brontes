@@ -151,6 +151,7 @@ impl PoolVariants {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum DexPriceMsg {
     /// marker for only updating loaded state and not generating prices
     DisablePricingFor(u64),
