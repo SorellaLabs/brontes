@@ -165,6 +165,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             && self.metadata_fetcher.is_finished()
             && self.collection_future.is_none()
         {
+            tracing::info!("marked as finished and nothing else queued in pipeline");
             return Poll::Ready(None);
         }
 
