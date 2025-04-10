@@ -241,7 +241,6 @@ pub struct CallTraceNode {
 
 impl CallTraceNode {
     /// Returns the call context's execution address
-
     pub const fn execution_address(&self) -> Address {
         if self.trace.kind.is_delegate() {
             self.trace.caller
