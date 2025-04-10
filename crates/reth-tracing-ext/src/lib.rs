@@ -123,6 +123,7 @@ impl TracingClient {
         let db = match init_db(db_path) {
             Ok(db_env) => Arc::new(db_env),
             Err(e) => {
+                // Log the specific error before panicking
                 tracing::error!(path = ?db_path, error = %e, "Failed to initialize Reth database");
                 panic!(
                     "Critical error: Could not open Reth database at path {:?}. Error: {}",
