@@ -70,8 +70,20 @@ impl TracingClient {
         static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
-        let static_file_provider =
-            StaticFileProvider::read_only(static_files_path.clone(), true).unwrap();
+        let static_file_provider = match StaticFileProvider::read_only(
+            static_files_path.clone(),
+            true,
+        ) {
+            Ok(provider) => provider,
+            Err(e) => {
+                tracing::error!(path = ?static_files_path, error = %e, "Failed to initialize Reth static file provider");
+                panic!(
+                    "Critical error: Could not open Reth static file provider at path {:?}. \
+                     Error: {}",
+                    static_files_path, e
+                );
+            }
+        };
 
         let provider_factory: ProviderFactory<
             NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>,
