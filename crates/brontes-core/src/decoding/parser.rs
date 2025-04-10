@@ -328,7 +328,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
                         block_num,
                         trace.tx_hash,
                         trace.tx_index,
-                        receipt.inner.cumulative_gas_used() as u128,
+                        receipt.gas_used as u128,
                         receipt.effective_gas_price,
                     )
                 },
