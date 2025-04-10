@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Download Rust Binary
-      run: |
-        gh release download -R SorellaLabs/github-utils -p Linux.tgz
-        tar -xzf Linux.tgz
-      env:
-        GH_TOKEN: ${{ secrets.CI }}
+      - name: Download Rust Binary
+        run: |
+          gh release download -R SorellaLabs/github-utils -p Linux.tgz
+          tar -xzf Linux.tgz
+        env:
+          GH_TOKEN: ${{ secrets.CI }}
 
-    - name: Run Rust Binary
-      run: ./Linux/github-actions telegram-bot -t ${{ secrets.TELEGRAM_BOT_TOKEN }} -g ${{ secrets.G_API_KEY }} --repo ${{ vars.REPO }} -s ${{ vars.PROJECT }} -n --number ${{ github.event.issue.number }}
+      - name: Run Rust Binary
+        run: ./Linux/github-actions telegram-bot -t ${{ secrets.TELEGRAM_BOT_TOKEN }} -g ${{ secrets.G_API_KEY }} --repo ${{ vars.REPO }} -s ${{ vars.PROJECT }} -n --number ${{ github.event.issue.number }}

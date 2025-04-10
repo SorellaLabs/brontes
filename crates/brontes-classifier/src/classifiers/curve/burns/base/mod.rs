@@ -8,7 +8,6 @@ mod base4;
 pub use base4::*;
 
 pub mod lido2;
-pub use lido2::CurveBasePool2Remove_liquidity_one_coinCall as CurveBasePool2LidoRemove_liquidity_one_coinCall;
 
 #[cfg(test)]
 mod tests {
