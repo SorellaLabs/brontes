@@ -81,9 +81,9 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tracing::trace!("starting sandwich");
         let search_args = TreeSearchBuilder::default().with_actions([
             Action::is_swap.boxed(),
-            Box::new(Action::is_transfer),
-            Box::new(Action::is_eth_transfer),
-            Box::new(Action::is_nested_action),
+            Action::is_transfer.boxed(),
+            Action::is_eth_transfer.boxed(),
+            Action::is_nested_action.boxed(),
         ]);
 
         self.get_possible_sandwich(tree.clone())
