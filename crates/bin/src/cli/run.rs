@@ -27,35 +27,35 @@ const SECONDS_TO_US_FLOAT: f64 = 1_000_000.0;
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:          Option<u64>,
+    pub start_block: Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:            Option<u64>,
+    pub end_block: Option<u64>,
     /// starts running at tip from where brontes was last left at.
     #[arg(long, default_value_t = false)]
-    pub from_db_tip:          bool,
+    pub from_db_tip: bool,
     /// Optional Multiple Ranges, format: "start1-end1 start2-end2 ..."
     /// Use this if you want to specify the exact, non continuous block ranges
     /// you want to run
     #[arg(long, num_args = 1.., value_delimiter = ' ')]
-    pub ranges:               Option<Vec<String>>,
+    pub ranges: Option<Vec<String>>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short)]
-    pub max_tasks:            Option<u64>,
+    pub max_tasks: Option<u64>,
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
-    pub min_batch_size:       u64,
+    pub min_batch_size: u64,
     /// Optional quote asset, if omitted it will default to USDT
     #[arg(long, short, default_value = USDT_ADDRESS_STRING)]
-    pub quote_asset:          String,
+    pub quote_asset: String,
     /// Inspectors to run. If omitted it defaults to running all inspectors
     #[arg(long, short, value_delimiter = ',')]
-    pub inspectors:           Option<Vec<Inspectors>>,
+    pub inspectors: Option<Vec<Inspectors>>,
     /// Time window arguments for cex data downloads
     #[clap(flatten)]
-    pub time_window_args:     TimeWindowArgs,
+    pub time_window_args: TimeWindowArgs,
     /// CEX exchanges to consider for cex-dex analysis
     #[arg(
         long,
@@ -63,11 +63,11 @@ pub struct RunArgs {
         default_value = "Binance,Coinbase,Okex,BybitSpot,Kucoin",
         value_delimiter = ','
     )]
-    pub cex_exchanges:        Vec<CexExchange>,
+    pub cex_exchanges: Vec<CexExchange>,
     /// Force DEX price calculation for every block, ignoring existing database
     /// values.
     #[arg(long, short, default_value = "false")]
-    pub force_dex_pricing:    bool,
+    pub force_dex_pricing: bool,
     /// Disables DEX pricing. Inspectors needing DEX prices will only calculate
     /// token PnL, not USD PnL, if DEX pricing is unavailable in the
     /// database.
@@ -75,28 +75,28 @@ pub struct RunArgs {
     pub force_no_dex_pricing: bool,
     /// Number of blocks to lag behind the chain tip when processing.
     #[arg(long, default_value = "10")]
-    pub behind_tip:           u64,
+    pub behind_tip: u64,
     /// Legacy, run in CLI only mode (no TUI) - will output progress bars to
     /// stdout
-    #[arg(long, default_value = "true")]
-    pub cli_only:             bool,
+    #[arg(long, default_value = "false")]
+    pub cli_only: bool,
     /// Export metrics
     #[arg(long, default_value = "false")]
-    pub with_metrics:         bool,
+    pub with_metrics: bool,
     /// Wether or not to use a fallback server.
     #[arg(long, default_value_t = false)]
-    pub enable_fallback:      bool,
+    pub enable_fallback: bool,
     /// Address of the fallback server.
     /// Triggers database writes if the main connection fails, preventing data
     /// loss.
     #[arg(long)]
-    pub fallback_server:      Option<String>,
+    pub fallback_server: Option<String>,
     /// Set a custom run ID used when inserting data into the Clickhouse
     ///
     /// If omitted, the ID will be automatically incremented from the last run
     /// stored in the Clickhouse database.
     #[arg(long, short)]
-    pub run_id:               Option<u64>,
+    pub run_id: Option<u64>,
 
     /// shows a cool display at startup
     #[arg(long, short, default_value_t = false)]
@@ -224,10 +224,10 @@ impl RunArgs {
             Ok(RangeType::MultipleRanges(parsed_ranges))
         } else {
             Ok(RangeType::SingleRange {
-                start_block:   self.start_block,
-                end_block:     self.end_block,
+                start_block: self.start_block,
+                end_block: self.end_block,
                 back_from_tip: self.behind_tip,
-                from_db_tip:   self.from_db_tip,
+                from_db_tip: self.from_db_tip,
             })
         }
     }
@@ -391,32 +391,28 @@ pub struct TimeWindowArgs {
 impl TimeWindowArgs {
     fn trade_config(&self) -> CexDexTradeConfig {
         CexDexTradeConfig {
-            initial_vwap_pre_block_us:  (self.initial_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            initial_vwap_pre_block_us: (self.initial_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
             initial_vwap_post_block_us: (self.initial_vwap_post * SECONDS_TO_US_FLOAT) as u64,
-            max_vwap_pre_block_us:      (self.max_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
-            max_vwap_post_block_us:     (self.max_vwap_post * SECONDS_TO_US_FLOAT) as u64,
-            vwap_scaling_diff_us:       (self.vwap_scaling_diff * SECONDS_TO_US_FLOAT) as u64,
-            vwap_time_step_us:          (self.vwap_time_step * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_pre_block_us: (self.max_vwap_pre * SECONDS_TO_US_FLOAT) as u64,
+            max_vwap_post_block_us: (self.max_vwap_post * SECONDS_TO_US_FLOAT) as u64,
+            vwap_scaling_diff_us: (self.vwap_scaling_diff * SECONDS_TO_US_FLOAT) as u64,
+            vwap_time_step_us: (self.vwap_time_step * SECONDS_TO_US_FLOAT) as u64,
 
-            use_block_time_weights_vwap:       self.block_time_weights_vwap,
-            pre_decay_weight_vwap:             self.pre_decay_weight_vwap,
-            post_decay_weight_vwap:            self.post_decay_weight_vwap,
-            initial_optimistic_pre_block_us:   (self.initial_optimistic_pre * SECONDS_TO_US_FLOAT)
+            use_block_time_weights_vwap: self.block_time_weights_vwap,
+            pre_decay_weight_vwap: self.pre_decay_weight_vwap,
+            post_decay_weight_vwap: self.post_decay_weight_vwap,
+            initial_optimistic_pre_block_us: (self.initial_optimistic_pre * SECONDS_TO_US_FLOAT)
                 as u64,
-            initial_optimistic_post_block_us:  (self.initial_optimistic_post * SECONDS_TO_US_FLOAT)
+            initial_optimistic_post_block_us: (self.initial_optimistic_post * SECONDS_TO_US_FLOAT)
                 as u64,
-            max_optimistic_pre_block_us:       (self.max_optimistic_pre * SECONDS_TO_US_FLOAT)
-                as u64,
-            max_optimistic_post_block_us:      (self.max_optimistic_post * SECONDS_TO_US_FLOAT)
-                as u64,
-            optimistic_scaling_diff_us:        (self.optimistic_scaling_diff * SECONDS_TO_US_FLOAT)
-                as u64,
-            optimistic_time_step_us:           (self.optimistic_time_step * SECONDS_TO_US_FLOAT)
-                as u64,
+            max_optimistic_pre_block_us: (self.max_optimistic_pre * SECONDS_TO_US_FLOAT) as u64,
+            max_optimistic_post_block_us: (self.max_optimistic_post * SECONDS_TO_US_FLOAT) as u64,
+            optimistic_scaling_diff_us: (self.optimistic_scaling_diff * SECONDS_TO_US_FLOAT) as u64,
+            optimistic_time_step_us: (self.optimistic_time_step * SECONDS_TO_US_FLOAT) as u64,
             use_block_time_weights_optimistic: self.block_time_weights_optimistic,
-            pre_decay_weight_op:               self.pre_decay_weight_optimistic,
-            post_decay_weight_op:              self.post_decay_weight_optimistic,
-            quote_offset_from_block_us:        (self.quote_offset * SECONDS_TO_US_FLOAT) as u64,
+            pre_decay_weight_op: self.pre_decay_weight_optimistic,
+            post_decay_weight_op: self.post_decay_weight_optimistic,
+            quote_offset_from_block_us: (self.quote_offset * SECONDS_TO_US_FLOAT) as u64,
         }
     }
 }
