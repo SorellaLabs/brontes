@@ -7,11 +7,11 @@ use brontes_types::{
 };
 use malachite::{num::basic::traits::Zero, Rational};
 
-use crate::aave_v3_bindings::AaveV3Pool;
+use crate::aave_v3_bindings::AaveV3;
 
 action_impl!(
-    Protocol::AaveV3Pool,
-    AaveV3Pool::liquidationCallCall,
+    Protocol::AaveV3,
+    AaveV3::liquidationCallCall,
     Liquidation,
     [LiquidationEvent],
     call_data: true,
@@ -26,7 +26,7 @@ action_impl!(
         let covered_debt = call_data.debtToCover.to_scaled_rational(debt_info.decimals);
 
         return Ok(NormalizedLiquidation {
-            protocol: Protocol::AaveV3Pool,
+            protocol: Protocol::AaveV3,
             trace_index: info.trace_idx,
             pool: info.from_address,
             liquidator: info.msg_sender,
@@ -42,8 +42,8 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::AaveV3Pool,
-    AaveV3Pool::flashLoanCall,
+    Protocol::AaveV3,
+    AaveV3::flashLoanCall,
     FlashLoan,
     [],
     call_data: true,
@@ -60,7 +60,7 @@ action_impl!(
         }).unzip();
 
         return Ok(NormalizedFlashLoan {
-            protocol: Protocol::AaveV3Pool,
+            protocol: Protocol::AaveV3,
             trace_index: info.trace_idx,
             from: info.from_address,
             pool: info.target_address,
@@ -81,8 +81,8 @@ action_impl!(
 );
 
 action_impl!(
-    Protocol::AaveV3Pool,
-    AaveV3Pool::flashLoanSimpleCall,
+    Protocol::AaveV3,
+    AaveV3::flashLoanSimpleCall,
     FlashLoan,
     [],
     call_data: true,
@@ -95,7 +95,7 @@ action_impl!(
         let amount = call_data.amount.to_scaled_rational(token_info.decimals);
 
         return Ok(NormalizedFlashLoan {
-            protocol: Protocol::AaveV3Pool,
+            protocol: Protocol::AaveV3,
             trace_index: info.trace_idx,
             from: info.from_address,
             pool: info.target_address,
@@ -133,7 +133,7 @@ mod tests {
             B256::from(hex!("dd951e0fc5dc4c98b8daaccdb750ff3dc9ad24a7f689aad2a088757266ab1d55"));
 
         let eq_action = Action::Liquidation(NormalizedLiquidation {
-            protocol:              Protocol::AaveV3Pool,
+            protocol:              Protocol::AaveV3,
             liquidated_collateral: Rational::from_signeds(165516722, 100000000),
             covered_debt:          Rational::from_signeds(63857746423_i64, 1000000),
             debtor:                Address::from(hex!("e967954b9b48cb1a0079d76466e82c4d52a8f5d3")),

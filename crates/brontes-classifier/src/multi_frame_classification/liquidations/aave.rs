@@ -8,7 +8,7 @@ use brontes_types::{
 use crate::multi_frame_classification::MultiCallFrameClassifier;
 
 pub struct AaveV2;
-pub struct AaveV3Pool;
+pub struct AaveV3;
 
 impl MultiCallFrameClassifier for AaveV2 {
     const KEY: [u8; 2] = [Protocol::AaveV2 as u8, MultiFrameAction::Liquidation as u8];
@@ -24,8 +24,8 @@ impl MultiCallFrameClassifier for AaveV2 {
     }
 }
 
-impl MultiCallFrameClassifier for AaveV3Pool {
-    const KEY: [u8; 2] = [Protocol::AaveV3Pool as u8, MultiFrameAction::Liquidation as u8];
+impl MultiCallFrameClassifier for AaveV3 {
+    const KEY: [u8; 2] = [Protocol::AaveV3 as u8, MultiFrameAction::Liquidation as u8];
 
     fn create_classifier(
         request: MultiFrameRequest,

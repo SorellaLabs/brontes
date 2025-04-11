@@ -9,7 +9,7 @@ use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
     Protocol::AaveV2,
-    crate::AaveV2Pool::liquidationCallCall,
+    crate::AaveV2::liquidationCallCall,
     Liquidation,
     [],
     call_data: true,
@@ -40,7 +40,7 @@ action_impl!(
 
 action_impl!(
     Protocol::AaveV2,
-    crate::AaveV2Pool::flashLoanCall,
+    crate::AaveV2::flashLoanCall,
     FlashLoan,
     [],
     call_data: true,

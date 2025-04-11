@@ -361,34 +361,46 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         };
 
         for (protocol, inner) in config {
-            let protocol: Protocol = protocol.parse().unwrap();
-            for (address, table) in inner.as_table().unwrap() {
-                let token_addr: Address = address.parse().unwrap();
-                let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
+            let protocol_str = protocol;
+            match protocol_str.parse::<Protocol>() {
+                Ok(protocol_enum) => {
+                    for (address, table) in inner.as_table().unwrap() {
+                        let token_addr: Address = address.parse().unwrap();
+                        let init_block =
+                            table.get("init_block").unwrap().as_integer().unwrap() as u64;
 
-                let table: Vec<TokenInfoWithAddressToml> = table
-                    .get("token_info")
-                    .map(|i| i.clone().try_into())
-                    .unwrap_or(Ok(vec![]))
-                    .unwrap_or(vec![]);
+                        let table: Vec<TokenInfoWithAddressToml> = table
+                            .get("token_info")
+                            .map(|i| i.clone().try_into())
+                            .unwrap_or(Ok(vec![]))
+                            .unwrap_or(vec![]);
 
-                for t_info in &table {
-                    self.libmdbx
-                        .write_token_info(t_info.address, t_info.decimals, t_info.symbol.clone())
-                        .await
-                        .unwrap();
+                        for t_info in &table {
+                            self.libmdbx
+                                .write_token_info(
+                                    t_info.address,
+                                    t_info.decimals,
+                                    t_info.symbol.clone(),
+                                )
+                                .await
+                                .unwrap();
+                        }
+
+                        let token_addrs = if table.len() < 2 {
+                            [Address::default(), Address::default()]
+                        } else {
+                            [table[0].address, table[1].address]
+                        };
+
+                        self.libmdbx
+                            .insert_pool(init_block, token_addr, &token_addrs, None, protocol_enum)
+                            .await
+                            .unwrap();
+                    }
                 }
-
-                let token_addrs = if table.len() < 2 {
-                    [Address::default(), Address::default()]
-                } else {
-                    [table[0].address, table[1].address]
-                };
-
-                self.libmdbx
-                    .insert_pool(init_block, token_addr, &token_addrs, None, protocol)
-                    .await
-                    .unwrap();
+                Err(e) => {
+                    tracing::error!(target: "brontes::init", protocol = %protocol_str, "Invalid protocol name found in classifier_config.toml: {}", e);
+                }
             }
         }
     }
