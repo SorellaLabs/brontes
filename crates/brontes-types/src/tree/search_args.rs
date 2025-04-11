@@ -1,15 +1,15 @@
 use std::fmt::Debug;
 
-use alloy_primitives::Address;
-
 use crate::{tree::NormalizedAction, Node, NodeData};
+use alloy_primitives::Address;
+use std::sync::Arc;
 
 pub trait TreeSearchFn<T: NormalizedAction>: Fn(&T) -> bool {
-    fn boxed(self) -> Box<dyn TreeSearchFn<T>>
+    fn boxed(self) -> Arc<Box<dyn TreeSearchFn<T>>>
     where
         Self: Sized + 'static,
     {
-        Box::new(self)
+        Arc::new(Box::new(self))
     }
 }
 
@@ -22,13 +22,14 @@ pub struct TreeSearchArgs {
     pub child_node_to_collect: bool,
 }
 
+#[derive(Clone)]
 pub struct TreeSearchBuilder<V: NormalizedAction> {
     /// these get or'd together
-    with_actions: Vec<Box<dyn TreeSearchFn<V>>>,
+    with_actions: Vec<Arc<Box<dyn TreeSearchFn<V>>>>,
     /// get or'd together with contains
-    child_node_have: Vec<Box<dyn TreeSearchFn<V>>>,
+    child_node_have: Vec<Arc<Box<dyn TreeSearchFn<V>>>>,
     /// gets and'd together
-    child_nodes_contains: Vec<Box<dyn TreeSearchFn<V>>>,
+    child_nodes_contains: Vec<Arc<Box<dyn TreeSearchFn<V>>>>,
     /// gets and'd together
     has_from_address: Option<Address>,
     /// gets and'd together
@@ -44,17 +45,17 @@ impl<V: NormalizedAction> Debug for TreeSearchBuilder<V> {
     }
 }
 
-impl<V: NormalizedAction> Clone for TreeSearchBuilder<V> {
-    fn clone(&self) -> Self {
-        Self {
-            with_actions: unsafe { std::mem::transmute_copy(&self.with_actions) },
-            child_node_have: unsafe { std::mem::transmute_copy(&self.child_node_have) },
-            child_nodes_contains: unsafe { std::mem::transmute_copy(&self.child_nodes_contains) },
-            has_from_address: self.has_from_address.clone(),
-            has_to_address: self.has_to_address.clone(),
-        }
-    }
-}
+// impl<V: NormalizedAction> Clone for TreeSearchBuilder<V> {
+//     fn clone(&self) -> Self {
+//         Self {
+//             with_actions: unsafe { std::mem::transmute_copy(&self.with_actions) },
+//             child_node_have: unsafe { std::mem::transmute_copy(&self.child_node_have) },
+//             child_nodes_contains: unsafe { std::mem::transmute_copy(&self.child_nodes_contains) },
+//             has_from_address: self.has_from_address.clone(),
+//             has_to_address: self.has_to_address.clone(),
+//         }
+//     }
+// }
 
 impl<V: NormalizedAction> Default for TreeSearchBuilder<V> {
     fn default() -> Self {
@@ -77,7 +78,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
     /// given function arg. if no child node search args are set. The search
     /// will use this action as the default.
     pub fn with_action(mut self, action_fn: impl Fn(&V) -> bool + 'static) -> Self {
-        self.with_actions.push(Box::new(action_fn));
+        self.with_actions.push(Arc::new(Box::new(action_fn)));
         self
     }
 
@@ -86,7 +87,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
     /// action fn will be used to search for child nodes
     pub fn with_actions<const N: usize>(
         mut self,
-        action_fns: [Box<dyn TreeSearchFn<V>>; N],
+        action_fns: [Arc<Box<dyn TreeSearchFn<V>>>; N],
     ) -> Self {
         self.with_actions.extend(
             action_fns, // .into_iter()
@@ -99,7 +100,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
     /// the following actions defined by the given functions
     pub fn child_nodes_have<const H: usize>(
         mut self,
-        action_fns: [impl Fn(&V) -> bool + 'static; H],
+        action_fns: [Arc<Box<dyn TreeSearchFn<V>>>; H],
     ) -> Self {
         if !self.child_nodes_contains.is_empty() {
             tracing::error!(
@@ -108,10 +109,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             return self;
         }
 
-        self.child_node_have = action_fns
-            .into_iter()
-            .map(|f| Box::new(f) as Box<dyn TreeSearchFn<V>>)
-            .collect();
+        self.child_node_have = action_fns.to_vec();
         self
     }
 
@@ -119,7 +117,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
     /// following actions defined by the given functions
     pub fn child_nodes_contain<const C: usize>(
         mut self,
-        action_fns: [impl Fn(&V) -> bool + 'static; C],
+        action_fns: [Arc<Box<dyn TreeSearchFn<V>>>; C],
     ) -> Self {
         if !self.child_node_have.is_empty() {
             tracing::error!(
@@ -127,10 +125,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             );
             return self;
         }
-        self.child_nodes_contains = action_fns
-            .into_iter()
-            .map(|f| Box::new(f) as Box<dyn TreeSearchFn<V>>)
-            .collect();
+        self.child_nodes_contains = action_fns.to_vec();
         self
     }
 
