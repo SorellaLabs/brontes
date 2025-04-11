@@ -74,7 +74,7 @@ impl Parse for MetricList {
             data.push(input.parse()?);
         }
 
-        panic!("{data:?}");
+        // panic!("{data:?}");
 
         Ok(Self { ptr: ptr_value, fn_name, data, scope })
     }

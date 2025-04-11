@@ -35,6 +35,14 @@ impl LibmdbxMetrics {
     }
 
     pub fn db_read<R>(self, fn_name: &str, f: impl FnOnce() -> R) -> R {
+        if self
+            .read_count
+            .get_metric_with_label_values(&[fn_name])
+            .is_err()
+        {
+            panic!("{fn_name:?}");
+        }
+
         self.read_count.with_label_values(&[fn_name]).inc();
 
         let now = Instant::now();
