@@ -75,9 +75,9 @@ use itertools::Itertools;
 
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 pub struct CexDexQuotesInspector<'db, DB: LibmdbxReader> {
-    utils:                SharedInspectorUtils<'db, DB>,
+    utils: SharedInspectorUtils<'db, DB>,
     _quotes_fetch_offset: u64,
-    _cex_exchanges:       Vec<CexExchange>,
+    _cex_exchanges: Vec<CexExchange>,
 }
 
 impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
@@ -97,9 +97,9 @@ impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
         metrics: Option<OutlierMetrics>,
     ) -> Self {
         Self {
-            utils:                SharedInspectorUtils::new(quote, db, metrics),
+            utils: SharedInspectorUtils::new(quote, db, metrics),
             _quotes_fetch_offset: quotes_fetch_offset,
-            _cex_exchanges:       cex_exchanges.to_owned(),
+            _cex_exchanges: cex_exchanges.to_owned(),
         }
     }
 }
@@ -160,10 +160,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
     ) -> Vec<Bundle> {
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
-                Action::is_swap,
-                Action::is_transfer,
-                Action::is_eth_transfer,
-                Action::is_aggregator,
+                Action::is_swap.boxed(),
+                Action::is_transfer.boxed(),
+                Action::is_eth_transfer.boxed(),
+                Action::is_aggregator.boxed(),
             ]))
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
@@ -381,9 +381,9 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         Some((
             ExchangeLeg {
-                pnl:           pnl_mid.to_float(),
+                pnl: pnl_mid.to_float(),
                 cex_mid_price: maker_taker_mid.0.to_float(),
-                exchange:      cex_quote.exchange,
+                exchange: cex_quote.exchange,
             },
             pairs_price,
         ))

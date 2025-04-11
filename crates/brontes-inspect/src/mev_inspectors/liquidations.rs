@@ -3,11 +3,13 @@ use std::sync::Arc;
 use alloy_primitives::{b256, Address};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_types::TreeSearchFn;
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
     normalized_actions::{accounting::ActionAccounting, Action},
-    ActionIter, BlockData, FastHashSet, MultiBlockData, ToFloatNearest, TreeSearchBuilder, TxInfo,
+    ActionIter, BlockData, FastHashSet, MultiBlockData, ToFloatNearest, TreeSearchBuilder,
+    TreeSearchFn, TxInfo,
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -44,11 +46,11 @@ impl<DB: LibmdbxReader> Inspector for LiquidationInspector<'_, DB> {
             let (tx, liq): (Vec<_>, Vec<_>) = tree
                 .clone()
                 .collect_all(TreeSearchBuilder::default().with_actions([
-                    Action::is_swap,
-                    Action::is_liquidation,
-                    Action::is_transfer,
-                    Action::is_eth_transfer,
-                    Action::is_aggregator,
+                    Action::is_swap.boxed(),
+                    Action::is_liquidation.boxed(),
+                    Action::is_transfer.boxed(),
+                    Action::is_eth_transfer.boxed(),
+                    Action::is_aggregator.boxed(),
                 ]))
                 .unzip();
             let tx_info = tree.get_tx_info_batch(&tx, self.utils.db);
@@ -144,12 +146,12 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         );
 
         let new_liquidation = Liquidation {
-            block_number:        metadata.block_num,
+            block_number: metadata.block_num,
             liquidation_tx_hash: info.tx_hash,
-            trigger:             b256!(),
-            liquidation_swaps:   swaps,
-            liquidations:        liqs,
-            gas_details:         info.gas_details,
+            trigger: b256!(),
+            liquidation_swaps: swaps,
+            liquidations: liqs,
+            gas_details: info.gas_details,
         };
 
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })

@@ -4,7 +4,14 @@ use alloy_primitives::Address;
 
 use crate::{tree::NormalizedAction, Node, NodeData};
 
-pub trait TreeSearchFn<T: NormalizedAction>: Fn(&T) -> bool {}
+pub trait TreeSearchFn<T: NormalizedAction>: Fn(&T) -> bool {
+    fn boxed(self) -> Box<dyn TreeSearchFn<T>>
+    where
+        Self: Sized + 'static,
+    {
+        Box::new(self)
+    }
+}
 
 impl<T: NormalizedAction, D: Fn(&T) -> bool> TreeSearchFn<T> for D {}
 

@@ -114,11 +114,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     tree.clone().collect(
                         tx,
                         TreeSearchBuilder::default().with_actions([
-                            Action::is_mint,
-                            Action::is_burn,
-                            Action::is_transfer,
-                            Action::is_eth_transfer,
-                            Action::is_nested_action,
+                            Action::is_mint.boxed(),
+                            Action::is_burn.boxed(),
+                            Action::is_transfer.boxed(),
+                            Action::is_eth_transfer.boxed(),
+                            Action::is_nested_action.boxed(),
                         ]),
                     ),
                     &|actions| {
@@ -326,13 +326,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     collect
                         .into_iter()
                         .map(|c| NormalizedBurn {
-                            recipient:   c.recipient,
+                            recipient: c.recipient,
                             trace_index: c.trace_index,
-                            protocol:    c.protocol,
-                            amount:      c.amount,
-                            token:       c.token,
-                            pool:        c.pool,
-                            from:        c.from,
+                            protocol: c.protocol,
+                            amount: c.amount,
+                            token: c.token,
+                            pool: c.pool,
+                            from: c.from,
                         })
                         .collect_vec()
                 })
@@ -493,11 +493,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                         match set.entry(root.get_to_address()) {
                             Entry::Vacant(e) => {
                                 e.insert(PossibleJit {
-                                    eoa:               *frontrun_eoa,
-                                    frontrun_txes:     vec![*prev_tx_hash],
-                                    backrun_tx:        root.tx_hash,
+                                    eoa: *frontrun_eoa,
+                                    frontrun_txes: vec![*prev_tx_hash],
+                                    backrun_tx: root.tx_hash,
                                     executor_contract: root.get_to_address(),
-                                    victims:           vec![frontrun_victims],
+                                    victims: vec![frontrun_victims],
                                 });
                             }
                             Entry::Occupied(mut o) => {
@@ -525,11 +525,11 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                         match set.entry(root.head.address) {
                             Entry::Vacant(e) => {
                                 e.insert(PossibleJit {
-                                    eoa:               root.head.address,
-                                    frontrun_txes:     vec![prev_tx_hash],
-                                    backrun_tx:        root.tx_hash,
+                                    eoa: root.head.address,
+                                    frontrun_txes: vec![prev_tx_hash],
+                                    backrun_tx: root.tx_hash,
                                     executor_contract: root.get_to_address(),
-                                    victims:           vec![frontrun_victims],
+                                    victims: vec![frontrun_victims],
                                 });
                             }
                             Entry::Occupied(mut o) => {

@@ -12,7 +12,7 @@ use brontes_types::{
         NormalizedTransfer,
     },
     BlockData, FastHashSet, IntoZip, MultiBlockData, ToFloatNearest, TreeBase, TreeCollector,
-    TreeSearchBuilder, TxInfo,
+    TreeSearchBuilder, TreeSearchFn, TxInfo,
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
@@ -56,10 +56,10 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
         let execution = || {
             tree.clone()
                 .collect_all(TreeSearchBuilder::default().with_actions([
-                    Action::is_swap,
-                    Action::is_transfer,
-                    Action::is_eth_transfer,
-                    Action::is_nested_action,
+                    Action::is_swap.boxed(),
+                    Action::is_transfer.boxed(),
+                    Action::is_eth_transfer.boxed(),
+                    Action::is_nested_action.boxed(),
                 ]))
                 .t_full_map(|(tree, v)| {
                     let (tx_hashes, v): (Vec<_>, Vec<_>) = v.unzip();

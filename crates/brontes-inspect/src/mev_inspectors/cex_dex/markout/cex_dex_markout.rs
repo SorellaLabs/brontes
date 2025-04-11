@@ -48,8 +48,8 @@ pub const FILTER_THRESHOLD: u64 = 20;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
 
 pub struct CexDexMarkoutInspector<'db, DB: LibmdbxReader> {
-    pub utils:     SharedInspectorUtils<'db, DB>,
-    trade_config:  CexDexTradeConfig,
+    pub utils: SharedInspectorUtils<'db, DB>,
+    trade_config: CexDexTradeConfig,
     cex_exchanges: Vec<CexExchange>,
 }
 
@@ -109,11 +109,11 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let (hashes, actions): (Vec<_>, Vec<_>) = tree
             .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
-                Action::is_swap,
-                Action::is_transfer,
-                Action::is_eth_transfer,
-                Action::is_aggregator,
-                Action::is_batch,
+                Action::is_swap.boxed(),
+                Action::is_transfer.boxed(),
+                Action::is_eth_transfer.boxed(),
+                Action::is_aggregator.boxed(),
+                Action::is_batch.boxed(),
             ]))
             .unzip();
 

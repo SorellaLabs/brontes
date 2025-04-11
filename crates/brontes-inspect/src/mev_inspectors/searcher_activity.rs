@@ -3,6 +3,7 @@ use std::sync::Arc;
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_types::TreeSearchFn;
 use brontes_types::{
     db::dex::BlockPrice,
     mev::{Bundle, BundleData, MevType, SearcherTx},
@@ -57,7 +58,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
         let search_args = TreeSearchBuilder::default()
-            .with_actions([Action::is_transfer, Action::is_eth_transfer]);
+            .with_actions([Action::is_transfer.boxed(), Action::is_eth_transfer.boxed()]);
 
         let (hashes, transfers): (Vec<_>, Vec<_>) = tree.clone().collect_all(search_args).unzip();
         let tx_info = tree.get_tx_info_batch(&hashes, self.utils.db);

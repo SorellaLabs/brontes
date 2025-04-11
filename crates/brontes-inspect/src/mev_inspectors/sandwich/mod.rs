@@ -25,6 +25,7 @@ use types::{PossibleSandwich, PossibleSandwichWithTxInfo};
 
 use super::MAX_PROFIT;
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata, MIN_PROFIT};
+use brontes_types::TreeSearchFn;
 
 type GroupedVictims<'a> = HashMap<Address, Vec<&'a (Vec<NormalizedSwap>, Vec<NormalizedTransfer>)>>;
 
@@ -79,10 +80,10 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
     ) -> Vec<Bundle> {
         tracing::trace!("starting sandwich");
         let search_args = TreeSearchBuilder::default().with_actions([
-            Action::is_swap,
-            Action::is_transfer,
-            Action::is_eth_transfer,
-            Action::is_nested_action,
+            Action::is_swap.boxed(),
+            Box::new(Action::is_transfer),
+            Box::new(Action::is_eth_transfer),
+            Box::new(Action::is_nested_action),
         ]);
 
         self.get_possible_sandwich(tree.clone())
@@ -1028,11 +1029,11 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Action>>) -> Vec<
                     match possible_sandwiches.entry(root.head.address) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
-                                eoa:                   root.head.address,
-                                possible_frontruns:    vec![prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
+                                eoa: root.head.address,
+                                possible_frontruns: vec![prev_tx_hash],
+                                possible_backrun: root.tx_hash,
                                 mev_executor_contract: root.get_to_address(),
-                                victims:               vec![frontrun_victims],
+                                victims: vec![frontrun_victims],
                             });
                         }
                         Entry::Occupied(mut o) => {
@@ -1095,11 +1096,11 @@ fn get_possible_sandwich_duplicate_contracts(
                     match possible_sandwiches.entry(root.get_to_address()) {
                         Entry::Vacant(e) => {
                             e.insert(PossibleSandwich {
-                                eoa:                   *frontrun_eoa,
-                                possible_frontruns:    vec![*prev_tx_hash],
-                                possible_backrun:      root.tx_hash,
+                                eoa: *frontrun_eoa,
+                                possible_frontruns: vec![*prev_tx_hash],
+                                possible_backrun: root.tx_hash,
                                 mev_executor_contract: root.get_to_address(),
-                                victims:               vec![frontrun_victims],
+                                victims: vec![frontrun_victims],
                             });
                         }
                         Entry::Occupied(mut o) => {
