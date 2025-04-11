@@ -373,11 +373,11 @@ impl<V: NormalizedAction> BlockTree<V> {
 
 #[cfg(test)]
 pub mod test {
-    use std::sync::Arc;
-
     use alloy_primitives::hex;
     use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::TreeSearchFn;
     use brontes_types::{normalized_actions::Action, BlockTree, TreeSearchBuilder};
+    use std::sync::Arc;
 
     async fn load_tree() -> Arc<BlockTree<Action>> {
         let classifier_utils = ClassifierTestUtils::new().await;
