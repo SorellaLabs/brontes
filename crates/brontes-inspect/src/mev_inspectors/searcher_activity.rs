@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -11,7 +12,6 @@ use brontes_types::{
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::Address;
 
 use super::{MAX_PROFIT, MIN_PROFIT};
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -65,7 +65,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
         multizip((hashes, transfers, tx_info))
             .filter_map(|(tx_hash, transfers, info)| {
                 if transfers.is_empty() {
-                    return None
+                    return None;
                 }
                 let info = info?;
 

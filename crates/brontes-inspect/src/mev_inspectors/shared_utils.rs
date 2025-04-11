@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, TxHash};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -29,7 +29,6 @@ use malachite::{
     },
     Rational,
 };
-use reth_primitives::TxHash;
 
 const CONNECTION_TH: usize = 2;
 const LOW_LIQ_TH: Rational = Rational::const_from_unsigned(50_000u64);
@@ -71,7 +70,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         for (address, token_deltas) in deltas {
             for (token_addr, amount) in token_deltas {
                 if amount == &Rational::ZERO {
-                    continue
+                    continue;
                 }
 
                 let pair = Pair(*token_addr, self.quote);
@@ -168,7 +167,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             // we do this so if the transfer is from a mev contract or a searcher, it gets
             // ignored
             if invalid_addresses.contains(&t.from) {
-                continue
+                continue;
             }
 
             pools.entry(t.to).or_default().push((
@@ -192,14 +191,14 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .into_iter()
             .filter_map(|(pool, mut possible_swaps)| {
                 if possible_swaps.len() != 2 {
-                    return None
+                    return None;
                 }
 
                 let (f_token, f_direction, f_am, f_addr, f_trace) = possible_swaps.pop()?;
                 let (s_token, s_direction, s_am, s_addr, s_trace) = possible_swaps.pop()?;
 
                 if s_token == f_token || s_direction == f_direction {
-                    return None
+                    return None;
                 }
                 let trace_index = std::cmp::min(f_trace, s_trace);
 
@@ -233,7 +232,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(amount.clone())
+            return Some(amount.clone());
         }
         let price = self.get_token_price_on_dex(tx_index, at, token_address, metadata)?;
         Some(price * amount)
@@ -247,7 +246,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(amount.clone())
+            return Some(amount.clone());
         }
         let price = self.get_token_price_on_dex_block(block_price, token_address, metadata)?;
         Some(price * amount)
@@ -261,7 +260,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(Rational::ONE)
+            return Some(Rational::ONE);
         }
 
         let pair = Pair(token_address, self.quote);
@@ -282,7 +281,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         metadata: &Arc<Metadata>,
     ) -> Option<Rational> {
         if token_address == self.quote {
-            return Some(Rational::ONE)
+            return Some(Rational::ONE);
         }
 
         let pair = Pair(token_address, self.quote);
@@ -553,7 +552,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         mev_type: MevType,
     ) -> bool {
         if swaps.is_empty() {
-            return true
+            return true;
         }
 
         let pcts = tokens
@@ -636,7 +635,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .collect_vec();
 
         if pcts.is_empty() {
-            return true
+            return true;
         }
 
         pcts.into_iter()
@@ -663,12 +662,12 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
 
         for i in 0..len {
             if removals.contains(&i) {
-                continue
+                continue;
             }
 
             for j in 0..len {
                 if i == j || removals.contains(&j) {
-                    continue
+                    continue;
                 }
 
                 let i_hash = &bundles[i].0;
@@ -715,7 +714,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         mev_type: MevType,
     ) -> Option<NormalizedSwap> {
         if !(transfers.len() == 2 && (info.is_labelled_searcher_of_type(mev_type) || cfg!(test))) {
-            return None
+            return None;
         }
         let ingore_addresses = info.collect_address_set_for_accounting();
 
@@ -746,7 +745,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                 let s1 = swaps.remove(0);
 
                 if voided.contains(s0) || voided.contains(s1) {
-                    return None
+                    return None;
                 }
                 // if s0 is first hop
                 if s0.token_out == intermediary

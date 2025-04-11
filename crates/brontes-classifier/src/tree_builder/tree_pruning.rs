@@ -34,12 +34,12 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Action>) {
                         return Some((
                             Some(((swaps.pop().unwrap(), eth_transfers.pop()), idx)),
                             None,
-                        ))
+                        ));
                     } else if !transfers.is_empty() {
                         return Some((
                             None,
                             Some(((transfers.pop().unwrap(), eth_transfers.pop()), idx)),
-                        ))
+                        ));
                     }
                     None
                 })
@@ -48,7 +48,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Action>) {
             for ((mut swap, eth_transfer), swap_idx) in swaps {
                 transfers.iter_mut().for_each(|((transfer, _), _)| {
                     if transfer.fee == Rational::ZERO {
-                        return
+                        return;
                     }
 
                     // adjust the amount out case
@@ -91,7 +91,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Action>) {
                             swap.push(Action::EthTransfer(eth_t));
                         }
                         data.replace(swap_idx, swap);
-                        return
+                        return;
                     }
                 });
             }

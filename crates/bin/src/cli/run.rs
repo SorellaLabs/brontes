@@ -264,7 +264,7 @@ impl RunArgs {
     fn check_proper_range(&self) -> eyre::Result<()> {
         if let (Some(start), Some(end)) = (&self.start_block, &self.end_block) {
             if start > end {
-                return Err(eyre::eyre!("start block must be less than end block"))
+                return Err(eyre::eyre!("start block must be less than end block"));
             }
         }
         Ok(())
@@ -288,7 +288,7 @@ fn parse_ranges(ranges: &[String]) -> Result<Vec<(u64, u64)>, String> {
                 return Err(format!(
                     "start block {} must be less than or equal to end block {}",
                     start, end
-                ))
+                ));
             }
             Ok((start, end))
         })

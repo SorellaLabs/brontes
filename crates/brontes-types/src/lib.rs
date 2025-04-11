@@ -1,11 +1,7 @@
-#![feature(trait_alias)]
-#![feature(trivial_bounds)]
-#![feature(const_type_id)]
-#![feature(core_intrinsics)]
-#![feature(const_for)]
-#![feature(const_mut_refs)]
 #![allow(internal_features)]
 #![allow(clippy::type_complexity)]
+#![allow(unexpected_cfgs)]
+#![allow(clippy::empty_line_after_doc_comments)]
 
 pub mod multi_block;
 pub use multi_block::*;

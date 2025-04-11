@@ -633,7 +633,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
 #[cfg(feature = "sorella-server")]
 fn calculate_buffer_size(state_to_init: &StateToInitialize, max_tasks: usize) -> usize {
     if state_to_init.ranges_to_init.is_empty() {
-        return (max_tasks / 4).clamp(4, 30)
+        return (max_tasks / 4).clamp(4, 30);
     }
 
     let initializing_cex = state_to_init.ranges_to_init.contains_key(&Tables::CexPrice)
@@ -686,7 +686,7 @@ impl RangeType {
         match self {
             RangeType::SingleRange { start_block, from_db_tip, .. } => {
                 if !from_db_tip {
-                    return *start_block
+                    return *start_block;
                 }
                 db.get_most_recent_block().ok()
             }

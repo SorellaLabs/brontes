@@ -7,14 +7,16 @@ use reth_db::{
     transaction::{DbTx, DbTxMut},
     DatabaseError, DatabaseWriteOperation, TableType,
 };
-use reth_interfaces::db::DatabaseWriteError;
+use reth_storage_errors::db::DatabaseWriteError;
 
+//
 use super::{cursor::LibmdbxCursor, utils::decode_one};
 use crate::libmdbx::{
     env::DatabaseEnv,
     tables::{Tables, NUM_TABLES},
 };
 
+#[derive(Debug)]
 pub(crate) struct LibmdbxTx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
     inner:      Transaction<K>,
@@ -161,6 +163,17 @@ impl<K: TransactionKind> DbTx for LibmdbxTx<K> {
             .db_stat_with_dbi(self.get_dbi::<T>()?)
             .map_err(|e| DatabaseError::Stats(e.into()))?
             .entries())
+    }
+
+    fn get_by_encoded_key<T: Table>(
+        &self,
+        key: &<T::Key as Encode>::Encoded,
+    ) -> Result<Option<T::Value>, DatabaseError> {
+        self.inner
+            .get(self.get_dbi::<T>()?, key.as_ref())
+            .map_err(|e| DatabaseError::Read(e.into()))?
+            .map(decode_one::<T>)
+            .transpose()
     }
 }
 

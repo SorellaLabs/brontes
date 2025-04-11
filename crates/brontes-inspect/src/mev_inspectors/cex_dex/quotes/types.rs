@@ -1,3 +1,4 @@
+use alloy_primitives::Address;
 use brontes_types::{
     db::cex::CexExchange,
     mev::{BundleData, CexDexQuote},
@@ -5,7 +6,6 @@ use brontes_types::{
     ToFloatNearest, TxInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::Address;
 use tracing::warn;
 
 #[derive(Debug, Default)]

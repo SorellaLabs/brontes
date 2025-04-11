@@ -66,7 +66,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
     ) -> Vec<Bundle> {
         if metadata.cex_trades.is_none() {
             tracing::warn!("no cex trades for block");
-            return vec![]
+            return vec![];
         }
         // call inner to avoid metrics
         let jit_bundles = self.jit.inspect_block_inner(tree.clone(), metadata.clone());
@@ -82,7 +82,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                 let tx_info = tree.get_tx_info(jits.header.tx_hash, self.jit.utils.db)?;
 
                 if !tx_info.is_searcher_of_type_with_count_threshold(MevType::JitCexDex, 10) {
-                    return None
+                    return None;
                 }
 
                 let mut mint_burn_deltas: FastHashMap<
@@ -156,7 +156,7 @@ impl<DB: LibmdbxReader> JitCexDex<'_, DB> {
                         m.branch_filtering_trigger(MevType::JitCexDex, "is_triangular_arb")
                     });
 
-                    return None
+                    return None;
                 }
 
                 let mut possible_cex_dex: CexDexProcessing = self.cex_dex.detect_cex_dex(

@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
+use alloy_primitives::{Address, B256};
 use brontes_types::{FastHashMap, TxInfo};
-use reth_primitives::{Address, B256};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct PossibleSandwich {

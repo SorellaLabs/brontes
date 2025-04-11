@@ -1,6 +1,6 @@
 use std::{ffi::CString, ptr};
 
-use ffi::MDBX_db_flags_t;
+use reth_mdbx_sys::MDBX_db_flags_t;
 
 use crate::{
     error::{mdbx_result, Result},
@@ -14,7 +14,7 @@ use crate::{
 /// environment.
 #[derive(Debug)]
 pub struct Database {
-    dbi:  ffi::MDBX_dbi,
+    dbi:  reth_mdbx_sys::MDBX_dbi,
     /// The environment that this database belongs to keeps it alive as long as
     /// the database instance exists.
     _env: Option<Environment>,
@@ -32,14 +32,14 @@ impl Database {
     ) -> Result<Self> {
         let c_name = name.map(|n| CString::new(n).unwrap());
         let name_ptr = if let Some(c_name) = &c_name { c_name.as_ptr() } else { ptr::null() };
-        let mut dbi: ffi::MDBX_dbi = 0;
+        let mut dbi: reth_mdbx_sys::MDBX_dbi = 0;
         txn.txn_execute(|txn_ptr| {
-            mdbx_result(unsafe { ffi::mdbx_dbi_open(txn_ptr, name_ptr, flags, &mut dbi) })
+            mdbx_result(unsafe { reth_mdbx_sys::mdbx_dbi_open(txn_ptr, name_ptr, flags, &mut dbi) })
         })??;
         Ok(Self::new_from_ptr(dbi, txn.env().clone()))
     }
 
-    pub(crate) fn new_from_ptr(dbi: ffi::MDBX_dbi, env: Environment) -> Self {
+    pub(crate) fn new_from_ptr(dbi: reth_mdbx_sys::MDBX_dbi, env: Environment) -> Self {
         Self { dbi, _env: Some(env) }
     }
 
@@ -52,7 +52,7 @@ impl Database {
     ///
     /// The caller **must** ensure that the handle is not used after the
     /// lifetime of the environment, or after the database has been closed.
-    pub fn dbi(&self) -> ffi::MDBX_dbi {
+    pub fn dbi(&self) -> reth_mdbx_sys::MDBX_dbi {
         self.dbi
     }
 }

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 setup() {
-  if rustup default nightly; then : ; else return 1; fi
+  if rustup default 1.85.0; then : ; else return 1; fi
   
   echo "setting up db at /home/brontes-ci/data/$2"
   mkdir -p "/home/brontes-ci/data/$2"
@@ -44,7 +44,7 @@ if [ "$3" = "$IT" ]; then
 fi 
 
 if [ "$3" = "$TEST" ]; then 
-  if cargo test -j 20 --features $4 --profile release -- --nocapture --show-output; then : ;else  teardown $2; exit 1; fi
+  if cargo test -j 20 --features $4 -- --nocapture --show-output; then : ;else  teardown $2; exit 1; fi
 fi
 
 if [ "$3" = "$BENCH" ]; then 
@@ -52,4 +52,3 @@ if [ "$3" = "$BENCH" ]; then
 fi 
 
 teardown $2
-

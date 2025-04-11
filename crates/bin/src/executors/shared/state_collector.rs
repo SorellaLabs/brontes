@@ -7,7 +7,8 @@ use std::{
     task::{Poll, Waker},
 };
 
-use alloy_primitives::Address;
+use alloy_consensus::Header;
+use alloy_primitives::{Address, BlockHash};
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
@@ -21,7 +22,6 @@ use brontes_types::{
 };
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
-use reth_primitives::{BlockHash, Header};
 use tracing::{span, trace, Instrument, Level};
 
 use super::{metadata_loader::MetadataLoader, multi_block_window::MultiBlockWindow};
@@ -89,7 +89,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
     ) -> eyre::Result<(BlockHash, BlockTree<Action>)> {
         let Some((block_hash, traces, header)) = fut.await else {
             classifier.block_load_failure(block);
-            return Err(eyre!("no traces found {block}"))
+            return Err(eyre!("no traces found {block}"));
         };
 
         trace!("Got {} traces + header", traces.len());
@@ -153,7 +153,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
                 }
                 Poll::Ready(Err(e)) => {
                     tracing::error!(error = %e, "state collector");
-                    return Poll::Ready(None)
+                    return Poll::Ready(None);
                 }
                 Poll::Pending => {
                     self.collection_future = Some(collection_future);
@@ -165,7 +165,8 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle> Str
             && self.metadata_fetcher.is_finished()
             && self.collection_future.is_none()
         {
-            return Poll::Ready(None)
+            tracing::info!("marked as finished and nothing else queued in pipeline");
+            return Poll::Ready(None);
         }
 
         self.metadata_fetcher

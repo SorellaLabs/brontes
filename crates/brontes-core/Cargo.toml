@@ -12,16 +12,13 @@ harness = false
 reth-tasks.workspace = true
 reth-rpc.workspace = true
 reth-rpc-api.workspace = true
-reth-rpc-types.workspace = true
 reth-primitives.workspace = true
 reth-provider.workspace = true
 reth-transaction-pool.workspace = true
 reth-network-api.workspace = true
 reth-db.workspace = true
-reth-blockchain-tree.workspace = true
-reth-beacon-consensus.workspace = true
-reth-interfaces.workspace = true
 reth-metrics.workspace = true
+reth-storage-errors.workspace = true
 reth-tracing-ext.workspace = true
 ruint = { workspace = true, features = ["primitive-types", "rlp"] }
 brontes-types.workspace = true
@@ -40,12 +37,14 @@ malachite.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro.workspace = true
+alloy-consensus.workspace = true
 alloy-primitives.workspace = true
 alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-provider.workspace = true
 alloy-transport-http.workspace = true
-alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
+alloy-rpc-types.workspace = true
+alloy-rpc-types-trace = { workspace = true, optional = true }
 
 # Serde 
 serde.workspace = true
@@ -82,7 +81,7 @@ criterion = { version = "0.5", features = ["async", "async_tokio"] }
 
 [features]
 default = []
-dyn-decode = []
+dyn-decode = ["dep:alloy-rpc-types-trace"]
 tests = []
 local-reth = [
   "brontes-types/local-reth",

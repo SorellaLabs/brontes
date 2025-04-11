@@ -3,7 +3,7 @@ use crate::serde_utils::address;
 use alloy_primitives::Address;
 use clickhouse::Row;
 use itertools::Itertools;
-use reth_primitives::TxHash;
+use alloy_primitives::TxHash;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use crate::serde_utils::vec_address;

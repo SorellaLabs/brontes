@@ -15,6 +15,9 @@ use malachite::{num::basic::traits::Zero, Rational};
 
 mod tree_pruning;
 pub(crate) mod utils;
+use alloy_consensus::Header;
+use alloy_primitives::Address;
+use alloy_rpc_types_trace::parity::{Action as TraceAction, CallType};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
@@ -26,8 +29,6 @@ use brontes_types::{
 use futures::future::join_all;
 use itertools::Itertools;
 use malachite::num::arithmetic::traits::Abs;
-use reth_primitives::{Address, Header};
-use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, trace};
 use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};
@@ -142,7 +143,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             empty = trace.trace.is_empty(),
                             is_success = trace.is_success
                         );
-                        return None
+                        return None;
                     }
                     // post classification processing collectors
                     let mut further_classification_requests = Vec::new();
@@ -219,7 +220,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 });
 
                                 tx_root.insert(node, vec![classification]);
-                                continue
+                                continue;
                             }
                         }
 
@@ -328,7 +329,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Vec<Action>) {
         if trace.trace.error.is_some() {
-            return (vec![], vec![Action::Revert])
+            return (vec![], vec![Action::Revert]);
         }
         let (pricing, base_action) = match trace.action_type() {
             TraceAction::Call(_) => {
@@ -364,7 +365,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         trace_index: u64,
     ) -> (Vec<DexPriceMsg>, Vec<Action>) {
         if trace.is_static_call() {
-            return (vec![], vec![Action::Unclassified(trace)])
+            return (vec![], vec![Action::Unclassified(trace)]);
         }
         let mut call_info = trace.get_callframe_info();
 
@@ -409,14 +410,14 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             .classify_transfer(tx_idx, trace_index, &trace, block)
             .await
         {
-            return transfer
+            return transfer;
         } else {
             return (
                 vec![],
                 vec![self
                     .classify_eth_transfer(&trace, trace_index)
                     .unwrap_or(Action::Unclassified(trace))],
-            )
+            );
         }
     }
 
@@ -428,7 +429,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         block: u64,
     ) -> Option<(Vec<DexPriceMsg>, Vec<Action>)> {
         if trace.is_delegate_call() {
-            return None
+            return None;
         };
 
         // Attempt to decode the transfer
@@ -452,7 +453,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             || transfer.from != from
                             || transfer.to != to
                         {
-                            continue
+                            continue;
                         }
 
                         let decimals = transfer.token.decimals;
@@ -464,7 +465,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             transfer.amount = transferred_amount;
                             transfer.fee = fee;
                         }
-                        break
+                        break;
                     }
                 }
 
@@ -517,7 +518,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 action: Action::Transfer(transfer.clone()),
                             })],
                             vec![Action::Transfer(transfer)],
-                        ))
+                        ));
                     }
                 }
                 None
@@ -554,7 +555,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
         if created_addr == Address::ZERO {
             tracing::error!(target: "brontes_classifier::discovery", "created address is zero address");
-            return (vec![], vec![Action::Unclassified(trace)])
+            return (vec![], vec![Action::Unclassified(trace)]);
         }
 
         // get the immediate parent node of this create action so that we can decode the
@@ -588,7 +589,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                     "No root head found for trace index: {}",
                     trace_index
                 );
-                return (vec![], vec![Action::Unclassified(trace)])
+                return (vec![], vec![Action::Unclassified(trace)]);
             }
         };
 
@@ -605,7 +606,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 "No parent calldata found for created address: {}",
                 created_addr
             );
-            return (vec![], vec![Action::Unclassified(trace)])
+            return (vec![], vec![Action::Unclassified(trace)]);
         }
 
         join_all(

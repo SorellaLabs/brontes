@@ -1,1017 +1,1017 @@
 [
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "zeroExAddress",
-          "type": "address"
-        },
-        {
-          "internalType": "contract IEtherToken",
-          "name": "weth",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "orderHash",
-          "type": "bytes32"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "maker",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "taker",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "makerToken",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "takerToken",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint128",
-          "name": "makerTokenFilledAmount",
-          "type": "uint128"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint128",
-          "name": "takerTokenFilledAmount",
-          "type": "uint128"
-        }
-      ],
-      "name": "OtcOrderFilled",
-      "type": "event"
-    },
-    {
-      "inputs": [],
-      "name": "EIP712_DOMAIN_SEPARATOR",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "FEATURE_NAME",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "FEATURE_VERSION",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "makerSignature",
-          "type": "tuple"
-        },
-        {
-          "internalType": "uint128",
-          "name": "takerTokenFillAmount",
-          "type": "uint128"
-        },
-        {
-          "internalType": "address",
-          "name": "taker",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "useSelfBalance",
-          "type": "bool"
-        },
-        {
-          "internalType": "address",
-          "name": "recipient",
-          "type": "address"
-        }
-      ],
-      "name": "_fillOtcOrder",
-      "outputs": [
-        {
-          "internalType": "uint128",
-          "name": "takerTokenFilledAmount",
-          "type": "uint128"
-        },
-        {
-          "internalType": "uint128",
-          "name": "makerTokenFilledAmount",
-          "type": "uint128"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "tuple[]",
-          "name": "orders",
-          "type": "tuple[]"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "tuple[]",
-          "name": "makerSignatures",
-          "type": "tuple[]"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "tuple[]",
-          "name": "takerSignatures",
-          "type": "tuple[]"
-        },
-        {
-          "internalType": "bool[]",
-          "name": "unwrapWeth",
-          "type": "bool[]"
-        }
-      ],
-      "name": "batchFillTakerSignedOtcOrders",
-      "outputs": [
-        {
-          "internalType": "bool[]",
-          "name": "successes",
-          "type": "bool[]"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "makerSignature",
-          "type": "tuple"
-        },
-        {
-          "internalType": "uint128",
-          "name": "takerTokenFillAmount",
-          "type": "uint128"
-        }
-      ],
-      "name": "fillOtcOrder",
-      "outputs": [
-        {
-          "internalType": "uint128",
-          "name": "takerTokenFilledAmount",
-          "type": "uint128"
-        },
-        {
-          "internalType": "uint128",
-          "name": "makerTokenFilledAmount",
-          "type": "uint128"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "makerSignature",
-          "type": "tuple"
-        },
-        {
-          "internalType": "uint128",
-          "name": "takerTokenFillAmount",
-          "type": "uint128"
-        }
-      ],
-      "name": "fillOtcOrderForEth",
-      "outputs": [
-        {
-          "internalType": "uint128",
-          "name": "takerTokenFilledAmount",
-          "type": "uint128"
-        },
-        {
-          "internalType": "uint128",
-          "name": "makerTokenFilledAmount",
-          "type": "uint128"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "makerSignature",
-          "type": "tuple"
-        }
-      ],
-      "name": "fillOtcOrderWithEth",
-      "outputs": [
-        {
-          "internalType": "uint128",
-          "name": "takerTokenFilledAmount",
-          "type": "uint128"
-        },
-        {
-          "internalType": "uint128",
-          "name": "makerTokenFilledAmount",
-          "type": "uint128"
-        }
-      ],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "makerSignature",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "takerSignature",
-          "type": "tuple"
-        }
-      ],
-      "name": "fillTakerSignedOtcOrder",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "makerSignature",
-          "type": "tuple"
-        },
-        {
-          "components": [
-            {
-              "internalType": "enum LibSignature.SignatureType",
-              "name": "signatureType",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint8",
-              "name": "v",
-              "type": "uint8"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "r",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "s",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct LibSignature.Signature",
-          "name": "takerSignature",
-          "type": "tuple"
-        }
-      ],
-      "name": "fillTakerSignedOtcOrderForEth",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        }
-      ],
-      "name": "getOtcOrderHash",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "orderHash",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "components": [
-            {
-              "internalType": "contract IERC20Token",
-              "name": "makerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "contract IERC20Token",
-              "name": "takerToken",
-              "type": "address"
-            },
-            {
-              "internalType": "uint128",
-              "name": "makerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "uint128",
-              "name": "takerAmount",
-              "type": "uint128"
-            },
-            {
-              "internalType": "address",
-              "name": "maker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "taker",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "txOrigin",
-              "type": "address"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryAndNonce",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrder",
-          "name": "order",
-          "type": "tuple"
-        }
-      ],
-      "name": "getOtcOrderInfo",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "bytes32",
-              "name": "orderHash",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "enum LibNativeOrder.OrderStatus",
-              "name": "status",
-              "type": "uint8"
-            }
-          ],
-          "internalType": "struct LibNativeOrder.OtcOrderInfo",
-          "name": "orderInfo",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "txOrigin",
-          "type": "address"
-        },
-        {
-          "internalType": "uint64",
-          "name": "nonceBucket",
-          "type": "uint64"
-        }
-      ],
-      "name": "lastOtcTxOriginNonce",
-      "outputs": [
-        {
-          "internalType": "uint128",
-          "name": "lastNonce",
-          "type": "uint128"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "migrate",
-      "outputs": [
-        {
-          "internalType": "bytes4",
-          "name": "success",
-          "type": "bytes4"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ]
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "zeroExAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IEtherToken",
+        "name": "weth",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "maker",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "taker",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "makerToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "takerToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "makerTokenFilledAmount",
+        "type": "uint128"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint128",
+        "name": "takerTokenFilledAmount",
+        "type": "uint128"
+      }
+    ],
+    "name": "OtcOrderFilled",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "EIP712_DOMAIN_SEPARATOR",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FEATURE_NAME",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FEATURE_VERSION",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "makerSignature",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint128",
+        "name": "takerTokenFillAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "address",
+        "name": "taker",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "useSelfBalance",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      }
+    ],
+    "name": "_fillOtcOrder",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "takerTokenFilledAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "makerTokenFilledAmount",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "tuple[]",
+        "name": "orders",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "tuple[]",
+        "name": "makerSignatures",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "tuple[]",
+        "name": "takerSignatures",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "bool[]",
+        "name": "unwrapWeth",
+        "type": "bool[]"
+      }
+    ],
+    "name": "batchFillTakerSignedOtcOrders",
+    "outputs": [
+      {
+        "internalType": "bool[]",
+        "name": "successes",
+        "type": "bool[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "makerSignature",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint128",
+        "name": "takerTokenFillAmount",
+        "type": "uint128"
+      }
+    ],
+    "name": "fillOtcOrder",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "takerTokenFilledAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "makerTokenFilledAmount",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "makerSignature",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint128",
+        "name": "takerTokenFillAmount",
+        "type": "uint128"
+      }
+    ],
+    "name": "fillOtcOrderForEth",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "takerTokenFilledAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "makerTokenFilledAmount",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "makerSignature",
+        "type": "tuple"
+      }
+    ],
+    "name": "fillOtcOrderWithEth",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "takerTokenFilledAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "makerTokenFilledAmount",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "makerSignature",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "takerSignature",
+        "type": "tuple"
+      }
+    ],
+    "name": "fillTakerSignedOtcOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "makerSignature",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "enum LibSignature.SignatureType",
+            "name": "signatureType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "v",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "r",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "s",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct LibSignature.Signature",
+        "name": "takerSignature",
+        "type": "tuple"
+      }
+    ],
+    "name": "fillTakerSignedOtcOrderForEth",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      }
+    ],
+    "name": "getOtcOrderHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "orderHash",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20Token",
+            "name": "makerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IERC20Token",
+            "name": "takerToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "makerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "takerAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "maker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "taker",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "txOrigin",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "expiryAndNonce",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrder",
+        "name": "order",
+        "type": "tuple"
+      }
+    ],
+    "name": "getOtcOrderInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "orderHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum LibNativeOrder.OrderStatus",
+            "name": "status",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct LibNativeOrder.OtcOrderInfo",
+        "name": "orderInfo",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "txOrigin",
+        "type": "address"
+      },
+      {
+        "internalType": "uint64",
+        "name": "nonceBucket",
+        "type": "uint64"
+      }
+    ],
+    "name": "lastOtcTxOriginNonce",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "lastNonce",
+        "type": "uint128"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "migrate",
+    "outputs": [
+      {
+        "internalType": "bytes4",
+        "name": "success",
+        "type": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

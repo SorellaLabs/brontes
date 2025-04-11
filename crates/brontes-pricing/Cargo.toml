@@ -19,7 +19,7 @@ futures.workspace = true
 thiserror.workspace = true
 
 # reth 
-reth-rpc-types.workspace = true
+alloy-rpc-types.workspace = true
 reth-primitives.workspace = true
 reth-db.workspace = true
 reth-codecs.workspace = true

@@ -15,7 +15,7 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
             if name_val.path.segments.last()?.ident == "threads" {
                 let Expr::Lit(ref a) = name_val.value else { return None };
                 match &a.lit {
-                    syn::Lit::Int(i) => return Some(usize::from_str(i.base10_digits()).unwrap()),
+                    syn::Lit::Int(i) => Some(usize::from_str(i.base10_digits()).unwrap()),
                     _ => None,
                 }
             } else {
@@ -30,7 +30,7 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
     let vis = item.vis;
     let mut sig = item.sig;
     if sig.asyncness.is_none() {
-        return Err(syn::Error::new(sig.asyncness.span(), "function must be async"))
+        return Err(syn::Error::new(sig.asyncness.span(), "function must be async"));
     }
     sig.asyncness = None;
     let block = item.block;

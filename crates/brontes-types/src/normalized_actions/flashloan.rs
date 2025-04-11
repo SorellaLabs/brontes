@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
+use alloy_primitives::{Address, U256};
 use clickhouse::Row;
 use malachite::Rational;
-use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{AddressDeltas, TokenAccounting};

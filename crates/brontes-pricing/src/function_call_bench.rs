@@ -20,7 +20,7 @@ impl Drop for FunctionCallBench {
             let total_time_ms: u128 = calls.iter().map(|call| call.as_millis()).sum();
 
             if call_amount == 0 {
-                continue
+                continue;
             }
 
             let average_duration_ms = total_time_ms / call_amount as u128;

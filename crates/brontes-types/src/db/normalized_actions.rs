@@ -1,7 +1,6 @@
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use clickhouse::DbRow;
 use itertools::MultiUnzip;
-use reth_primitives::B256;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
 use crate::{normalized_actions::Action, GasDetails, Node, Root};

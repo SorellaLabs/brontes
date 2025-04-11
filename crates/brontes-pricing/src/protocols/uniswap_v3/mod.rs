@@ -190,7 +190,7 @@ impl UpdatableProtocol for UniswapV3Pool {
         if self.liquidity <= 10_000 {
             return Err(ArithmeticError::UniswapV3MathError(
                 uniswap_v3_math::error::UniswapV3MathError::LiquidityTooLow(self.liquidity),
-            ))
+            ));
         }
 
         let tick = uniswap_v3_math::tick_math::get_tick_at_sqrt_ratio(self.sqrt_price)?;
@@ -249,7 +249,7 @@ impl UniswapV3Pool {
         pool.populate_data(Some(block_number), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::NoStateError(pair_address))
+            return Err(AmmError::NoStateError(pair_address));
         }
 
         Ok(pool)
@@ -263,7 +263,7 @@ impl UniswapV3Pool {
         provider: Arc<M>,
     ) {
         if tick_amount.is_negative() {
-            return
+            return;
         }
 
         if self.tick == 0 {
@@ -294,7 +294,7 @@ impl UniswapV3Pool {
         .0;
 
         for tick in ticks {
-            self.update_tick(tick.tick, tick.liquidityNet, tick.initialized);
+            self.update_tick(tick.tick.as_i32(), tick.liquidityNet, tick.initialized);
         }
     }
 
@@ -313,7 +313,7 @@ impl UniswapV3Pool {
     ) -> Result<i32, AmmError> {
         let call = IUniswapV3Pool::tickSpacingCall::new(());
         let res = make_call_request(call, &middleware, self.address, None).await?;
-        Ok(res._0)
+        Ok(res._0.as_i32())
     }
 
     pub async fn get_tick<M: TracingProvider>(
@@ -321,7 +321,7 @@ impl UniswapV3Pool {
         middleware: Arc<M>,
         block: u64,
     ) -> Result<i32, AmmError> {
-        Ok(self.get_slot_0(middleware, block).await?._1)
+        Ok(self.get_slot_0(middleware, block).await?._1.as_i32())
     }
 
     pub async fn get_slot_0<M: TracingProvider>(
@@ -345,8 +345,8 @@ impl UniswapV3Pool {
 
         #[cfg(feature = "uni-v3-ticks")]
         self.modify_position(
-            burn_event.tickLower,
-            burn_event.tickUpper,
+            burn_event.tickLower.as_i32(),
+            burn_event.tickUpper.as_i32(),
             -(burn_event.amount as i128),
         );
 
@@ -360,7 +360,11 @@ impl UniswapV3Pool {
         self.reserve_1 += mint_event.amount1;
 
         #[cfg(feature = "uni-v3-ticks")]
-        self.modify_position(mint_event.tickLower, mint_event.tickUpper, mint_event.amount as i128);
+        self.modify_position(
+            mint_event.tickLower.as_i32(),
+            mint_event.tickUpper.as_i32(),
+            mint_event.amount as i128,
+        );
 
         Ok(())
     }
@@ -471,9 +475,9 @@ impl UniswapV3Pool {
             self.reserve_1 -= swap_event.amount1.unsigned_abs();
         }
 
-        self.sqrt_price = swap_event.sqrtPriceX96;
+        self.sqrt_price = U256::from(swap_event.sqrtPriceX96);
         self.liquidity = swap_event.liquidity;
-        self.tick = swap_event.tick;
+        self.tick = swap_event.tick.as_i32();
 
         Ok(())
     }

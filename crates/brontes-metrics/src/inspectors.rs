@@ -1,11 +1,11 @@
 use std::{pin::Pin, time::Instant};
 
+use alloy_primitives::Address;
 use brontes_types::{mev::MevType, pair::Pair, FastHashMap};
 use dashmap::DashMap;
 use metrics::{Counter, Gauge};
 use prometheus::{HistogramVec, IntCounterVec};
 use reth_metrics::Metrics;
-use reth_primitives::Address;
 
 #[derive(Clone)]
 pub struct OutlierMetrics {

@@ -1,6 +1,6 @@
 use std::{collections::hash_map::Entry, sync::Arc};
 
-use alloy_primitives::{Address, B256};
+use alloy_primitives::{Address, TxHash, B256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -15,7 +15,6 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::TxHash;
 
 use super::types::{PossibleJit, PossibleJitWithInfo};
 use crate::{
@@ -83,7 +82,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
                     if searcher_actions.is_empty() {
                         tracing::trace!("no searcher actions found");
-                        return None
+                        return None;
                     }
 
                     let victim_actions =
@@ -178,7 +177,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 victim_actions,
                 victim_info,
                 recursive,
-            )
+            );
         }
         tracing::trace!("formulating");
 
@@ -191,7 +190,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         if mints.is_empty() || (burns.is_empty() && collect.is_empty()) {
             tracing::trace!("missing mints & burns");
-            return None
+            return None;
         }
         self.ensure_valid_structure(&mints, &burns, &victim_actions)?;
 
@@ -355,7 +354,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         if !burns.iter().any(|b| pools.contains(&b.pool)) {
             tracing::trace!("no burn overlaps");
-            return None
+            return None;
         }
 
         // ensure we have overlap
@@ -388,13 +387,13 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let mut res = vec![];
 
         if recursive >= 10 {
-            return None
+            return None;
         }
         if frontrun_info.len() > 1 {
             recursive += 1;
             // remove dropped sandwiches
             if victim_info.is_empty() || victim_actions.is_empty() {
-                return None
+                return None;
             }
 
             let back_shrink = {
@@ -409,7 +408,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 let backrun_info = front_run_info.pop()?;
 
                 if victim_actions.iter().flatten().count() == 0 {
-                    return None
+                    return None;
                 }
 
                 self.calculate_jit(
@@ -436,7 +435,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                 searcher_actions.remove(0);
 
                 if victim_actions.iter().flatten().count() == 0 {
-                    return None
+                    return None;
                 }
 
                 self.calculate_jit(
@@ -455,7 +454,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             if let Some(back) = back_shrink {
                 res.extend(back);
             }
-            return Some(res)
+            return Some(res);
         }
 
         None
@@ -465,7 +464,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
         let iter = tree.tx_roots.iter();
 
         if iter.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let mut set: FastHashMap<Address, PossibleJit> = FastHashMap::default();
@@ -477,7 +476,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
 
         for root in iter {
             if root.get_root_action().is_revert() {
-                continue
+                continue;
             }
 
             match duplicate_mev_contracts.entry(root.get_to_address()) {
@@ -566,7 +565,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
             .iter()
             .filter_map(|jit| {
                 if jit.victims.len() > 10 {
-                    return None
+                    return None;
                 }
 
                 let mut set = vec![jit.backrun_tx];
@@ -579,7 +578,7 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                         .iter()
                         .any(|tx| tree.tx_must_contain_action(*tx, |a| a.is_burn()).unwrap()))
                 {
-                    return None
+                    return None;
                 }
                 Some(set)
             })

@@ -16,6 +16,7 @@ brontes-database.workspace = true
 brontes-pricing.workspace = true
 brontes-core.workspace = true
 alloy-primitives.workspace = true
+alloy-consensus.workspace = true
 
 # async
 tokio.workspace = true
@@ -24,11 +25,12 @@ futures.workspace = true
 # alloy
 alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
-alloy-rpc-types.workspace = true
 alloy-rlp.workspace = true
+alloy-rpc-types-trace.workspace = true
+
 
 # reth
-reth-rpc-types.workspace = true
+alloy-rpc-types.workspace = true
 reth-primitives.workspace = true
 reth-db.workspace = true
 
@@ -96,5 +98,3 @@ local-clickhouse = [
   "brontes-database/local-clickhouse",
   "brontes-core/local-clickhouse",
 ]
-
-

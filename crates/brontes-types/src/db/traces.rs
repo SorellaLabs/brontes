@@ -1,10 +1,10 @@
 use alloy_primitives::{Log, LogData};
+use alloy_rpc_types_trace::parity::{
+    Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, CreationMethod,
+    RewardAction, RewardType, SelfdestructAction, TraceOutput, TransactionTrace,
+};
 use clickhouse::Row;
 use redefined::Redefined;
-use reth_rpc_types::trace::parity::{
-    Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction, RewardType,
-    SelfdestructAction, TraceOutput, TransactionTrace,
-};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -79,7 +79,7 @@ pub struct LogRedefined {
 #[redefined_attr(to_source = "LogData::new_unchecked(self.topics.iter().copied().map(Into::into).\
                               collect(), self.data.into())")]
 pub struct LogDataRedefined {
-    #[redefined(func = "src.topics().iter().copied().map(Into::into).collect()")]
+    #[redefined(func = "src.topics().to_vec()")]
     pub topics: Vec<FixedBytesRedefined<32>>,
     pub data:   BytesRedefined,
 }
@@ -138,7 +138,7 @@ pub enum ActionRedefined {
 pub struct CallActionRedefined {
     pub from:      AddressRedefined,
     pub call_type: CallTypeRedefined,
-    pub gas:       U64Redefined,
+    pub gas:       u64,
     pub input:     BytesRedefined,
     pub to:        AddressRedefined,
     pub value:     U256Redefined,
@@ -157,10 +157,30 @@ pub struct CallActionRedefined {
 )]
 #[redefined(CreateAction)]
 pub struct CreateActionRedefined {
-    pub from:  AddressRedefined,
-    pub gas:   U64Redefined,
-    pub init:  BytesRedefined,
-    pub value: U256Redefined,
+    pub from:            AddressRedefined,
+    pub gas:             u64,
+    pub init:            BytesRedefined,
+    pub value:           U256Redefined,
+    pub creation_method: CreationMethodRedefined,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    serde::Serialize,
+    rSerialize,
+    rDeserialize,
+    rkyv::Archive,
+    Redefined,
+)]
+#[redefined(CreationMethod)]
+pub enum CreationMethodRedefined {
+    None,
+    Create,
+    Create2,
+    EofCreate,
 }
 
 #[derive(
@@ -234,6 +254,7 @@ pub enum CallTypeRedefined {
     CallCode,
     DelegateCall,
     StaticCall,
+    AuthCall,
 }
 
 #[derive(
@@ -266,7 +287,7 @@ pub enum TraceOutputRedefined {
 )]
 #[redefined(CallOutput)]
 pub struct CallOutputRedefined {
-    pub gas_used: U64Redefined,
+    pub gas_used: u64,
     pub output:   BytesRedefined,
 }
 
@@ -285,5 +306,5 @@ pub struct CallOutputRedefined {
 pub struct CreateOutputRedefined {
     pub address:  AddressRedefined,
     pub code:     BytesRedefined,
-    pub gas_used: U64Redefined,
+    pub gas_used: u64,
 }

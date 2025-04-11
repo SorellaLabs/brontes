@@ -113,7 +113,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
         self.pending_trees.retain(|pending_block, _| {
             if &block > pending_block {
                 tracing::error!(block=%pending_block, "pending tree never had dex pricing");
-                return false
+                return false;
             }
 
             true
@@ -137,7 +137,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
         if !self.pricing_resolved_cache.is_empty() {
             let (resolved_block, pricing) = self.pricing_resolved_cache.pop_front().unwrap();
             if resolved_block <= self.max_tree_block {
-                return self.process_resolved_pricing(resolved_block, pricing)
+                return self.process_resolved_pricing(resolved_block, pricing);
             }
 
             // not ready yet so push to front
@@ -148,7 +148,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
         if let Poll::Ready(handle) = self.receiver.poll_recv(cx) {
             let Some((pricer, inner)) = handle else {
                 tracing::warn!("tokio task exited");
-                return Poll::Ready(None)
+                return Poll::Ready(None);
             };
 
             self.reschedule(pricer);
@@ -165,14 +165,14 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                     );
 
                     self.pricing_resolved_cache.push_back((block, prices));
-                    return Poll::Pending
+                    return Poll::Pending;
                 }
-                return self.process_resolved_pricing(block, prices)
+                return self.process_resolved_pricing(block, prices);
             }
 
             tracing::info!("pricing returned completed");
             // means we have completed chunks
-            return Poll::Ready(None)
+            return Poll::Ready(None);
         }
 
         Poll::Pending

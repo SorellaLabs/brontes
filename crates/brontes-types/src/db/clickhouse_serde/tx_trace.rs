@@ -1,5 +1,5 @@
+use alloy_rpc_types_trace::parity::{Action, TraceOutput};
 use itertools::Itertools;
-use reth_rpc_types::trace::parity::{Action, TraceOutput};
 
 use crate::structured_trace::TxTrace;
 
@@ -116,7 +116,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateAction {
                 Action::Create(c) => {
                     this.trace_idx.push(trace.trace_idx);
                     this.from.push(format!("{:?}", c.from));
-                    this.gas.push(c.gas.to::<u64>());
+                    this.gas.push(c.gas);
                     this.init.push(format!("{:?}", c.init));
                     this.value.push(c.value.to_le_bytes() as [u8; 32]);
                 }
@@ -151,7 +151,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallAction {
                     this.trace_idx.push(trace.trace_idx);
                     this.from.push(format!("{:?}", c.from));
                     this.call_type.push(format!("{:?}", c.call_type));
-                    this.gas.push(c.gas.to::<u64>());
+                    this.gas.push(c.gas);
                     this.input.push(format!("{:?}", c.input));
                     this.to.push(format!("{:?}", c.to));
                     this.value.push(c.value.to_le_bytes() as [u8; 32]);
@@ -240,7 +240,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCallOutput {
             .filter_map(|trace| {
                 trace.trace.result.as_ref().and_then(|res| match res {
                     TraceOutput::Call(c) => {
-                        Some((trace.trace_idx, c.gas_used.to::<u64>(), format!("{:?}", c.output)))
+                        Some((trace.trace_idx, c.gas_used, format!("{:?}", c.output)))
                     }
                     _ => None,
                 })
@@ -276,7 +276,7 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
                         trace.trace_idx,
                         format!("{:?}", c.address),
                         format!("{:?}", c.code),
-                        c.gas_used.to::<u64>(),
+                        c.gas_used,
                     )),
                     _ => None,
                 })
@@ -295,12 +295,12 @@ impl<'a> From<&'a TxTrace> for ClickhouseCreateOutput {
 pub mod tx_traces_inner {
     use std::str::FromStr;
 
-    use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256, U64};
-    use itertools::Itertools;
-    use reth_rpc_types::trace::parity::{
-        Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, RewardAction,
-        RewardType, SelfdestructAction, TraceOutput, TransactionTrace,
+    use alloy_primitives::{Address, Bytes, Log, LogData, TxHash, U256};
+    use alloy_rpc_types_trace::parity::{
+        Action, CallAction, CallOutput, CallType, CreateAction, CreateOutput, CreationMethod,
+        RewardAction, RewardType, SelfdestructAction, TraceOutput, TransactionTrace,
     };
+    use itertools::Itertools;
     use serde::de::{Deserialize, Deserializer};
 
     use crate::{
@@ -459,10 +459,11 @@ pub mod tx_traces_inner {
                 let entry = map.entry(trace_idx).or_insert(default_trace.clone());
 
                 let create = CreateAction {
-                    from:  Address::from_str(&from).unwrap(),
-                    gas:   U64::from(gas),
-                    init:  Bytes::from_str(&init).unwrap(),
+                    from: Address::from_str(&from).unwrap(),
+                    gas,
+                    init: Bytes::from_str(&init).unwrap(),
                     value: U256::from_le_bytes(value),
+                    creation_method: CreationMethod::default(),
                 };
 
                 entry.trace.action = Action::Create(create);
@@ -488,7 +489,7 @@ pub mod tx_traces_inner {
 
                 let call = CallAction {
                     from: Address::from_str(&from).unwrap(),
-                    gas: U64::from(gas),
+                    gas,
                     value: U256::from_le_bytes(value),
                     call_type,
                     input: Bytes::from_str(&input).unwrap(),
@@ -545,10 +546,7 @@ pub mod tx_traces_inner {
             .for_each(|(trace_idx, gas_used, output)| {
                 let entry = map.entry(trace_idx).or_insert(default_trace.clone());
 
-                let call = CallOutput {
-                    gas_used: U64::from(gas_used),
-                    output:   Bytes::from_str(&output).unwrap(),
-                };
+                let call = CallOutput { gas_used, output: Bytes::from_str(&output).unwrap() };
 
                 entry.trace.result = Some(TraceOutput::Call(call))
             });
@@ -560,9 +558,9 @@ pub mod tx_traces_inner {
                 let entry = map.entry(trace_idx).or_insert(default_trace.clone());
 
                 let create = CreateOutput {
-                    gas_used: U64::from(gas_used),
-                    address:  Address::from_str(&address).unwrap(),
-                    code:     Bytes::from_str(&code).unwrap(),
+                    gas_used,
+                    address: Address::from_str(&address).unwrap(),
+                    code: Bytes::from_str(&code).unwrap(),
                 };
 
                 entry.trace.result = Some(TraceOutput::Create(create))

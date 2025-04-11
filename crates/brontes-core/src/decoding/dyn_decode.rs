@@ -1,7 +1,7 @@
 use alloy_dyn_abi::*;
 use alloy_json_abi::JsonAbi;
+use alloy_rpc_types_trace::parity::{Action, TraceOutput, TransactionTrace};
 use brontes_types::structured_trace::{DecodedCallData, DecodedParams};
-use reth_rpc_types::trace::parity::{Action, TraceOutput, TransactionTrace};
 
 use crate::errors::TraceParseError;
 
@@ -20,7 +20,7 @@ pub fn decode_input_with_abi(
                 let resolved_params: Vec<DynSolType> = function
                     .inputs
                     .iter()
-                    .filter_map(|param| param.resolve().ok())
+                    .filter_map(|param| DynSolType::parse(&param.ty).ok())
                     .collect();
 
                 let mut input_names = function
@@ -33,7 +33,7 @@ pub fn decode_input_with_abi(
                 let resolved_output_params: Vec<DynSolType> = function
                     .outputs
                     .iter()
-                    .filter_map(|param| param.resolve().ok())
+                    .filter_map(|param| DynSolType::parse(&param.ty).ok())
                     .collect();
 
                 let mut output_names = function
@@ -151,7 +151,7 @@ fn decode_params(
                 value:      string_val,
             })
         }
-        DynSolValue::CustomStruct { .. } => unreachable!("only eip-712"),
+        DynSolValue::CustomStruct { .. } => todo!("Handle CustomStruct decoding"),
     }
 }
 
@@ -172,7 +172,7 @@ fn value_parse(sol_value: &[DynSolValue], tuple: bool) -> String {
             DynSolValue::Tuple(t) => value_parse(t, true),
             DynSolValue::Array(a) => value_parse(a, false),
             DynSolValue::FixedArray(a) => value_parse(a, false),
-            DynSolValue::CustomStruct { .. } => unreachable!("only eip-712"),
+            DynSolValue::CustomStruct { .. } => todo!("Handle CustomStruct decoding"),
         })
         .fold(ty, |a, b| a + "," + b.as_str());
 

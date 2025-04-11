@@ -1,7 +1,7 @@
 use alloy_primitives::Address;
+use alloy_rpc_types_beacon::BlsPublicKey;
 use clickhouse::Row;
 use redefined::Redefined;
-use reth_rpc_types::beacon::BlsPublicKey;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

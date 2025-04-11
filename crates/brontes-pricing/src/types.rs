@@ -105,7 +105,7 @@ impl PoolState {
     pub fn increment_state(&mut self, state: PoolUpdate) {
         if !state.is_supported_protocol() {
             tracing::error!(state_transition=?state, "tried to apply a invalid state transition");
-            return
+            return;
         }
         self.last_update = state.block;
         self.variant.increment_state(state.logs);
@@ -151,6 +151,7 @@ impl PoolVariants {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum DexPriceMsg {
     /// marker for only updating loaded state and not generating prices
     DisablePricingFor(u64),
@@ -203,7 +204,7 @@ impl PoolUpdate {
             || self.action.is_aggregator()
             || self.action.is_eth_transfer()
         {
-            return None
+            return None;
         }
         Some(self.get_pool_address())
     }
@@ -214,9 +215,9 @@ impl PoolUpdate {
 
     pub fn is_supported_protocol(&self) -> bool {
         if let Action::Swap(s) = &self.action {
-            return s.protocol.has_state_updater()
+            return s.protocol.has_state_updater();
         } else if let Action::SwapWithFee(s) = &self.action {
-            return s.protocol.has_state_updater()
+            return s.protocol.has_state_updater();
         }
 
         true

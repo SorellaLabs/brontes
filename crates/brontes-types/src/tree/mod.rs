@@ -1,7 +1,8 @@
 use std::{panic::AssertUnwindSafe, sync::Arc};
 
+use alloy_consensus::Header;
+use alloy_primitives::B256;
 use itertools::Itertools;
-use reth_primitives::{Header, B256};
 use statrs::statistics::Statistics;
 use tracing::{error, info, span, Level};
 
@@ -75,11 +76,11 @@ impl<V: NormalizedAction> BlockTree<V> {
 
         let Ok(contract) = database.try_fetch_searcher_contract_infos(contract_info_addr.clone())
         else {
-            return vec![]
+            return vec![];
         };
 
         let Ok(address_meta) = database.try_fetch_address_metadatas(contract_info_addr) else {
-            return vec![]
+            return vec![];
         };
 
         let Ok(eoa) = database.try_fetch_searcher_eoa_infos(eoa_info_addr) else { return vec![] };
@@ -139,7 +140,7 @@ impl<V: NormalizedAction> BlockTree<V> {
             if this.tx_roots.is_empty() {
                 info!(block = this.header.number, "The block tree is empty");
                 this.tx_roots.iter_mut().for_each(|root| root.finalize());
-                return
+                return;
             }
 
             // Initialize accumulator for total priority fee and vector of priority fees
@@ -433,10 +434,7 @@ pub mod test {
         };
 
         assert!(
-            b.user_swaps
-                .iter()
-                .map(|swap| swap.trace_index != 0)
-                .all(|t| t),
+            b.user_swaps.iter().all(|swap| swap.trace_index != 0),
             "batch user swaps wasn't set"
         );
     }

@@ -6,10 +6,10 @@ use std::{
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
+use alloy_primitives::B256;
 #[allow(unused)]
 use clickhouse::fixed_string::FixedString;
 use redefined::{self_convert_redefined, Redefined};
-use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

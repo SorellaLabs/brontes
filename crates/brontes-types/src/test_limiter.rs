@@ -30,7 +30,7 @@ pub fn wait_for_tests<F: Fn() + std::panic::RefUnwindSafe + std::panic::UnwindSa
             if lock.0 + threads <= *max_threads || lock.1 == 0 {
                 lock.0 += threads;
                 lock.1 += 1;
-                break
+                break;
             }
         }
 
@@ -45,7 +45,7 @@ pub fn wait_for_tests<F: Fn() + std::panic::RefUnwindSafe + std::panic::UnwindSa
         if let Ok(mut running_tests) = ri.try_lock() {
             running_tests.0 -= threads;
             running_tests.1 -= 1;
-            break
+            break;
         } else {
             std::hint::spin_loop()
         }

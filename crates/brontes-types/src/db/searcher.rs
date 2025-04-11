@@ -103,7 +103,7 @@ impl SearcherInfo {
 
     pub fn describe(&self) -> String {
         if self.name.is_some() {
-            return self.name.clone().unwrap()
+            return self.name.clone().unwrap();
         }
         let mut parts: Vec<String> = Vec::new();
 

@@ -89,11 +89,11 @@ pub fn atomic_dedup_fn(
         }
         // if the cex dex has a higher value. then use that.
         if other.header.profit_usd >= atomic.header.profit_usd {
-            return false
+            return false;
         }
         // if the cex dex isn't a known fund ignore
         if !other.header.fund.is_none() {
-            return false
+            return false;
         }
     }
 

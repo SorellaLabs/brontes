@@ -70,7 +70,7 @@ impl StateTracker {
     pub fn remove_finalized_state_dep(&mut self, pool: Address, amount: u64) {
         self.finalized_edge_state.retain(|i_pool, state| {
             if pool != *i_pool {
-                return true
+                return true;
             }
             state.dec(amount);
             let keep = state.dependents != 0;
@@ -148,7 +148,7 @@ impl StateTracker {
                     .filter(|pool_state| pool_state.contains_block_state(block))
                     .is_some()
                 {
-                    return None
+                    return None;
                 }
 
                 Some(edge.info)
@@ -165,7 +165,7 @@ impl StateTracker {
                 .into_iter()
                 .for_each(|(should_finalize, mut state)| {
                     if should_finalize == 0 {
-                        return
+                        return;
                     }
                     match self.finalized_edge_state.entry(*pool) {
                         std::collections::hash_map::Entry::Vacant(v) => {
@@ -264,7 +264,7 @@ impl PoolStateWithBlock {
         self.0.retain(|(keep, state)| {
             if state.last_update <= block {
                 res.push((*keep, state.clone()));
-                return false
+                return false;
             }
             true
         });
@@ -279,7 +279,7 @@ impl PoolStateWithBlock {
     pub fn contains_block_state(&self, block: u64) -> bool {
         for (_, state) in &self.0 {
             if block == state.last_update {
-                return true
+                return true;
             }
         }
 

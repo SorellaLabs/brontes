@@ -7,9 +7,11 @@ use brontes_types::{
 };
 use malachite::{num::basic::traits::Zero, Rational};
 
+use crate::aave_v3_bindings::AaveV3;
+
 action_impl!(
     Protocol::AaveV3,
-    crate::AaveV3::liquidationCallCall,
+    AaveV3::liquidationCallCall,
     Liquidation,
     [LiquidationEvent],
     call_data: true,
@@ -41,7 +43,7 @@ action_impl!(
 
 action_impl!(
     Protocol::AaveV3,
-    crate::AaveV3::flashLoanCall,
+    AaveV3::flashLoanCall,
     FlashLoan,
     [],
     call_data: true,
@@ -80,7 +82,7 @@ action_impl!(
 
 action_impl!(
     Protocol::AaveV3,
-    crate::AaveV3::flashLoanSimpleCall,
+    AaveV3::flashLoanSimpleCall,
     FlashLoan,
     [],
     call_data: true,

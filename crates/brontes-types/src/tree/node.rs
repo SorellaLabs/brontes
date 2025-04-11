@@ -1,5 +1,5 @@
+use alloy_primitives::Address;
 use itertools::Itertools;
-use reth_primitives::Address;
 use tracing::{error, warn};
 
 use super::{types::NodeWithDataRef, NodeData};
@@ -98,15 +98,15 @@ impl Node {
                     self.clear_node_data(index, nodes);
                 });
 
-            return
+            return;
         }
 
         if self.inner.len() <= 1 {
             if let Some(inner) = self.inner.first_mut() {
-                return inner.get_all_children_for_complex_classification(head, nodes)
+                return inner.get_all_children_for_complex_classification(head, nodes);
             }
             warn!("was not able to find node in tree for complex classification");
-            return
+            return;
         }
 
         let mut iter = self.inner.iter_mut();
@@ -118,9 +118,9 @@ impl Node {
         for next_node in iter {
             // check if past nodes are the head
             if cur_inner_node.index == head.trace_index {
-                return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+                return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
             } else if next_inner_node.index == head.trace_index {
-                return next_inner_node.get_all_children_for_complex_classification(head, nodes)
+                return next_inner_node.get_all_children_for_complex_classification(head, nodes);
             }
 
             // if the next node is smaller than the head, we continue
@@ -129,21 +129,21 @@ impl Node {
                 next_inner_node = next_node;
             } else {
                 // next node is bigger than head. thus current node is proper path
-                return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+                return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
             }
         }
 
         // handle case where there are only two inner nodes to look at
         if cur_inner_node.index == head.trace_index {
-            return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+            return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
         } else if next_inner_node.index == head.trace_index {
-            return next_inner_node.get_all_children_for_complex_classification(head, nodes)
+            return next_inner_node.get_all_children_for_complex_classification(head, nodes);
         } else if next_inner_node.index > head.trace_index {
-            return cur_inner_node.get_all_children_for_complex_classification(head, nodes)
+            return cur_inner_node.get_all_children_for_complex_classification(head, nodes);
         }
         // handle inf case that is shown in the function docs
         else if let Some(last) = self.inner.last_mut() {
-            return last.get_all_children_for_complex_classification(head, nodes)
+            return last.get_all_children_for_complex_classification(head, nodes);
         }
 
         warn!("was not able to find node in tree, should be unreachable");
@@ -162,7 +162,7 @@ impl Node {
             find.generate_search_args(self, &*data);
 
         if !child_node_to_collect {
-            return false
+            return false;
         }
 
         let lower_classification_results = self
@@ -176,9 +176,9 @@ impl Node {
             // we return false
             if collect_current_node {
                 modify(self, data);
-                return true
+                return true;
             } else {
-                return false
+                return false;
             }
         }
         false
@@ -197,7 +197,7 @@ impl Node {
             .generate_search_args(self, &*data)
             .child_node_to_collect
         {
-            return false
+            return false;
         }
 
         let lower_has_better_collect = self
@@ -260,7 +260,7 @@ impl Node {
             .any(|n| n.get_action().is_revert());
 
         if revert {
-            return
+            return;
         }
 
         let log = trace_addr.clone();
@@ -383,7 +383,7 @@ impl Node {
         if self.index >= lower && self.index <= upper {
             res.push(info_fn(self));
         } else {
-            return
+            return;
         }
 
         self.inner
@@ -403,15 +403,15 @@ impl Node {
             data.get_mut(index.data_idx as usize)
                 .unwrap()
                 .remove(index.multi_data_idx);
-            return
+            return;
         }
 
         if self.inner.len() <= 1 {
             if let Some(inner) = self.inner.first_mut() {
-                return inner.clear_node_data(index, data)
+                return inner.clear_node_data(index, data);
             }
             warn!("was not able to find node in tree for clearing node data");
-            return
+            return;
         }
 
         let mut iter = self.inner.iter_mut();
@@ -423,9 +423,9 @@ impl Node {
         for next_node in iter {
             // check if past nodes are the head
             if cur_inner_node.index == index.trace_index {
-                return cur_inner_node.clear_node_data(index, data)
+                return cur_inner_node.clear_node_data(index, data);
             } else if next_inner_node.index == index.trace_index {
-                return next_inner_node.clear_node_data(index, data)
+                return next_inner_node.clear_node_data(index, data);
             }
 
             // if the next node is smaller than the head, we continue
@@ -434,19 +434,19 @@ impl Node {
                 next_inner_node = next_node;
             } else {
                 // next node is bigger than head. thus current node is proper path
-                return cur_inner_node.clear_node_data(index, data)
+                return cur_inner_node.clear_node_data(index, data);
             }
         }
 
         // handle case where there are only two inner nodes to look at
         if cur_inner_node.index == index.trace_index {
-            return cur_inner_node.clear_node_data(index, data)
+            return cur_inner_node.clear_node_data(index, data);
         } else if next_inner_node.index == index.trace_index {
-            return next_inner_node.clear_node_data(index, data)
+            return next_inner_node.clear_node_data(index, data);
         } else if next_inner_node.index > index.trace_index {
-            return cur_inner_node.clear_node_data(index, data)
+            return cur_inner_node.clear_node_data(index, data);
         } else if let Some(last) = self.inner.last_mut() {
-            return last.clear_node_data(index, data)
+            return last.clear_node_data(index, data);
         }
 
         warn!("was not able to find node in tree, should be unreachable");
@@ -462,15 +462,15 @@ impl Node {
             self.get_all_sub_actions().into_iter().for_each(|f| {
                 data.remove(f);
             });
-            return
+            return;
         }
 
         if self.inner.len() <= 1 {
             if let Some(inner) = self.inner.first_mut() {
-                return inner.remove_node_and_children(index, data)
+                return inner.remove_node_and_children(index, data);
             }
             warn!("was not able to find node in tree for removing node data");
-            return
+            return;
         }
 
         let mut iter = self.inner.iter_mut();
@@ -482,9 +482,9 @@ impl Node {
         for next_node in iter {
             // check if past nodes are the head
             if cur_inner_node.index == index {
-                return cur_inner_node.remove_node_and_children(index, data)
+                return cur_inner_node.remove_node_and_children(index, data);
             } else if next_inner_node.index == index {
-                return next_inner_node.remove_node_and_children(index, data)
+                return next_inner_node.remove_node_and_children(index, data);
             }
 
             // if the next node is smaller than the head, we continue
@@ -493,19 +493,19 @@ impl Node {
                 next_inner_node = next_node;
             } else {
                 // next node is bigger than head. thus current node is proper path
-                return cur_inner_node.remove_node_and_children(index, data)
+                return cur_inner_node.remove_node_and_children(index, data);
             }
         }
 
         // handle case where there are only two inner nodes to look at
         if cur_inner_node.index == index {
-            return cur_inner_node.remove_node_and_children(index, data)
+            return cur_inner_node.remove_node_and_children(index, data);
         } else if next_inner_node.index == index {
-            return next_inner_node.remove_node_and_children(index, data)
+            return next_inner_node.remove_node_and_children(index, data);
         } else if next_inner_node.index > index {
-            return cur_inner_node.remove_node_and_children(index, data)
+            return cur_inner_node.remove_node_and_children(index, data);
         } else if let Some(last) = self.inner.last_mut() {
-            return last.remove_node_and_children(index, data)
+            return last.remove_node_and_children(index, data);
         }
 
         warn!("was not able to find node in tree, should be unreachable");
@@ -520,7 +520,7 @@ impl Node {
     ) -> bool {
         // the previous sub-action was the last one to meet the criteria
         if !call.generate_search_args(self, data).child_node_to_collect {
-            return false
+            return false;
         }
 
         let lower_has_better_collect = self

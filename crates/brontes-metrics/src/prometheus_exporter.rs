@@ -12,6 +12,13 @@ use metrics_util::layers::{PrefixLayer, Stack};
 use prometheus::{Encoder, TextEncoder};
 use reth_metrics::metrics::Unit;
 
+macro_rules! my_counter {
+    ($name:literal, $value:expr) => {
+        let key = [("value", ($value as f64).to_string())];
+        metrics::counter!($name, &key);
+    };
+}
+
 pub(crate) trait Hook: Fn() + Send + Sync {}
 impl<T: Fn() + Send + Sync> Hook for T {}
 
@@ -114,43 +121,49 @@ fn collect_memory_stats() {
         .map_err(|error| error!(%error, "Failed to advance jemalloc epoch"))
         .is_err()
     {
-        return
+        return;
     }
 
     if let Ok(value) = stats::active::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.active"))
     {
-        gauge!("jemalloc.active", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.active", &key);
     }
 
     if let Ok(value) = stats::allocated::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.allocated"))
     {
-        gauge!("jemalloc.allocated", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.allocated", &key);
     }
 
     if let Ok(value) = stats::mapped::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.mapped"))
     {
-        gauge!("jemalloc.mapped", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.mapped", &key);
     }
 
     if let Ok(value) = stats::metadata::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.metadata"))
     {
-        gauge!("jemalloc.metadata", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.metadata", &key);
     }
 
     if let Ok(value) = stats::resident::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.resident"))
     {
-        gauge!("jemalloc.resident", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.resident", &key);
     }
 
     if let Ok(value) = stats::retained::read()
         .map_err(|error| error!(%error, "Failed to read jemalloc.stats.retained"))
     {
-        gauge!("jemalloc.retained", value as f64);
+        let key = [("value", (value as f64).to_string())];
+        gauge!("jemalloc.retained", &key);
     }
 }
 
@@ -197,28 +210,27 @@ fn describe_memory_stats() {}
 
 #[cfg(target_os = "linux")]
 fn collect_io_stats() {
-    use metrics::absolute_counter;
     use tracing::error;
 
     let Ok(process) = procfs::process::Process::myself()
         .map_err(|error| error!(%error, "Failed to get currently running process"))
     else {
-        return
+        return;
     };
 
     let Ok(io) = process.io().map_err(
         |error| error!(%error, "Failed to get IO stats for the currently running process"),
     ) else {
-        return
+        return;
     };
 
-    absolute_counter!("io.rchar", io.rchar);
-    absolute_counter!("io.wchar", io.wchar);
-    absolute_counter!("io.syscr", io.syscr);
-    absolute_counter!("io.syscw", io.syscw);
-    absolute_counter!("io.read_bytes", io.read_bytes);
-    absolute_counter!("io.write_bytes", io.write_bytes);
-    absolute_counter!("io.cancelled_write_bytes", io.cancelled_write_bytes);
+    my_counter!("io.rchar", io.rchar);
+    my_counter!("io.wchar", io.wchar);
+    my_counter!("io.syscr", io.syscr);
+    my_counter!("io.syscw", io.syscw);
+    my_counter!("io.read_bytes", io.read_bytes);
+    my_counter!("io.write_bytes", io.write_bytes);
+    my_counter!("io.cancelled_write_bytes", io.cancelled_write_bytes);
 }
 
 #[cfg(target_os = "linux")]

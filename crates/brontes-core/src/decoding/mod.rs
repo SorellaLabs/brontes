@@ -1,10 +1,11 @@
 use std::{pin::Pin, sync::Arc};
 
+use alloy_consensus::Header;
+use alloy_primitives::{BlockHash, B256};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
-use reth_primitives::{BlockHash, BlockNumberOrTag, Header, B256};
 use tokio::sync::mpsc::UnboundedSender;
 
 use self::parser::TraceParser;
@@ -23,7 +24,7 @@ pub(crate) const UNKNOWN: &str = "unknown";
 pub(crate) const RECEIVE: &str = "receive";
 #[allow(dead_code)]
 pub(crate) const FALLBACK: &str = "fallback";
-use reth_primitives::BlockId;
+use alloy_rpc_types::BlockId;
 
 pub type ParserFuture =
     Pin<Box<dyn Future<Output = Option<(BlockHash, Vec<TxTrace>, Header)>> + Send + 'static>>;

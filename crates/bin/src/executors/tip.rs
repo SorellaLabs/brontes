@@ -82,7 +82,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     #[cfg(feature = "local-reth")]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
-            return false
+            return false;
         }
 
         match self.parser.get_latest_block_number() {
@@ -97,7 +97,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
     #[cfg(not(feature = "local-reth"))]
     fn start_block_inspector(&mut self) -> bool {
         if self.state_collector.is_collecting_state() {
-            return false
+            return false;
         }
 
         let cur_block = tokio::task::block_in_place(|| {

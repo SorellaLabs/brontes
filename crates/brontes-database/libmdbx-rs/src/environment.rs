@@ -130,10 +130,10 @@ impl Environment {
                     warn!(target: "brontes-libmdbx", "Process stalled, awaiting read-write transaction lock.");
                 }
                 sleep(Duration::from_millis(15));
-                continue
+                continue;
             }
 
-            break res
+            break res;
         }?;
         Ok(Transaction::new_from_ptr(self.clone(), txn.0))
     }
@@ -143,7 +143,7 @@ impl Environment {
     /// The caller **must** ensure that the pointer is never dereferenced after
     /// the environment has been dropped.
     #[inline]
-    pub(crate) fn env_ptr(&self) -> *mut ffi::MDBX_env {
+    pub(crate) fn env_ptr(&self) -> *mut reth_mdbx_sys::MDBX_env {
         self.inner.env
     }
 
@@ -158,21 +158,21 @@ impl Environment {
     #[doc(hidden)]
     pub fn with_raw_env_ptr<F, T>(&self, f: F) -> T
     where
-        F: FnOnce(*mut ffi::MDBX_env) -> T,
+        F: FnOnce(*mut reth_mdbx_sys::MDBX_env) -> T,
     {
         f(self.env_ptr())
     }
 
     /// Flush the environment data buffers to disk.
     pub fn sync(&self, force: bool) -> Result<bool> {
-        mdbx_result(unsafe { ffi::mdbx_env_sync_ex(self.env_ptr(), force, false) })
+        mdbx_result(unsafe { reth_mdbx_sys::mdbx_env_sync_ex(self.env_ptr(), force, false) })
     }
 
     /// Retrieves statistics about this environment.
     pub fn stat(&self) -> Result<Stat> {
         unsafe {
             let mut stat = Stat::new();
-            mdbx_result(ffi::mdbx_env_stat_ex(
+            mdbx_result(reth_mdbx_sys::mdbx_env_stat_ex(
                 self.env_ptr(),
                 ptr::null(),
                 stat.mdb_stat(),
@@ -186,7 +186,7 @@ impl Environment {
     pub fn info(&self) -> Result<Info> {
         unsafe {
             let mut info = Info(mem::zeroed());
-            mdbx_result(ffi::mdbx_env_info_ex(
+            mdbx_result(reth_mdbx_sys::mdbx_env_info_ex(
                 self.env_ptr(),
                 ptr::null(),
                 &mut info.0,
@@ -231,7 +231,7 @@ impl Environment {
         for result in cursor.iter_slices() {
             let (_key, value) = result?;
             if value.len() < size_of::<usize>() {
-                return Err(Error::Corrupted)
+                return Err(Error::Corrupted);
             }
 
             let s = &value[..size_of::<usize>()];
@@ -245,14 +245,15 @@ impl Environment {
 /// Container type for Environment internals.
 ///
 /// This holds the raw pointer to the MDBX environment and the transaction
-/// manager. The env is opened via [mdbx_env_create](ffi::mdbx_env_create) and
-/// closed when this type drops.
+/// manager. The env is opened via
+/// [mdbx_env_create](reth_mdbx_sys::mdbx_env_create) and closed when this type
+/// drops.
 struct EnvironmentInner {
     /// The raw pointer to the MDBX environment.
     ///
     /// Accessing the environment is thread-safe as long as long as this type
     /// exists.
-    env:         *mut ffi::MDBX_env,
+    env:         *mut reth_mdbx_sys::MDBX_env,
     /// Whether the environment was opened as WRITEMAP.
     env_kind:    EnvironmentKind,
     /// Transaction manager
@@ -263,7 +264,7 @@ impl Drop for EnvironmentInner {
     fn drop(&mut self) {
         // Close open mdbx environment on drop
         unsafe {
-            ffi::mdbx_env_close_ex(self.env, false);
+            reth_mdbx_sys::mdbx_env_close_ex(self.env, false);
         }
     }
 }
@@ -303,16 +304,16 @@ impl EnvironmentKind {
     }
 
     /// Additional flags required when opening the environment.
-    pub(crate) fn extra_flags(&self) -> ffi::MDBX_env_flags_t {
+    pub(crate) fn extra_flags(&self) -> reth_mdbx_sys::MDBX_env_flags_t {
         match self {
-            EnvironmentKind::Default => ffi::MDBX_ENV_DEFAULTS,
-            EnvironmentKind::WriteMap => ffi::MDBX_WRITEMAP,
+            EnvironmentKind::Default => reth_mdbx_sys::MDBX_ENV_DEFAULTS,
+            EnvironmentKind::WriteMap => reth_mdbx_sys::MDBX_WRITEMAP,
         }
     }
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct EnvPtr(pub(crate) *mut ffi::MDBX_env);
+pub(crate) struct EnvPtr(pub(crate) *mut reth_mdbx_sys::MDBX_env);
 unsafe impl Send for EnvPtr {}
 unsafe impl Sync for EnvPtr {}
 
@@ -322,16 +323,16 @@ unsafe impl Sync for EnvPtr {}
 /// database.
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Stat(ffi::MDBX_stat);
+pub struct Stat(reth_mdbx_sys::MDBX_stat);
 
 impl Stat {
-    /// Create a new Stat with zero'd inner struct `ffi::MDB_stat`.
+    /// Create a new Stat with zero'd inner struct `reth_mdbx_sys::MDB_stat`.
     pub(crate) fn new() -> Stat {
         unsafe { Stat(mem::zeroed()) }
     }
 
-    /// Returns a mut pointer to `ffi::MDB_stat`.
-    pub(crate) fn mdb_stat(&mut self) -> *mut ffi::MDBX_stat {
+    /// Returns a mut pointer to `reth_mdbx_sys::MDB_stat`.
+    pub(crate) fn mdb_stat(&mut self) -> *mut reth_mdbx_sys::MDBX_stat {
         &mut self.0
     }
 }
@@ -377,7 +378,7 @@ impl Stat {
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct GeometryInfo(ffi::MDBX_envinfo__bindgen_ty_1);
+pub struct GeometryInfo(reth_mdbx_sys::MDBX_envinfo__bindgen_ty_1);
 
 impl GeometryInfo {
     pub fn min(&self) -> u64 {
@@ -391,7 +392,7 @@ impl GeometryInfo {
 /// etc.
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Info(ffi::MDBX_envinfo);
+pub struct Info(reth_mdbx_sys::MDBX_envinfo);
 
 impl Info {
     pub fn geometry(&self) -> GeometryInfo {
@@ -618,7 +619,7 @@ pub struct EnvironmentBuilder {
     spill_max_denominator: Option<u64>,
     spill_min_denominator: Option<u64>,
     geometry: Option<Geometry<(Option<usize>, Option<usize>)>>,
-    log_level: Option<ffi::MDBX_log_level_t>,
+    log_level: Option<reth_mdbx_sys::MDBX_log_level_t>,
     kind: EnvironmentKind,
     #[cfg(not(windows))]
     handle_slow_readers: Option<HandleSlowReadersCallback>,
@@ -643,17 +644,21 @@ impl EnvironmentBuilder {
     pub fn open_with_permissions(
         &self,
         path: &Path,
-        mode: ffi::mdbx_mode_t,
+        mode: reth_mdbx_sys::mdbx_mode_t,
     ) -> Result<Environment> {
-        let mut env: *mut ffi::MDBX_env = ptr::null_mut();
+        let mut env: *mut reth_mdbx_sys::MDBX_env = ptr::null_mut();
         unsafe {
             if let Some(log_level) = self.log_level {
                 // Returns the previously debug_flags in the 0-15 bits and log_level in the
                 // 16-31 bits, no need to use `mdbx_result`.
-                ffi::mdbx_setup_debug(log_level, ffi::MDBX_DBG_DONTCHANGE, None);
+                reth_mdbx_sys::mdbx_setup_debug(
+                    log_level,
+                    reth_mdbx_sys::MDBX_DBG_DONTCHANGE,
+                    None,
+                );
             }
 
-            mdbx_result(ffi::mdbx_env_create(&mut env))?;
+            mdbx_result(reth_mdbx_sys::mdbx_env_create(&mut env))?;
 
             if let Err(e) = (|| {
                 if let Some(geometry) = &self.geometry {
@@ -670,7 +675,7 @@ impl EnvironmentBuilder {
                         }
                     }
 
-                    mdbx_result(ffi::mdbx_env_set_geometry(
+                    mdbx_result(reth_mdbx_sys::mdbx_env_set_geometry(
                         env,
                         min_size,
                         -1,
@@ -685,31 +690,31 @@ impl EnvironmentBuilder {
                     ))?;
                 }
                 for (opt, v) in [
-                    (ffi::MDBX_opt_max_db, self.max_dbs),
-                    (ffi::MDBX_opt_rp_augment_limit, self.rp_augment_limit),
-                    (ffi::MDBX_opt_loose_limit, self.loose_limit),
-                    (ffi::MDBX_opt_dp_reserve_limit, self.dp_reserve_limit),
-                    (ffi::MDBX_opt_txn_dp_limit, self.txn_dp_limit),
-                    (ffi::MDBX_opt_spill_max_denominator, self.spill_max_denominator),
-                    (ffi::MDBX_opt_spill_min_denominator, self.spill_min_denominator),
+                    (reth_mdbx_sys::MDBX_opt_max_db, self.max_dbs),
+                    (reth_mdbx_sys::MDBX_opt_rp_augment_limit, self.rp_augment_limit),
+                    (reth_mdbx_sys::MDBX_opt_loose_limit, self.loose_limit),
+                    (reth_mdbx_sys::MDBX_opt_dp_reserve_limit, self.dp_reserve_limit),
+                    (reth_mdbx_sys::MDBX_opt_txn_dp_limit, self.txn_dp_limit),
+                    (reth_mdbx_sys::MDBX_opt_spill_max_denominator, self.spill_max_denominator),
+                    (reth_mdbx_sys::MDBX_opt_spill_min_denominator, self.spill_min_denominator),
                 ] {
                     if let Some(v) = v {
-                        mdbx_result(ffi::mdbx_env_set_option(env, opt, v))?;
+                        mdbx_result(reth_mdbx_sys::mdbx_env_set_option(env, opt, v))?;
                     }
                 }
 
                 // set max readers if specified
                 if let Some(max_readers) = self.max_readers {
-                    mdbx_result(ffi::mdbx_env_set_option(
+                    mdbx_result(reth_mdbx_sys::mdbx_env_set_option(
                         env,
-                        ffi::MDBX_opt_max_readers,
+                        reth_mdbx_sys::MDBX_opt_max_readers,
                         max_readers,
                     ))?;
                 }
 
                 #[cfg(not(windows))]
                 if let Some(handle_slow_readers) = self.handle_slow_readers {
-                    mdbx_result(ffi::mdbx_env_set_hsr(
+                    mdbx_result(reth_mdbx_sys::mdbx_env_set_hsr(
                         env,
                         handle_slow_readers_callback(handle_slow_readers),
                     ))?;
@@ -723,9 +728,9 @@ impl EnvironmentBuilder {
 
                 #[cfg(windows)]
                 fn path_to_bytes<P: AsRef<Path>>(path: P) -> Vec<u8> {
-                    // On Windows, could use std::os::windows::ffi::OsStrExt to encode_wide(),
-                    // but we end up with a Vec<u16> instead of a Vec<u8>, so that doesn't
-                    // really help.
+                    // On Windows, could use std::os::windows::reth_mdbx_sys::OsStrExt to
+                    // encode_wide(), but we end up with a Vec<u16> instead of a
+                    // Vec<u8>, so that doesn't really help.
                     path.as_ref().to_string_lossy().to_string().into_bytes()
                 }
 
@@ -733,7 +738,7 @@ impl EnvironmentBuilder {
                     Ok(path) => path,
                     Err(_) => return Err(Error::Invalid),
                 };
-                mdbx_result(ffi::mdbx_env_open(
+                mdbx_result(reth_mdbx_sys::mdbx_env_open(
                     env,
                     path.as_ptr(),
                     self.flags.make_flags() | self.kind.extra_flags(),
@@ -742,9 +747,9 @@ impl EnvironmentBuilder {
 
                 Ok(())
             })() {
-                ffi::mdbx_env_close_ex(env, false);
+                reth_mdbx_sys::mdbx_env_close_ex(env, false);
 
-                return Err(e)
+                return Err(e);
             }
         }
 
@@ -864,7 +869,7 @@ impl EnvironmentBuilder {
         self
     }
 
-    pub fn set_log_level(&mut self, log_level: ffi::MDBX_log_level_t) -> &mut Self {
+    pub fn set_log_level(&mut self, log_level: reth_mdbx_sys::MDBX_log_level_t) -> &mut Self {
         self.log_level = Some(log_level);
         self
     }
@@ -923,19 +928,23 @@ pub(crate) mod read_transactions {
 /// the program. It's fine, because we also expect the database environment to
 /// be alive during this whole time.
 #[cfg(not(windows))]
-unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> ffi::MDBX_hsr_func {
+unsafe fn handle_slow_readers_callback(
+    callback: HandleSlowReadersCallback,
+) -> reth_mdbx_sys::MDBX_hsr_func {
     // Move the callback function to heap and intentionally leak it, so it's not
     // dropped and the MDBX env can use it throughout the whole program.
+
+    use libffi::high::Closure8;
     let callback = Box::leak(Box::new(callback));
 
     // Wrap the callback into an ffi binding. The callback is needed for a nicer UX
     // with Rust types, and without `env` and `txn` arguments that we don't want
     // to expose to the user. Again, move the closure to heap and leak.
     let hsr = Box::leak(Box::new(
-        |_env: *const ffi::MDBX_env,
-         _txn: *const ffi::MDBX_txn,
-         pid: ffi::mdbx_pid_t,
-         tid: ffi::mdbx_tid_t,
+        |_env: *const reth_mdbx_sys::MDBX_env,
+         _txn: *const reth_mdbx_sys::MDBX_txn,
+         pid: reth_mdbx_sys::mdbx_pid_t,
+         tid: reth_mdbx_sys::mdbx_tid_t,
          laggard: u64,
          gap: ::libc::c_uint,
          space: usize,
@@ -947,7 +956,7 @@ unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> f
 
     // Create a pointer to the C function from the Rust closure, and forcefully
     // forget the original closure.
-    let closure = libffi::high::Closure8::new(hsr);
+    let closure = Closure8::new(hsr);
     let closure_ptr = *closure.code_ptr();
     std::mem::forget(closure);
 

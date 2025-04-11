@@ -64,7 +64,7 @@ impl InspectorTestUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|t| t.header.number).collect(),
-            ))
+            ));
         }
         Ok(trees.remove(0))
     }
@@ -82,7 +82,7 @@ impl InspectorTestUtils {
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
                 trees.into_iter().map(|(t, _)| t.header.number).collect(),
-            ))
+            ));
         }
         Ok(trees.remove(0))
     }
@@ -137,7 +137,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err())
+            return Err(err());
         };
 
         let block = tree.header.number;
@@ -212,7 +212,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err())
+            return Err(err());
         };
 
         let mut metadata = if let Some(meta) = config.metadata_override {
@@ -331,7 +331,7 @@ impl InspectorTestUtils {
                 self.get_block_tree(block).await?
             }
         } else {
-            return Err(err())
+            return Err(err());
         };
 
         let block = tree.header.number;

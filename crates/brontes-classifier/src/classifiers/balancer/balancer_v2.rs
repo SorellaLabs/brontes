@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, U256};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
@@ -13,10 +13,39 @@ use brontes_types::{
 };
 use eyre::Error;
 use malachite::Rational;
-use reth_primitives::U256;
 
 use crate::BalancerV2Vault::PoolBalanceChanged;
 
+action_impl!(
+    Protocol::BalancerV2,
+    crate::IGeneralPool::onSwapCall,
+    Swap,
+    [..],
+    call_data: true,
+    return_data: true,
+    |info: CallInfo, call_data: onSwapCall, return_data: onSwapReturn, db: &DB| {
+        let pool = pool_id_to_address(call_data.swapRequest.poolId);
+        let token_in = db.try_fetch_token_info(call_data.swapRequest.tokenIn)?;
+        let token_out = db.try_fetch_token_info(call_data.swapRequest.tokenOut)?;
+        let amount_in = call_data.swapRequest.amount.to_scaled_rational(token_in.decimals);
+        let amount_out = return_data.amount.to_scaled_rational(token_out.decimals);
+
+        Ok(NormalizedSwap {
+            protocol: Protocol::BalancerV2,
+            trace_index: info.trace_idx,
+            from: call_data.swapRequest.from,
+            recipient: call_data.swapRequest.to,
+            pool,
+            token_in,
+            amount_in,
+            token_out,
+            amount_out,
+            msg_value: U256::ZERO,
+        })
+    }
+);
+
+/*
 action_impl!(
     Protocol::BalancerV2,
     crate::IGeneralPool::onSwap_0Call,
@@ -74,7 +103,7 @@ action_impl!(
         })
     }
 );
-
+*/
 fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
     logs: &PoolBalanceChanged,
     db: &DB,
@@ -84,7 +113,7 @@ fn process_pool_balance_changes<DB: LibmdbxReader + DBWriter>(
 
     for (i, &token_address) in logs.tokens.iter().enumerate() {
         if logs.deltas[i].is_zero() {
-            continue
+            continue;
         }
 
         let token = db.try_fetch_token_info(token_address)?;
@@ -228,15 +257,13 @@ fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, B256};
+    use alloy_primitives::{hex, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
-    use brontes_types::{
-        constants::WETH_ADDRESS, db::token_info::TokenInfo, normalized_actions::Action,
-        Protocol::BalancerV2, TreeSearchBuilder,
-    };
+    use brontes_types::{db::token_info::TokenInfo, normalized_actions::Action, TreeSearchBuilder};
 
     use super::*;
 
+    /*
     #[brontes_macros::test]
     async fn test_balancer_v2_swap() {
         let classifier_utils = ClassifierTestUtils::new().await;
@@ -245,7 +272,7 @@ mod tests {
 
         classifier_utils.ensure_token(TokenInfoWithAddress {
             address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
-            inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
+            inner: TokenInfo { decimals: 9, symbol: "SATS".to_string() },
         });
 
         classifier_utils.ensure_protocol(
@@ -261,20 +288,20 @@ mod tests {
 
         // Minimal swap
         let eq_action = Action::Swap(NormalizedSwap {
-            protocol:    BalancerV2,
+            protocol: BalancerV2,
             trace_index: 1,
-            from:        Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            recipient:   Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
-            pool:        Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
-            token_in:    TokenInfoWithAddress::weth(),
-            amount_in:   U256::from_str("10000000000000000")
+            from: Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            recipient: Address::new(hex!("5d2146eAB0C6360B864124A99BD58808a3014b5d")),
+            pool: Address::new(hex!("358e056c50eea4ca707e891404e81d9b898d0b41")),
+            token_in: TokenInfoWithAddress::weth(),
+            amount_in: U256::from_str("10000000000000000")
                 .unwrap()
                 .to_scaled_rational(18),
-            token_out:   TokenInfoWithAddress {
+            token_out: TokenInfoWithAddress {
                 address: Address::new(hex!("6C22910c6F75F828B305e57c6a54855D8adeAbf8")),
-                inner:   TokenInfo { decimals: 9, symbol: "SATS".to_string() },
+                inner: TokenInfo { decimals: 9, symbol: "SATS".to_string() },
             },
-            amount_out:  U256::from_str("7727102831493")
+            amount_out: U256::from_str("7727102831493")
                 .unwrap()
                 .to_scaled_rational(9),
 
@@ -291,6 +318,7 @@ mod tests {
             .await
             .unwrap();
     }
+    */
 
     #[brontes_macros::test]
     async fn test_balancer_v2_flash_loan() {

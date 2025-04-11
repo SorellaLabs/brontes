@@ -4,25 +4,26 @@ use std::{
     sync::Arc,
 };
 
+use alloy_rpc_types::BlockId;
 use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
-use reth_beacon_consensus::BeaconConsensus;
-use reth_blockchain_tree::{
-    externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
-};
+use rayon::ThreadPoolBuilder;
+use reth_chainspec::MAINNET;
 use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
-use reth_node_ethereum::EthEvmConfig;
-use reth_primitives::{BlockId, PruneModes, MAINNET};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory};
-use reth_revm::{inspectors::GasInspector, EvmProcessorFactory};
-use reth_rpc::{
-    eth::{
-        cache::{EthStateCache, EthStateCacheConfig},
-        error::EthResult,
-        gas_oracle::{GasPriceOracle, GasPriceOracleConfig},
-        EthTransactions, FeeHistoryCache, FeeHistoryCacheConfig, RPC_DEFAULT_GAS_CAP,
-    },
-    EthApi, TraceApi,
+use reth_node_ethereum::{BasicBlockExecutorProvider, EthEvmConfig, EthereumNode};
+use reth_node_types::NodeTypesWithDBAdapter;
+use reth_provider::{
+    providers::{BlockchainProvider, StaticFileProvider},
+    ProviderFactory,
+};
+use reth_rpc::{DebugApi, EthApi, EthFilter, TraceApi};
+use reth_rpc_eth_api::helpers::Trace;
+use reth_rpc_eth_types::{
+    EthConfig, EthResult, EthStateCache, EthStateCacheConfig, FeeHistoryCache,
+    FeeHistoryCacheConfig, GasCap, GasPriceOracle, GasPriceOracleConfig,
+};
+use reth_rpc_server_types::constants::{
+    DEFAULT_ETH_PROOF_WINDOW, DEFAULT_MAX_SIMULATE_BLOCKS, DEFAULT_PROOF_PERMITS,
 };
 use reth_tasks::pool::{BlockingTaskGuard, BlockingTaskPool};
 use reth_tracer::{
@@ -34,27 +35,32 @@ use reth_transaction_pool::{
     blobstore::NoopBlobStore, validate::EthTransactionValidatorBuilder, CoinbaseTipOrdering,
     EthPooledTransaction, EthTransactionValidator, Pool, TransactionValidationTaskExecutor,
 };
+use revm::inspector::inspectors::GasInspector;
+// use revm::inspector::inspectors::GasInspector;
+
 mod provider;
 pub mod reth_tracer;
 
-pub type Provider = BlockchainProvider<
-    Arc<DatabaseEnv>,
-    ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory<EthEvmConfig>>,
->;
-
-pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>;
-
+pub type RethProvider = BlockchainProvider<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>;
+pub type RethProviderFactory =
+    ProviderFactory<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>;
+pub type RethDbProvider =
+    BlockchainProvider<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>;
+pub type RethApi = EthApi<RethProvider, RethTxPool, NoopNetwork, EthEvmConfig>;
+pub type RethFilter = EthFilter<RethApi>;
+pub type RethTrace = TraceApi<RethApi>;
+pub type RethDebug = DebugApi<RethApi, BasicBlockExecutorProvider<EthEvmConfig>>;
 pub type RethTxPool = Pool<
-    TransactionValidationTaskExecutor<EthTransactionValidator<Provider, EthPooledTransaction>>,
+    TransactionValidationTaskExecutor<EthTransactionValidator<RethProvider, EthPooledTransaction>>,
     CoinbaseTipOrdering<EthPooledTransaction>,
     NoopBlobStore,
 >;
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:              EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
-    pub trace:            TraceApi<Provider, RethApi>,
-    pub provider_factory: ProviderFactory<Arc<DatabaseEnv>>,
+    pub api:              RethApi,
+    pub trace:            RethTrace,
+    pub provider_factory: RethProviderFactory,
 }
 impl TracingClient {
     pub fn new_with_db(
@@ -64,33 +70,35 @@ impl TracingClient {
         static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), static_files_path)
-                .expect("failed to start provider factory");
+        let static_file_provider = match StaticFileProvider::read_only(
+            static_files_path.clone(),
+            true,
+        ) {
+            Ok(provider) => provider,
+            Err(e) => {
+                tracing::error!(path = ?static_files_path, error = %e, "Failed to initialize Reth static file provider");
+                panic!(
+                    "Critical error: Could not open Reth static file provider at path {:?}. \
+                     Error: {}",
+                    static_files_path, e
+                );
+            }
+        };
 
-        let tree_externals = TreeExternals::new(
-            provider_factory.clone(),
-            Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
-            EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
-        );
+        let provider_factory: ProviderFactory<
+            NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>,
+        > = ProviderFactory::new(db.clone(), chain.clone(), static_file_provider);
 
-        let tree_config = BlockchainTreeConfig::default();
-
-        let blockchain_tree = ShareableBlockchainTree::new(
-            BlockchainTree::new(tree_externals, tree_config, Some(PruneModes::none())).unwrap(),
-        );
-
-        let provider = BlockchainProvider::new(provider_factory.clone(), blockchain_tree).unwrap();
+        let provider = BlockchainProvider::new(provider_factory.clone()).unwrap();
 
         let state_cache = EthStateCache::spawn_with(
             provider.clone(),
             EthStateCacheConfig::default(),
             task_executor.clone(),
-            EthEvmConfig::default(),
         );
 
-        let transaction_validator = EthTransactionValidatorBuilder::new(chain.clone())
-            .build_with_tasks(provider.clone(), task_executor.clone(), NoopBlobStore::default());
+        let transaction_validator = EthTransactionValidatorBuilder::new(provider.clone())
+            .build_with_tasks(task_executor.clone(), NoopBlobStore::default());
 
         let tx_pool = reth_transaction_pool::Pool::eth_pool(
             transaction_validator,
@@ -98,20 +106,7 @@ impl TracingClient {
             Default::default(),
         );
 
-        let blocking = BlockingTaskPool::build().unwrap();
-        let eth_state_config = EthStateCacheConfig::default();
-        let fee_history = FeeHistoryCache::new(
-            EthStateCache::spawn_with(
-                provider.clone(),
-                eth_state_config,
-                task_executor.clone(),
-                EthEvmConfig::default(),
-            ),
-            FeeHistoryCacheConfig::default(),
-        );
-        // blocking task pool
-        // fee history cache
-        let api = EthApi::with_spawner(
+        let api = EthApi::new(
             provider.clone(),
             tx_pool.clone(),
             NoopNetwork::default(),
@@ -121,22 +116,33 @@ impl TracingClient {
                 GasPriceOracleConfig::default(),
                 state_cache.clone(),
             ),
-            RPC_DEFAULT_GAS_CAP.into(),
-            Box::new(task_executor.clone()),
-            blocking,
-            fee_history,
-            EthEvmConfig::default(),
-            None,
+            GasCap::default(),
+            DEFAULT_MAX_SIMULATE_BLOCKS,
+            DEFAULT_ETH_PROOF_WINDOW,
+            BlockingTaskPool::new(ThreadPoolBuilder::new().build().unwrap()),
+            FeeHistoryCache::new(FeeHistoryCacheConfig::default()),
+            EthEvmConfig::new(chain.clone()),
+            DEFAULT_PROOF_PERMITS,
         );
 
         let tracing_call_guard = BlockingTaskGuard::new(max_tasks as usize);
-        let trace = TraceApi::new(provider, api.clone(), tracing_call_guard);
+        let trace = TraceApi::new(api.clone(), tracing_call_guard, EthConfig::default());
 
         Self { api, trace, provider_factory }
     }
 
     pub fn new(db_path: &Path, max_tasks: u64, task_executor: BrontesTaskExecutor) -> Self {
-        let db = Arc::new(init_db(db_path).unwrap());
+        let db = match init_db(db_path) {
+            Ok(db_env) => Arc::new(db_env),
+            Err(e) => {
+                // Log the specific error before panicking
+                tracing::error!(path = ?db_path, error = %e, "Failed to initialize Reth database");
+                panic!(
+                    "Critical error: Could not open Reth database at path {:?}. Error: {}",
+                    db_path, e
+                );
+            }
+        };
         let mut static_files = db_path.to_path_buf();
         static_files.pop();
         static_files.push("static_files");
@@ -151,13 +157,15 @@ impl TracingClient {
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let insp_setup = || BrontesTracingInspector {
             config:                TracingInspectorConfig {
-                record_logs:              true,
-                record_steps:             false,
-                record_state_diff:        false,
-                record_stack_snapshots:   StackSnapshotType::None,
-                record_memory_snapshots:  false,
-                record_call_return_data:  true,
-                exclude_precompile_calls: true,
+                record_logs:                 true,
+                record_steps:                false,
+                record_state_diff:           false,
+                record_stack_snapshots:      StackSnapshotType::None,
+                record_memory_snapshots:     false,
+                exclude_precompile_calls:    true,
+                record_returndata_snapshots: false,
+                record_opcodes_filter:       None,
+                record_immediate_bytes:      false,
             },
             traces:                CallTraceArena::default(),
             trace_stack:           Vec::new(),
@@ -167,11 +175,19 @@ impl TracingClient {
             spec_id:               None,
         };
 
-        self.api
-            .trace_block_with_inspector(block_id, insp_setup, move |tx_info, inspector, res, _, _| {
-                Ok(inspector.into_trace_results(tx_info, &res))
-            })
-            .await
+        let t =
+            self.api
+                .trace_block_inspector(
+                    block_id,
+                    None,
+                    insp_setup,
+                    move |tx_info, inspector, res, _, _| {
+                        Ok(inspector.into_trace_results(tx_info, &res))
+                    },
+                )
+                .await?;
+
+        Ok(t)
     }
 }
 
@@ -188,9 +204,9 @@ pub fn init_db<P: AsRef<Path> + Debug>(path: P) -> eyre::Result<DatabaseEnv> {
 
 #[cfg(all(test, feature = "local-reth"))]
 pub mod test {
+    use alloy_rpc_types::{BlockId, BlockNumberOrTag};
     use brontes_core::test_utils::TraceLoader;
     use futures::future::join_all;
-    use reth_primitives::{BlockId, BlockNumberOrTag};
 
     #[brontes_macros::test]
     async fn ensure_traces_eq() {

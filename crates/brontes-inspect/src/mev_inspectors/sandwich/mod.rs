@@ -6,6 +6,7 @@ use std::{
 use alloy_primitives::TxHash;
 use tracing::trace;
 mod types;
+use alloy_primitives::{Address, B256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -20,7 +21,6 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::{Address, B256};
 use types::{PossibleSandwich, PossibleSandwichWithTxInfo};
 
 use super::MAX_PROFIT;
@@ -121,7 +121,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         } = ps;
 
         if victims.iter().flatten().count() == 0 {
-            return None
+            return None;
         };
 
         let victim_swaps_transfers: Vec<_> = self.get_victim_swap_transfer(
@@ -192,7 +192,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 == 1)
         {
             tracing::debug!(target: "brontes_inspect::sandwich", "all sandwiches don't have same eoa and aren't all verified contracts");
-            return None
+            return None;
         }
 
         //  assert that all frontruns and backruns can be generated from a swap
@@ -222,7 +222,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             .iter()
             .all(|searcher_tx_swaps| !searcher_tx_swaps.is_empty())
         {
-            return None
+            return None;
         }
 
         let back_run_actions = searcher_actions.pop()?;
@@ -249,7 +249,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 &victim_actions,
                 black_list,
                 recusive,
-            )
+            );
         }
 
         // if we reach this part of the code, we have found a sandwich and
@@ -460,14 +460,14 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let mut res = vec![];
 
         if recursive >= 6 {
-            return None
+            return None;
         }
 
         if possible_front_runs_info.len() > 1 {
             recursive += 1;
             // remove dropped sandwiches
             if victim_info.is_empty() || victim_actions.is_empty() {
-                return None
+                return None;
             }
 
             let back_shrink = {
@@ -487,7 +487,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .count()
                     == 0
                 {
-                    return None
+                    return None;
                 }
 
                 self.calculate_sandwich(
@@ -525,7 +525,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .count()
                     == 0
                 {
-                    return None
+                    return None;
                 }
 
                 self.calculate_sandwich(
@@ -546,7 +546,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
             if let Some(back) = back_shrink {
                 res.extend(back);
             }
-            return Some(res)
+            return Some(res);
         }
 
         None
@@ -604,7 +604,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 back_run_tokens,
                 black_list,
             ) {
-                return false
+                return false;
             }
         }
 
@@ -638,7 +638,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         let amount = grouped_victims.len();
         if amount == 0 {
             trace!(target: "brontes_inspect::sandwich", "no grouped victims");
-            return false
+            return false;
         }
         let mut has_sandwich = false;
 
@@ -722,12 +722,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     // victim has a transfer from the pool that was a token in for
                     // the sandwich
                     if tokens.contains(&(t.token.address, t.to, is_frontrun)) {
-                        return Some((t.token.address, t.to))
+                        return Some((t.token.address, t.to));
                     }
                     // victim has a transfer to the pool that was a token out for the
                     // sandwich
                     if tokens.contains(&(t.token.address, t.from, !is_frontrun)) {
-                        return Some((t.token.address, t.from))
+                        return Some((t.token.address, t.from));
                     }
                     None
                 }))
@@ -826,7 +826,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         .into_iter()
         .filter(|(address, v)| {
             if v.len() != 2 || black_list.contains(address) {
-                return false
+                return false;
             }
             let first = v.first().unwrap();
             let second = v.get(1).unwrap();
@@ -853,7 +853,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
     ) -> Vec<PossibleSandwichWithTxInfo> {
         if tree.tx_roots.len() < 3 {
-            return vec![]
+            return vec![];
         }
 
         let tree_clone_for_senders = tree.clone();
@@ -874,7 +874,7 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                 set.push(ps.possible_backrun);
                 // max multihop of 10 or max total victim of 50
                 if ps.victims.len() > 10 {
-                    return None
+                    return None;
                 }
                 set.extend(ps.victims.iter().flatten().copied());
 
@@ -985,16 +985,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .t_full_filter_map(|(tree, rest)| {
                         let (swap, hashes): (Vec<_>, Vec<_>) = UnzipPadded::unzip_padded(rest);
 
-                        if !hashes
-                            .iter()
-                            .map(|v| {
-                                let tree = &(*tree.clone());
-                                let d = tree.get_root(*v).unwrap().get_root_action();
+                        if !hashes.iter().any(|v| {
+                            let tree = &(*tree.clone());
+                            let d = tree.get_root(*v).unwrap().get_root_action();
 
-                                d.is_revert() || mev_executor_contract == d.get_to_address()
-                            })
-                            .any(|d| d)
-                        {
+                            d.is_revert() || mev_executor_contract == d.get_to_address()
+                        }) {
                             Some(swap)
                         } else {
                             None
@@ -1018,7 +1014,7 @@ fn get_possible_sandwich_duplicate_senders(tree: Arc<BlockTree<Action>>) -> Vec<
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {
-            continue
+            continue;
         }
         match duplicate_senders.entry(root.head.address) {
             // If we have not seen this sender before, we insert the tx hash into the map
@@ -1082,7 +1078,7 @@ fn get_possible_sandwich_duplicate_contracts(
 
     for root in tree.tx_roots.iter() {
         if root.get_root_action().is_revert() {
-            continue
+            continue;
         }
 
         match duplicate_mev_contracts.entry(root.get_to_address()) {

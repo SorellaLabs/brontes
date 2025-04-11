@@ -2,7 +2,8 @@
 use std::sync::OnceLock;
 use std::{collections::hash_map::Entry, env, fs::OpenOptions, io::Write, sync::Arc};
 
-use alloy_primitives::Address;
+use alloy_consensus::Header;
+use alloy_primitives::{Address, BlockHash, B256};
 #[cfg(feature = "local-clickhouse")]
 use brontes_database::clickhouse::Clickhouse;
 #[cfg(not(feature = "local-clickhouse"))]
@@ -27,7 +28,6 @@ use futures::future::join_all;
 use indicatif::MultiProgress;
 #[cfg(feature = "local-reth")]
 use reth_db::DatabaseEnv;
-use reth_primitives::{BlockHash, Header, B256};
 use reth_provider::ProviderError;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::init_db;
@@ -112,7 +112,7 @@ impl TraceLoader {
             tracing::info!("fetched missing data");
             return self
                 .test_metadata(block, USDT_ADDRESS)
-                .map_err(|_| TraceLoaderError::NoMetadataFound(block))
+                .map_err(|_| TraceLoaderError::NoMetadataFound(block));
         }
     }
 
@@ -521,13 +521,13 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
         tracing::info!("no highest block found");
         write_fn(0);
 
-        return true
+        return true;
     };
     // try load file.
     let Ok(cache_data) = std::fs::read_to_string(".test_cache.json") else {
         tracing::info!("no .test_cache.json found");
         write_fn(max_block);
-        return true
+        return true;
     };
 
     let stats: CritTablesCache = serde_json::from_str(&cache_data).unwrap();
@@ -542,9 +542,13 @@ fn init_crit_tables(db: &LibmdbxReadWriter) -> bool {
 
 #[cfg(feature = "local-reth")]
 pub fn get_reth_db_handle() -> Arc<DatabaseEnv> {
+    use std::path::Path;
+
     RETH_DB_HANDLE
         .get_or_init(|| {
-            let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
+            let mut db_path =
+                Path::new(&env::var("DB_PATH").expect("No DB_PATH in .env")).to_path_buf();
+            db_path.push("db");
             Arc::new(init_db(db_path).unwrap())
         })
         .clone()
@@ -573,10 +577,11 @@ pub async fn init_trace_parser(
 ) -> TraceParser<Box<dyn TracingProvider>, LibmdbxReadWriter> {
     let executor = brontes_types::BrontesTaskManager::new(handle.clone(), true);
 
-    let db_path = env::var("DB_PATH").expect("No DB_PATH in .env");
-    let db_path = std::path::Path::new(&db_path);
-    let mut static_files = db_path.to_path_buf();
-    static_files.pop();
+    let mut db_path =
+        std::path::Path::new(&env::var("DB_PATH").expect("No DB_PATH in .env")).to_path_buf();
+    let mut static_files = db_path.clone();
+
+    db_path.push("db");
     static_files.push("static_files");
 
     let client = TracingClient::new_with_db(

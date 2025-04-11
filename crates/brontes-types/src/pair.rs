@@ -110,9 +110,9 @@ impl Encode for Pair {
 }
 
 impl Decode for Pair {
-    fn decode<B: AsRef<[u8]>>(value: B) -> Result<Self, reth_db::DatabaseError> {
-        let address0 = &value.as_ref()[0..20];
-        let address1 = &value.as_ref()[20..];
+    fn decode(value: &[u8]) -> Result<Self, reth_db::DatabaseError> {
+        let address0 = &value[0..20];
+        let address1 = &value[20..];
 
         Ok(Pair(Address::from_slice(address0), Address::from_slice(address1)))
     }

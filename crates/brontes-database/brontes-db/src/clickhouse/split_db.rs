@@ -177,7 +177,7 @@ impl ClickhouseBuffered {
             let mut message = false;
             while let Ok(value) = self.rx.try_recv() {
                 if value.is_empty() {
-                    continue
+                    continue;
                 }
 
                 message = true;
@@ -189,7 +189,7 @@ impl ClickhouseBuffered {
 
             for (enum_kind, entry) in &mut self.value_map {
                 if entry.is_empty() {
-                    continue
+                    continue;
                 }
 
                 self.futs.push(Box::pin(tokio::spawn(Self::insert(
@@ -240,7 +240,7 @@ impl Future for ClickhouseBuffered {
 
                 cnt -= 1;
                 if cnt == 0 {
-                    break
+                    break;
                 }
             }
 
@@ -253,7 +253,7 @@ impl Future for ClickhouseBuffered {
             work -= 1;
             if work == 0 {
                 cx.waker().wake_by_ref();
-                return Poll::Pending
+                return Poll::Pending;
             }
         }
     }

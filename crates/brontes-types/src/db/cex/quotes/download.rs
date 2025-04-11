@@ -213,7 +213,7 @@ impl CexQuotesConverter {
             if block.contains_time(timestamp) {
                 matching_blocks.push((block.block_number, block.precise_timestamp));
             } else {
-                break
+                break;
             }
         }
 
@@ -230,7 +230,7 @@ impl CexQuotesConverter {
                 .into_par_iter()
                 .filter_map(|(pair, quotes_indices)| {
                     if quotes_indices.is_empty() {
-                        return None
+                        return None;
                     }
 
                     let mut result = Vec::with_capacity(QUOTE_TIME_BOUNDARY.len());
@@ -245,7 +245,7 @@ impl CexQuotesConverter {
                     for time in QUOTE_TIME_BOUNDARY {
                         while let Some(peeked) = quote_iter.peek() {
                             if peeked.timestamp > block_time + time * 1_000_000 {
-                                break
+                                break;
                             }
                             last_quote = quote_iter.next();
                         }

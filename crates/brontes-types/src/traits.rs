@@ -1,11 +1,10 @@
-use alloy_primitives::TxHash;
-use alloy_rpc_types::AnyReceiptEnvelope;
-use reth_primitives::{
-    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, B256,
+use alloy_consensus::Header;
+use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256};
+use alloy_rpc_types::{
+    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, TransactionReceipt,
+    TransactionRequest,
 };
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
-};
+use reth_primitives::Bytecode;
 
 use crate::structured_trace::TxTrace;
 
@@ -46,7 +45,7 @@ pub trait TracingProvider: Send + Sync + 'static {
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>>;
+    ) -> eyre::Result<Option<Vec<TransactionReceipt>>>;
 
     async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>>;
 

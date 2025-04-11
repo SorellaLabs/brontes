@@ -8,31 +8,37 @@ edition = "2021"
 [dependencies]
 # Reth
 reth-node-ethereum.workspace = true
+reth-node-types.workspace = true
 async-trait.workspace = true
 reth-tasks.workspace = true
 reth-rpc.workspace = true
-reth-rpc-types.workspace = true
 reth-rpc-api.workspace = true
+reth-chainspec.workspace = true
 reth-provider.workspace = true
 reth-transaction-pool.workspace = true
 reth-network-api.workspace = true
 reth-primitives.workspace = true
 reth-db.workspace = true
-reth-blockchain-tree.workspace = true
-reth-beacon-consensus.workspace = true
 reth-revm.workspace = true
-reth-interfaces.workspace = true
+alloy-consensus.workspace = true
 alloy-primitives.workspace = true
 alloy-sol-types.workspace = true
-alloy-rpc-types-trace= { git = "https://github.com/alloy-rs/alloy", rev = "39b8695" }
-alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
+alloy-rpc-types-trace.workspace = true
+alloy-rpc-types.workspace = true
 futures.workspace = true
+reth-rpc-eth-types.workspace = true
+reth-rpc-eth-api.workspace = true
+reth-rpc-server-types.workspace = true
 brontes-types.workspace = true
+revm-inspector.workspace = true
+alloy-evm.workspace = true
+# revm-interpreter.workspace = true
 tracing.workspace = true
 
 num_cpus.workspace = true
 revm-primitives.workspace = true
 revm-inspectors.workspace = true
+rayon.workspace = true
 bitflags = "2.4"
 
 revm.workspace = true
@@ -58,5 +64,3 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
   "brontes-types/local-clickhouse",
 ]
-
-

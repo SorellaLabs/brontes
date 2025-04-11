@@ -40,7 +40,7 @@ impl MultiCallFrameClassifier for BalancerV2 {
                                     if t.amount >= this.amounts[i] {
                                         repay_transfers.push(t.clone());
                                         nodes_to_prune.push(index);
-                                        continue
+                                        continue;
                                     }
                                 }
                             }
@@ -49,7 +49,7 @@ impl MultiCallFrameClassifier for BalancerV2 {
                         }
                         _ => {
                             warn!("Balancer V2 flashloan, unknown call");
-                            continue
+                            continue;
                         }
                     }
                 }

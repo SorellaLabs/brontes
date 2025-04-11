@@ -1,11 +1,10 @@
 use std::str::FromStr;
 
-use alloy_primitives::{Address, Log, U256};
+use alloy_primitives::{Address, Bytes, Log, B256, U256};
+use alloy_rpc_types_trace::parity::*;
 use clickhouse::DbRow;
 use itertools::Itertools;
 use redefined::self_convert_redefined;
-use reth_primitives::{Bytes, B256};
-use reth_rpc_types::trace::parity::*;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -94,7 +93,7 @@ impl TraceActions for TransactionTraceWithLogs {
             return Bytes::default();
         };
         match res {
-            reth_rpc_types::trace::parity::TraceOutput::Call(bytes) => bytes.output.clone(),
+            alloy_rpc_types_trace::parity::TraceOutput::Call(bytes) => bytes.output.clone(),
             _ => Bytes::default(),
         }
     }

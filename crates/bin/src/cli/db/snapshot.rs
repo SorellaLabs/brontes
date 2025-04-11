@@ -151,7 +151,7 @@ impl Snapshot {
     // NOTE: assumes r2 data is continuous
     fn ranges_to_download(&self, ranges_avail: Vec<BlockRangeList>) -> eyre::Result<RangeOrFull> {
         if self.start_block.is_none() && self.end_block.is_none() {
-            return Ok(RangeOrFull::Full)
+            return Ok(RangeOrFull::Full);
         }
 
         if ranges_avail.is_empty() {

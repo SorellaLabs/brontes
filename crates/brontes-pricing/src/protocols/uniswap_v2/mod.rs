@@ -78,8 +78,8 @@ impl UpdatableProtocol for UniswapV2Pool {
         if event_signature == SYNC_EVENT_SIGNATURE {
             let sync_event = IUniswapV2Pair::Sync::decode_log_data(&log, false)?;
 
-            self.reserve_0 = sync_event.reserve0;
-            self.reserve_1 = sync_event.reserve1;
+            self.reserve_0 = sync_event.reserve0.to();
+            self.reserve_1 = sync_event.reserve1.to();
 
             Ok(())
         } else {
@@ -149,7 +149,7 @@ impl UniswapV2Pool {
         pool.populate_data(Some(block), middleware).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::NoStateError(pair_addr))
+            return Err(AmmError::NoStateError(pair_addr));
         }
 
         Ok(pool)
@@ -176,7 +176,7 @@ impl UniswapV2Pool {
         pool.populate_data(None, middleware.clone()).await?;
 
         if !pool.data_is_populated() {
-            return Err(AmmError::PoolDataError)
+            return Err(AmmError::PoolDataError);
         }
 
         Ok(pool)
@@ -209,7 +209,7 @@ impl UniswapV2Pool {
         );
 
         if r_0 == Rational::ZERO || r_1 == Rational::ZERO {
-            return Err(ArithmeticError::UniV2DivZero)
+            return Err(ArithmeticError::UniV2DivZero);
         }
 
         if base_token == self.token_a {

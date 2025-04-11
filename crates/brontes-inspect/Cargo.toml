@@ -33,11 +33,10 @@ async-trait.workspace = true
 rayon.workspace = true
 futures.workspace = true
 tokio.workspace = true
-async-scoped = { version = "0.7.1", features = ["use-tokio"] }
+async-scoped = { version = "0.9.0", features = ["use-tokio"] }
 
 # reth
 reth-primitives.workspace = true
-reth-rpc-types.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -85,8 +84,8 @@ brontes-database.workspace = true
 tokio.workspace = true
 reth-tracing-ext.workspace = true
 criterion = { version = "0.5" }
-rand = "0.8.5"
-statrs = "0.16"
+rand = "0.9.0"
+statrs = "0.18.0"
 
 
 [features]

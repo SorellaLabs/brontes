@@ -4,8 +4,8 @@ use std::str::FromStr;
 pub use relays::*;
 
 mod bids_payloads;
+use alloy_primitives::Address;
 pub use bids_payloads::*;
-use reth_primitives::Address;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelayBlockMetadata {

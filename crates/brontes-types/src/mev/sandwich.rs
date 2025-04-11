@@ -3,9 +3,9 @@ use std::fmt::Debug;
 use ::clickhouse::DbRow;
 use ::serde::ser::{SerializeStruct, Serializer};
 use ahash::HashSet;
+use alloy_primitives::{Address, B256};
 use malachite::Rational;
 use redefined::Redefined;
-use reth_primitives::{Address, B256};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -47,7 +47,6 @@ use crate::{
 /// Sequence:
 /// Represents various MEV sandwich attack strategies, including standard
 /// sandwiches and more complex variations like the "Big Mac Sandwich."
-
 ///
 /// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
 /// Sequence:

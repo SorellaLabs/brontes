@@ -51,7 +51,7 @@ impl Parse for MetricList {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let ptr: Ident = input.parse()?;
         if ptr != "ptr" {
-            return Err(syn::Error::new(ptr.span(), "first field must be ptr=location"))
+            return Err(syn::Error::new(ptr.span(), "first field must be ptr=location"));
         }
         input.parse::<Token![=]>()?;
         let ptr_value: Ident = input.parse()?;

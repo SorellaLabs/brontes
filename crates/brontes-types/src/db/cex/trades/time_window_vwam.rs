@@ -103,7 +103,7 @@ impl<'a> TimeWindowTrades<'a> {
             .iter()
             .filter_map(|(ex, pairs)| {
                 if !exchanges.contains(ex) || pair.0 == pair.1 {
-                    return None
+                    return None;
                 }
 
                 Some((
@@ -144,7 +144,7 @@ impl<'a> TimeWindowTrades<'a> {
         tx_hash: FixedBytes<32>,
     ) -> Option<WindowExchangePrice> {
         if pair.0 == pair.1 {
-            return Some(WindowExchangePrice::default())
+            return Some(WindowExchangePrice::default());
         }
 
         let res = self
@@ -325,7 +325,7 @@ impl<'a> TimeWindowTrades<'a> {
             if walker.get_min_time_delta(block_timestamp) >= config.max_vwap_pre_block_us
                 || walker.get_max_time_delta(block_timestamp) >= config.max_vwap_post_block_us
             {
-                break
+                break;
             }
 
             let min_expand = (walker.get_max_time_delta(block_timestamp)
@@ -344,7 +344,7 @@ impl<'a> TimeWindowTrades<'a> {
                 trade_volume_global,
                 vol.clone(),
             );
-            return None
+            return None;
         }
 
         let mut per_exchange_price = FastHashMap::default();
@@ -359,7 +359,7 @@ impl<'a> TimeWindowTrades<'a> {
             exchange_vxp
         {
             if trade_vol == Rational::ZERO {
-                continue
+                continue;
             }
             let maker_price = vxp_maker / &trade_vol_weight;
             let taker_price = vxp_taker / &trade_vol_weight;
@@ -394,7 +394,7 @@ impl<'a> TimeWindowTrades<'a> {
                 trade_volume_global,
                 vol.clone(),
             );
-            return None
+            return None;
         }
 
         let global_maker = global_maker / &trade_volume_global;
@@ -444,10 +444,10 @@ impl<'a> TimeWindowTrades<'a> {
                         "have trades inner(flipped)"
                     );
                 }
-                return Some(TradeData { indices, trades, direction: Direction::Buy })
+                return Some(TradeData { indices, trades, direction: Direction::Buy });
             } else {
                 log_missing_trade_data(dex_swap, &tx_hash);
-                return None
+                return None;
             }
         }
 

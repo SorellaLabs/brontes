@@ -1,7 +1,7 @@
 use std::{fmt::Debug, str::FromStr};
 
 use ::clickhouse::DbRow;
-use alloy_primitives::Address;
+use alloy_primitives::{Address, BlockHash, TxHash};
 use async_rate_limiter::{RateLimiter, RateLimiterBuilder, TimeUnit};
 use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
@@ -40,7 +40,6 @@ use db_interfaces::{
 };
 use eyre::Result;
 use itertools::Itertools;
-use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
@@ -389,7 +388,7 @@ impl Clickhouse {
         mut tx_hashes_in_block: Vec<TxHash>,
     ) -> eyre::Result<Vec<TxHash>> {
         if tx_hashes_in_block.is_empty() {
-            return Ok(Vec::new())
+            return Ok(Vec::new());
         }
 
         let public_txs = self
@@ -471,7 +470,7 @@ impl ClickhouseHandle for Clickhouse {
 
         if cex_quotes_for_block.is_empty() {
             tracing::warn!("loaded zero cex quotes. check backend");
-            return Err(eyre::eyre!("error loading cex quotes"))
+            return Err(eyre::eyre!("error loading cex quotes"));
         }
 
         let cex_quotes = cex_quotes_for_block.remove(0);
@@ -827,7 +826,7 @@ impl Clickhouse {
         if block_times.is_empty() {
             return Err(DatabaseError::from(clickhouse::error::Error::Custom(
                 "Nothing to query, block times are empty".to_string(),
-            )))
+            )));
         }
         Ok(match range_or_arbitrary {
             CexRangeOrArbitrary::Range(..) => {

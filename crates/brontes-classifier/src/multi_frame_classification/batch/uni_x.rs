@@ -36,11 +36,11 @@ impl MultiCallFrameClassifier for UniswapX {
                                     user_swap.trace_index = trace_index.trace_index;
                                     user_swap.token_in = t.token.clone();
                                     user_swap.amount_in = t.amount.clone();
-                                    break
+                                    break;
                                 } else if t.from == this.solver && t.to == user_swap.from {
                                     user_swap.token_out = t.token.clone();
                                     user_swap.amount_out = t.amount.clone();
-                                    break
+                                    break;
                                 }
                             }
                         }
@@ -50,13 +50,13 @@ impl MultiCallFrameClassifier for UniswapX {
                                     user_swap.trace_index = trace_index.trace_index;
                                     user_swap.token_in = TokenInfoWithAddress::native_eth();
                                     user_swap.amount_in = et.clone().value.to_scaled_rational(18);
-                                    break
+                                    break;
                                 } else if et.from == this.settlement_contract
                                     && et.to == user_swap.from
                                 {
                                     user_swap.token_out = TokenInfoWithAddress::native_eth();
                                     user_swap.amount_out = et.clone().value.to_scaled_rational(18);
-                                    break
+                                    break;
                                 }
                             }
                         }
@@ -64,22 +64,22 @@ impl MultiCallFrameClassifier for UniswapX {
                             if let Some(swaps) = &mut this.solver_swaps {
                                 swaps.push(s.clone());
                                 nodes_to_prune.push(trace_index);
-                                break
+                                break;
                             } else {
                                 this.solver_swaps = Some(vec![s.clone()]);
                                 nodes_to_prune.push(trace_index);
-                                break
+                                break;
                             }
                         }
                         Action::SwapWithFee(s) => {
                             if let Some(swaps) = &mut this.solver_swaps {
                                 swaps.push(s.swap.clone());
                                 nodes_to_prune.push(trace_index);
-                                break
+                                break;
                             } else {
                                 this.solver_swaps = Some(vec![s.swap.clone()]);
                                 nodes_to_prune.push(trace_index);
-                                break
+                                break;
                             }
                         }
                         _ => {

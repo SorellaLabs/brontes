@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use alloy_rpc_types::{request::TransactionInput, TransactionRequest};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use futures::TryFutureExt;
-use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 use super::UniswapV2Pool;
 use crate::errors::AmmError;
@@ -32,8 +32,8 @@ fn populate_pool_data_from_tokens(mut pool: UniswapV2Pool, pool_data: PoolData) 
     pool.token_a_decimals = pool_data.tokenADecimals;
     pool.token_b = pool_data.tokenB;
     pool.token_b_decimals = pool_data.tokenBDecimals;
-    pool.reserve_0 = pool_data.reserve0;
-    pool.reserve_1 = pool_data.reserve1;
+    pool.reserve_0 = pool_data.reserve0.to();
+    pool.reserve_1 = pool_data.reserve1.to();
 
     pool
 }

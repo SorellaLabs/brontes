@@ -259,7 +259,7 @@ impl LibmdbxReadWriter {
         let mut pinned = std::pin::pin!(no);
         loop {
             if pinned.poll_unpin(&mut cx).is_ready() {
-                break
+                break;
             }
 
             std::thread::sleep(Duration::from_micros(250));

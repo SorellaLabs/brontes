@@ -274,7 +274,7 @@ fn try_compose_mev(
                         temp_removal_indices.push((other_mev_type, index));
                     }
                 } else {
-                    break
+                    break;
                 }
             }
 

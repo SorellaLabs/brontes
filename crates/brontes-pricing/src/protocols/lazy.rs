@@ -267,7 +267,7 @@ impl Stream for MultiBlockPoolFutures {
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         if self.0.is_empty() {
-            return Poll::Ready(None)
+            return Poll::Ready(None);
         }
 
         let (mut results, empty): (Vec<_>, Vec<_>) = self
@@ -282,7 +282,7 @@ impl Stream for MultiBlockPoolFutures {
                 };
 
                 if futures.is_empty() {
-                    return (res, Some(*block))
+                    return (res, Some(*block));
                 }
 
                 (res, None)
@@ -297,7 +297,7 @@ impl Stream for MultiBlockPoolFutures {
         if let Some(result) = results.pop() {
             // no lossless
             assert!(results.is_empty());
-            return Poll::Ready(Some(result.unwrap()))
+            return Poll::Ready(Some(result.unwrap()));
         }
 
         Poll::Pending
@@ -328,11 +328,11 @@ impl LoadingStateTracker {
         let mut removed = vec![];
         self.protocol_address_to_dependent_pairs.retain(|p, b| {
             if p != &pool {
-                return true
+                return true;
             }
             b.retain(|(bn, key)| {
                 if &block != bn {
-                    return true
+                    return true;
                 }
                 removed.push(*key);
                 false
@@ -376,7 +376,7 @@ impl LoadingStateTracker {
             let PairStateLoadingProgress { block, id, pending_pools } = entries;
             if pending_pools.is_empty() {
                 res.push((*block, id.take(), *pair));
-                return false
+                return false;
             }
             true
         });

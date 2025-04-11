@@ -84,7 +84,7 @@ impl Stream for HeartRateMonitor {
                 self.timeout.reset();
                 cx.waker().wake_by_ref();
                 tracing::debug!("got heartbeat");
-                return Poll::Ready(Some(true))
+                return Poll::Ready(Some(true));
             }
             Poll::Ready(None) => return Poll::Ready(None),
             Poll::Pending => {}
@@ -92,7 +92,7 @@ impl Stream for HeartRateMonitor {
 
         if self.timeout.poll_tick(cx).is_ready() {
             tracing::debug!("disconnect detected, starting backup");
-            return Poll::Ready(Some(false))
+            return Poll::Ready(Some(false));
         }
 
         Poll::Pending

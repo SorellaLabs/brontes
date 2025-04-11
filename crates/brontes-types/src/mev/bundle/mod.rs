@@ -3,14 +3,13 @@ pub mod header;
 use std::fmt::{self, Debug};
 
 use ahash::HashSet;
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use clap::ValueEnum;
 use clickhouse::Row;
 pub use data::*;
 use dyn_clone::DynClone;
 pub use header::*;
 use redefined::{self_convert_redefined, Redefined};
-use reth_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

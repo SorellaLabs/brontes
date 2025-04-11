@@ -125,7 +125,7 @@ impl SubgraphVerifier {
         if graph.subgraph.is_disjoint() {
             self.subgraph_verification_state.remove(pair);
             self.pending_subgraphs.remove(pair);
-            return true
+            return true;
         }
         false
     }
@@ -141,7 +141,7 @@ impl SubgraphVerifier {
     ) -> Vec<PoolPairInfoDirection> {
         // if we find a subgraph that is the same, we return.
         if self.pending_subgraphs.contains_key(&pair) {
-            return vec![]
+            return vec![];
         };
 
         let query_state = state_tracker.missing_state(block, &path);
@@ -274,7 +274,7 @@ impl SubgraphVerifier {
                     if result.should_abandon {
                         self.subgraph_verification_state.remove(&pair);
                         tracing::trace!(?pair, "aborting");
-                        return VerificationResults::Abort(pair, block)
+                        return VerificationResults::Abort(pair, block);
                     }
 
                     if result.should_requery {
@@ -290,7 +290,7 @@ impl SubgraphVerifier {
                             prune_state: removals,
                             ignore_state: ignores,
                             frayed_ends: result.frayed_ends,
-                        })
+                        });
                     }
 
                     self.passed_verification(pair, block, subgraph, removals, state_tracker)

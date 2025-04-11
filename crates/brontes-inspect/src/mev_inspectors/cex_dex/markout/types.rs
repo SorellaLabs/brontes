@@ -1,6 +1,6 @@
 use std::{fmt, sync::Arc};
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{Address, FixedBytes};
 use brontes_types::{
     db::cex::{
         trades::{
@@ -17,7 +17,6 @@ use brontes_types::{
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::Address;
 use strum::Display;
 use tracing::warn;
 
@@ -36,7 +35,10 @@ pub struct CexPricesForSwaps {
 }
 
 impl CexPricesForSwaps {
-    pub fn per_exchange_trades<'a>(&'a self, exchanges: &'a [CexExchange]) -> PerExchangePrices {
+    pub fn per_exchange_trades<'a>(
+        &'a self,
+        exchanges: &'a [CexExchange],
+    ) -> PerExchangePrices<'a> {
         exchanges
             .iter()
             .map(|exchange| {
@@ -137,7 +139,7 @@ impl CexDexProcessing {
 
     pub fn construct_max_profit_route(&mut self) -> Option<()> {
         if self.per_exchange_pnl.iter().all(Option::is_none) {
-            return None
+            return None;
         }
 
         let num_legs = self.dex_swaps.len();
@@ -169,7 +171,7 @@ impl CexDexProcessing {
         self.per_exchange_pnl.retain(|possible_cex_dex| {
             possible_cex_dex
                 .as_ref()
-                .map_or(false, |cex_dex| cex_dex.arb_legs.iter().all(Option::is_some))
+                .is_some_and(|cex_dex| cex_dex.arb_legs.iter().all(Option::is_some))
         });
 
         Some(())
@@ -446,7 +448,7 @@ pub struct PossibleCexDex {
 impl PossibleCexDex {
     pub fn from_arb_legs(arb_legs: Vec<Option<ArbLeg>>) -> Option<Self> {
         if arb_legs.iter().all(Option::is_none) {
-            return None
+            return None;
         }
 
         let mut aggregate_pnl_maker = Rational::ZERO;

@@ -62,7 +62,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             tracing::error!(
                 "child nodes contains already set, only one of contains, or have is allowed"
             );
-            return self
+            return self;
         }
 
         self.child_node_have = action_fns.to_vec();
@@ -76,7 +76,7 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             tracing::error!(
                 "child nodes contains already set, only one of contains, or have is allowed"
             );
-            return self
+            return self;
         }
         self.child_nodes_contains = action_fns.to_vec();
         self

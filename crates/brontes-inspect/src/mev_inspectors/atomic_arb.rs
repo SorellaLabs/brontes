@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_primitives::{Address, B256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -15,7 +16,6 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::{Address, B256};
 
 use crate::{
     shared_utils::SharedInspectorUtils, BlockTree, Inspector, Metadata, MAX_PROFIT, MIN_PROFIT,
@@ -266,7 +266,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 );
 
                 if actions.is_empty() {
-                    return false
+                    return false;
                 }
 
                 // collect actions and transform into raw swaps
@@ -275,7 +275,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     .split_actions((Action::try_swaps_merged, Action::try_transfer));
 
                 let Ok(vic_info) = root.get_tx_info(arb_info.block_number, self.utils.db) else {
-                    return false
+                    return false;
                 };
                 let accounting_addr: FastHashSet<Address> =
                     vic_info.collect_address_set_for_accounting();
@@ -322,15 +322,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 let is_continuous = swaps[0].token_out.address == swaps[1].token_in.address;
 
                 if is_triangle && is_continuous {
-                    return Some(AtomicArbType::Triangle)
+                    return Some(AtomicArbType::Triangle);
                 } else if is_triangle
                     && is_stable_pair(&swaps[0].token_out.symbol, &swaps[1].token_in.symbol)
                 {
-                    return Some(AtomicArbType::StablecoinArb)
+                    return Some(AtomicArbType::StablecoinArb);
                 } else if is_triangle {
-                    return Some(AtomicArbType::CrossPair(1))
+                    return Some(AtomicArbType::CrossPair(1));
                 } else if is_stable_pair(&swaps[0].token_in.symbol, &swaps[1].token_out.symbol) {
-                    return Some(AtomicArbType::StablecoinArb)
+                    return Some(AtomicArbType::StablecoinArb);
                 }
                 Some(AtomicArbType::LongTail)
             }
@@ -404,9 +404,9 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
 
     if start_address != end_address {
         if is_stable_pair(start_token, end_token) {
-            return Some(AtomicArbType::StablecoinArb)
+            return Some(AtomicArbType::StablecoinArb);
         } else {
-            return Some(AtomicArbType::LongTail)
+            return Some(AtomicArbType::LongTail);
         }
     }
 
@@ -414,7 +414,7 @@ fn identify_arb_sequence(swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
 
     for (index, swap) in swaps.iter().skip(1).enumerate() {
         if swap.token_in.address != last_out {
-            return Some(AtomicArbType::CrossPair(index + 1))
+            return Some(AtomicArbType::CrossPair(index + 1));
         }
         last_out = swap.token_out.address;
     }
