@@ -35,15 +35,12 @@ impl LibmdbxMetrics {
     }
 
     pub fn db_read<R>(self, fn_name: &str, f: impl FnOnce() -> R) -> R {
-        if self
-            .read_count
-            .get_metric_with_label_values(&[fn_name])
-            .is_err()
-        {
-            panic!("{fn_name:?}");
+        let out_metric_res = self.read_count.get_metric_with_label_values(&[fn_name]);
+        if let Ok(read_count) = out_metric_res.as_ref() {
+            read_count.inc();
+        } else {
+            tracing::error!("error getting metric: {fn_name}: {out_metric_res:?}");
         }
-
-        self.read_count.with_label_values(&[fn_name]).inc();
 
         let now = Instant::now();
         let res = f();
