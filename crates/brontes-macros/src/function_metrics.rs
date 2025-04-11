@@ -40,11 +40,11 @@ pub fn parse(item: ItemFn, attr: TokenStream) -> syn::Result<TokenStream> {
 
 pub struct MetricList {
     // ptr to metric in struct
-    ptr:     Ident,
-    scope:   bool,
+    ptr: Ident,
+    scope: bool,
     // recorder name
     fn_name: Ident,
-    data:    Vec<Expr>,
+    data: Vec<Expr>,
 }
 
 impl Parse for MetricList {
@@ -73,6 +73,8 @@ impl Parse for MetricList {
             input.parse::<Token![,]>()?;
             data.push(input.parse()?);
         }
+
+        panic!("{data:?}");
 
         Ok(Self { ptr: ptr_value, fn_name, data, scope })
     }
