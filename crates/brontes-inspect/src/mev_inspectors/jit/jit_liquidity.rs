@@ -3,6 +3,7 @@ use std::{collections::hash_map::Entry, sync::Arc};
 use alloy_primitives::{Address, TxHash, B256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_types::TreeSearchFn;
 use brontes_types::{
     collect_address_set_for_accounting,
     db::dex::PriceAt,
@@ -666,8 +667,10 @@ impl<DB: LibmdbxReader> JitInspector<'_, DB> {
                     .flatten_nested_actions(
                         tree.clone().collect(
                             victim,
-                            TreeSearchBuilder::default()
-                                .with_actions([Action::is_swap, Action::is_nested_action]),
+                            TreeSearchBuilder::default().with_actions([
+                                Action::is_swap.boxed(),
+                                Action::is_nested_action.boxed(),
+                            ]),
                         ),
                         &|actions| actions.is_swap(),
                     )

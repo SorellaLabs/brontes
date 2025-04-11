@@ -410,7 +410,7 @@ pub mod test {
                 tx,
                 TreeSearchBuilder::default()
                     .with_actions([])
-                    .child_nodes_contain([Action::is_transfer, Action::is_swap]),
+                    .child_nodes_contain([Action::is_transfer.boxed(), Action::is_swap.boxed()]),
             )
             .collect::<Vec<_>>();
 

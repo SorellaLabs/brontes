@@ -8,8 +8,7 @@ use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
     normalized_actions::{accounting::ActionAccounting, Action},
-    ActionIter, BlockData, FastHashSet, MultiBlockData, ToFloatNearest, TreeSearchBuilder,
-    TreeSearchFn, TxInfo,
+    ActionIter, BlockData, FastHashSet, MultiBlockData, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};

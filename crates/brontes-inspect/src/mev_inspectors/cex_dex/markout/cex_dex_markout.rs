@@ -24,7 +24,7 @@ use brontes_types::{
     pair::Pair,
     tree::{BlockTree, GasDetails},
     BlockData, FastHashMap, MultiBlockData, ToFloatNearest, TreeCollector, TreeSearchBuilder,
-    TxInfo,
+    TreeSearchFn, TxInfo,
 };
 use itertools::multizip;
 use malachite::{

@@ -262,7 +262,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 // swaps and victim swaps
                 let actions = root.collect(
                     &TreeSearchBuilder::default()
-                        .with_actions([Action::is_swap, Action::is_transfer]),
+                        .with_actions([Action::is_swap.boxed(), Action::is_transfer.boxed()]),
                 );
 
                 if actions.is_empty() {
