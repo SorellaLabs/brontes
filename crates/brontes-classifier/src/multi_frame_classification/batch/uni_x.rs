@@ -1,3 +1,5 @@
+use crate::multi_frame_classification::MultiCallFrameClassifier;
+use brontes_types::TreeSearchFn;
 use brontes_types::{
     db::token_info::TokenInfoWithAddress,
     normalized_actions::{
@@ -6,8 +8,6 @@ use brontes_types::{
     Protocol, ToScaledRational, TreeSearchBuilder,
 };
 use tracing::error;
-
-use crate::multi_frame_classification::MultiCallFrameClassifier;
 
 pub struct UniswapX;
 
@@ -20,9 +20,9 @@ impl MultiCallFrameClassifier for UniswapX {
         Some(MultiCallFrameClassification {
             trace_index: request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
-                Box::new(Action::is_swap),
-                Box::new(Action::is_transfer),
-                Box::new(Action::is_eth_transfer),
+                Action::is_swap.boxed(),
+                Action::is_transfer.boxed(),
+                Action::is_eth_transfer.boxed(),
             ]),
             parse_fn: Box::new(|this_action, child_nodes| {
                 let this = this_action.try_batch_mut().unwrap();

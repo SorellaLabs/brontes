@@ -1,3 +1,5 @@
+use crate::multi_frame_classification::MultiCallFrameClassifier;
+use brontes_types::TreeSearchFn;
 use brontes_types::{
     normalized_actions::{
         Action, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest,
@@ -5,8 +7,6 @@ use brontes_types::{
     Protocol, TreeSearchBuilder,
 };
 use tracing::warn;
-
-use crate::multi_frame_classification::MultiCallFrameClassifier;
 
 pub struct BalancerV2;
 
@@ -19,9 +19,9 @@ impl MultiCallFrameClassifier for BalancerV2 {
         Some(MultiCallFrameClassification {
             trace_index: request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
-                Box::new(Action::is_swap),
-                Box::new(Action::is_transfer),
-                Box::new(Action::is_eth_transfer),
+                Action::is_swap.boxed(),
+                Action::is_transfer.boxed(),
+                Action::is_eth_transfer.boxed(),
             ]),
             parse_fn: Box::new(|this_action, child_nodes| {
                 let this = this_action.try_flash_loan_mut().unwrap();

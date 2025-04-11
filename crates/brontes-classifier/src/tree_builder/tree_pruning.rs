@@ -1,3 +1,4 @@
+use brontes_types::TreeSearchFn;
 use brontes_types::{
     normalized_actions::{Action, NormalizedSwapWithFee},
     tree::BlockTree,
@@ -17,7 +18,7 @@ pub(crate) fn account_for_tax_tokens(tree: &mut BlockTree<Action>) {
     tree.modify_spans(
         TreeSearchBuilder::default()
             .with_action(Action::is_swap)
-            .child_nodes_have([Action::is_transfer]),
+            .child_nodes_have([Action::is_transfer.boxed()]),
         |span, data| {
             let (swaps, mut transfers): (Vec<_>, Vec<_>) = span
                 .into_iter()

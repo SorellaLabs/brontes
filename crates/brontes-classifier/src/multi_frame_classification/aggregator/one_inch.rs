@@ -3,7 +3,7 @@ use brontes_types::{
     normalized_actions::{
         Action, MultiCallFrameClassification, MultiFrameAction, MultiFrameRequest, NodeDataIndex,
     },
-    Protocol, TreeSearchBuilder,
+    Protocol, TreeSearchBuilder, TreeSearchFn,
 };
 
 use crate::multi_frame_classification::MultiCallFrameClassifier;
@@ -20,9 +20,9 @@ impl MultiCallFrameClassifier for OneInchAggregator {
         Some(MultiCallFrameClassification {
             trace_index: request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
-                Box::new(Action::is_swap),
-                Box::new(Action::is_transfer),
-                Box::new(Action::is_eth_transfer),
+                Action::is_swap.boxed(),
+                Action::is_transfer.boxed(),
+                Action::is_eth_transfer.boxed(),
             ]),
             parse_fn: Box::new(|this_action, child_nodes| {
                 parse_1inch(this_action, child_nodes, false)
@@ -42,9 +42,9 @@ impl MultiCallFrameClassifier for OneInchFusion {
         Some(MultiCallFrameClassification {
             trace_index: request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
-                Box::new(Action::is_swap),
-                Box::new(Action::is_transfer),
-                Box::new(Action::is_eth_transfer),
+                Action::is_swap.boxed(),
+                Action::is_transfer.boxed(),
+                Action::is_eth_transfer.boxed(),
             ]),
             parse_fn: Box::new(|this_action, child_nodes| {
                 parse_1inch(this_action, child_nodes, true)
