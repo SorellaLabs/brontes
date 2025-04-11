@@ -1,27 +1,54 @@
+use std::fmt::Debug;
+
 use alloy_primitives::Address;
 
 use crate::{tree::NormalizedAction, Node, NodeData};
 
+trait TreeSearchFn<T: NormalizedAction>: Fn(&T) -> bool {}
+
+impl<T: NormalizedAction, D: Fn(&T) -> bool> TreeSearchFn<T> for D {}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TreeSearchArgs {
-    pub collect_current_node:  bool,
-    pub collect_idxs:          Vec<usize>,
+    pub collect_current_node: bool,
+    pub collect_idxs: Vec<usize>,
     pub child_node_to_collect: bool,
 }
 
-#[derive(Debug, Clone)]
 pub struct TreeSearchBuilder<V: NormalizedAction> {
     /// these get or'd together
-    with_actions:         Vec<fn(&V) -> bool>,
+    with_actions: Vec<Box<dyn TreeSearchFn<V>>>,
     /// get or'd together with contains
-    child_node_have:      Vec<fn(&V) -> bool>,
+    child_node_have: Vec<Box<dyn TreeSearchFn<V>>>,
     /// gets and'd together
-    child_nodes_contains: Vec<fn(&V) -> bool>,
+    child_nodes_contains: Vec<Box<dyn TreeSearchFn<V>>>,
     /// gets and'd together
-    has_from_address:     Option<Address>,
+    has_from_address: Option<Address>,
     /// gets and'd together
-    has_to_address:       Option<Vec<Address>>,
+    has_to_address: Option<Vec<Address>>,
 }
+
+impl<V: NormalizedAction> Debug for TreeSearchBuilder<V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TreeSearchBuilder")
+            .field("has_from_address", &self.has_from_address)
+            .field("has_to_address", &self.has_to_address)
+            .finish()
+    }
+}
+
+impl<V: NormalizedAction> Clone for TreeSearchBuilder<V> {
+    fn clone(&self) -> Self {
+        Self {
+            with_actions: unsafe { std::mem::transmute_copy(&self.with_actions) },
+            child_node_have: unsafe { std::mem::transmute_copy(&self.child_node_have) },
+            child_nodes_contains: unsafe { std::mem::transmute_copy(&self.child_nodes_contains) },
+            has_from_address: self.has_from_address.clone(),
+            has_to_address: self.has_to_address.clone(),
+        }
+    }
+}
+
 impl<V: NormalizedAction> Default for TreeSearchBuilder<V> {
     fn default() -> Self {
         Self::new()
@@ -31,33 +58,42 @@ impl<V: NormalizedAction> Default for TreeSearchBuilder<V> {
 impl<V: NormalizedAction> TreeSearchBuilder<V> {
     pub fn new() -> Self {
         Self {
-            with_actions:         vec![],
-            child_node_have:      vec![],
-            child_nodes_contains: vec![],
-            has_from_address:     None,
-            has_to_address:       None,
+            with_actions: Vec::with_capacity(0),
+            child_node_have: Vec::with_capacity(0),
+            child_nodes_contains: Vec::with_capacity(0),
+            has_from_address: None,
+            has_to_address: None,
         }
     }
 
     /// Will collect all actions that the search passes if it is equal to the
     /// given function arg. if no child node search args are set. The search
     /// will use this action as the default.
-    pub fn with_action(mut self, action_fn: fn(&V) -> bool) -> Self {
-        self.with_actions.push(action_fn);
+    pub fn with_action(mut self, action_fn: impl Fn(&V) -> bool + 'static) -> Self {
+        self.with_actions.push(Box::new(action_fn));
         self
     }
 
     /// Will collect all actions that the search passes if it equals one of the
     /// function args passed in. If no child node search args are set. These
     /// action fn will be used to search for child nodes
-    pub fn with_actions<const N: usize>(mut self, action_fns: [fn(&V) -> bool; N]) -> Self {
-        self.with_actions.extend(action_fns);
+    pub fn with_actions<const N: usize>(
+        mut self,
+        action_fns: [Box<dyn TreeSearchFn<V>>; N],
+    ) -> Self {
+        self.with_actions.extend(
+            action_fns, // .into_iter()
+                       // .map(|f| Box::new(f) as Box<dyn TreeSearchFn<V>>),
+        );
         self
     }
 
     /// When searching for child nodes, makes sure that there is atleast one of
     /// the following actions defined by the given functions
-    pub fn child_nodes_have<const H: usize>(mut self, action_fns: [fn(&V) -> bool; H]) -> Self {
+    pub fn child_nodes_have<const H: usize>(
+        mut self,
+        action_fns: [impl Fn(&V) -> bool + 'static; H],
+    ) -> Self {
         if !self.child_nodes_contains.is_empty() {
             tracing::error!(
                 "child nodes contains already set, only one of contains, or have is allowed"
@@ -65,20 +101,29 @@ impl<V: NormalizedAction> TreeSearchBuilder<V> {
             return self;
         }
 
-        self.child_node_have = action_fns.to_vec();
+        self.child_node_have = action_fns
+            .into_iter()
+            .map(|f| Box::new(f) as Box<dyn TreeSearchFn<V>>)
+            .collect();
         self
     }
 
     /// When searching for child nodes, makes sure that there is all of the
     /// following actions defined by the given functions
-    pub fn child_nodes_contain<const C: usize>(mut self, action_fns: [fn(&V) -> bool; C]) -> Self {
+    pub fn child_nodes_contain<const C: usize>(
+        mut self,
+        action_fns: [impl Fn(&V) -> bool + 'static; C],
+    ) -> Self {
         if !self.child_node_have.is_empty() {
             tracing::error!(
                 "child nodes contains already set, only one of contains, or have is allowed"
             );
             return self;
         }
-        self.child_nodes_contains = action_fns.to_vec();
+        self.child_nodes_contains = action_fns
+            .into_iter()
+            .map(|f| Box::new(f) as Box<dyn TreeSearchFn<V>>)
+            .collect();
         self
     }
 

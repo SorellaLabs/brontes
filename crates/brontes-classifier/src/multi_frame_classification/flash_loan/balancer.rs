@@ -17,13 +17,13 @@ impl MultiCallFrameClassifier for BalancerV2 {
         request: MultiFrameRequest,
     ) -> Option<MultiCallFrameClassification<Action>> {
         Some(MultiCallFrameClassification {
-            trace_index:         request.trace_idx,
+            trace_index: request.trace_idx,
             tree_search_builder: TreeSearchBuilder::new().with_actions([
-                Action::is_swap,
-                Action::is_transfer,
-                Action::is_eth_transfer,
+                Box::new(Action::is_swap),
+                Box::new(Action::is_transfer),
+                Box::new(Action::is_eth_transfer),
             ]),
-            parse_fn:            Box::new(|this_action, child_nodes| {
+            parse_fn: Box::new(|this_action, child_nodes| {
                 let this = this_action.try_flash_loan_mut().unwrap();
                 let mut nodes_to_prune = Vec::new();
                 let mut repay_transfers = Vec::new();

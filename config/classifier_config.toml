@@ -13,7 +13,7 @@
 # symbol = "WBTC"
 # However, if token info is not relevant for this pool, you don't have to specify it.
 
-[AaveV3."0x5faab9e1adbddad0a08734be8a52185fd6558e14"]
+[AaveV3Pool."0x5faab9e1adbddad0a08734be8a52185fd6558e14"]
 init_block = 18979624
 [AaveV2."0xb9184a4480830bf89b55b73631e287df9079f466"]
 init_block = 18129018

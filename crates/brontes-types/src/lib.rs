@@ -2,6 +2,7 @@
 #![allow(clippy::type_complexity)]
 #![allow(unexpected_cfgs)]
 #![allow(clippy::empty_line_after_doc_comments)]
+#![allow(private_interfaces)]
 
 pub mod multi_block;
 pub use multi_block::*;
