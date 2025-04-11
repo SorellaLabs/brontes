@@ -99,7 +99,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
             }
         }
 
-        let progress_bar = Self::build_critical_state_progress_bar(5).unwrap();
+        let progress_bar = Self::build_critical_state_progress_bar(5);
 
         futures::stream::iter(tables.to_vec())
             .map(|table| {
@@ -127,7 +127,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
     pub(crate) async fn clickhouse_init_no_args<'db, T, D>(
         &'db self,
-        progress_bar: ProgressBar,
+        progress_bar: Option<ProgressBar>,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
     where
@@ -146,7 +146,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         match data {
             Ok(d) => {
-                progress_bar.inc(1);
+                if let Some(p) = progress_bar.as_ref() {
+                    p.inc(1);
+                }
                 let not = Arc::new(Notify::new());
                 f(d, not.clone())?;
                 not.notified().await;

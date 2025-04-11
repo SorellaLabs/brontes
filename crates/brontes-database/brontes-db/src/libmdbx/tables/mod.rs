@@ -163,7 +163,7 @@ impl Tables {
     pub(crate) async fn initialize_full_range_table<T: TracingProvider, CH: ClickhouseHandle>(
         &self,
         initializer: &LibmdbxInitializer<T, CH>,
-        crit_progress: ProgressBar,
+        crit_progress: Option<ProgressBar>,
     ) -> eyre::Result<()> {
         let handle = initializer.get_libmdbx_handle();
         match self {
