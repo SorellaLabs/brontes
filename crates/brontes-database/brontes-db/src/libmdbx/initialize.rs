@@ -36,9 +36,9 @@ type FnOutput<D> = Pin<Box<dyn Future<Output = eyre::Result<Vec<D>>> + Send>>;
 
 pub struct LibmdbxInitializer<TP: TracingProvider, CH: ClickhouseHandle> {
     pub(crate) libmdbx: &'static LibmdbxReadWriter,
-    clickhouse:         &'static CH,
-    tracer:             Arc<TP>,
-    metrics:            InitMetrics,
+    clickhouse: &'static CH,
+    tracer: Arc<TP>,
+    metrics: InitMetrics,
 }
 
 impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
@@ -163,7 +163,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         &self,
         range: Option<(u64, u64)>,
         clear_table: bool,
-        pb: ProgressBar,
+        pb: Option<ProgressBar>,
         d: impl Fn(u64, u64, &'static CH) -> FnOutput<D> + Send + Clone + 'static,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
@@ -222,7 +222,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
                 match data {
                     Ok(d) => {
-                        pb.inc(count);
+                        if let Some(p) = pb {
+                            p.inc(count);
+                        }
                         let not = Arc::new(Notify::new());
                         f(d, not.clone())?;
                         not.notified().await;
@@ -256,7 +258,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
     pub(crate) async fn initialize_table_from_clickhouse_arbitrary_state<'db, T, D>(
         &self,
         block_range: &'static [u64],
-        pb: ProgressBar,
+        pb: Option<ProgressBar>,
         d: impl Fn(&'static [u64], &'static CH) -> FnOutput<D> + Send + Clone + 'static,
         f: impl Fn(Vec<D>, Arc<Notify>) -> eyre::Result<()> + Send + Clone + 'static,
     ) -> eyre::Result<()>
@@ -286,7 +288,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
                 let data = d(inner_range, clickhouse).await;
                 match data {
                     Ok(d) => {
-                        pb.inc(count);
+                        if let Some(p) = pb {
+                            p.inc(count);
+                        }
                         let not = Arc::new(Notify::new());
                         f(d, not.clone())?;
                         not.notified().await;
@@ -534,9 +538,9 @@ fn workspace_dir() -> path::PathBuf {
 
 #[derive(Debug, Deserialize, Default)]
 pub struct TokenInfoWithAddressToml {
-    pub symbol:   String,
+    pub symbol: String,
     pub decimals: u8,
-    pub address:  Address,
+    pub address: Address,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -546,37 +550,37 @@ struct BuilderConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SearcherConfig {
-    searcher_eoas:      FastHashMap<String, SearcherInfo>,
+    searcher_eoas: FastHashMap<String, SearcherInfo>,
     searcher_contracts: FastHashMap<String, SearcherInfo>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct AddressMetadataConfig {
-    pub entity_name:     Option<String>,
-    pub nametag:         Option<String>,
-    pub labels:          Option<Vec<String>>,
+    pub entity_name: Option<String>,
+    pub nametag: Option<String>,
+    pub labels: Option<Vec<String>>,
     #[serde(rename = "type")]
-    pub address_type:    Option<String>,
+    pub address_type: Option<String>,
     #[serde(default)]
-    pub contract_info:   Option<ContractInfoConfig>,
-    pub ens:             Option<String>,
+    pub contract_info: Option<ContractInfoConfig>,
+    pub ens: Option<String>,
     pub social_metadata: Option<SocialsConfig>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct ContractInfoConfig {
     pub verified_contract: Option<bool>,
-    pub contract_creator:  Option<String>,
-    pub reputation:        Option<u8>,
+    pub contract_creator: Option<String>,
+    pub reputation: Option<u8>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct SocialsConfig {
-    pub twitter:           Option<String>,
+    pub twitter: Option<String>,
     pub twitter_followers: Option<u64>,
-    pub website_url:       Option<String>,
-    pub crunchbase:        Option<String>,
-    pub linkedin:          Option<String>,
+    pub website_url: Option<String>,
+    pub crunchbase: Option<String>,
+    pub linkedin: Option<String>,
 }
 #[derive(Serialize, Deserialize)]
 struct MetadataConfig {
@@ -586,24 +590,24 @@ struct MetadataConfig {
 impl AddressMetadataConfig {
     fn into_address_metadata(self) -> AddressMetadata {
         AddressMetadata {
-            entity_name:     self.entity_name,
-            nametag:         self.nametag,
-            labels:          self.labels.unwrap_or_default(),
-            address_type:    self.address_type,
-            contract_info:   self.contract_info.map(|config| ContractInfo {
+            entity_name: self.entity_name,
+            nametag: self.nametag,
+            labels: self.labels.unwrap_or_default(),
+            address_type: self.address_type,
+            contract_info: self.contract_info.map(|config| ContractInfo {
                 verified_contract: config.verified_contract,
-                contract_creator:  config.contract_creator.map(|s| s.parse().unwrap()),
-                reputation:        config.reputation,
+                contract_creator: config.contract_creator.map(|s| s.parse().unwrap()),
+                reputation: config.reputation,
             }),
-            ens:             self.ens,
+            ens: self.ens,
             social_metadata: self
                 .social_metadata
                 .map(|config| Socials {
-                    twitter:           config.twitter,
+                    twitter: config.twitter,
                     twitter_followers: config.twitter_followers,
-                    website_url:       config.website_url,
-                    crunchbase:        config.crunchbase,
-                    linkedin:          config.linkedin,
+                    website_url: config.website_url,
+                    crunchbase: config.crunchbase,
+                    linkedin: config.linkedin,
                 })
                 .unwrap_or_default(),
         }

@@ -354,11 +354,13 @@ impl Tables {
         }
     }
 
-    fn fetch_progress_bar(&self, progress_bar: Arc<Vec<(Tables, ProgressBar)>>) -> ProgressBar {
+    fn fetch_progress_bar(
+        &self,
+        progress_bar: Arc<Vec<(Tables, ProgressBar)>>,
+    ) -> Option<ProgressBar> {
         progress_bar
             .iter()
             .find_map(|(t, b)| (t == self).then_some(b.clone()))
-            .unwrap()
     }
 
     pub async fn export_to_parquet<DB>(
