@@ -150,7 +150,7 @@ impl<'a> SortedTrades<'a> {
             });
 
         if res.is_none() {
-            tracing::debug!(target: "brontes_types::db::cex::optimistic", ?pair, "No price VMAP found for {}-{} in optimistic time window. \n Tx: {}", dex_swap.token_in.symbol, dex_swap.token_out.symbol, format_etherscan_url(&tx_hash));
+            tracing::trace!(target: "brontes_types::db::cex::optimistic", ?pair, "No price VMAP found for {}-{} in optimistic time window. \n Tx: {}", dex_swap.token_in.symbol, dex_swap.token_out.symbol, format_etherscan_url(&tx_hash));
         }
 
         res
@@ -173,7 +173,7 @@ impl<'a> SortedTrades<'a> {
                 let pair0 = Pair(pair.0, intermediary);
                 let pair1 = Pair(intermediary, pair.1);
 
-                tracing::debug!(target: "brontes_types::db::cex::trades::optimistic", ?pair, ?intermediary, "trying via intermediary");
+                tracing::trace!(target: "brontes_types::db::cex::trades::optimistic", ?pair, ?intermediary, "trying via intermediary");
 
                 let mut bypass_intermediary_vol = false;
 

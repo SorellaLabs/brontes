@@ -411,7 +411,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                         max_time_diff,
                     )
                     .or_else(|| {
-                        debug!(
+                        trace!(
                             "No CEX quote found for pair: {}-{}",
                             dex_swap.token_in_symbol(),
                             dex_swap.token_out_symbol(),
@@ -522,7 +522,13 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         let original_token = dex_swaps[0].token_in.address;
         let final_token = dex_swaps.last().unwrap().token_out.address;
 
-        original_token == final_token
+        if original_token == final_token {
+            let amount_in = dex_swaps[0].amount_in;
+            let amount_out = dex_swaps.last().unwrap().amount_out;
+            return amount_out > amount_in && amount_out <= amount_in * 5;
+        } else {
+            return false;
+        }
     }
 }
 

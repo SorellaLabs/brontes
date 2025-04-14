@@ -301,7 +301,7 @@ impl SubGraphRegistry {
             .get(&pair)
             .and_then(|g| g.get(&goes_through.ordered()))
             .map(|graph| {
-                tracing::debug!("has graph for goes through");
+                tracing::trace!("has graph for goes through");
                 Some((
                     graph.extends_to(),
                     graph.complete_pair(),
