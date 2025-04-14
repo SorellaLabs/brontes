@@ -1,7 +1,8 @@
 use std::{panic::AssertUnwindSafe, sync::Arc};
 
 use itertools::Itertools;
-use reth_primitives::{Header, B256};
+use reth_primitives::B256;
+use reth_rpc_types::Header;
 use statrs::statistics::Statistics;
 use tracing::{error, info, span, Level};
 
@@ -31,10 +32,10 @@ type ClassifyData<V> = Option<(usize, Vec<MultiCallFrameClassification<V>>)>;
 
 #[derive(Debug, Clone)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots:             Vec<Root<V>>,
-    pub header:               Header,
+    pub tx_roots: Vec<Root<V>>,
+    pub header: Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee:     f64,
+    pub avg_priority_fee: f64,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -75,11 +76,11 @@ impl<V: NormalizedAction> BlockTree<V> {
 
         let Ok(contract) = database.try_fetch_searcher_contract_infos(contract_info_addr.clone())
         else {
-            return vec![]
+            return vec![];
         };
 
         let Ok(address_meta) = database.try_fetch_address_metadatas(contract_info_addr) else {
-            return vec![]
+            return vec![];
         };
 
         let Ok(eoa) = database.try_fetch_searcher_eoa_infos(eoa_info_addr) else { return vec![] };
@@ -139,7 +140,7 @@ impl<V: NormalizedAction> BlockTree<V> {
             if this.tx_roots.is_empty() {
                 info!(block = this.header.number, "The block tree is empty");
                 this.tx_roots.iter_mut().for_each(|root| root.finalize());
-                return
+                return;
             }
 
             // Initialize accumulator for total priority fee and vector of priority fees

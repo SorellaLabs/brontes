@@ -1,8 +1,6 @@
-use std::{borrow::Cow, slice};
-
-use derive_more::*;
-
 use crate::{Error, TransactionKind};
+use derive_more::*;
+use std::{borrow::Cow, slice};
 
 /// Implement this to be able to decode data values
 pub trait TableObject: Sized {
@@ -83,7 +81,7 @@ impl TableObject for ObjectLength {
 impl<const LEN: usize> TableObject for [u8; LEN] {
     fn decode(data_val: &[u8]) -> Result<Self, Error> {
         if data_val.len() != LEN {
-            return Err(Error::DecodeErrorLenDiff)
+            return Err(Error::DecodeErrorLenDiff);
         }
         let mut a = [0; LEN];
         a[..].copy_from_slice(data_val);

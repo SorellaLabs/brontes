@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_primitives::Address;
 use alloy_primitives::Log;
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -11,8 +12,8 @@ use brontes_types::{
     tree::{root::NodeData, GasDetails, Node, Root},
 };
 use futures::future::join_all;
-use reth_primitives::{Address, Header};
 use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
+use reth_rpc_types::Header;
 use tracing::{error, trace};
 
 use self::erc20::try_decode_transfer;
@@ -23,7 +24,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct DiscoveryOnlyClassifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx:  &'db DB,
+    libmdbx: &'db DB,
     provider: Arc<T>,
 }
 
@@ -56,7 +57,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                             empty = trace.trace.is_empty(),
                             is_success = trace.is_success
                         );
-                        return
+                        return;
                     }
 
                     let root_trace = trace.trace.remove(0);
@@ -84,10 +85,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                         private: false,
                         total_msg_value_transfers: vec![],
                         gas_details: GasDetails {
-                            coinbase_transfer:   None,
-                            gas_used:            trace.gas_used,
+                            coinbase_transfer: None,
+                            gas_used: trace.gas_used,
                             effective_gas_price: trace.effective_price,
-                            priority_fee:        trace.effective_price
+                            priority_fee: trace.effective_price
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(action)]),
@@ -159,7 +160,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         trace_index: u64,
     ) {
         if trace.trace.error.is_some() {
-            return
+            return;
         }
         match trace.action_type() {
             TraceAction::Call(_) => {
@@ -190,7 +191,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         trace_index: u64,
     ) {
         if trace.is_static_call() {
-            return
+            return;
         }
 
         let mut call_info = trace.get_callframe_info();
@@ -241,7 +242,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
         block: u64,
     ) {
         if trace.is_delegate_call() {
-            return
+            return;
         };
 
         // Attempt to decode the transfer
@@ -303,7 +304,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
             .collect::<Vec<_>>();
 
         if search_data.is_empty() {
-            return
+            return;
         }
 
         join_all(

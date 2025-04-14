@@ -1,5 +1,5 @@
+use alloy_primitives::{Address, U256};
 use clickhouse::Row;
-use reth_primitives::{Address, U256};
 use serde::{Deserialize, Serialize};
 
 use super::accounting::{AddressDeltas, TokenAccounting};
@@ -8,11 +8,11 @@ use crate::Protocol;
 
 #[derive(Debug, Serialize, Clone, Row, Deserialize, PartialEq, Eq)]
 pub struct NormalizedAggregator {
-    pub protocol:    Protocol,
+    pub protocol: Protocol,
     pub trace_index: u64,
-    pub from:        Address,
-    pub to:          Address,
-    pub recipient:   Address,
+    pub from: Address,
+    pub to: Address,
+    pub recipient: Address,
 
     // Child actions contained within this aggregator in order of execution
     // They can be:
@@ -23,7 +23,7 @@ pub struct NormalizedAggregator {
     //  - Burns
     //  - Transfers
     pub child_actions: Vec<Action>,
-    pub msg_value:     U256,
+    pub msg_value: U256,
 }
 
 impl TokenAccounting for NormalizedAggregator {

@@ -5,16 +5,20 @@ use std::{
 };
 
 use brontes_types::{structured_trace::TxTrace, BrontesTaskExecutor};
-use reth_beacon_consensus::BeaconConsensus;
+use reth_beacon_consensus::EthBeaconConsensus;
+// use reth_beacon_consensus::BeaconConsensus;
 use reth_blockchain_tree::{
     externals::TreeExternals, BlockchainTree, BlockchainTreeConfig, ShareableBlockchainTree,
 };
 use reth_db::{mdbx::DatabaseArguments, DatabaseEnv};
 use reth_network_api::noop::NoopNetwork;
-use reth_node_ethereum::EthEvmConfig;
-use reth_primitives::{BlockId, PruneModes, MAINNET};
-use reth_provider::{providers::BlockchainProvider, ProviderFactory};
-use reth_revm::{inspectors::GasInspector, EvmProcessorFactory};
+use reth_node_ethereum::{EthEvmConfig, EthExecutorProvider};
+use reth_primitives::{BlockId, MAINNET};
+use reth_provider::{
+    providers::{BlockchainProvider, StaticFileProvider},
+    ProviderFactory,
+};
+use reth_revm::inspectors::GasInspector;
 use reth_rpc::{
     eth::{
         cache::{EthStateCache, EthStateCacheConfig},
@@ -37,10 +41,7 @@ use reth_transaction_pool::{
 mod provider;
 pub mod reth_tracer;
 
-pub type Provider = BlockchainProvider<
-    Arc<DatabaseEnv>,
-    ShareableBlockchainTree<Arc<DatabaseEnv>, EvmProcessorFactory<EthEvmConfig>>,
->;
+pub type Provider = BlockchainProvider<Arc<DatabaseEnv>>;
 
 pub type RethApi = EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>;
 
@@ -52,8 +53,8 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api:              EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
-    pub trace:            TraceApi<Provider, RethApi>,
+    pub api: EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
+    pub trace: TraceApi<Provider, RethApi>,
     pub provider_factory: ProviderFactory<Arc<DatabaseEnv>>,
 }
 impl TracingClient {
@@ -64,23 +65,26 @@ impl TracingClient {
         static_files_path: PathBuf,
     ) -> Self {
         let chain = MAINNET.clone();
-        let provider_factory =
-            ProviderFactory::new(Arc::clone(&db), Arc::clone(&chain), static_files_path)
-                .expect("failed to start provider factory");
+        let provider_factory = ProviderFactory::new(
+            Arc::clone(&db),
+            Arc::clone(&chain),
+            StaticFileProvider::read_only(static_files_path).unwrap(),
+        );
 
         let tree_externals = TreeExternals::new(
             provider_factory.clone(),
-            Arc::new(BeaconConsensus::new(Arc::clone(&chain))),
-            EvmProcessorFactory::new(chain.clone(), EthEvmConfig::default()),
+            Arc::new(EthBeaconConsensus::new(Arc::clone(&chain))),
+            EthExecutorProvider::new(chain.clone(), EthEvmConfig::default()),
         );
 
         let tree_config = BlockchainTreeConfig::default();
 
         let blockchain_tree = ShareableBlockchainTree::new(
-            BlockchainTree::new(tree_externals, tree_config, Some(PruneModes::none())).unwrap(),
+            BlockchainTree::new(tree_externals, tree_config, Some(Default::default())).unwrap(),
         );
 
-        let provider = BlockchainProvider::new(provider_factory.clone(), blockchain_tree).unwrap();
+        let provider =
+            BlockchainProvider::new(provider_factory.clone(), Arc::new(blockchain_tree)).unwrap();
 
         let state_cache = EthStateCache::spawn_with(
             provider.clone(),
@@ -150,21 +154,21 @@ impl TracingClient {
         block_id: BlockId,
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let insp_setup = || BrontesTracingInspector {
-            config:                TracingInspectorConfig {
-                record_logs:              true,
-                record_steps:             false,
-                record_state_diff:        false,
-                record_stack_snapshots:   StackSnapshotType::None,
-                record_memory_snapshots:  false,
-                record_call_return_data:  true,
+            config: TracingInspectorConfig {
+                record_logs: true,
+                record_steps: false,
+                record_state_diff: false,
+                record_stack_snapshots: StackSnapshotType::None,
+                record_memory_snapshots: false,
+                record_call_return_data: true,
                 exclude_precompile_calls: true,
             },
-            traces:                CallTraceArena::default(),
-            trace_stack:           Vec::new(),
-            step_stack:            Vec::new(),
+            traces: CallTraceArena::default(),
+            trace_stack: Vec::new(),
+            step_stack: Vec::new(),
             last_call_return_data: None,
-            gas_inspector:         GasInspector::default(),
-            spec_id:               None,
+            gas_inspector: GasInspector::default(),
+            spec_id: None,
         };
 
         self.api
@@ -178,7 +182,7 @@ impl TracingClient {
 #[derive(Debug, Clone, Copy)]
 pub struct StackStep {
     _trace_idx: usize,
-    _step_idx:  usize,
+    _step_idx: usize,
 }
 
 /// Opens up an existing database at the specified path.

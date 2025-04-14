@@ -566,7 +566,6 @@ macro_rules! compressed_table {
         impl reth_db::table::Table for $table_name {
             // this type is needed for the trait impl but we never actually use it,
             // so an arbitrary table will do
-            const TABLE: reth_db::Tables = reth_db::Tables::CanonicalHeaders;
             const NAME: &'static str = stringify!($table_name);
             type Key = $key;
             type Value = $c_val;

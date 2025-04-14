@@ -5,7 +5,7 @@ pub use relays::*;
 
 mod bids_payloads;
 pub use bids_payloads::*;
-use reth_primitives::Address;
+use alloy_primitives::Address;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelayBlockMetadata {

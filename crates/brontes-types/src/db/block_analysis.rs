@@ -1,11 +1,4 @@
-use std::{collections::HashMap, hash::Hash, str::FromStr};
 use crate::serde_utils::address;
-use alloy_primitives::Address;
-use clickhouse::Row;
-use itertools::Itertools;
-use reth_primitives::TxHash;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use crate::serde_utils::vec_address;
 use crate::{
     db::{searcher::Fund, token_info::TokenInfoWithAddress},
@@ -16,6 +9,13 @@ use crate::{
     },
     Protocol,
 };
+use alloy_primitives::Address;
+use alloy_primitives::TxHash;
+use clickhouse::Row;
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use std::{collections::HashMap, hash::Hash, str::FromStr};
 
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Row)]
@@ -65,592 +65,592 @@ pub struct BlockAnalysis {
     pub all_biggest_arb_revenue_amt: Option<f64>,
 
     // atomic
-    pub atomic_bundle_count:                 u64,
-    pub atomic_total_profit:                 f64,
-    pub atomic_total_revenue:                f64,
-    pub atomic_average_profit_margin:        f64,
+    pub atomic_bundle_count: u64,
+    pub atomic_total_profit: f64,
+    pub atomic_total_revenue: f64,
+    pub atomic_average_profit_margin: f64,
     #[serde(with = "option_address")]
-    pub atomic_top_searcher_profit:          Option<Address>,
-    pub atomic_top_searcher_profit_amt:      Option<f64>,
+    pub atomic_top_searcher_profit: Option<Address>,
+    pub atomic_top_searcher_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub atomic_top_searcher_revenue:         Option<Address>,
-    pub atomic_top_searcher_revenue_amt:     Option<f64>,
+    pub atomic_top_searcher_revenue: Option<Address>,
+    pub atomic_top_searcher_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "atomic_searcher_eoa_all.profit")]
-    pub atomic_searcher_eoa_all_profit:      Vec<Address>,
+    pub atomic_searcher_eoa_all_profit: Vec<Address>,
     #[serde(rename = "atomic_searcher_eoa_all.profit_amt")]
-    pub atomic_searcher_eoa_all_profit_amt:  Vec<f64>,
+    pub atomic_searcher_eoa_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "atomic_searcher_eoa_all.revenue")]
-    pub atomic_searcher_eoa_all_revenue:     Vec<Address>,
+    pub atomic_searcher_eoa_all_revenue: Vec<Address>,
     #[serde(rename = "atomic_searcher_eoa_all.revenue_amt")]
     pub atomic_searcher_eoa_all_revenue_amt: Vec<f64>,
-    pub atomic_searcher_eoa_count:           u64,
+    pub atomic_searcher_eoa_count: u64,
     #[serde(with = "vec_address")]
     #[serde(rename = "atomic_mev_contract_all.profit")]
-    pub atomic_mev_contract_all_profit:      Vec<Address>,
+    pub atomic_mev_contract_all_profit: Vec<Address>,
     #[serde(rename = "atomic_mev_contract_all.profit_amt")]
-    pub atomic_mev_contract_all_profit_amt:  Vec<f64>,
+    pub atomic_mev_contract_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "atomic_mev_contract_all.revenue")]
-    pub atomic_mev_contract_all_revenue:     Vec<Address>,
+    pub atomic_mev_contract_all_revenue: Vec<Address>,
     #[serde(rename = "atomic_mev_contract_all.revenue_amt")]
     pub atomic_mev_contract_all_revenue_amt: Vec<f64>,
-    pub atomic_mev_contract_count:           u64,
+    pub atomic_mev_contract_count: u64,
     #[serde(with = "option_fund")]
-    pub atomic_top_fund_profit:              Option<Fund>,
-    pub atomic_top_fund_profit_amt:          Option<f64>,
+    pub atomic_top_fund_profit: Option<Fund>,
+    pub atomic_top_fund_profit_amt: Option<f64>,
     #[serde(with = "option_fund")]
-    pub atomic_top_fund_revenue:             Option<Fund>,
-    pub atomic_top_fund_revenue_amt:         Option<f64>,
+    pub atomic_top_fund_revenue: Option<Fund>,
+    pub atomic_top_fund_revenue_amt: Option<f64>,
     #[serde(rename = "atomic_fund_all.profit")]
     #[serde(with = "vec_fund")]
-    pub atomic_fund_all_profit:              Vec<Fund>,
+    pub atomic_fund_all_profit: Vec<Fund>,
     #[serde(rename = "atomic_fund_all.profit_amt")]
-    pub atomic_fund_all_profit_amt:          Vec<f64>,
+    pub atomic_fund_all_profit_amt: Vec<f64>,
     #[serde(rename = "atomic_fund_all.revenue")]
     #[serde(with = "vec_fund")]
-    pub atomic_fund_all_revenue:             Vec<Fund>,
+    pub atomic_fund_all_revenue: Vec<Fund>,
     #[serde(rename = "atomic_fund_all.revenue_amt")]
-    pub atomic_fund_all_revenue_amt:         Vec<f64>,
-    pub atomic_fund_count:                   u64,
+    pub atomic_fund_all_revenue_amt: Vec<f64>,
+    pub atomic_fund_count: u64,
     #[serde(with = "option_address")]
-    pub atomic_most_arbed_pool_profit:       Option<Address>,
-    pub atomic_most_arbed_pool_profit_amt:   Option<f64>,
+    pub atomic_most_arbed_pool_profit: Option<Address>,
+    pub atomic_most_arbed_pool_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub atomic_most_arbed_pool_revenue:      Option<Address>,
-    pub atomic_most_arbed_pool_revenue_amt:  Option<f64>,
-    pub atomic_most_arbed_pair_profit:       TokenPairDetails,
-    pub atomic_most_arbed_pair_profit_amt:   Option<f64>,
-    pub atomic_most_arbed_pair_revenue:      TokenPairDetails,
-    pub atomic_most_arbed_pair_revenue_amt:  Option<f64>,
+    pub atomic_most_arbed_pool_revenue: Option<Address>,
+    pub atomic_most_arbed_pool_revenue_amt: Option<f64>,
+    pub atomic_most_arbed_pair_profit: TokenPairDetails,
+    pub atomic_most_arbed_pair_profit_amt: Option<f64>,
+    pub atomic_most_arbed_pair_revenue: TokenPairDetails,
+    pub atomic_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub atomic_most_arbed_dex_profit:        Option<Protocol>,
-    pub atomic_most_arbed_dex_profit_amt:    Option<f64>,
+    pub atomic_most_arbed_dex_profit: Option<Protocol>,
+    pub atomic_most_arbed_dex_profit_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub atomic_most_arbed_dex_revenue:       Option<Protocol>,
-    pub atomic_most_arbed_dex_revenue_amt:   Option<f64>,
+    pub atomic_most_arbed_dex_revenue: Option<Protocol>,
+    pub atomic_most_arbed_dex_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "atomic_arbed_pool_all.profit")]
-    pub atomic_arbed_pool_all_profit:        Vec<Address>,
+    pub atomic_arbed_pool_all_profit: Vec<Address>,
     #[serde(rename = "atomic_arbed_pool_all.profit_amt")]
-    pub atomic_arbed_pool_all_profit_amt:    Vec<f64>,
+    pub atomic_arbed_pool_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "atomic_arbed_pool_all.revenue")]
-    pub atomic_arbed_pool_all_revenue:       Vec<Address>,
+    pub atomic_arbed_pool_all_revenue: Vec<Address>,
     #[serde(rename = "atomic_arbed_pool_all.revenue_amt")]
-    pub atomic_arbed_pool_all_revenue_amt:   Vec<f64>,
+    pub atomic_arbed_pool_all_revenue_amt: Vec<f64>,
     #[serde(rename = "atomic_arbed_pair_all.profit")]
-    pub atomic_arbed_pair_all_profit:        Vec<TokenPairDetails>,
+    pub atomic_arbed_pair_all_profit: Vec<TokenPairDetails>,
     #[serde(rename = "atomic_arbed_pair_all.profit_amt")]
-    pub atomic_arbed_pair_all_profit_amt:    Vec<f64>,
+    pub atomic_arbed_pair_all_profit_amt: Vec<f64>,
     #[serde(rename = "atomic_arbed_pair_all.revenue")]
-    pub atomic_arbed_pair_all_revenue:       Vec<TokenPairDetails>,
+    pub atomic_arbed_pair_all_revenue: Vec<TokenPairDetails>,
     #[serde(rename = "atomic_arbed_pair_all.revenue_amt")]
-    pub atomic_arbed_pair_all_revenue_amt:   Vec<f64>,
+    pub atomic_arbed_pair_all_revenue_amt: Vec<f64>,
     #[serde(rename = "atomic_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
-    pub atomic_arbed_dex_all_profit:         Vec<Protocol>,
+    pub atomic_arbed_dex_all_profit: Vec<Protocol>,
     #[serde(rename = "atomic_arbed_dex_all.profit_amt")]
-    pub atomic_arbed_dex_all_profit_amt:     Vec<f64>,
+    pub atomic_arbed_dex_all_profit_amt: Vec<f64>,
     #[serde(rename = "atomic_arbed_dex_all.revenue")]
     #[serde(with = "vec_protocol")]
-    pub atomic_arbed_dex_all_revenue:        Vec<Protocol>,
+    pub atomic_arbed_dex_all_revenue: Vec<Protocol>,
     #[serde(rename = "atomic_arbed_dex_all.revenue_amt")]
-    pub atomic_arbed_dex_all_revenue_amt:    Vec<f64>,
+    pub atomic_arbed_dex_all_revenue_amt: Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub atomic_biggest_arb_profit:           Option<TxHash>,
-    pub atomic_biggest_arb_profit_amt:       Option<f64>,
+    pub atomic_biggest_arb_profit: Option<TxHash>,
+    pub atomic_biggest_arb_profit_amt: Option<f64>,
     #[serde(with = "option_txhash")]
-    pub atomic_biggest_arb_revenue:          Option<TxHash>,
-    pub atomic_biggest_arb_revenue_amt:      Option<f64>,
+    pub atomic_biggest_arb_revenue: Option<TxHash>,
+    pub atomic_biggest_arb_revenue_amt: Option<f64>,
 
     // sandwich
-    pub sandwich_bundle_count:                 u64,
-    pub sandwich_total_profit:                 f64,
-    pub sandwich_total_revenue:                f64,
-    pub sandwich_average_profit_margin:        f64,
+    pub sandwich_bundle_count: u64,
+    pub sandwich_total_profit: f64,
+    pub sandwich_total_revenue: f64,
+    pub sandwich_average_profit_margin: f64,
     #[serde(with = "option_address")]
-    pub sandwich_top_searcher_profit:          Option<Address>,
-    pub sandwich_top_searcher_profit_amt:      Option<f64>,
+    pub sandwich_top_searcher_profit: Option<Address>,
+    pub sandwich_top_searcher_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub sandwich_top_searcher_revenue:         Option<Address>,
-    pub sandwich_top_searcher_revenue_amt:     Option<f64>,
+    pub sandwich_top_searcher_revenue: Option<Address>,
+    pub sandwich_top_searcher_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_searcher_eoa_all.profit")]
-    pub sandwich_searcher_eoa_all_profit:      Vec<Address>,
+    pub sandwich_searcher_eoa_all_profit: Vec<Address>,
     #[serde(rename = "sandwich_searcher_eoa_all.profit_amt")]
-    pub sandwich_searcher_eoa_all_profit_amt:  Vec<f64>,
+    pub sandwich_searcher_eoa_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_searcher_eoa_all.revenue")]
-    pub sandwich_searcher_eoa_all_revenue:     Vec<Address>,
+    pub sandwich_searcher_eoa_all_revenue: Vec<Address>,
     #[serde(rename = "sandwich_searcher_eoa_all.revenue_amt")]
     pub sandwich_searcher_eoa_all_revenue_amt: Vec<f64>,
-    pub sandwich_searcher_eoa_count:           u64,
+    pub sandwich_searcher_eoa_count: u64,
     #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_mev_contract_all.profit")]
-    pub sandwich_mev_contract_all_profit:      Vec<Address>,
+    pub sandwich_mev_contract_all_profit: Vec<Address>,
     #[serde(rename = "sandwich_mev_contract_all.profit_amt")]
-    pub sandwich_mev_contract_all_profit_amt:  Vec<f64>,
+    pub sandwich_mev_contract_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_mev_contract_all.revenue")]
-    pub sandwich_mev_contract_all_revenue:     Vec<Address>,
+    pub sandwich_mev_contract_all_revenue: Vec<Address>,
     #[serde(rename = "sandwich_mev_contract_all.revenue_amt")]
     pub sandwich_mev_contract_all_revenue_amt: Vec<f64>,
-    pub sandwich_mev_contract_count:           u64,
+    pub sandwich_mev_contract_count: u64,
     #[serde(with = "option_fund")]
-    pub sandwich_top_fund_profit:              Option<Fund>,
-    pub sandwich_top_fund_profit_amt:          Option<f64>,
+    pub sandwich_top_fund_profit: Option<Fund>,
+    pub sandwich_top_fund_profit_amt: Option<f64>,
     #[serde(with = "option_fund")]
-    pub sandwich_top_fund_revenue:             Option<Fund>,
-    pub sandwich_top_fund_revenue_amt:         Option<f64>,
+    pub sandwich_top_fund_revenue: Option<Fund>,
+    pub sandwich_top_fund_revenue_amt: Option<f64>,
     #[serde(rename = "sandwich_fund_all.profit")]
     #[serde(with = "vec_fund")]
-    pub sandwich_fund_all_profit:              Vec<Fund>,
+    pub sandwich_fund_all_profit: Vec<Fund>,
     #[serde(rename = "sandwich_fund_all.profit_amt")]
-    pub sandwich_fund_all_profit_amt:          Vec<f64>,
+    pub sandwich_fund_all_profit_amt: Vec<f64>,
     #[serde(rename = "sandwich_fund_all.revenue")]
     #[serde(with = "vec_fund")]
-    pub sandwich_fund_all_revenue:             Vec<Fund>,
+    pub sandwich_fund_all_revenue: Vec<Fund>,
     #[serde(rename = "sandwich_fund_all.revenue_amt")]
-    pub sandwich_fund_all_revenue_amt:         Vec<f64>,
-    pub sandwich_fund_count:                   u64,
+    pub sandwich_fund_all_revenue_amt: Vec<f64>,
+    pub sandwich_fund_count: u64,
     #[serde(with = "option_address")]
-    pub sandwich_most_arbed_pool_profit:       Option<Address>,
-    pub sandwich_most_arbed_pool_profit_amt:   Option<f64>,
+    pub sandwich_most_arbed_pool_profit: Option<Address>,
+    pub sandwich_most_arbed_pool_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub sandwich_most_arbed_pool_revenue:      Option<Address>,
-    pub sandwich_most_arbed_pool_revenue_amt:  Option<f64>,
-    pub sandwich_most_arbed_pair_profit:       TokenPairDetails,
-    pub sandwich_most_arbed_pair_profit_amt:   Option<f64>,
-    pub sandwich_most_arbed_pair_revenue:      TokenPairDetails,
-    pub sandwich_most_arbed_pair_revenue_amt:  Option<f64>,
+    pub sandwich_most_arbed_pool_revenue: Option<Address>,
+    pub sandwich_most_arbed_pool_revenue_amt: Option<f64>,
+    pub sandwich_most_arbed_pair_profit: TokenPairDetails,
+    pub sandwich_most_arbed_pair_profit_amt: Option<f64>,
+    pub sandwich_most_arbed_pair_revenue: TokenPairDetails,
+    pub sandwich_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub sandwich_most_arbed_dex_profit:        Option<Protocol>,
-    pub sandwich_most_arbed_dex_profit_amt:    Option<f64>,
+    pub sandwich_most_arbed_dex_profit: Option<Protocol>,
+    pub sandwich_most_arbed_dex_profit_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub sandwich_most_arbed_dex_revenue:       Option<Protocol>,
-    pub sandwich_most_arbed_dex_revenue_amt:   Option<f64>,
+    pub sandwich_most_arbed_dex_revenue: Option<Protocol>,
+    pub sandwich_most_arbed_dex_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_arbed_pool_all.profit")]
-    pub sandwich_arbed_pool_all_profit:        Vec<Address>,
+    pub sandwich_arbed_pool_all_profit: Vec<Address>,
     #[serde(rename = "sandwich_arbed_pool_all.profit_amt")]
-    pub sandwich_arbed_pool_all_profit_amt:    Vec<f64>,
+    pub sandwich_arbed_pool_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "sandwich_arbed_pool_all.revenue")]
-    pub sandwich_arbed_pool_all_revenue:       Vec<Address>,
+    pub sandwich_arbed_pool_all_revenue: Vec<Address>,
     #[serde(rename = "sandwich_arbed_pool_all.revenue_amt")]
-    pub sandwich_arbed_pool_all_revenue_amt:   Vec<f64>,
+    pub sandwich_arbed_pool_all_revenue_amt: Vec<f64>,
     #[serde(rename = "sandwich_arbed_pair_all.profit")]
-    pub sandwich_arbed_pair_all_profit:        Vec<TokenPairDetails>,
+    pub sandwich_arbed_pair_all_profit: Vec<TokenPairDetails>,
     #[serde(rename = "sandwich_arbed_pair_all.profit_amt")]
-    pub sandwich_arbed_pair_all_profit_amt:    Vec<f64>,
+    pub sandwich_arbed_pair_all_profit_amt: Vec<f64>,
     #[serde(rename = "sandwich_arbed_pair_all.revenue")]
-    pub sandwich_arbed_pair_all_revenue:       Vec<TokenPairDetails>,
+    pub sandwich_arbed_pair_all_revenue: Vec<TokenPairDetails>,
     #[serde(rename = "sandwich_arbed_pair_all.revenue_amt")]
-    pub sandwich_arbed_pair_all_revenue_amt:   Vec<f64>,
+    pub sandwich_arbed_pair_all_revenue_amt: Vec<f64>,
     #[serde(rename = "sandwich_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
-    pub sandwich_arbed_dex_all_profit:         Vec<Protocol>,
+    pub sandwich_arbed_dex_all_profit: Vec<Protocol>,
     #[serde(rename = "sandwich_arbed_dex_all.profit_amt")]
-    pub sandwich_arbed_dex_all_profit_amt:     Vec<f64>,
+    pub sandwich_arbed_dex_all_profit_amt: Vec<f64>,
     #[serde(rename = "sandwich_arbed_dex_all.revenue")]
     #[serde(with = "vec_protocol")]
-    pub sandwich_arbed_dex_all_revenue:        Vec<Protocol>,
+    pub sandwich_arbed_dex_all_revenue: Vec<Protocol>,
     #[serde(rename = "sandwich_arbed_dex_all.revenue_amt")]
-    pub sandwich_arbed_dex_all_revenue_amt:    Vec<f64>,
+    pub sandwich_arbed_dex_all_revenue_amt: Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub sandwich_biggest_arb_profit:           Option<TxHash>,
-    pub sandwich_biggest_arb_profit_amt:       Option<f64>,
+    pub sandwich_biggest_arb_profit: Option<TxHash>,
+    pub sandwich_biggest_arb_profit_amt: Option<f64>,
     #[serde(with = "option_txhash")]
-    pub sandwich_biggest_arb_revenue:          Option<TxHash>,
-    pub sandwich_biggest_arb_revenue_amt:      Option<f64>,
+    pub sandwich_biggest_arb_revenue: Option<TxHash>,
+    pub sandwich_biggest_arb_revenue_amt: Option<f64>,
 
     // jit
-    pub jit_bundle_count:                 u64,
-    pub jit_total_profit:                 f64,
-    pub jit_total_revenue:                f64,
-    pub jit_average_profit_margin:        f64,
+    pub jit_bundle_count: u64,
+    pub jit_total_profit: f64,
+    pub jit_total_revenue: f64,
+    pub jit_average_profit_margin: f64,
     #[serde(with = "option_address")]
-    pub jit_top_searcher_profit:          Option<Address>,
-    pub jit_top_searcher_profit_amt:      Option<f64>,
+    pub jit_top_searcher_profit: Option<Address>,
+    pub jit_top_searcher_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub jit_top_searcher_revenue:         Option<Address>,
-    pub jit_top_searcher_revenue_amt:     Option<f64>,
+    pub jit_top_searcher_revenue: Option<Address>,
+    pub jit_top_searcher_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_searcher_eoa_all.profit")]
-    pub jit_searcher_eoa_all_profit:      Vec<Address>,
+    pub jit_searcher_eoa_all_profit: Vec<Address>,
     #[serde(rename = "jit_searcher_eoa_all.profit_amt")]
-    pub jit_searcher_eoa_all_profit_amt:  Vec<f64>,
+    pub jit_searcher_eoa_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_searcher_eoa_all.revenue")]
-    pub jit_searcher_eoa_all_revenue:     Vec<Address>,
+    pub jit_searcher_eoa_all_revenue: Vec<Address>,
     #[serde(rename = "jit_searcher_eoa_all.revenue_amt")]
     pub jit_searcher_eoa_all_revenue_amt: Vec<f64>,
-    pub jit_searcher_eoa_count:           u64,
+    pub jit_searcher_eoa_count: u64,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_mev_contract_all.profit")]
-    pub jit_mev_contract_all_profit:      Vec<Address>,
+    pub jit_mev_contract_all_profit: Vec<Address>,
     #[serde(rename = "jit_mev_contract_all.profit_amt")]
-    pub jit_mev_contract_all_profit_amt:  Vec<f64>,
+    pub jit_mev_contract_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_mev_contract_all.revenue")]
-    pub jit_mev_contract_all_revenue:     Vec<Address>,
+    pub jit_mev_contract_all_revenue: Vec<Address>,
     #[serde(rename = "jit_mev_contract_all.revenue_amt")]
     pub jit_mev_contract_all_revenue_amt: Vec<f64>,
-    pub jit_mev_contract_count:           u64,
+    pub jit_mev_contract_count: u64,
     #[serde(with = "option_fund")]
-    pub jit_top_fund_profit:              Option<Fund>,
-    pub jit_top_fund_profit_amt:          Option<f64>,
+    pub jit_top_fund_profit: Option<Fund>,
+    pub jit_top_fund_profit_amt: Option<f64>,
     #[serde(with = "option_fund")]
-    pub jit_top_fund_revenue:             Option<Fund>,
-    pub jit_top_fund_revenue_amt:         Option<f64>,
+    pub jit_top_fund_revenue: Option<Fund>,
+    pub jit_top_fund_revenue_amt: Option<f64>,
     #[serde(rename = "jit_fund_all.profit")]
     #[serde(with = "vec_fund")]
-    pub jit_fund_all_profit:              Vec<Fund>,
+    pub jit_fund_all_profit: Vec<Fund>,
     #[serde(rename = "jit_fund_all.profit_amt")]
-    pub jit_fund_all_profit_amt:          Vec<f64>,
+    pub jit_fund_all_profit_amt: Vec<f64>,
     #[serde(rename = "jit_fund_all.revenue")]
     #[serde(with = "vec_fund")]
-    pub jit_fund_all_revenue:             Vec<Fund>,
+    pub jit_fund_all_revenue: Vec<Fund>,
     #[serde(rename = "jit_fund_all.revenue_amt")]
-    pub jit_fund_all_revenue_amt:         Vec<f64>,
-    pub jit_fund_count:                   u64,
+    pub jit_fund_all_revenue_amt: Vec<f64>,
+    pub jit_fund_count: u64,
     #[serde(with = "option_address")]
-    pub jit_most_arbed_pool_profit:       Option<Address>,
-    pub jit_most_arbed_pool_profit_amt:   Option<f64>,
+    pub jit_most_arbed_pool_profit: Option<Address>,
+    pub jit_most_arbed_pool_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub jit_most_arbed_pool_revenue:      Option<Address>,
-    pub jit_most_arbed_pool_revenue_amt:  Option<f64>,
-    pub jit_most_arbed_pair_profit:       TokenPairDetails,
-    pub jit_most_arbed_pair_profit_amt:   Option<f64>,
-    pub jit_most_arbed_pair_revenue:      TokenPairDetails,
-    pub jit_most_arbed_pair_revenue_amt:  Option<f64>,
+    pub jit_most_arbed_pool_revenue: Option<Address>,
+    pub jit_most_arbed_pool_revenue_amt: Option<f64>,
+    pub jit_most_arbed_pair_profit: TokenPairDetails,
+    pub jit_most_arbed_pair_profit_amt: Option<f64>,
+    pub jit_most_arbed_pair_revenue: TokenPairDetails,
+    pub jit_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_most_arbed_dex_profit:        Option<Protocol>,
-    pub jit_most_arbed_dex_profit_amt:    Option<f64>,
+    pub jit_most_arbed_dex_profit: Option<Protocol>,
+    pub jit_most_arbed_dex_profit_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_most_arbed_dex_revenue:       Option<Protocol>,
-    pub jit_most_arbed_dex_revenue_amt:   Option<f64>,
+    pub jit_most_arbed_dex_revenue: Option<Protocol>,
+    pub jit_most_arbed_dex_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_arbed_pool_all.profit")]
-    pub jit_arbed_pool_all_profit:        Vec<Address>,
+    pub jit_arbed_pool_all_profit: Vec<Address>,
     #[serde(rename = "jit_arbed_pool_all.profit_amt")]
-    pub jit_arbed_pool_all_profit_amt:    Vec<f64>,
+    pub jit_arbed_pool_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_arbed_pool_all.revenue")]
-    pub jit_arbed_pool_all_revenue:       Vec<Address>,
+    pub jit_arbed_pool_all_revenue: Vec<Address>,
     #[serde(rename = "jit_arbed_pool_all.revenue_amt")]
-    pub jit_arbed_pool_all_revenue_amt:   Vec<f64>,
+    pub jit_arbed_pool_all_revenue_amt: Vec<f64>,
     #[serde(rename = "jit_arbed_pair_all.profit")]
-    pub jit_arbed_pair_all_profit:        Vec<TokenPairDetails>,
+    pub jit_arbed_pair_all_profit: Vec<TokenPairDetails>,
     #[serde(rename = "jit_arbed_pair_all.profit_amt")]
-    pub jit_arbed_pair_all_profit_amt:    Vec<f64>,
+    pub jit_arbed_pair_all_profit_amt: Vec<f64>,
     #[serde(rename = "jit_arbed_pair_all.revenue")]
-    pub jit_arbed_pair_all_revenue:       Vec<TokenPairDetails>,
+    pub jit_arbed_pair_all_revenue: Vec<TokenPairDetails>,
     #[serde(rename = "jit_arbed_pair_all.revenue_amt")]
-    pub jit_arbed_pair_all_revenue_amt:   Vec<f64>,
+    pub jit_arbed_pair_all_revenue_amt: Vec<f64>,
     #[serde(rename = "jit_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
-    pub jit_arbed_dex_all_profit:         Vec<Protocol>,
+    pub jit_arbed_dex_all_profit: Vec<Protocol>,
     #[serde(rename = "jit_arbed_dex_all.profit_amt")]
-    pub jit_arbed_dex_all_profit_amt:     Vec<f64>,
+    pub jit_arbed_dex_all_profit_amt: Vec<f64>,
     #[serde(rename = "jit_arbed_dex_all.revenue")]
     #[serde(with = "vec_protocol")]
-    pub jit_arbed_dex_all_revenue:        Vec<Protocol>,
+    pub jit_arbed_dex_all_revenue: Vec<Protocol>,
     #[serde(rename = "jit_arbed_dex_all.revenue_amt")]
-    pub jit_arbed_dex_all_revenue_amt:    Vec<f64>,
+    pub jit_arbed_dex_all_revenue_amt: Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub jit_biggest_arb_profit:           Option<TxHash>,
-    pub jit_biggest_arb_profit_amt:       Option<f64>,
+    pub jit_biggest_arb_profit: Option<TxHash>,
+    pub jit_biggest_arb_profit_amt: Option<f64>,
     #[serde(with = "option_txhash")]
-    pub jit_biggest_arb_revenue:          Option<TxHash>,
-    pub jit_biggest_arb_revenue_amt:      Option<f64>,
+    pub jit_biggest_arb_revenue: Option<TxHash>,
+    pub jit_biggest_arb_revenue_amt: Option<f64>,
 
     // jit-sandwich
-    pub jit_sandwich_bundle_count:                 u64,
-    pub jit_sandwich_total_profit:                 f64,
-    pub jit_sandwich_total_revenue:                f64,
-    pub jit_sandwich_average_profit_margin:        f64,
+    pub jit_sandwich_bundle_count: u64,
+    pub jit_sandwich_total_profit: f64,
+    pub jit_sandwich_total_revenue: f64,
+    pub jit_sandwich_average_profit_margin: f64,
     #[serde(with = "option_address")]
-    pub jit_sandwich_top_searcher_profit:          Option<Address>,
-    pub jit_sandwich_top_searcher_profit_amt:      Option<f64>,
+    pub jit_sandwich_top_searcher_profit: Option<Address>,
+    pub jit_sandwich_top_searcher_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub jit_sandwich_top_searcher_revenue:         Option<Address>,
-    pub jit_sandwich_top_searcher_revenue_amt:     Option<f64>,
+    pub jit_sandwich_top_searcher_revenue: Option<Address>,
+    pub jit_sandwich_top_searcher_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_searcher_eoa_all.profit")]
-    pub jit_sandwich_searcher_eoa_all_profit:      Vec<Address>,
+    pub jit_sandwich_searcher_eoa_all_profit: Vec<Address>,
     #[serde(rename = "jit_sandwich_searcher_eoa_all.profit_amt")]
-    pub jit_sandwich_searcher_eoa_all_profit_amt:  Vec<f64>,
+    pub jit_sandwich_searcher_eoa_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_searcher_eoa_all.revenue")]
-    pub jit_sandwich_searcher_eoa_all_revenue:     Vec<Address>,
+    pub jit_sandwich_searcher_eoa_all_revenue: Vec<Address>,
     #[serde(rename = "jit_sandwich_searcher_eoa_all.revenue_amt")]
     pub jit_sandwich_searcher_eoa_all_revenue_amt: Vec<f64>,
-    pub jit_sandwich_searcher_eoa_count:           u64,
+    pub jit_sandwich_searcher_eoa_count: u64,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_mev_contract_all.profit")]
-    pub jit_sandwich_mev_contract_all_profit:      Vec<Address>,
+    pub jit_sandwich_mev_contract_all_profit: Vec<Address>,
     #[serde(rename = "jit_sandwich_mev_contract_all.profit_amt")]
-    pub jit_sandwich_mev_contract_all_profit_amt:  Vec<f64>,
+    pub jit_sandwich_mev_contract_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_mev_contract_all.revenue")]
-    pub jit_sandwich_mev_contract_all_revenue:     Vec<Address>,
+    pub jit_sandwich_mev_contract_all_revenue: Vec<Address>,
     #[serde(rename = "jit_sandwich_mev_contract_all.revenue_amt")]
     pub jit_sandwich_mev_contract_all_revenue_amt: Vec<f64>,
-    pub jit_sandwich_mev_contract_count:           u64,
+    pub jit_sandwich_mev_contract_count: u64,
     #[serde(with = "option_fund")]
-    pub jit_sandwich_top_fund_profit:              Option<Fund>,
-    pub jit_sandwich_top_fund_profit_amt:          Option<f64>,
+    pub jit_sandwich_top_fund_profit: Option<Fund>,
+    pub jit_sandwich_top_fund_profit_amt: Option<f64>,
     #[serde(with = "option_fund")]
-    pub jit_sandwich_top_fund_revenue:             Option<Fund>,
-    pub jit_sandwich_top_fund_revenue_amt:         Option<f64>,
+    pub jit_sandwich_top_fund_revenue: Option<Fund>,
+    pub jit_sandwich_top_fund_revenue_amt: Option<f64>,
     #[serde(rename = "jit_sandwich_fund_all.profit")]
     #[serde(with = "vec_fund")]
-    pub jit_sandwich_fund_all_profit:              Vec<Fund>,
+    pub jit_sandwich_fund_all_profit: Vec<Fund>,
     #[serde(rename = "jit_sandwich_fund_all.profit_amt")]
-    pub jit_sandwich_fund_all_profit_amt:          Vec<f64>,
+    pub jit_sandwich_fund_all_profit_amt: Vec<f64>,
     #[serde(rename = "jit_sandwich_fund_all.revenue")]
     #[serde(with = "vec_fund")]
-    pub jit_sandwich_fund_all_revenue:             Vec<Fund>,
+    pub jit_sandwich_fund_all_revenue: Vec<Fund>,
     #[serde(rename = "jit_sandwich_fund_all.revenue_amt")]
-    pub jit_sandwich_fund_all_revenue_amt:         Vec<f64>,
-    pub jit_sandwich_fund_count:                   u64,
+    pub jit_sandwich_fund_all_revenue_amt: Vec<f64>,
+    pub jit_sandwich_fund_count: u64,
     #[serde(with = "option_address")]
-    pub jit_sandwich_most_arbed_pool_profit:       Option<Address>,
-    pub jit_sandwich_most_arbed_pool_profit_amt:   Option<f64>,
+    pub jit_sandwich_most_arbed_pool_profit: Option<Address>,
+    pub jit_sandwich_most_arbed_pool_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub jit_sandwich_most_arbed_pool_revenue:      Option<Address>,
-    pub jit_sandwich_most_arbed_pool_revenue_amt:  Option<f64>,
-    pub jit_sandwich_most_arbed_pair_profit:       TokenPairDetails,
-    pub jit_sandwich_most_arbed_pair_profit_amt:   Option<f64>,
-    pub jit_sandwich_most_arbed_pair_revenue:      TokenPairDetails,
-    pub jit_sandwich_most_arbed_pair_revenue_amt:  Option<f64>,
+    pub jit_sandwich_most_arbed_pool_revenue: Option<Address>,
+    pub jit_sandwich_most_arbed_pool_revenue_amt: Option<f64>,
+    pub jit_sandwich_most_arbed_pair_profit: TokenPairDetails,
+    pub jit_sandwich_most_arbed_pair_profit_amt: Option<f64>,
+    pub jit_sandwich_most_arbed_pair_revenue: TokenPairDetails,
+    pub jit_sandwich_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_sandwich_most_arbed_dex_profit:        Option<Protocol>,
-    pub jit_sandwich_most_arbed_dex_profit_amt:    Option<f64>,
+    pub jit_sandwich_most_arbed_dex_profit: Option<Protocol>,
+    pub jit_sandwich_most_arbed_dex_profit_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub jit_sandwich_most_arbed_dex_revenue:       Option<Protocol>,
-    pub jit_sandwich_most_arbed_dex_revenue_amt:   Option<f64>,
+    pub jit_sandwich_most_arbed_dex_revenue: Option<Protocol>,
+    pub jit_sandwich_most_arbed_dex_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_arbed_pool_all.profit")]
-    pub jit_sandwich_arbed_pool_all_profit:        Vec<Address>,
+    pub jit_sandwich_arbed_pool_all_profit: Vec<Address>,
     #[serde(rename = "jit_sandwich_arbed_pool_all.profit_amt")]
-    pub jit_sandwich_arbed_pool_all_profit_amt:    Vec<f64>,
+    pub jit_sandwich_arbed_pool_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "jit_sandwich_arbed_pool_all.revenue")]
-    pub jit_sandwich_arbed_pool_all_revenue:       Vec<Address>,
+    pub jit_sandwich_arbed_pool_all_revenue: Vec<Address>,
     #[serde(rename = "jit_sandwich_arbed_pool_all.revenue_amt")]
-    pub jit_sandwich_arbed_pool_all_revenue_amt:   Vec<f64>,
+    pub jit_sandwich_arbed_pool_all_revenue_amt: Vec<f64>,
     #[serde(rename = "jit_sandwich_arbed_pair_all.profit")]
-    pub jit_sandwich_arbed_pair_all_profit:        Vec<TokenPairDetails>,
+    pub jit_sandwich_arbed_pair_all_profit: Vec<TokenPairDetails>,
     #[serde(rename = "jit_sandwich_arbed_pair_all.profit_amt")]
-    pub jit_sandwich_arbed_pair_all_profit_amt:    Vec<f64>,
+    pub jit_sandwich_arbed_pair_all_profit_amt: Vec<f64>,
     #[serde(rename = "jit_sandwich_arbed_pair_all.revenue")]
-    pub jit_sandwich_arbed_pair_all_revenue:       Vec<TokenPairDetails>,
+    pub jit_sandwich_arbed_pair_all_revenue: Vec<TokenPairDetails>,
     #[serde(rename = "jit_sandwich_arbed_pair_all.revenue_amt")]
-    pub jit_sandwich_arbed_pair_all_revenue_amt:   Vec<f64>,
+    pub jit_sandwich_arbed_pair_all_revenue_amt: Vec<f64>,
     #[serde(rename = "jit_sandwich_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
-    pub jit_sandwich_arbed_dex_all_profit:         Vec<Protocol>,
+    pub jit_sandwich_arbed_dex_all_profit: Vec<Protocol>,
     #[serde(rename = "jit_sandwich_arbed_dex_all.profit_amt")]
-    pub jit_sandwich_arbed_dex_all_profit_amt:     Vec<f64>,
+    pub jit_sandwich_arbed_dex_all_profit_amt: Vec<f64>,
     #[serde(rename = "jit_sandwich_arbed_dex_all.revenue")]
     #[serde(with = "vec_protocol")]
-    pub jit_sandwich_arbed_dex_all_revenue:        Vec<Protocol>,
+    pub jit_sandwich_arbed_dex_all_revenue: Vec<Protocol>,
     #[serde(rename = "jit_sandwich_arbed_dex_all.revenue_amt")]
-    pub jit_sandwich_arbed_dex_all_revenue_amt:    Vec<f64>,
+    pub jit_sandwich_arbed_dex_all_revenue_amt: Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub jit_sandwich_biggest_arb_profit:           Option<TxHash>,
-    pub jit_sandwich_biggest_arb_profit_amt:       Option<f64>,
+    pub jit_sandwich_biggest_arb_profit: Option<TxHash>,
+    pub jit_sandwich_biggest_arb_profit_amt: Option<f64>,
     #[serde(with = "option_txhash")]
-    pub jit_sandwich_biggest_arb_revenue:          Option<TxHash>,
-    pub jit_sandwich_biggest_arb_revenue_amt:      Option<f64>,
+    pub jit_sandwich_biggest_arb_revenue: Option<TxHash>,
+    pub jit_sandwich_biggest_arb_revenue_amt: Option<f64>,
 
     // cex dex
-    pub cex_dex_bundle_count:                 u64,
-    pub cex_dex_total_profit:                 f64,
-    pub cex_dex_total_revenue:                f64,
-    pub cex_dex_average_profit_margin:        f64,
+    pub cex_dex_bundle_count: u64,
+    pub cex_dex_total_profit: f64,
+    pub cex_dex_total_revenue: f64,
+    pub cex_dex_average_profit_margin: f64,
     #[serde(with = "option_address")]
-    pub cex_dex_top_searcher_profit:          Option<Address>,
-    pub cex_dex_top_searcher_profit_amt:      Option<f64>,
+    pub cex_dex_top_searcher_profit: Option<Address>,
+    pub cex_dex_top_searcher_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub cex_dex_top_searcher_revenue:         Option<Address>,
-    pub cex_dex_top_searcher_revenue_amt:     Option<f64>,
+    pub cex_dex_top_searcher_revenue: Option<Address>,
+    pub cex_dex_top_searcher_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_searcher_eoa_all.profit")]
-    pub cex_dex_searcher_eoa_all_profit:      Vec<Address>,
+    pub cex_dex_searcher_eoa_all_profit: Vec<Address>,
     #[serde(rename = "cex_dex_searcher_eoa_all.profit_amt")]
-    pub cex_dex_searcher_eoa_all_profit_amt:  Vec<f64>,
+    pub cex_dex_searcher_eoa_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_searcher_eoa_all.revenue")]
-    pub cex_dex_searcher_eoa_all_revenue:     Vec<Address>,
+    pub cex_dex_searcher_eoa_all_revenue: Vec<Address>,
     #[serde(rename = "cex_dex_searcher_eoa_all.revenue_amt")]
     pub cex_dex_searcher_eoa_all_revenue_amt: Vec<f64>,
-    pub cex_dex_searcher_eoa_count:           u64,
+    pub cex_dex_searcher_eoa_count: u64,
     #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_mev_contract_all.profit")]
-    pub cex_dex_mev_contract_all_profit:      Vec<Address>,
+    pub cex_dex_mev_contract_all_profit: Vec<Address>,
     #[serde(rename = "cex_dex_mev_contract_all.profit_amt")]
-    pub cex_dex_mev_contract_all_profit_amt:  Vec<f64>,
+    pub cex_dex_mev_contract_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_mev_contract_all.revenue")]
-    pub cex_dex_mev_contract_all_revenue:     Vec<Address>,
+    pub cex_dex_mev_contract_all_revenue: Vec<Address>,
     #[serde(rename = "cex_dex_mev_contract_all.revenue_amt")]
     pub cex_dex_mev_contract_all_revenue_amt: Vec<f64>,
-    pub cex_dex_mev_contract_count:           u64,
+    pub cex_dex_mev_contract_count: u64,
     #[serde(with = "option_fund")]
-    pub cex_dex_top_fund_profit:              Option<Fund>,
-    pub cex_dex_top_fund_profit_amt:          Option<f64>,
+    pub cex_dex_top_fund_profit: Option<Fund>,
+    pub cex_dex_top_fund_profit_amt: Option<f64>,
     #[serde(with = "option_fund")]
-    pub cex_dex_top_fund_revenue:             Option<Fund>,
-    pub cex_dex_top_fund_revenue_amt:         Option<f64>,
+    pub cex_dex_top_fund_revenue: Option<Fund>,
+    pub cex_dex_top_fund_revenue_amt: Option<f64>,
     #[serde(rename = "cex_dex_fund_all.profit")]
     #[serde(with = "vec_fund")]
-    pub cex_dex_fund_all_profit:              Vec<Fund>,
+    pub cex_dex_fund_all_profit: Vec<Fund>,
     #[serde(rename = "cex_dex_fund_all.profit_amt")]
-    pub cex_dex_fund_all_profit_amt:          Vec<f64>,
+    pub cex_dex_fund_all_profit_amt: Vec<f64>,
     #[serde(rename = "cex_dex_fund_all.revenue")]
     #[serde(with = "vec_fund")]
-    pub cex_dex_fund_all_revenue:             Vec<Fund>,
+    pub cex_dex_fund_all_revenue: Vec<Fund>,
     #[serde(rename = "cex_dex_fund_all.revenue_amt")]
-    pub cex_dex_fund_all_revenue_amt:         Vec<f64>,
-    pub cex_dex_fund_count:                   u64,
+    pub cex_dex_fund_all_revenue_amt: Vec<f64>,
+    pub cex_dex_fund_count: u64,
     #[serde(with = "option_address")]
-    pub cex_dex_most_arbed_pool_profit:       Option<Address>,
-    pub cex_dex_most_arbed_pool_profit_amt:   Option<f64>,
+    pub cex_dex_most_arbed_pool_profit: Option<Address>,
+    pub cex_dex_most_arbed_pool_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub cex_dex_most_arbed_pool_revenue:      Option<Address>,
-    pub cex_dex_most_arbed_pool_revenue_amt:  Option<f64>,
-    pub cex_dex_most_arbed_pair_profit:       TokenPairDetails,
-    pub cex_dex_most_arbed_pair_profit_amt:   Option<f64>,
-    pub cex_dex_most_arbed_pair_revenue:      TokenPairDetails,
-    pub cex_dex_most_arbed_pair_revenue_amt:  Option<f64>,
+    pub cex_dex_most_arbed_pool_revenue: Option<Address>,
+    pub cex_dex_most_arbed_pool_revenue_amt: Option<f64>,
+    pub cex_dex_most_arbed_pair_profit: TokenPairDetails,
+    pub cex_dex_most_arbed_pair_profit_amt: Option<f64>,
+    pub cex_dex_most_arbed_pair_revenue: TokenPairDetails,
+    pub cex_dex_most_arbed_pair_revenue_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub cex_dex_most_arbed_dex_profit:        Option<Protocol>,
-    pub cex_dex_most_arbed_dex_profit_amt:    Option<f64>,
+    pub cex_dex_most_arbed_dex_profit: Option<Protocol>,
+    pub cex_dex_most_arbed_dex_profit_amt: Option<f64>,
     #[serde(with = "option_protocol")]
-    pub cex_dex_most_arbed_dex_revenue:       Option<Protocol>,
-    pub cex_dex_most_arbed_dex_revenue_amt:   Option<f64>,
+    pub cex_dex_most_arbed_dex_revenue: Option<Protocol>,
+    pub cex_dex_most_arbed_dex_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_arbed_pool_all.profit")]
-    pub cex_dex_arbed_pool_all_profit:        Vec<Address>,
+    pub cex_dex_arbed_pool_all_profit: Vec<Address>,
     #[serde(rename = "cex_dex_arbed_pool_all.profit_amt")]
-    pub cex_dex_arbed_pool_all_profit_amt:    Vec<f64>,
+    pub cex_dex_arbed_pool_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "cex_dex_arbed_pool_all.revenue")]
-    pub cex_dex_arbed_pool_all_revenue:       Vec<Address>,
+    pub cex_dex_arbed_pool_all_revenue: Vec<Address>,
     #[serde(rename = "cex_dex_arbed_pool_all.revenue_amt")]
-    pub cex_dex_arbed_pool_all_revenue_amt:   Vec<f64>,
+    pub cex_dex_arbed_pool_all_revenue_amt: Vec<f64>,
     #[serde(rename = "cex_dex_arbed_pair_all.profit")]
-    pub cex_dex_arbed_pair_all_profit:        Vec<TokenPairDetails>,
+    pub cex_dex_arbed_pair_all_profit: Vec<TokenPairDetails>,
     #[serde(rename = "cex_dex_arbed_pair_all.profit_amt")]
-    pub cex_dex_arbed_pair_all_profit_amt:    Vec<f64>,
+    pub cex_dex_arbed_pair_all_profit_amt: Vec<f64>,
     #[serde(rename = "cex_dex_arbed_pair_all.revenue")]
-    pub cex_dex_arbed_pair_all_revenue:       Vec<TokenPairDetails>,
+    pub cex_dex_arbed_pair_all_revenue: Vec<TokenPairDetails>,
     #[serde(rename = "cex_dex_arbed_pair_all.revenue_amt")]
-    pub cex_dex_arbed_pair_all_revenue_amt:   Vec<f64>,
+    pub cex_dex_arbed_pair_all_revenue_amt: Vec<f64>,
     #[serde(rename = "cex_dex_arbed_dex_all.profit")]
     #[serde(with = "vec_protocol")]
-    pub cex_dex_arbed_dex_all_profit:         Vec<Protocol>,
+    pub cex_dex_arbed_dex_all_profit: Vec<Protocol>,
     #[serde(rename = "cex_dex_arbed_dex_all.profit_amt")]
-    pub cex_dex_arbed_dex_all_profit_amt:     Vec<f64>,
+    pub cex_dex_arbed_dex_all_profit_amt: Vec<f64>,
     #[serde(rename = "cex_dex_arbed_dex_all.revenue")]
     #[serde(with = "vec_protocol")]
-    pub cex_dex_arbed_dex_all_revenue:        Vec<Protocol>,
+    pub cex_dex_arbed_dex_all_revenue: Vec<Protocol>,
     #[serde(rename = "cex_dex_arbed_dex_all.revenue_amt")]
-    pub cex_dex_arbed_dex_all_revenue_amt:    Vec<f64>,
+    pub cex_dex_arbed_dex_all_revenue_amt: Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub cex_dex_biggest_arb_profit:           Option<TxHash>,
-    pub cex_dex_biggest_arb_profit_amt:       Option<f64>,
+    pub cex_dex_biggest_arb_profit: Option<TxHash>,
+    pub cex_dex_biggest_arb_profit_amt: Option<f64>,
     #[serde(with = "option_txhash")]
-    pub cex_dex_biggest_arb_revenue:          Option<TxHash>,
-    pub cex_dex_biggest_arb_revenue_amt:      Option<f64>,
+    pub cex_dex_biggest_arb_revenue: Option<TxHash>,
+    pub cex_dex_biggest_arb_revenue_amt: Option<f64>,
 
     // liquidation
-    pub liquidation_bundle_count:                 u64,
-    pub liquidation_total_profit:                 f64,
-    pub liquidation_total_revenue:                f64,
-    pub liquidation_average_profit_margin:        f64,
+    pub liquidation_bundle_count: u64,
+    pub liquidation_total_profit: f64,
+    pub liquidation_total_revenue: f64,
+    pub liquidation_average_profit_margin: f64,
     #[serde(with = "option_address")]
-    pub liquidation_top_searcher_profit:          Option<Address>,
-    pub liquidation_top_searcher_profit_amt:      Option<f64>,
+    pub liquidation_top_searcher_profit: Option<Address>,
+    pub liquidation_top_searcher_profit_amt: Option<f64>,
     #[serde(with = "option_address")]
-    pub liquidation_top_searcher_revenue:         Option<Address>,
-    pub liquidation_top_searcher_revenue_amt:     Option<f64>,
+    pub liquidation_top_searcher_revenue: Option<Address>,
+    pub liquidation_top_searcher_revenue_amt: Option<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_searcher_eoa_all.profit")]
-    pub liquidation_searcher_eoa_all_profit:      Vec<Address>,
+    pub liquidation_searcher_eoa_all_profit: Vec<Address>,
     #[serde(rename = "liquidation_searcher_eoa_all.profit_amt")]
-    pub liquidation_searcher_eoa_all_profit_amt:  Vec<f64>,
+    pub liquidation_searcher_eoa_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_searcher_eoa_all.revenue")]
-    pub liquidation_searcher_eoa_all_revenue:     Vec<Address>,
+    pub liquidation_searcher_eoa_all_revenue: Vec<Address>,
     #[serde(rename = "liquidation_searcher_eoa_all.revenue_amt")]
     pub liquidation_searcher_eoa_all_revenue_amt: Vec<f64>,
-    pub liquidation_searcher_eoa_count:           u64,
+    pub liquidation_searcher_eoa_count: u64,
     #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_mev_contract_all.profit")]
-    pub liquidation_mev_contract_all_profit:      Vec<Address>,
+    pub liquidation_mev_contract_all_profit: Vec<Address>,
     #[serde(rename = "liquidation_mev_contract_all.profit_amt")]
-    pub liquidation_mev_contract_all_profit_amt:  Vec<f64>,
+    pub liquidation_mev_contract_all_profit_amt: Vec<f64>,
     #[serde(with = "vec_address")]
     #[serde(rename = "liquidation_mev_contract_all.revenue")]
-    pub liquidation_mev_contract_all_revenue:     Vec<Address>,
+    pub liquidation_mev_contract_all_revenue: Vec<Address>,
     #[serde(rename = "liquidation_mev_contract_all.revenue_amt")]
     pub liquidation_mev_contract_all_revenue_amt: Vec<f64>,
-    pub liquidation_mev_contract_count:           u64,
+    pub liquidation_mev_contract_count: u64,
     #[serde(with = "option_fund")]
-    pub liquidation_top_fund_profit:              Option<Fund>,
-    pub liquidation_top_fund_profit_amt:          Option<f64>,
+    pub liquidation_top_fund_profit: Option<Fund>,
+    pub liquidation_top_fund_profit_amt: Option<f64>,
     #[serde(with = "option_fund")]
-    pub liquidation_top_fund_revenue:             Option<Fund>,
-    pub liquidation_top_fund_revenue_amt:         Option<f64>,
+    pub liquidation_top_fund_revenue: Option<Fund>,
+    pub liquidation_top_fund_revenue_amt: Option<f64>,
     #[serde(rename = "liquidation_fund_all.profit")]
     #[serde(with = "vec_fund")]
-    pub liquidation_fund_all_profit:              Vec<Fund>,
+    pub liquidation_fund_all_profit: Vec<Fund>,
     #[serde(rename = "liquidation_fund_all.profit_amt")]
-    pub liquidation_fund_all_profit_amt:          Vec<f64>,
+    pub liquidation_fund_all_profit_amt: Vec<f64>,
     #[serde(rename = "liquidation_fund_all.revenue")]
     #[serde(with = "vec_fund")]
-    pub liquidation_fund_all_revenue:             Vec<Fund>,
+    pub liquidation_fund_all_revenue: Vec<Fund>,
     #[serde(rename = "liquidation_fund_all.revenue_amt")]
-    pub liquidation_fund_all_revenue_amt:         Vec<f64>,
-    pub liquidation_fund_count:                   u64,
-    pub most_liquidated_token_revenue:            SingleTokenDetails,
-    pub most_liquidated_token_revenue_amt:        Option<f64>,
-    pub most_liquidated_token_profit:             SingleTokenDetails,
-    pub most_liquidated_token_profit_amt:         Option<f64>,
+    pub liquidation_fund_all_revenue_amt: Vec<f64>,
+    pub liquidation_fund_count: u64,
+    pub most_liquidated_token_revenue: SingleTokenDetails,
+    pub most_liquidated_token_revenue_amt: Option<f64>,
+    pub most_liquidated_token_profit: SingleTokenDetails,
+    pub most_liquidated_token_profit_amt: Option<f64>,
     #[serde(rename = "liquidated_tokens.revenue")]
-    pub liquidated_tokens_revenue:                Vec<SingleTokenDetails>,
+    pub liquidated_tokens_revenue: Vec<SingleTokenDetails>,
     #[serde(rename = "liquidated_tokens.revenue_amt")]
-    pub liquidated_tokens_revenue_amt:            Vec<f64>,
+    pub liquidated_tokens_revenue_amt: Vec<f64>,
     #[serde(rename = "liquidated_tokens.profit")]
-    pub liquidated_tokens_profit:                 Vec<SingleTokenDetails>,
+    pub liquidated_tokens_profit: Vec<SingleTokenDetails>,
     #[serde(rename = "liquidated_tokens.profit_amt")]
-    pub liquidated_tokens_profit_amt:             Vec<f64>,
+    pub liquidated_tokens_profit_amt: Vec<f64>,
     #[serde(with = "option_txhash")]
-    pub liquidated_biggest_arb_profit:            Option<TxHash>,
-    pub liquidated_biggest_arb_profit_amt:        Option<f64>,
+    pub liquidated_biggest_arb_profit: Option<TxHash>,
+    pub liquidated_biggest_arb_profit_amt: Option<f64>,
     #[serde(with = "option_txhash")]
-    pub liquidated_biggest_arb_revenue:           Option<TxHash>,
-    pub liquidated_biggest_arb_revenue_amt:       Option<f64>,
-    pub total_usd_liquidated:                     f64,
+    pub liquidated_biggest_arb_revenue: Option<TxHash>,
+    pub liquidated_biggest_arb_revenue_amt: Option<f64>,
+    pub total_usd_liquidated: f64,
 
     // builder
-    pub builder_profit_usd:     f64,
-    pub builder_profit_eth:     f64,
-    pub builder_revenue_usd:    f64,
-    pub builder_revenue_eth:    f64,
+    pub builder_profit_usd: f64,
+    pub builder_profit_eth: f64,
+    pub builder_revenue_usd: f64,
+    pub builder_revenue_eth: f64,
     pub builder_mev_profit_usd: f64,
     pub builder_mev_profit_eth: f64,
-    pub builder_name:           Option<String>,
+    pub builder_name: Option<String>,
     #[serde(with = "address")]
-    pub builder_address:        Address,
-    pub proposer_profit_usd:    Option<f64>,
-    pub proposer_profit_eth:    Option<f64>,
+    pub builder_address: Address,
+    pub proposer_profit_usd: Option<f64>,
+    pub proposer_profit_eth: Option<f64>,
 }
 
 impl BlockAnalysis {
@@ -1923,12 +1923,10 @@ impl BlockAnalysis {
             .for_each(|r| {
                 if mev_contract {
                     if let Some(contract) = r.header.mev_contract {
-                        *map.entry(contract).or_insert(0.0) +=
-                            r.header.profit_usd;
+                        *map.entry(contract).or_insert(0.0) += r.header.profit_usd;
                     }
                 } else {
-                    *map.entry(r.header.eoa).or_insert(0.0) +=
-                        r.header.profit_usd;
+                    *map.entry(r.header.eoa).or_insert(0.0) += r.header.profit_usd;
                 }
             });
 
@@ -2186,9 +2184,9 @@ impl<A, B, C, D> TupleTwoVecUnzip<A, B, C, D> for (Vec<(A, B)>, Vec<(C, D)>) {
 #[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct TokenPairDetails {
     pub address0: Address,
-    pub symbol0:  String,
+    pub symbol0: String,
     pub address1: Address,
-    pub symbol1:  String,
+    pub symbol1: String,
 }
 
 impl Serialize for TokenPairDetails {
@@ -2216,9 +2214,9 @@ impl<'de> Deserialize<'de> for TokenPairDetails {
 
         Ok(Self {
             address0: Address::from_str(&token0_address).unwrap_or_default(),
-            symbol0:  token0_symbol,
+            symbol0: token0_symbol,
             address1: Address::from_str(&token1_address).unwrap_or_default(),
-            symbol1:  token1_symbol,
+            symbol1: token1_symbol,
         })
     }
 }
@@ -2233,9 +2231,9 @@ impl From<(TokenInfoWithAddress, TokenInfoWithAddress)> for TokenPairDetails {
 
         Self {
             address0: token0.address,
-            symbol0:  token0.symbol.clone(),
+            symbol0: token0.symbol.clone(),
             address1: token1.address,
-            symbol1:  token1.symbol.clone(),
+            symbol1: token1.symbol.clone(),
         }
     }
 }
@@ -2243,7 +2241,7 @@ impl From<(TokenInfoWithAddress, TokenInfoWithAddress)> for TokenPairDetails {
 #[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct SingleTokenDetails {
     pub address: Address,
-    pub symbol:  String,
+    pub symbol: String,
 }
 
 impl Serialize for SingleTokenDetails {
@@ -2275,217 +2273,217 @@ impl From<TokenInfoWithAddress> for SingleTokenDetails {
 impl Default for BlockAnalysis {
     fn default() -> Self {
         BlockAnalysis {
-            atomic_mev_contract_all_profit:      vec![Default::default()],
-            atomic_mev_contract_all_profit_amt:  vec![Default::default()],
-            atomic_mev_contract_all_revenue:     vec![Default::default()],
+            atomic_mev_contract_all_profit: vec![Default::default()],
+            atomic_mev_contract_all_profit_amt: vec![Default::default()],
+            atomic_mev_contract_all_revenue: vec![Default::default()],
             atomic_mev_contract_all_revenue_amt: vec![Default::default()],
-            atomic_mev_contract_count:           Default::default(),
-            atomic_searcher_eoa_all_profit:      vec![Default::default()],
-            atomic_searcher_eoa_all_profit_amt:  vec![Default::default()],
-            atomic_searcher_eoa_all_revenue:     vec![Default::default()],
+            atomic_mev_contract_count: Default::default(),
+            atomic_searcher_eoa_all_profit: vec![Default::default()],
+            atomic_searcher_eoa_all_profit_amt: vec![Default::default()],
+            atomic_searcher_eoa_all_revenue: vec![Default::default()],
             atomic_searcher_eoa_all_revenue_amt: vec![Default::default()],
-            atomic_searcher_eoa_count:           Default::default(),
+            atomic_searcher_eoa_count: Default::default(),
 
-            atomic_fund_all_profit:      vec![Fund::JaneStreet],
-            atomic_fund_all_profit_amt:  vec![0.0],
-            atomic_fund_all_revenue:     vec![Fund::JaneStreet],
+            atomic_fund_all_profit: vec![Fund::JaneStreet],
+            atomic_fund_all_profit_amt: vec![0.0],
+            atomic_fund_all_revenue: vec![Fund::JaneStreet],
             atomic_fund_all_revenue_amt: vec![0.0],
 
-            atomic_arbed_pool_all_profit:      vec![Default::default()],
-            atomic_arbed_pool_all_profit_amt:  vec![0.0],
-            atomic_arbed_pool_all_revenue:     vec![Default::default()],
+            atomic_arbed_pool_all_profit: vec![Default::default()],
+            atomic_arbed_pool_all_profit_amt: vec![0.0],
+            atomic_arbed_pool_all_revenue: vec![Default::default()],
             atomic_arbed_pool_all_revenue_amt: vec![0.0],
 
-            atomic_arbed_pair_all_profit:      vec![Default::default()],
-            atomic_arbed_pair_all_profit_amt:  vec![0.0],
-            atomic_arbed_pair_all_revenue:     vec![Default::default()],
+            atomic_arbed_pair_all_profit: vec![Default::default()],
+            atomic_arbed_pair_all_profit_amt: vec![0.0],
+            atomic_arbed_pair_all_revenue: vec![Default::default()],
             atomic_arbed_pair_all_revenue_amt: vec![0.0],
 
-            atomic_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
-            atomic_arbed_dex_all_profit_amt:  vec![0.0],
-            atomic_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            atomic_arbed_dex_all_profit: vec![Protocol::UniswapV2],
+            atomic_arbed_dex_all_profit_amt: vec![0.0],
+            atomic_arbed_dex_all_revenue: vec![Protocol::UniswapV2],
             atomic_arbed_dex_all_revenue_amt: vec![0.0],
 
-            sandwich_mev_contract_all_profit:      vec![Default::default()],
-            sandwich_mev_contract_all_profit_amt:  vec![Default::default()],
-            sandwich_mev_contract_all_revenue:     vec![Default::default()],
+            sandwich_mev_contract_all_profit: vec![Default::default()],
+            sandwich_mev_contract_all_profit_amt: vec![Default::default()],
+            sandwich_mev_contract_all_revenue: vec![Default::default()],
             sandwich_mev_contract_all_revenue_amt: vec![Default::default()],
-            sandwich_mev_contract_count:           Default::default(),
-            sandwich_searcher_eoa_all_profit:      vec![Default::default()],
-            sandwich_searcher_eoa_all_profit_amt:  vec![Default::default()],
-            sandwich_searcher_eoa_all_revenue:     vec![Default::default()],
+            sandwich_mev_contract_count: Default::default(),
+            sandwich_searcher_eoa_all_profit: vec![Default::default()],
+            sandwich_searcher_eoa_all_profit_amt: vec![Default::default()],
+            sandwich_searcher_eoa_all_revenue: vec![Default::default()],
             sandwich_searcher_eoa_all_revenue_amt: vec![Default::default()],
-            sandwich_searcher_eoa_count:           Default::default(),
+            sandwich_searcher_eoa_count: Default::default(),
 
-            sandwich_fund_all_profit:      vec![Fund::JaneStreet],
-            sandwich_fund_all_profit_amt:  vec![0.0],
-            sandwich_fund_all_revenue:     vec![Fund::JaneStreet],
+            sandwich_fund_all_profit: vec![Fund::JaneStreet],
+            sandwich_fund_all_profit_amt: vec![0.0],
+            sandwich_fund_all_revenue: vec![Fund::JaneStreet],
             sandwich_fund_all_revenue_amt: vec![0.0],
 
-            sandwich_arbed_pool_all_profit:      vec![Default::default()],
-            sandwich_arbed_pool_all_profit_amt:  vec![0.0],
-            sandwich_arbed_pool_all_revenue:     vec![Default::default()],
+            sandwich_arbed_pool_all_profit: vec![Default::default()],
+            sandwich_arbed_pool_all_profit_amt: vec![0.0],
+            sandwich_arbed_pool_all_revenue: vec![Default::default()],
             sandwich_arbed_pool_all_revenue_amt: vec![0.0],
 
-            sandwich_arbed_pair_all_profit:      vec![Default::default()],
-            sandwich_arbed_pair_all_profit_amt:  vec![0.0],
-            sandwich_arbed_pair_all_revenue:     vec![Default::default()],
+            sandwich_arbed_pair_all_profit: vec![Default::default()],
+            sandwich_arbed_pair_all_profit_amt: vec![0.0],
+            sandwich_arbed_pair_all_revenue: vec![Default::default()],
             sandwich_arbed_pair_all_revenue_amt: vec![0.0],
 
-            sandwich_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
-            sandwich_arbed_dex_all_profit_amt:  vec![0.0],
-            sandwich_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            sandwich_arbed_dex_all_profit: vec![Protocol::UniswapV2],
+            sandwich_arbed_dex_all_profit_amt: vec![0.0],
+            sandwich_arbed_dex_all_revenue: vec![Protocol::UniswapV2],
             sandwich_arbed_dex_all_revenue_amt: vec![0.0],
 
-            jit_mev_contract_all_profit:      vec![Default::default()],
-            jit_mev_contract_all_profit_amt:  vec![Default::default()],
-            jit_mev_contract_all_revenue:     vec![Default::default()],
+            jit_mev_contract_all_profit: vec![Default::default()],
+            jit_mev_contract_all_profit_amt: vec![Default::default()],
+            jit_mev_contract_all_revenue: vec![Default::default()],
             jit_mev_contract_all_revenue_amt: vec![Default::default()],
-            jit_mev_contract_count:           Default::default(),
-            jit_searcher_eoa_all_profit:      vec![Default::default()],
-            jit_searcher_eoa_all_profit_amt:  vec![Default::default()],
-            jit_searcher_eoa_all_revenue:     vec![Default::default()],
+            jit_mev_contract_count: Default::default(),
+            jit_searcher_eoa_all_profit: vec![Default::default()],
+            jit_searcher_eoa_all_profit_amt: vec![Default::default()],
+            jit_searcher_eoa_all_revenue: vec![Default::default()],
             jit_searcher_eoa_all_revenue_amt: vec![Default::default()],
-            jit_searcher_eoa_count:           Default::default(),
+            jit_searcher_eoa_count: Default::default(),
 
-            jit_fund_all_profit:      vec![Fund::JaneStreet],
-            jit_fund_all_profit_amt:  vec![0.0],
-            jit_fund_all_revenue:     vec![Fund::JaneStreet],
+            jit_fund_all_profit: vec![Fund::JaneStreet],
+            jit_fund_all_profit_amt: vec![0.0],
+            jit_fund_all_revenue: vec![Fund::JaneStreet],
             jit_fund_all_revenue_amt: vec![0.0],
 
-            jit_arbed_pool_all_profit:      vec![Default::default()],
-            jit_arbed_pool_all_profit_amt:  vec![0.0],
-            jit_arbed_pool_all_revenue:     vec![Default::default()],
+            jit_arbed_pool_all_profit: vec![Default::default()],
+            jit_arbed_pool_all_profit_amt: vec![0.0],
+            jit_arbed_pool_all_revenue: vec![Default::default()],
             jit_arbed_pool_all_revenue_amt: vec![0.0],
 
-            jit_arbed_pair_all_profit:      vec![Default::default()],
-            jit_arbed_pair_all_profit_amt:  vec![0.0],
-            jit_arbed_pair_all_revenue:     vec![Default::default()],
+            jit_arbed_pair_all_profit: vec![Default::default()],
+            jit_arbed_pair_all_profit_amt: vec![0.0],
+            jit_arbed_pair_all_revenue: vec![Default::default()],
             jit_arbed_pair_all_revenue_amt: vec![0.0],
 
-            jit_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
-            jit_arbed_dex_all_profit_amt:  vec![0.0],
-            jit_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            jit_arbed_dex_all_profit: vec![Protocol::UniswapV2],
+            jit_arbed_dex_all_profit_amt: vec![0.0],
+            jit_arbed_dex_all_revenue: vec![Protocol::UniswapV2],
             jit_arbed_dex_all_revenue_amt: vec![0.0],
 
-            jit_sandwich_mev_contract_all_profit:      vec![Default::default()],
-            jit_sandwich_mev_contract_all_profit_amt:  vec![Default::default()],
-            jit_sandwich_mev_contract_all_revenue:     vec![Default::default()],
+            jit_sandwich_mev_contract_all_profit: vec![Default::default()],
+            jit_sandwich_mev_contract_all_profit_amt: vec![Default::default()],
+            jit_sandwich_mev_contract_all_revenue: vec![Default::default()],
             jit_sandwich_mev_contract_all_revenue_amt: vec![Default::default()],
-            jit_sandwich_mev_contract_count:           Default::default(),
-            jit_sandwich_searcher_eoa_all_profit:      vec![Default::default()],
-            jit_sandwich_searcher_eoa_all_profit_amt:  vec![Default::default()],
-            jit_sandwich_searcher_eoa_all_revenue:     vec![Default::default()],
+            jit_sandwich_mev_contract_count: Default::default(),
+            jit_sandwich_searcher_eoa_all_profit: vec![Default::default()],
+            jit_sandwich_searcher_eoa_all_profit_amt: vec![Default::default()],
+            jit_sandwich_searcher_eoa_all_revenue: vec![Default::default()],
             jit_sandwich_searcher_eoa_all_revenue_amt: vec![Default::default()],
-            jit_sandwich_searcher_eoa_count:           Default::default(),
+            jit_sandwich_searcher_eoa_count: Default::default(),
 
-            jit_sandwich_fund_all_profit:      vec![Fund::JaneStreet],
-            jit_sandwich_fund_all_profit_amt:  vec![0.0],
-            jit_sandwich_fund_all_revenue:     vec![Fund::JaneStreet],
+            jit_sandwich_fund_all_profit: vec![Fund::JaneStreet],
+            jit_sandwich_fund_all_profit_amt: vec![0.0],
+            jit_sandwich_fund_all_revenue: vec![Fund::JaneStreet],
             jit_sandwich_fund_all_revenue_amt: vec![0.0],
 
-            jit_sandwich_arbed_pool_all_profit:      vec![Default::default()],
-            jit_sandwich_arbed_pool_all_profit_amt:  vec![0.0],
-            jit_sandwich_arbed_pool_all_revenue:     vec![Default::default()],
+            jit_sandwich_arbed_pool_all_profit: vec![Default::default()],
+            jit_sandwich_arbed_pool_all_profit_amt: vec![0.0],
+            jit_sandwich_arbed_pool_all_revenue: vec![Default::default()],
             jit_sandwich_arbed_pool_all_revenue_amt: vec![0.0],
 
-            jit_sandwich_arbed_pair_all_profit:      vec![Default::default()],
-            jit_sandwich_arbed_pair_all_profit_amt:  vec![0.0],
-            jit_sandwich_arbed_pair_all_revenue:     vec![Default::default()],
+            jit_sandwich_arbed_pair_all_profit: vec![Default::default()],
+            jit_sandwich_arbed_pair_all_profit_amt: vec![0.0],
+            jit_sandwich_arbed_pair_all_revenue: vec![Default::default()],
             jit_sandwich_arbed_pair_all_revenue_amt: vec![0.0],
 
-            jit_sandwich_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
-            jit_sandwich_arbed_dex_all_profit_amt:  vec![0.0],
-            jit_sandwich_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            jit_sandwich_arbed_dex_all_profit: vec![Protocol::UniswapV2],
+            jit_sandwich_arbed_dex_all_profit_amt: vec![0.0],
+            jit_sandwich_arbed_dex_all_revenue: vec![Protocol::UniswapV2],
             jit_sandwich_arbed_dex_all_revenue_amt: vec![0.0],
 
-            cex_dex_mev_contract_all_profit:      vec![Default::default()],
-            cex_dex_mev_contract_all_profit_amt:  vec![Default::default()],
-            cex_dex_mev_contract_all_revenue:     vec![Default::default()],
+            cex_dex_mev_contract_all_profit: vec![Default::default()],
+            cex_dex_mev_contract_all_profit_amt: vec![Default::default()],
+            cex_dex_mev_contract_all_revenue: vec![Default::default()],
             cex_dex_mev_contract_all_revenue_amt: vec![Default::default()],
-            cex_dex_mev_contract_count:           Default::default(),
-            cex_dex_searcher_eoa_all_profit:      vec![Default::default()],
-            cex_dex_searcher_eoa_all_profit_amt:  vec![Default::default()],
-            cex_dex_searcher_eoa_all_revenue:     vec![Default::default()],
+            cex_dex_mev_contract_count: Default::default(),
+            cex_dex_searcher_eoa_all_profit: vec![Default::default()],
+            cex_dex_searcher_eoa_all_profit_amt: vec![Default::default()],
+            cex_dex_searcher_eoa_all_revenue: vec![Default::default()],
             cex_dex_searcher_eoa_all_revenue_amt: vec![Default::default()],
-            cex_dex_searcher_eoa_count:           Default::default(),
+            cex_dex_searcher_eoa_count: Default::default(),
 
-            cex_dex_arbed_dex_all_profit:      vec![Protocol::UniswapV2],
-            cex_dex_arbed_dex_all_profit_amt:  vec![Default::default()],
-            cex_dex_arbed_dex_all_revenue:     vec![Protocol::UniswapV2],
+            cex_dex_arbed_dex_all_profit: vec![Protocol::UniswapV2],
+            cex_dex_arbed_dex_all_profit_amt: vec![Default::default()],
+            cex_dex_arbed_dex_all_revenue: vec![Protocol::UniswapV2],
             cex_dex_arbed_dex_all_revenue_amt: vec![Default::default()],
 
-            cex_dex_fund_all_profit:      vec![Fund::JaneStreet],
-            cex_dex_fund_all_profit_amt:  vec![0.0],
-            cex_dex_fund_all_revenue:     vec![Fund::JaneStreet],
+            cex_dex_fund_all_profit: vec![Fund::JaneStreet],
+            cex_dex_fund_all_profit_amt: vec![0.0],
+            cex_dex_fund_all_revenue: vec![Fund::JaneStreet],
             cex_dex_fund_all_revenue_amt: vec![0.0],
 
-            cex_dex_arbed_pool_all_profit:      vec![Default::default()],
-            cex_dex_arbed_pool_all_profit_amt:  vec![0.0],
-            cex_dex_arbed_pool_all_revenue:     vec![Default::default()],
+            cex_dex_arbed_pool_all_profit: vec![Default::default()],
+            cex_dex_arbed_pool_all_profit_amt: vec![0.0],
+            cex_dex_arbed_pool_all_revenue: vec![Default::default()],
             cex_dex_arbed_pool_all_revenue_amt: vec![0.0],
 
-            cex_dex_arbed_pair_all_profit:      vec![Default::default()],
-            cex_dex_arbed_pair_all_profit_amt:  vec![0.0],
-            cex_dex_arbed_pair_all_revenue:     vec![Default::default()],
+            cex_dex_arbed_pair_all_profit: vec![Default::default()],
+            cex_dex_arbed_pair_all_profit_amt: vec![0.0],
+            cex_dex_arbed_pair_all_revenue: vec![Default::default()],
             cex_dex_arbed_pair_all_revenue_amt: vec![0.0],
 
-            liquidation_mev_contract_all_profit:      vec![Default::default()],
-            liquidation_mev_contract_all_profit_amt:  vec![Default::default()],
-            liquidation_mev_contract_all_revenue:     vec![Default::default()],
+            liquidation_mev_contract_all_profit: vec![Default::default()],
+            liquidation_mev_contract_all_profit_amt: vec![Default::default()],
+            liquidation_mev_contract_all_revenue: vec![Default::default()],
             liquidation_mev_contract_all_revenue_amt: vec![Default::default()],
-            liquidation_mev_contract_count:           Default::default(),
-            liquidation_searcher_eoa_all_profit:      vec![Default::default()],
-            liquidation_searcher_eoa_all_profit_amt:  vec![Default::default()],
-            liquidation_searcher_eoa_all_revenue:     vec![Default::default()],
+            liquidation_mev_contract_count: Default::default(),
+            liquidation_searcher_eoa_all_profit: vec![Default::default()],
+            liquidation_searcher_eoa_all_profit_amt: vec![Default::default()],
+            liquidation_searcher_eoa_all_revenue: vec![Default::default()],
             liquidation_searcher_eoa_all_revenue_amt: vec![Default::default()],
-            liquidation_searcher_eoa_count:           Default::default(),
+            liquidation_searcher_eoa_count: Default::default(),
 
-            liquidation_fund_all_profit:      vec![Fund::JaneStreet],
-            liquidation_fund_all_profit_amt:  vec![0.0],
-            liquidation_fund_all_revenue:     vec![Fund::JaneStreet],
+            liquidation_fund_all_profit: vec![Fund::JaneStreet],
+            liquidation_fund_all_profit_amt: vec![0.0],
+            liquidation_fund_all_revenue: vec![Fund::JaneStreet],
             liquidation_fund_all_revenue_amt: vec![0.0],
 
-            liquidated_tokens_profit:        vec![Default::default()],
-            liquidated_tokens_profit_amt:    vec![0.0],
-            liquidated_tokens_revenue:       vec![Default::default()],
-            liquidated_tokens_revenue_amt:   vec![0.0],
-            block_number:                    Default::default(),
-            all_total_profit:                Default::default(),
-            all_total_revenue:               Default::default(),
-            all_average_profit_margin:       Default::default(),
-            all_top_searcher_profit:         Default::default(),
-            all_top_searcher_profit_amt:     Default::default(),
-            all_top_searcher_revenue:        Default::default(),
-            all_top_searcher_revenue_amt:    Default::default(),
-            all_searcher_count:              Default::default(),
-            all_top_fund_profit:             Default::default(),
-            all_top_fund_profit_amt:         Default::default(),
-            all_top_fund_revenue:            Default::default(),
-            all_top_fund_revenue_amt:        Default::default(),
-            all_fund_count:                  Default::default(),
-            all_most_arbed_pool_profit:      Default::default(),
-            all_most_arbed_pool_profit_amt:  Default::default(),
-            all_most_arbed_pool_revenue:     Default::default(),
+            liquidated_tokens_profit: vec![Default::default()],
+            liquidated_tokens_profit_amt: vec![0.0],
+            liquidated_tokens_revenue: vec![Default::default()],
+            liquidated_tokens_revenue_amt: vec![0.0],
+            block_number: Default::default(),
+            all_total_profit: Default::default(),
+            all_total_revenue: Default::default(),
+            all_average_profit_margin: Default::default(),
+            all_top_searcher_profit: Default::default(),
+            all_top_searcher_profit_amt: Default::default(),
+            all_top_searcher_revenue: Default::default(),
+            all_top_searcher_revenue_amt: Default::default(),
+            all_searcher_count: Default::default(),
+            all_top_fund_profit: Default::default(),
+            all_top_fund_profit_amt: Default::default(),
+            all_top_fund_revenue: Default::default(),
+            all_top_fund_revenue_amt: Default::default(),
+            all_fund_count: Default::default(),
+            all_most_arbed_pool_profit: Default::default(),
+            all_most_arbed_pool_profit_amt: Default::default(),
+            all_most_arbed_pool_revenue: Default::default(),
             all_most_arbed_pool_revenue_amt: Default::default(),
-            all_most_arbed_pair_profit:      Default::default(),
-            all_most_arbed_pair_profit_amt:  Default::default(),
-            all_most_arbed_pair_revenue:     Default::default(),
+            all_most_arbed_pair_profit: Default::default(),
+            all_most_arbed_pair_profit_amt: Default::default(),
+            all_most_arbed_pair_revenue: Default::default(),
             all_most_arbed_pair_revenue_amt: Default::default(),
-            all_most_arbed_dex_profit:       Default::default(),
-            all_most_arbed_dex_profit_amt:   Default::default(),
-            all_most_arbed_dex_revenue:      Default::default(),
-            all_most_arbed_dex_revenue_amt:  Default::default(),
-            all_biggest_arb_profit:          Default::default(),
-            all_biggest_arb_profit_amt:      Default::default(),
-            all_biggest_arb_revenue:         Default::default(),
-            all_biggest_arb_revenue_amt:     Default::default(),
-            atomic_total_profit:             Default::default(),
-            atomic_total_revenue:            Default::default(),
-            atomic_average_profit_margin:    Default::default(),
-            atomic_top_searcher_profit:      Default::default(),
-            atomic_top_searcher_profit_amt:  Default::default(),
-            atomic_top_searcher_revenue:     Default::default(),
+            all_most_arbed_dex_profit: Default::default(),
+            all_most_arbed_dex_profit_amt: Default::default(),
+            all_most_arbed_dex_revenue: Default::default(),
+            all_most_arbed_dex_revenue_amt: Default::default(),
+            all_biggest_arb_profit: Default::default(),
+            all_biggest_arb_profit_amt: Default::default(),
+            all_biggest_arb_revenue: Default::default(),
+            all_biggest_arb_revenue_amt: Default::default(),
+            atomic_total_profit: Default::default(),
+            atomic_total_revenue: Default::default(),
+            atomic_average_profit_margin: Default::default(),
+            atomic_top_searcher_profit: Default::default(),
+            atomic_top_searcher_profit_amt: Default::default(),
+            atomic_top_searcher_revenue: Default::default(),
             atomic_top_searcher_revenue_amt: Default::default(),
 
             atomic_top_fund_profit: Default::default(),
@@ -2650,16 +2648,16 @@ impl Default for BlockAnalysis {
             liquidated_biggest_arb_revenue_amt: Default::default(),
             total_usd_liquidated: Default::default(),
 
-            builder_address:        Default::default(),
+            builder_address: Default::default(),
             builder_mev_profit_eth: Default::default(),
             builder_mev_profit_usd: Default::default(),
-            builder_name:           Default::default(),
-            builder_profit_eth:     Default::default(),
-            builder_profit_usd:     Default::default(),
-            builder_revenue_eth:    Default::default(),
-            builder_revenue_usd:    Default::default(),
-            proposer_profit_eth:    Default::default(),
-            proposer_profit_usd:    Default::default(),
+            builder_name: Default::default(),
+            builder_profit_eth: Default::default(),
+            builder_profit_usd: Default::default(),
+            builder_revenue_eth: Default::default(),
+            builder_revenue_usd: Default::default(),
+            proposer_profit_eth: Default::default(),
+            proposer_profit_usd: Default::default(),
 
             eth_price: Default::default(),
         }

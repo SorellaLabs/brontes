@@ -13,7 +13,7 @@ use clickhouse::{remote_cursor::RemoteCursor, DbRow};
 use futures::TryStreamExt;
 use itertools::Itertools;
 use reqwest::StatusCode;
-use reth_primitives::BlockHash;
+use alloy_primitives::BlockHash;
 use serde::Deserialize;
 
 use crate::{

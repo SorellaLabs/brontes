@@ -15,7 +15,7 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::TxHash;
+use alloy_primitives::TxHash;
 
 use super::types::{PossibleJit, PossibleJitWithInfo};
 use crate::{

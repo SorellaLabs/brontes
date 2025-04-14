@@ -1,8 +1,8 @@
+use alloy_primitives::BlockHash;
 use alloy_primitives::{Address, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
-use reth_primitives::BlockHash;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::Serialize;
 use serde_with::serde_as;
@@ -42,15 +42,15 @@ use crate::{db::cex::CexExchange, normalized_actions::NormalizedSwap};
 ))]
 pub struct BlockMetadataInner {
     #[serde(with = "u256")]
-    pub block_hash:             U256,
-    pub block_timestamp:        u64,
-    pub relay_timestamp:        Option<u64>,
-    pub p2p_timestamp:          Option<u64>,
+    pub block_hash: U256,
+    pub block_timestamp: u64,
+    pub relay_timestamp: Option<u64>,
+    pub p2p_timestamp: Option<u64>,
     #[serde(with = "option_addresss")]
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward:    Option<u128>,
+    pub proposer_mev_reward: Option<u128>,
     #[serde(with = "vec_txhash")]
-    pub private_flow:           Vec<TxHash>,
+    pub private_flow: Vec<TxHash>,
 }
 
 implement_table_value_codecs_with_zc!(BlockMetadataInnerRedefined);
@@ -81,10 +81,10 @@ pub struct Metadata {
     #[deref]
     #[as_ref]
     pub block_metadata: BlockMetadata,
-    pub cex_quotes:     CexPriceMap,
-    pub dex_quotes:     Option<DexQuotes>,
-    pub builder_info:   Option<BuilderInfo>,
-    pub cex_trades:     Option<CexTradeMap>,
+    pub cex_quotes: CexPriceMap,
+    pub dex_quotes: Option<DexQuotes>,
+    pub builder_info: Option<BuilderInfo>,
+    pub cex_trades: Option<CexTradeMap>,
 }
 
 impl Metadata {
@@ -92,10 +92,10 @@ impl Metadata {
         self.cex_quotes.quotes.iter().for_each(|(exchange, pairs)| {
             pairs.keys().for_each(|key| {
                 let Ok(token0) = db.try_fetch_token_info(key.0).map(|s| s.symbol.clone()) else {
-                    return
+                    return;
                 };
                 let Ok(token1) = db.try_fetch_token_info(key.1).map(|s| s.symbol.clone()) else {
-                    return
+                    return;
                 };
                 if &token0 == "WETH" && &token1 == "USDT" {
                     tracing::info!(?exchange, "{}-{} in quotes", token0, token1);
@@ -117,7 +117,7 @@ impl Metadata {
     /// falls back to DEX quotes using the average block price.
     pub fn get_eth_price(&self, quote_token: Address) -> Rational {
         if self.block_metadata.eth_prices != Rational::ZERO {
-            return self.block_metadata.eth_prices.clone()
+            return self.block_metadata.eth_prices.clone();
         }
 
         self.dex_quotes
@@ -146,17 +146,17 @@ impl Metadata {
 /// Block Metadata
 #[derive(Debug, Clone, Default)]
 pub struct BlockMetadata {
-    pub block_num:              u64,
-    pub block_hash:             U256,
-    pub block_timestamp:        u64,
-    pub relay_timestamp:        Option<u64>,
-    pub p2p_timestamp:          Option<u64>,
+    pub block_num: u64,
+    pub block_hash: U256,
+    pub block_timestamp: u64,
+    pub relay_timestamp: Option<u64>,
+    pub p2p_timestamp: Option<u64>,
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward:    Option<u128>,
+    pub proposer_mev_reward: Option<u128>,
     /// Best ask at p2p timestamp
-    pub eth_prices:             Rational,
+    pub eth_prices: Rational,
     /// Tx
-    pub private_flow:           FastHashSet<TxHash>,
+    pub private_flow: FastHashSet<TxHash>,
 }
 
 impl BlockMetadata {

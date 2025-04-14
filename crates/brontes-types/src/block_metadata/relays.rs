@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
+use alloy_primitives::BlockHash;
 use relays_openapi::apis::{
     configuration::Configuration,
     data_api::{get_delivered_payloads, get_received_bids},
 };
-use reth_primitives::BlockHash;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use strum::IntoEnumIterator;
@@ -256,17 +256,17 @@ pub struct UltrasoundAdjBidResponse {
 #[serde_as]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UltrasoundAdjBid {
-    pub adjusted_block_hash:   String,
+    pub adjusted_block_hash: String,
     #[serde_as(as = "DisplayFromStr")]
-    pub adjusted_value:        u128,
-    pub block_number:          u64,
-    pub builder_pubkey:        String,
+    pub adjusted_value: u128,
+    pub block_number: u64,
+    pub builder_pubkey: String,
     #[serde_as(as = "DisplayFromStr")]
-    pub delta:                 u128,
-    pub submitted_block_hash:  String,
+    pub delta: u128,
+    pub submitted_block_hash: String,
     pub submitted_received_at: String,
     #[serde_as(as = "DisplayFromStr")]
-    pub submitted_value:       u128,
+    pub submitted_value: u128,
 }
 
 async fn get_ultrasound_adj(slots: HashSet<u64>) -> eyre::Result<Vec<UltrasoundAdjBid>> {

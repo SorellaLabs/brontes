@@ -11,7 +11,7 @@ use brontes_types::{
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::Address;
+use alloy_primitives::Address;
 
 use super::{MAX_PROFIT, MIN_PROFIT};
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};

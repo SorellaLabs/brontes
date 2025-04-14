@@ -4,7 +4,8 @@ use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_types::structured_trace::TxTrace;
 pub use brontes_types::traits::TracingProvider;
 use futures::Future;
-use reth_primitives::{BlockHash, BlockNumberOrTag, Header, B256};
+use reth_primitives::{BlockHash, BlockNumberOrTag, B256};
+use reth_rpc_types::Header;
 use tokio::sync::mpsc::UnboundedSender;
 
 use self::parser::TraceParser;

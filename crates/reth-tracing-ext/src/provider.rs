@@ -1,11 +1,12 @@
 use std::cmp::min;
 
+use alloy_primitives::FixedBytes;
 use alloy_rpc_types::AnyReceiptEnvelope;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
 use reth_primitives::{
-    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
-    B256, U256,
+    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, StorageValue, TxHash, B256,
+    U256,
 };
 use reth_provider::{BlockIdReader, BlockNumReader, HeaderProvider};
 use reth_revm::{database::StateProviderDatabase, db::CacheDB};
@@ -14,6 +15,7 @@ use reth_rpc::eth::{
     EthTransactions,
 };
 use reth_rpc_api::EthApiServer;
+use reth_rpc_types::Header;
 use reth_rpc_types::{
     state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
@@ -112,6 +114,33 @@ impl TracingProvider for TracingClient {
             .provider()
             .header_by_number(number)
             .map_err(Into::into)
+            .map(|h| {
+                h.map(|inner| Header {
+                    hash: Some(inner.hash_slow()),
+                    parent_hash: inner.parent_hash,
+                    uncles_hash: inner.parent_hash,
+                    miner: inner.beneficiary,
+                    state_root: inner.state_root,
+                    transactions_root: inner.transactions_root,
+                    receipts_root: inner.receipts_root,
+                    logs_bloom: inner.logs_bloom,
+                    difficulty: inner.difficulty,
+                    number: Some(inner.number),
+                    gas_limit: inner.gas_limit as u128,
+                    gas_used: inner.gas_used as u128,
+                    timestamp: inner.timestamp,
+                    total_difficulty: Some(inner.difficulty),
+                    extra_data: inner.extra_data,
+                    mix_hash: Some(inner.mix_hash),
+                    nonce: Some(FixedBytes::from_slice(&inner.nonce.to_be_bytes())),
+                    base_fee_per_gas: inner.base_fee_per_gas.map(|v| v as u128),
+                    withdrawals_root: inner.withdrawals_root,
+                    blob_gas_used: inner.blob_gas_used.map(|v| v as u128),
+                    excess_blob_gas: inner.excess_blob_gas.map(|v| v as u128),
+                    parent_beacon_block_root: inner.parent_beacon_block_root,
+                    requests_root: inner.requests_root,
+                })
+            })
     }
 
     // DB Access Methods
@@ -214,7 +243,7 @@ pub(crate) fn create_txn_env(
         .as_ref()
         .map_or(false, |hashes| hashes.is_empty())
     {
-        return Err(RpcInvalidTransactionError::BlobTransactionMissingBlobHashes.into())
+        return Err(RpcInvalidTransactionError::BlobTransactionMissingBlobHashes.into());
     }
 
     let TransactionRequest {
@@ -254,7 +283,12 @@ pub(crate) fn create_txn_env(
         caller: from.unwrap_or_default(),
         gas_price,
         gas_priority_fee: max_priority_fee_per_gas,
-        transact_to: to.map(TransactTo::Call).unwrap_or_else(TransactTo::create),
+        transact_to: to
+            .map(|v| match v {
+                reth_primitives::TxKind::Create => TransactTo::Create,
+                reth_primitives::TxKind::Call(address) => TransactTo::Call(address),
+            })
+            .unwrap_or_else(TransactTo::create),
         value: value.unwrap_or_default(),
         data: input.try_into_unique_input()?.unwrap_or_default(),
         chain_id,
@@ -313,9 +347,9 @@ pub(crate) struct CallFees {
     ///
     /// `gasPrice` for legacy,
     /// `maxFeePerGas` for EIP-1559
-    gas_price:                U256,
+    gas_price: U256,
     /// Max Fee per Blob gas for EIP-4844 transactions
-    max_fee_per_blob_gas:     Option<U256>,
+    max_fee_per_blob_gas: Option<U256>,
 }
 
 // === impl CallFees ===
@@ -351,13 +385,13 @@ impl CallFees {
                 Some(max_fee) => {
                     if max_fee < block_base_fee {
                         // `base_fee_per_gas` is greater than the `max_fee_per_gas`
-                        return Err(RpcInvalidTransactionError::FeeCapTooLow.into())
+                        return Err(RpcInvalidTransactionError::FeeCapTooLow.into());
                     }
                     if max_fee < max_priority_fee_per_gas.unwrap_or(U256::ZERO) {
                         return Err(
                             // `max_priority_fee_per_gas` is greater than the `max_fee_per_gas`
                             RpcInvalidTransactionError::TipAboveFeeCap.into(),
-                        )
+                        );
                     }
                     Ok(min(
                         max_fee,
@@ -415,7 +449,7 @@ impl CallFees {
                 // Ensure blob_hashes are present
                 if !has_blob_hashes {
                     // Blob transaction but no blob hashes
-                    return Err(RpcInvalidTransactionError::BlobTransactionMissingBlobHashes.into())
+                    return Err(RpcInvalidTransactionError::BlobTransactionMissingBlobHashes.into());
                 }
 
                 Ok(CallFees {

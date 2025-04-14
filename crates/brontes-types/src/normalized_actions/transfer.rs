@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use clickhouse::Row;
 use malachite::Rational;
 use redefined::Redefined;
-use reth_primitives::{Address, U256};
+use alloy_primitives::{Address, U256};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 

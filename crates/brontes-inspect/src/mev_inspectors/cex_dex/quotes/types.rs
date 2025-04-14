@@ -5,7 +5,7 @@ use brontes_types::{
     ToFloatNearest, TxInfo,
 };
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::Address;
+use alloy_primitives::Address;
 use tracing::warn;
 
 #[derive(Debug, Default)]

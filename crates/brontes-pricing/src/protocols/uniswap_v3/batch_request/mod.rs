@@ -4,10 +4,11 @@ use std::{
 };
 
 use alloy_primitives::{hex, Bytes, FixedBytes, U256};
+use alloy_primitives::{Address, StorageValue};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
-use reth_primitives::{Address, Bytecode, StorageValue};
+use reth_primitives::Bytecode;
 use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 mod test_bytecodes;
@@ -134,9 +135,9 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
             return Err(AmmError::CallError(eyre::eyre!(
                 "pool bytecode was empty {:?}",
                 pool.address
-            )))
+            )));
         }
-        let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode.as_ref()));
+        let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode().as_ref()));
         let (token0, token1, fee, tick_spacing) = extract_uni_v3_immutables(pool_bytecode)?;
         pool.fee = fee;
         pool.tick_spacing = tick_spacing;

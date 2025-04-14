@@ -1,11 +1,11 @@
 use alloy_primitives::TxHash;
+use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, B256};
 use alloy_rpc_types::AnyReceiptEnvelope;
-use reth_primitives::{
-    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, B256,
-};
+use reth_primitives::Bytecode;
 use reth_rpc_types::{
     state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
 };
+use reth_rpc_types::{BlockId, BlockNumberOrTag, Header};
 
 use crate::structured_trace::TxTrace;
 

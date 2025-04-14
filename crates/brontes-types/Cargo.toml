@@ -7,12 +7,13 @@ edition = "2021"
 [dependencies]
 # reth 
 reth-rpc-types.workspace = true
+reth-primitives-traits.workspace = true
 reth-primitives.workspace = true
 reth-codecs.workspace = true
 reth-tasks.workspace = true
 reth-db.workspace = true
 async-trait.workspace = true
-reth-interfaces.workspace = true
+# reth-interfaces.workspace = true
 reth-rpc.workspace = true
 
 # alloy
@@ -69,7 +70,7 @@ pin-project = "1.1.4"
 clap.workspace = true
 brontes-macros.workspace = true
 indicatif.workspace = true
-hyper.workspace = true
+hyper = { workspace = true, features = ["server"] }
 prettytable-rs = "0.10"
 
 # stats
@@ -96,8 +97,6 @@ brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
-
-
 
 
 [features]

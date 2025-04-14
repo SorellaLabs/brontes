@@ -5,7 +5,7 @@ use clickhouse::Row;
 use colored::Colorize;
 use malachite::Rational;
 use redefined::Redefined;
-use reth_primitives::Address;
+use alloy_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 

@@ -20,7 +20,7 @@ thiserror.workspace = true
 
 # reth 
 reth-rpc-types.workspace = true
-reth-primitives.workspace = true
+reth-primitives-traits.workspace = true
 reth-db.workspace = true
 reth-codecs.workspace = true
 
@@ -39,6 +39,7 @@ serde_json.workspace = true
 erased-serde = "0.3.31"
 serde_with.workspace = true
 serde_repr.workspace = true
+reth-primitives.workspace = true
 alloy-rlp = { workspace = true, features = ["arrayvec"] }
 
 # pathfinding 

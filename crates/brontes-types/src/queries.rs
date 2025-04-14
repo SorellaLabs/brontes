@@ -14,7 +14,7 @@ pub async fn make_call_request<C: SolCall, T: TracingProvider>(
 ) -> eyre::Result<C::Return> {
     let encoded = call.abi_encode();
     let req = TransactionRequest {
-        to: Some(to),
+        to: Some(alloy_primitives::TxKind::Call(to)),
         input: TransactionInput::new(encoded.into()),
         ..Default::default()
     };

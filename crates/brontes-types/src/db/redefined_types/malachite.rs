@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 use malachite::{Natural, Rational};
 use redefined::{redefined_remote, Redefined};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};

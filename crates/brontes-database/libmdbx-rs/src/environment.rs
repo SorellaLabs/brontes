@@ -1,20 +1,3 @@
-use std::{
-    ffi::CString,
-    fmt,
-    fmt::Debug,
-    mem,
-    ops::{Bound, RangeBounds},
-    path::Path,
-    ptr,
-    sync::{mpsc::sync_channel, Arc},
-    thread::sleep,
-    time::Duration,
-};
-
-use byteorder::{ByteOrder, NativeEndian};
-use mem::size_of;
-use tracing::warn;
-
 use crate::{
     database::Database,
     error::{mdbx_result, Error, Result},
@@ -23,25 +6,36 @@ use crate::{
     txn_manager::{TxnManager, TxnManagerMessage, TxnPtr},
     Transaction, TransactionKind,
 };
+use byteorder::{ByteOrder, NativeEndian};
+use mem::size_of;
+use std::{
+    ffi::CString,
+    fmt::{self, Debug},
+    mem,
+    ops::{Bound, RangeBounds},
+    path::Path,
+    ptr,
+    sync::{mpsc::sync_channel, Arc},
+    thread::sleep,
+    time::Duration,
+};
+use tracing::warn;
 
 /// The default maximum duration of a read transaction.
 #[cfg(feature = "read-tx-timeouts")]
-const DEFAULT_MAX_READ_TRANSACTION_DURATION: Duration = Duration::from_secs(120);
+const DEFAULT_MAX_READ_TRANSACTION_DURATION: Duration = Duration::from_secs(5 * 60);
 
-/// An environment supports multiple databases, all residing in the same
-/// shared-memory map.
+/// An environment supports multiple databases, all residing in the same shared-memory map.
 ///
 /// Accessing the environment is thread-safe.
-/// The environment will be closed when the last instance of this type is
-/// dropped.
+/// The environment will be closed when the last instance of this type is dropped.
 #[derive(Clone)]
 pub struct Environment {
     inner: Arc<EnvironmentInner>,
 }
 
 impl Environment {
-    /// Creates a new builder for specifying options for opening an MDBX
-    /// environment.
+    /// Creates a new builder for specifying options for opening an MDBX environment.
     pub fn builder() -> EnvironmentBuilder {
         EnvironmentBuilder {
             flags: EnvironmentFlags::default(),
@@ -56,7 +50,6 @@ impl Environment {
             geometry: None,
             log_level: None,
             kind: Default::default(),
-            #[cfg(not(windows))]
             handle_slow_readers: None,
             #[cfg(feature = "read-tx-timeouts")]
             max_read_transaction_duration: None,
@@ -75,15 +68,13 @@ impl Environment {
         self.inner.env_kind
     }
 
-    /// Returns true if the environment was opened in [crate::Mode::ReadWrite]
-    /// mode.
+    /// Returns true if the environment was opened in [`crate::Mode::ReadWrite`] mode.
     #[inline]
     pub fn is_read_write(&self) -> bool {
         self.inner.env_kind.is_write_map()
     }
 
-    /// Returns true if the environment was opened in [crate::Mode::ReadOnly]
-    /// mode.
+    /// Returns true if the environment was opened in [`crate::Mode::ReadOnly`] mode.
     #[inline]
     pub fn is_read_only(&self) -> bool {
         !self.inner.env_kind.is_write_map()
@@ -95,8 +86,7 @@ impl Environment {
         &self.inner.txn_manager
     }
 
-    /// Returns the number of timed out transactions that were not aborted by
-    /// the user yet.
+    /// Returns the number of timed out transactions that were not aborted by the user yet.
     #[cfg(feature = "read-tx-timeouts")]
     pub fn timed_out_not_aborted_transactions(&self) -> usize {
         self.inner
@@ -111,37 +101,36 @@ impl Environment {
         Transaction::new(self.clone())
     }
 
-    /// Create a read-write transaction for use with the environment. This
-    /// method will block while there are any other read-write transactions
-    /// open on the environment.
+    /// Create a read-write transaction for use with the environment. This method will block while
+    /// there are any other read-write transactions open on the environment.
     pub fn begin_rw_txn(&self) -> Result<Transaction<RW>> {
         let mut warned = false;
         let txn = loop {
             let (tx, rx) = sync_channel(0);
             self.txn_manager().send_message(TxnManagerMessage::Begin {
                 parent: TxnPtr(ptr::null_mut()),
-                flags:  RW::OPEN_FLAGS,
+                flags: RW::OPEN_FLAGS,
                 sender: tx,
             });
             let res = rx.recv().unwrap();
             if matches!(&res, Err(Error::Busy)) {
                 if !warned {
                     warned = true;
-                    warn!(target: "brontes-libmdbx", "Process stalled, awaiting read-write transaction lock.");
+                    warn!(target: "libmdbx", "Process stalled, awaiting read-write transaction lock.");
                 }
-                sleep(Duration::from_millis(15));
-                continue
+                sleep(Duration::from_millis(250));
+                continue;
             }
 
-            break res
+            break res;
         }?;
         Ok(Transaction::new_from_ptr(self.clone(), txn.0))
     }
 
     /// Returns a raw pointer to the underlying MDBX environment.
     ///
-    /// The caller **must** ensure that the pointer is never dereferenced after
-    /// the environment has been dropped.
+    /// The caller **must** ensure that the pointer is never dereferenced after the environment has
+    /// been dropped.
     #[inline]
     pub(crate) fn env_ptr(&self) -> *mut ffi::MDBX_env {
         self.inner.env
@@ -149,11 +138,9 @@ impl Environment {
 
     /// Executes the given closure once
     ///
-    /// This is only intended to be used when accessing mdbx ffi functions
-    /// directly is required.
+    /// This is only intended to be used when accessing mdbx ffi functions directly is required.
     ///
-    /// The caller **must** ensure that the pointer is only used within the
-    /// closure.
+    /// The caller **must** ensure that the pointer is only used within the closure.
     #[inline]
     #[doc(hidden)]
     pub fn with_raw_env_ptr<F, T>(&self, f: F) -> T
@@ -198,12 +185,11 @@ impl Environment {
 
     /// Retrieves the total number of pages on the freelist.
     ///
-    /// Along with [Environment::info()], this can be used to calculate the
-    /// exact number of used pages as well as free pages in this
-    /// environment.
+    /// Along with [`Environment::info()`], this can be used to calculate the exact number
+    /// of used pages as well as free pages in this environment.
     ///
     /// ```
-    /// # use brontes_libmdbx::Environment;
+    /// # use reth_libmdbx::Environment;
     /// let dir = tempfile::tempdir().unwrap();
     /// let env = Environment::builder().open(dir.path()).unwrap();
     /// let info = env.info().unwrap();
@@ -217,9 +203,9 @@ impl Environment {
     ///
     /// Note:
     ///
-    /// * MDBX stores all the freelists in the designated database 0 in each
-    ///   environment, and the freelist count is stored at the beginning of the
-    ///   value as `libc::uint32_t` in the native byte order.
+    /// * MDBX stores all the freelists in the designated database 0 in each environment, and the
+    ///   freelist count is stored at the beginning of the value as `libc::uint32_t` in the native
+    ///   byte order.
     ///
     /// * It will create a read transaction to traverse the freelist database.
     pub fn freelist(&self) -> Result<usize> {
@@ -231,7 +217,7 @@ impl Environment {
         for result in cursor.iter_slices() {
             let (_key, value) = result?;
             if value.len() < size_of::<usize>() {
-                return Err(Error::Corrupted)
+                return Err(Error::Corrupted);
             }
 
             let s = &value[..size_of::<usize>()];
@@ -244,17 +230,15 @@ impl Environment {
 
 /// Container type for Environment internals.
 ///
-/// This holds the raw pointer to the MDBX environment and the transaction
-/// manager. The env is opened via [mdbx_env_create](ffi::mdbx_env_create) and
-/// closed when this type drops.
+/// This holds the raw pointer to the MDBX environment and the transaction manager.
+/// The env is opened via [`mdbx_env_create`](ffi::mdbx_env_create) and closed when this type drops.
 struct EnvironmentInner {
     /// The raw pointer to the MDBX environment.
     ///
-    /// Accessing the environment is thread-safe as long as long as this type
-    /// exists.
-    env:         *mut ffi::MDBX_env,
+    /// Accessing the environment is thread-safe as long as long as this type exists.
+    env: *mut ffi::MDBX_env,
     /// Whether the environment was opened as WRITEMAP.
-    env_kind:    EnvironmentKind,
+    env_kind: EnvironmentKind,
     /// Transaction manager
     txn_manager: TxnManager,
 }
@@ -268,8 +252,8 @@ impl Drop for EnvironmentInner {
     }
 }
 
-// SAFETY: internal type, only used inside [Environment]. Accessing the
-// environment pointer is thread-safe
+// SAFETY: internal type, only used inside [Environment]. Accessing the environment pointer is
+// thread-safe
 unsafe impl Send for EnvironmentInner {}
 unsafe impl Sync for EnvironmentInner {}
 
@@ -282,13 +266,12 @@ pub enum EnvironmentKind {
     #[default]
     Default,
     /// Open the environment as mdbx-WRITEMAP.
-    /// Use a writeable memory map unless the environment is opened as
-    /// MDBX_RDONLY ([crate::Mode::ReadOnly]).
+    /// Use a writeable memory map unless the environment is opened as `MDBX_RDONLY`
+    /// ([`crate::Mode::ReadOnly`]).
     ///
-    /// All data will be mapped into memory in the read-write mode
-    /// [crate::Mode::ReadWrite]. This offers a significant performance
-    /// benefit, since the data will be modified directly in mapped memory
-    /// and then flushed to disk by single system call, without any memory
+    /// All data will be mapped into memory in the read-write mode [`crate::Mode::ReadWrite`]. This
+    /// offers a significant performance benefit, since the data will be modified directly in
+    /// mapped memory and then flushed to disk by single system call, without any memory
     /// management nor copying.
     ///
     /// This mode is incompatible with nested transactions.
@@ -299,14 +282,14 @@ impl EnvironmentKind {
     /// Returns true if the environment was opened as WRITEMAP.
     #[inline]
     pub const fn is_write_map(&self) -> bool {
-        matches!(self, EnvironmentKind::WriteMap)
+        matches!(self, Self::WriteMap)
     }
 
     /// Additional flags required when opening the environment.
-    pub(crate) fn extra_flags(&self) -> ffi::MDBX_env_flags_t {
+    pub(crate) const fn extra_flags(&self) -> ffi::MDBX_env_flags_t {
         match self {
-            EnvironmentKind::Default => ffi::MDBX_ENV_DEFAULTS,
-            EnvironmentKind::WriteMap => ffi::MDBX_WRITEMAP,
+            Self::Default => ffi::MDBX_ENV_DEFAULTS,
+            Self::WriteMap => ffi::MDBX_WRITEMAP,
         }
     }
 }
@@ -318,16 +301,15 @@ unsafe impl Sync for EnvPtr {}
 
 /// Environment statistics.
 ///
-/// Contains information about the size and layout of an MDBX environment or
-/// database.
+/// Contains information about the size and layout of an MDBX environment or database.
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Stat(ffi::MDBX_stat);
 
 impl Stat {
     /// Create a new Stat with zero'd inner struct `ffi::MDB_stat`.
-    pub(crate) fn new() -> Stat {
-        unsafe { Stat(mem::zeroed()) }
+    pub(crate) const fn new() -> Self {
+        unsafe { Self(mem::zeroed()) }
     }
 
     /// Returns a mut pointer to `ffi::MDB_stat`.
@@ -337,40 +319,39 @@ impl Stat {
 }
 
 impl Stat {
-    /// Size of a database page. This is the same for all databases in the
-    /// environment.
+    /// Size of a database page. This is the same for all databases in the environment.
     #[inline]
-    pub fn page_size(&self) -> u32 {
+    pub const fn page_size(&self) -> u32 {
         self.0.ms_psize
     }
 
     /// Depth (height) of the B-tree.
     #[inline]
-    pub fn depth(&self) -> u32 {
+    pub const fn depth(&self) -> u32 {
         self.0.ms_depth
     }
 
     /// Number of internal (non-leaf) pages.
     #[inline]
-    pub fn branch_pages(&self) -> usize {
+    pub const fn branch_pages(&self) -> usize {
         self.0.ms_branch_pages as usize
     }
 
     /// Number of leaf pages.
     #[inline]
-    pub fn leaf_pages(&self) -> usize {
+    pub const fn leaf_pages(&self) -> usize {
         self.0.ms_leaf_pages as usize
     }
 
     /// Number of overflow pages.
     #[inline]
-    pub fn overflow_pages(&self) -> usize {
+    pub const fn overflow_pages(&self) -> usize {
         self.0.ms_overflow_pages as usize
     }
 
     /// Number of data items.
     #[inline]
-    pub fn entries(&self) -> usize {
+    pub const fn entries(&self) -> usize {
         self.0.ms_entries as usize
     }
 }
@@ -380,70 +361,69 @@ impl Stat {
 pub struct GeometryInfo(ffi::MDBX_envinfo__bindgen_ty_1);
 
 impl GeometryInfo {
-    pub fn min(&self) -> u64 {
+    pub const fn min(&self) -> u64 {
         self.0.lower
     }
 }
 
 /// Environment information.
 ///
-/// Contains environment information about the map size, readers, last txn id
-/// etc.
+/// Contains environment information about the map size, readers, last txn id etc.
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Info(ffi::MDBX_envinfo);
 
 impl Info {
-    pub fn geometry(&self) -> GeometryInfo {
+    pub const fn geometry(&self) -> GeometryInfo {
         GeometryInfo(self.0.mi_geo)
     }
 
     /// Size of memory map.
     #[inline]
-    pub fn map_size(&self) -> usize {
+    pub const fn map_size(&self) -> usize {
         self.0.mi_mapsize as usize
     }
 
     /// Last used page number
     #[inline]
-    pub fn last_pgno(&self) -> usize {
+    pub const fn last_pgno(&self) -> usize {
         self.0.mi_last_pgno as usize
     }
 
     /// Last transaction ID
     #[inline]
-    pub fn last_txnid(&self) -> usize {
+    pub const fn last_txnid(&self) -> usize {
         self.0.mi_recent_txnid as usize
     }
 
     /// Max reader slots in the environment
     #[inline]
-    pub fn max_readers(&self) -> usize {
+    pub const fn max_readers(&self) -> usize {
         self.0.mi_maxreaders as usize
     }
 
     /// Max reader slots used in the environment
     #[inline]
-    pub fn num_readers(&self) -> usize {
+    pub const fn num_readers(&self) -> usize {
         self.0.mi_numreaders as usize
     }
 
     /// Return the internal page ops metrics
     #[inline]
-    pub fn page_ops(&self) -> PageOps {
+    pub const fn page_ops(&self) -> PageOps {
         PageOps {
-            newly:    self.0.mi_pgop_stat.newly,
-            cow:      self.0.mi_pgop_stat.cow,
-            clone:    self.0.mi_pgop_stat.clone,
-            split:    self.0.mi_pgop_stat.split,
-            merge:    self.0.mi_pgop_stat.merge,
-            spill:    self.0.mi_pgop_stat.spill,
-            unspill:  self.0.mi_pgop_stat.unspill,
-            wops:     self.0.mi_pgop_stat.wops,
+            newly: self.0.mi_pgop_stat.newly,
+            cow: self.0.mi_pgop_stat.cow,
+            clone: self.0.mi_pgop_stat.clone,
+            split: self.0.mi_pgop_stat.split,
+            merge: self.0.mi_pgop_stat.merge,
+            spill: self.0.mi_pgop_stat.spill,
+            unspill: self.0.mi_pgop_stat.unspill,
+            wops: self.0.mi_pgop_stat.wops,
             prefault: self.0.mi_pgop_stat.prefault,
-            mincore:  self.0.mi_pgop_stat.mincore,
-            msync:    self.0.mi_pgop_stat.msync,
-            fsync:    self.0.mi_pgop_stat.fsync,
+            mincore: self.0.mi_pgop_stat.mincore,
+            msync: self.0.mi_pgop_stat.msync,
+            fsync: self.0.mi_pgop_stat.fsync,
         }
     }
 }
@@ -466,63 +446,56 @@ pub enum PageSize {
     Set(usize),
 }
 
-/// Statistics of page operations overall of all (running, completed and
-/// aborted) transactions
+/// Statistics of page operations overall of all (running, completed and aborted) transactions
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PageOps {
     /// Quantity of a new pages added
-    pub newly:    u64,
+    pub newly: u64,
     /// Quantity of pages copied for update
-    pub cow:      u64,
+    pub cow: u64,
     /// Quantity of parent's dirty pages clones for nested transactions
-    pub clone:    u64,
+    pub clone: u64,
     /// Page splits
-    pub split:    u64,
+    pub split: u64,
     /// Page merges
-    pub merge:    u64,
+    pub merge: u64,
     /// Quantity of spilled dirty pages
-    pub spill:    u64,
+    pub spill: u64,
     /// Quantity of unspilled/reloaded pages
-    pub unspill:  u64,
+    pub unspill: u64,
     /// Number of explicit write operations (not a pages) to a disk
-    pub wops:     u64,
+    pub wops: u64,
     /// Number of explicit msync/flush-to-disk operations
-    pub msync:    u64,
+    pub msync: u64,
     /// Number of explicit fsync/flush-to-disk operations
-    pub fsync:    u64,
+    pub fsync: u64,
     /// Number of prefault write operations
     pub prefault: u64,
-    /// Number of mincore() calls
-    pub mincore:  u64,
+    /// Number of `mincore()` calls
+    pub mincore: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Geometry<R> {
-    pub size:             Option<R>,
-    pub growth_step:      Option<isize>,
+    pub size: Option<R>,
+    pub growth_step: Option<isize>,
     pub shrink_threshold: Option<isize>,
-    pub page_size:        Option<PageSize>,
+    pub page_size: Option<PageSize>,
 }
 
 impl<R> Default for Geometry<R> {
     fn default() -> Self {
-        Self {
-            size:             None,
-            growth_step:      None,
-            shrink_threshold: None,
-            page_size:        None,
-        }
+        Self { size: None, growth_step: None, shrink_threshold: None, page_size: None }
     }
 }
 
-/// Handle-Slow-Readers callback function to resolve database full/overflow
-/// issue due to a reader(s) which prevents the old data from being recycled.
+/// Handle-Slow-Readers callback function to resolve database full/overflow issue due to a reader(s)
+/// which prevents the old data from being recycled.
 ///
-/// Read transactions prevent reuse of pages freed by newer write transactions,
-/// thus the database can grow quickly. This callback will be called when there
-/// is not enough space in the database (i.e. before increasing the database
-/// size or before `MDBX_MAP_FULL` error) and thus can be used to resolve issues
-/// with a "long-lived" read transacttions.
+/// Read transactions prevent reuse of pages freed by newer write transactions, thus the database
+/// can grow quickly. This callback will be called when there is not enough space in the database
+/// (i.e. before increasing the database size or before `MDBX_MAP_FULL` error) and thus can be
+/// used to resolve issues with a "long-lived" read transacttions.
 ///
 /// Depending on the arguments and needs, your implementation may wait,
 /// terminate a process or thread that is performing a long read, or perform
@@ -535,74 +508,61 @@ impl<R> Default for Geometry<R> {
 /// * `thread_id` – A thread id of the reader thread.
 /// * `read_txn_id` – An oldest read transaction number on which stalled.
 /// * `gap` – A lag from the last committed txn.
-/// * `space` – A space that actually become available for reuse after this
-///   reader finished. The callback function can take this value into account to
-///   evaluate the impact that a long-running transaction has.
-/// * `retry` – A retry number starting from 0. If callback has returned 0 at
-///   least once, then at end of current handling loop the callback function
-///   will be called additionally with negative `retry` value to notify about
-///   the end of loop. The callback function can use this fact to implement
-///   timeout reset logic while waiting for a readers.
+/// * `space` – A space that actually become available for reuse after this reader finished. The
+///   callback function can take this value into account to evaluate the impact that a long-running
+///   transaction has.
+/// * `retry` – A retry number starting from 0. If callback has returned 0 at least once, then at
+///   end of current handling loop the callback function will be called additionally with negative
+///   `retry` value to notify about the end of loop. The callback function can use this fact to
+///   implement timeout reset logic while waiting for a readers.
 ///
 /// # Returns
-/// A return code that determines the further actions for MDBX and must match
-/// the action which was executed by the callback:
+///
+/// A return code that determines the further actions for MDBX and must match the action which
+/// was executed by the callback:
 /// * `-2` or less – An error condition and the reader was not killed.
-/// * `-1` – The callback was unable to solve the problem and agreed on
-///   `MDBX_MAP_FULL` error; MDBX should increase the database size or return
-///   `MDBX_MAP_FULL` error.
-/// * `0` – The callback solved the problem or just waited for a while, libmdbx
-///   should rescan the reader lock table and retry. This also includes a
-///   situation when corresponding transaction terminated in normal way by
-///   `mdbx_txn_abort()` or `mdbx_txn_reset()`, and may be restarted. I.e.
-///   reader slot isn't needed to be cleaned from transaction.
-/// * `1` – Transaction aborted asynchronous and reader slot should be cleared
-///   immediately, i.e. read transaction will not continue but
-///   `mdbx_txn_abort()` nor `mdbx_txn_reset()` will be called later.
-/// * `2` or greater – The reader process was terminated or killed, and MDBX
-///   should entirely reset reader registration.
-pub type HandleSlowReadersCallback = fn(
-    process_id: u32,
-    thread_id: u32,
-    read_txn_id: u64,
-    gap: usize,
+/// * `-1` – The callback was unable to solve the problem and agreed on `MDBX_MAP_FULL` error; MDBX
+///   should increase the database size or return `MDBX_MAP_FULL` error.
+/// * `0` – The callback solved the problem or just waited for a while, libmdbx should rescan the
+///   reader lock table and retry. This also includes a situation when corresponding transaction
+///   terminated in normal way by `mdbx_txn_abort()` or `mdbx_txn_reset()`, and may be restarted.
+///   I.e. reader slot isn't needed to be cleaned from transaction.
+/// * `1` – Transaction aborted asynchronous and reader slot should be cleared immediately, i.e.
+///   read transaction will not continue but `mdbx_txn_abort()` nor `mdbx_txn_reset()` will be
+///   called later.
+/// * `2` or greater – The reader process was terminated or killed, and MDBX should entirely reset
+///   reader registration.
+pub type HandleSlowReadersCallback = extern "C" fn(
+    env: *const ffi::MDBX_env,
+    txn: *const ffi::MDBX_txn,
+    pid: ffi::mdbx_pid_t,
+    tid: ffi::mdbx_tid_t,
+    laggard: u64,
+    gap: std::ffi::c_uint,
     space: usize,
-    retry: isize,
+    retry: std::ffi::c_int,
 ) -> HandleSlowReadersReturnCode;
 
 #[derive(Debug)]
+#[repr(i32)]
 pub enum HandleSlowReadersReturnCode {
     /// An error condition and the reader was not killed.
-    Error,
-    /// The callback was unable to solve the problem and agreed on
-    /// `MDBX_MAP_FULL` error; MDBX should increase the database size or
-    /// return `MDBX_MAP_FULL` error.
-    ProceedWithoutKillingReader,
-    /// The callback solved the problem or just waited for a while, libmdbx
-    /// should rescan the reader lock table and retry. This also includes a
-    /// situation when corresponding transaction terminated in normal way by
-    /// `mdbx_txn_abort()` or `mdbx_txn_reset()`, and may be restarted. I.e.
-    /// reader slot isn't needed to be cleaned from transaction.
-    Success,
-    /// Transaction aborted asynchronous and reader slot should be cleared
-    /// immediately, i.e. read transaction will not continue but
-    /// `mdbx_txn_abort()` nor `mdbx_txn_reset()` will be called later.
-    ClearReaderSlot,
-    /// The reader process was terminated or killed, and MDBX should entirely
-    /// reset reader registration.
-    ReaderProcessTerminated,
-}
-
-impl From<HandleSlowReadersReturnCode> for i32 {
-    fn from(value: HandleSlowReadersReturnCode) -> Self {
-        match value {
-            HandleSlowReadersReturnCode::Error => -2,
-            HandleSlowReadersReturnCode::ProceedWithoutKillingReader => -1,
-            HandleSlowReadersReturnCode::Success => 0,
-            HandleSlowReadersReturnCode::ClearReaderSlot => 1,
-            HandleSlowReadersReturnCode::ReaderProcessTerminated => 2,
-        }
-    }
+    Error = -2,
+    /// The callback was unable to solve the problem and agreed on `MDBX_MAP_FULL` error;
+    /// MDBX should increase the database size or return `MDBX_MAP_FULL` error.
+    ProceedWithoutKillingReader = -1,
+    /// The callback solved the problem or just waited for a while, libmdbx should rescan the
+    /// reader lock table and retry. This also includes a situation when corresponding transaction
+    /// terminated in normal way by `mdbx_txn_abort()` or `mdbx_txn_reset()`, and may be restarted.
+    /// I.e. reader slot isn't needed to be cleaned from transaction.
+    Success = 0,
+    /// Transaction aborted asynchronous and reader slot should be cleared immediately, i.e. read
+    /// transaction will not continue but `mdbx_txn_abort()` nor `mdbx_txn_reset()` will be called
+    /// later.
+    ClearReaderSlot = 1,
+    /// The reader process was terminated or killed, and MDBX should entirely reset reader
+    /// registration.
+    ReaderProcessTerminated = 2,
 }
 
 /// Options for opening or creating an environment.
@@ -620,12 +580,10 @@ pub struct EnvironmentBuilder {
     geometry: Option<Geometry<(Option<usize>, Option<usize>)>>,
     log_level: Option<ffi::MDBX_log_level_t>,
     kind: EnvironmentKind,
-    #[cfg(not(windows))]
     handle_slow_readers: Option<HandleSlowReadersCallback>,
     #[cfg(feature = "read-tx-timeouts")]
-    /// The maximum duration of a read transaction. If [None], but the
-    /// `read-tx-timeout` feature is enabled, the default value of
-    /// [DEFAULT_MAX_READ_TRANSACTION_DURATION] is used.
+    /// The maximum duration of a read transaction. If [None], but the `read-tx-timeout` feature is
+    /// enabled, the default value of [`DEFAULT_MAX_READ_TRANSACTION_DURATION`] is used.
     max_read_transaction_duration: Option<read_transactions::MaxReadTransactionDuration>,
 }
 
@@ -707,11 +665,10 @@ impl EnvironmentBuilder {
                     ))?;
                 }
 
-                #[cfg(not(windows))]
                 if let Some(handle_slow_readers) = self.handle_slow_readers {
                     mdbx_result(ffi::mdbx_env_set_hsr(
                         env,
-                        handle_slow_readers_callback(handle_slow_readers),
+                        convert_hsr_fn(Some(handle_slow_readers)),
                     ))?;
                 }
 
@@ -744,7 +701,7 @@ impl EnvironmentBuilder {
             })() {
                 ffi::mdbx_env_close_ex(env, false);
 
-                return Err(e)
+                return Err(e);
             }
         }
 
@@ -780,7 +737,7 @@ impl EnvironmentBuilder {
 
     /// Opens the environment with mdbx WRITEMAP
     ///
-    /// See also [EnvironmentKind]
+    /// See also [`EnvironmentKind`]
     pub fn write_map(&mut self) -> &mut Self {
         self.set_kind(EnvironmentKind::WriteMap)
     }
@@ -793,10 +750,9 @@ impl EnvironmentBuilder {
 
     /// Sets the maximum number of threads or reader slots for the environment.
     ///
-    /// This defines the number of slots in the lock table that is used to track
-    /// readers in the the environment. The default is 126. Starting a
-    /// read-only transaction normally ties a lock table slot to the
-    /// [Transaction] object until it or the [Environment] object is destroyed.
+    /// This defines the number of slots in the lock table that is used to track readers in the
+    /// the environment. The default is 126. Starting a read-only transaction normally ties a lock
+    /// table slot to the [Transaction] object until it or the [Environment] object is destroyed.
     pub fn set_max_readers(&mut self, max_readers: u64) -> &mut Self {
         self.max_readers = Some(max_readers);
         self
@@ -809,8 +765,8 @@ impl EnvironmentBuilder {
     /// unnamed database can ignore this option.
     ///
     /// Currently a moderate number of slots are cheap but a huge number gets
-    /// expensive: 7-120 words per transaction, and every
-    /// [Transaction::open_db()] does a linear search of the opened slots.
+    /// expensive: 7-120 words per transaction, and every [`Transaction::open_db()`]
+    /// does a linear search of the opened slots.
     pub fn set_max_dbs(&mut self, v: usize) -> &mut Self {
         self.max_dbs = Some(v as u64);
         self
@@ -846,20 +802,20 @@ impl EnvironmentBuilder {
         self
     }
 
-    /// Set all size-related parameters of environment, including page size and
-    /// the min/max size of the memory map.
+    /// Set all size-related parameters of environment, including page size and the min/max size of
+    /// the memory map.
     pub fn set_geometry<R: RangeBounds<usize>>(&mut self, geometry: Geometry<R>) -> &mut Self {
         let convert_bound = |bound: Bound<&usize>| match bound {
             Bound::Included(v) | Bound::Excluded(v) => Some(*v),
             _ => None,
         };
         self.geometry = Some(Geometry {
-            size:             geometry.size.map(|range| {
+            size: geometry.size.map(|range| {
                 (convert_bound(range.start_bound()), convert_bound(range.end_bound()))
             }),
-            growth_step:      geometry.growth_step,
+            growth_step: geometry.growth_step,
             shrink_threshold: geometry.shrink_threshold,
-            page_size:        geometry.page_size,
+            page_size: geometry.page_size,
         });
         self
     }
@@ -869,9 +825,8 @@ impl EnvironmentBuilder {
         self
     }
 
-    /// Set the Handle-Slow-Readers callback. See [HandleSlowReadersCallback]
-    /// for more information.
-    #[cfg(not(windows))]
+    /// Set the Handle-Slow-Readers callback. See [`HandleSlowReadersCallback`] for more
+    /// information.
     pub fn set_handle_slow_readers(&mut self, hsr: HandleSlowReadersCallback) -> &mut Self {
         self.handle_slow_readers = Some(hsr);
         self
@@ -880,9 +835,8 @@ impl EnvironmentBuilder {
 
 #[cfg(feature = "read-tx-timeouts")]
 pub(crate) mod read_transactions {
-    use std::time::Duration;
-
     use crate::EnvironmentBuilder;
+    use std::time::Duration;
 
     /// The maximum duration of a read transaction.
     #[derive(Debug, Clone, Copy)]
@@ -890,17 +844,16 @@ pub(crate) mod read_transactions {
     pub enum MaxReadTransactionDuration {
         /// The maximum duration of a read transaction is unbounded.
         Unbounded,
-        /// The maximum duration of a read transaction is set to the given
-        /// duration.
+        /// The maximum duration of a read transaction is set to the given duration.
         Set(Duration),
     }
 
     #[cfg(feature = "read-tx-timeouts")]
     impl MaxReadTransactionDuration {
-        pub fn as_duration(&self) -> Option<Duration> {
+        pub const fn as_duration(&self) -> Option<Duration> {
             match self {
-                MaxReadTransactionDuration::Unbounded => None,
-                MaxReadTransactionDuration::Set(duration) => Some(*duration),
+                Self::Unbounded => None,
+                Self::Set(duration) => Some(*duration),
             }
         }
     }
@@ -917,41 +870,90 @@ pub(crate) mod read_transactions {
     }
 }
 
-/// Creates an instance of `MDBX_hsr_func`.
-///
-/// Caution: this leaks the memory for callbacks, so they're alive throughout
-/// the program. It's fine, because we also expect the database environment to
-/// be alive during this whole time.
-#[cfg(not(windows))]
-unsafe fn handle_slow_readers_callback(callback: HandleSlowReadersCallback) -> ffi::MDBX_hsr_func {
-    // Move the callback function to heap and intentionally leak it, so it's not
-    // dropped and the MDBX env can use it throughout the whole program.
-    let callback = Box::leak(Box::new(callback));
+/// Converts a [`HandleSlowReadersCallback`] to the actual FFI function pointer.
+#[allow(clippy::missing_transmute_annotations)]
+fn convert_hsr_fn(callback: Option<HandleSlowReadersCallback>) -> ffi::MDBX_hsr_func {
+    unsafe { std::mem::transmute(callback) }
+}
 
-    // Wrap the callback into an ffi binding. The callback is needed for a nicer UX
-    // with Rust types, and without `env` and `txn` arguments that we don't want
-    // to expose to the user. Again, move the closure to heap and leak.
-    let hsr = Box::leak(Box::new(
-        |_env: *const ffi::MDBX_env,
-         _txn: *const ffi::MDBX_txn,
-         pid: ffi::mdbx_pid_t,
-         tid: ffi::mdbx_tid_t,
-         laggard: u64,
-         gap: ::libc::c_uint,
-         space: usize,
-         retry: ::libc::c_int|
-         -> i32 {
-            callback(pid as u32, tid as u32, laggard, gap as usize, space, retry as isize).into()
-        },
-    ));
+#[cfg(test)]
+mod tests {
+    use crate::{Environment, Error, Geometry, HandleSlowReadersReturnCode, PageSize, WriteFlags};
+    use std::{
+        ops::RangeInclusive,
+        sync::atomic::{AtomicBool, Ordering},
+    };
 
-    // Create a pointer to the C function from the Rust closure, and forcefully
-    // forget the original closure.
-    let closure = libffi::high::Closure8::new(hsr);
-    let closure_ptr = *closure.code_ptr();
-    std::mem::forget(closure);
+    #[test]
+    fn test_handle_slow_readers_callback() {
+        static CALLED: AtomicBool = AtomicBool::new(false);
 
-    // Cast the closure to FFI `extern fn` type.
-    #[allow(clippy::missing_transmute_annotations)]
-    Some(std::mem::transmute(closure_ptr))
+        extern "C" fn handle_slow_readers(
+            _env: *const ffi::MDBX_env,
+            _txn: *const ffi::MDBX_txn,
+            _pid: ffi::mdbx_pid_t,
+            _tid: ffi::mdbx_tid_t,
+            _laggard: u64,
+            _gap: std::ffi::c_uint,
+            _space: usize,
+            _retry: std::ffi::c_int,
+        ) -> HandleSlowReadersReturnCode {
+            CALLED.store(true, Ordering::Relaxed);
+            HandleSlowReadersReturnCode::ProceedWithoutKillingReader
+        }
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let env = Environment::builder()
+            .set_geometry(Geometry::<RangeInclusive<usize>> {
+                size: Some(0..=1024 * 1024), // Max 1MB, so we can hit the limit
+                page_size: Some(PageSize::MinimalAcceptable), // To create as many pages as possible
+                ..Default::default()
+            })
+            .set_handle_slow_readers(handle_slow_readers)
+            .open(tempdir.path())
+            .unwrap();
+
+        // Insert some data in the database, so the read transaction can lock on the snapshot of it
+        {
+            let tx = env.begin_rw_txn().unwrap();
+            let db = tx.open_db(None).unwrap();
+            for i in 0usize..1_000 {
+                tx.put(db.dbi(), i.to_le_bytes(), b"0", WriteFlags::empty())
+                    .unwrap()
+            }
+            tx.commit().unwrap();
+        }
+
+        // Create a read transaction
+        let _tx_ro = env.begin_ro_txn().unwrap();
+
+        // Change previously inserted data, so the read transaction would use the previous snapshot
+        {
+            let tx = env.begin_rw_txn().unwrap();
+            let db = tx.open_db(None).unwrap();
+            for i in 0usize..1_000 {
+                tx.put(db.dbi(), i.to_le_bytes(), b"1", WriteFlags::empty())
+                    .unwrap();
+            }
+            tx.commit().unwrap();
+        }
+
+        // Insert more data in the database, so we hit the DB size limit error, and MDBX tries to
+        // kick long-lived readers and delete their snapshots
+        {
+            let tx = env.begin_rw_txn().unwrap();
+            let db = tx.open_db(None).unwrap();
+            for i in 1_000usize..1_000_000 {
+                match tx.put(db.dbi(), i.to_le_bytes(), b"0", WriteFlags::empty()) {
+                    Ok(_) => continue,
+                    Err(Error::MapFull) => break,
+                    result @ Err(_) => result.unwrap(),
+                }
+            }
+            tx.commit().unwrap();
+        }
+
+        // Expect the HSR to be called
+        assert!(CALLED.load(Ordering::Relaxed));
+    }
 }

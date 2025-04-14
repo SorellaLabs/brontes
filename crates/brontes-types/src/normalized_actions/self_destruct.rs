@@ -1,13 +1,13 @@
 use std::fmt::Debug;
 
+use alloy_primitives::{Address, U256};
 use clickhouse::Row;
-use reth_primitives::{Address, U256};
 use reth_rpc_types::trace::parity::SelfdestructAction;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct SelfdestructWithIndex {
-    pub trace_index:   u64,
+    pub trace_index: u64,
     pub self_destruct: SelfdestructAction,
 }
 

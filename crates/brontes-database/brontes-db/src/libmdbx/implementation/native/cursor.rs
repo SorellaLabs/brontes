@@ -14,7 +14,7 @@ use reth_db::{
     table::{DupSort, Encode, Table},
     DatabaseError, DatabaseWriteOperation,
 };
-use reth_interfaces::db::DatabaseWriteError;
+use reth_storage_errors::db::DatabaseWriteError;
 
 use super::utils::{decode_one, decode_value, decoder, uncompressable_ref_util};
 
@@ -33,7 +33,7 @@ pub struct LibmdbxCursor<T: Table, K: TransactionKind> {
     /// Inner `libmdbx` cursor.
     pub(crate) inner: brontes_libmdbx::Cursor<K>,
     /// Phantom data to enforce encoding/decoding.
-    _dbi:             PhantomData<T>,
+    _dbi: PhantomData<T>,
 }
 
 impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {

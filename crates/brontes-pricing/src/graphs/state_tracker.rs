@@ -32,11 +32,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
-    finalized_edge_state:    FastHashMap<Address, StateWithDependencies>,
+    finalized_edge_state: FastHashMap<Address, StateWithDependencies>,
     /// state that verification is using
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
     /// state count
-    metrics:                 Option<DexPricingMetrics>,
+    metrics: Option<DexPricingMetrics>,
 }
 
 impl Drop for StateTracker {
@@ -70,14 +70,14 @@ impl StateTracker {
     pub fn remove_finalized_state_dep(&mut self, pool: Address, amount: u64) {
         self.finalized_edge_state.retain(|i_pool, state| {
             if pool != *i_pool {
-                return true
+                return true;
             }
             state.dec(amount);
             let keep = state.dependents != 0;
             if !keep {
-                self.metrics
-                    .as_ref()
-                    .inspect(|m| m.active_state.decrement(1.0));
+                // self.metrics
+                //     .as_ref()
+                //     .inspect(|m| m.active_state.decrement(1.0));
                 tracing::debug!(?pool, "removing state");
             }
             keep
@@ -148,7 +148,7 @@ impl StateTracker {
                     .filter(|pool_state| pool_state.contains_block_state(block))
                     .is_some()
                 {
-                    return None
+                    return None;
                 }
 
                 Some(edge.info)
@@ -165,13 +165,13 @@ impl StateTracker {
                 .into_iter()
                 .for_each(|(should_finalize, mut state)| {
                     if should_finalize == 0 {
-                        return
+                        return;
                     }
                     match self.finalized_edge_state.entry(*pool) {
                         std::collections::hash_map::Entry::Vacant(v) => {
-                            self.metrics
-                                .as_ref()
-                                .inspect(|m| m.active_state.increment(1.0));
+                            // self.metrics
+                            //     .as_ref()
+                            //     .inspect(|m| m.active_state.increment(1.0));
                             // we use should finalize here
                             state.dependents = should_finalize;
                             v.insert(state);
@@ -209,7 +209,7 @@ impl StateTracker {
 #[derive(Debug, Clone, derive_more::Deref)]
 pub struct StateWithDependencies {
     #[deref]
-    pub state:      PoolState,
+    pub state: PoolState,
     pub dependents: u64,
 }
 
@@ -264,7 +264,7 @@ impl PoolStateWithBlock {
         self.0.retain(|(keep, state)| {
             if state.last_update <= block {
                 res.push((*keep, state.clone()));
-                return false
+                return false;
             }
             true
         });
@@ -279,7 +279,7 @@ impl PoolStateWithBlock {
     pub fn contains_block_state(&self, block: u64) -> bool {
         for (_, state) in &self.0 {
             if block == state.last_update {
-                return true
+                return true;
             }
         }
 

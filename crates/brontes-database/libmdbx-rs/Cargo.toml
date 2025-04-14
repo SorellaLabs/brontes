@@ -18,21 +18,14 @@ thiserror.workspace = true
 dashmap = { version = "5.5.3", features = ["inline"], optional = true }
 tracing.workspace = true
 
-ffi = { package = "reth-mdbx-sys", git = "https://github.com/paradigmxyz/reth", rev = "ac29b4b" }
+ffi = { package = "reth-mdbx-sys", git = "https://github.com/paradigmxyz/reth", rev = "560080e" }
 
 [dev-dependencies]
 tempfile = "3.8"
 criterion = "0.5"
 pprof = "0.13"
 
-[target.'cfg(not(windows))'.dependencies]
-libffi = "3.2.0"
-
 [features]
 default = []
 return-borrowed = []
 read-tx-timeouts = ["dashmap", "dashmap/inline"]
-
-
-
-

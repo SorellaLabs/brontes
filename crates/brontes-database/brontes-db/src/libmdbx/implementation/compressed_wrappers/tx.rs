@@ -1,4 +1,4 @@
-use brontes_libmdbx::{ffi::DBI, TransactionKind, RO, RW};
+use brontes_libmdbx::{TransactionKind, DBI, RO, RW};
 use reth_db::{
     table::DupSort,
     transaction::{DbTx, DbTxMut},

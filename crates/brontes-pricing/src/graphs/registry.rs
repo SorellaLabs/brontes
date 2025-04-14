@@ -33,11 +33,11 @@ use crate::types::{PairWithFirstPoolHop, ProtocolState};
 #[derive(Debug, Clone)]
 pub struct SubGraphRegistry {
     /// all currently known sub-graphs
-    sub_graphs:               FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
+    sub_graphs: FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
     /// the pending_subgrpahs that haven't been finalized yet.
     pending_finalized_graphs: FastHashMap<u64, PendingRegistry>,
     /// metrics
-    metrics:                  Option<DexPricingMetrics>,
+    metrics: Option<DexPricingMetrics>,
 }
 
 /// holder for subgraphs that aren't active yet to avoid race conditions
@@ -77,10 +77,10 @@ impl SubGraphRegistry {
                     subgraph.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });
-                    self.metrics
-                        .as_ref()
-                        .inspect(|m| m.active_subgraphs.decrement(1.0));
-                    return false
+                    // self.metrics
+                    //     .as_ref()
+                    //     .inspect(|m| m.active_subgraphs.decrement(1.0));
+                    return false;
                 }
                 true
             });
@@ -108,9 +108,9 @@ impl SubGraphRegistry {
                         });
                     } else {
                         // not replacing
-                        self.metrics
-                            .as_ref()
-                            .inspect(|m| m.active_subgraphs.increment(1.0));
+                        // self.metrics
+                        //     .as_ref()
+                        //     .inspect(|m| m.active_subgraphs.increment(1.0));
                     }
                 }
             });
@@ -200,14 +200,14 @@ impl SubGraphRegistry {
         let mut removals = FastHashMap::default();
         self.sub_graphs.retain(|k, v| {
             if k != &pair.ordered() {
-                return true
+                return true;
             }
             v.retain(|gt, s| {
                 let res = gt != &goes_through.ordered();
                 if !res {
-                    self.metrics
-                        .as_ref()
-                        .inspect(|m| m.active_subgraphs.decrement(1.0));
+                    // self.metrics
+                    //     .as_ref()
+                    //     .inspect(|m| m.active_subgraphs.decrement(1.0));
                     s.get_all_pools().flatten().for_each(|edge| {
                         *removals.entry(edge.pool_addr).or_default() += 1;
                     });
@@ -254,7 +254,7 @@ impl SubGraphRegistry {
         self.sub_graphs.iter_mut().for_each(|(g_pair, sub)| {
             // wrong pair, then retain
             if *g_pair != pair.ordered() {
-                return
+                return;
             }
 
             sub.iter_mut().for_each(|(goes_through, graph)| {
@@ -338,7 +338,7 @@ impl SubGraphRegistry {
             let mut acc = Rational::ZERO;
             for graph in f.values() {
                 if graph.extends_to().is_some() {
-                    continue
+                    continue;
                 };
 
                 let Some(next) = graph.fetch_price(edge_state) else {

@@ -1,22 +1,19 @@
 use std::{
-    convert::Infallible,
+    // convert::Infallible,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     task::Poll,
     time::Duration,
 };
 
-use eyre::WrapErr;
+// use eyre::WrapErr;
 use futures::Stream;
-use hyper::{
-    service::{make_service_fn, service_fn},
-    Body, Request, Response, Server,
-};
+// use hyper::{body, service::service_fn, Request, Response};
 use tokio::{
     sync::mpsc::{Receiver, Sender},
     time::{interval, Interval},
 };
 
-const TRIGGER_ADDRESS: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 54321);
+// const TRIGGER_ADDRESS: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 54321);
 
 #[allow(unreachable_code)]
 pub async fn backup_server_heartbeat(url: String, ping_rate: Duration) {
@@ -39,29 +36,29 @@ pub async fn backup_server_heartbeat(url: String, ping_rate: Duration) {
 }
 
 pub async fn start_hr_monitor(tx: Sender<()>) -> eyre::Result<()> {
-    let make_svc = make_service_fn(move |_| {
-        let s = tx.clone();
-        async move {
-            let s = s.clone();
-            Ok::<_, Infallible>(service_fn(move |_: Request<Body>| {
-                s.try_send(()).unwrap();
-                async move { Ok::<_, Infallible>(Response::new(Body::from(""))) }
-            }))
-        }
-    });
+    // let make_svc = service_fn(move |_| {
+    //     let s = tx.clone();
+    //     async move {
+    //         let s = s.clone();
+    //         Ok::<_, Infallible>(service_fn(move |_: Request<body::Incoming>| {
+    //             s.try_send(()).unwrap();
+    //             async move { Ok::<_, Infallible>(Response::default()) }
+    //         }))
+    //     }
+    // });
 
-    let server = Server::try_bind(&TRIGGER_ADDRESS)
-        .wrap_err("Could not bind to address")?
-        .serve(make_svc);
+    // let server = Server::try_bind(&TRIGGER_ADDRESS)
+    //     .wrap_err("Could not bind to address")?
+    //     .serve(make_svc);
 
-    tokio::spawn(async move { server.await.expect("Metrics endpoint crashed") });
+    // tokio::spawn(async move { server.await.expect("Metrics endpoint crashed") });
 
     Ok(())
 }
 
 pub struct HeartRateMonitor {
     pub timeout: Interval,
-    pub rx:      Receiver<()>,
+    pub rx: Receiver<()>,
 }
 
 impl HeartRateMonitor {
@@ -84,7 +81,7 @@ impl Stream for HeartRateMonitor {
                 self.timeout.reset();
                 cx.waker().wake_by_ref();
                 tracing::debug!("got heartbeat");
-                return Poll::Ready(Some(true))
+                return Poll::Ready(Some(true));
             }
             Poll::Ready(None) => return Poll::Ready(None),
             Poll::Pending => {}
@@ -92,7 +89,7 @@ impl Stream for HeartRateMonitor {
 
         if self.timeout.poll_tick(cx).is_ready() {
             tracing::debug!("disconnect detected, starting backup");
-            return Poll::Ready(Some(false))
+            return Poll::Ready(Some(false));
         }
 
         Poll::Pending

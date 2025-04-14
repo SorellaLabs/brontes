@@ -1,23 +1,23 @@
 use std::{pin::Pin, time::Instant};
 
+use alloy_primitives::Address;
 use brontes_types::{mev::MevType, pair::Pair, FastHashMap};
 use dashmap::DashMap;
 use metrics::{Counter, Gauge};
 use prometheus::{HistogramVec, IntCounterVec};
 use reth_metrics::Metrics;
-use reth_primitives::Address;
 
 #[derive(Clone)]
 pub struct OutlierMetrics {
     // missed data
-    pub cex_pair_symbols:          IntCounterVec,
+    pub cex_pair_symbols: IntCounterVec,
     // missed data
-    pub dex_bad_pricing:           IntCounterVec,
+    pub dex_bad_pricing: IntCounterVec,
     pub inspector_100x_price_type: IntCounterVec,
-    pub branch_filtering_trigger:  IntCounterVec,
+    pub branch_filtering_trigger: IntCounterVec,
     // runtimes
-    inspector_runtime:             HistogramVec,
-    cex_dex_price_speed:           HistogramVec,
+    inspector_runtime: HistogramVec,
+    cex_dex_price_speed: HistogramVec,
 }
 
 impl Default for OutlierMetrics {

@@ -33,7 +33,6 @@ use reth_db::{
     version::{check_db_version_file, create_db_version_file, DatabaseVersionError},
     DatabaseError,
 };
-use reth_interfaces::db::LogLevel;
 use tables::*;
 use tracing::info;
 
@@ -47,7 +46,7 @@ pub use implementation::compressed_wrappers::*;
 pub mod tables;
 pub mod types;
 pub mod utils;
-
+use reth_storage_errors::db::LogLevel;
 #[cfg(feature = "tests")]
 pub mod test_utils;
 
@@ -197,7 +196,7 @@ impl Libmdbx {
             if let Some(key) = cur.prev()? {
                 start = Some(key.0);
             } else {
-                return Ok(res)
+                return Ok(res);
             }
             tracing::info!("recycling tx on long lived read");
             tx.commit()?;

@@ -13,7 +13,7 @@ use brontes_types::{
 };
 use eyre::Error;
 use malachite::Rational;
-use reth_primitives::U256;
+use alloy_primitives::U256;
 
 use crate::BalancerV2Vault::PoolBalanceChanged;
 

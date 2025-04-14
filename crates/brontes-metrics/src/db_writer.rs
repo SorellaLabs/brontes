@@ -1,23 +1,23 @@
 use std::time::{Duration, Instant};
 
 use prometheus::{Histogram, HistogramVec, IntCounterVec, IntGauge, IntGaugeVec};
-use reth_interfaces::db::DatabaseError;
+use reth_storage_errors::db::DatabaseError;
 
 #[derive(Clone)]
 pub struct LibmdbxWriterMetrics {
     // Number of initialized blocks for each tables
-    initialized_blocks:  IntGaugeVec,
+    initialized_blocks: IntGaugeVec,
     // Total message latency from receipt to end of write operation
-    commit_latency:      HistogramVec,
+    commit_latency: HistogramVec,
     // Write latency for a single-record write
-    write_latency:       HistogramVec,
+    write_latency: HistogramVec,
     // Write latency for each batch
     write_latency_batch: Histogram,
     // Write errors per table by error type
-    write_errors:        IntCounterVec,
-    write_error_types:   IntCounterVec,
+    write_errors: IntCounterVec,
+    write_error_types: IntCounterVec,
     // Current size of the write queue
-    queue_size:          IntGauge,
+    queue_size: IntGauge,
 }
 
 impl Default for LibmdbxWriterMetrics {
@@ -148,6 +148,7 @@ impl LibmdbxWriterMetrics {
             DatabaseError::Decode => "Decode",
             DatabaseError::Stats(_) => "Stats",
             DatabaseError::LogLevelUnavailable(_) => "LogLevelUnavailable",
+            DatabaseError::Other(_) => "Other",
         };
 
         self.write_error_types

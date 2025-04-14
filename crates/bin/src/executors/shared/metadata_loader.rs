@@ -10,6 +10,7 @@ use std::{
 };
 
 use alloy_primitives::Address;
+use alloy_primitives::BlockHash;
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{
@@ -24,7 +25,6 @@ use brontes_types::{
 };
 use futures::{stream::FuturesOrdered, Future, Stream, StreamExt};
 use itertools::Itertools;
-use reth_primitives::BlockHash;
 use tracing::error;
 
 use super::dex_pricing::WaitingForPricerFuture;
@@ -39,14 +39,14 @@ pub type ClickhouseMetadataFuture =
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
-    clickhouse:            Option<&'static CH>,
-    dex_pricer_stream:     WaitingForPricerFuture<T>,
-    clickhouse_futures:    ClickhouseMetadataFuture,
-    result_buf:            VecDeque<BlockData>,
-    needs_more_data:       Arc<AtomicBool>,
-    cex_window_data:       CexWindow,
+    clickhouse: Option<&'static CH>,
+    dex_pricer_stream: WaitingForPricerFuture<T>,
+    clickhouse_futures: ClickhouseMetadataFuture,
+    result_buf: VecDeque<BlockData>,
+    needs_more_data: Arc<AtomicBool>,
+    cex_window_data: CexWindow,
     always_generate_price: bool,
-    force_no_dex_pricing:  bool,
+    force_no_dex_pricing: bool,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -142,7 +142,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             let last_block = block + offsets;
             self.cex_window_data.init(last_block, trades);
 
-            return Some(self.cex_window_data.cex_trade_map())
+            return Some(self.cex_window_data.cex_trade_map());
         }
 
         let last_block = self.cex_window_data.get_last_end_block_loaded() + 1;
@@ -277,7 +277,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                         error!(err=?e);
                     })
                 {
-                    break res
+                    break res;
                 } else {
                     tracing::warn!(
                         ?block,
@@ -307,7 +307,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                         trades.merge_in_map(range.value);
                     }
 
-                    break trades
+                    break trades;
                 } else {
                     tracing::warn!(
                         ?block,
@@ -336,10 +336,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
     ) -> std::task::Poll<Option<Self::Item>> {
         if self.force_no_dex_pricing {
             if let Some(res) = self.result_buf.pop_front() {
-                return Poll::Ready(Some(res))
+                return Poll::Ready(Some(res));
             }
             cx.waker().wake_by_ref();
-            return Poll::Pending
+            return Poll::Pending;
         }
 
         while let Poll::Ready(Some((block, tree, meta))) =
@@ -351,10 +351,9 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
-                metadata: Arc::new(metadata),
-                tree:     Arc::new(tree),
-            })),
+            Poll::Ready(Some((tree, metadata))) => {
+                Poll::Ready(Some(BlockData { metadata: Arc::new(metadata), tree: Arc::new(tree) }))
+            }
             Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
             Poll::Pending => {
                 if let Some(f) = self.result_buf.pop_front() {

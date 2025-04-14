@@ -1,12 +1,11 @@
-use std::{
-    ptr,
-    sync::mpsc::{sync_channel, Receiver, SyncSender},
-};
-
 use crate::{
     environment::EnvPtr,
     error::{mdbx_result, Result},
     CommitLatency,
+};
+use std::{
+    ptr,
+    sync::mpsc::{sync_channel, Receiver, SyncSender},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -21,13 +20,13 @@ pub(crate) enum TxnManagerMessage {
 }
 
 /// Manages transactions by doing two things:
-/// - Opening, aborting, and committing transactions using
-///   [TxnManager::send_message] with the corresponding [TxnManagerMessage]
-/// - Aborting long-lived read transactions (if the `read-tx-timeouts` feature
-///   is enabled and `TxnManager::with_max_read_transaction_duration` is called)
+/// - Opening, aborting, and committing transactions using [`TxnManager::send_message`] with the
+///   corresponding [`TxnManagerMessage`]
+/// - Aborting long-lived read transactions (if the `read-tx-timeouts` feature is enabled and
+///   `TxnManager::with_max_read_transaction_duration` is called)
 #[derive(Debug)]
 pub(crate) struct TxnManager {
-    sender:            SyncSender<TxnManagerMessage>,
+    sender: SyncSender<TxnManagerMessage>,
     #[cfg(feature = "read-tx-timeouts")]
     read_transactions: Option<std::sync::Arc<read_transactions::ReadTransactions>>,
 }
@@ -46,18 +45,14 @@ impl TxnManager {
         txn_manager
     }
 
-    /// Spawns a new thread with [std::thread::spawn] that listens to incoming
-    /// [TxnManagerMessage] messages, executes an FFI function, and returns
-    /// the result on the provided channel.
+    /// Spawns a new [`std::thread`] that listens to incoming [`TxnManagerMessage`] messages,
+    /// executes an FFI function, and returns the result on the provided channel.
     ///
-    /// - [TxnManagerMessage::Begin] opens a new transaction with
-    ///   [ffi::mdbx_txn_begin_ex]
-    /// - [TxnManagerMessage::Abort] aborts a transaction with
-    ///   [ffi::mdbx_txn_abort]
-    /// - [TxnManagerMessage::Commit] commits a transaction with
-    ///   [ffi::mdbx_txn_commit_ex]
+    /// - [`TxnManagerMessage::Begin`] opens a new transaction with [`ffi::mdbx_txn_begin_ex`]
+    /// - [`TxnManagerMessage::Abort`] aborts a transaction with [`ffi::mdbx_txn_abort`]
+    /// - [`TxnManagerMessage::Commit`] commits a transaction with [`ffi::mdbx_txn_commit_ex`]
     fn start_message_listener(&self, env: EnvPtr, rx: Receiver<TxnManagerMessage>) {
-        std::thread::spawn(move || {
+        let task = move || {
             #[allow(clippy::redundant_locals)]
             let env = env;
             loop {
@@ -97,7 +92,11 @@ impl TxnManager {
                     Err(_) => return,
                 }
             }
-        });
+        };
+        std::thread::Builder::new()
+            .name("mbdx-rs-txn-manager".to_string())
+            .spawn(task)
+            .unwrap();
     }
 
     pub(crate) fn send_message(&self, message: TxnManagerMessage) {
@@ -107,24 +106,22 @@ impl TxnManager {
 
 #[cfg(feature = "read-tx-timeouts")]
 mod read_transactions {
-    use std::{
-        sync::{mpsc::sync_channel, Arc},
-        time::{Duration, Instant},
-    };
-
-    use dashmap::{DashMap, DashSet};
-    use tracing::{error, trace, warn};
-
     use crate::{
         environment::EnvPtr, error::mdbx_result, transaction::TransactionPtr,
         txn_manager::TxnManager,
     };
+    use dashmap::{DashMap, DashSet};
+    use std::{
+        sync::{mpsc::sync_channel, Arc},
+        time::{Duration, Instant},
+    };
+    use tracing::{error, trace, warn};
 
     const READ_TRANSACTIONS_CHECK_INTERVAL: Duration = Duration::from_secs(5);
 
     impl TxnManager {
-        /// Returns a new instance for which the maximum duration that a read
-        /// transaction can be open is set.
+        /// Returns a new instance for which the maximum duration that a read transaction can be
+        /// open is set.
         pub(crate) fn new_with_max_read_transaction_duration(
             env: EnvPtr,
             duration: Duration,
@@ -134,8 +131,7 @@ mod read_transactions {
 
             let (tx, rx) = sync_channel(0);
 
-            let txn_manager =
-                Self { sender: tx, read_transactions: Some(read_transactions) };
+            let txn_manager = Self { sender: tx, read_transactions: Some(read_transactions) };
 
             txn_manager.start_message_listener(env, rx);
 
@@ -161,8 +157,7 @@ mod read_transactions {
             self.read_transactions.as_ref()?.remove_active(ptr)
         }
 
-        /// Returns the number of timed out transactions that were not aborted
-        /// by the user yet.
+        /// Returns the number of timed out transactions that were not aborted by the user yet.
         pub(crate) fn timed_out_not_aborted_read_transactions(&self) -> Option<usize> {
             self.read_transactions
                 .as_ref()
@@ -173,16 +168,15 @@ mod read_transactions {
     #[derive(Debug, Default)]
     pub(super) struct ReadTransactions {
         /// Maximum duration that a read transaction can be open until the
-        /// [ReadTransactions::start_monitor] aborts it.
-        max_duration:          Duration,
+        /// [`ReadTransactions::start_monitor`] aborts it.
+        max_duration: Duration,
         /// List of currently active read transactions.
         ///
-        /// We store `usize` instead of a raw pointer as a key, because pointers
-        /// are not comparable. The time of transaction opening is
-        /// stored as a value.
-        active:                DashMap<usize, (TransactionPtr, Instant)>,
-        /// List of timed out transactions that were not aborted by the user
-        /// yet, hence have a dangling read transaction pointer.
+        /// We store `usize` instead of a raw pointer as a key, because pointers are not
+        /// comparable. The time of transaction opening is stored as a value.
+        active: DashMap<usize, (TransactionPtr, Instant)>,
+        /// List of timed out transactions that were not aborted by the user yet, hence have a
+        /// dangling read transaction pointer.
         timed_out_not_aborted: DashSet<usize>,
     }
 
@@ -205,17 +199,15 @@ mod read_transactions {
             self.active.remove(&(ptr as usize))
         }
 
-        /// Returns the number of timed out transactions that were not aborted
-        /// by the user yet.
+        /// Returns the number of timed out transactions that were not aborted by the user yet.
         pub(super) fn timed_out_not_aborted(&self) -> usize {
             self.timed_out_not_aborted.len()
         }
 
-        /// Spawns a new thread with [std::thread::spawn] that monitors the list
-        /// of active read transactions and timeouts those that are open
-        /// for longer than `ReadTransactions.max_duration`.
+        /// Spawns a new [`std::thread`] that monitors the list of active read transactions and
+        /// timeouts those that are open for longer than `ReadTransactions.max_duration`.
         pub(super) fn start_monitor(self: Arc<Self>) {
-            std::thread::spawn(move || {
+            let task = move || {
                 let mut timed_out_active = Vec::new();
 
                 loop {
@@ -224,7 +216,7 @@ mod read_transactions {
 
                     // Iterate through active read transactions and time out those that's open for
                     // longer than `self.max_duration`.
-                    for entry in self.active.iter() {
+                    for entry in &self.active {
                         let (tx, start) = entry.value();
                         let duration = now - *start;
 
@@ -308,20 +300,22 @@ mod read_transactions {
                         READ_TRANSACTIONS_CHECK_INTERVAL.min(duration_until_closest_deadline),
                     );
                 }
-            });
+            };
+            std::thread::Builder::new()
+                .name("mdbx-rs-read-tx-timeouts".to_string())
+                .spawn(task)
+                .unwrap();
         }
     }
 
     #[cfg(test)]
     mod tests {
-        use std::{thread::sleep, time::Duration};
-
-        use tempfile::tempdir;
-
         use crate::{
             txn_manager::read_transactions::READ_TRANSACTIONS_CHECK_INTERVAL, Environment, Error,
             MaxReadTransactionDuration,
         };
+        use std::{thread::sleep, time::Duration};
+        use tempfile::tempdir;
 
         #[test]
         fn txn_manager_read_transactions_duration_set() {
@@ -369,9 +363,8 @@ mod read_transactions {
                 // Wait until the transaction is timed out by the manager.
                 sleep(MAX_DURATION + READ_TRANSACTIONS_CHECK_INTERVAL);
 
-                // Ensure that the transaction is not in the list of active transactions
-                // anymore, and is in the list of timed out but not aborted
-                // transactions.
+                // Ensure that the transaction is not in the list of active transactions anymore,
+                // and is in the list of timed out but not aborted transactions.
                 assert!(!read_transactions.active.contains_key(&tx_ptr));
                 assert!(read_transactions.timed_out_not_aborted.contains(&tx_ptr));
 
@@ -384,15 +377,15 @@ mod read_transactions {
                 assert!(!read_transactions.active.contains_key(&tx_ptr));
                 assert!(read_transactions.timed_out_not_aborted.contains(&tx_ptr));
 
-                // Ensure that the transaction pointer is not reused when opening a new
-                // read-only transaction.
+                // Ensure that the transaction pointer is not reused when opening a new read-only
+                // transaction.
                 let new_tx = env.begin_ro_txn().unwrap();
                 let new_tx_ptr = new_tx.txn() as usize;
                 assert!(read_transactions.active.contains_key(&new_tx_ptr));
                 assert_ne!(tx_ptr, new_tx_ptr);
 
-                // Drop the transaction and ensure that it's not in the list of timed out but
-                // not aborted transactions anymore.
+                // Drop the transaction and ensure that it's not in the list of timed out but not
+                // aborted transactions anymore.
                 drop(tx);
                 assert!(!read_transactions.timed_out_not_aborted.contains(&tx_ptr));
             }

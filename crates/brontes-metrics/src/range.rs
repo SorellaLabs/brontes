@@ -10,22 +10,22 @@ use reth_metrics::Metrics;
 #[derive(Clone)]
 pub struct GlobalRangeMetrics {
     /// the amount of blocks all inspectors have completed
-    pub completed_blocks:            Counter,
+    // pub completed_blocks: Counter,
     /// the runtime for inspectors
-    pub processing_run_time_ms:      Histogram,
+    // pub processing_run_time_ms: Histogram,
     /// complete
-    pub completed_blocks_range:      IntCounterVec,
+    pub completed_blocks_range: IntCounterVec,
     /// the amount of blocks the inspector has completed
     /// the total blocks in the inspector range
-    pub total_blocks_range:          IntCounterVec,
+    pub total_blocks_range: IntCounterVec,
     /// range poll rate
-    pub poll_rate:                   IntCounterVec,
+    pub poll_rate: IntCounterVec,
     /// pending inspector runs
     pub active_inspector_processing: IntGaugeVec,
-    pub block_tracing_throughput:    HistogramVec,
-    pub classification_throughput:   HistogramVec,
+    pub block_tracing_throughput: HistogramVec,
+    pub classification_throughput: HistogramVec,
     /// amount of pending trees in dex pricing / metadata fetcher
-    pub pending_trees:               IntGaugeVec,
+    pub pending_trees: IntGaugeVec,
 }
 
 impl GlobalRangeMetrics {
@@ -99,8 +99,8 @@ impl GlobalRangeMetrics {
             total_blocks_range,
             block_tracing_throughput: block_tracing,
             classification_throughput: tree_builder,
-            completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
-            processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
+            // completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
+            // processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
         }
     }
 
@@ -139,7 +139,7 @@ impl GlobalRangeMetrics {
             .unwrap()
             .inc();
 
-        self.completed_blocks.increment(1);
+        // self.completed_blocks.increment(1);
     }
 
     pub async fn tree_builder<R>(
@@ -174,10 +174,10 @@ impl GlobalRangeMetrics {
         self,
         f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
-        let time = Instant::now();
+        // let time = Instant::now();
         let res = f().await;
-        let elapsed = time.elapsed().as_millis() as f64;
-        self.processing_run_time_ms.record(elapsed);
+        // let elapsed = time.elapsed().as_millis() as f64;
+        // self.processing_run_time_ms.record(elapsed);
 
         res
     }
@@ -187,7 +187,7 @@ impl GlobalRangeMetrics {
 #[metrics(scope = "brontes_running_ranges")]
 pub struct FinishedRange {
     /// the active ranges running
-    pub running_ranges:  Gauge,
+    pub running_ranges: Gauge,
     /// total amount of blocks. for the set range.
     /// if at tip, then this is the range at init
     pub total_set_range: Counter,

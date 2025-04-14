@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 //! [`BrontesBatchPricer`] calculates and track the prices of tokens
 //! on decentralized exchanges on a per-transaction basis. It builds and
 //! maintains a main token graph which is used to derive smaller subgraphs used
@@ -73,42 +75,42 @@ use crate::types::PoolState;
 const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(99_999, 100_000);
 
 pub struct BrontesBatchPricer<T: TracingProvider> {
-    range_id:        usize,
-    quote_asset:     Address,
-    current_block:   u64,
+    range_id: usize,
+    quote_asset: Address,
+    current_block: u64,
     completed_block: u64,
-    finished:        Arc<AtomicBool>,
+    finished: Arc<AtomicBool>,
     needs_more_data: Arc<AtomicBool>,
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx:       UnboundedYapperReceiver<DexPriceMsg>,
+    update_rx: UnboundedYapperReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
-    buffer:          StateBuffer,
+    buffer: StateBuffer,
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
     new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager:   GraphManager,
+    graph_manager: GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader:     LazyExchangeLoader<T>,
-    dex_quotes:      FastHashMap<u64, DexQuotes>,
+    lazy_loader: LazyExchangeLoader<T>,
+    dex_quotes: FastHashMap<u64, DexQuotes>,
     /// pairs that failed to be verified. we use this to avoid the fallback for
     /// transfers
-    failed_pairs:    FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
+    failed_pairs: FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
-    overlap_update:  Option<PoolUpdate>,
+    overlap_update: Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
-    skip_pricing:    VecDeque<u64>,
+    skip_pricing: VecDeque<u64>,
     /// metrics
-    metrics:         Option<DexPricingMetrics>,
+    metrics: Option<DexPricingMetrics>,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
@@ -186,7 +188,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "on_pool_updates")]
     fn on_pool_updates(&mut self, updates: Vec<PoolUpdate>) {
         if updates.is_empty() {
-            return
+            return;
         };
 
         if let Some(msg) = updates.first() {
@@ -256,12 +258,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             |NewGraphDetails { pair, extends_pair, block, edges }| {
                 if edges.is_empty() {
                     tracing::debug!(?pair, ?extends_pair, "new pool has no graph edges");
-                    return
+                    return;
                 }
 
                 if self.graph_manager.has_subgraph_goes_through(pair) {
                     tracing::debug!(?pair, ?extends_pair, "already have pairs");
-                    return
+                    return;
                 }
 
                 self.add_subgraph(pair, extends_pair, block, edges, false);
@@ -300,7 +302,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         goes_through: Pair,
     ) -> Option<(Rational, Rational, usize)> {
         if pool_pair.0 == pool_pair.1 {
-            return Some((Rational::ONE, Rational::from(1_000_000), usize::MAX))
+            return Some((Rational::ONE, Rational::from(1_000_000), usize::MAX));
         }
         self.graph_manager.get_price(pool_pair, goes_through)
     }
@@ -376,7 +378,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
-                    return true
+                    return true;
                 }
                 s.retain(|key| {
                     let p = key.get_pair();
@@ -410,7 +412,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
-                    return true
+                    return true;
                 }
                 s.retain(|key| {
                     let p = key.get_pair();
@@ -469,7 +471,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
-                    return true
+                    return true;
                 }
                 s.retain(|key| {
                     let p = key.get_pair();
@@ -518,7 +520,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             let mut bad = false;
             self.failed_pairs.retain(|r_block, s| {
                 if block != *r_block {
-                    return true
+                    return true;
                 }
                 s.retain(|key| {
                     let p = key.get_pair();
@@ -593,7 +595,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         self.buffer.overrides.entry(block).or_default().insert(addr);
                     }
 
-                    return None
+                    return None;
                 } else if let LoadResult::Err {
                     block,
                     pool_address,
@@ -627,7 +629,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                         })
                         .collect_vec();
 
-                    return Some(failed_queries)
+                    return Some(failed_queries);
                 }
                 None
             })
@@ -688,10 +690,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     });
 
                     Some(RequeryPairs {
-                        pair:         failed.pair,
+                        pair: failed.pair,
                         extends_pair: failed.extends,
-                        block:        failed.block,
-                        frayed_ends:  failed.frayed_ends,
+                        block: failed.block,
+                        frayed_ends: failed.frayed_ends,
                         ignore_state: failed.ignore_state,
                     })
                 }
@@ -725,7 +727,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "bad_state_requery")]
     fn requery_bad_state_par(&mut self, pairs: Vec<RequeryPairs>, frayed_ext: bool) {
         if pairs.is_empty() {
-            return
+            return;
         }
         tracing::debug!("requerying bad state");
 
@@ -746,7 +748,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 if edges.is_empty() {
                     tracing::debug!(?pair, ?extends_pair, "no edges found");
 
-                    return Some((pair, block))
+                    return Some((pair, block));
                 }
 
                 let Some((id, need_state, force_rundown)) =
@@ -758,7 +760,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
 
                 if force_rundown && !need_state {
                     tracing::debug!("force rundown requery bad state par");
-                    return Some((pair, block))
+                    return Some((pair, block));
                 } else if !need_state {
                     recusing.push((block, id, pair))
                 }
@@ -785,7 +787,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "rundown")]
     fn par_rundown(&mut self, pairs: Vec<(PairWithFirstPoolHop, u64)>) {
         if pairs.is_empty() {
-            return
+            return;
         }
 
         let new_subgraphs = execute_on!(target = pricing, {
@@ -866,14 +868,14 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     self.add_subgraph(pair, extend, block, edges, frayed_ext)?;
 
                 if !need_state {
-                    return Some((block, id, pair))
+                    return Some((block, id, pair));
                 }
                 None
             })
             .collect_vec();
 
         if verify.is_empty() {
-            return
+            return;
         }
 
         execute_on!(target = pricing, self.try_verify_subgraph(verify));
@@ -956,7 +958,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
     #[brontes_macros::metrics_call(ptr=metrics,function_call_count, self.range_id, "try_flush_out_pending_verification")]
     fn try_flush_out_pending_verification(&mut self) {
         if !self.lazy_loader.can_progress(&self.completed_block) {
-            return
+            return;
         }
 
         let rem_block = self
@@ -965,7 +967,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .get_rem_for_block(self.completed_block);
 
         if rem_block.is_empty() {
-            return
+            return;
         }
 
         self.par_rundown(
@@ -1007,7 +1009,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
         // if there are still requests for the given block or the current block isn't
         // complete yet, then we wait
         if !self.can_progress() {
-            return None
+            return None;
         }
 
         self.graph_manager.finalize_block(self.completed_block);
@@ -1103,12 +1105,12 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
             .filter_map(|(key, first_price, last_price)| {
                 let block_movement = if last_price > first_price {
                     if last_price == Rational::ZERO {
-                        return None
+                        return None;
                     }
                     (&last_price - &first_price) / last_price
                 } else {
                     if first_price == Rational::ZERO {
-                        return None
+                        return None;
                     }
                     (&first_price - &last_price) / first_price
                 };
@@ -1141,7 +1143,7 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                 .graph_manager
                 .verification_done_for_block(self.completed_block)
         {
-            return None
+            return None;
         }
 
         self.graph_manager.finalize_block(self.completed_block);
@@ -1222,7 +1224,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         if let Some(new_prices) = self.poll_state_processing(cx) {
-            return new_prices
+            return new_prices;
         }
 
         // ensure clearing when finished
@@ -1270,13 +1272,13 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             } else {
                                 self.overlap_update = Some(update);
                                 cx.waker().wake_by_ref();
-                                break
+                                break;
                             }
                         }
                     }
                     Poll::Ready(None) => {
                         cx.waker().wake_by_ref();
-                        break
+                        break;
                     }
                     Poll::Pending => {
                         if self.lazy_loader.is_empty()
@@ -1287,15 +1289,15 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
                             && block_updates.is_empty()
                             && self.finished.load(SeqCst)
                         {
-                            return Poll::Ready(self.on_close())
+                            return Poll::Ready(self.on_close());
                         }
-                        break
+                        break;
                     }
                 }
             }
 
             if block_updates.is_empty() {
-                break 'outer
+                break 'outer;
             }
 
             #[allow(clippy::blocks_in_conditions)]
@@ -1312,7 +1314,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
 
             budget -= 1;
             if budget == 0 {
-                break 'outer
+                break 'outer;
             }
         }
 
@@ -1330,7 +1332,7 @@ enum PollResult {
 /// loading of pools is being applied
 pub struct StateBuffer {
     /// updates for a given block in order that they occur
-    pub updates:   FastHashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    pub updates: FastHashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     /// when we have a override for a given address at a block. it means that
     /// we don't want to apply any pool updates for the block. This is useful
     /// for when a pool is  at a block and we can only query the end

@@ -5,8 +5,10 @@
     issue_tracker_base_url = "https://github.com/paradigmxyz/reth/issues/"
 )]
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
-#![allow(missing_docs)]
+#![allow(missing_docs, clippy::needless_pass_by_ref_mut)]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+
+// pub extern crate ffi as ffi;
 
 pub use crate::{
     codec::*,
@@ -20,9 +22,7 @@ pub use crate::{
     flags::*,
     transaction::{CommitLatency, Transaction, TransactionKind, RO, RW},
 };
-pub mod ffi {
-    pub use ffi::{MDBX_dbi as DBI, MDBX_log_level_t as LogLevel};
-}
+pub use ffi::{MDBX_dbi as DBI, MDBX_log_level_t as LogLevel};
 
 #[cfg(feature = "read-tx-timeouts")]
 pub use crate::environment::read_transactions::MaxReadTransactionDuration;
@@ -38,14 +38,13 @@ mod txn_manager;
 
 #[cfg(test)]
 mod test_utils {
+    use super::*;
     use byteorder::{ByteOrder, LittleEndian};
     use tempfile::tempdir;
 
-    use super::*;
-
-    /// Regression test for https://github.com/danburkert/lmdb-rs/issues/21.
-    /// This test reliably segfaults when run against lmbdb compiled with opt
-    /// level -O3 and newer GCC compilers.
+    /// Regression test for <https://github.com/danburkert/lmdb-rs/issues/21>.
+    /// This test reliably segfaults when run against lmbdb compiled with opt level -O3 and newer
+    /// GCC compilers.
     #[test]
     fn issue_21_regression() {
         const HEIGHT_KEY: [u8; 1] = [0];

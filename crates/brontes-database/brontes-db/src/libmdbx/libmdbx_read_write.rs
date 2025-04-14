@@ -34,7 +34,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools;
 use malachite::Rational;
 use reth_db::table::{Compress, Encode};
-use reth_interfaces::db::LogLevel;
+use reth_storage_errors::db::LogLevel;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tracing::{info, instrument};
 
@@ -94,11 +94,11 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 
 #[derive(Clone)]
 pub struct LibmdbxReadWriter {
-    pub db:  Arc<Libmdbx>,
-    pub tx:  UnboundedSender<StampedWriterMessage>,
+    pub db: Arc<Libmdbx>,
+    pub tx: UnboundedSender<StampedWriterMessage>,
     metrics: Option<LibmdbxMetrics>,
     // 100 shards for now, might change in future
-    cache:   ReadWriteCache,
+    cache: ReadWriteCache,
 }
 
 impl LibmdbxReadWriter {
@@ -220,7 +220,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
             for table in tables_to_init {
                 result.insert(table, vec![start_block as usize..=end_block as usize]);
             }
-            return Ok(StateToInitialize { ranges_to_init: result })
+            return Ok(StateToInitialize { ranges_to_init: result });
         }
 
         let start_block = start_block as usize;
@@ -258,7 +258,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                 for (i, mut range) in table_res.into_iter().enumerate() {
                     // if there are no zeros, then this chuck is fully init
                     if range.count_zeros() == 0 {
-                        continue
+                        continue;
                     }
 
                     let mut sft_cnt = 0;
@@ -274,7 +274,7 @@ impl LibmdbxInit for LibmdbxReadWriter {
                     while range.count_ones() != 0 && sft_cnt <= 127 {
                         let leading_zeros = range.leading_zeros();
                         if leading_zeros == 127 {
-                            break
+                            break;
                         }
                         // if we have leading 1's, skip to the end of the leading ones
                         else if leading_zeros == 0 {
@@ -287,11 +287,11 @@ impl LibmdbxInit for LibmdbxReadWriter {
                             // mark the start_block now that we have shifted these out
                             let block = start_block + (i * 128) + sft_cnt as usize;
                             if range_start_block.is_some() || sft_cnt >= 128 {
-                                continue
+                                continue;
                             }
                             range_start_block = Some(block);
 
-                            continue
+                            continue;
                         } else {
                             // take range,
                             range <<= leading_zeros;
@@ -373,7 +373,7 @@ impl StateToInitialize {
                             let end = *f.end();
                             // if start or end out of range
                             if end < start_block || start > end_block {
-                                return None
+                                return None;
                             }
 
                             let new_start = std::cmp::max(start_block, start) as u64;

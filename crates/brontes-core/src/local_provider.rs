@@ -1,22 +1,21 @@
 use std::sync::Arc;
 
+use alloy_primitives::{Address, BlockNumber, Bytes, FixedBytes, StorageValue, TxHash, B256};
 use alloy_provider::{Provider, RootProvider};
 use alloy_rpc_types::AnyReceiptEnvelope;
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use itertools::Itertools;
-use reth_primitives::{
-    Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
-    B256,
-};
+use reth_primitives::{Bytecode, Header};
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
+    state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, BlockTransactionsKind, Log,
+    TransactionReceipt, TransactionRequest,
 };
 
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
     provider: Arc<RootProvider<Http<reqwest::Client>>>,
-    retries:  u8,
+    retries: u8,
 }
 
 impl LocalProvider {
@@ -42,10 +41,11 @@ impl TracingProvider for LocalProvider {
         loop {
             let res = self
                 .provider
-                .call(&request.clone(), block_number.unwrap_or(BlockId::latest()))
+                .call(&request.clone())
+                .block(block_number.map(Into::into).unwrap_or(BlockId::latest()))
                 .await;
             if res.is_ok() || attempts > self.retries {
-                return res.map_err(Into::into)
+                return res.map_err(Into::into);
             }
             attempts += 1
         }
@@ -53,7 +53,10 @@ impl TracingProvider for LocalProvider {
 
     async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>> {
         self.provider
-            .get_block(BlockId::Number(BlockNumberOrTag::Number(block_num)), true)
+            .get_block(
+                BlockId::Number(BlockNumberOrTag::Number(block_num)),
+                BlockTransactionsKind::Full,
+            )
             .await
             .map(|op| op.map(|block| block.header.hash.unwrap()))
             .map_err(Into::into)
@@ -94,48 +97,58 @@ impl TracingProvider for LocalProvider {
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {
-        let tx = self.provider.get_transaction_by_hash(hash).await?;
         let err = || eyre::eyre!("failed to unwrap option");
+        let tx = self
+            .provider
+            .get_transaction_by_hash(hash)
+            .await?
+            .ok_or(err())?;
 
         Ok((tx.block_number.ok_or_else(err)?, tx.transaction_index.ok_or_else(err)? as usize))
     }
 
-    async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>> {
+    async fn header_by_number(
+        &self,
+        number: BlockNumber,
+    ) -> eyre::Result<Option<reth_rpc_types::Header>> {
         let err = || eyre::eyre!("failed to unwrap option");
         let block = self
             .provider
-            .get_block(BlockId::Number(BlockNumberOrTag::Number(number)), true)
+            .get_block(
+                BlockId::Number(BlockNumberOrTag::Number(number)),
+                BlockTransactionsKind::Full,
+            )
             .await?
             .ok_or_else(err)?;
 
-        let header = Header {
-            number:                   block.header.number.ok_or_else(err)?,
-            base_fee_per_gas:         block.header.base_fee_per_gas.map(|f| f as u64),
-            mix_hash:                 block.header.mix_hash.ok_or_else(err)?,
-            withdrawals_root:         block.header.withdrawals_root,
-            parent_beacon_block_root: block.header.parent_beacon_block_root,
-            nonce:                    block
-                .header
-                .nonce
-                .map(|i| u64::from_be_bytes(*i))
-                .ok_or_else(err)?,
-            gas_used:                 block.header.gas_used as u64,
-            gas_limit:                block.header.gas_limit as u64,
-            timestamp:                block.header.timestamp,
-            difficulty:               block.header.difficulty,
-            state_root:               block.header.state_root,
-            parent_hash:              block.header.parent_hash,
-            receipts_root:            block.header.receipts_root,
-            transactions_root:        block.header.transactions_root,
-            logs_bloom:               block.header.logs_bloom,
-            extra_data:               block.header.extra_data,
-            blob_gas_used:            block.header.blob_gas_used.map(|f| f as u64),
-            excess_blob_gas:          block.header.excess_blob_gas.map(|f| f as u64),
-            ommers_hash:              block.header.uncles_hash,
-            beneficiary:              block.header.miner,
-        };
+        // let inner = block.header;
+        // let header = reth_rpc_types::Header {
+        //     hash: inner.hash,
+        //     parent_hash: inner.parent_hash,
+        //     uncles_hash: inner.parent_hash,
+        //     miner: inner.miner,
+        //     state_root: inner.state_root,
+        //     transactions_root: inner.transactions_root,
+        //     receipts_root: inner.receipts_root,
+        //     logs_bloom: inner.logs_bloom,
+        //     difficulty: inner.difficulty,
+        //     number: inner.number,
+        //     gas_limit: inner.gas_limit as u128,
+        //     gas_used: inner.gas_used as u128,
+        //     timestamp: inner.timestamp,
+        //     total_difficulty: Some(inner.difficulty),
+        //     extra_data: inner.extra_data,
+        //     mix_hash: inner.mix_hash,
+        //     nonce: inner.nonce,
+        //     base_fee_per_gas: inner.base_fee_per_gas.map(|v| v as u128),
+        //     withdrawals_root: inner.withdrawals_root,
+        //     blob_gas_used: inner.blob_gas_used.map(|v| v as u128),
+        //     excess_blob_gas: inner.excess_blob_gas.map(|v| v as u128),
+        //     parent_beacon_block_root: inner.parent_beacon_block_root,
+        //     requests_root: inner.requests_root,
+        // };
 
-        Ok(Some(header))
+        Ok(Some(block.header))
     }
 
     async fn get_storage(
@@ -150,7 +163,8 @@ impl TracingProvider for LocalProvider {
         };
         let storage_value = self
             .provider
-            .get_storage_at(address, storage_key.into(), block_id)
+            .get_storage_at(address, storage_key.into())
+            .block_id(block_id)
             .await?;
 
         Ok(Some(storage_value))
@@ -165,7 +179,11 @@ impl TracingProvider for LocalProvider {
             Some(number) => BlockId::Number(BlockNumberOrTag::Number(number)),
             None => BlockId::Number(BlockNumberOrTag::Latest),
         };
-        let bytes = self.provider.get_code_at(address, block_id).await?;
+        let bytes = self
+            .provider
+            .get_code_at(address)
+            .block_id(block_id)
+            .await?;
 
         let bytecode = Bytecode::new_raw(bytes);
         Ok(Some(bytecode))
