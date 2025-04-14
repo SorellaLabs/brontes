@@ -952,3 +952,21 @@ pub mod trade_type {
         })
     }
 }
+
+pub mod u128_from_hex {
+    use serde::de::Deserializer;
+
+    pub fn deserialize_u128_from_hex<'de, D>(deserializer: D) -> Result<u128, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // First deserialize as a string
+        let s = <String as serde::Deserialize>::deserialize(deserializer)?;
+
+        // Remove "0x" prefix if present
+        let s = s.strip_prefix("0x").unwrap_or(&s);
+
+        // Parse the hex string into u128
+        u128::from_str_radix(s, 16).map_err(serde::de::Error::custom)
+    }
+}
