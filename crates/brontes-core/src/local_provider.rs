@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use alloy_provider::{debug::DebugApi, Provider, RootProvider};
+use alloy_provider::{Provider, RootProvider};
 use alloy_rpc_types::AnyReceiptEnvelope;
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
