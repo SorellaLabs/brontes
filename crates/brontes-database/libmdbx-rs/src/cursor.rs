@@ -567,7 +567,7 @@ where
     }
 }
 
-impl<'cur, K, Key, Value> Iterator for IntoIter<'cur, K, Key, Value>
+impl<K, Key, Value> Iterator for IntoIter<'_, K, Key, Value>
 where
     K: TransactionKind,
     Key: TableObject,
