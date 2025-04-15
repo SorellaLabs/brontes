@@ -740,6 +740,20 @@ mod tests {
         Inspectors,
     };
 
+    #[brontes_macros::test]
+    async fn test_wincent_cex_dex() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 50.5).await;
+
+        let tx = hex!("bc5cf4aa1c0cd76504eb3f1d5ae03f417ec4fd7b22a9adab1c634c8165e88734").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(1931.53)
+            .with_gas_paid_usd(78939.82);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
+
     // //TODO: Verify that the load config is working as expected for both tests and
     // // regular runs
     // #[brontes_macros::test]
