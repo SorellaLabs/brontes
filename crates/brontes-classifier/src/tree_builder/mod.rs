@@ -27,8 +27,10 @@ use brontes_types::{
 use futures::future::join_all;
 use itertools::Itertools;
 use malachite::num::arithmetic::traits::Abs;
-use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
-use reth_rpc_types::Header;
+use reth_rpc_types::{
+    trace::parity::{Action as TraceAction, CallType},
+    Header,
+};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{error, trace};
 use tree_pruning::{account_for_tax_tokens, remove_possible_transfer_double_counts};
@@ -43,8 +45,8 @@ use crate::{
 //TODO: Document this module
 #[derive(Debug, Clone)]
 pub struct Classifier<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx: &'db DB,
-    provider: Arc<T>,
+    libmdbx:               &'db DB,
+    provider:              Arc<T>,
     pricing_update_sender: UnboundedSender<DexPriceMsg>,
 }
 
@@ -72,7 +74,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         let block_number = header.number;
         if !generate_pricing {
             self.pricing_update_sender
-                .send(DexPriceMsg::DisablePricingFor(block_number))
+                .send(DexPriceMsg::DisablePricingFor(
+                    block_number.expect("No block number in header"),
+                ))
                 .unwrap();
         }
 
@@ -80,8 +84,11 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         let mut tree = BlockTree::new(header, tx_roots.len());
 
         // send out all updates
-        let further_classification_requests =
-            self.process_tx_roots(tx_roots, &mut tree, block_number);
+        let further_classification_requests = self.process_tx_roots(
+            tx_roots,
+            &mut tree,
+            block_number.expect("No block number in header"),
+        );
 
         account_for_tax_tokens(&mut tree);
         remove_possible_transfer_double_counts(&mut tree);
@@ -156,7 +163,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                     let classification = self
                         .process_classification(
-                            header.number,
+                            header.number.expect("No block number in header"),
                             None,
                             &NodeData(vec![]),
                             tx_idx as u64,
@@ -182,10 +189,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         private: false,
                         total_msg_value_transfers,
                         gas_details: GasDetails {
-                            coinbase_transfer: None,
-                            gas_used: trace.gas_used,
+                            coinbase_transfer:   None,
+                            gas_used:            trace.gas_used,
                             effective_gas_price: trace.effective_price,
-                            priority_fee: trace.effective_price
+                            priority_fee:        trace.effective_price
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(classification)]),
@@ -203,7 +210,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                         if trace.trace.error.is_none() {
                             if let Some(coinbase_transfer) =
-                                get_coinbase_transfer(header.beneficiary, &trace.trace.action)
+                                get_coinbase_transfer(header.miner, &trace.trace.action)
                             {
                                 if let Some(coinbase) = &mut tx_root.gas_details.coinbase_transfer {
                                     *coinbase += coinbase_transfer;
@@ -212,10 +219,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 }
 
                                 let classification = Action::EthTransfer(NormalizedEthTransfer {
-                                    from: from_addr,
-                                    to: trace.get_to_address(),
-                                    value: trace.get_msg_value(),
-                                    trace_index: trace.trace_idx,
+                                    from:              from_addr,
+                                    to:                trace.get_to_address(),
+                                    value:             trace.get_msg_value(),
+                                    trace_index:       trace.trace_idx,
                                     coinbase_transfer: true,
                                 });
 
@@ -226,7 +233,9 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
 
                         let classification = self
                             .process_classification(
-                                header.number,
+                                header
+                                    .number
+                                    .expect("No block number in header while building tree"),
                                 Some(&tx_root.head),
                                 &tx_root.data_store,
                                 tx_idx as u64,
@@ -473,10 +482,10 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                 if trace.get_msg_value() != U256::ZERO {
                     result.push(Action::EthTransfer(NormalizedEthTransfer {
                         coinbase_transfer: false,
-                        trace_index: trace_idx,
-                        to: trace.get_to_address(),
-                        from: trace.get_from_addr(),
-                        value: trace.get_msg_value(),
+                        trace_index:       trace_idx,
+                        to:                trace.get_to_address(),
+                        from:              trace.get_from_addr(),
+                        value:             trace.get_msg_value(),
                     }));
                 }
 

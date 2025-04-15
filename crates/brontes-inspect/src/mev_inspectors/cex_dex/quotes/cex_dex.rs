@@ -556,11 +556,10 @@ mod tests {
     use alloy_primitives::hex;
     use brontes_types::constants::{USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS};
 
-    use crate::{
-        test_utils::{InspectorTestUtils, InspectorTxRunConfig},
-        Inspectors,
-    };
+    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig};
     // 0x77d0b50f0da1a77856a44821599aa1cdd06558c4bcdfdb323e14969619be6d2c
+
+    // TEST 0xbc5cf4aa1c0cd76504eb3f1d5ae03f417ec4fd7b22a9adab1c634c8165e88734
 
     #[brontes_macros::test]
     async fn test_cex_dex() {

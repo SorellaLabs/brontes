@@ -119,7 +119,7 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             true
         });
 
-        if tree.header.number >= START_OF_CHAINBOUND_MEMPOOL_DATA {
+        if tree.header.number >= Some(START_OF_CHAINBOUND_MEMPOOL_DATA) {
             tree.label_private_txes(&meta);
         }
 

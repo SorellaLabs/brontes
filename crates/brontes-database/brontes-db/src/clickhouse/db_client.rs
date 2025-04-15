@@ -1,7 +1,7 @@
 use std::{fmt::Debug, str::FromStr};
 
 use ::clickhouse::DbRow;
-use alloy_primitives::Address;
+use alloy_primitives::{Address, BlockHash, TxHash};
 use async_rate_limiter::{RateLimiter, RateLimiterBuilder, TimeUnit};
 use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
@@ -40,7 +40,6 @@ use db_interfaces::{
 };
 use eyre::Result;
 use itertools::Itertools;
-use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
@@ -229,7 +228,15 @@ impl Clickhouse {
         let roots: Vec<TransactionRoot> = tree
             .tx_roots
             .iter()
-            .map(|root| (root, tree.header.number).into())
+            .map(|root| {
+                (
+                    root,
+                    tree.header
+                        .number
+                        .expect("No block number in header while inserting tree"),
+                )
+                    .into()
+            })
             .collect::<Vec<_>>();
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {

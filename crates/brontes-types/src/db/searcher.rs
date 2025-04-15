@@ -315,6 +315,7 @@ pub enum Fund {
     TokkaLabs,
     EthBuilder,
     ICANHAZBLOCK,
+    Wincent,
 }
 
 impl fmt::Display for Fund {
@@ -333,6 +334,7 @@ impl fmt::Display for Fund {
                 Fund::TokkaLabs => "Tokka Labs",
                 Fund::EthBuilder => "Eth Builder",
                 Fund::ICANHAZBLOCK => "I CAN HAZ BLOCK",
+                Fund::Wincent => "Wincent",
             }
         )
     }
@@ -357,6 +359,7 @@ impl From<String> for Fund {
             "Kronos Research" => Self::Kronos,
             "EthBuilder" => Self::EthBuilder,
             "ICANHAZBLOCK" => Self::ICANHAZBLOCK,
+            "Wincent" => Self::Wincent,
             _ => Self::None,
         }
     }
