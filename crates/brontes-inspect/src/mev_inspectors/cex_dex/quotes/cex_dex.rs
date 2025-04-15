@@ -265,6 +265,13 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         tx_info: &TxInfo,
     ) -> Option<CexDexProcessing> {
         //TODO: Add smiths map to query most liquid dex for given pair
+
+        println!("{} swaps", dex_swaps.len());
+        println!("dex swaps:");
+        for (i, swap) in dex_swaps.iter().enumerate() {
+            println!("  swap {}: {:?}", i, swap);
+        }
+
         //
         let swaps = SharedInspectorUtils::<DB>::cex_merge_possible_swaps(dex_swaps);
 
@@ -570,7 +577,10 @@ mod tests {
 
         let tx = hex!("bc5cf4aa1c0cd76504eb3f1d5ae03f417ec4fd7b22a9adab1c634c8165e88734").into();
 
-        let config = InspectorTxRunConfig::new(Inspectors::CexDex).with_mev_tx_hashes(vec![tx]);
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex)
+            .with_mev_tx_hashes(vec![tx])
+            .with_expected_profit_usd(1931.53)
+            .with_gas_paid_usd(78939.82);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
@@ -584,7 +594,7 @@ mod tests {
         let config = InspectorTxRunConfig::new(Inspectors::CexDex)
             .with_mev_tx_hashes(vec![tx])
             .with_expected_profit_usd(1931.53)
-            .with_gas_paid_usd(78754.85);
+            .with_gas_paid_usd(78939.82);
 
         inspector_util.run_inspector(config, None).await.unwrap();
     }
