@@ -14,14 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: 1.85.0
           components: clippy,rustfmt
-          toolchain: nightly
+
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "clippy-nightly"
+          key: "clippy-stable"
 
       - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
         shell: bash
@@ -34,39 +36,60 @@ jobs:
           RUSTFLAGS: -D warnings
 
   build:
-    name: "build and fmt"
+    name: "build"
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy,rustfmt
-          toolchain: nightly
+          toolchain: 1.85.0
+          components: clippy
+
       - uses: Swatinem/rust-cache@v2
         with:
-          key: "buildfmt-nightly"
+          key: "buildfmt-stable"
           cache-on-failure: true
 
-      # allow for downloads
       - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
         shell: bash
       - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
         shell: bash
 
-      - name: "build nightly"
+      - name: "build stable"
         run: cargo build --workspace --all-features
         env:
           RUSTFLAGS: -D warnings
 
-      - name: "cargo fmt"
-        run: cargo fmt --all --check
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check-Out
+        uses: actions/checkout@v4
+
+      - run: git config --global url."https://x-access-token:${{ secrets.CI }}@github.com/".insteadOf "https://github.com/"
+        shell: bash
+      - run: git config --global url."https://${{ secrets.CI }}@github.com/".insteadOf "git@github.com:"
+        shell: bash
+
+      - name: Install Nightly
+        run: |
+          rustup toolchain install nightly
+          rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
+
+      - name: cargo build
+        run: cargo build --workspace --all-features
+
+      - name: cargo +nightly fmt
+        run: cargo +nightly fmt --all -- --check
 
   test:
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    needs: [clippy, build]
+    needs: [clippy, build, fmt]
     strategy:
       fail-fast: false
       matrix:
@@ -75,20 +98,20 @@ jobs:
       - name: Get branch names.
         id: branch-names
         uses: tj-actions/branch-names@v8
+
       - name: Init ssh config
         run: |
-          mkdir ~/.ssh/ 
-          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion 
-          chmod 600 ~/.ssh/bastion 
-          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server 
-          chmod 600 ~/.ssh/brontes_server
+          mkdir ~/.ssh/
+          ssh-keyscan -H ${{ secrets.BRONTES_IP }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
+          chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo test
         id: run_tests
         continue-on-error: true
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             source ~/.bashrc
             cd \$HOME
             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
@@ -101,7 +124,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
             rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-test-${{ matrix.features }}
@@ -114,7 +137,7 @@ jobs:
   it-test:
     runs-on: ubuntu-latest
     if: always() && !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft == false
-    needs: [clippy, build]
+    needs: [clippy, build, fmt]
     strategy:
       fail-fast: false
       matrix:
@@ -123,20 +146,20 @@ jobs:
       - name: Get branch names.
         id: branch-names
         uses: tj-actions/branch-names@v8
+
       - name: Init ssh config
         run: |
-          mkdir ~/.ssh/ 
-          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion 
-          chmod 600 ~/.ssh/bastion 
-          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server 
-          chmod 600 ~/.ssh/brontes_server
+          mkdir ~/.ssh/
+          ssh-keyscan -H ${{ secrets.BRONTES_IP }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
+          chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: cargo it test
         id: run_it_tests
         continue-on-error: true
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             source ~/.bashrc
             cd \$HOME
             mkdir -p ${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
@@ -150,7 +173,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             set -x
             rm -rf \$HOME/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
             rm -rf /home/brontes-ci/data/${{ steps.branch-names.outputs.current_branch }}-it-${{ matrix.features }}
@@ -168,16 +191,15 @@ jobs:
     steps:
       - name: Init ssh config
         run: |
-          mkdir ~/.ssh/ 
-          echo "${{ secrets.BASTION_SSH }}" > ~/.ssh/bastion 
-          chmod 600 ~/.ssh/bastion 
-          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes_server 
-          chmod 600 ~/.ssh/brontes_server
+          mkdir ~/.ssh/
+          ssh-keyscan -H ${{ secrets.BRONTES_IP }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.BRONTES_SSH }}" > ~/.ssh/brontes-ci
+          chmod 600 ~/.ssh/brontes-ci
           echo "${{ secrets.SSH_CONFIG }}" > ~/.ssh/config
 
       - name: Run cleanup
         run: |
-          ssh brontes_server -tt "bash --login -c '
+          ssh brontes-reth -tt "bash --login -c '
             set -x
             rm -rf \$HOME/*/
             echo \"Cleanup completed\"

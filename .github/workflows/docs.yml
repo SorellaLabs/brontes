@@ -63,7 +63,7 @@ jobs:
           mdbook build
 
       - name: Build docs
-        run: cargo doc --no-deps --all-features
+        run: cargo +nightly doc --no-deps --all-features
         env:
           RUSTDOCFLAGS:
             --cfg docsrs --show-type-layout --generate-link-to-definition --enable-index-page
@@ -89,7 +89,7 @@ jobs:
             .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: github-pages
           path: ${{ runner.temp }}/artifact.tar
