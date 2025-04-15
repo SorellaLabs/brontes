@@ -235,6 +235,10 @@ sibling_searchers = ["0x3FAcE0004bC1003B9d0672e7B23134Cb80115fb6", "0xA0d5a274F9
 name = "jaredfromsubway MEV bot"
 mev_types = ["Sandwich"]
 
+[searcher_contracts."0xd4bC53434C5e12cb41381A556c3c47e1a86e80E3"]
+name = "jaredfromsubway CEX-DEX & JIT MEV bot"
+mev_types = ["CexDexQuotes", "CexDexTrades", "JitCexDex", "Jit"]
+
 [searcher_contracts."0x00000000009E50a7dDb7a7B0e2ee6604fd120E49"]
 mev_types = ["AtomicArb"]
 

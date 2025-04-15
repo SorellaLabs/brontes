@@ -688,19 +688,20 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         }
     }
 
-    /// Filters out triangular arbitrage
-    //TODO: Check for bug on tx:
-    // https://dashboard.tenderly.co/tx/mainnet/0x310430b40132df960020af330b2e3b6a281751d45786f6b790e1cf1daf9a78bb?trace=0
     pub fn is_triangular_arb(&self, dex_swaps: &[NormalizedSwap]) -> bool {
-        // Not enough swaps to form a cycle, thus cannot be arbitrage.
+        // Need at least 2 swaps to form a cycle
         if dex_swaps.len() < 2 {
-            return false
+            return false;
         }
 
         let original_token = dex_swaps[0].token_in.address;
         let final_token = dex_swaps.last().unwrap().token_out.address;
 
+        // Check if it's a cycle (same start and end token) with profitable but
+        // reasonable output
         original_token == final_token
+            && dex_swaps[0].amount_in < dex_swaps.last().unwrap().amount_out
+            && dex_swaps.last().unwrap().amount_out < &dex_swaps[0].amount_in * &Rational::from(3)
     }
 }
 

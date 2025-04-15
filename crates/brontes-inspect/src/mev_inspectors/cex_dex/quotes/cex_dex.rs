@@ -513,16 +513,19 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
     /// Filters out triangular arbitrage
     pub fn is_triangular_arb(&self, dex_swaps: &[NormalizedSwap]) -> bool {
-        // Not enough swaps to form a cycle, thus cannot be an atomic triangular
-        // arbitrage.
+        // Need at least 2 swaps to form a cycle
         if dex_swaps.len() < 2 {
-            return false
+            return false;
         }
 
         let original_token = dex_swaps[0].token_in.address;
         let final_token = dex_swaps.last().unwrap().token_out.address;
 
+        // Check if it's a cycle (same start and end token) with profitable but
+        // reasonable output
         original_token == final_token
+            && dex_swaps[0].amount_in < dex_swaps.last().unwrap().amount_out
+            && dex_swaps.last().unwrap().amount_out < &dex_swaps[0].amount_in * &Rational::from(3)
     }
 }
 
@@ -561,7 +564,16 @@ mod tests {
     };
     // 0x77d0b50f0da1a77856a44821599aa1cdd06558c4bcdfdb323e14969619be6d2c
 
-    // TEST 0xbc5cf4aa1c0cd76504eb3f1d5ae03f417ec4fd7b22a9adab1c634c8165e88734
+    #[brontes_macros::test]
+    async fn test_wincnet_cex_dex() {
+        let inspector_util = InspectorTestUtils::new(USDT_ADDRESS, 50.5).await;
+
+        let tx = hex!("bc5cf4aa1c0cd76504eb3f1d5ae03f417ec4fd7b22a9adab1c634c8165e88734").into();
+
+        let config = InspectorTxRunConfig::new(Inspectors::CexDex).with_mev_tx_hashes(vec![tx]);
+
+        inspector_util.run_inspector(config, None).await.unwrap();
+    }
 
     #[brontes_macros::test]
     async fn test_cex_dex() {
