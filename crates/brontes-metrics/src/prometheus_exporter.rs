@@ -198,8 +198,8 @@ fn collect_io_stats() {
     // use tracing::error;
 
     // let Ok(process) = procfs::process::Process::myself()
-    //     .map_err(|error| error!(%error, "Failed to get currently running process"))
-    // else {
+    //     .map_err(|error| error!(%error, "Failed to get currently running
+    // process")) else {
     //     return;
     // };
 
@@ -228,7 +228,8 @@ fn describe_io_stats() {
     // describe_counter!("io.syscw", "Write syscalls");
     // describe_counter!("io.read_bytes", Unit::Bytes, "Bytes read");
     // describe_counter!("io.write_bytes", Unit::Bytes, "Bytes written");
-    // describe_counter!("io.cancelled_write_bytes", Unit::Bytes, "Cancelled write bytes");
+    // describe_counter!("io.cancelled_write_bytes", Unit::Bytes, "Cancelled
+    // write bytes");
 }
 
 #[cfg(not(target_os = "linux"))]

@@ -555,7 +555,7 @@ where
     },
 }
 
-impl<'cur, K, Key, Value> IntoIter<'cur, K, Key, Value>
+impl<K, Key, Value> IntoIter<'_, K, Key, Value>
 where
     K: TransactionKind,
     Key: TableObject,
@@ -663,7 +663,7 @@ where
     }
 }
 
-impl<'cur, K, Key, Value> Iterator for Iter<'cur, K, Key, Value>
+impl<K, Key, Value> Iterator for Iter<'_, K, Key, Value>
 where
     K: TransactionKind,
     Key: TableObject,
@@ -754,7 +754,7 @@ where
     }
 }
 
-impl<'cur, K, Key, Value> fmt::Debug for IterDup<'cur, K, Key, Value>
+impl<K, Key, Value> fmt::Debug for IterDup<'_, K, Key, Value>
 where
     K: TransactionKind,
     Key: TableObject,
