@@ -5,9 +5,9 @@ use log_report_layer::TelegramConfig;
 use tracing::Level;
 use tracing_subscriber::{Layer, Registry};
 
-#[cfg(all(feature = "jemalloc", unix))]
-#[global_allocator]
-static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+//#[cfg(all(feature = "jemalloc", unix))]
+//#[global_allocator]
+//static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 #[cfg(all(feature = "dhat-heap", not(feature = "jemalloc")))]
 #[global_allocator]
