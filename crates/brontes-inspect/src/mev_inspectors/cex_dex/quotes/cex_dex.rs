@@ -431,7 +431,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) {
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
-        println!("gas cost: {}", gas_cost);
+        println!("gas cost: {}", gas_cost.clone().to_float());
 
         cex_dex.pnl.adjust_for_gas_cost(gas_cost);
     }
@@ -515,6 +515,23 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
             possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t30, t60, t300)
         } else {
+            let pnl = possible_cex_dex.pnl.aggregate_pnl;
+            let reason = if pnl <= 0.0 {
+                format!("PNL ({:.2}) is not positive.", pnl)
+            } else {
+                format!(
+                    "PNL ({:.2}) <= 1.5 AND not identified as historical bot (Significant: {}, \
+                     Labelled: {})",
+                    pnl, is_cex_dex_bot_with_significant_activity, is_labelled_cex_dex_bot
+                )
+            };
+
+            debug!(
+                target: "brontes::cex-dex-quotes",
+                tx_hash = %info.tx_hash,
+                %reason,
+                "Filtered CEX-DEX opportunity"
+            );
             None
         }
     }
