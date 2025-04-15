@@ -119,6 +119,10 @@ impl CexPriceMap {
                 }
                 None
             })
+            .or_else(|| {
+                tracing::debug!(?pair, "no most liquid exchange found for pair");
+                None
+            })
     }
 
     pub fn get_quote_at(
