@@ -194,41 +194,41 @@ fn describe_memory_stats() {}
 
 #[cfg(target_os = "linux")]
 fn collect_io_stats() {
-    use metrics::absolute_counter;
-    use tracing::error;
+    // use metrics::absolute_counter;
+    // use tracing::error;
 
-    let Ok(process) = procfs::process::Process::myself()
-        .map_err(|error| error!(%error, "Failed to get currently running process"))
-    else {
-        return;
-    };
+    // let Ok(process) = procfs::process::Process::myself()
+    //     .map_err(|error| error!(%error, "Failed to get currently running process"))
+    // else {
+    //     return;
+    // };
 
-    let Ok(io) = process.io().map_err(
-        |error| error!(%error, "Failed to get IO stats for the currently running process"),
-    ) else {
-        return;
-    };
+    // let Ok(io) = process.io().map_err(
+    //     |error| error!(%error, "Failed to get IO stats for the currently running process"),
+    // ) else {
+    //     return;
+    // };
 
-    absolute_counter!("io.rchar", io.rchar);
-    absolute_counter!("io.wchar", io.wchar);
-    absolute_counter!("io.syscr", io.syscr);
-    absolute_counter!("io.syscw", io.syscw);
-    absolute_counter!("io.read_bytes", io.read_bytes);
-    absolute_counter!("io.write_bytes", io.write_bytes);
-    absolute_counter!("io.cancelled_write_bytes", io.cancelled_write_bytes);
+    // absolute_counter!("io.rchar", io.rchar);
+    // absolute_counter!("io.wchar", io.wchar);
+    // absolute_counter!("io.syscr", io.syscr);
+    // absolute_counter!("io.syscw", io.syscw);
+    // absolute_counter!("io.read_bytes", io.read_bytes);
+    // absolute_counter!("io.write_bytes", io.write_bytes);
+    // absolute_counter!("io.cancelled_write_bytes", io.cancelled_write_bytes);
 }
 
 #[cfg(target_os = "linux")]
 fn describe_io_stats() {
-    use metrics::describe_counter;
+    // use metrics::describe_counter;
 
-    describe_counter!("io.rchar", "Characters read");
-    describe_counter!("io.wchar", "Characters written");
-    describe_counter!("io.syscr", "Read syscalls");
-    describe_counter!("io.syscw", "Write syscalls");
-    describe_counter!("io.read_bytes", Unit::Bytes, "Bytes read");
-    describe_counter!("io.write_bytes", Unit::Bytes, "Bytes written");
-    describe_counter!("io.cancelled_write_bytes", Unit::Bytes, "Cancelled write bytes");
+    // describe_counter!("io.rchar", "Characters read");
+    // describe_counter!("io.wchar", "Characters written");
+    // describe_counter!("io.syscr", "Read syscalls");
+    // describe_counter!("io.syscw", "Write syscalls");
+    // describe_counter!("io.read_bytes", Unit::Bytes, "Bytes read");
+    // describe_counter!("io.write_bytes", Unit::Bytes, "Bytes written");
+    // describe_counter!("io.cancelled_write_bytes", Unit::Bytes, "Cancelled write bytes");
 }
 
 #[cfg(not(target_os = "linux"))]
