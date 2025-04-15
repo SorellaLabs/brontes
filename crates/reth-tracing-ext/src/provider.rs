@@ -15,9 +15,8 @@ use reth_rpc::eth::{
     EthTransactions,
 };
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::Header;
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
+    state::StateOverride, BlockOverrides, Header, Log, TransactionReceipt, TransactionRequest,
 };
 use revm::{
     primitives::{
@@ -116,29 +115,31 @@ impl TracingProvider for TracingClient {
             .map_err(Into::into)
             .map(|h| {
                 h.map(|inner| Header {
-                    hash: Some(inner.hash_slow()),
-                    parent_hash: inner.parent_hash,
-                    uncles_hash: inner.parent_hash,
-                    miner: inner.beneficiary,
-                    state_root: inner.state_root,
-                    transactions_root: inner.transactions_root,
-                    receipts_root: inner.receipts_root,
-                    logs_bloom: inner.logs_bloom,
-                    difficulty: inner.difficulty,
-                    number: Some(inner.number),
-                    gas_limit: inner.gas_limit as u128,
-                    gas_used: inner.gas_used as u128,
-                    timestamp: inner.timestamp,
-                    total_difficulty: Some(inner.difficulty),
-                    extra_data: inner.extra_data,
-                    mix_hash: Some(inner.mix_hash),
-                    nonce: Some(FixedBytes::from_slice(&inner.nonce.to_be_bytes())),
-                    base_fee_per_gas: inner.base_fee_per_gas.map(|v| v as u128),
-                    withdrawals_root: inner.withdrawals_root,
-                    blob_gas_used: inner.blob_gas_used.map(|v| v as u128),
-                    excess_blob_gas: inner.excess_blob_gas.map(|v| v as u128),
+                    hash:                     Some(inner.hash_slow()),
+                    parent_hash:              inner.parent_hash,
+                    uncles_hash:              inner.parent_hash,
+                    miner:                    inner.beneficiary,
+                    state_root:               inner.state_root,
+                    transactions_root:        inner.transactions_root,
+                    receipts_root:            inner.receipts_root,
+                    logs_bloom:               inner.logs_bloom,
+                    difficulty:               inner.difficulty,
+                    number:                   Some(inner.number),
+                    gas_limit:                inner.gas_limit as u128,
+                    gas_used:                 inner.gas_used as u128,
+                    timestamp:                inner.timestamp,
+                    total_difficulty:         Some(inner.difficulty),
+                    extra_data:               inner.extra_data,
+                    mix_hash:                 Some(inner.mix_hash),
+                    nonce:                    Some(FixedBytes::from_slice(
+                        &inner.nonce.to_be_bytes(),
+                    )),
+                    base_fee_per_gas:         inner.base_fee_per_gas.map(|v| v as u128),
+                    withdrawals_root:         inner.withdrawals_root,
+                    blob_gas_used:            inner.blob_gas_used.map(|v| v as u128),
+                    excess_blob_gas:          inner.excess_blob_gas.map(|v| v as u128),
                     parent_beacon_block_root: inner.parent_beacon_block_root,
-                    requests_root: inner.requests_root,
+                    requests_root:            inner.requests_root,
                 })
             })
     }
@@ -241,7 +242,7 @@ pub(crate) fn create_txn_env(
     if request
         .blob_versioned_hashes
         .as_ref()
-        .map_or(false, |hashes| hashes.is_empty())
+        .is_some_and(|hashes| hashes.is_empty())
     {
         return Err(RpcInvalidTransactionError::BlobTransactionMissingBlobHashes.into());
     }
@@ -347,9 +348,9 @@ pub(crate) struct CallFees {
     ///
     /// `gasPrice` for legacy,
     /// `maxFeePerGas` for EIP-1559
-    gas_price: U256,
+    gas_price:                U256,
     /// Max Fee per Blob gas for EIP-4844 transactions
-    max_fee_per_blob_gas: Option<U256>,
+    max_fee_per_blob_gas:     Option<U256>,
 }
 
 // === impl CallFees ===

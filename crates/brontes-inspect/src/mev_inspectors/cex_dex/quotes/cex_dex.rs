@@ -542,7 +542,7 @@ pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
     } else if tx_info
         .contract_type
         .as_ref()
-        .map_or(false, |c| c.is_mev_contract())
+        .is_some_and(|c| c.is_mev_contract())
     {
         base_diff += 1;
     }
@@ -552,11 +552,13 @@ pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
 
 #[cfg(test)]
 mod tests {
-
     use alloy_primitives::hex;
     use brontes_types::constants::{USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS};
 
-    use crate::test_utils::{InspectorTestUtils, InspectorTxRunConfig};
+    use crate::{
+        test_utils::{InspectorTestUtils, InspectorTxRunConfig},
+        Inspectors,
+    };
     // 0x77d0b50f0da1a77856a44821599aa1cdd06558c4bcdfdb323e14969619be6d2c
 
     // TEST 0xbc5cf4aa1c0cd76504eb3f1d5ae03f417ec4fd7b22a9adab1c634c8165e88734

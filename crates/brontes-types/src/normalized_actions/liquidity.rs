@@ -1,12 +1,11 @@
 use std::fmt::{self, Debug};
 
-use alloy_primitives::TxHash;
+use alloy_primitives::{Address, TxHash};
 use clickhouse::Row;
 use colored::Colorize;
 use itertools::Itertools;
 use malachite::Rational;
 use redefined::Redefined;
-use alloy_primitives::Address;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 

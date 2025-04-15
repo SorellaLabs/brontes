@@ -3,13 +3,12 @@ use std::{
     ops::Add,
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 #[allow(unused)]
 use clickhouse::{fixed_string::FixedString, row::*, Row};
 use colored::Colorize;
 use indoc::indoc;
 use redefined::{self_convert_redefined, Redefined};
-use alloy_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeser, Serialize as rSer};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;

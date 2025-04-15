@@ -105,7 +105,6 @@ where
 /// );
 /// assert!(empty.is_empty());
 /// ```
-
 pub fn yen<N, C, E, FN, FS, FSE, PV>(
     start: &N,
     second: Option<&N>,

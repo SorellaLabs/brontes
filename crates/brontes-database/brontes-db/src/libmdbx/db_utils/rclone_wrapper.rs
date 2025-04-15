@@ -34,7 +34,9 @@ impl RCloneWrapper {
         self.get_all_tarballs()
             .await?
             .into_iter()
-            .filter_map(|files| u64::from_str(files.split('-').last()?.split('.').next()?).ok())
+            .filter_map(|files| {
+                u64::from_str(files.split('-').next_back()?.split('.').next()?).ok()
+            })
             .max()
             .ok_or_else(|| eyre!("no files found on r2"))
     }
@@ -133,7 +135,7 @@ impl RCloneWrapper {
     ) -> eyre::Result<()> {
         let mut directory_name = directory
             .components()
-            .last()
+            .next_back()
             .unwrap()
             .as_os_str()
             .to_str()
@@ -231,7 +233,7 @@ impl RCloneWrapper {
 
                     let directory = pathed
                         .components()
-                        .last()
+                        .next_back()
                         .unwrap()
                         .as_os_str()
                         .to_str()?

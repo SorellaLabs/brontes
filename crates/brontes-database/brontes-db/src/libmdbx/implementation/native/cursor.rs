@@ -33,7 +33,7 @@ pub struct LibmdbxCursor<T: Table, K: TransactionKind> {
     /// Inner `libmdbx` cursor.
     pub(crate) inner: brontes_libmdbx::Cursor<K>,
     /// Phantom data to enforce encoding/decoding.
-    _dbi: PhantomData<T>,
+    _dbi:             PhantomData<T>,
 }
 
 impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {
@@ -47,7 +47,6 @@ impl<T: Table, K: TransactionKind> LibmdbxCursor<T, K> {
 }
 
 /// Takes `(key, value)` from the database and decodes it appropriately.
-
 impl<T: Table, K: TransactionKind> DbCursorRO<T> for LibmdbxCursor<T, K> {
     fn first(&mut self) -> PairResult<T> {
         decode!(self.inner.first())

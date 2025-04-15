@@ -216,25 +216,19 @@ impl PairSubGraph {
     /// checks to see if the liquidity of any pool has dropped by over 50%.
     /// if this has happened, will send the pair for reverification
     pub fn has_stale_liquidity<T: ProtocolState>(&self, state: &FastHashMap<Address, &T>) -> bool {
-        self.graph
-            .edge_weights()
-            .map(|weight| {
-                weight
-                    .iter()
-                    .map(|edge| {
-                        let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
-                        let tvl_added = r0 + r1;
-                        let start_tvl = self.start_nodes_liq.get(&edge.pool_addr).unwrap();
+        self.graph.edge_weights().any(|weight| {
+            weight.iter().any(|edge| {
+                let (r0, r1) = state.get(&edge.pool_addr).unwrap().tvl(edge.token_0);
+                let tvl_added = r0 + r1;
+                let start_tvl = self.start_nodes_liq.get(&edge.pool_addr).unwrap();
 
-                        if tvl_added < *start_tvl && start_tvl != &Rational::ZERO {
-                            tvl_added / start_tvl <= Rational::ONE_HALF
-                        } else {
-                            false
-                        }
-                    })
-                    .any(|n| n)
+                if tvl_added < *start_tvl && start_tvl != &Rational::ZERO {
+                    tvl_added / start_tvl <= Rational::ONE_HALF
+                } else {
+                    false
+                }
             })
-            .any(|n| n)
+        })
     }
 
     // returns list of pools we already have so we can derement there state tracker.

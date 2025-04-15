@@ -1,5 +1,5 @@
-use brontes_metrics::trace::types::TraceParseErrorKind;
 use alloy_primitives::B256;
+use brontes_metrics::trace::types::TraceParseErrorKind;
 use reth_rpc::eth::error::EthApiError;
 use thiserror::Error;
 

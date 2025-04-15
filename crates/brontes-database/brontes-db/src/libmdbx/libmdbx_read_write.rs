@@ -94,11 +94,11 @@ pub trait LibmdbxInit: LibmdbxReader + DBWriter {
 
 #[derive(Clone)]
 pub struct LibmdbxReadWriter {
-    pub db: Arc<Libmdbx>,
-    pub tx: UnboundedSender<StampedWriterMessage>,
+    pub db:  Arc<Libmdbx>,
+    pub tx:  UnboundedSender<StampedWriterMessage>,
     metrics: Option<LibmdbxMetrics>,
     // 100 shards for now, might change in future
-    cache: ReadWriteCache,
+    cache:   ReadWriteCache,
 }
 
 impl LibmdbxReadWriter {

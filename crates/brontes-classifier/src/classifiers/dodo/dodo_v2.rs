@@ -1,10 +1,10 @@
+use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedSwap},
     structured_trace::CallInfo,
     Protocol, ToScaledRational,
 };
-use alloy_primitives::U256;
 
 action_impl!(
     Protocol::Dodo,

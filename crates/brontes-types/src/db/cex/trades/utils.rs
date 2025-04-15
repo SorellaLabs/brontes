@@ -32,7 +32,6 @@ use crate::{
 ///   (i.e., the earliest trade just after the block time).
 /// - `trades`: Vector of tuples associating each exchange with a reference to
 ///   its trade data.
-
 pub struct PairTradeWalker<'a> {
     pub min_timestamp: u64,
     pub max_timestamp: u64,
@@ -72,7 +71,6 @@ impl<'a> PairTradeWalker<'a> {
     /// # Returns
     /// A vector of `CexTradePtr` pointing to the trades that meet the time
     /// window criteria.
-
     pub(crate) fn get_trades_for_window(&mut self) -> Vec<CexTradePtr<'a>> {
         let mut trade_res: Vec<CexTradePtr<'a>> = Vec::with_capacity(1000);
 
@@ -481,7 +479,6 @@ pub fn log_insufficient_trade_volume(
 ///   time.
 /// - `exp(-POST_DECAY * (trade_time - block_time))` for trades after the block
 ///   time.
-
 pub fn calculate_weight(
     block_time: u64,
     trade_time: u64,

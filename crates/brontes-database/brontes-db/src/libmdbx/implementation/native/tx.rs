@@ -17,7 +17,7 @@ use crate::libmdbx::{
 
 pub(crate) struct LibmdbxTx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
-    inner: Transaction<K>,
+    inner:      Transaction<K>,
     /// Database table handle cache.
     db_handles: Arc<RwLock<[Option<DBI>; NUM_TABLES]>>,
 }
@@ -25,7 +25,7 @@ pub(crate) struct LibmdbxTx<K: TransactionKind> {
 impl LibmdbxTx<RO> {
     pub(crate) fn new_ro_tx(env: &DatabaseEnv) -> eyre::Result<LibmdbxTx<RO>, DatabaseError> {
         Ok(Self {
-            inner: env
+            inner:      env
                 .begin_ro_txn()
                 .map_err(|e| DatabaseError::InitTx(e.into()))?,
             db_handles: Default::default(),
@@ -49,7 +49,7 @@ impl LibmdbxTx<RW> {
 
     pub(crate) fn new_rw_tx(env: &DatabaseEnv) -> Result<LibmdbxTx<RW>, DatabaseError> {
         Ok(Self {
-            inner: env
+            inner:      env
                 .begin_rw_txn()
                 .map_err(|e| DatabaseError::InitTx(e.into()))?,
             db_handles: Default::default(),
@@ -61,10 +61,10 @@ impl LibmdbxTx<RW> {
             .put(self.get_dbi::<T>()?, key, value, WriteFlags::APPEND)
             .map_err(|e| {
                 DatabaseWriteError {
-                    info: e.into(),
-                    operation: DatabaseWriteOperation::CursorAppend,
+                    info:       e.into(),
+                    operation:  DatabaseWriteOperation::CursorAppend,
                     table_name: T::NAME,
-                    key: key.into(),
+                    key:        key.into(),
                 }
                 .into()
             })
@@ -76,10 +76,10 @@ impl LibmdbxTx<RW> {
             .put(self.get_dbi::<T>()?, key, value, WriteFlags::UPSERT)
             .map_err(|e| {
                 DatabaseWriteError {
-                    info: e.into(),
-                    operation: DatabaseWriteOperation::Put,
+                    info:       e.into(),
+                    operation:  DatabaseWriteOperation::Put,
                     table_name: T::NAME,
-                    key: key.into(),
+                    key:        key.into(),
                 }
                 .into()
             })
@@ -175,10 +175,10 @@ impl DbTxMut for LibmdbxTx<RW> {
             .put(self.get_dbi::<T>()?, key.as_ref(), value, WriteFlags::UPSERT)
             .map_err(|e| {
                 DatabaseWriteError {
-                    info: e.into(),
-                    operation: DatabaseWriteOperation::Put,
+                    info:       e.into(),
+                    operation:  DatabaseWriteOperation::Put,
                     table_name: T::NAME,
-                    key: key.into(),
+                    key:        key.into(),
                 }
                 .into()
             })

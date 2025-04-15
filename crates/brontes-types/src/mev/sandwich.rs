@@ -47,7 +47,6 @@ use crate::{
 /// Sequence:
 /// Represents various MEV sandwich attack strategies, including standard
 /// sandwiches and more complex variations like the "Big Mac Sandwich."
-
 ///
 /// Example of a Complex Sandwich Attack ("Big Mac Sandwich") Transaction
 /// Sequence:

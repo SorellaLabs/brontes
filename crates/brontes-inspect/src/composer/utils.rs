@@ -22,10 +22,7 @@ pub(crate) fn build_mev_header<DB: LibmdbxReader>(
     db: &'static DB,
 ) -> MevBlock {
     let (total_mev_priority_fee_paid, total_mev_profit_usd, total_mev_bribe) =
-        calculate_block_mev_stats(
-            orchestra_data,
-            tree.header.base_fee_per_gas.unwrap_or_default().into(),
-        );
+        calculate_block_mev_stats(orchestra_data, tree.header.base_fee_per_gas.unwrap_or_default());
 
     let eth_price = metadata.get_eth_price(quote_token);
 
@@ -314,12 +311,12 @@ fn proposer_payment(
         let from_address = root.get_from_address();
         let to_address = root.get_to_address();
 
-        let from_match = from_address == builder_address
-            || collateral_address.map_or(false, |addr| from_address == addr);
+        let from_match =
+            from_address == builder_address || (collateral_address == Some(from_address));
 
-        let to_match = proposer_fee_recipient.map_or(false, |addr| to_address == addr);
+        let to_match = proposer_fee_recipient == Some(to_address);
 
-        let is_from_collateral = collateral_address.map_or(false, |addr| from_address == addr);
+        let is_from_collateral = collateral_address == Some(from_address);
 
         if from_match || to_match {
             if let Action::EthTransfer(transfer) = root.get_root_action() {

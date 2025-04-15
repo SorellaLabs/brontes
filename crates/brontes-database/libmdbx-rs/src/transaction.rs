@@ -1,3 +1,16 @@
+use std::{
+    fmt::{self, Debug},
+    mem::size_of,
+    ptr, slice,
+    sync::{atomic::AtomicBool, mpsc::sync_channel, Arc},
+    time::Duration,
+};
+
+use ffi::{mdbx_txn_renew, MDBX_txn_flags_t, MDBX_TXN_RDONLY, MDBX_TXN_READWRITE};
+use indexmap::IndexSet;
+use libc::{c_uint, c_void};
+use parking_lot::{Mutex, MutexGuard};
+
 use crate::{
     database::Database,
     environment::Environment,
@@ -5,17 +18,6 @@ use crate::{
     flags::{DatabaseFlags, WriteFlags},
     txn_manager::{TxnManagerMessage, TxnPtr},
     Cursor, Error, Stat, TableObject,
-};
-use ffi::{mdbx_txn_renew, MDBX_txn_flags_t, MDBX_TXN_RDONLY, MDBX_TXN_READWRITE};
-use indexmap::IndexSet;
-use libc::{c_uint, c_void};
-use parking_lot::{Mutex, MutexGuard};
-use std::{
-    fmt::{self, Debug},
-    mem::size_of,
-    ptr, slice,
-    sync::{atomic::AtomicBool, mpsc::sync_channel, Arc},
-    time::Duration,
 };
 
 mod private {
@@ -31,7 +33,8 @@ pub trait TransactionKind: private::Sealed + Send + Sync + Debug + 'static {
     #[doc(hidden)]
     const OPEN_FLAGS: MDBX_txn_flags_t;
 
-    /// Convenience flag for distinguishing between read-only and read-write transactions.
+    /// Convenience flag for distinguishing between read-only and read-write
+    /// transactions.
     #[doc(hidden)]
     const IS_READ_ONLY: bool;
 }
@@ -45,12 +48,12 @@ pub struct RO;
 pub struct RW;
 
 impl TransactionKind for RO {
-    const OPEN_FLAGS: MDBX_txn_flags_t = MDBX_TXN_RDONLY;
     const IS_READ_ONLY: bool = true;
+    const OPEN_FLAGS: MDBX_txn_flags_t = MDBX_TXN_RDONLY;
 }
 impl TransactionKind for RW {
-    const OPEN_FLAGS: MDBX_txn_flags_t = MDBX_TXN_READWRITE;
     const IS_READ_ONLY: bool = false;
+    const OPEN_FLAGS: MDBX_txn_flags_t = MDBX_TXN_READWRITE;
 }
 
 /// An MDBX transaction.
@@ -134,8 +137,8 @@ where
     ///
     /// This function retrieves the data associated with the given key in the
     /// database. If the database supports duplicate keys
-    /// ([`DatabaseFlags::DUP_SORT`]) then the first data item for the key will be
-    /// returned. Retrieval of other items requires the use of
+    /// ([`DatabaseFlags::DUP_SORT`]) then the first data item for the key will
+    /// be returned. Retrieval of other items requires the use of
     /// [Cursor]. If the item is not in the database, then
     /// [None] will be returned.
     pub fn get<Key>(&self, dbi: ffi::MDBX_dbi, key: &[u8]) -> Result<Option<Key>>
@@ -166,7 +169,8 @@ where
         self.inner.primed_dbis.lock().insert(db.dbi());
     }
 
-    /// Commits the transaction and returns table handles permanently open until dropped.
+    /// Commits the transaction and returns table handles permanently open until
+    /// dropped.
     pub fn commit_and_rebind_open_dbs(self) -> Result<(bool, CommitLatency, Vec<Database>)> {
         let result = {
             let result = self.txn_execute(|txn| {
@@ -207,13 +211,16 @@ where
 
     /// Opens a handle to an MDBX database.
     ///
-    /// If `name` is [None], then the returned handle will be for the default database.
+    /// If `name` is [None], then the returned handle will be for the default
+    /// database.
     ///
-    /// If `name` is not [None], then the returned handle will be for a named database. In this
-    /// case the environment must be configured to allow named databases through
+    /// If `name` is not [None], then the returned handle will be for a named
+    /// database. In this case the environment must be configured to allow
+    /// named databases through
     /// [`EnvironmentBuilder::set_max_dbs()`](crate::EnvironmentBuilder::set_max_dbs).
     ///
-    /// The returned database handle may be shared among any transaction in the environment.
+    /// The returned database handle may be shared among any transaction in the
+    /// environment.
     ///
     /// The database name may not contain the null character.
     pub fn open_db(&self, name: Option<&str>) -> Result<Database> {
@@ -295,13 +302,13 @@ where
     K: TransactionKind,
 {
     /// The transaction pointer itself.
-    txn: TransactionPtr,
+    txn:         TransactionPtr,
     /// A set of database handles that are primed for permaopen.
     primed_dbis: Mutex<IndexSet<ffi::MDBX_dbi>>,
     /// Whether the transaction has committed.
-    committed: AtomicBool,
-    env: Environment,
-    _marker: std::marker::PhantomData<fn(K)>,
+    committed:   AtomicBool,
+    env:         Environment,
+    _marker:     std::marker::PhantomData<fn(K)>,
 }
 
 impl<K> TransactionInner<K>
@@ -364,16 +371,19 @@ impl Transaction<RW> {
 
     /// Opens a handle to an MDBX database, creating the database if necessary.
     ///
-    /// If the database is already created, the given option flags will be added to it.
+    /// If the database is already created, the given option flags will be added
+    /// to it.
     ///
-    /// If `name` is [None], then the returned handle will be for the default database.
+    /// If `name` is [None], then the returned handle will be for the default
+    /// database.
     ///
-    /// If `name` is not [None], then the returned handle will be for a named database. In this
-    /// case the environment must be configured to allow named databases through
+    /// If `name` is not [None], then the returned handle will be for a named
+    /// database. In this case the environment must be configured to allow
+    /// named databases through
     /// [`EnvironmentBuilder::set_max_dbs()`](crate::EnvironmentBuilder::set_max_dbs).
     ///
-    /// This function will fail with [`Error::BadRslot`] if called by a thread with an open
-    /// transaction.
+    /// This function will fail with [`Error::BadRslot`] if called by a thread
+    /// with an open transaction.
     pub fn create_db(&self, name: Option<&str>, flags: DatabaseFlags) -> Result<Database> {
         self.open_db_with_flags(name, flags | DatabaseFlags::CREATE)
     }
@@ -436,9 +446,10 @@ impl Transaction<RW> {
     /// Delete items from a database.
     /// This function removes key/data pairs from the database.
     ///
-    /// The data parameter is NOT ignored regardless the database does support sorted duplicate data
-    /// items or not. If the data parameter is [Some] only the matching data item will be
-    /// deleted. Otherwise, if data parameter is [None], any/all value(s) for specified key will
+    /// The data parameter is NOT ignored regardless the database does support
+    /// sorted duplicate data items or not. If the data parameter is [Some]
+    /// only the matching data item will be deleted. Otherwise, if data
+    /// parameter is [None], any/all value(s) for specified key will
     /// be deleted.
     ///
     /// Returns `true` if the key/value pair was present.
@@ -452,7 +463,7 @@ impl Transaction<RW> {
         let key_val: ffi::MDBX_val =
             ffi::MDBX_val { iov_len: key.len(), iov_base: key.as_ptr() as *mut c_void };
         let data_val: Option<ffi::MDBX_val> = data.map(|data| ffi::MDBX_val {
-            iov_len: data.len(),
+            iov_len:  data.len(),
             iov_base: data.as_ptr() as *mut c_void,
         });
 
@@ -482,8 +493,8 @@ impl Transaction<RW> {
     /// Drops the database from the environment.
     ///
     /// # Safety
-    /// Caller must close ALL other [Database] and [Cursor] instances pointing to the same dbi
-    /// BEFORE calling this function.
+    /// Caller must close ALL other [Database] and [Cursor] instances pointing
+    /// to the same dbi BEFORE calling this function.
     pub unsafe fn drop_db(&self, db: Database) -> Result<()> {
         mdbx_result(self.txn_execute(|txn| ffi::mdbx_drop(txn, db.dbi(), true))?)?;
 
@@ -495,8 +506,8 @@ impl Transaction<RO> {
     /// Closes the database handle.
     ///
     /// # Safety
-    /// Caller must close ALL other [Database] and [Cursor] instances pointing to the same dbi
-    /// BEFORE calling this function.
+    /// Caller must close ALL other [Database] and [Cursor] instances pointing
+    /// to the same dbi BEFORE calling this function.
     pub unsafe fn close_db(&self, db: Database) -> Result<()> {
         mdbx_result(ffi::mdbx_dbi_close(self.env().env_ptr(), db.dbi()))?;
 
@@ -516,7 +527,7 @@ impl Transaction<RW> {
                 .txn_manager()
                 .send_message(TxnManagerMessage::Begin {
                     parent: TxnPtr(txn),
-                    flags: RW::OPEN_FLAGS,
+                    flags:  RW::OPEN_FLAGS,
                     sender: tx,
                 });
 
@@ -530,10 +541,10 @@ impl Transaction<RW> {
 /// A shareable pointer to an MDBX transaction.
 #[derive(Debug, Clone)]
 pub(crate) struct TransactionPtr {
-    txn: *mut ffi::MDBX_txn,
+    txn:       *mut ffi::MDBX_txn,
     #[cfg(feature = "read-tx-timeouts")]
     timed_out: Arc<AtomicBool>,
-    lock: Arc<Mutex<()>>,
+    lock:      Arc<Mutex<()>>,
 }
 
 impl TransactionPtr {
@@ -548,12 +559,13 @@ impl TransactionPtr {
 
     /// Returns `true` if the transaction is timed out.
     ///
-    /// When transaction is timed out via `TxnManager`, it's actually reset using
-    /// `mdbx_txn_reset`. It makes the transaction unusable (MDBX fails on any usages of such
-    /// transactions).
+    /// When transaction is timed out via `TxnManager`, it's actually reset
+    /// using `mdbx_txn_reset`. It makes the transaction unusable (MDBX
+    /// fails on any usages of such transactions).
     ///
-    /// Importantly, we can't rely on `MDBX_TXN_FINISHED` flag to check if the transaction is timed
-    /// out using `mdbx_txn_reset`, because MDBX uses it in other cases too.
+    /// Importantly, we can't rely on `MDBX_TXN_FINISHED` flag to check if the
+    /// transaction is timed out using `mdbx_txn_reset`, because MDBX uses
+    /// it in other cases too.
     #[cfg(feature = "read-tx-timeouts")]
     fn is_timed_out(&self) -> bool {
         self.timed_out.load(std::sync::atomic::Ordering::SeqCst)
@@ -581,7 +593,8 @@ impl TransactionPtr {
 
     /// Executes the given closure once the lock on the transaction is acquired.
     ///
-    /// Returns the result of the closure or an error if the transaction is timed out.
+    /// Returns the result of the closure or an error if the transaction is
+    /// timed out.
     #[inline]
     pub(crate) fn txn_execute_fail_on_timeout<F, T>(&self, f: F) -> Result<T>
     where
@@ -589,9 +602,9 @@ impl TransactionPtr {
     {
         let _lck = self.lock();
 
-        // No race condition with the `TxnManager` timing out the transaction is possible here,
-        // because we're taking a lock for any actions on the transaction pointer, including a call
-        // to the `mdbx_txn_reset`.
+        // No race condition with the `TxnManager` timing out the transaction is
+        // possible here, because we're taking a lock for any actions on the
+        // transaction pointer, including a call to the `mdbx_txn_reset`.
         #[cfg(feature = "read-tx-timeouts")]
         if self.is_timed_out() {
             return Err(Error::ReadTransactionTimeout);
@@ -600,10 +613,11 @@ impl TransactionPtr {
         Ok((f)(self.txn))
     }
 
-    /// Executes the given closure once the lock on the transaction is acquired. If the transaction
-    /// is timed out, it will be renewed first.
+    /// Executes the given closure once the lock on the transaction is acquired.
+    /// If the transaction is timed out, it will be renewed first.
     ///
-    /// Returns the result of the closure or an error if the transaction renewal fails.
+    /// Returns the result of the closure or an error if the transaction renewal
+    /// fails.
     #[inline]
     fn txn_execute_renew_on_timeout<F, T>(&self, f: F) -> Result<T>
     where
@@ -611,7 +625,8 @@ impl TransactionPtr {
     {
         let _lck = self.lock();
 
-        // To be able to do any operations on the transaction, we need to renew it first.
+        // To be able to do any operations on the transaction, we need to renew it
+        // first.
         #[cfg(feature = "read-tx-timeouts")]
         if self.is_timed_out() {
             mdbx_result(unsafe { mdbx_txn_renew(self.txn) })?;
@@ -630,7 +645,8 @@ impl TransactionPtr {
 pub struct CommitLatency(ffi::MDBX_commit_latency);
 
 impl CommitLatency {
-    /// Create a new `CommitLatency` with zero'd inner struct `ffi::MDBX_commit_latency`.
+    /// Create a new `CommitLatency` with zero'd inner struct
+    /// `ffi::MDBX_commit_latency`.
     pub(crate) const fn new() -> Self {
         unsafe { Self(std::mem::zeroed()) }
     }

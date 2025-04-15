@@ -21,12 +21,12 @@ use crate::{display::utils::display_sandwich, normalized_actions::*, GasDetails}
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct Liquidation {
     pub liquidation_tx_hash: B256,
-    pub block_number: u64,
-    pub trigger: B256,
-    pub liquidation_swaps: Vec<NormalizedSwap>,
-    pub liquidations: Vec<NormalizedLiquidation>,
+    pub block_number:        u64,
+    pub trigger:             B256,
+    pub liquidation_swaps:   Vec<NormalizedSwap>,
+    pub liquidations:        Vec<NormalizedLiquidation>,
     #[redefined(same_fields)]
-    pub gas_details: GasDetails,
+    pub gas_details:         GasDetails,
 }
 
 impl Mev for Liquidation {

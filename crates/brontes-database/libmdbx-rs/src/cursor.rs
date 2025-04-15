@@ -1,10 +1,5 @@
-use crate::{
-    error::{mdbx_result, Error, Result},
-    flags::*,
-    mdbx_try_optional,
-    transaction::{TransactionKind, RW},
-    TableObject, Transaction,
-};
+use std::{borrow::Cow, fmt, marker::PhantomData, mem, ptr};
+
 use ffi::{
     MDBX_cursor_op, MDBX_FIRST, MDBX_FIRST_DUP, MDBX_GET_BOTH, MDBX_GET_BOTH_RANGE,
     MDBX_GET_CURRENT, MDBX_GET_MULTIPLE, MDBX_LAST, MDBX_LAST_DUP, MDBX_NEXT, MDBX_NEXT_DUP,
@@ -12,14 +7,21 @@ use ffi::{
     MDBX_PREV_NODUP, MDBX_SET, MDBX_SET_KEY, MDBX_SET_LOWERBOUND, MDBX_SET_RANGE,
 };
 use libc::c_void;
-use std::{borrow::Cow, fmt, marker::PhantomData, mem, ptr};
+
+use crate::{
+    error::{mdbx_result, Error, Result},
+    flags::*,
+    mdbx_try_optional,
+    transaction::{TransactionKind, RW},
+    TableObject, Transaction,
+};
 
 /// A cursor for navigating the items within a database.
 pub struct Cursor<K>
 where
     K: TransactionKind,
 {
-    txn: Transaction<K>,
+    txn:    Transaction<K>,
     cursor: *mut ffi::MDBX_cursor,
 }
 
@@ -102,7 +104,7 @@ where
                 assert_ne!(data_ptr, data_val.iov_base);
                 let key_out = {
                     // MDBX wrote in new key
-                    if key_ptr != key_val.iov_base {
+                    if !std::ptr::eq(key_ptr, key_val.iov_base) {
                         Some(Key::decode_val::<K>(txn, key_val)?)
                     } else {
                         None
@@ -152,7 +154,8 @@ where
         self.get_full(None, None, MDBX_FIRST)
     }
 
-    /// [`DatabaseFlags::DUP_SORT`]-only: Position at first data item of current key.
+    /// [`DatabaseFlags::DUP_SORT`]-only: Position at first data item of current
+    /// key.
     pub fn first_dup<Value>(&mut self) -> Result<Option<Value>>
     where
         Value: TableObject,
@@ -168,8 +171,8 @@ where
         self.get_value(Some(k), Some(v), MDBX_GET_BOTH)
     }
 
-    /// [`DatabaseFlags::DUP_SORT`]-only: Position at given key and at first data greater than or
-    /// equal to specified data.
+    /// [`DatabaseFlags::DUP_SORT`]-only: Position at given key and at first
+    /// data greater than or equal to specified data.
     pub fn get_both_range<Value>(&mut self, k: &[u8], v: &[u8]) -> Result<Option<Value>>
     where
         Value: TableObject,
@@ -186,8 +189,9 @@ where
         self.get_full(None, None, MDBX_GET_CURRENT)
     }
 
-    /// DupFixed-only: Return up to a page of duplicate data items from current cursor position.
-    /// Move cursor to prepare for [`Self::next_multiple()`].
+    /// DupFixed-only: Return up to a page of duplicate data items from current
+    /// cursor position. Move cursor to prepare for
+    /// [`Self::next_multiple()`].
     pub fn get_multiple<Value>(&mut self) -> Result<Option<Value>>
     where
         Value: TableObject,
@@ -222,7 +226,8 @@ where
         self.get_full(None, None, MDBX_NEXT)
     }
 
-    /// [`DatabaseFlags::DUP_SORT`]-only: Position at next data item of current key.
+    /// [`DatabaseFlags::DUP_SORT`]-only: Position at next data item of current
+    /// key.
     pub fn next_dup<Key, Value>(&mut self) -> Result<Option<(Key, Value)>>
     where
         Key: TableObject,
@@ -231,8 +236,9 @@ where
         self.get_full(None, None, MDBX_NEXT_DUP)
     }
 
-    /// [`DatabaseFlags::DUP_FIXED`]-only: Return up to a page of duplicate data items from next
-    /// cursor position. Move cursor to prepare for `MDBX_NEXT_MULTIPLE`.
+    /// [`DatabaseFlags::DUP_FIXED`]-only: Return up to a page of duplicate data
+    /// items from next cursor position. Move cursor to prepare for
+    /// `MDBX_NEXT_MULTIPLE`.
     pub fn next_multiple<Key, Value>(&mut self) -> Result<Option<(Key, Value)>>
     where
         Key: TableObject,
@@ -259,7 +265,8 @@ where
         self.get_full(None, None, MDBX_PREV)
     }
 
-    /// [`DatabaseFlags::DUP_SORT`]-only: Position at previous data item of current key.
+    /// [`DatabaseFlags::DUP_SORT`]-only: Position at previous data item of
+    /// current key.
     pub fn prev_dup<Key, Value>(&mut self) -> Result<Option<(Key, Value)>>
     where
         Key: TableObject,
@@ -303,8 +310,8 @@ where
         self.get_full(Some(key), None, MDBX_SET_RANGE)
     }
 
-    /// [`DatabaseFlags::DUP_FIXED`]-only: Position at previous page and return up to a page of
-    /// duplicate data items.
+    /// [`DatabaseFlags::DUP_FIXED`]-only: Position at previous page and return
+    /// up to a page of duplicate data items.
     pub fn prev_multiple<Key, Value>(&mut self) -> Result<Option<(Key, Value)>>
     where
         Key: TableObject,
@@ -313,15 +320,18 @@ where
         self.get_full(None, None, MDBX_PREV_MULTIPLE)
     }
 
-    /// Position at first key-value pair greater than or equal to specified, return both key and
-    /// data, and the return code depends on a exact match.
+    /// Position at first key-value pair greater than or equal to specified,
+    /// return both key and data, and the return code depends on a exact
+    /// match.
     ///
-    /// For non DupSort-ed collections this works the same as [`Self::set_range()`], but returns
-    /// [false] if key found exactly and [true] if greater key was found.
+    /// For non DupSort-ed collections this works the same as
+    /// [`Self::set_range()`], but returns [false] if key found exactly and
+    /// [true] if greater key was found.
     ///
-    /// For DupSort-ed a data value is taken into account for duplicates, i.e. for a pairs/tuples of
-    /// a key and an each data value of duplicates. Returns [false] if key-value pair found
-    /// exactly and [true] if the next pair was returned.
+    /// For DupSort-ed a data value is taken into account for duplicates, i.e.
+    /// for a pairs/tuples of a key and an each data value of duplicates.
+    /// Returns [false] if key-value pair found exactly and [true] if the
+    /// next pair was returned.
     pub fn set_lowerbound<Key, Value>(&mut self, key: &[u8]) -> Result<Option<(bool, Key, Value)>>
     where
         Key: TableObject,
@@ -334,12 +344,13 @@ where
 
     /// Returns an iterator over database items.
     ///
-    /// The iterator will begin with item next after the cursor, and continue until the end of the
-    /// database. For new cursors, the iterator will begin with the first item in the database.
+    /// The iterator will begin with item next after the cursor, and continue
+    /// until the end of the database. For new cursors, the iterator will
+    /// begin with the first item in the database.
     ///
-    /// For databases with duplicate data items ([`DatabaseFlags::DUP_SORT`]), the
-    /// duplicate data items of each key will be returned before moving on to
-    /// the next key.
+    /// For databases with duplicate data items ([`DatabaseFlags::DUP_SORT`]),
+    /// the duplicate data items of each key will be returned before moving
+    /// on to the next key.
     pub fn iter<Key, Value>(&mut self) -> Iter<'_, K, Key, Value>
     where
         Key: TableObject,
@@ -350,9 +361,9 @@ where
 
     /// Iterate over database items starting from the beginning of the database.
     ///
-    /// For databases with duplicate data items ([`DatabaseFlags::DUP_SORT`]), the
-    /// duplicate data items of each key will be returned before moving on to
-    /// the next key.
+    /// For databases with duplicate data items ([`DatabaseFlags::DUP_SORT`]),
+    /// the duplicate data items of each key will be returned before moving
+    /// on to the next key.
     pub fn iter_start<Key, Value>(&mut self) -> Iter<'_, K, Key, Value>
     where
         Key: TableObject,
@@ -363,9 +374,9 @@ where
 
     /// Iterate over database items starting from the given key.
     ///
-    /// For databases with duplicate data items ([`DatabaseFlags::DUP_SORT`]), the
-    /// duplicate data items of each key will be returned before moving on to
-    /// the next key.
+    /// For databases with duplicate data items ([`DatabaseFlags::DUP_SORT`]),
+    /// the duplicate data items of each key will be returned before moving
+    /// on to the next key.
     pub fn iter_from<Key, Value>(&mut self, key: &[u8]) -> Iter<'_, K, Key, Value>
     where
         Key: TableObject,
@@ -413,7 +424,8 @@ where
         IterDup::new(self, ffi::MDBX_GET_CURRENT)
     }
 
-    /// Iterate over the duplicates of the item in the database with the given key.
+    /// Iterate over the duplicates of the item in the database with the given
+    /// key.
     pub fn iter_dup_of<Key, Value>(&mut self, key: &[u8]) -> Iter<'_, K, Key, Value>
     where
         Key: TableObject,
@@ -454,7 +466,8 @@ impl Cursor<RW> {
     /// ### Flags
     ///
     /// [`WriteFlags::NO_DUP_DATA`] may be used to delete all data items for the
-    /// current key, if the database was opened with [`DatabaseFlags::DUP_SORT`].
+    /// current key, if the database was opened with
+    /// [`DatabaseFlags::DUP_SORT`].
     pub fn del(&mut self, flags: WriteFlags) -> Result<()> {
         mdbx_result(unsafe {
             self.txn
@@ -531,7 +544,8 @@ where
         /// The MDBX cursor with which to iterate.
         cursor: Cursor<K>,
 
-        /// The first operation to perform when the consumer calls [`Iter::next()`].
+        /// The first operation to perform when the consumer calls
+        /// [`Iter::next()`].
         op: ffi::MDBX_cursor_op,
 
         /// The next and subsequent operations to perform.
@@ -622,7 +636,8 @@ where
         /// The MDBX cursor with which to iterate.
         cursor: &'cur mut Cursor<K>,
 
-        /// The first operation to perform when the consumer calls [`Iter::next()`].
+        /// The first operation to perform when the consumer calls
+        /// [`Iter::next()`].
         op: ffi::MDBX_cursor_op,
 
         /// The next and subsequent operations to perform.
@@ -696,8 +711,8 @@ where
 
 /// An iterator over the keys and duplicate values in an MDBX database.
 ///
-/// The yielded items of the iterator are themselves iterators over the duplicate values for a
-/// specific key.
+/// The yielded items of the iterator are themselves iterators over the
+/// duplicate values for a specific key.
 pub enum IterDup<'cur, K, Key, Value>
 where
     K: TransactionKind,
@@ -719,7 +734,8 @@ where
         /// The MDBX cursor with which to iterate.
         cursor: &'cur mut Cursor<K>,
 
-        /// The first operation to perform when the consumer calls `Iter.next()`.
+        /// The first operation to perform when the consumer calls
+        /// `Iter.next()`.
         op: MDBX_cursor_op,
 
         _marker: PhantomData<fn(&'cur (Key, Value))>,

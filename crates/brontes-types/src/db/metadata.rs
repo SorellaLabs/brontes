@@ -1,5 +1,4 @@
-use alloy_primitives::BlockHash;
-use alloy_primitives::{Address, TxHash, U256};
+use alloy_primitives::{Address, BlockHash, TxHash, U256};
 use clickhouse::Row;
 use malachite::{num::basic::traits::Zero, Rational};
 use redefined::Redefined;
@@ -42,15 +41,15 @@ use crate::{db::cex::CexExchange, normalized_actions::NormalizedSwap};
 ))]
 pub struct BlockMetadataInner {
     #[serde(with = "u256")]
-    pub block_hash: U256,
-    pub block_timestamp: u64,
-    pub relay_timestamp: Option<u64>,
-    pub p2p_timestamp: Option<u64>,
+    pub block_hash:             U256,
+    pub block_timestamp:        u64,
+    pub relay_timestamp:        Option<u64>,
+    pub p2p_timestamp:          Option<u64>,
     #[serde(with = "option_addresss")]
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward: Option<u128>,
+    pub proposer_mev_reward:    Option<u128>,
     #[serde(with = "vec_txhash")]
-    pub private_flow: Vec<TxHash>,
+    pub private_flow:           Vec<TxHash>,
 }
 
 implement_table_value_codecs_with_zc!(BlockMetadataInnerRedefined);
@@ -81,10 +80,10 @@ pub struct Metadata {
     #[deref]
     #[as_ref]
     pub block_metadata: BlockMetadata,
-    pub cex_quotes: CexPriceMap,
-    pub dex_quotes: Option<DexQuotes>,
-    pub builder_info: Option<BuilderInfo>,
-    pub cex_trades: Option<CexTradeMap>,
+    pub cex_quotes:     CexPriceMap,
+    pub dex_quotes:     Option<DexQuotes>,
+    pub builder_info:   Option<BuilderInfo>,
+    pub cex_trades:     Option<CexTradeMap>,
 }
 
 impl Metadata {
@@ -146,17 +145,17 @@ impl Metadata {
 /// Block Metadata
 #[derive(Debug, Clone, Default)]
 pub struct BlockMetadata {
-    pub block_num: u64,
-    pub block_hash: U256,
-    pub block_timestamp: u64,
-    pub relay_timestamp: Option<u64>,
-    pub p2p_timestamp: Option<u64>,
+    pub block_num:              u64,
+    pub block_hash:             U256,
+    pub block_timestamp:        u64,
+    pub relay_timestamp:        Option<u64>,
+    pub p2p_timestamp:          Option<u64>,
     pub proposer_fee_recipient: Option<Address>,
-    pub proposer_mev_reward: Option<u128>,
+    pub proposer_mev_reward:    Option<u128>,
     /// Best ask at p2p timestamp
-    pub eth_prices: Rational,
+    pub eth_prices:             Rational,
     /// Tx
-    pub private_flow: FastHashSet<TxHash>,
+    pub private_flow:           FastHashSet<TxHash>,
 }
 
 impl BlockMetadata {

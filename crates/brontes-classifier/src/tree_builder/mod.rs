@@ -193,7 +193,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                             gas_used:            trace.gas_used,
                             effective_gas_price: trace.effective_price,
                             priority_fee:        trace.effective_price
-                                - (header.base_fee_per_gas.unwrap_or_default() as u128),
+                                - header.base_fee_per_gas.unwrap_or_default(),
                         },
                         data_store: NodeData(vec![Some(classification)]),
                     };

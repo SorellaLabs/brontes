@@ -1,6 +1,8 @@
-use crate::{Error, TransactionKind};
-use derive_more::*;
 use std::{borrow::Cow, slice};
+
+use derive_more::*;
+
+use crate::{Error, TransactionKind};
 
 /// Implement this to be able to decode data values
 pub trait TableObject: Sized {

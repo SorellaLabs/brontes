@@ -32,11 +32,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct StateTracker {
     /// state that finalized subgraphs are dependent on.
-    finalized_edge_state: FastHashMap<Address, StateWithDependencies>,
+    finalized_edge_state:    FastHashMap<Address, StateWithDependencies>,
     /// state that verification is using
     verification_edge_state: FastHashMap<Address, PoolStateWithBlock>,
     /// state count
-    metrics: Option<DexPricingMetrics>,
+    metrics:                 Option<DexPricingMetrics>,
 }
 
 impl Drop for StateTracker {
@@ -209,7 +209,7 @@ impl StateTracker {
 #[derive(Debug, Clone, derive_more::Deref)]
 pub struct StateWithDependencies {
     #[deref]
-    pub state: PoolState,
+    pub state:      PoolState,
     pub dependents: u64,
 }
 

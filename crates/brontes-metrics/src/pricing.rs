@@ -39,11 +39,15 @@ impl Debug for DexPricingMetrics {
 
 impl DexPricingMetrics {
     pub fn new() -> Self {
-        // let active_subgraphs = metrics::register_gauge!("dex_pricing_active_subgraphs");
+        // let active_subgraphs =
+        // metrics::register_gauge!("dex_pricing_active_subgraphs");
         // let active_state = metrics::register_gauge!("dex_pricing_active_state");
-        // let state_load_queries = metrics::register_gauge!("dex_pricing_state_load_queries");
-        // let state_load_time_ms = metrics::register_histogram!("dex_pricing_state_load_time_ms");
-        // let processed_blocks = metrics::register_counter!("dex_pricing_processed_blocks");
+        // let state_load_queries =
+        // metrics::register_gauge!("dex_pricing_state_load_queries");
+        // let state_load_time_ms =
+        // metrics::register_histogram!("dex_pricing_state_load_time_ms");
+        // let processed_blocks =
+        // metrics::register_counter!("dex_pricing_processed_blocks");
         // let range_processing = prometheus::register_int_counter_vec!(
         //     "dex_pricing_range_processed_blocks",
         //     "the amount of blocks a range has processed",

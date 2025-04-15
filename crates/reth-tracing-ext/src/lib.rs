@@ -53,8 +53,8 @@ pub type RethTxPool = Pool<
 
 #[derive(Debug, Clone)]
 pub struct TracingClient {
-    pub api: EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
-    pub trace: TraceApi<Provider, RethApi>,
+    pub api:              EthApi<Provider, RethTxPool, NoopNetwork, EthEvmConfig>,
+    pub trace:            TraceApi<Provider, RethApi>,
     pub provider_factory: ProviderFactory<Arc<DatabaseEnv>>,
 }
 impl TracingClient {
@@ -154,21 +154,21 @@ impl TracingClient {
         block_id: BlockId,
     ) -> EthResult<Option<Vec<TxTrace>>> {
         let insp_setup = || BrontesTracingInspector {
-            config: TracingInspectorConfig {
-                record_logs: true,
-                record_steps: false,
-                record_state_diff: false,
-                record_stack_snapshots: StackSnapshotType::None,
-                record_memory_snapshots: false,
-                record_call_return_data: true,
+            config:                TracingInspectorConfig {
+                record_logs:              true,
+                record_steps:             false,
+                record_state_diff:        false,
+                record_stack_snapshots:   StackSnapshotType::None,
+                record_memory_snapshots:  false,
+                record_call_return_data:  true,
                 exclude_precompile_calls: true,
             },
-            traces: CallTraceArena::default(),
-            trace_stack: Vec::new(),
-            step_stack: Vec::new(),
+            traces:                CallTraceArena::default(),
+            trace_stack:           Vec::new(),
+            step_stack:            Vec::new(),
             last_call_return_data: None,
-            gas_inspector: GasInspector::default(),
-            spec_id: None,
+            gas_inspector:         GasInspector::default(),
+            spec_id:               None,
         };
 
         self.api
@@ -182,7 +182,7 @@ impl TracingClient {
 #[derive(Debug, Clone, Copy)]
 pub struct StackStep {
     _trace_idx: usize,
-    _step_idx: usize,
+    _step_idx:  usize,
 }
 
 /// Opens up an existing database at the specified path.

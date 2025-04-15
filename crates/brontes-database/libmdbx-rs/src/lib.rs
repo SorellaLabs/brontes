@@ -10,6 +10,10 @@
 
 // pub extern crate ffi as ffi;
 
+pub use ffi::{MDBX_dbi as DBI, MDBX_log_level_t as LogLevel};
+
+#[cfg(feature = "read-tx-timeouts")]
+pub use crate::environment::read_transactions::MaxReadTransactionDuration;
 pub use crate::{
     codec::*,
     cursor::{Cursor, Iter, IterDup},
@@ -22,10 +26,6 @@ pub use crate::{
     flags::*,
     transaction::{CommitLatency, Transaction, TransactionKind, RO, RW},
 };
-pub use ffi::{MDBX_dbi as DBI, MDBX_log_level_t as LogLevel};
-
-#[cfg(feature = "read-tx-timeouts")]
-pub use crate::environment::read_transactions::MaxReadTransactionDuration;
 
 mod codec;
 mod cursor;
@@ -38,13 +38,14 @@ mod txn_manager;
 
 #[cfg(test)]
 mod test_utils {
-    use super::*;
     use byteorder::{ByteOrder, LittleEndian};
     use tempfile::tempdir;
 
+    use super::*;
+
     /// Regression test for <https://github.com/danburkert/lmdb-rs/issues/21>.
-    /// This test reliably segfaults when run against lmbdb compiled with opt level -O3 and newer
-    /// GCC compilers.
+    /// This test reliably segfaults when run against lmbdb compiled with opt
+    /// level -O3 and newer GCC compilers.
     #[test]
     fn issue_21_regression() {
         const HEIGHT_KEY: [u8; 1] = [0];

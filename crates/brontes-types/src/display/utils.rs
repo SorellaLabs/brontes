@@ -1,11 +1,10 @@
 use std::fmt;
 
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, B256};
 use colored::{ColoredString, Colorize};
 use indoc::indoc;
 use itertools::Itertools;
 use prettytable::{Cell, Row, Table};
-use alloy_primitives::B256;
 
 use crate::{
     mev::{ArbDetails, AtomicArbType, Bundle, BundleData, CexDex, OptimisticTrade},

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use alloy_primitives::U256;
-use alloy_primitives::{Address, Bytes};
+use alloy_primitives::{Address, Bytes, U256};
 use alloy_sol_types::SolCall;
 use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_types::{
@@ -53,12 +52,12 @@ pub async fn try_decode_transfer<T: TracingProvider, DB: LibmdbxReader + DBWrite
     let token_info = db.try_fetch_token_info(token)?;
 
     Ok(NormalizedTransfer {
-        amount: amount.to_scaled_rational(token_info.decimals),
-        token: token_info,
-        to: to_addr,
-        from: from_addr,
+        amount:      amount.to_scaled_rational(token_info.decimals),
+        token:       token_info,
+        to:          to_addr,
+        from:        from_addr,
         trace_index: idx,
-        msg_value: value,
-        fee: Rational::ZERO,
+        msg_value:   value,
+        fee:         Rational::ZERO,
     })
 }

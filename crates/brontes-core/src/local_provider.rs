@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use alloy_primitives::{Address, BlockNumber, Bytes, FixedBytes, StorageValue, TxHash, B256};
+use alloy_primitives::{Address, BlockNumber, Bytes, StorageValue, TxHash, B256};
 use alloy_provider::{Provider, RootProvider};
 use alloy_rpc_types::AnyReceiptEnvelope;
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use itertools::Itertools;
-use reth_primitives::{Bytecode, Header};
+use reth_primitives::Bytecode;
 use reth_rpc_types::{
     state::StateOverride, BlockId, BlockNumberOrTag, BlockOverrides, BlockTransactionsKind, Log,
     TransactionReceipt, TransactionRequest,
@@ -15,7 +15,7 @@ use reth_rpc_types::{
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
     provider: Arc<RootProvider<Http<reqwest::Client>>>,
-    retries: u8,
+    retries:  u8,
 }
 
 impl LocalProvider {
@@ -42,7 +42,7 @@ impl TracingProvider for LocalProvider {
             let res = self
                 .provider
                 .call(&request.clone())
-                .block(block_number.map(Into::into).unwrap_or(BlockId::latest()))
+                .block(block_number.unwrap_or(BlockId::latest()))
                 .await;
             if res.is_ok() || attempts > self.retries {
                 return res.map_err(Into::into);

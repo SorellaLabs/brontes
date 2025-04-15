@@ -1,5 +1,6 @@
-use libc::c_int;
 use std::result;
+
+use libc::c_int;
 
 /// An MDBX result.
 pub type Result<T> = result::Result<T, Error>;
@@ -49,18 +50,20 @@ pub enum Error {
     /// Page has no more space.
     #[error("page has no more space")]
     PageFull,
-    /// The database engine was unable to extend mapping, e.g. the address space is unavailable or
-    /// busy.
+    /// The database engine was unable to extend mapping, e.g. the address space
+    /// is unavailable or busy.
     ///
     /// This can mean:
-    /// - The database size was extended by other processes beyond the environment map size, and
-    ///   the engine was unable to extend the mapping while starting a read transaction. The
-    ///   environment should be re-opened to continue.
-    /// - The engine was unable to extend the mapping during a write transaction or an explicit
-    ///   call to change the geometry of the environment.
+    /// - The database size was extended by other processes beyond the
+    ///   environment map size, and the engine was unable to extend the mapping
+    ///   while starting a read transaction. The environment should be re-opened
+    ///   to continue.
+    /// - The engine was unable to extend the mapping during a write transaction
+    ///   or an explicit call to change the geometry of the environment.
     #[error("database engine was unable to extend mapping")]
     UnableExtendMapSize,
-    /// Environment or database is not compatible with the requested operation or flags.
+    /// Environment or database is not compatible with the requested operation
+    /// or flags.
     #[error("environment or database is not compatible with the requested operation or flags")]
     Incompatible,
     /// Invalid reuse of reader locktable slot.
@@ -87,9 +90,12 @@ pub enum Error {
     /// Wrong signature of a runtime object(s).
     #[error("wrong signature of a runtime object(s)")]
     BadSignature,
-    /// Database should be recovered, but cannot be done automatically since it's in read-only
-    /// mode.
-    #[error("database should be recovered, but cannot be done automatically since it's in read-only mode")]
+    /// Database should be recovered, but cannot be done automatically since
+    /// it's in read-only mode.
+    #[error(
+        "database should be recovered, but cannot be done automatically since it's in read-only \
+         mode"
+    )]
     WannaRecovery,
     /// The given key value is mismatched to the current cursor position.
     #[error("the given key value is mismatched to the current cursor position")]
@@ -105,16 +111,18 @@ pub enum Error {
     TooLarge,
     /// Decode error length difference:
     ///
-    /// An invalid parameter was specified, or the environment has an active write transaction.
+    /// An invalid parameter was specified, or the environment has an active
+    /// write transaction.
     #[error("invalid parameter specified or active write transaction")]
     DecodeErrorLenDiff,
     /// If the [Environment](crate::Environment) was opened with
-    /// [`EnvironmentKind::WriteMap`](crate::EnvironmentKind::WriteMap) flag, nested transactions
-    /// are not supported.
+    /// [`EnvironmentKind::WriteMap`](crate::EnvironmentKind::WriteMap) flag,
+    /// nested transactions are not supported.
     #[error("nested transactions are not supported with WriteMap")]
     NestedTransactionsUnsupportedWithWriteMap,
-    /// If the [Environment](crate::Environment) was opened with in read-only mode
-    /// [`Mode::ReadOnly`](crate::flags::Mode::ReadOnly), write transactions can't be opened.
+    /// If the [Environment](crate::Environment) was opened with in read-only
+    /// mode [`Mode::ReadOnly`](crate::flags::Mode::ReadOnly), write
+    /// transactions can't be opened.
     #[error("write transactions are not supported in read-only mode")]
     WriteTransactionUnsupportedInReadOnlyMode,
     /// Read transaction has been timed out.

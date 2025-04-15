@@ -35,11 +35,11 @@ use crate::{
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct OptimisticTrade {
     #[redefined(same_fields)]
-    pub exchange: CexExchange,
-    pub pair: Pair,
+    pub exchange:  CexExchange,
+    pub pair:      Pair,
     pub timestamp: u64,
-    pub price: Rational,
-    pub volume: Rational,
+    pub price:     Rational,
+    pub volume:    Rational,
 }
 
 impl Serialize for OptimisticTrade {
@@ -699,19 +699,19 @@ impl DbRow for CexDex {
 )]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct ArbDetails {
-    pub pairs: Vec<Pair>,
+    pub pairs:            Vec<Pair>,
     pub trade_start_time: u64,
-    pub trade_end_time: u64,
+    pub trade_end_time:   u64,
     #[redefined(same_fields)]
-    pub cex_exchange: CexExchange,
-    pub price_maker: Rational,
-    pub price_taker: Rational,
+    pub cex_exchange:     CexExchange,
+    pub price_maker:      Rational,
+    pub price_taker:      Rational,
     #[redefined(same_fields)]
-    pub dex_exchange: Protocol,
-    pub dex_price: Rational,
-    pub dex_amount: Rational,
-    pub pnl_maker: Rational,
-    pub pnl_taker: Rational,
+    pub dex_exchange:     Protocol,
+    pub dex_price:        Rational,
+    pub dex_amount:       Rational,
+    pub pnl_maker:        Rational,
+    pub pnl_taker:        Rational,
 }
 
 impl fmt::Display for ArbDetails {

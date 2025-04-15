@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 
+use alloy_primitives::{Address, U256};
 use clickhouse::Row;
 use malachite::Rational;
 use redefined::Redefined;
-use alloy_primitives::{Address, U256};
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{Deserialize, Serialize};
 

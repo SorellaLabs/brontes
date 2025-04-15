@@ -14,7 +14,7 @@ type FxIndexMap<K, V> = IndexMap<K, V, FastHasher>;
 
 const MAX_LEN: usize = 4;
 const MAX_OTHER_PATHS: usize = 3;
-
+#[allow(clippy::empty_line_after_doc_comments)]
 /// Compute a shortest path using the [Dijkstra search
 /// algorithm](https://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///

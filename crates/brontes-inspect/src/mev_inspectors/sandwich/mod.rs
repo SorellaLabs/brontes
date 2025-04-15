@@ -985,16 +985,12 @@ impl<DB: LibmdbxReader> SandwichInspector<'_, DB> {
                     .t_full_filter_map(|(tree, rest)| {
                         let (swap, hashes): (Vec<_>, Vec<_>) = UnzipPadded::unzip_padded(rest);
 
-                        if !hashes
-                            .iter()
-                            .map(|v| {
-                                let tree = &(*tree.clone());
-                                let d = tree.get_root(*v).unwrap().get_root_action();
+                        if !hashes.iter().any(|v| {
+                            let tree = &(*tree.clone());
+                            let d = tree.get_root(*v).unwrap().get_root_action();
 
-                                d.is_revert() || mev_executor_contract == d.get_to_address()
-                            })
-                            .any(|d| d)
-                        {
+                            d.is_revert() || mev_executor_contract == d.get_to_address()
+                        }) {
                             Some(swap)
                         } else {
                             None

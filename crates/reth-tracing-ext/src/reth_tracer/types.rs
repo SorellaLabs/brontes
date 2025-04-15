@@ -106,22 +106,21 @@ impl CallTrace {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CallTraceNode {
     /// Parent node index in the arena
-    pub parent: Option<usize>,
+    pub parent:   Option<usize>,
     /// Children node indexes in the arena
     pub children: Vec<usize>,
     /// This node's index in the arena
-    pub idx: usize,
+    pub idx:      usize,
     /// The call trace
-    pub trace: CallTrace,
+    pub trace:    CallTrace,
     /// Recorded logs, if enabled
-    pub logs: Vec<LogData>,
+    pub logs:     Vec<LogData>,
     /// Ordering of child calls and logs
     pub ordering: Vec<LogCallOrder>,
 }
 
 impl CallTraceNode {
     /// Returns the call context's execution address
-
     pub const fn execution_address(&self) -> Address {
         if self.trace.kind.is_delegate() {
             self.trace.caller
@@ -217,13 +216,13 @@ impl CallTraceNode {
             CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
                 TraceOutput::Call(CallOutput {
                     gas_used: U64::from(self.trace.gas_used),
-                    output: self.trace.output.clone(),
+                    output:   self.trace.output.clone(),
                 })
             }
             CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
                 gas_used: U64::from(self.trace.gas_used),
-                code: self.trace.output.clone(),
-                address: self.trace.address,
+                code:     self.trace.output.clone(),
+                address:  self.trace.address,
             }),
         }
     }
@@ -232,9 +231,9 @@ impl CallTraceNode {
     pub fn parity_selfdestruct_action(&self) -> Option<Action> {
         if self.is_selfdestruct() {
             Some(Action::Selfdestruct(SelfdestructAction {
-                address: self.trace.address,
+                address:        self.trace.address,
                 refund_address: self.trace.selfdestruct_refund_target.unwrap_or_default(),
-                balance: self.trace.value,
+                balance:        self.trace.value,
             }))
         } else {
             None
@@ -279,19 +278,19 @@ impl CallTraceNode {
         match self.kind() {
             CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
                 Action::Call(CallAction {
-                    from: self.trace.caller,
-                    to: self.trace.address,
-                    value: self.trace.value,
-                    gas: U64::from(self.trace.gas_limit),
-                    input: self.trace.data.clone(),
+                    from:      self.trace.caller,
+                    to:        self.trace.address,
+                    value:     self.trace.value,
+                    gas:       U64::from(self.trace.gas_limit),
+                    input:     self.trace.data.clone(),
                     call_type: self.kind().into(),
                 })
             }
             CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
-                from: self.trace.caller,
+                from:  self.trace.caller,
                 value: self.trace.value,
-                gas: U64::from(self.trace.gas_limit),
-                init: self.trace.data.clone(),
+                gas:   U64::from(self.trace.gas_limit),
+                init:  self.trace.data.clone(),
             }),
         }
     }
@@ -299,18 +298,18 @@ impl CallTraceNode {
     /// Converts this call trace into an _empty_ geth [CallFrame]
     pub fn geth_empty_call_frame(&self, include_logs: bool) -> CallFrame {
         let mut call_frame = CallFrame {
-            typ: self.trace.kind.to_string(),
-            from: self.trace.caller,
-            to: Some(self.trace.address),
-            value: Some(self.trace.value),
-            gas: U256::from(self.trace.gas_limit),
-            gas_used: U256::from(self.trace.gas_used),
-            input: self.trace.data.clone(),
-            output: (!self.trace.output.is_empty()).then(|| self.trace.output.clone()),
-            error: None,
+            typ:           self.trace.kind.to_string(),
+            from:          self.trace.caller,
+            to:            Some(self.trace.address),
+            value:         Some(self.trace.value),
+            gas:           U256::from(self.trace.gas_limit),
+            gas_used:      U256::from(self.trace.gas_used),
+            input:         self.trace.data.clone(),
+            output:        (!self.trace.output.is_empty()).then(|| self.trace.output.clone()),
+            error:         None,
             revert_reason: None,
-            calls: Default::default(),
-            logs: Default::default(),
+            calls:         Default::default(),
+            logs:          Default::default(),
         };
 
         if self.trace.kind.is_static_call() {
@@ -332,8 +331,8 @@ impl CallTraceNode {
                 .iter()
                 .map(|log| CallLogFrame {
                     address: Some(self.execution_address()),
-                    topics: Some(log.topics().to_vec()),
-                    data: Some(log.data.clone()),
+                    topics:  Some(log.topics().to_vec()),
+                    data:    Some(log.data.clone()),
                 })
                 .collect();
         }
@@ -441,9 +440,9 @@ impl From<CallKind> for ActionType {
 #[allow(dead_code)]
 pub(crate) struct CallTraceStepStackItem<'a> {
     /// The trace node that contains this step
-    pub(crate) trace_node: &'a CallTraceNode,
+    pub(crate) trace_node:    &'a CallTraceNode,
     /// The step that this stack item represents
-    pub(crate) step: &'a CallTraceStep,
+    pub(crate) step:          &'a CallTraceStep,
     /// The index of the child call in the CallArena if this step's opcode is a
     /// call
     pub(crate) call_child_id: Option<usize>,
@@ -463,37 +462,37 @@ pub enum LogCallOrder {
 pub struct CallTraceStep {
     // Fields filled in `step`
     /// Call depth
-    pub depth: u64,
+    pub depth:              u64,
     /// Program counter before step execution
-    pub pc: usize,
+    pub pc:                 usize,
     /// Opcode to be executed
-    pub op: OpCode,
+    pub op:                 OpCode,
     /// Current contract address
-    pub contract: Address,
+    pub contract:           Address,
     /// Stack before step execution
-    pub stack: Option<Vec<U256>>,
+    pub stack:              Option<Vec<U256>>,
     /// The new stack items placed by this step if any
-    pub push_stack: Option<Vec<U256>>,
+    pub push_stack:         Option<Vec<U256>>,
     /// All allocated memory in a step
     ///
     /// This will be empty if memory capture is disabled
-    pub memory: RecordedMemory,
+    pub memory:             RecordedMemory,
     /// Size of memory at the beginning of the step
-    pub memory_size: usize,
+    pub memory_size:        usize,
     /// Remaining gas before step execution
-    pub gas_remaining: u64,
+    pub gas_remaining:      u64,
     /// Gas refund counter before step execution
     pub gas_refund_counter: u64,
     // Fields filled in `step_end`
     /// Gas cost of step execution
-    pub gas_cost: u64,
+    pub gas_cost:           u64,
     /// Change of the contract state after step execution (effect of the
     /// SLOAD/SSTORE instructions)
-    pub storage_change: Option<StorageChange>,
+    pub storage_change:     Option<StorageChange>,
     /// Final status of the step
     ///
     /// This is set after the step was executed.
-    pub status: InstructionResult,
+    pub status:             InstructionResult,
 }
 
 // === impl CallTraceStep ===
@@ -505,23 +504,23 @@ impl CallTraceStep {
     #[allow(dead_code)]
     pub(crate) fn convert_to_geth_struct_log(&self, opts: &GethDefaultTracingOptions) -> StructLog {
         let mut log = StructLog {
-            depth: self.depth,
-            error: self.as_error(),
-            gas: self.gas_remaining,
-            gas_cost: self.gas_cost,
-            op: self.op.to_string(),
-            pc: self.pc as u64,
+            depth:          self.depth,
+            error:          self.as_error(),
+            gas:            self.gas_remaining,
+            gas_cost:       self.gas_cost,
+            op:             self.op.to_string(),
+            pc:             self.pc as u64,
             refund_counter: (self.gas_refund_counter > 0).then_some(self.gas_refund_counter),
             // Filled, if not disabled manually
-            stack: None,
+            stack:          None,
             // Filled in `CallTraceArena::geth_trace` as a result of compounding all slot changes
-            return_data: None,
+            return_data:    None,
             // Filled via trace object
-            storage: None,
+            storage:        None,
             // Only enabled if `opts.enable_memory` is true
-            memory: None,
+            memory:         None,
             // This is None in the rpc response
-            memory_size: None,
+            memory_size:    None,
         };
 
         if opts.is_stack_enabled() {
@@ -595,13 +594,13 @@ pub enum StorageChangeReason {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StorageChange {
     /// key of the storage slot
-    pub key: U256,
+    pub key:       U256,
     /// Current value of the storage slot
-    pub value: U256,
+    pub value:     U256,
     /// The previous value of the storage slot, if any
     pub had_value: Option<U256>,
     /// How this storage was accessed
-    pub reason: StorageChangeReason,
+    pub reason:    StorageChangeReason,
 }
 
 /// Represents the memory captured during execution

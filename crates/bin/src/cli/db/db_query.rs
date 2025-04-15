@@ -5,8 +5,8 @@ use brontes_database::{
 use brontes_libmdbx::RO;
 use brontes_types::init_thread_pools;
 use clap::Parser;
-use db_interfaces::errors::DatabaseError;
 use itertools::Itertools;
+use reth_provider::errors::db::DatabaseErrorInfo;
 
 #[derive(Debug, Parser)]
 pub struct DatabaseQuery {
@@ -133,5 +133,5 @@ where
 
 #[inline(always)]
 fn process_single_query<T>(res: Option<T>) -> eyre::Result<T> {
-    Ok(res.ok_or_else(|| reth_db::DatabaseError::Read(DatabaseError::from(-1)))?)
+    Ok(res.ok_or_else(|| reth_db::DatabaseError::Read(DatabaseErrorInfo::from(-1)))?)
 }

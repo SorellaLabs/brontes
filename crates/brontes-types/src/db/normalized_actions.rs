@@ -1,7 +1,6 @@
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use clickhouse::DbRow;
 use itertools::MultiUnzip;
-use alloy_primitives::B256;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
 use crate::{normalized_actions::Action, GasDetails, Node, Root};
@@ -214,7 +213,8 @@ pub mod test {
     async fn test_into_tx_root() {
         let tree = load_tree().await;
         let root = &tree.clone().tx_roots[0];
-        let tx_root = TransactionRoot::from((root, tree.header.number));
+        let tx_root =
+            TransactionRoot::from((root, tree.header.number.expect("Block number is not set")));
 
         let burns = tx_root
             .trace_nodes

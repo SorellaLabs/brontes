@@ -11,7 +11,6 @@
 /// OrderBy : Sort results in either ascending or descending values.  * `-value`
 /// - descending value (highest value first)  * `value` - ascending value
 /// (lowest value first)
-
 /// Sort results in either ascending or descending values.  * `-value` -
 /// descending value (highest value first)  * `value` - ascending value (lowest
 /// value first)

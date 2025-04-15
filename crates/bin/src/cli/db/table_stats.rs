@@ -1,12 +1,12 @@
 use std::{path::Path, sync::Arc};
 
-use alloy_primitives::ChainSpec;
 use clap::Parser;
 use comfy_table::{Cell, Row, Table as ComfyTable};
 use eyre::WrapErr;
 use human_bytes::human_bytes;
 use reth_db::{database::Database, mdbx, open_db, DatabaseEnv};
-use reth_provider::{ProviderFactory, StaticFileProvider};
+use reth_node_core::primitives::ChainSpec;
+use reth_provider::{providers::StaticFileProvider, ProviderFactory};
 
 #[derive(Parser, Debug)]
 /// The arguments for the `brontes db table-stats` command
@@ -22,13 +22,16 @@ impl Stats {
         let db_path = Path::new(&db_path);
         let chain = Arc::new(ChainSpec::default());
 
+        let mut static_files_path = db_path.to_path_buf();
+        static_files_path.push("static_files");
+
         let db = Arc::new(open_db(db_path, Default::default())?);
 
-        let static_file_provider = StaticFileProvider::new(db.clone(), chain.clone())?;
+        let static_file_provider = StaticFileProvider::read_only(static_files_path.clone())?;
 
         let mut statis_files_path = db_path.to_path_buf();
         statis_files_path.push("static_files");
-        let provider_factory = ProviderFactory::new(db, chain.clone(), static_files_provider)?;
+        let provider_factory = ProviderFactory::new(db, chain.clone(), static_file_provider);
 
         self.run(&provider_factory)?;
 

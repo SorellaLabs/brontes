@@ -1,11 +1,10 @@
 use std::fmt::{self, Debug, Display};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use clickhouse::{DbRow, Row};
 use colored::Colorize;
 use itertools::Itertools;
 use redefined::Redefined;
-use alloy_primitives::B256;
 use rkyv::{Archive, Deserialize as rDeserialize, Serialize as rSerialize};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use serde_with::serde_as;

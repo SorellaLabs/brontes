@@ -1394,7 +1394,7 @@ mod tests {
             .iter()
             .map(|root| {
                 DbDataWithRunId::<TransactionRoot>::new_with_run_id(
-                    (root, tree.header.number).into(),
+                    (root, tree.header.number.expect("Block number not set in header")).into(),
                     0,
                 )
             })

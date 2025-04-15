@@ -1,5 +1,5 @@
-use colored::Colorize;
 use alloy_primitives::B256;
+use colored::Colorize;
 use tracing::debug;
 
 use crate::ParserMetricEvents;

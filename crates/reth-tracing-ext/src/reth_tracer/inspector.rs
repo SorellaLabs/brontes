@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
-use alloy_primitives::{Address, Log, B256, U256};
-use alloy_primitives::{Bytes, U64};
+use alloy_primitives::{Address, Bytes, Log, B256, U256, U64};
 use arena::{CallTraceArena, PushTraceKind};
 use brontes_types::structured_trace::{TransactionTraceWithLogs, TxTrace};
 use config::TracingInspectorConfig;
@@ -34,21 +33,21 @@ use super::{arena, config, types, utils};
 #[derive(Clone, Debug)]
 pub struct BrontesTracingInspector {
     /// Configures what and how the inspector records traces.
-    pub config: TracingInspectorConfig,
+    pub config:                TracingInspectorConfig,
     /// Records all call traces
-    pub traces: CallTraceArena,
+    pub traces:                CallTraceArena,
     /// Tracks active calls
-    pub trace_stack: Vec<usize>,
+    pub trace_stack:           Vec<usize>,
     /// Tracks active steps
-    pub step_stack: Vec<StackStep>,
+    pub step_stack:            Vec<StackStep>,
     /// Tracks the return value of the last call
     pub last_call_return_data: Option<Bytes>,
     /// The gas inspector used to track remaining gas.
-    pub gas_inspector: GasInspector,
+    pub gas_inspector:         GasInspector,
     /// The spec id of the EVM.
     ///
     /// This is filled during execution.
-    pub spec_id: Option<SpecId>,
+    pub spec_id:               Option<SpecId>,
 }
 
 // === impl TracingInspector ===
@@ -539,9 +538,9 @@ impl BrontesTracingInspector {
     pub(crate) fn parity_selfdestruct_action(&self, node: &CallTraceNode) -> Option<Action> {
         if node.trace.selfdestruct_refund_target.is_some() {
             Some(Action::Selfdestruct(SelfdestructAction {
-                address: node.trace.address,
+                address:        node.trace.address,
                 refund_address: node.trace.selfdestruct_refund_target.unwrap_or_default(),
-                balance: node.trace.value,
+                balance:        node.trace.value,
             }))
         } else {
             None
@@ -552,19 +551,19 @@ impl BrontesTracingInspector {
         match node.trace.kind {
             CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
                 Action::Call(CallAction {
-                    from: node.trace.caller,
-                    to: node.trace.address,
-                    value: node.trace.value,
-                    gas: U64::from(node.trace.gas_limit),
-                    input: node.trace.data.clone(),
+                    from:      node.trace.caller,
+                    to:        node.trace.address,
+                    value:     node.trace.value,
+                    gas:       U64::from(node.trace.gas_limit),
+                    input:     node.trace.data.clone(),
                     call_type: node.trace.kind.into(),
                 })
             }
             CallKind::Create | CallKind::Create2 => Action::Create(CreateAction {
-                from: node.trace.caller,
+                from:  node.trace.caller,
                 value: node.trace.value,
-                gas: U64::from(node.trace.gas_limit),
-                init: node.trace.data.clone(),
+                gas:   U64::from(node.trace.gas_limit),
+                init:  node.trace.data.clone(),
             }),
         }
     }
@@ -574,13 +573,13 @@ impl BrontesTracingInspector {
             CallKind::Call | CallKind::StaticCall | CallKind::CallCode | CallKind::DelegateCall => {
                 TraceOutput::Call(CallOutput {
                     gas_used: U64::from(node.trace.gas_used),
-                    output: node.trace.output.clone(),
+                    output:   node.trace.output.clone(),
                 })
             }
             CallKind::Create | CallKind::Create2 => TraceOutput::Create(CreateOutput {
                 gas_used: U64::from(node.trace.gas_used),
-                code: node.trace.output.clone(),
-                address: node.trace.address,
+                code:     node.trace.output.clone(),
+                address:  node.trace.address,
             }),
         }
     }
@@ -763,7 +762,7 @@ where
 #[derive(Clone, Copy, Debug)]
 pub struct StackStep {
     trace_idx: usize,
-    step_idx: usize,
+    step_idx:  usize,
 }
 
 impl From<CallKind> for CallType {

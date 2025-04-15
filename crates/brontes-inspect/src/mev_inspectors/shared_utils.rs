@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use alloy_primitives::TxHash;
-use alloy_primitives::{Address, FixedBytes};
+use alloy_primitives::{Address, FixedBytes, TxHash};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -37,8 +36,8 @@ const LOW_LIQ_TH: Rational = Rational::const_from_unsigned(50_000u64);
 #[derive(Debug)]
 pub struct SharedInspectorUtils<'db, DB: LibmdbxReader> {
     pub(crate) quote: Address,
-    pub(crate) db: &'db DB,
-    pub metrics: Option<OutlierMetrics>,
+    pub(crate) db:    &'db DB,
+    pub metrics:      Option<OutlierMetrics>,
 }
 
 impl<'db, DB: LibmdbxReader> SharedInspectorUtils<'db, DB> {
@@ -479,12 +478,12 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                                 let usd_value =
                                     price_f(self, token, amount.clone()).unwrap_or(Rational::ZERO);
                                 TokenBalanceDelta {
-                                    token: self
+                                    token:     self
                                         .db
                                         .try_fetch_token_info(token)
                                         .ok()
                                         .unwrap_or_default(),
-                                    amount: amount.to_float(),
+                                    amount:    amount.to_float(),
                                     usd_value: usd_value.to_float(),
                                 }
                             })
@@ -817,16 +816,16 @@ pub mod test {
         let swap1 = NormalizedSwap {
             token_in: brontes_types::db::token_info::TokenInfoWithAddress {
                 address: WETH_ADDRESS,
-                inner: brontes_types::db::token_info::TokenInfo {
+                inner:   brontes_types::db::token_info::TokenInfo {
                     decimals: 18,
-                    symbol: "WETH".to_string(),
+                    symbol:   "WETH".to_string(),
                 },
             },
             token_out: brontes_types::db::token_info::TokenInfoWithAddress {
                 address: USDT_ADDRESS,
-                inner: brontes_types::db::token_info::TokenInfo {
+                inner:   brontes_types::db::token_info::TokenInfo {
                     decimals: 6,
-                    symbol: "USDT".to_string(),
+                    symbol:   "USDT".to_string(),
                 },
             },
             from: address0,
@@ -840,16 +839,16 @@ pub mod test {
         let swap2 = NormalizedSwap {
             token_in: brontes_types::db::token_info::TokenInfoWithAddress {
                 address: USDT_ADDRESS,
-                inner: brontes_types::db::token_info::TokenInfo {
+                inner:   brontes_types::db::token_info::TokenInfo {
                     decimals: 6,
-                    symbol: "USDT".to_string(),
+                    symbol:   "USDT".to_string(),
                 },
             },
             token_out: brontes_types::db::token_info::TokenInfoWithAddress {
                 address: USDC_ADDRESS,
-                inner: brontes_types::db::token_info::TokenInfo {
+                inner:   brontes_types::db::token_info::TokenInfo {
                     decimals: 6,
-                    symbol: "USDC".to_string(),
+                    symbol:   "USDC".to_string(),
                 },
             },
             from: pool1,
@@ -863,16 +862,16 @@ pub mod test {
         let swap3 = NormalizedSwap {
             token_in: brontes_types::db::token_info::TokenInfoWithAddress {
                 address: USDC_ADDRESS,
-                inner: brontes_types::db::token_info::TokenInfo {
+                inner:   brontes_types::db::token_info::TokenInfo {
                     decimals: 6,
-                    symbol: "USDC".to_string(),
+                    symbol:   "USDC".to_string(),
                 },
             },
             token_out: brontes_types::db::token_info::TokenInfoWithAddress {
                 address: WETH_ADDRESS,
-                inner: brontes_types::db::token_info::TokenInfo {
+                inner:   brontes_types::db::token_info::TokenInfo {
                     decimals: 18,
-                    symbol: "WETH".to_string(),
+                    symbol:   "WETH".to_string(),
                 },
             },
             from: pool2,

@@ -33,11 +33,11 @@ use crate::types::{PairWithFirstPoolHop, ProtocolState};
 #[derive(Debug, Clone)]
 pub struct SubGraphRegistry {
     /// all currently known sub-graphs
-    sub_graphs: FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
+    sub_graphs:               FastHashMap<Pair, BTreeMap<Pair, PairSubGraph>>,
     /// the pending_subgrpahs that haven't been finalized yet.
     pending_finalized_graphs: FastHashMap<u64, PendingRegistry>,
     /// metrics
-    metrics: Option<DexPricingMetrics>,
+    metrics:                  Option<DexPricingMetrics>,
 }
 
 /// holder for subgraphs that aren't active yet to avoid race conditions

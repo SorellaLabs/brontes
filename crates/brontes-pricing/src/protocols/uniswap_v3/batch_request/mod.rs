@@ -3,8 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, Bytes, FixedBytes, U256};
-use alloy_primitives::{Address, StorageValue};
+use alloy_primitives::{hex, Address, Bytes, FixedBytes, StorageValue, U256};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use alloy_primitives::{Address, TxHash};
+use alloy_primitives::{Address, BlockHash, TxHash};
 use brontes_types::{
     db::{
         dex::{DexPrices, DexQuotes},
@@ -13,7 +13,6 @@ use clickhouse::{remote_cursor::RemoteCursor, DbRow};
 use futures::TryStreamExt;
 use itertools::Itertools;
 use reqwest::StatusCode;
-use alloy_primitives::BlockHash;
 use serde::Deserialize;
 
 use crate::{

@@ -112,7 +112,10 @@ impl InspectorBenchUtils {
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
-                trees.into_iter().map(|(t, _)| t.header.number).collect(),
+                trees
+                    .into_iter()
+                    .map(|(t, _)| t.header.number.expect("Block number not in header"))
+                    .collect(),
             ))
         }
 
@@ -121,7 +124,12 @@ impl InspectorBenchUtils {
         let mut metadata = self.rt.block_on(async move {
             let res = self
                 .classifier_inspector
-                .get_metadata(tree.header.number, false)
+                .get_metadata(
+                    tree.header
+                        .number
+                        .expect("Block number not present in header"),
+                    false,
+                )
                 .await;
 
             if inspector_type == Inspectors::CexDex || inspector_type == Inspectors::CexDexMarkout {
@@ -176,7 +184,7 @@ impl InspectorBenchUtils {
         let mut metadata = self.rt.block_on(async move {
             let res = self
                 .classifier_inspector
-                .get_metadata(tree.header.number, false)
+                .get_metadata(tree.header.number.expect("Block number not in header"), false)
                 .await;
 
             if inspector_type == Inspectors::CexDex || inspector_type == Inspectors::CexDexMarkout {
@@ -225,7 +233,10 @@ impl InspectorBenchUtils {
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
-                trees.into_iter().map(|t| t.header.number).collect(),
+                trees
+                    .into_iter()
+                    .map(|t| t.header.number.expect("Block number not present in header"))
+                    .collect(),
             ))
         }
 
@@ -278,14 +289,17 @@ impl InspectorBenchUtils {
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
-                trees.into_iter().map(|(t, _)| t.header.number).collect(),
+                trees
+                    .into_iter()
+                    .map(|(t, _)| t.header.number.expect("Block number not in header"))
+                    .collect(),
             ))
         }
         let (tree, prices) = trees.remove(0);
 
         let mut metadata = self.rt.block_on(
             self.classifier_inspector
-                .get_metadata(tree.header.number, false),
+                .get_metadata(tree.header.number.expect("Block number not in header"), false),
         )?;
         metadata.dex_quotes = Some(prices);
 
@@ -336,8 +350,12 @@ impl InspectorBenchUtils {
                 ))?;
 
         let mut metadata = self.rt.block_on(
-            self.classifier_inspector
-                .get_metadata(tree.header.number, false),
+            self.classifier_inspector.get_metadata(
+                tree.header
+                    .number
+                    .expect("Block number not present in header"),
+                false,
+            ),
         )?;
         metadata.dex_quotes = prices;
 

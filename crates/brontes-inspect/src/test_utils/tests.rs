@@ -63,7 +63,10 @@ impl InspectorTestUtils {
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
-                trees.into_iter().map(|t| t.header.number).collect(),
+                trees
+                    .into_iter()
+                    .map(|t| t.header.number.expect("Block number not in header"))
+                    .collect(),
             ))
         }
         Ok(trees.remove(0))
@@ -81,7 +84,10 @@ impl InspectorTestUtils {
 
         if trees.len() != 1 {
             return Err(InspectorTestUtilsError::MultipleBlockError(
-                trees.into_iter().map(|(t, _)| t.header.number).collect(),
+                trees
+                    .into_iter()
+                    .map(|(t, _)| t.header.number.expect("Block number not in header"))
+                    .collect(),
             ))
         }
         Ok(trees.remove(0))
@@ -140,7 +146,7 @@ impl InspectorTestUtils {
             return Err(err())
         };
 
-        let block = tree.header.number;
+        let block = tree.header.number.expect("Block number not in header");
 
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta
@@ -220,7 +226,7 @@ impl InspectorTestUtils {
         } else {
             let res = self
                 .classifier_inspector
-                .get_metadata(tree.header.number, false)
+                .get_metadata(tree.header.number.expect("Block number not in header"), false)
                 .await;
 
             if config.expected_mev_type == Inspectors::CexDexMarkout
@@ -334,7 +340,7 @@ impl InspectorTestUtils {
             return Err(err())
         };
 
-        let block = tree.header.number;
+        let block = tree.header.number.expect("Block number not in header");
 
         let mut metadata = if let Some(meta) = config.metadata_override {
             meta

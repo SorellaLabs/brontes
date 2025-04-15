@@ -13,7 +13,8 @@ use tokio::{
     time::{interval, Interval},
 };
 
-// const TRIGGER_ADDRESS: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 54321);
+// const TRIGGER_ADDRESS: SocketAddr =
+// SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 54321);
 
 #[allow(unreachable_code)]
 pub async fn backup_server_heartbeat(url: String, ping_rate: Duration) {
@@ -58,7 +59,7 @@ pub async fn start_hr_monitor(tx: Sender<()>) -> eyre::Result<()> {
 
 pub struct HeartRateMonitor {
     pub timeout: Interval,
-    pub rx: Receiver<()>,
+    pub rx:      Receiver<()>,
 }
 
 impl HeartRateMonitor {

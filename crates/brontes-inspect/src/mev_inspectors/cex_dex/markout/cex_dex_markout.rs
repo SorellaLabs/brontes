@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::FixedBytes;
+use alloy_primitives::{Address, FixedBytes};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -34,7 +34,6 @@ use malachite::{
     },
     Rational,
 };
-use alloy_primitives::Address;
 use tracing::trace;
 
 use super::{
@@ -606,7 +605,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
     /// # Returns
     /// A `PossibleCexDex` instance representing the finalized arbitrage
     /// opportunity after accounting for gas costs.
-
     pub fn gas_accounting(
         &self,
         cex_dex: &mut CexDexProcessing,
@@ -670,7 +668,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 || info
                     .contract_type
                     .as_ref()
-                    .map_or(false, |contract_type| contract_type.could_be_mev_contract()));
+                    .is_some_and(|contract_type| contract_type.could_be_mev_contract()));
 
         let is_cex_dex_based_on_historical_activity =
             is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
@@ -722,7 +720,7 @@ pub fn max_arb_delta(tx_info: &TxInfo, pnl: &Rational) -> Rational {
     } else if tx_info
         .contract_type
         .as_ref()
-        .map_or(false, |c| c.is_mev_contract())
+        .is_some_and(|c| c.is_mev_contract())
     {
         base_diff += 2;
     }

@@ -42,8 +42,7 @@ action_impl!(
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::U256;
-    use alloy_primitives::{hex, Address, B256};
+    use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         db::token_info::{TokenInfo, TokenInfoWithAddress},
@@ -61,31 +60,31 @@ mod tests {
 
         let dai = TokenInfoWithAddress {
             address: Address::new(hex!("6b175474e89094c44da98b954eedeac495271d0f")),
-            inner: TokenInfo { decimals: 18, symbol: "DAI".to_string() },
+            inner:   TokenInfo { decimals: 18, symbol: "DAI".to_string() },
         };
 
         let eq_action = Action::FlashLoan(NormalizedFlashLoan {
-            protocol: Protocol::MakerDssFlash,
-            trace_index: 2,
-            from: Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
-            pool: Address::new(hex!("60744434d6339a6b27d73d9eda62b6f66a0a04fa")),
+            protocol:          Protocol::MakerDssFlash,
+            trace_index:       2,
+            from:              Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
+            pool:              Address::new(hex!("60744434d6339a6b27d73d9eda62b6f66a0a04fa")),
             receiver_contract: Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
-            assets: vec![dai.clone()],
-            amounts: vec![U256::from_str("100000000").unwrap().to_scaled_rational(0)],
-            aave_mode: None,
+            assets:            vec![dai.clone()],
+            amounts:           vec![U256::from_str("100000000").unwrap().to_scaled_rational(0)],
+            aave_mode:         None,
             // Ignore child actions as we only need to focus on pruning necessary nodes.
-            child_actions: vec![],
-            repayments: vec![NormalizedTransfer {
-                msg_value: U256::ZERO,
+            child_actions:     vec![],
+            repayments:        vec![NormalizedTransfer {
+                msg_value:   U256::ZERO,
                 trace_index: 238,
-                from: Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
-                to: Address::new(hex!("60744434d6339a6b27d73d9eda62b6f66a0a04fa")),
-                token: dai,
-                amount: U256::from_str("100000000").unwrap().to_scaled_rational(0),
-                fee: U256::ZERO.to_scaled_rational(0),
+                from:        Address::new(hex!("1aecea38b8626eeb3748234343cff427268dd487")),
+                to:          Address::new(hex!("60744434d6339a6b27d73d9eda62b6f66a0a04fa")),
+                token:       dai,
+                amount:      U256::from_str("100000000").unwrap().to_scaled_rational(0),
+                fee:         U256::ZERO.to_scaled_rational(0),
             }],
-            fees_paid: vec![],
-            msg_value: U256::ZERO,
+            fees_paid:         vec![],
+            msg_value:         U256::ZERO,
         });
 
         classifier_utils

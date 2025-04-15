@@ -75,42 +75,42 @@ use crate::types::PoolState;
 const MAX_BLOCK_MOVEMENT: Rational = Rational::const_from_unsigneds(99_999, 100_000);
 
 pub struct BrontesBatchPricer<T: TracingProvider> {
-    range_id: usize,
-    quote_asset: Address,
-    current_block: u64,
+    range_id:        usize,
+    quote_asset:     Address,
+    current_block:   u64,
     completed_block: u64,
-    finished: Arc<AtomicBool>,
+    finished:        Arc<AtomicBool>,
     needs_more_data: Arc<AtomicBool>,
 
     /// receiver from classifier, classifier is ran sequentially to guarantee
     /// order
-    update_rx: UnboundedYapperReceiver<DexPriceMsg>,
+    update_rx:       UnboundedYapperReceiver<DexPriceMsg>,
     /// holds the state transfers and state void overrides for the given block.
     /// it works by processing all state transitions for a block and
     /// allowing lazy loading to occur. Once lazy loading has occurred and there
     /// are no more events for the current block, all the state transitions
     /// are applied in order with the price at the transaction index being
     /// calculated and inserted into the results and returned.
-    buffer: StateBuffer,
+    buffer:          StateBuffer,
     /// holds new graph nodes / edges that can be added at every given block.
     /// this is done to ensure any route from a base to our quote asset will
     /// only pass though valid created pools.
     new_graph_pairs: FastHashMap<Address, (Protocol, Pair)>,
     /// manages all graph related items
-    graph_manager: GraphManager,
+    graph_manager:   GraphManager,
     /// lazy loads dex pairs so we only fetch init state that is needed
-    lazy_loader: LazyExchangeLoader<T>,
-    dex_quotes: FastHashMap<u64, DexQuotes>,
+    lazy_loader:     LazyExchangeLoader<T>,
+    dex_quotes:      FastHashMap<u64, DexQuotes>,
     /// pairs that failed to be verified. we use this to avoid the fallback for
     /// transfers
-    failed_pairs: FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
+    failed_pairs:    FastHashMap<u64, Vec<PairWithFirstPoolHop>>,
     /// when we are pulling from the channel, because its not peekable we always
     /// pull out one more than we want. this acts as a cache for it
-    overlap_update: Option<PoolUpdate>,
+    overlap_update:  Option<PoolUpdate>,
     /// a queue of blocks that we should skip pricing for and just upkeep state
-    skip_pricing: VecDeque<u64>,
+    skip_pricing:    VecDeque<u64>,
     /// metrics
-    metrics: Option<DexPricingMetrics>,
+    metrics:         Option<DexPricingMetrics>,
 }
 
 impl<T: TracingProvider> BrontesBatchPricer<T> {
@@ -690,10 +690,10 @@ impl<T: TracingProvider> BrontesBatchPricer<T> {
                     });
 
                     Some(RequeryPairs {
-                        pair: failed.pair,
+                        pair:         failed.pair,
                         extends_pair: failed.extends,
-                        block: failed.block,
-                        frayed_ends: failed.frayed_ends,
+                        block:        failed.block,
+                        frayed_ends:  failed.frayed_ends,
                         ignore_state: failed.ignore_state,
                     })
                 }
@@ -1322,6 +1322,7 @@ impl<T: TracingProvider> Stream for BrontesBatchPricer<T> {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum PollResult {
     State(PoolUpdate),
     DiscoveredPool,
@@ -1332,7 +1333,7 @@ enum PollResult {
 /// loading of pools is being applied
 pub struct StateBuffer {
     /// updates for a given block in order that they occur
-    pub updates: FastHashMap<u64, VecDeque<(Address, PoolUpdate)>>,
+    pub updates:   FastHashMap<u64, VecDeque<(Address, PoolUpdate)>>,
     /// when we have a override for a given address at a block. it means that
     /// we don't want to apply any pool updates for the block. This is useful
     /// for when a pool is  at a block and we can only query the end

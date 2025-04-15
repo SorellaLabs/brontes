@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Clone, Row, PartialEq, Eq, Deserialize)]
 pub struct SelfdestructWithIndex {
-    pub trace_index: u64,
+    pub trace_index:   u64,
     pub self_destruct: SelfdestructAction,
 }
 

@@ -14,18 +14,18 @@ pub struct GlobalRangeMetrics {
     /// the runtime for inspectors
     // pub processing_run_time_ms: Histogram,
     /// complete
-    pub completed_blocks_range: IntCounterVec,
+    pub completed_blocks_range:      IntCounterVec,
     /// the amount of blocks the inspector has completed
     /// the total blocks in the inspector range
-    pub total_blocks_range: IntCounterVec,
+    pub total_blocks_range:          IntCounterVec,
     /// range poll rate
-    pub poll_rate: IntCounterVec,
+    pub poll_rate:                   IntCounterVec,
     /// pending inspector runs
     pub active_inspector_processing: IntGaugeVec,
-    pub block_tracing_throughput: HistogramVec,
-    pub classification_throughput: HistogramVec,
+    pub block_tracing_throughput:    HistogramVec,
+    pub classification_throughput:   HistogramVec,
     /// amount of pending trees in dex pricing / metadata fetcher
-    pub pending_trees: IntGaugeVec,
+    pub pending_trees:               IntGaugeVec,
 }
 
 impl GlobalRangeMetrics {
@@ -100,7 +100,8 @@ impl GlobalRangeMetrics {
             block_tracing_throughput: block_tracing,
             classification_throughput: tree_builder,
             // completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
-            // processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
+            // processing_run_time_ms:
+            // metrics::register_histogram!("brontes_processing_runtime_ms"),
         }
     }
 
@@ -187,7 +188,7 @@ impl GlobalRangeMetrics {
 #[metrics(scope = "brontes_running_ranges")]
 pub struct FinishedRange {
     /// the active ranges running
-    pub running_ranges: Gauge,
+    pub running_ranges:  Gauge,
     /// total amount of blocks. for the set range.
     /// if at tip, then this is the range at init
     pub total_set_range: Counter,

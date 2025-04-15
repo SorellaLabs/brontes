@@ -40,7 +40,7 @@ impl DiscoveryInspector {
             .filter_map(|(tx_idx, root)| {
                 let mut triggers = PossibleMevTriggers::default();
 
-                if root.gas_details.priority_fee(base_fee.into()) as f64
+                if root.gas_details.priority_fee(base_fee) as f64
                     > avr_priority + (tree.priority_fee_std_dev * self.std_dev_threshold)
                 {
                     triggers.high_priority_fee = true;
