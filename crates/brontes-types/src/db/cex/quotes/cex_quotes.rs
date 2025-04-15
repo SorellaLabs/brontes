@@ -124,22 +124,28 @@ impl CexPriceMap {
                     ?pair,
                     "no most liquid exchange found for pair, trying binance via intermediary"
                 );
-                let exchange = CexExchange::Binance;
+                let exchanges = vec![CexExchange::Binance, CexExchange::Coinbase];
 
-                self.get_exchange_quote_at_via_intermediary(
-                    pair,
-                    &exchange,
-                    timestamp,
-                    max_time_diff,
-                )
-                .or_else(|| {
-                    self.get_exchange_quote_at_via_intermediary(
+                for exchange in exchanges {
+                    if let Some(quote) = self.get_exchange_quote_at_via_intermediary(
+                        pair,
+                        &exchange,
+                        timestamp,
+                        max_time_diff,
+                    ) {
+                        return Some(quote);
+                    }
+
+                    if let Some(quote) = self.get_exchange_quote_at_via_intermediary(
                         &pair.flip(),
                         &exchange,
                         timestamp,
                         max_time_diff,
-                    )
-                })
+                    ) {
+                        return Some(quote);
+                    }
+                }
+                None
             })
     }
 

@@ -66,7 +66,20 @@ impl CexDB {
 
         let block_timestamp = metadata.microseconds_block_timestamp();
 
-        let cex_trades = &metadata.cex_trades.as_ref().unwrap().0;
+        let cex_trades = match metadata.cex_trades.as_ref() {
+            Some(trades) => &trades.0,
+            None => {
+                eprintln!(
+                    "Error: CEX trades data not found in local database for block {}.",
+                    self.block_number
+                );
+                eprintln!(
+                    "Please ensure 'brontes init' or data update process included this block."
+                );
+                return Ok(()); // Exit gracefully
+            }
+        };
+
         let exchanges_to_use = &cex_config.exchanges_to_use;
 
         let pair_exists = exchanges_to_use.iter().any(|exchange| {
