@@ -35,7 +35,7 @@ use tracing::warn;
 use super::types::CexQuote;
 use crate::{
     db::{
-        cex::{quotes::CexQuoteRedefined, trades::Direction, CexExchange},
+        cex::{exchanges, quotes::CexQuoteRedefined, trades::Direction, CexExchange},
         redefined_types::malachite::RationalRedefined,
     },
     implement_table_value_codecs_with_zc,
@@ -120,8 +120,26 @@ impl CexPriceMap {
                 None
             })
             .or_else(|| {
-                tracing::debug!(?pair, "no most liquid exchange found for pair");
-                None
+                tracing::debug!(
+                    ?pair,
+                    "no most liquid exchange found for pair, trying binance via intermediary"
+                );
+                let exchange = CexExchange::Binance;
+
+                self.get_exchange_quote_at_via_intermediary(
+                    pair,
+                    &exchange,
+                    timestamp,
+                    max_time_diff,
+                )
+                .or_else(|| {
+                    self.get_exchange_quote_at_via_intermediary(
+                        &pair.flip(),
+                        &exchange,
+                        timestamp,
+                        max_time_diff,
+                    )
+                })
             })
     }
 
