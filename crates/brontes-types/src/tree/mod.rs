@@ -1,8 +1,8 @@
 use std::{panic::AssertUnwindSafe, sync::Arc};
 
+use alloy_rpc_types::Header;
 use itertools::Itertools;
 use reth_primitives::B256;
-use reth_rpc_types::Header;
 use statrs::statistics::Statistics;
 use tracing::{error, info, span, Level};
 
@@ -32,10 +32,10 @@ type ClassifyData<V> = Option<(usize, Vec<MultiCallFrameClassification<V>>)>;
 
 #[derive(Debug, Clone)]
 pub struct BlockTree<V: NormalizedAction> {
-    pub tx_roots: Vec<Root<V>>,
-    pub header: Header,
+    pub tx_roots:             Vec<Root<V>>,
+    pub header:               Header,
     pub priority_fee_std_dev: f64,
-    pub avg_priority_fee: f64,
+    pub avg_priority_fee:     f64,
 }
 
 impl<V: NormalizedAction> BlockTree<V> {
@@ -85,10 +85,12 @@ impl<V: NormalizedAction> BlockTree<V> {
 
         let Ok(eoa) = database.try_fetch_searcher_eoa_infos(eoa_info_addr) else { return vec![] };
 
+        let Some(block_number) = self.header.number else { return vec![] };
+
         roots
             .into_iter()
             .map(|root| {
-                root.get_tx_info_batch(self.header.number, &eoa, &contract, &address_meta)
+                root.get_tx_info_batch(block_number, &eoa, &contract, &address_meta)
                     .ok()
             })
             .collect()
@@ -99,8 +101,10 @@ impl<V: NormalizedAction> BlockTree<V> {
             .iter()
             .find(|r| r.tx_hash == tx_hash)
             .and_then(|root| {
-                root.get_tx_info(self.header.number, database)
-                    .map_err(|e| error!(block=%self.header.number,"Database Error: {}", e ))
+                root.get_tx_info(self.header.number.expect("No block number"), database)
+                    .map_err(
+                        |e| error!(block=%self.header.number.unwrap(),"Database Error: {}", e ),
+                    )
                     .ok()
             })
     }

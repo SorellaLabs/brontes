@@ -7,7 +7,8 @@ use std::{
     task::{Poll, Waker},
 };
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, BlockHash};
+use alloy_rpc_types::Header;
 use brontes_classifier::Classifier;
 use brontes_core::decoding::Parser;
 use brontes_database::clickhouse::ClickhouseHandle;
@@ -21,7 +22,6 @@ use brontes_types::{
 };
 use eyre::eyre;
 use futures::{Future, FutureExt, Stream, StreamExt};
-use reth_primitives::{BlockHash, Header};
 use tracing::{span, trace, Instrument, Level};
 
 use super::{metadata_loader::MetadataLoader, multi_block_window::MultiBlockWindow};

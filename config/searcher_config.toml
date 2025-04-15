@@ -209,6 +209,10 @@ mev_types = ["Sandwich, CexDexQuotes", "CexDexTrades"]
 fund = "Beelder"
 mev_types = ["CexDexQuotes", "CexDexTrades"]
 
+[searcher_contracts."0xfBd4cdB413E45a52E2C8312f670e9cE67E794C37"]
+fund = "Wincent"
+mev_types = ["CexDexQuotes", "CexDexTrades"]
+
 [searcher_contracts."0x000000000035B5e5ad9019092C665357240f594e"]
 mev_types = ["AtomicArb"]
 sibling_searchers = ["0x00000000032962B51589768828ad878876299E14"]

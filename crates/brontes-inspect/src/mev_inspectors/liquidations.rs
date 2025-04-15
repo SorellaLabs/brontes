@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use alloy_primitives::{b256, Address};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -10,7 +11,6 @@ use brontes_types::{
 };
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::{b256, Address};
 
 use super::{MAX_PROFIT, MIN_PROFIT};
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};

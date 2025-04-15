@@ -9,8 +9,7 @@ use std::{
     time::Duration,
 };
 
-use alloy_primitives::Address;
-use alloy_primitives::BlockHash;
+use alloy_primitives::{Address, BlockHash};
 use brontes_database::clickhouse::ClickhouseHandle;
 use brontes_types::{
     db::{
@@ -39,14 +38,14 @@ pub type ClickhouseMetadataFuture =
 
 /// deals with all cases on how we get and finalize our metadata
 pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
-    clickhouse: Option<&'static CH>,
-    dex_pricer_stream: WaitingForPricerFuture<T>,
-    clickhouse_futures: ClickhouseMetadataFuture,
-    result_buf: VecDeque<BlockData>,
-    needs_more_data: Arc<AtomicBool>,
-    cex_window_data: CexWindow,
+    clickhouse:            Option<&'static CH>,
+    dex_pricer_stream:     WaitingForPricerFuture<T>,
+    clickhouse_futures:    ClickhouseMetadataFuture,
+    result_buf:            VecDeque<BlockData>,
+    needs_more_data:       Arc<AtomicBool>,
+    cex_window_data:       CexWindow,
     always_generate_price: bool,
-    force_no_dex_pricing: bool,
+    force_no_dex_pricing:  bool,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -102,7 +101,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         libmdbx: &'static DB,
         quote_asset: Address,
     ) {
-        let block = tree.header.number;
+        let block = tree.header.number.expect("block number not set in header");
         let generate_dex_pricing = self.generate_dex_pricing(block, libmdbx);
 
         if !generate_dex_pricing && self.clickhouse.is_none() {
@@ -175,7 +174,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             return;
         };
         meta.builder_info = libmdbx
-            .try_fetch_builder_info(tree.header.beneficiary)
+            .try_fetch_builder_info(tree.header.miner)
             .expect("failed to fetch builder info table in libmdbx");
 
         meta.cex_trades = self.load_cex_trades(libmdbx, block);
@@ -206,7 +205,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             return;
         };
         meta.builder_info = libmdbx
-            .try_fetch_builder_info(tree.header.beneficiary)
+            .try_fetch_builder_info(tree.header.miner)
             .expect("failed to fetch builder info table in libmdbx");
 
         let mut meta = meta.into_full_metadata(DexQuotes(vec![]));
@@ -233,7 +232,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             return;
         };
         meta.builder_info = libmdbx
-            .try_fetch_builder_info(tree.header.beneficiary)
+            .try_fetch_builder_info(tree.header.miner)
             .expect("failed to fetch builder info table in libmdbx");
 
         meta.cex_trades = self.load_cex_trades(libmdbx, block);
@@ -259,7 +258,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         let offsets = (window / 12) as u64;
         let future = Box::pin(async move {
             let builder_info = libmdbx
-                .try_fetch_builder_info(tree.header.beneficiary)
+                .try_fetch_builder_info(tree.header.miner)
                 .expect("failed to fetch builder info table in libmdbx");
 
             //fetch metadata till it works
@@ -351,9 +350,10 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         }
 
         match self.dex_pricer_stream.poll_next_unpin(cx) {
-            Poll::Ready(Some((tree, metadata))) => {
-                Poll::Ready(Some(BlockData { metadata: Arc::new(metadata), tree: Arc::new(tree) }))
-            }
+            Poll::Ready(Some((tree, metadata))) => Poll::Ready(Some(BlockData {
+                metadata: Arc::new(metadata),
+                tree:     Arc::new(tree),
+            })),
             Poll::Ready(None) => Poll::Ready(self.result_buf.pop_front()),
             Poll::Pending => {
                 if let Some(f) = self.result_buf.pop_front() {

@@ -246,7 +246,7 @@ pub fn calculate_builder_profit(
     bundles: &[Bundle],
     pre_processing: &BlockPreprocessing,
 ) -> BlockPnL {
-    let builder_address = tree.header.beneficiary;
+    let builder_address = tree.header.miner;
     let builder_payments: i128 =
         (pre_processing.total_priority_fee + pre_processing.total_bribe) as i128;
 
@@ -412,7 +412,7 @@ pub struct BlockPreprocessing {
 
 /// Pre-processes the block data for the Builder PNL calculation
 pub(crate) fn pre_process(tree: Arc<BlockTree<Action>>) -> BlockPreprocessing {
-    let builder_address = tree.header.beneficiary;
+    let builder_address = tree.header.miner;
 
     let (gas_details_by_address, total_gas_used, total_priority_fee, total_bribe) =
         tree.tx_roots.iter().fold(

@@ -6,6 +6,7 @@ use std::{
 use alloy_primitives::TxHash;
 use tracing::trace;
 mod types;
+use alloy_primitives::{Address, B256};
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::OutlierMetrics;
 use brontes_types::{
@@ -20,7 +21,6 @@ use brontes_types::{
 };
 use itertools::Itertools;
 use malachite::{num::basic::traits::Zero, Rational};
-use reth_primitives::{Address, B256};
 use types::{PossibleSandwich, PossibleSandwichWithTxInfo};
 
 use super::MAX_PROFIT;
