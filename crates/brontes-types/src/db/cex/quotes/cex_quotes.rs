@@ -184,31 +184,45 @@ impl CexPriceMap {
             .get(exchange)
             .and_then(|quotes| {
                 if let Some(exchange_quotes) = quotes.get(pair) {
-                    Some((exchange_quotes, Direction::Sell))
+                    if exchange_quotes.is_empty() {
+                        tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, "Found pair, but quote vector is empty");
+                        None
+                    } else {
+                        Some((exchange_quotes, Direction::Sell))
+                    }
                 } else {
                     let flipped_pair = pair.flip();
                     quotes
                         .get(&flipped_pair)
-                        .map(|quotes| (quotes, Direction::Buy))
+                        .and_then(|exchange_quotes| {
+                            if exchange_quotes.is_empty() {
+                                tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?flipped_pair, ?exchange, "Found flipped pair, but no quotes stored");
+                                None
+                            } else {
+                                Some((exchange_quotes, Direction::Buy))
+                            }
+                        })
+                        .or_else(|| {
+                            tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, "Neither pair nor flipped pair found in exchange map");
+                            None
+                        })
                 }
             })
+            .or_else(|| {
+                tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, "Exchange not found in quotes map");
+                None
+            })
             .and_then(|(adjusted_quotes, direction)| {
-                if adjusted_quotes.is_empty() {
-                    tracing::debug!(?pair, ?exchange, "no quotes");
-                    return None
-                }
-
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
+                let closest_quote_option = adjusted_quotes.get(index.saturating_sub(1));
 
-                let closest_quote = adjusted_quotes.get(index.saturating_sub(1));
-
-                if closest_quote.is_none() {
-                    tracing::debug!(target: "cex_quotes::lookup", ?pair, ?exchange, %timestamp, index, "Direct lookup: Found quotes, but none at or before the target timestamp");
+                if closest_quote_option.is_none() {
+                    tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, %timestamp, index, found_quotes_count=adjusted_quotes.len(), "Found quotes, but none at or before the target timestamp");
                     return None;
                 }
 
-                let adjusted_quote = closest_quote.unwrap().adjust_for_direction(direction);
-
+                let closest_quote =  closest_quote_option.unwrap();
+                let adjusted_quote = closest_quote.adjust_for_direction(direction);
                 let fees = exchange.fees();
 
                 let fee_adjusted_maker = (
