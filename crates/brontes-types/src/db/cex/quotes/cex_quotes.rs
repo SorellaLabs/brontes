@@ -550,10 +550,18 @@ impl CexPriceMap {
                 }
             });
 
-        connected_to_a
+        // Added Log: Show the connections found for each token
+        tracing::trace!(target: "cex_quotes::lookup::intermediary", ?pair, ?exchange, ?connected_to_a, ?connected_to_b, "Potential intermediary connections found");
+
+        let intersection: FastHashSet<Address> = connected_to_a
             .intersection(&connected_to_b)
             .cloned()
-            .collect()
+            .collect();
+
+        // Added Log: Show the final common intermediaries
+        tracing::trace!(target: "cex_quotes::lookup::intermediary", ?pair, ?exchange, intermediaries=?intersection, "Common intermediaries calculated");
+
+        intersection
     }
 
     pub fn quote_count(&self) -> usize {
