@@ -100,6 +100,7 @@ pub fn atomic_dedup_fn(
     true
 }
 
+//TODO: The filtering on atomic arb isn't great, neet to fix that
 define_mev_precedence!(
     // will filter out unless function says otherwise
     CexDexTrades => AtomicArb;

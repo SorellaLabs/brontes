@@ -130,7 +130,13 @@ impl CexPriceMap {
                     ?pair,
                     "no most liquid exchange found for pair, trying binance via intermediary"
                 );
-                let exchanges = vec![CexExchange::Binance, CexExchange::Coinbase];
+                let exchanges = vec![
+                    CexExchange::Binance,
+                    CexExchange::BybitSpot,
+                    CexExchange::Coinbase,
+                    CexExchange::Kucoin,
+                    CexExchange::Okex,
+                ];
 
                 for exchange in exchanges {
                     if let Some(quote) = self.get_exchange_quote_at_via_intermediary(

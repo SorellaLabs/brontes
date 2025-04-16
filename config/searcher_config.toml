@@ -245,3 +245,11 @@ mev_types = ["AtomicArb"]
 
 [searcher_contracts."0xAF0B0000f0210D0f421F0009C72406703B50506B"]
 mev_types = ["CexDexQuotes", "CexDexTrades"]
+
+# New cex-dex bot:
+
+[searcher_contracts."0x52659Ec73edc293AC1A16CFc8F27F8E7267eCf53"]
+mev_types = ["CexDexQuotes", "CexDexTrades"]
+
+# Not suer wtf buddy is doing below
+# 0xe6b1DE575e7e610889ea21024834e120f92033a3
