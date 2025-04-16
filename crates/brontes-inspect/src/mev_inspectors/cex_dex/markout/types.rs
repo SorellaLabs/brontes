@@ -253,12 +253,14 @@ impl CexDexProcessing {
                     .map_or(Rational::ZERO, |v| v.aggregate_pnl_taker.clone()),
 
                 global_vmap_details: self
-                    .global_vmam_cex_dex?
+                    .global_vmam_cex_dex
+                    .unwrap_or_default()
                     .generate_arb_details(&self.dex_swaps),
 
                 optimal_route_details: self
                     .max_profit
-                    .as_ref()?
+                    .clone()
+                    .unwrap_or_default()
                     .generate_arb_details(&self.dex_swaps),
 
                 optimal_route_pnl_maker: self
