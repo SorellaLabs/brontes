@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![allow(internal_features)]
 #![allow(clippy::type_complexity)]
-
+#![feature(core_intrinsics)]
 pub mod multi_block;
 pub use multi_block::*;
 pub mod buf_writer;
