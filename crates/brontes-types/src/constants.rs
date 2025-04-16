@@ -10,6 +10,7 @@ pub const USTC_ADDRESS: Address = Address::new(hex!("a47c8bf37f92abed4a126bda807
 pub const MIM_ADDRESS: Address = Address::new(hex!("99d8a9c45b2eca8864373a26d1459e3dff1e17f3"));
 pub const WETH_ADDRESS: Address = Address::new(hex!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"));
 pub const USDT_ADDRESS: Address = Address::new(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"));
+pub const CBBTC_ADDRESS: Address = Address::new(hex!("cbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"));
 pub const USDC_ADDRESS: Address = Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"));
 pub const FRAX_ADDRESS: Address = Address::new(hex!("853d955acef822db058eb8505911ed77f175b99e"));
 pub const USDE_ADDRESS: Address = Address::new(hex!("4c9edd5852cd905f086c759e8383e09bff1e68b3"));

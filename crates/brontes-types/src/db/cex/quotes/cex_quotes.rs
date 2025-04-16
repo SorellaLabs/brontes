@@ -34,6 +34,7 @@ use tracing::warn;
 
 use super::types::CexQuote;
 use crate::{
+    constants::{CBBTC_ADDRESS, WBTC_ADDRESS},
     db::{
         cex::{exchanges, quotes::CexQuoteRedefined, trades::Direction, CexExchange},
         redefined_types::malachite::RationalRedefined,
@@ -106,13 +107,18 @@ impl CexPriceMap {
         timestamp: u64,
         max_time_diff: Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
+        let pair = Pair(
+            if pair.0 == CBBTC_ADDRESS { WBTC_ADDRESS } else { pair.0 },
+            if pair.1 == CBBTC_ADDRESS { WBTC_ADDRESS } else { pair.1 },
+        );
+
         self.most_liquid_ex
-            .get(pair)
+            .get(&pair)
             .or_else(|| self.most_liquid_ex.get(&pair.flip()))
             .and_then(|exchanges| {
                 for exchange in exchanges {
                     tracing::debug!(?exchange, ?pair);
-                    let res = self.get_quote_at(pair, exchange, timestamp, max_time_diff);
+                    let res = self.get_quote_at(&pair, exchange, timestamp, max_time_diff);
                     if res.is_some() {
                         return res
                     }
@@ -128,7 +134,7 @@ impl CexPriceMap {
 
                 for exchange in exchanges {
                     if let Some(quote) = self.get_exchange_quote_at_via_intermediary(
-                        pair,
+                        &pair,
                         &exchange,
                         timestamp,
                         max_time_diff,
@@ -167,6 +173,7 @@ impl CexPriceMap {
             })
     }
 
+    //TODO: HARDCODE CBBTC AS WBTC
     pub fn get_exchange_quote_at_direct(
         &self,
         pair: &Pair,
