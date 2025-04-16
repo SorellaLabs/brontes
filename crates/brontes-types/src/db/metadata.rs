@@ -108,9 +108,6 @@ impl Metadata {
         let gas_used_rational = Rational::from_unsigneds(gas_used, 10u128.pow(18));
         let eth_price = self.get_eth_price(quote_token);
 
-        println!("gas used: {}", gas_used);
-        println!("eth price: {}", eth_price.clone().to_float());
-
         gas_used_rational * eth_price
     }
 

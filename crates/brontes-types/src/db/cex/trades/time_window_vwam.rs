@@ -336,7 +336,7 @@ impl<'a> TimeWindowTrades<'a> {
             walker.expand_time_bounds(min_expand, config.vwap_time_step_us);
         }
 
-        if &trade_volume_global < vol || !bypass_vol {
+        if &trade_volume_global < vol && !bypass_vol {
             log_insufficient_trade_volume(
                 pair,
                 dex_swap,
