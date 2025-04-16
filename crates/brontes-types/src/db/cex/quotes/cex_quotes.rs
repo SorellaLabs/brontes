@@ -178,6 +178,8 @@ impl CexPriceMap {
             return Some(FeeAdjustedQuote::default_one_to_one())
         }
 
+        tracing::trace!(target: "cex_quotes::lookup", ?pair, ?exchange, %timestamp, "Attempting direct lookup");
+
         self.quotes
             .get(exchange)
             .and_then(|quotes| {
@@ -198,8 +200,14 @@ impl CexPriceMap {
 
                 let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
 
-                let closest_quote = adjusted_quotes.get(index.saturating_sub(1))?;
-                let adjusted_quote = closest_quote.adjust_for_direction(direction);
+                let closest_quote = adjusted_quotes.get(index.saturating_sub(1));
+
+                if closest_quote.is_none() {
+                    tracing::debug!(target: "cex_quotes::lookup", ?pair, ?exchange, %timestamp, index, "Direct lookup: Found quotes, but none at or before the target timestamp");
+                    return None;
+                }
+
+                let adjusted_quote = closest_quote.unwrap().adjust_for_direction(direction);
 
                 let fees = exchange.fees();
 
