@@ -328,15 +328,24 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         // DEX and buying it on the CEX.
         let maker_token_delta = &output_of_cex_trade_maker - &swap.amount_in;
 
-        let token_price = metadata
-            .cex_quotes
-            .get_quote_from_most_liquid_exchange(
-                &Pair(swap.token_in.address, self.utils.quote),
-                metadata.microseconds_block_timestamp(),
-                None,
-            )?
-            .maker_taker_mid()
-            .0;
+        let token_in_quote_pair = Pair(swap.token_in.address, self.utils.quote);
+        let token_price = match metadata.cex_quotes.get_quote_from_most_liquid_exchange(
+            &token_in_quote_pair,
+            metadata.microseconds_block_timestamp(),
+            None,
+        ) {
+            Some(quote) => quote.maker_taker_mid().0,
+            None => {
+                trace!(
+                    target: "brontes::cex-dex-quotes",
+                    tx_hash = %tx_info.tx_hash,
+                    token_in = swap.token_in_symbol(),
+                    quote_token = %self.utils.quote,
+                    "Failed to get CEX price for token_in vs quote_token in profit_classifier"
+                );
+                return None;
+            }
+        };
 
         // Amount * base_to_quote = USDT amount
         let base_to_quote = if token_price == Rational::ZERO {
