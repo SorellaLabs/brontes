@@ -679,17 +679,22 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             || is_profitable_one_exchange_but_not_stable_swaps
             || is_outlier_but_not_stable_swaps
         {
+            tracing::trace!(
+                target: "brontes::cex-dex-markout",
+                "CEX-DEX opportunity found\n Tx: {}",
+                format_etherscan_url(&info.tx_hash)
+            );
             possible_cex_dex.into_bundle(info, metadata)
         } else {
             tracing::trace!(
                 target: "cex_dex_markout::filter",
-                tx_hash = ?info.tx_hash,
+
+                is_profitable_one_exchange_but_not_stable_swaps,
+                is_outlier_but_not_stable_swaps,      tx_hash = ?info.tx_hash,
                 reason = "CEX-DEX opportunity filtered out",
                 should_include_based_on_pnl,
                 is_cex_dex_based_on_historical_activity,
                 tx_attributes_meet_cex_dex_criteria,
-                is_profitable_one_exchange_but_not_stable_swaps,
-                is_outlier_but_not_stable_swaps,
             );
             self.utils.get_metrics().inspect(|m| {
                 m.branch_filtering_trigger(MevType::CexDexTrades, "filter_possible_cex_dex")
