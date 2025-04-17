@@ -115,7 +115,9 @@ impl TracingProvider for LocalProvider {
         number: BlockNumberOrTag,
     ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>> {
         tracing::info!(target: "brontes", "getting block receipts: {:?}", number);
-        Ok(self.provider.get_block_receipts(number).await?.map(|t| {
+        let receipts = self.provider.get_block_receipts(number).await?;
+        tracing::info!(target: "brontes", "got receipts: {:?}", receipts.is_some());
+        Ok(receipts.map(|t| {
             t.into_iter()
                 .map(|tx| {
                     tx.map_inner(|reciept_env| {
