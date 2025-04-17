@@ -77,7 +77,7 @@ struct JsonRpcResponse {
 #[serde(rename_all = "camelCase")]
 struct TraceResult {
     tx_hash: B256,
-    result:  Vec<TxTrace>,
+    result:  TxTrace,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -158,10 +158,10 @@ impl RpcClient {
     ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash: {:?}", block_hash);
         let params = json!([format!("0x{}", hex::encode(block_hash)), trace_options]);
-        let result: Result<TraceResult, RpcError> =
+        let result: Result<Vec<TraceResult>, RpcError> =
             self.call("debug_traceBlockByHash", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash result: {:?}", result);
-        result.map(|traces| traces.result)
+        result.map(|traces| traces.into_iter().map(|trace| trace.result).collect())
     }
 
     pub async fn debug_trace_block_by_number(
@@ -173,9 +173,129 @@ impl RpcClient {
         let params = json!([format!("0x{:x}", block_number), trace_options]);
 
         // First try to parse as a single TraceResult
-        let result: Result<TraceResult, RpcError> =
+        let result: Result<Vec<TraceResult>, RpcError> =
             self.call("debug_traceBlockByNumber", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_number result: {:?}", result);
-        result.map(|traces| traces.result)
+        result.map(|traces| traces.into_iter().map(|trace| trace.result).collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_trace_response_parsing() {
+        // The sample JSON response
+        let json_response = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": [
+                {
+                    "txHash": "0xac11f10e2b9a822a5a986f1ddb0bf4618b99c40855870ff22f90776aa0682007",
+                    "result": {
+                        "gas_used": "0x0",
+                        "effective_price": "0x0",
+                        "block_number": 327340070,
+                        "trace": [],
+                        "tx_hash": "0xac11f10e2b9a822a5a986f1ddb0bf4618b99c40855870ff22f90776aa0682007",
+                        "tx_index": 0,
+                        "is_success": true
+                    }
+                },
+                {
+                    "txHash": "0xdbc9477ae5709d01af509d709a2a1413ed72ee5aeb83903bc33de8d09c39a09a",
+                    "result": {
+                        "gas_used": "0x925d5",
+                        "effective_price": "0x0",
+                        "block_number": 327340070,
+                        "trace": [
+                            {
+                                "trace": {
+                                    "type": "call",
+                                    "action": {
+                                        "callType": "call",
+                                        "from": "0xeb1a8834cf6ca6d721e5cb1a8ad472bbf62eef8e",
+                                        "gas": "0x1e84800",
+                                        "input": "0xc9807539000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000002600000000000000000000000000000000000000000000000000000000000000300000001010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001c0000000000000000000000074d0c0518667458577264b2aac15152b0007af060502050103070604080009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000006b837000000000000000000000000000000000000000000000000000000000006b8c2d00000000000000000000000000000000000000000000000000000000006b8dd400000000000000000000000000000000000000000000000000000000006b8dd400000000000000000000000000000000000000000000000000000000006b8dd400000000000000000000000000000000000000000000000000000000006b8eca00000000000000000000000000000000000000000000000000000000006b918800000000000000000000000000000000000000000000000000000000006b91f600000000000000000000000000000000000000000000000000000000006bd28800000000000000000000000000000000000000000000000000000000006bd28800000000000000000000000000000000000000000000000000000000000000044d386f5b8f827dfce20681a96333dac17ddf3c8f9c10dbff95d77166d3bd74fdfaaa47e8c96aea3e67c4c2a3333009fa1ddc0338d624e7f1b6d14be4f044e58e2a9f43ee243b6da002e3eb70c9da6ce8895757f5649b7a751dd3a8cb11354634b085d04dc2fd504f10cf35a4ef131675ea8f424bac7e77276526bddf2c619c440000000000000000000000000000000000000000000000000000000000000004482f9b59a985a095b8e445a8f84a8799ebab63a0e1ad7037c7504f107f25541f0e57f8787e68a6c804c183efe6d1dbcc29df551c3bcb3a1f15b2d98d8ecdc81804c9171ee8cdac82bfce4b092f42107ce6fd4f849af257316ad9c75facf481967dec3be8b5b1f11d2eb4fb8d7dbdb61de520ba4ce4b431e0e7f2c9f7ccede0f1",
+                                        "to": "0x5ab0b1e2604d4b708721bc3cd1ce962958b4297e",
+                                        "value": "0x0"
+                                    },
+                                    "error": "",
+                                    "result": {
+                                        "gasUsed": 124036,
+                                        "output": "0x"
+                                    },
+                                    "subtraces": 0,
+                                    "traceAddress": []
+                                },
+                                "logs": [],
+                                "msg_sender": "0xeb1a8834cf6ca6d721e5cb1a8ad472bbf62eef8e",
+                                "trace_idx": 0
+                            }
+                        ],
+                        "tx_hash": "0xdbc9477ae5709d01af509d709a2a1413ed72ee5aeb83903bc33de8d09c39a09a",
+                        "tx_index": 1,
+                        "is_success": true
+                    }
+                }
+            ]
+        });
+
+        // Create a JsonRpcResponse from the JSON data
+        let json_string = json_response.to_string();
+        let rpc_response: JsonRpcResponse = serde_json::from_str(&json_string).unwrap();
+        
+        // Verify the response fields
+        assert_eq!(rpc_response.jsonrpc, "2.0");
+        assert_eq!(rpc_response.id, 1);
+        assert!(rpc_response.error.is_none());
+        assert!(rpc_response.result.is_some());
+        
+        // Extract and parse the trace results
+        let trace_results: Vec<TraceResult> = serde_json::from_value(rpc_response.result.unwrap()).unwrap();
+        
+        // Verify the trace results
+        assert_eq!(trace_results.len(), 2);
+        
+        // First trace
+        let first_trace = &trace_results[0];
+        assert_eq!(
+            first_trace.tx_hash.to_string().to_lowercase(),
+            "0xac11f10e2b9a822a5a986f1ddb0bf4618b99c40855870ff22f90776aa0682007".to_lowercase()
+        );
+        assert_eq!(first_trace.result.tx_index, 0);
+        assert_eq!(first_trace.result.block_number, 327340070);
+        assert!(first_trace.result.is_success);
+        assert!(first_trace.result.trace.is_empty());
+        
+        // Second trace
+        let second_trace = &trace_results[1];
+        assert_eq!(
+            second_trace.tx_hash.to_string().to_lowercase(),
+            "0xdbc9477ae5709d01af509d709a2a1413ed72ee5aeb83903bc33de8d09c39a09a".to_lowercase()
+        );
+        assert_eq!(second_trace.result.tx_index, 1);
+        assert_eq!(second_trace.result.block_number, 327340070);
+        assert!(second_trace.result.is_success);
+        assert_eq!(second_trace.result.trace.len(), 1);
+        
+        // Verify gas_used and effective_price values
+        // "0x925d5" in hex = 599509 in decimal
+        assert_eq!(second_trace.result.gas_used, 599509);
+        // "0x0" in hex = 0 in decimal
+        assert_eq!(second_trace.result.effective_price, 0);
+        
+        // Verify a trace element
+        let trace_element = &second_trace.result.trace[0];
+        assert_eq!(trace_element.trace_idx, 0);
+        
+        // Compare addresses with case insensitivity
+        let actual_sender = trace_element.msg_sender.to_string().to_lowercase();
+        let expected_sender = "0xeb1a8834cf6ca6d721e5cb1a8ad472bbf62eef8e".to_lowercase();
+        assert_eq!(actual_sender, expected_sender);
+        
+        assert!(trace_element.logs.is_empty());
     }
 }
