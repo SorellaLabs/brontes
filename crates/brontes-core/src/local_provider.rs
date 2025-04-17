@@ -76,6 +76,7 @@ impl TracingProvider for LocalProvider {
 
     #[cfg(not(feature = "local-reth"))]
     async fn best_block_number(&self) -> eyre::Result<u64> {
+        tracing::info!(target: "brontes", "getting best block number");
         self.provider.get_block_number().await.map_err(Into::into)
     }
 

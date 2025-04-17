@@ -156,11 +156,9 @@ impl RpcClient {
         block_hash: B256,
         trace_options: TraceOptions,
     ) -> Result<Vec<TxTrace>, RpcError> {
-        tracing::info!(target: "rpc_client", "debug_trace_block_by_hash: {:?}", block_hash);
         let params = json!([format!("0x{}", hex::encode(block_hash)), trace_options]);
         let result: Result<Vec<TraceResult>, RpcError> =
             self.call("debug_traceBlockByHash", params).await;
-        tracing::info!(target: "rpc_client", "debug_trace_block_by_hash result: {:?}", result);
         result.map(|traces| traces.into_iter().map(|trace| trace.result).collect())
     }
 
@@ -169,21 +167,19 @@ impl RpcClient {
         block_number: u64,
         trace_options: TraceOptions,
     ) -> Result<Vec<TxTrace>, RpcError> {
-        tracing::info!(target: "rpc_client", "debug_trace_block_by_number: {:?}", block_number);
         let params = json!([format!("0x{:x}", block_number), trace_options]);
-
         // First try to parse as a single TraceResult
         let result: Result<Vec<TraceResult>, RpcError> =
             self.call("debug_traceBlockByNumber", params).await;
-        tracing::info!(target: "rpc_client", "debug_trace_block_by_number result: {:?}", result);
         result.map(|traces| traces.into_iter().map(|trace| trace.result).collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_trace_response_parsing() {
@@ -246,19 +242,20 @@ mod tests {
         // Create a JsonRpcResponse from the JSON data
         let json_string = json_response.to_string();
         let rpc_response: JsonRpcResponse = serde_json::from_str(&json_string).unwrap();
-        
+
         // Verify the response fields
         assert_eq!(rpc_response.jsonrpc, "2.0");
         assert_eq!(rpc_response.id, 1);
         assert!(rpc_response.error.is_none());
         assert!(rpc_response.result.is_some());
-        
+
         // Extract and parse the trace results
-        let trace_results: Vec<TraceResult> = serde_json::from_value(rpc_response.result.unwrap()).unwrap();
-        
+        let trace_results: Vec<TraceResult> =
+            serde_json::from_value(rpc_response.result.unwrap()).unwrap();
+
         // Verify the trace results
         assert_eq!(trace_results.len(), 2);
-        
+
         // First trace
         let first_trace = &trace_results[0];
         assert_eq!(
@@ -269,7 +266,7 @@ mod tests {
         assert_eq!(first_trace.result.block_number, 327340070);
         assert!(first_trace.result.is_success);
         assert!(first_trace.result.trace.is_empty());
-        
+
         // Second trace
         let second_trace = &trace_results[1];
         assert_eq!(
@@ -280,22 +277,22 @@ mod tests {
         assert_eq!(second_trace.result.block_number, 327340070);
         assert!(second_trace.result.is_success);
         assert_eq!(second_trace.result.trace.len(), 1);
-        
+
         // Verify gas_used and effective_price values
         // "0x925d5" in hex = 599509 in decimal
         assert_eq!(second_trace.result.gas_used, 599509);
         // "0x0" in hex = 0 in decimal
         assert_eq!(second_trace.result.effective_price, 0);
-        
+
         // Verify a trace element
         let trace_element = &second_trace.result.trace[0];
         assert_eq!(trace_element.trace_idx, 0);
-        
+
         // Compare addresses with case insensitivity
         let actual_sender = trace_element.msg_sender.to_string().to_lowercase();
         let expected_sender = "0xeb1a8834cf6ca6d721e5cb1a8ad472bbf62eef8e".to_lowercase();
         assert_eq!(actual_sender, expected_sender);
-        
+
         assert!(trace_element.logs.is_empty());
     }
 }
