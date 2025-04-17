@@ -91,7 +91,6 @@ impl TracingProvider for LocalProvider {
                     .rpc_client
                     .debug_trace_block_by_hash(hash.block_hash, trace_options)
                     .await?;
-                tracing::info!(target: "brontes", "replayed block transactions: {:?}", traces);
                 Ok(Some(traces))
             }
             BlockId::Number(number) => {
@@ -101,7 +100,6 @@ impl TracingProvider for LocalProvider {
                         .rpc_client
                         .debug_trace_block_by_number(number.as_number().unwrap(), trace_options)
                     .await?;
-                    tracing::info!(target: "brontes", "replayed block transactions: {:?}", traces);
                     Ok(Some(traces))
                 } else {
                     tracing::error!(target: "brontes", "number is not a numeric: {:?}", number);
