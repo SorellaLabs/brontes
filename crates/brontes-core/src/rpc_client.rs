@@ -1,14 +1,17 @@
 //! A temporary custom RPC client implementation for Brontes tracer.
 //!
-//! This module provides a custom RPC client implementation specifically for the Brontes tracer,
-//! as the functionality needed (particularly debug_traceBlockByHash and debug_traceBlockByNumber)
-//! is not currently supported by the alloy provider.
+//! This module provides a custom RPC client implementation specifically for the
+//! Brontes tracer, as the functionality needed (particularly
+//! debug_traceBlockByHash and debug_traceBlockByNumber) is not currently
+//! supported by the alloy provider.
 //!
-//! The client handles JSON-RPC communication with Ethereum nodes, specifically focusing on
-//! transaction tracing functionality. It provides methods for tracing blocks by hash or number,
-//! and includes comprehensive error handling and logging for debugging purposes.
+//! The client handles JSON-RPC communication with Ethereum nodes, specifically
+//! focusing on transaction tracing functionality. It provides methods for
+//! tracing blocks by hash or number, and includes comprehensive error handling
+//! and logging for debugging purposes.
 //!
-//! Note: This is a temporary solution until the alloy provider adds support for these tracing methods.
+//! Note: This is a temporary solution until the alloy provider adds support for
+//! these tracing methods.
 
 use std::{
     fmt,
@@ -71,6 +74,13 @@ struct JsonRpcResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TraceResult {
+    tx_hash: B256,
+    result:  Vec<TxTrace>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct JsonRpcError {
     code:    i64,
     message: String,
@@ -86,13 +96,6 @@ pub struct RpcClient {
     endpoint: String,
     client:   Client,
     id:       AtomicU64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TraceResult {
-    #[serde(rename = "txHash")]
-    pub tx_hash: B256,
-    pub result: Vec<TxTrace>,
 }
 
 impl Clone for RpcClient {
@@ -132,50 +135,19 @@ impl RpcClient {
             .json(&request)
             .send()
             .await?;
-            
-        let response_text = response.text().await?;
-        
-        // Debug print the raw response text
-        tracing::info!(target: "rpc_client", "Raw response text: {}", response_text);
-        
-        // Parse the text back to JSON
-        let response: JsonRpcResponse = match serde_json::from_str(&response_text) {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!(target: "rpc_client", "Failed to parse JSON-RPC response: {}", e);
-                return Err(RpcError::JsonError(e));
-            }
-        };
-        tracing::info!(target: "rpc_client", "Parsed JSON-RPC response: {:?}", response);
 
-        if let Some(error) = response.error {
-            tracing::error!(target: "rpc_client", "RPC error: {:?}", error);
+        let json: JsonRpcResponse = response.json().await?;
+        if let Some(error) = json.error {
             return Err(RpcError::RpcError { code: error.code, message: error.message });
         }
 
-        if let Some(result) = response.result {
-            // Debug print the result value and its type
-            tracing::info!(target: "rpc_client", "Raw result value: {}", serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string()));
-            tracing::info!(target: "rpc_client", "Result type: {}", if result.is_array() { "array" } 
-                else if result.is_object() { "object" } 
-                else if result.is_string() { "string" }
-                else if result.is_number() { "number" }
-                else { "other" });
-            
-            // Try to deserialize into the requested type
+        if let Some(result) = json.result {
             match serde_json::from_value::<T>(result) {
-                Ok(value) => {
-                    tracing::info!(target: "rpc_client", "Successfully deserialized into requested type");
-                    Ok(value)
-                },
-                Err(e) => {
-                    tracing::error!(target: "rpc_client", "Failed to deserialize into requested type: {}", e);
-                    Err(RpcError::JsonError(e))
-                }
+                Ok(parsed_result) => Ok(parsed_result),
+                Err(err) => Err(RpcError::JsonError(err)),
             }
         } else {
-            tracing::error!(target: "rpc_client", "No result or error in response");
-            Err(RpcError::UnexpectedResponse("No result or error in response".to_string()))
+            Err(RpcError::UnexpectedResponse("No result in JSON-RPC response".to_string()))
         }
     }
 
@@ -185,10 +157,11 @@ impl RpcClient {
         trace_options: TraceOptions,
     ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash: {:?}", block_hash);
-        let params = json!([format!("0x{}", hex::encode(block_hash.0)), trace_options]);
-        let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByHash", params).await;
+        let params = json!([format!("0x{}", hex::encode(block_hash)), trace_options]);
+        let result: Result<TraceResult, RpcError> =
+            self.call("debug_traceBlockByHash", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_hash result: {:?}", result);
-        result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
+        result.map(|traces| traces.result)
     }
 
     pub async fn debug_trace_block_by_number(
@@ -198,10 +171,11 @@ impl RpcClient {
     ) -> Result<Vec<TxTrace>, RpcError> {
         tracing::info!(target: "rpc_client", "debug_trace_block_by_number: {:?}", block_number);
         let params = json!([format!("0x{:x}", block_number), trace_options]);
-        
+
         // First try to parse as a single TraceResult
-        let result: Result<Vec<TraceResult>, RpcError> = self.call("debug_traceBlockByNumber", params).await;
+        let result: Result<TraceResult, RpcError> =
+            self.call("debug_traceBlockByNumber", params).await;
         tracing::info!(target: "rpc_client", "debug_trace_block_by_number result: {:?}", result);
-        result.map(|traces| traces.into_iter().flat_map(|trace| trace.result).collect())
+        result.map(|traces| traces.result)
     }
 }
