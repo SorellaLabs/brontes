@@ -601,4 +601,116 @@ mod tests {
         // Verify logs
         assert!(trace.logs.is_empty());
     }
+
+    #[test]
+    fn test_tx_trace_delegate_and_static_calls() {
+        let json_str = r#"
+        {
+            "gas_used": "0x5208",
+            "effective_price": "0x4a817c800",
+            "block_number": 12345,
+            "trace": [
+                {
+                    "trace": {
+                        "type": "call",
+                        "action": {
+                            "callType": "delegatecall",
+                            "from": "0x1cd9a56c8c2ea913c70319a44da75e99255aa46f",
+                            "gas": "0x884d37",
+                            "input": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                            "to": "0x3f770ac673856f105b586bb393d122721265ad46",
+                            "value": "0x0"
+                        },
+                        "error": "",
+                        "result": {
+                            "gasUsed": 10987,
+                            "output": "0x0000000000000000000000000000000000000000000000000000000000000001"
+                        },
+                        "subtraces": 0,
+                        "traceAddress": [2, 0, 0, 1]
+                    },
+                    "logs": [],
+                    "msg_sender": "0x1cd9a56c8c2ea913c70319a44da75e99255aa46f",
+                    "trace_idx": 10
+                },
+                {
+                    "trace": {
+                        "type": "call",
+                        "action": {
+                            "callType": "staticcall",
+                            "from": "0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43",
+                            "gas": "0x8a4956",
+                            "input": "0x000000000000000000000000000000000000000000000000000000000000002000000000",
+                            "to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+                            "value": "0x0"
+                        },
+                        "error": "",
+                        "result": {
+                            "gasUsed": 3250,
+                            "output": "0x0000000000000000000000000000000000000000000000000000000037768422"
+                        },
+                        "subtraces": 1,
+                        "traceAddress": [2, 0, 1]
+                    },
+                    "logs": [],
+                    "msg_sender": "0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43",
+                    "trace_idx": 11
+                }
+            ],
+            "tx_hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+            "tx_index": 0,
+            "is_success": true
+        }"#;
+
+        let tx_trace: TxTrace = serde_json::from_str(json_str).expect("Failed to deserialize TxTrace");
+
+        // Verify the top-level fields
+        assert_eq!(tx_trace.block_number, 12345);
+        assert_eq!(tx_trace.gas_used, 21000); // 0x5208 = 21000
+        assert_eq!(tx_trace.effective_price, 20000000000); // 0x4a817c800 = 20000000000
+        assert_eq!(tx_trace.tx_index, 0);
+        assert!(tx_trace.is_success);
+
+        // Verify the trace array
+        assert_eq!(tx_trace.trace.len(), 2);
+
+        // Verify first trace (delegate call)
+        let delegate_trace = &tx_trace.trace[0];
+        assert_eq!(delegate_trace.trace_idx, 10);
+        assert_eq!(
+            delegate_trace.msg_sender,
+            Address::from_str("0x1cd9a56c8c2ea913c70319a44da75e99255aa46f").unwrap()
+        );
+        assert!(delegate_trace.is_delegate_call());
+        assert!(!delegate_trace.is_static_call());
+        assert_eq!(
+            delegate_trace.get_to_address(),
+            Address::from_str("0x3f770ac673856f105b586bb393d122721265ad46").unwrap()
+        );
+        assert_eq!(
+            delegate_trace.get_from_addr(),
+            Address::from_str("0x1cd9a56c8c2ea913c70319a44da75e99255aa46f").unwrap()
+        );
+        assert_eq!(delegate_trace.get_msg_value(), U256::ZERO);
+        assert_eq!(delegate_trace.get_trace_address(), vec![2, 0, 0, 1]);
+
+        // Verify second trace (static call)
+        let static_trace = &tx_trace.trace[1];
+        assert_eq!(static_trace.trace_idx, 11);
+        assert_eq!(
+            static_trace.msg_sender,
+            Address::from_str("0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43").unwrap()
+        );
+        assert!(static_trace.is_static_call());
+        assert!(!static_trace.is_delegate_call());
+        assert_eq!(
+            static_trace.get_to_address(),
+            Address::from_str("0xaf88d065e77c8cc2239327c5edb3a432268e5831").unwrap()
+        );
+        assert_eq!(
+            static_trace.get_from_addr(),
+            Address::from_str("0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43").unwrap()
+        );
+        assert_eq!(static_trace.get_trace_address(), vec![2, 0, 1]);
+    }
 }
