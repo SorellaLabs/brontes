@@ -1,3 +1,15 @@
+//! A temporary custom RPC client implementation for Brontes tracer.
+//!
+//! This module provides a custom RPC client implementation specifically for the Brontes tracer,
+//! as the functionality needed (particularly debug_traceBlockByHash and debug_traceBlockByNumber)
+//! is not currently supported by the alloy provider.
+//!
+//! The client handles JSON-RPC communication with Ethereum nodes, specifically focusing on
+//! transaction tracing functionality. It provides methods for tracing blocks by hash or number,
+//! and includes comprehensive error handling and logging for debugging purposes.
+//!
+//! Note: This is a temporary solution until the alloy provider adds support for these tracing methods.
+
 use std::{
     fmt,
     sync::atomic::{AtomicU64, Ordering},
