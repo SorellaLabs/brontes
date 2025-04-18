@@ -271,6 +271,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                         block_hash,
                         tree.get_hashes(),
                         quote_asset,
+                        false,
                     )
                     .await
                     .inspect_err(|e| {
