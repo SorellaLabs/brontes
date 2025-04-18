@@ -5,5 +5,5 @@ CREATE TABLE cex.trading_pairs (
     quote_asset LowCardinality(String)       -- Symbol of quote asset
 )
 ENGINE = MergeTree()
-PRIMARY KEY exchange, pair
-ORDER BY exchange, pair
+PRIMARY KEY (exchange, pair)
+ORDER BY (exchange, pair)
