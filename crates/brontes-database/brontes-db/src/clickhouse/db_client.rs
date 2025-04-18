@@ -7,7 +7,7 @@ use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
-    block_metadata::Relays,
+    block_metadata::{RelayBlockMetadata, Relays},
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
@@ -39,6 +39,7 @@ use db_interfaces::{
     Database,
 };
 use eyre::Result;
+use futures::future::ok;
 use itertools::Itertools;
 use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
@@ -444,15 +445,25 @@ impl ClickhouseHandle for Clickhouse {
         block_hash: BlockHash,
         tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
+        get_mempool_metadata: bool,
     ) -> eyre::Result<Metadata> {
-        let (relay, p2p_timestamp, private_flow) = tokio::try_join!(
-            Relays::get_relay_metadata(block_num, block_hash),
-            self.get_earliest_p2p_observation(block_num, block_hash),
-            self.get_private_flow(tx_hashes_in_block)
-        )
-        .inspect_err(|e| {
-            tracing::warn!("error getting block metadata - {:?}", e);
-        })?;
+        let (relay, p2p_timestamp, private_flow) = if get_mempool_metadata {
+            tokio::try_join!(
+                Relays::get_relay_metadata(block_num, block_hash),
+                self.get_earliest_p2p_observation(block_num, block_hash),
+                self.get_private_flow(tx_hashes_in_block)
+            )
+            .inspect_err(|e| {
+                tracing::warn!("error getting block metadata - {:?}", e);
+            })?
+        } else {
+            tokio::try_join!(
+                ok::<Option<RelayBlockMetadata>, eyre::Error>(None),
+                async { Ok::<Option<u64>, eyre::Error>(None) },
+                async { Ok::<Vec<TxHash>, eyre::Error>(Vec::new()) }
+            )
+            .unwrap()
+        };
 
         let block_meta = BlockMetadataInner::make_new(
             block_hash,
