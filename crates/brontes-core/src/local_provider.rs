@@ -1,16 +1,14 @@
 use std::sync::Arc;
 
 use alloy_provider::{Provider, RootProvider};
-use alloy_rpc_types::AnyReceiptEnvelope;
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
-use itertools::Itertools;
 use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
 };
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, ReceiptEnvelope, TransactionReceipt,
+    state::StateOverride, BlockOverrides,
     TransactionRequest,
 };
 
