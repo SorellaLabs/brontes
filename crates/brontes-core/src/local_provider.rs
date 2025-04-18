@@ -19,6 +19,7 @@ pub struct LocalProvider {
 }
 
 impl LocalProvider {
+
     pub fn new(url: String, retries: u8) -> Self {
         tracing::info!(target: "brontes", "creating local provider with url: {}", url);
 
@@ -110,12 +111,8 @@ impl TracingProvider for LocalProvider {
         &self,
         number: BlockNumberOrTag,
     ) -> eyre::Result<Option<Vec<alloy_rpc_types::AnyTransactionReceipt>>> {
-        tracing::info!(target: "brontes", "getting block receipts: {:?}", number);
-
         // Get the receipts directly from the provider
         let raw_receipts = self.provider.get_block_receipts(number).await?;
-        tracing::info!(target: "brontes", "got receipts: {:?}", raw_receipts.is_some());
-
         // Map the result
         Ok(raw_receipts)
     }
