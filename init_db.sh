@@ -9,7 +9,7 @@ clickhouse-client --query="
     CREATE DATABASE IF NOT EXISTS ethereum;
     CREATE DATABASE IF NOT EXISTS mev;
     CREATE DATABASE IF NOT EXISTS cex;
-" --user $USER
+" --user $USER --password
 
 echo "Initializing brontes tables..."
 for sql_file in ./crates/brontes-database/brontes-db/src/clickhouse/tables/*.sql; do
