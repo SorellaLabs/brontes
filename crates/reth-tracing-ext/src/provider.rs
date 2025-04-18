@@ -13,9 +13,7 @@ use reth_rpc::eth::{
     EthTransactions,
 };
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, TransactionRequest,
-};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, TransactionRequest};
 use revm::{
     primitives::{
         db::DatabaseRef, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, TransactTo, TxEnv,

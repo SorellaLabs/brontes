@@ -7,14 +7,9 @@ use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
 };
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides,
-    TransactionRequest,
-};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, TransactionRequest};
 
-use crate::{
-    rpc_client::{RpcClient, TraceOptions},
-};
+use crate::rpc_client::{RpcClient, TraceOptions};
 
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
