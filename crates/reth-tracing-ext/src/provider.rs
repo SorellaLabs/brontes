@@ -1,6 +1,5 @@
 use std::cmp::min;
 
-use alloy_rpc_types::AnyReceiptEnvelope;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
 use reth_primitives::{
@@ -15,7 +14,7 @@ use reth_rpc::eth::{
 };
 use reth_rpc_api::EthApiServer;
 use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
+    state::StateOverride, BlockOverrides, TransactionRequest,
 };
 use revm::{
     primitives::{

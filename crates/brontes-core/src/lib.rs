@@ -1,5 +1,4 @@
 #![feature(trait_alias)]
-pub mod arbitrum;
 pub mod decoding;
 pub mod errors;
 pub mod executor;

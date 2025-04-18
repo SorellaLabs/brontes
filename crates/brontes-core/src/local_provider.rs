@@ -15,7 +15,6 @@ use reth_rpc_types::{
 };
 
 use crate::{
-    arbitrum,
     rpc_client::{RpcClient, TraceOptions},
 };
 
