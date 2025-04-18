@@ -6,5 +6,5 @@ CREATE TABLE cex.normalized_trades (
     price Float64            -- Trade price
 )
 ENGINE = MergeTree()
-PRIMARY KEY symbol
-ORDER BY timestamp
+PRIMARY KEY (timestamp, symbol)
+ORDER BY (timestamp, symbol)
