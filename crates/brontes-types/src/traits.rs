@@ -46,7 +46,7 @@ pub trait TracingProvider: Send + Sync + 'static {
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>>;
+    ) -> eyre::Result<Option<Vec<alloy_rpc_types::AnyTransactionReceipt>>>;
 
     async fn header_by_number(&self, number: BlockNumber) -> eyre::Result<Option<Header>>;
 

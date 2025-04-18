@@ -292,7 +292,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         let mut stats = BlockStats::new(block_num, None);
 
         let receipts = match tx_receipts {
-            Ok(Some(t)) => Some(t),
+            Ok(Some(t)) => {
+                // Unwrap the WithOtherFields wrapper
+                Some(t.into_iter().map(|wrapped| (*wrapped).clone()).collect())
+            }
             Ok(None) => {
                 stats.err = Some(TraceParseErrorKind::TracesMissingBlock);
                 None
