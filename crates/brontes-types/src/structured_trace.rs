@@ -662,7 +662,8 @@ mod tests {
             "is_success": true
         }"#;
 
-        let tx_trace: TxTrace = serde_json::from_str(json_str).expect("Failed to deserialize TxTrace");
+        let tx_trace: TxTrace =
+            serde_json::from_str(json_str).expect("Failed to deserialize TxTrace");
 
         // Verify the top-level fields
         assert_eq!(tx_trace.block_number, 12345);

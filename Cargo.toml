@@ -101,6 +101,7 @@ alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b869
   "jsonrpsee-types",
 ] }
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
+alloy-consensus = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
 
 # Async
 tokio = { version = "1.13.0", features = ["full", "tracing"] }
