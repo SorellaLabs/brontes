@@ -1,7 +1,7 @@
 CREATE TABLE cex.address_symbols (
-    address String,          -- Token contract address
-    symbol String,           -- Trading symbol (e.g., "BTC")
-    unwrapped_symbol String  -- Optional unwrapped symbol (e.g., "WBTC" -> "BTC")
+    address FixedString(42),          -- Token contract address
+    symbol LowCardinality(String),           -- Trading symbol (e.g., "BTC")
+    unwrapped_symbol LowCardinality(String)  -- Optional unwrapped symbol (e.g., "WBTC" -> "BTC")
 )
 ENGINE = MergeTree()
 PRIMARY KEY symbol

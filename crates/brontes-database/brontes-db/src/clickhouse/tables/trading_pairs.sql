@@ -1,8 +1,8 @@
 CREATE TABLE cex.trading_pairs (
-    exchange String,         -- Exchange name
-    pair String,             -- Trading pair identifier
-    base_asset String,       -- Symbol of base asset
-    quote_asset String       -- Symbol of quote asset
+    exchange LowCardinality(String),         -- Exchange name
+    pair LowCardinality(String),             -- Trading pair identifier
+    base_asset LowCardinality(String),       -- Symbol of base asset
+    quote_asset LowCardinality(String)       -- Symbol of quote asset
 )
 ENGINE = MergeTree()
 PRIMARY KEY exchange, pair
