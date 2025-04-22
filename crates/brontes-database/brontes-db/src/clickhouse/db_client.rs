@@ -756,13 +756,13 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - (6.0 * SECONDS_TO_US);
+                    - (0.125 * SECONDS_TO_US);
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (6.0 * SECONDS_TO_US);
+                    + (0.125 * SECONDS_TO_US);
 
                 debug!(
                     "Querying raw CEX trades for time range: start={}, end={}",
