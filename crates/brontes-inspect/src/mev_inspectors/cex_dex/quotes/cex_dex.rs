@@ -331,7 +331,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         let token_in_quote_pair = Pair(swap.token_in.address, self.utils.quote);
         let token_price = match metadata.cex_quotes.get_quote_from_most_liquid_exchange(
             &token_in_quote_pair,
-            metadata.microseconds_block_timestamp() + ((0.5 * 1_000_000.0) as u64),
+            metadata.microseconds_block_timestamp() + ((2.0 * 1_000_000.0) as u64),
             None,
         ) {
             Some(quote) => quote.maker_taker_mid().0,
@@ -468,11 +468,8 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 1.5;
 
-        let should_include_if_know_cex_dex = possible_cex_dex.pnl.aggregate_pnl > 0.0;
-
-        let is_cex_dex_based_on_historical_activity = (is_cex_dex_bot_with_significant_activity
-            || is_labelled_cex_dex_bot)
-            && should_include_if_know_cex_dex;
+        let is_cex_dex_based_on_historical_activity =
+            is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
 
         if is_cex_dex_based_on_historical_activity || should_include_based_on_pnl {
             let t2 = self
