@@ -184,6 +184,9 @@ impl CexDexProcessing {
             }
         });
 
+        if let Some(arb) = self.optimistic_details.as_mut() {
+            arb.adjust_for_gas_cost(gas_cost);
+        }
         if let Some(arb) = self.max_profit.as_mut() {
             arb.adjust_for_gas_cost(gas_cost)
         }
@@ -745,6 +748,11 @@ impl OptimisticDetails {
 
         self.aggregate_pnl_maker = maker_pnl;
         self.aggregate_pnl_taker = taker_pnl;
+    }
+
+    fn adjust_for_gas_cost(&mut self, gas_cost: &Rational) {
+        self.aggregate_pnl_maker -= gas_cost;
+        self.aggregate_pnl_taker -= gas_cost;
     }
 
     pub fn generate_arb_details(&self, normalized_swaps: &[NormalizedSwap]) -> Vec<ArbDetails> {

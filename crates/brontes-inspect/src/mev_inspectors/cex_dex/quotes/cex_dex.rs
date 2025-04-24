@@ -268,7 +268,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
         let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0.5, None);
         let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_info)?;
-        println!("possible cex_dex {:#?}", cex_dex);
+
         let cex_dex_processing = CexDexProcessing { dex_swaps: swaps, pnl: cex_dex };
         Some(cex_dex_processing)
     }
@@ -441,7 +441,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         metadata: Arc<Metadata>,
     ) {
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
-        println!("gas cost: {}", gas_cost.clone().to_float());
 
         cex_dex.pnl.adjust_for_gas_cost(gas_cost);
     }
@@ -466,13 +465,6 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
 
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexQuotes);
-
-        println!(
-            "is ce-dex bot with significant activity: {}",
-            is_cex_dex_bot_with_significant_activity
-        );
-
-        println!("is labelled ce-dex bot: {}", is_labelled_cex_dex_bot);
 
         let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 1.5;
 

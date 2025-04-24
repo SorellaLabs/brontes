@@ -265,8 +265,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         let (profit_usd, cex_dex, trade_prices) =
             self.filter_possible_cex_dex(possible_cex_dex, &tx_info, metadata.clone())?;
 
-        println!("CEX-DEX profit: {}", profit_usd);
-
         let price_map = trade_prices
             .into_iter()
             .fold(FastHashMap::default(), |mut acc, x| {
@@ -374,8 +372,6 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             .collect()
     }
 
-    //TODO: Remove horendous clones, just getting ouput for debugging purposes
-    // right now
     pub fn process_optimistic(
         &self,
         cex_prices: CexPricesForSwaps,
