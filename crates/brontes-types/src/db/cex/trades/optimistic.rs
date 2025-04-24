@@ -33,7 +33,7 @@ use crate::{
     FastHashMap,
 };
 
-pub const BASE_EXECUTION_QUALITY: usize = 95;
+pub const BASE_EXECUTION_QUALITY: usize = 70;
 
 /// the calculated price based off of trades with the estimated exchanges with
 /// volume amount that where used to hedge
