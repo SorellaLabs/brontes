@@ -36,7 +36,7 @@ impl Default for CexDexTradeConfig {
             initial_optimistic_pre_block_us:   300_000,
             initial_optimistic_post_block_us:  50_000,
             max_optimistic_pre_block_us:       500_000,
-            max_optimistic_post_block_us:      2_000_000,
+            max_optimistic_post_block_us:      4_000_000,
             optimistic_scaling_diff_us:        200_000,
             optimistic_time_step_us:           100_000,
             use_block_time_weights_optimistic: false,
