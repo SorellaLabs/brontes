@@ -80,7 +80,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
                         .get_quote_from_most_liquid_exchange(
                             &pair,
                             metadata.microseconds_block_timestamp(),
-                            Some(1_000_000),
+                            &Some(1_000_000),
                         )?
                         .price_maker
                         .1
@@ -716,9 +716,9 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         if !(transfers.len() == 2 && (info.is_labelled_searcher_of_type(mev_type) || cfg!(test))) {
             return None;
         }
-        let ingore_addresses = info.collect_address_set_for_accounting();
+        let ignore_address = info.collect_address_set_for_accounting();
 
-        self.try_create_swaps(&transfers, ingore_addresses).pop()
+        self.try_create_swaps(&transfers, ignore_address).pop()
     }
 
     pub fn cex_merge_possible_swaps(swaps: Vec<NormalizedSwap>) -> Vec<NormalizedSwap> {

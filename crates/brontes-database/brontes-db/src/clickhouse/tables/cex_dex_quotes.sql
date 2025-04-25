@@ -1,4 +1,4 @@
-CREATE TABLE mev.cex_dex_quotes ON CLUSTER eth_cluster0
+CREATE TABLE mev.cex_dex_quotes2 ON CLUSTER eth_cluster0
 (
     `tx_hash` String,
     `block_timestamp` UInt64,

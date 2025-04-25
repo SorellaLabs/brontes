@@ -70,6 +70,9 @@ use super::types::{
 };
 
 pub const FILTER_THRESHOLD: u64 = 20;
+pub const INITIAL_MARKOUT_TIMES: [f64; 1] = [0.0];
+
+pub const POST_FILTER_MARKOUT_TIMES: [f64; 6] = [2.0, 6.0, 12.0, 30.0, 60.0, 300.0];
 
 use itertools::Itertools;
 
@@ -158,6 +161,14 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
+        let priority_fee_std_dev = tree.priority_fee_std_dev;
+        let base_fee = tree
+            .header
+            .base_fee_per_gas
+            .expect("base fee should be present");
+
+        let avr_priority = tree.avg_priority_fee;
+
         tree.clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
@@ -225,7 +236,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 }
 
                 let mut possible_cex_dex: CexDexProcessing =
-                    self.detect_cex_dex(dex_swaps, &metadata, &tx_info)?;
+                    self.detect_cex_dex(dex_swaps.clone(), &metadata, &tx_info)?;
 
                 let tx_cost = self.gas_accounting(
                     &mut possible_cex_dex,
@@ -233,17 +244,25 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     metadata.clone(),
                 );
 
-                let price_map = possible_cex_dex.pnl.trade_prices.clone().into_iter().fold(
-                    FastHashMap::default(),
-                    |mut acc, x| {
+                let price_map = possible_cex_dex.pnl.trade_prices[0]
+                    .clone()
+                    .into_iter()
+                    .fold(FastHashMap::default(), |mut acc, x| {
                         acc.insert(x.token0, x.price0);
                         acc.insert(x.token1, x.price1);
                         acc
-                    },
-                );
+                    });
 
-                let (profit_usd, cex_dex) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata, tx_cost)?;
+                let (profit_usd, cex_dex) = self.filter_possible_cex_dex(
+                    &dex_swaps,
+                    possible_cex_dex,
+                    &tx_info,
+                    &metadata,
+                    tx_cost,
+                    base_fee,
+                    priority_fee_std_dev,
+                    avr_priority,
+                )?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -270,8 +289,16 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
     ) -> Option<CexDexProcessing> {
         let swaps = SharedInspectorUtils::<DB>::cex_merge_possible_swaps(dex_swaps);
 
-        let quotes = self.cex_quotes_for_swap(&swaps, metadata, 0.5, None);
-        let cex_dex = self.detect_cex_dex_opportunity(&swaps, quotes, metadata, tx_info)?;
+        let quotes: Vec<Vec<Option<FeeAdjustedQuote>>> =
+            self.cex_quotes_for_swap(&swaps, metadata, &INITIAL_MARKOUT_TIMES, &[None]);
+
+        let cex_dex = self.detect_cex_dex_opportunity(
+            &swaps,
+            &INITIAL_MARKOUT_TIMES,
+            quotes,
+            metadata,
+            tx_info,
+        )?;
 
         let cex_dex_processing = CexDexProcessing { dex_swaps: swaps, pnl: cex_dex };
         Some(cex_dex_processing)
@@ -293,20 +320,27 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
     pub fn detect_cex_dex_opportunity(
         &self,
         dex_swaps: &[NormalizedSwap],
-        cex_prices: Vec<Option<FeeAdjustedQuote>>,
+        markout_times: &[f64],
+        cex_prices: Vec<Vec<Option<FeeAdjustedQuote>>>,
         metadata: &Metadata,
         tx_info: &TxInfo,
     ) -> Option<PossibleCexDex> {
         PossibleCexDex::from_exchange_legs(
-            dex_swaps
+            markout_times
                 .iter()
-                .zip(cex_prices)
-                .map(|(dex_swap, quote)| {
-                    if let Some(q) = quote {
-                        self.profit_classifier(dex_swap, q, metadata, tx_info)
-                    } else {
-                        None
-                    }
+                .enumerate()
+                .map(|(idx, markout_time)| {
+                    dex_swaps
+                        .iter()
+                        .zip(&cex_prices[idx])
+                        .map(|(dex_swap, quote)| {
+                            if let Some(q) = quote {
+                                self.profit_classifier(dex_swap, q, metadata, tx_info, markout_time)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect_vec()
                 })
                 .collect_vec(),
         )
@@ -317,9 +351,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
     fn profit_classifier(
         &self,
         swap: &NormalizedSwap,
-        cex_quote: FeeAdjustedQuote,
+        cex_quote: &FeeAdjustedQuote,
         metadata: &Metadata,
         tx_info: &TxInfo,
+        markout_time: &f64,
     ) -> Option<(ExchangeLeg, ExchangeLegCexPrice)> {
         let maker_taker_mid = cex_quote.maker_taker_mid();
 
@@ -335,8 +370,8 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         let token_in_quote_pair = Pair(swap.token_in.address, self.utils.quote);
         let token_price = match metadata.cex_quotes.get_quote_from_most_liquid_exchange(
             &token_in_quote_pair,
-            metadata.microseconds_block_timestamp() + ((2.0 * 1_000_000.0) as u64),
-            None,
+            metadata.microseconds_block_timestamp() + ((markout_time * 1_000_000.0) as u64),
+            &None,
         ) {
             Some(quote) => quote.maker_taker_mid().0,
             None => {
@@ -407,32 +442,43 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         &self,
         dex_swaps: &[NormalizedSwap],
         metadata: &Metadata,
-        time_delta: f64,
-        max_time_diff: Option<u64>,
-    ) -> Vec<Option<FeeAdjustedQuote>> {
-        dex_swaps
-            .iter()
-            .map(|dex_swap| {
-                let pair = Pair(dex_swap.token_in.address, dex_swap.token_out.address);
+        time_deltas: &[f64],
+        max_time_diffs: &[Option<u64>],
+    ) -> Vec<Vec<Option<FeeAdjustedQuote>>> {
+        debug_assert_eq!(
+            time_deltas.len(),
+            max_time_diffs.len(),
+            "deltas and max_time_diffs must have the same length"
+        );
 
-                metadata
-                    .cex_quotes
-                    .get_quote_from_most_liquid_exchange(
-                        &pair,
-                        metadata.microseconds_block_timestamp()
-                            + ((time_delta * 1_000_000.0) as u64),
-                        max_time_diff,
-                    )
-                    .or_else(|| {
-                        debug!(
-                            "No CEX quote found for pair: {}-{}",
-                            dex_swap.token_in_symbol(),
-                            dex_swap.token_out_symbol(),
-                        );
-                        None
+        let base_ts = metadata.microseconds_block_timestamp();
+
+        time_deltas
+            .iter()
+            .zip(max_time_diffs)
+            .map(|(delta, max_time_diff)| {
+                let ts = base_ts + (delta * 1_000_000.0) as u64;
+
+                dex_swaps
+                    .iter()
+                    .map(|dex_swap| {
+                        let pair = Pair(dex_swap.token_in.address, dex_swap.token_out.address);
+
+                        metadata
+                            .cex_quotes
+                            .get_quote_from_most_liquid_exchange(&pair, ts, max_time_diff)
+                            .or_else(|| {
+                                debug!(
+                                    "No CEX quote found for pair: {}-{}",
+                                    dex_swap.token_in_symbol(),
+                                    dex_swap.token_out_symbol(),
+                                );
+                                None
+                            })
                     })
+                    .collect_vec()
             })
-            .collect()
+            .collect_vec()
     }
 
     /// Accounts for gas costs in the calculation of potential arbitrage
@@ -443,11 +489,11 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         cex_dex: &mut CexDexProcessing,
         gas_details: &GasDetails,
         metadata: Arc<Metadata>,
-    ) -> f64 {
+    ) -> Rational {
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
         cex_dex.pnl.adjust_for_gas_cost(gas_cost.clone());
 
-        gas_cost.to_float()
+        gas_cost
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -462,83 +508,76 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
     /// identified, otherwise `None`.
     fn filter_possible_cex_dex(
         &self,
-        possible_cex_dex: CexDexProcessing,
+        swaps: &[NormalizedSwap],
+        mut possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
         metadata: &Metadata,
-        tx_cost: f64,
+        tx_cost_rational: Rational,
+        base_fee: u128,
+        priority_fee_std_dev: f64,
+        avr_priority: f64,
     ) -> Option<(f64, BundleData)> {
+        let tx_cost = tx_cost_rational.clone().to_float();
+
+        // Include if Cex Dex bot regardless of PnL
         let is_cex_dex_bot_with_significant_activity =
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
 
         let is_labelled_cex_dex_bot = info.is_labelled_searcher_of_type(MevType::CexDexQuotes);
 
-        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnl > 1.5;
-
         let is_cex_dex_based_on_historical_activity =
             is_cex_dex_bot_with_significant_activity || is_labelled_cex_dex_bot;
 
-        if is_cex_dex_based_on_historical_activity || should_include_based_on_pnl {
-            let t2 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 2.0, None)
-                .into_iter()
-                .map(|quote_option| {
-                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
-                })
-                .collect_vec();
+        // Include if PnL pre gas is greater than 2 & the tx does a bribe
+        let should_include_based_on_pnl = possible_cex_dex.pnl.aggregate_pnls[0] + tx_cost > 2.0
+            && info.gas_details.coinbase_transfer.is_some();
 
-            let t6 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 6.0, None)
-                .into_iter()
-                .map(|quote_option| {
-                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
-                })
-                .collect_vec();
+        let high_priority_fee = info.gas_details.priority_fee(base_fee) as f64
+            > avr_priority + (priority_fee_std_dev * 2.0);
 
-            let t12 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 12.0, Some(500_000))
-                .into_iter()
-                .map(|quote_option| {
-                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
-                })
-                .collect_vec();
+        // Include if priority fee is 2 std devs above block average & Pnl is greater
+        // than 1.0 pre gas if mev contract or greater than 5.0 if not
+        let should_include_based_on_high_priority_fee = high_priority_fee
+            && if info.mev_contract.is_some() {
+                possible_cex_dex.pnl.aggregate_pnls[0] + tx_cost > 1.0
+            } else {
+                possible_cex_dex.pnl.aggregate_pnls[0] + tx_cost > 5.0
+            };
 
-            let t30 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 30.0, Some(2_000_000))
-                .into_iter()
-                .map(|quote_option| {
-                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
-                })
-                .collect_vec();
-
-            let t60 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 60.0, Some(4_000_000))
-                .into_iter()
-                .map(|quote_option| {
-                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
-                })
-                .collect_vec();
-
-            let t300 = self
-                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 300.0, Some(15_000_000))
-                .into_iter()
-                .map(|quote_option| {
-                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
-                })
-                .collect_vec();
-
-            possible_cex_dex.into_bundle(
-                info,
-                metadata.block_timestamp,
-                t2,
-                t6,
-                t12,
-                t30,
-                t60,
-                t300,
-                tx_cost,
-            )
+        // Include if Pnl is greater than 0.5 post gas if mev contract or greater than
+        // 5.0 if not
+        let should_include_based_on_post_gas_pnl = if info.mev_contract.is_some() {
+            possible_cex_dex.pnl.aggregate_pnls[0] > 0.5
         } else {
-            let pnl = possible_cex_dex.pnl.aggregate_pnl;
+            possible_cex_dex.pnl.aggregate_pnls[0] > 1.5
+        };
+
+        if is_cex_dex_based_on_historical_activity
+            || should_include_based_on_pnl
+            || should_include_based_on_high_priority_fee
+            || should_include_based_on_post_gas_pnl
+        {
+            let quotes: Vec<Vec<Option<FeeAdjustedQuote>>> = self.cex_quotes_for_swap(
+                swaps,
+                metadata,
+                &POST_FILTER_MARKOUT_TIMES,
+                &[None, None, None, None, None, None],
+            );
+            let mut post_filter_cex_dex = self.detect_cex_dex_opportunity(
+                &swaps,
+                &POST_FILTER_MARKOUT_TIMES,
+                quotes,
+                metadata,
+                info,
+            )?;
+
+            post_filter_cex_dex.adjust_for_gas_cost(tx_cost_rational);
+
+            possible_cex_dex.extend(post_filter_cex_dex);
+
+            possible_cex_dex.into_bundle(info, metadata.block_timestamp, tx_cost)
+        } else {
+            let pnl = possible_cex_dex.pnl.aggregate_pnls[0];
             let reason = if pnl <= 0.0 {
                 format!("PNL ({:.2}) is not positive.", pnl)
             } else {

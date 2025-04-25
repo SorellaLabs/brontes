@@ -1318,7 +1318,7 @@ pub fn determine_eth_prices(
             .get_quote_from_most_liquid_exchange(
                 &Pair(quote_asset, WETH_ADDRESS),
                 block_timestamp,
-                None,
+                &None,
             )?
             .maker_taker_mid()
             .0,

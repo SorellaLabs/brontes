@@ -105,7 +105,7 @@ impl CexPriceMap {
         &self,
         pair: &Pair,
         timestamp: u64,
-        max_time_diff: Option<u64>,
+        max_time_diff: &Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         let pair = Pair(
             if pair.0 == CBBTC_ADDRESS { WBTC_ADDRESS } else { pair.0 },
@@ -166,7 +166,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
-        max_time_diff: Option<u64>,
+        max_time_diff: &Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         self.get_exchange_quote_at_direct(pair, exchange, timestamp, max_time_diff)
             .or_else(|| {
@@ -185,7 +185,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
-        _max_time_diff: Option<u64>,
+        max_time_diff: &Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         if pair.0 == pair.1 {
             return Some(FeeAdjustedQuote::default_one_to_one())
@@ -226,15 +226,45 @@ impl CexPriceMap {
                 None
             })
             .and_then(|(adjusted_quotes, direction)| {
-                let index = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
-                let closest_quote_option = adjusted_quotes.get(index.saturating_sub(1));
+                let idx = adjusted_quotes.partition_point(|q| q.timestamp <= timestamp);
 
+                let before = if idx > 0 {
+                    adjusted_quotes.get(idx - 1)
+                } else {
+                    None
+                };
+                let after = adjusted_quotes.get(idx);
+                let closest_quote_option = before
+                    .into_iter()
+                    .chain(after.into_iter())
+                    .min_by_key(|q| q.timestamp.abs_diff(timestamp));
+                
+
+                println!("Timestamp to find: {}", timestamp);
+                println!("Quote before: {:?}", before);
+                println!("Quote after: {:?}", after);
+                println!("Closest quote: {:?}", closest_quote_option);
+
+                
                 if closest_quote_option.is_none() {
-                    tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, %timestamp, index, found_quotes_count=adjusted_quotes.len(), "Found quotes, but none at or before the target timestamp");
+                    tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, %timestamp, idx, found_quotes_count=adjusted_quotes.len(), "Found quotes, but none at or before the target timestamp");
                     return None;
                 }
 
                 let closest_quote =  closest_quote_option.unwrap();
+
+                if let Some(max_diff) = max_time_diff {
+                    let delta = (closest_quote.timestamp as i64 - timestamp as i64).abs() as u64;
+                    if delta > *max_diff {
+                        tracing::debug!(
+                            target: "cex_quotes::lookup::timestamps",
+                            %timestamp, max = max_diff, found=closest_quote.timestamp,
+                            "closest quote too far away"
+                        );
+                        return None;
+                    }
+                }
+
                 let adjusted_quote = closest_quote.adjust_for_direction(direction);
                 let fees = exchange.fees();
 
@@ -264,7 +294,7 @@ impl CexPriceMap {
         pair: &Pair,
         exchange: &CexExchange,
         timestamp: u64,
-        max_time_diff: Option<u64>,
+        max_time_diff: &Option<u64>,
     ) -> Option<FeeAdjustedQuote> {
         let intermediaries = self.calculate_intermediary_addresses(exchange, pair);
 

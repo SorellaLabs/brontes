@@ -1241,27 +1241,42 @@ mod tests {
         };
 
         let case0 = CexDexQuote {
-            tx_hash:           hex!(
+            tx_hash:         hex!(
                 "ba217d10561a1cd6c52830dcc673886901e69ddb4db5e50c83f39ff0cfd14377"
             )
             .into(),
-            block_timestamp:   1694364587,
-            block_number:      18107273,
-            swaps:             vec![swap],
-            instant_mid_price: vec![0.0006263290093187073],
-            t2_mid_price:      vec![0.0006263290093187073],
-            t12_mid_price:     vec![0.0006263290093187073],
-            t30_mid_price:     vec![0.0006263290093187073],
-            t60_mid_price:     vec![0.0006263290093187073],
-            t300_mid_price:    vec![0.0006263290093187073],
-            exchange:          CexExchange::Binance,
-            pnl:               12951.829205242997,
-            gas_details:       GasDetails {
-                coinbase_transfer:   Some(11419369165096275986),
+            block_timestamp: 1694364587,
+            block_number:    18_107_273,
+            swaps:           vec![swap],
+            exchange:        CexExchange::Binance,
+
+            // mid‐price series
+            t0_mid_price:   vec![0.0006263290093187073],
+            t2_mid_price:   vec![0.0006263290093187073],
+            t6_mid_price:   vec![0.0006263290093187073],
+            t12_mid_price:  vec![0.0006263290093187073],
+            t30_mid_price:  vec![0.0006263290093187073],
+            t60_mid_price:  vec![0.0006263290093187073],
+            t300_mid_price: vec![0.0006263290093187073],
+
+            // pnl for each horizon
+            t0_pnl:   12_951.829205242997,
+            t2_pnl:   12_951.829205242997,
+            t6_pnl:   12_951.829205242997,
+            t12_pnl:  12_951.829205242997,
+            t30_pnl:  12_951.829205242997,
+            t60_pnl:  12_951.829205242997,
+            t300_pnl: 12_951.829205242997,
+
+            gas_details: GasDetails {
+                coinbase_transfer:   Some(11_419_369_165_096_275_986),
                 priority_fee:        0,
-                gas_used:            271686,
-                effective_gas_price: 8875282233,
+                gas_used:            271_686,
+                effective_gas_price: 8_875_282_233,
             },
+
+            // placeholder—replace with your actual cost calculation
+            tx_cost: 0.0,
         };
 
         db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 42069))
