@@ -240,12 +240,7 @@ impl CexPriceMap {
                     .min_by_key(|q| q.timestamp.abs_diff(timestamp));
                 
 
-                println!("Timestamp to find: {}", timestamp);
-                println!("Quote before: {:?}", before);
-                println!("Quote after: {:?}", after);
-                println!("Closest quote: {:?}", closest_quote_option);
 
-                
                 if closest_quote_option.is_none() {
                     tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, %timestamp, idx, found_quotes_count=adjusted_quotes.len(), "Found quotes, but none at or before the target timestamp");
                     return None;
@@ -276,6 +271,20 @@ impl CexPriceMap {
                 let fee_adjusted_taker = (
                     &adjusted_quote.price.0 * (Rational::ONE - &fees.1),
                     &adjusted_quote.price.1 * (Rational::ONE - &fees.1),
+                );
+
+                let delta_us = (closest_quote.timestamp as i64 - timestamp as i64).abs() as u64;
+                let delta_ms = delta_us / 1_000;
+                let delta_s = delta_ms / 1_000;
+                
+                tracing::trace!(
+                    target: "cex_quotes::lookup::timestamps",
+                    %timestamp,
+                    quote_timestamp = closest_quote.timestamp,
+                    delta_us,
+                    delta_ms,
+                    delta_s,
+                    "Quote timestamp delta"
                 );
 
                 Some(FeeAdjustedQuote {
