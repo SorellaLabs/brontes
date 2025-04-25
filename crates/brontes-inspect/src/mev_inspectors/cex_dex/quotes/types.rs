@@ -52,10 +52,12 @@ impl CexDexProcessing {
         tx_info: &TxInfo,
         block_timestamp: u64,
         t2_mid_price: Vec<f64>,
+        t6_mid_price: Vec<f64>,
         t12_mid_price: Vec<f64>,
         t30_mid_price: Vec<f64>,
         t60_mid_price: Vec<f64>,
         t300_mid_price: Vec<f64>,
+        tx_cost: f64,
     ) -> Option<(f64, BundleData)> {
         Some((
             self.pnl.aggregate_pnl,
@@ -63,21 +65,30 @@ impl CexDexProcessing {
                 tx_hash: tx_info.tx_hash,
                 block_number: tx_info.block_number,
                 block_timestamp,
-                instant_mid_price: self
+                exchange: self.pnl.arb_legs[0].as_ref()?.exchange,
+                swaps: self.dex_swaps,
+                t0_mid_price: self
                     .pnl
                     .arb_legs
                     .iter()
                     .map(|l| l.as_ref().unwrap_or(&ExchangeLeg::default()).cex_mid_price)
                     .collect(),
+                t6_mid_price,
                 t2_mid_price,
                 t12_mid_price,
                 t30_mid_price,
                 t60_mid_price,
                 t300_mid_price,
-                pnl: self.pnl.aggregate_pnl,
-                exchange: self.pnl.arb_legs[0].as_ref()?.exchange,
+                //TODO: Use correct pnl once changes in logic are made
+                t0_pnl: self.pnl.aggregate_pnl,
+                t2_pnl: self.pnl.aggregate_pnl,
+                t6_pnl: self.pnl.aggregate_pnl,
+                t12_pnl: self.pnl.aggregate_pnl,
+                t30_pnl: self.pnl.aggregate_pnl,
+                t60_pnl: self.pnl.aggregate_pnl,
+                t300_pnl: self.pnl.aggregate_pnl,
                 gas_details: tx_info.gas_details,
-                swaps: self.dex_swaps,
+                tx_cost,
             }),
         ))
     }

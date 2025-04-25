@@ -22,21 +22,29 @@ use crate::{
 #[derive(Debug, Deserialize, PartialEq, Clone, Default, Redefined)]
 #[redefined_attr(derive(Debug, PartialEq, Clone, Serialize, rSerialize, rDeserialize, Archive))]
 pub struct CexDexQuote {
-    pub tx_hash:           B256,
-    pub block_timestamp:   u64,
-    pub block_number:      u64,
-    pub swaps:             Vec<NormalizedSwap>,
-    pub instant_mid_price: Vec<f64>,
-    pub t2_mid_price:      Vec<f64>,
-    pub t12_mid_price:     Vec<f64>,
-    pub t30_mid_price:     Vec<f64>,
-    pub t60_mid_price:     Vec<f64>,
-    pub t300_mid_price:    Vec<f64>,
+    pub tx_hash:         B256,
+    pub block_timestamp: u64,
+    pub block_number:    u64,
+    pub swaps:           Vec<NormalizedSwap>,
     #[redefined(same_fields)]
-    pub exchange:          CexExchange,
-    pub pnl:               f64,
+    pub exchange:        CexExchange,
+    pub t0_mid_price:    Vec<f64>,
+    pub t2_mid_price:    Vec<f64>,
+    pub t6_mid_price:    Vec<f64>,
+    pub t12_mid_price:   Vec<f64>,
+    pub t30_mid_price:   Vec<f64>,
+    pub t60_mid_price:   Vec<f64>,
+    pub t300_mid_price:  Vec<f64>,
+    pub t0_pnl:          f64,
+    pub t2_pnl:          f64,
+    pub t6_pnl:          f64,
+    pub t12_pnl:         f64,
+    pub t30_pnl:         f64,
+    pub t60_pnl:         f64,
+    pub t300_pnl:        f64,
     #[redefined(same_fields)]
-    pub gas_details:       GasDetails,
+    pub gas_details:     GasDetails,
+    pub tx_cost:         f64,
 }
 
 impl Mev for CexDexQuote {
@@ -70,7 +78,7 @@ impl Serialize for CexDexQuote {
     where
         S: Serializer,
     {
-        let mut ser_struct = serializer.serialize_struct("CexDexQuote", 19)?;
+        let mut ser_struct = serializer.serialize_struct("CexDexQuote", 28)?;
         ser_struct.serialize_field("tx_hash", &format!("{:?}", self.tx_hash))?;
         ser_struct.serialize_field("block_timestamp", &self.block_timestamp)?;
         ser_struct.serialize_field("block_number", &self.block_number)?;
@@ -87,14 +95,23 @@ impl Serialize for CexDexQuote {
         ser_struct.serialize_field("swaps.token_out", &swaps.token_out)?;
         ser_struct.serialize_field("swaps.amount_in", &swaps.amount_in)?;
         ser_struct.serialize_field("swaps.amount_out", &swaps.amount_out)?;
-        ser_struct.serialize_field("pnl", &self.pnl)?;
-        ser_struct.serialize_field("instant_mid_price", &self.instant_mid_price)?;
+        ser_struct.serialize_field("exchange", &self.exchange.to_string())?;
+
+        ser_struct.serialize_field("t0_mid_price", &self.t0_mid_price)?;
         ser_struct.serialize_field("t2_mid_price", &self.t2_mid_price)?;
+        ser_struct.serialize_field("t6_mid_price", &self.t6_mid_price)?;
         ser_struct.serialize_field("t12_mid_price", &self.t12_mid_price)?;
         ser_struct.serialize_field("t30_mid_price", &self.t30_mid_price)?;
         ser_struct.serialize_field("t60_mid_price", &self.t60_mid_price)?;
         ser_struct.serialize_field("t300_mid_price", &self.t300_mid_price)?;
-        ser_struct.serialize_field("exchange", &self.exchange.to_string())?;
+        ser_struct.serialize_field("pnl", &self.t0_pnl)?;
+        ser_struct.serialize_field("t2_pnl", &self.t2_pnl)?;
+        ser_struct.serialize_field("t6_pnl", &self.t6_pnl)?;
+        ser_struct.serialize_field("t12_pnl", &self.t12_pnl)?;
+        ser_struct.serialize_field("t30_pnl", &self.t30_pnl)?;
+        ser_struct.serialize_field("t60_pnl", &self.t60_pnl)?;
+        ser_struct.serialize_field("t300_pnl", &self.t300_pnl)?;
+
         ser_struct.serialize_field(
             "gas_details",
             &(
@@ -104,6 +121,7 @@ impl Serialize for CexDexQuote {
                 self.gas_details.effective_gas_price,
             ),
         )?;
+        ser_struct.serialize_field("tx_cost", &self.tx_cost)?;
         ser_struct.end()
     }
 }
@@ -121,14 +139,22 @@ impl DbRow for CexDexQuote {
         "swaps.token_out",
         "swaps.amount_in",
         "swaps.amount_out",
-        "pnl",
-        "instant_mid_price",
+        "exchange",
+        "t0_mid_price",
         "t2_mid_price",
+        "t6_mid_price",
         "t12_mid_price",
         "t30_mid_price",
         "t60_mid_price",
         "t300_mid_price",
-        "exchange",
+        "t0_pnl",
+        "t2_pnl",
+        "t6_pnl",
+        "t12_pnl",
+        "t30_pnl",
+        "t60_pnl",
+        "t300_pnl",
         "gas_details",
+        "tx_cost",
     ];
 }

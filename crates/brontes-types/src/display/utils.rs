@@ -922,16 +922,46 @@ pub fn display_cex_dex_quotes(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
 
     writeln!(f, "\n{}", "Quote Details".bold().underline().bright_yellow())?;
     writeln!(f, "   - Exchange: {}", cex_dex_data.exchange.to_string().green())?;
-    writeln!(f, "   - PnL (USD): {}", format!("{:.6}", cex_dex_data.pnl).cyan())?;
+
+    writeln!(f, "\n   {}", "Quote Details".bold().underline().bright_yellow())?;
+    writeln!(f, "      {:<12} {}", "Exchange:", cex_dex_data.exchange.to_string().green())?;
+
+    writeln!(f, "\n   {}", "PnL Markouts".bold().underline().bright_yellow())?;
+
+    writeln!(f, "      {:<6} {:>12} {:>14}", "Interval", "Pre-Gas USD", "Post-Gas USD")?;
+    writeln!(f, "      {}", "─".repeat(36))?;
+
+    let horizons = [
+        ("T0", cex_dex_data.t0_pnl),
+        ("T2", cex_dex_data.t2_pnl),
+        ("T6", cex_dex_data.t6_pnl),
+        ("T12", cex_dex_data.t12_pnl),
+        ("T30", cex_dex_data.t30_pnl),
+        ("T60", cex_dex_data.t60_pnl),
+        ("T300", cex_dex_data.t300_pnl),
+    ];
+
+    for (label, pre) in &horizons {
+        let post = pre - cex_dex_data.tx_cost;
+        let post_str = format!("{:.6}", post);
+        let post_colored =
+            if post >= 0.0 { post_str.green().to_string() } else { post_str.red().to_string() };
+
+        writeln!(f, "      {:<6} {:>12.6} {:>14}", label, pre, post_colored,)?;
+    }
 
     writeln!(f, "\n{}", "Swaps".bold().underline().bright_yellow())?;
     for (i, swap) in cex_dex_data.swaps.iter().enumerate() {
         writeln!(f, "   Swap {}: {}", i + 1, swap)?;
-        if i < cex_dex_data.instant_mid_price.len() {
-            writeln!(f, "      - Mid Price: {:.6}", cex_dex_data.instant_mid_price[i])?;
+        if i < cex_dex_data.t0_mid_price.len() {
+            writeln!(f, "      - Mid Price: {:.6}", cex_dex_data.t0_mid_price[i])?;
         }
         if i < cex_dex_data.t2_mid_price.len() {
             writeln!(f, "      - Mid Price (T2): {:.6}", cex_dex_data.t2_mid_price[i])?;
+        }
+
+        if i < cex_dex_data.t6_mid_price.len() {
+            writeln!(f, "      - Mid Price (T6): {:.6}", cex_dex_data.t6_mid_price[i])?;
         }
 
         if i < cex_dex_data.t12_mid_price.len() {

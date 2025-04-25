@@ -227,7 +227,11 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 let mut possible_cex_dex: CexDexProcessing =
                     self.detect_cex_dex(dex_swaps, &metadata, &tx_info)?;
 
-                self.gas_accounting(&mut possible_cex_dex, &tx_info.gas_details, metadata.clone());
+                let tx_cost = self.gas_accounting(
+                    &mut possible_cex_dex,
+                    &tx_info.gas_details,
+                    metadata.clone(),
+                );
 
                 let price_map = possible_cex_dex.pnl.trade_prices.clone().into_iter().fold(
                     FastHashMap::default(),
@@ -239,7 +243,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 );
 
                 let (profit_usd, cex_dex) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata)?;
+                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata, tx_cost)?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -439,10 +443,11 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         cex_dex: &mut CexDexProcessing,
         gas_details: &GasDetails,
         metadata: Arc<Metadata>,
-    ) {
+    ) -> f64 {
         let gas_cost = metadata.get_gas_price_usd(gas_details.gas_paid(), self.utils.quote);
+        cex_dex.pnl.adjust_for_gas_cost(gas_cost.clone());
 
-        cex_dex.pnl.adjust_for_gas_cost(gas_cost);
+        gas_cost.to_float()
     }
 
     /// Filters and validates identified CEX-DEX arbitrage opportunities to
@@ -460,6 +465,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
         metadata: &Metadata,
+        tx_cost: f64,
     ) -> Option<(f64, BundleData)> {
         let is_cex_dex_bot_with_significant_activity =
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
@@ -474,6 +480,14 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         if is_cex_dex_based_on_historical_activity || should_include_based_on_pnl {
             let t2 = self
                 .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 2.0, None)
+                .into_iter()
+                .map(|quote_option| {
+                    quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
+                })
+                .collect_vec();
+
+            let t6 = self
+                .cex_quotes_for_swap(&possible_cex_dex.dex_swaps, metadata, 6.0, None)
                 .into_iter()
                 .map(|quote_option| {
                     quote_option.map_or(0.0, |quote| quote.maker_taker_mid().0.to_float())
@@ -512,7 +526,17 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 })
                 .collect_vec();
 
-            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t30, t60, t300)
+            possible_cex_dex.into_bundle(
+                info,
+                metadata.block_timestamp,
+                t2,
+                t6,
+                t12,
+                t30,
+                t60,
+                t300,
+                tx_cost,
+            )
         } else {
             let pnl = possible_cex_dex.pnl.aggregate_pnl;
             let reason = if pnl <= 0.0 {
