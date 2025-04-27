@@ -101,6 +101,18 @@ mod tests {
     #[brontes_macros::test]
     async fn test_univ4_swap() {
         let classifier_utils = ClassifierTestUtils::new().await;
+
+        classifier_utils.ensure_protocol(
+            Protocol::UniswapV4,
+            Address::new(hex!("000000000004444c5dc75cB358380D2e3dE08A90")),
+            Address::default(),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+
         let swap =
             B256::from(hex!("b9431a1a66d58bfb9c63daa566e766cfba38af66c9581708a447b410d418b01e"));
 
