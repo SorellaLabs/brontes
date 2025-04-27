@@ -1,8 +1,9 @@
-use alloy_primitives::I256;
+use alloy_primitives::{Address, I256};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
+    db::token_info::TokenInfoWithAddress, normalized_actions::NormalizedSwap,
+    structured_trace::CallInfo, ToScaledRational,
 };
 action_impl!(
     Protocol::UniswapV4,
@@ -26,8 +27,16 @@ action_impl!(
         let zeroForOne = call_data.params.zeroForOne;
 
 
-        let t0_info = db_tx.try_fetch_token_info(token_0)?;
-        let t1_info = db_tx.try_fetch_token_info(token_1)?;
+        let (t0_info, t1_info) = if token_0 == Address::default() {
+            let t0_info = TokenInfoWithAddress::native_eth();
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
+            (t0_info, t1_info)
+        } else {
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
+            (t0_info, t1_info)
+        };
+
 
         let logs = log_data.swap_field?;
 
@@ -55,7 +64,7 @@ action_impl!(
         };
 
         Ok(NormalizedSwap {
-            protocol: Protocol::UniswapV3,
+            protocol: Protocol::UniswapV4,
             trace_index: info.trace_idx,
             from: info.from_address,
             pool: info.target_address,
