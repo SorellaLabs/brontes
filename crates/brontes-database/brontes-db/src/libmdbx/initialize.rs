@@ -362,6 +362,7 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
 
         for (protocol, inner) in config {
             let protocol: Protocol = protocol.parse().unwrap();
+            println!("Protocol: {:?}", protocol);
             for (address, table) in inner.as_table().unwrap() {
                 let token_addr: Address = address.parse().unwrap();
                 let init_block = table.get("init_block").unwrap().as_integer().unwrap() as u64;
