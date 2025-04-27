@@ -127,7 +127,7 @@ mod tests {
 
         let eq_action = Action::Swap(NormalizedSwap {
             protocol:    UniswapV4,
-            trace_index: 72,
+            trace_index: 76,
             from:        Address::new(hex!("66a9893cc07d91d95644aedd05d03f95e1dba8af")),
             recipient:   Address::new(hex!("66a9893cc07d91d95644aedd05d03f95e1dba8af")),
             pool:        Address::new(hex!("000000000004444c5dc75cB358380D2e3dE08A90")),
