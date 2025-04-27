@@ -361,14 +361,9 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         };
 
         for (protocol, inner) in config {
-            tracing::info!(target: "brontes::init", raw_protocol_key = %protocol, "loading pool for protocol");
             let raw_protocol_key = protocol.clone();
 
             let protocol: Protocol = protocol.parse().unwrap();
-
-            if protocol != Protocol::UniswapV4 && raw_protocol_key == "UniswapV4" {
-                panic!("Failed to parse UniswapV4 protocol correctly");
-            }
 
             for (address, table) in inner.as_table().unwrap() {
                 let token_addr: Address = address.parse().unwrap();

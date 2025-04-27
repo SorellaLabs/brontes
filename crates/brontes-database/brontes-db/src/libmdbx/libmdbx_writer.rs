@@ -479,7 +479,6 @@ impl LibmdbxWriter {
         // add to default table
         let mut tokens = tokens.iter();
         let default = Address::ZERO;
-        println!("Writing pool {address} with classifier {classifier_name:?} to db");
 
         self.instrumented_write::<AddressToProtocolInfo, AddressToProtocolInfoData>(&[
             AddressToProtocolInfoData::new(
