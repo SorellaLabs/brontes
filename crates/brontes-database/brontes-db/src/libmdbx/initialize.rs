@@ -361,8 +361,6 @@ impl<TP: TracingProvider, CH: ClickhouseHandle> LibmdbxInitializer<TP, CH> {
         };
 
         for (protocol, inner) in config {
-            let raw_protocol_key = protocol.clone();
-
             let protocol: Protocol = protocol.parse().unwrap();
 
             for (address, table) in inner.as_table().unwrap() {

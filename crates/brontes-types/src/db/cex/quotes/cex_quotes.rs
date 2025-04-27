@@ -238,8 +238,6 @@ impl CexPriceMap {
                     .into_iter()
                     .chain(after.into_iter())
                     .min_by_key(|q| q.timestamp.abs_diff(timestamp));
-                
-
 
                 if closest_quote_option.is_none() {
                     tracing::debug!(target: "cex_quotes::lookup::direct", ?pair, ?exchange, %timestamp, idx, found_quotes_count=adjusted_quotes.len(), "Found quotes, but none at or before the target timestamp");
@@ -276,7 +274,6 @@ impl CexPriceMap {
                 let delta_us = (closest_quote.timestamp as i64 - timestamp as i64).abs() as u64;
                 let delta_ms = delta_us / 1_000;
                 let delta_s = delta_ms / 1_000;
-                
                 tracing::trace!(
                     target: "cex_quotes::lookup::timestamps",
                     %timestamp,
