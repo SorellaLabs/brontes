@@ -191,5 +191,9 @@ init_block = 12269078
 init_block = 13397058
 
 
+# Uni V4 Pool Manager
+[UniswapV4."0x000000000004444c5dc75cB358380D2e3dE08A90"]
+init_block = 21688329
+
 # [PropellerLabsSolver."0x14f2b6ca0324cd2B013aD02a7D85541d215e2906"]
 # init_block = 19025601

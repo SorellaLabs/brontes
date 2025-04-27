@@ -81,6 +81,7 @@ action_dispatch!(
     UniswapV3MintCall,
     UniswapV3BurnCall,
     UniswapV3CollectCall,
+    UniswapV4SwapCall,
     SushiSwapV3SwapCall,
     SushiSwapV3MintCall,
     SushiSwapV3BurnCall,
