@@ -193,8 +193,8 @@ fn spawn_db_writer_thread(
     ClickhouseBuffered::new(
         UnboundedYapperReceiver::new(buffered_rx, 1500, "clickhouse buffered".to_string()),
         clickhouse_config(),
-        5000,
-        800,
+        2500,
+        400,
         hr,
     )
     .run(shutdown);

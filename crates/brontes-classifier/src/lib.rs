@@ -67,6 +67,7 @@ sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProv
 sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
 sol!(DodoDPPPool, "./classifier-abis/dodo/DPPPool.json");
 sol!(DodoDSPPool, "./classifier-abis/dodo/DSPPool.json");
+sol!(FluidDex, "./classifier-abis/fluid/fluiddex.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");

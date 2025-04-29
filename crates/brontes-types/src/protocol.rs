@@ -102,6 +102,7 @@ utils!(
         ClipperExchange,
         PropellerLabsSolver,
         Dodo,
+        FluidDex,
         #[default]
         Unknown,
     }
@@ -148,6 +149,7 @@ impl Protocol {
             Protocol::ClipperExchange => ("ClipperExchange", ""),
             Protocol::PropellerLabsSolver => ("Propeller Labs Solver", ""),
             Protocol::Dodo => ("Dodo", "V1/V2"),
+            Protocol::FluidDex => ("FluidDex", ""),
             Protocol::Unknown => ("Unknown", "Unknown"),
         }
     }
@@ -176,6 +178,7 @@ impl Protocol {
             "dodov1/v2" => Protocol::Dodo,
             "pancakeswapv2" => Protocol::PancakeSwapV2,
             "pancakeswapv3" => Protocol::PancakeSwapV3,
+            "fluiddex" => Protocol::FluidDex,
             _ => Protocol::Unknown,
         }
     }
@@ -234,6 +237,7 @@ impl fmt::Display for Protocol {
                 Protocol::ClipperExchange => "Clipper",
                 Protocol::PropellerLabsSolver => "Propeller Labs",
                 Protocol::Dodo => "Dodo",
+                Protocol::FluidDex => "FluidDex",
                 Protocol::Unknown => "Unknown",
             }
         )

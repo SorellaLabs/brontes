@@ -195,5 +195,110 @@ init_block = 13397058
 [UniswapV4."0x000000000004444c5dc75cB358380D2e3dE08A90"]
 init_block = 21688329
 
+[FluidDex."0x836951EB21F3Df98273517B7249dCEFF270d34bf"]
+init_block = 21354360
+
+[[FluidDex."0x836951EB21F3Df98273517B7249dCEFF270d34bf".token_info]]
+address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+decimals = 6
+symbol = "USDC"
+
+[[FluidDex."0x836951EB21F3Df98273517B7249dCEFF270d34bf".token_info]]
+address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+decimals = 18
+symbol = "WETH"
+
+[FluidDex."0x0B1a513ee24972DAEf112bC777a5610d4325C9e7"]
+init_block = 21016132
+
+[[FluidDex."0x0B1a513ee24972DAEf112bC777a5610d4325C9e7".token_info]]
+address  = "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0"
+decimals = 18
+symbol   = "wstETH"
+
+[[FluidDex."0x0B1a513ee24972DAEf112bC777a5610d4325C9e7".token_info]]
+address  = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+decimals = 18
+symbol   = "WETH"
+
+[FluidDex."0x667701e51B4D1Ca244F17C78F7aB8744B4C99F9B"]
+init_block = 21016138
+ 
+[[FluidDex."0x667701e51B4D1Ca244F17C78F7aB8744B4C99F9B".token_info]]
+address  = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+decimals = 6
+symbol   = "USDC"
+
+[[FluidDex."0x667701e51B4D1Ca244F17C78F7aB8744B4C99F9B".token_info]]
+address  = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+decimals = 6
+symbol   = "USDT"
+
+[FluidDex."0x3C0441B42195F4aD6aa9a0978E06096ea616CDa7"]
+init_block = 21016165
+
+
+[[FluidDex."0x3C0441B42195F4aD6aa9a0978E06096ea616CDa7".token_info]]
+address  = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
+decimals = 8
+symbol   = "WBTC"
+
+[[FluidDex."0x3C0441B42195F4aD6aa9a0978E06096ea616CDa7".token_info]]
+address  = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
+decimals = 8
+symbol   = "cbBTC"
+
+[FluidDex."0xdE632C3a214D5f14C1d8ddF0b92F8BCd188fee45"]
+init_block = 21031805
+
+[[FluidDex."0xdE632C3a214D5f14C1d8ddF0b92F8BCd188fee45".token_info]]
+address  = "0x40D16FC0246aD3160Ccc09B8D0D3A2cD28aE6C2f"
+decimals = 18
+symbol   = "GHO"
+
+[[FluidDex."0xdE632C3a214D5f14C1d8ddF0b92F8BCd188fee45".token_info]]
+address  = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+decimals = 6
+symbol   = "USDC"
+
+[FluidDex."0x97479d9C09c7Fd333bBfd07e93d4c8a669698EBc"]
+init_block = 21845426
+
+
+[[FluidDex."0x97479d9C09c7Fd333bBfd07e93d4c8a669698EBc".token_info]]
+address  = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
+decimals = 8
+symbol   = "cbBTC"
+
+[[FluidDex."0x97479d9C09c7Fd333bBfd07e93d4c8a669698EBc".token_info]]
+address  = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+decimals = 18
+symbol   = "WETH"
+
+
+[FluidDex."0xD0810e5CF08dCDe266ecEBEf40caD806c7768D72"]
+init_block = 21744576
+
+
+[[FluidDex."0xD0810e5CF08dCDe266ecEBEf40caD806c7768D72".token_info]]
+address  = "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"
+decimals = 8
+symbol   = "cbBTC"
+
+[[FluidDex."0xD0810e5CF08dCDe266ecEBEf40caD806c7768D72".token_info]]
+address  = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+decimals = 6
+symbol   = "USDT"
+
+
+
+
+
+
+
+
+
+
+
 # [PropellerLabsSolver."0x14f2b6ca0324cd2B013aD02a7D85541d215e2906"]
 # init_block = 19025601

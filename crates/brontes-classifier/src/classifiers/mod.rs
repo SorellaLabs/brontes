@@ -41,6 +41,9 @@ pub use clipper::*;
 pub mod dodo;
 pub use dodo::*;
 
+pub mod fluid;
+pub use fluid::*;
+
 discovery_dispatch!(
     DiscoveryClassifier,
     SushiSwapV2Discovery,
@@ -209,5 +212,9 @@ action_dispatch!(
     DodoSellSharesCall,
     DodoSellBaseCall,
     DodoSellQuoteCall,
-    DodoFlashLoanCall
+    DodoFlashLoanCall,
+    FluidDexSwapInCall,
+    FluidDexSwapOutCall,
+    FluidDexSwapInWithCallbackCall,
+    FluidDexSwapOutWithCallbackCall
 );
