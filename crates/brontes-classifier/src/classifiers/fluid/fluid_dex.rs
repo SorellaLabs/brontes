@@ -197,7 +197,7 @@ mod tests {
         // expected NormalizedSwap action
         let eq_action = Action::Swap(NormalizedSwap {
             protocol:    FluidDex,
-            trace_index: 2,
+            trace_index: 4,
             from:        Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
             recipient:   Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
             pool:        Address::new(hex!("836951EB21F3Df98273517B7249dCEFF270d34bf")),
