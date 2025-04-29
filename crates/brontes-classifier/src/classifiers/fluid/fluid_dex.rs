@@ -95,21 +95,23 @@ action_impl!(
     Protocol::FluidDex,
     crate::FluidDex::swapOutCall,
     Swap,
-    [Swap],
-    logs: true,
+    [],
+    call_data: true,
+    return_data: true,
     |info: CallInfo,
-     log_data: FluidDexSwapOutCallLogs,
+    call_data: swapOutCall,
+     return_data: swapOutReturn,
      db_tx: &DB| {
-        let ev = log_data.swap_field?;
+
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token0, token1] = [details.token0, details.token1];
         let t0_info = db_tx.try_fetch_token_info(token0)?;
         let t1_info = db_tx.try_fetch_token_info(token1)?;
 
-        let (token_in, token_out, raw_in, raw_out) = if ev.swap0to1 {
-            (t0_info.clone(), t1_info.clone(), ev.amountIn, ev.amountOut)
+        let (token_in, token_out, raw_in, raw_out) = if call_data.swap0to1_ {
+            (t0_info.clone(), t1_info.clone(), return_data.amountIn_, call_data.amountOut_)
         } else {
-            (t1_info.clone(), t0_info.clone(), ev.amountIn, ev.amountOut)
+            (t1_info.clone(), t0_info.clone(), return_data.amountIn_, call_data.amountOut_)
         };
 
         let amount_in  = raw_in.to_scaled_rational(token_in.decimals);
@@ -135,21 +137,22 @@ action_impl!(
     Protocol::FluidDex,
     crate::FluidDex::swapOutWithCallbackCall,
     Swap,
-    [Swap],
-    logs: true,
+    [],
+    call_data: true,
+    return_data: true,
     |info: CallInfo,
-     log_data: FluidDexSwapOutWithCallbackCallLogs,
+        call_data: swapOutWithCallbackCall,
+        return_data: swapOutWithCallbackReturn,
      db_tx: &DB| {
-        let ev = log_data.swap_field?;
         let details = db_tx.get_protocol_details_sorted(info.target_address)?;
         let [token0, token1] = [details.token0, details.token1];
         let t0_info = db_tx.try_fetch_token_info(token0)?;
         let t1_info = db_tx.try_fetch_token_info(token1)?;
 
-        let (token_in, token_out, raw_in, raw_out) = if ev.swap0to1 {
-            (t0_info.clone(), t1_info.clone(), ev.amountIn, ev.amountOut)
+        let (token_in, token_out, raw_in, raw_out) = if call_data.swap0to1_ {
+            (t0_info.clone(), t1_info.clone(), return_data.amountIn_, call_data.amountOut_)
         } else {
-            (t1_info.clone(), t0_info.clone(), ev.amountIn, ev.amountOut)
+            (t1_info.clone(), t0_info.clone(), return_data.amountIn_, call_data.amountOut_)
         };
 
         let amount_in  = raw_in.to_scaled_rational(token_in.decimals);
