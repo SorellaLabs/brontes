@@ -569,6 +569,8 @@ impl ClickhouseHandle for Clickhouse {
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let mut query = BLOCK_TIMES.to_string();
 
+                tracing::info!("Querying block times for arbitrary values: {:?}", vals);
+
                 let vals = vals
                     .iter()
                     .flat_map(|v| {
@@ -584,6 +586,7 @@ impl ClickhouseHandle for Clickhouse {
                     &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
                 );
 
+                tracing::info!("Querying block times for arbitrary values: {:?}", query);
                 self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
