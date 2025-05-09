@@ -306,7 +306,7 @@ impl Clickhouse {
             .with_max_delay(Duration::from_secs(30));
 
         let mut try_count = 1;
-        tracing::info!("Querying: {:?}", query.as_ref());
+        tracing::info!("Querying: {:?} {:?}", query.as_ref(), params);
         let res = (|| async { self.client.query_many::<Q, P>(query.as_ref(), params).await })
             .retry(&retry_strategy)
             .when(|e| match e {
