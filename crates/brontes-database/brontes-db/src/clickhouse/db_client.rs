@@ -853,6 +853,7 @@ impl Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64;
 
+                tracing::info!("Querying most volume pair exchange for range: start={}, end={}", start_time, end_time);
                 self.query_many_with_retry(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
             }
