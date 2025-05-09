@@ -1,7 +1,7 @@
 CREATE TABLE cex.trading_volume_by_month (
     `month`       Date,
-    `symbol`      LowCardinality(FixedString(16)),
-    `exchange`    LowCardinality(FixedString(16)),
+    `symbol`      LowCardinality(String),
+    `exchange`    LowCardinality(String),
     `sum_volume`  Float64
 )
 ENGINE = SummingMergeTree()
