@@ -298,7 +298,7 @@ impl Clickhouse {
     ) -> Result<Vec<Q>, DatabaseError>
     where
         Q: ClickhouseQuery,
-        P: BindParameters + Send + Sync,
+        P: BindParameters + Send + Sync + Debug,
     {
         let retry_strategy = ExponentialBuilder::default()
             .with_max_times(10)
