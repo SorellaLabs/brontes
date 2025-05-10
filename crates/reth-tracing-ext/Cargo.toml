@@ -60,4 +60,8 @@ local-clickhouse = [
   "brontes-types/local-clickhouse",
 ]
 
+arbitrum = [
+  "brontes-types/arbitrum"
+]
+
 

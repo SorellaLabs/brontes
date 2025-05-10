@@ -97,4 +97,7 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
 ]
 
+arbitrum = [
+  "brontes-types/arbitrum"
+]
 
