@@ -95,3 +95,7 @@ local-clickhouse = [
   "brontes-database/local-clickhouse",
   "reth-tracing-ext/local-clickhouse",
 ]
+
+arbitrum = [
+  "brontes-types/arbitrum"
+]

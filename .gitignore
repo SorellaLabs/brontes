@@ -53,3 +53,5 @@ t
 t.json
 
 database/
+
+.envrc
