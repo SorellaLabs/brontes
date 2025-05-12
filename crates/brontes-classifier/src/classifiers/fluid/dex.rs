@@ -6,6 +6,8 @@ use brontes_types::{
     Protocol,
 };
 use alloy_primitives::Address;
+use alloy_sol_types::SolType;
+use alloy_dyn_abi::{DynSolType, DynSolValue};
 use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
@@ -322,12 +324,13 @@ discovery_impl!(
     |deployed_address: Address, trace_index: u64, call_data: deployDexCall ,_| async move {
         let pool_t1_creation_code = &call_data.dexDeploymentData_[4..];
 
-        type DexT1CreationCode = sol_data::Tuple<(alloy_sol_types::sol_data::Address, alloy_sol_types::sol_data::Address, alloy_sol_types::sol_data::Uint<256>)>;
-        let decoded_data: DexT1CreationCode = alloy_sol_types::abi::decode_params(pool_t1_creation_code, false)
-            .expect("Failed to decode pool T1 creation code");
-        let (token0, token1, _) = decoded_data;
+        let dex_t1_creation_code_type = DynSolType::Tuple(vec![DynSolType::Address, DynSolType::Address, DynSolType::Uint(256)]);
 
-        let tokens = vec![token0, token1];
+        let decoded_data = dex_t1_creation_code_type.abi_decode(&pool_t1_creation_code).expect("Failed to decode pool T1 creation code");
+        let DynSolValue::Tuple(values) = decoded_data else { panic!("Expected tuple") };
+        let [DynSolValue::Address(token0), DynSolValue::Address(token1), _] = values.as_slice() else { panic!("Invalid tuple structure") };
+
+        let tokens = vec![*token0, *token1];
 
         vec![NormalizedNewPool {
             trace_index,
