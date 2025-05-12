@@ -88,7 +88,8 @@ discovery_dispatch!(
     // BalancerV1CoreDiscovery,
     // BalancerV1SmartPoolDiscovery,
     CamelotV2Discovery,
-    CamelotV3Discovery
+    CamelotV3Discovery,
+    FluidDexFactoryDiscovery
 );
 
 action_dispatch!(

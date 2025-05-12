@@ -111,6 +111,7 @@ sol!(PendleMarketV3Factory, "./classifier-abis/pendle_v2/PendleMarketFactoryV3.j
 sol!(PendleYieldContractFactory, "./classifier-abis/pendle_v2/PendleYieldContractFactory.json");
 sol!(FluidDexFactory, "./classifier-abis/fluid/FluidDexFactory.json");
 sol!(DolomiteAdmin, "./classifier-abis/dolomite/Admin.json");
+sol!(FluidForwarder, "./classifier-abis/fluid/AvocadoForwarder.json");
 // Balancer Pool Interfaces
 sol! {
     enum SwapKind {

@@ -1,10 +1,11 @@
-use brontes_macros::action_impl;
+use brontes_macros::{action_impl, discovery_impl};
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap, NormalizedNewPool},
     structured_trace::CallInfo,
     utils::ToScaledRational,
     Protocol,
 };
+use alloy_primitives::Address;
 use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
@@ -314,24 +315,25 @@ action_impl!(
 
 
 
-action_impl!(
-    Protocol::FluidDEX,
+discovery_impl!(
+    FluidDexFactoryDiscovery,
     crate::FluidDexFactory::deployDexCall,
-    NewPool,
-    [DexT1Deployed],
-    call_data:true,
-    logs: true,
-    |info: CallInfo, call_data: deployDexCall, log_data: FluidDEXFactoryDexT1DeployedLogs, db: &DB| {
-        let logs = log_data.dex_t1_deployed_field?;
-        let pool_address=logs.dex;
-        let tokens=vec![logs.supplyToken, logs.borrowToken];
-        let tokens=tokens.iter().map(|token| db.try_fetch_token_info(*token)).collect::<Result<Vec<_>, _>>()?;
+    0x46978CD477A496028A18c02F07ab7F35EDBa5A54,
+    |deployed_address: Address, trace_index: u64, call_data: deployDexCall ,_| async move {
+        let pool_t1_creation_code = &call_data.dexDeploymentData_[4..];
 
-        Ok(NormalizedNewPool {
-            trace_index: info.trace_idx,
+        type DexT1CreationCode = sol_data::Tuple<(alloy_sol_types::sol_data::Address, alloy_sol_types::sol_data::Address, alloy_sol_types::sol_data::Uint<256>)>;
+        let decoded_data: DexT1CreationCode = alloy_sol_types::abi::decode_params(pool_t1_creation_code, false)
+            .expect("Failed to decode pool T1 creation code");
+        let (token0, token1, _) = decoded_data;
+
+        let tokens = vec![token0, token1];
+
+        vec![NormalizedNewPool {
+            trace_index,
             protocol: Protocol::FluidDEX,
-            pool_address,
+            pool_address: deployed_address,
             tokens,
-        })
+        }]
     }
 );
