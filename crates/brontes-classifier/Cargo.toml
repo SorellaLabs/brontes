@@ -26,6 +26,7 @@ alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-rpc-types.workspace = true
 alloy-rlp.workspace = true
+alloy-dyn-abi.workspace = true
 
 # reth
 reth-rpc-types.workspace = true
@@ -97,7 +98,4 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
 ]
 
-arbitrum = [
-  "brontes-types/arbitrum"
-]
-
+arbitrum = ["brontes-types/arbitrum"]

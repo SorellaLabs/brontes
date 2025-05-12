@@ -63,14 +63,16 @@ action_impl!(
         let target_address=info.target_address;
         let protocol_details=db.get_protocol_details(target_address)?;
 
-        let tokens=protocol_details.get_tokens();
+        let tokens = protocol_details.get_tokens();
 
-        let held_market_idx = usize::try_from(log_data.heldMarket.low_u64()).unwrap();
-        let owed_market_idx = usize::try_from(log_data.owedMarket.low_u64()).unwrap();
+
+        
+        let held_market_idx = log_data.heldMarket.to::<usize>();
+        let owed_market_idx = log_data.owedMarket.to::<usize>();
 
         // collateral market
-        let collateral_token=tokens.get(&held_market_idx).clone();
-        let debt_token=tokens.get(&owed_market_idx).clone();
+        let collateral_token = tokens[held_market_idx];
+        let debt_token = tokens[owed_market_idx];
         let collateral_info = db.try_fetch_token_info(collateral_token)?;
         // debt market
         let debt_info = db.try_fetch_token_info(debt_token)?;
