@@ -1,0 +1,2029 @@
+[
+  { "type": "constructor", "inputs": [], "stateMutability": "nonpayable" },
+  {
+    "type": "function",
+    "name": "addAsset",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "assetConfig",
+        "type": "tuple",
+        "internalType": "struct CometConfiguration.AssetConfig",
+        "components": [
+          { "name": "asset", "type": "address", "internalType": "address" },
+          {
+            "name": "priceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "decimals", "type": "uint8", "internalType": "uint8" },
+          {
+            "name": "borrowCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidateCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidationFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyCap",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "deploy",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "factory",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAssetIndex",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "asset", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getConfiguration",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct CometConfiguration.Configuration",
+        "components": [
+          {
+            "name": "governor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "pauseGuardian",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseTokenPriceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "extensionDelegate",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "supplyKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "storeFrontPriceFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "trackingIndexScale",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingSupplySpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingBorrowSpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseMinForRewards",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "baseBorrowMin",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "targetReserves",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "assetConfigs",
+            "type": "tuple[]",
+            "internalType": "struct CometConfiguration.AssetConfig[]",
+            "components": [
+              {
+                "name": "asset",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "priceFeed",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "decimals",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "borrowCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidateCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidationFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "supplyCap",
+                "type": "uint128",
+                "internalType": "uint128"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "governor",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      { "name": "governor_", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBaseBorrowMin",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newBaseBorrowMin",
+        "type": "uint104",
+        "internalType": "uint104"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBaseMinForRewards",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newBaseMinForRewards",
+        "type": "uint104",
+        "internalType": "uint104"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBaseTokenPriceFeed",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newBaseTokenPriceFeed",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBaseTrackingBorrowSpeed",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newBaseTrackingBorrowSpeed",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBaseTrackingSupplySpeed",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newBaseTrackingSupplySpeed",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBorrowKink",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newBorrowKink", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBorrowPerYearInterestRateBase",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newBase", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBorrowPerYearInterestRateSlopeHigh",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newSlope", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setBorrowPerYearInterestRateSlopeLow",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newSlope", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "clone",
+    "inputs": [
+      {
+        "name": "config",
+        "type": "tuple",
+        "internalType": "struct CometConfiguration.Configuration",
+        "components": [
+          {
+            "name": "governor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "pauseGuardian",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseTokenPriceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "extensionDelegate",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "supplyKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "storeFrontPriceFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "trackingIndexScale",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingSupplySpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingBorrowSpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseMinForRewards",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "baseBorrowMin",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "targetReserves",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "assetConfigs",
+            "type": "tuple[]",
+            "internalType": "struct CometConfiguration.AssetConfig[]",
+            "components": [
+              {
+                "name": "asset",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "priceFeed",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "decimals",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "borrowCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidateCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidationFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "supplyCap",
+                "type": "uint128",
+                "internalType": "uint128"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setConfiguration",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newConfiguration",
+        "type": "tuple",
+        "internalType": "struct CometConfiguration.Configuration",
+        "components": [
+          {
+            "name": "governor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "pauseGuardian",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseTokenPriceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "extensionDelegate",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "supplyKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "storeFrontPriceFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "trackingIndexScale",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingSupplySpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingBorrowSpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseMinForRewards",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "baseBorrowMin",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "targetReserves",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "assetConfigs",
+            "type": "tuple[]",
+            "internalType": "struct CometConfiguration.AssetConfig[]",
+            "components": [
+              {
+                "name": "asset",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "priceFeed",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "decimals",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "borrowCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidateCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidationFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "supplyCap",
+                "type": "uint128",
+                "internalType": "uint128"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setExtensionDelegate",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newExtensionDelegate",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setFactory",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newFactory", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setGovernor",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newGovernor", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setPauseGuardian",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newPauseGuardian",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setStoreFrontPriceFactor",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newStoreFrontPriceFactor",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setSupplyKink",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newSupplyKink", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setSupplyPerYearInterestRateBase",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newBase", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setSupplyPerYearInterestRateSlopeHigh",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newSlope", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setSupplyPerYearInterestRateSlopeLow",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "newSlope", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setTargetReserves",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newTargetReserves",
+        "type": "uint104",
+        "internalType": "uint104"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferGovernor",
+    "inputs": [
+      { "name": "newGovernor", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateAsset",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      {
+        "name": "newAssetConfig",
+        "type": "tuple",
+        "internalType": "struct CometConfiguration.AssetConfig",
+        "components": [
+          { "name": "asset", "type": "address", "internalType": "address" },
+          {
+            "name": "priceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "decimals", "type": "uint8", "internalType": "uint8" },
+          {
+            "name": "borrowCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidateCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidationFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyCap",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateAssetBorrowCollateralFactor",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "newBorrowCF", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateAssetLiquidateCollateralFactor",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "newLiquidateCF", "type": "uint64", "internalType": "uint64" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateAssetLiquidationFactor",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "asset", "type": "address", "internalType": "address" },
+      {
+        "name": "newLiquidationFactor",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateAssetPriceFeed",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "newPriceFeed", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateAssetSupplyCap",
+    "inputs": [
+      { "name": "cometProxy", "type": "address", "internalType": "address" },
+      { "name": "asset", "type": "address", "internalType": "address" },
+      { "name": "newSupplyCap", "type": "uint128", "internalType": "uint128" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "version",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "AddAsset",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "assetConfig",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct CometConfiguration.AssetConfig",
+        "components": [
+          { "name": "asset", "type": "address", "internalType": "address" },
+          {
+            "name": "priceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "decimals", "type": "uint8", "internalType": "uint8" },
+          {
+            "name": "borrowCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidateCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidationFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyCap",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "CometDeployed",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newComet",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GovernorTransferred",
+    "inputs": [
+      {
+        "name": "oldGovernor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newGovernor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBaseBorrowMin",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldBaseBorrowMin",
+        "type": "uint104",
+        "indexed": false,
+        "internalType": "uint104"
+      },
+      {
+        "name": "newBaseBorrowMin",
+        "type": "uint104",
+        "indexed": false,
+        "internalType": "uint104"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBaseMinForRewards",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldBaseMinForRewards",
+        "type": "uint104",
+        "indexed": false,
+        "internalType": "uint104"
+      },
+      {
+        "name": "newBaseMinForRewards",
+        "type": "uint104",
+        "indexed": false,
+        "internalType": "uint104"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBaseTokenPriceFeed",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldBaseTokenPriceFeed",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newBaseTokenPriceFeed",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBaseTrackingBorrowSpeed",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldBaseTrackingBorrowSpeed",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newBaseTrackingBorrowSpeed",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBaseTrackingSupplySpeed",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldBaseTrackingSupplySpeed",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newBaseTrackingSupplySpeed",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBorrowKink",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldKink",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newKink",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBorrowPerYearInterestRateBase",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldIRBase",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newIRBase",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBorrowPerYearInterestRateSlopeHigh",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldIRSlopeHigh",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newIRSlopeHigh",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetBorrowPerYearInterestRateSlopeLow",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldIRSlopeLow",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newIRSlopeLow",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetConfiguration",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldConfiguration",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct CometConfiguration.Configuration",
+        "components": [
+          {
+            "name": "governor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "pauseGuardian",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseTokenPriceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "extensionDelegate",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "supplyKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "storeFrontPriceFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "trackingIndexScale",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingSupplySpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingBorrowSpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseMinForRewards",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "baseBorrowMin",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "targetReserves",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "assetConfigs",
+            "type": "tuple[]",
+            "internalType": "struct CometConfiguration.AssetConfig[]",
+            "components": [
+              {
+                "name": "asset",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "priceFeed",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "decimals",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "borrowCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidateCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidationFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "supplyCap",
+                "type": "uint128",
+                "internalType": "uint128"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "newConfiguration",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct CometConfiguration.Configuration",
+        "components": [
+          {
+            "name": "governor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "pauseGuardian",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "baseTokenPriceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "extensionDelegate",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "supplyKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowKink",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeLow",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateSlopeHigh",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "borrowPerYearInterestRateBase",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "storeFrontPriceFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "trackingIndexScale",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingSupplySpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseTrackingBorrowSpeed",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "baseMinForRewards",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "baseBorrowMin",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "targetReserves",
+            "type": "uint104",
+            "internalType": "uint104"
+          },
+          {
+            "name": "assetConfigs",
+            "type": "tuple[]",
+            "internalType": "struct CometConfiguration.AssetConfig[]",
+            "components": [
+              {
+                "name": "asset",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "priceFeed",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "decimals",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
+                "name": "borrowCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidateCollateralFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "liquidationFactor",
+                "type": "uint64",
+                "internalType": "uint64"
+              },
+              {
+                "name": "supplyCap",
+                "type": "uint128",
+                "internalType": "uint128"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetExtensionDelegate",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldExt",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newExt",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetFactory",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldFactory",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newFactory",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetGovernor",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldGovernor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newGovernor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetPauseGuardian",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldPauseGuardian",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newPauseGuardian",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetStoreFrontPriceFactor",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldStoreFrontPriceFactor",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newStoreFrontPriceFactor",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetSupplyKink",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldKink",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newKink",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetSupplyPerYearInterestRateBase",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldIRBase",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newIRBase",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetSupplyPerYearInterestRateSlopeHigh",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldIRSlopeHigh",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newIRSlopeHigh",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetSupplyPerYearInterestRateSlopeLow",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldIRSlopeLow",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newIRSlopeLow",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SetTargetReserves",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldTargetReserves",
+        "type": "uint104",
+        "indexed": false,
+        "internalType": "uint104"
+      },
+      {
+        "name": "newTargetReserves",
+        "type": "uint104",
+        "indexed": false,
+        "internalType": "uint104"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdateAsset",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldAssetConfig",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct CometConfiguration.AssetConfig",
+        "components": [
+          { "name": "asset", "type": "address", "internalType": "address" },
+          {
+            "name": "priceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "decimals", "type": "uint8", "internalType": "uint8" },
+          {
+            "name": "borrowCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidateCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidationFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyCap",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      },
+      {
+        "name": "newAssetConfig",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct CometConfiguration.AssetConfig",
+        "components": [
+          { "name": "asset", "type": "address", "internalType": "address" },
+          {
+            "name": "priceFeed",
+            "type": "address",
+            "internalType": "address"
+          },
+          { "name": "decimals", "type": "uint8", "internalType": "uint8" },
+          {
+            "name": "borrowCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidateCollateralFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "liquidationFactor",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "supplyCap",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdateAssetBorrowCollateralFactor",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldBorrowCF",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newBorrowCF",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdateAssetLiquidateCollateralFactor",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldLiquidateCF",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newLiquidateCF",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdateAssetLiquidationFactor",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldLiquidationFactor",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "newLiquidationFactor",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdateAssetPriceFeed",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldPriceFeed",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "newPriceFeed",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdateAssetSupplyCap",
+    "inputs": [
+      {
+        "name": "cometProxy",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "asset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oldSupplyCap",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "newSupplyCap",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      }
+    ],
+    "anonymous": false
+  },
+  { "type": "error", "name": "AlreadyInitialized", "inputs": [] },
+  { "type": "error", "name": "AssetDoesNotExist", "inputs": [] },
+  { "type": "error", "name": "ConfigurationAlreadyExists", "inputs": [] },
+  { "type": "error", "name": "InvalidAddress", "inputs": [] },
+  { "type": "error", "name": "Unauthorized", "inputs": [] }
+]

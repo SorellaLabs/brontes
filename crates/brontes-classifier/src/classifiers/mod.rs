@@ -23,6 +23,15 @@ pub use pancakeswap::*;
 pub mod compound;
 pub use compound::*;
 
+pub mod fluid;
+pub use fluid::*;
+
+pub mod gmx;
+pub use gmx::*;
+
+pub mod dolomite;
+pub use dolomite::*;
+
 pub mod maker;
 pub use maker::*;
 
@@ -41,6 +50,20 @@ pub use clipper::*;
 pub mod dodo;
 pub use dodo::*;
 
+pub mod maverick_v2;
+pub use maverick_v2::*;
+pub mod pendle_v2;
+pub use pendle_v2::*;
+
+pub mod camelot;
+pub use camelot::*;
+
+pub mod dexalot;
+pub use dexalot::*;
+
+pub mod lfj;
+pub use lfj::*;
+
 discovery_dispatch!(
     DiscoveryClassifier,
     SushiSwapV2Discovery,
@@ -49,21 +72,24 @@ discovery_dispatch!(
     UniswapV3Discovery,
     PancakeSwapV3Discovery,
     PancakeSwapV2Discovery,
-    CurveV1MetaDiscovery,
+    // CurveV1MetaDiscovery,
     CurveV2PlainDiscovery0,
     CurveV2PlainDiscovery1,
     CurveV2PlainDiscovery2,
     CurveV2MetaDiscovery0,
     CurveV2MetaDiscovery1,
-    CurvecrvUSDPlainDiscovery0,
-    CurvecrvUSDPlainDiscovery1,
-    CurvecrvUSDPlainDiscovery2,
-    CurvecrvUSDMetaDiscovery0,
-    CurvecrvUSDMetaDiscovery1,
+    // CurvecrvUSDPlainDiscovery0,
+    // CurvecrvUSDPlainDiscovery1,
+    // CurvecrvUSDPlainDiscovery2,
+    // CurvecrvUSDMetaDiscovery0,
+    // CurvecrvUSDMetaDiscovery1,
     CurveCryptoSwapDiscovery,
     CurveTriCryptoDiscovery,
-    BalancerV1CoreDiscovery,
-    BalancerV1SmartPoolDiscovery
+    // BalancerV1CoreDiscovery,
+    // BalancerV1SmartPoolDiscovery,
+    CamelotV2Discovery,
+    CamelotV3Discovery,
+    FluidDexFactoryDiscovery
 );
 
 action_dispatch!(
@@ -208,5 +234,25 @@ action_dispatch!(
     DodoSellSharesCall,
     DodoSellBaseCall,
     DodoSellQuoteCall,
-    DodoFlashLoanCall
+    DodoFlashLoanCall,
+    MaverickV2SwapCall,
+    MaverickV2AddLiquidityCall,
+    MaverickV2RemoveLiquidityCall,
+    MaverickV2Create_0Call,
+    MaverickV2Create_1Call,
+    MaverickV2CreatePermissioned_0Call,
+    MaverickV2CreatePermissioned_1Call,
+    CamelotV2Swap_0Call,
+    CamelotV2Swap_1Call,
+    CamelotV3SwapCall,
+    PendleV2CreateNewMarketCall,
+    PendleV2CreateYieldContractCall,
+    CompoundV3SetConfigurationCall,
+    DexalotPartialSwapCall,
+    DexalotSimpleSwapCall,
+    LFJCreateLBPairCall,
+    LFJSwapCall,
+    LFJMintCall,
+    LFJBurnCall,
+    LFJCollectProtocolFeesCall
 );

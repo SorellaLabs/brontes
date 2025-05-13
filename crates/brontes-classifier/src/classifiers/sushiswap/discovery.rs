@@ -5,7 +5,7 @@ use brontes_pricing::Protocol;
 discovery_impl!(
     SushiSwapV2Discovery,
     crate::UniswapV2Factory::createPairCall,
-    0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac,
+    0xc35DADB65012eC5796536bD9864eD8773aBc74C4,
     |deployed_address: Address, trace_index: u64, call_data: createPairCall, _| async move {
         let mut token_a = call_data.tokenA;
         let mut token_b = call_data.tokenB;
@@ -25,7 +25,7 @@ discovery_impl!(
 discovery_impl!(
     SushiSwapV3Discovery,
     crate::UniswapV3Factory::createPoolCall,
-    0xbACEB8eC6b9355Dfc0269C18bac9d6E2Bdc29C4F,
+    0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e,
     |deployed_address: Address, trace_index: u64, call_data: createPoolCall, _| async move {
         let mut token_a = call_data.tokenA;
         let mut token_b = call_data.tokenB;
