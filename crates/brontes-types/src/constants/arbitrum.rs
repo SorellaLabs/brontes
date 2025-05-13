@@ -4,7 +4,7 @@ pub const USDT_ADDRESS_STRING: &str = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb
 // USD Stablecoins
 pub const USDT_ADDRESS: Address = Address::new(hex!("Fd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"));
 pub const USDCE_ADDRESS: Address = Address::new(hex!("FF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"));
-pub const USDC_ADDRESS: Address = Address::new(hex!("A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"));
+pub const USDC_ADDRESS: Address = Address::new(hex!("af88d065e77c8cC2239327C5EDb3A432268e5831"));
 pub const USDS_ADDRESS: Address = Address::new(hex!("6491c05A82219b8D1479057361ff1654749b876b"));
 pub const USDE_ADDRESS: Address = Address::new(hex!("5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34"));
 pub const DAI_ADDRESS: Address = Address::new(hex!("DA10009cBd5D07dd0CeCc66161FC93D7c9000da1"));
