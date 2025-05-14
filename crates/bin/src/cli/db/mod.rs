@@ -11,6 +11,8 @@ mod db_query;
 #[cfg(feature = "local-clickhouse")]
 mod discovery;
 #[cfg(feature = "local-clickhouse")]
+mod discovery_logs;
+#[cfg(feature = "local-clickhouse")]
 mod ensure_test_traces;
 mod export;
 mod init;
@@ -80,6 +82,10 @@ pub enum DatabaseCommands {
     #[cfg(feature = "local-clickhouse")]
     #[command(name = "run-discovery")]
     Discovery(discovery::DiscoveryFill),
+    /// Only runs discovery and inserts discovered protocols into clickhouse
+    #[cfg(feature = "local-clickhouse")]
+    #[command(name = "run-discovery-log")]
+    DiscoveryLogs(discovery_logs::DiscoveryLogsFill),
 }
 
 impl Database {
@@ -103,6 +109,8 @@ impl Database {
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_path, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_path, ctx).await,
+            #[cfg(feature = "local-clickhouse")]
+            DatabaseCommands::DiscoveryLogs(cmd) => cmd.execute(brontes_db_path, ctx).await,
         }
     }
 }
