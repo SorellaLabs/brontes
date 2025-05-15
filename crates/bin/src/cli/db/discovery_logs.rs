@@ -104,9 +104,10 @@ impl DiscoveryLogsFill {
         let mut filters: HashMap<Protocol, Filter> = HashMap::new();
         filters.insert(Protocol::BalancerV2, balancer_v2_filter);
         filters.insert(Protocol::UniswapV2, uniswap_v2_filter);
-        filters.insert(Protocol::CamelotV3, camelot_v3_filter);
         filters.insert(Protocol::UniswapV3, uniswap_v3_filter);
         filters.insert(Protocol::UniswapV4, uniswap_v4_filter);
+        filters.insert(Protocol::CamelotV2, camelot_v2_filter);
+        filters.insert(Protocol::CamelotV3, camelot_v3_filter);
         filters.insert(Protocol::FluidDEX, fluid_dex_filter);
 
         let parser = static_object(DLogParser::new(libmdbx, tracer.clone(), filters).await);
