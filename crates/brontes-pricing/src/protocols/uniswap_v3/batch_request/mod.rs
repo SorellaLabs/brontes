@@ -15,7 +15,7 @@ use super::UniswapV3Pool;
 use crate::errors::AmmError;
 sol!(
     IGetUniswapV3TickDataBatchRequest,
-    "./src/protocols/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequestABI.json"
+    "./src/protocols/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequest.json"
 );
 sol!(IGetERC20DataRequest, "./src/protocols/uniswap_v3/batch_request/GetERC20DataABI.json");
 
