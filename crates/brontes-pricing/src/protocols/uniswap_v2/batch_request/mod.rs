@@ -11,7 +11,7 @@ use crate::errors::AmmError;
 
 sol!(
     IGetUniswapV2PoolDataBatchRequest,
-    "./src/protocols/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequest.json"
+    "./src/protocols/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json"
 );
 
 sol!(
