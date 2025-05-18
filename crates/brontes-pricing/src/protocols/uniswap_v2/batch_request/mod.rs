@@ -4,6 +4,7 @@ use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use futures::TryFutureExt;
+use hex;
 use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 use super::UniswapV2Pool;
@@ -59,6 +60,8 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
             tracing::error!("v2 eth call failed, err={}", e);
             e
         })?;
+
+    tracing::trace!("v2 eth call success, res={}", hex::encode(&res));
 
     let mut return_data = data_constructorCall::abi_decode_returns(&res, false).map_err(|e| {
         tracing::error!("v2 abi decode failed, err={}", e);
