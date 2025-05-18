@@ -1,5 +1,6 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
+use alloy_primitives::Address;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
@@ -43,29 +44,20 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
     block: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
-    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
+    let call_data = data_constructorCall::new((vec![pool.address],)).abi_encode();
 
     let req = TransactionRequest {
-        to: None,
-        input: TransactionInput::new(bytecode.into()),
+        to: Some(Address::from_str("0x3f701A02eC90295D44603CAcdd582FaA3A975e09").unwrap()),
+        input: TransactionInput::new(call_data.into()),
         ..Default::default()
     };
 
     let res = middleware
         .eth_call_light(req, block.unwrap().into())
         .map_err(|e| eyre::eyre!("v2 state call failed, err={}", e))
-        .await.map_err(|e| {
-            tracing::error!("v2 eth call failed, err={}", e);
-            e
-        })?;
+        .await?;
 
-
-    let mut return_data = data_constructorCall::abi_decode_returns(&res, false).map_err(|e| {
-        tracing::trace!("v2 eth call success, res={}, pool={:?}", alloy_primitives::hex::encode(&res), pool);    
-        tracing::error!("v2 abi decode failed, err={}", e);
-        e
-    })?;
+    let mut return_data = data_constructorCall::abi_decode_returns(&res, false)?;
     *pool = populate_pool_data_from_tokens(pool.to_owned(), return_data._0.remove(0));
     Ok(())
 }
