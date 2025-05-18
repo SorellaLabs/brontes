@@ -60,6 +60,7 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
             e
         })?;
 
+    tracing::trace!("v2 eth call success, pool={:?}", pool);
     tracing::trace!("v2 eth call success, res={}", alloy_primitives::hex::encode(&res));
 
     let mut return_data = data_constructorCall::abi_decode_returns(&res, false).map_err(|e| {
