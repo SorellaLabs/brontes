@@ -149,19 +149,18 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
     block_number: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(Vec<TickData>, u64), AmmError> {
-    let mut bytecode = IGetUniswapV3TickDataBatchRequest::BYTECODE.to_vec();
-    tick_constructorCall::new((
+    let call_data = tick_constructorCall::new((
         pool.address,
         zero_for_one,
         tick_start,
         num_ticks,
         pool.tick_spacing,
     ))
-    .abi_encode_raw(&mut bytecode);
+    .abi_encode();
 
     let req = TransactionRequest {
-        to: None,
-        input: TransactionInput::new(bytecode.into()),
+        to: Some(Address::from_str("0x23e5b07d8e216340Cf34252c81a0D19BE13FB22f").unwrap()),
+        input: TransactionInput::new(call_data.into()),
         ..Default::default()
     };
 
