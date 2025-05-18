@@ -2,12 +2,15 @@ use std::sync::Arc;
 
 use alloy_provider::{Provider, RootProvider};
 use alloy_transport_http::Http;
-use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
+use brontes_types::{
+    structured_trace::TxTrace,
+    traits::{LogProvider, TracingProvider},
+};
 use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
 };
-use reth_rpc_types::{state::StateOverride, BlockOverrides, TransactionRequest};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, Log, TransactionRequest};
 
 use crate::rpc_client::{RpcClient, TraceOptions};
 
@@ -19,7 +22,6 @@ pub struct LocalProvider {
 }
 
 impl LocalProvider {
-
     pub fn new(url: String, retries: u8) -> Self {
         tracing::info!(target: "brontes", "creating local provider with url: {}", url);
 
@@ -28,6 +30,27 @@ impl LocalProvider {
             rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
             retries,
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl LogProvider for LocalProvider {
+    async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>> {
+        self.provider
+            .get_block(BlockId::Number(BlockNumberOrTag::Number(block_num)), true)
+            .await
+            .map(|op| op.map(|block| block.header.hash.unwrap()))
+            .map_err(Into::into)
+    }
+
+    #[cfg(not(feature = "local-reth"))]
+    async fn best_block_number(&self) -> eyre::Result<u64> {
+        tracing::info!(target: "brontes", "getting best block number");
+        self.provider.get_block_number().await.map_err(Into::into)
+    }
+
+    async fn gets_logs(&self, filter: &Filter) -> Option<Vec<Log>> {
+        self.provider.get_logs(filter).await.ok()
     }
 }
 

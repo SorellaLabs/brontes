@@ -1,3 +1,4 @@
+pub mod discovery_logs_only;
 pub mod discovery_only;
 mod processors;
 mod range;
