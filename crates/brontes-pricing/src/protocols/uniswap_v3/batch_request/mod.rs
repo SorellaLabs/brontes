@@ -3,12 +3,12 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, Bytes, FixedBytes, U256};
+use alloy_primitives::Bytes;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
 use futures::TryFutureExt;
-use reth_primitives::{Address, Bytecode, StorageValue};
+use reth_primitives::Address;
 use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 mod test_bytecodes;

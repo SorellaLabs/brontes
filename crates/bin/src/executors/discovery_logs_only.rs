@@ -4,7 +4,7 @@ use std::{
 };
 
 use brontes_classifier::discovery_logs_only::DiscoveryLogsOnlyClassifier;
-use brontes_core::decoding::{LogParser, LogProvider, TracingProvider};
+use brontes_core::decoding::{LogParser, LogProvider};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;

@@ -1,19 +1,13 @@
-use alloy_primitives::{Address, FixedBytes};
-use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
+use brontes_database::libmdbx::LibmdbxReader;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    db::token_info::TokenInfoWithAddress,
     normalized_actions::{
-        NormalizedBurn, NormalizedFlashLoan, NormalizedMint, NormalizedNewPool,
-        NormalizedPoolConfigUpdate, NormalizedSwap,
+        NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap,
     },
     structured_trace::CallInfo,
     ToScaledRational,
 };
-use eyre::Error;
-use malachite::Rational;
-use reth_primitives::U256;
 
 action_impl!(
     Protocol::BalancerV3,

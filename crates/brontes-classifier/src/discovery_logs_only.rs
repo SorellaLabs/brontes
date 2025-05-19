@@ -1,25 +1,18 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use alloy_primitives::{Address, FixedBytes, Log};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
-use brontes_core::missing_token_info::load_missing_token_info;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_pricing::types::DexPriceMsg;
 use brontes_types::{
-    normalized_actions::{pool::NormalizedNewPool, Action, MultiFrameRequest},
-    structured_trace::{TraceActions, TransactionTraceWithLogs, TxTrace},
-    traits::TracingProvider,
-    tree::{root::NodeData, GasDetails, Node, Root},
+    normalized_actions::pool::NormalizedNewPool,
     Protocol,
 };
 use futures::future::join_all;
-use reth_rpc_types::trace::parity::{Action as TraceAction, CallType};
 use tracing::{error, trace};
 
-use self::erc20::try_decode_transfer;
 use crate::{
-    classifiers::*, tree_builder::utils::decode_transfer, ActionCollection,
+    classifiers::*, ActionCollection,
     FactoryDiscoveryDispatch,
 };
 

@@ -1,6 +1,6 @@
 use brontes_macros::{action_impl, discovery_impl};
 use brontes_types::{
-    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap, NormalizedNewPool},
+    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap},
     structured_trace::CallInfo,
     utils::ToScaledRational,
     Protocol,
@@ -8,7 +8,6 @@ use brontes_types::{
 use alloy_primitives::Address;
 use alloy_sol_types::SolType;
 use alloy_dyn_abi::{DynSolType, DynSolValue};
-use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
     Protocol::FluidDEX,
@@ -326,7 +325,7 @@ discovery_impl!(
 
         let dex_t1_creation_code_type = DynSolType::Tuple(vec![DynSolType::Address, DynSolType::Address, DynSolType::Uint(256)]);
 
-        let decoded_data = dex_t1_creation_code_type.abi_decode(&pool_t1_creation_code).expect("Failed to decode pool T1 creation code");
+        let decoded_data = dex_t1_creation_code_type.abi_decode(pool_t1_creation_code).expect("Failed to decode pool T1 creation code");
         let DynSolValue::Tuple(values) = decoded_data else { panic!("Expected tuple") };
         let [DynSolValue::Address(token0), DynSolValue::Address(token1), _] = values.as_slice() else { panic!("Invalid tuple structure") };
 

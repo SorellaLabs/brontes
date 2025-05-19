@@ -4,7 +4,7 @@ use alloy_primitives::{keccak256};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::{Action, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
+    normalized_actions::NormalizedSwap,
     structured_trace::CallInfo,
     ToScaledRational,
 };

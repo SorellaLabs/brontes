@@ -1,11 +1,10 @@
 use brontes_macros::action_impl;
 use brontes_types::{
-    normalized_actions::{NormalizedLiquidation, NormalizedNewPool, NormalizedPoolConfigUpdate},
+    normalized_actions::{NormalizedLiquidation, NormalizedNewPool},
     structured_trace::CallInfo,
     utils::ToScaledRational,
     Protocol,
 };
-use malachite::{num::basic::traits::Zero, Rational};
 
 action_impl!(
     Protocol::Dolomite,

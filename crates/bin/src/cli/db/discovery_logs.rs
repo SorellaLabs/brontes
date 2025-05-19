@@ -1,18 +1,15 @@
 use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
 use alloy_primitives::Address;
-use alloy_rpc_types::RawLog;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use brontes_core::decoding::LogParser as DLogParser;
-use brontes_metrics::ParserMetricsListener;
-use brontes_types::{init_thread_pools, Protocol, UnboundedYapperReceiver};
+use brontes_types::{init_thread_pools, Protocol};
 use clap::Parser;
 use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 use reth_rpc_types::Filter;
-use tokio::sync::mpsc::unbounded_channel;
 
 use crate::{
     cli::{get_env_vars, get_tracing_provider, load_read_only_database, static_object},

@@ -12,4 +12,3 @@ pub use balancer_v3::*;
 
 mod discovery;
 
-pub use discovery::*;

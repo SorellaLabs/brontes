@@ -1,6 +1,3 @@
-use alloy_primitives::Address;
-use brontes_macros::discovery_impl;
-use brontes_pricing::Protocol;
 
 // Balancer V1 pool factory. See balancer pool lifecycle:
 // https://balancer.gitbook.io/balancer/core-concepts/protocol/pool-lifecycle

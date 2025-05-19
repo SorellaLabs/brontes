@@ -1,26 +1,23 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::{Address, Log};
-use alloy_primitives::{Address, Log};
+use alloy_primitives::Log;
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
 use brontes_types::Protocol;
 use futures::future::join_all;
-use reth_primitives::BlockHash;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
-use reth_rpc_types::{AnyReceiptEnvelope, Filter, Log as RpcLog, TransactionReceipt};
-use tracing::error;
+use reth_rpc_types::Filter;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
 
 use super::*;
 #[cfg(feature = "dyn-decode")]
 use crate::decoding::dyn_decode::decode_input_with_abi;
-use crate::errors::TraceParseError;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 pub struct EthLogParser<T: LogProvider, DB: LibmdbxReader + DBWriter> {
