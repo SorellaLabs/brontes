@@ -219,7 +219,7 @@ action_impl!(
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, Address, B256};
+    use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         constants::WETH_ADDRESS,
