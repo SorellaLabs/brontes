@@ -31,7 +31,9 @@ pub struct GlobalRangeMetrics {
     /// amount of transactions
     pub transactions_throughput:     HistogramVec,
     /// latest block number processed
-    pub latest_processed_block:      IntGauge,
+    pub latest_processed_block:      IntGauge,  
+    /// gas used for the range
+    pub gas_used:                    IntGauge,
 }
 
 impl GlobalRangeMetrics {
@@ -110,6 +112,11 @@ impl GlobalRangeMetrics {
             "latest block number that has been processed"
         ).unwrap();
 
+        let gas_used = register_int_gauge!(
+            "gas_used",
+            "gas used for the range"
+        ).unwrap();
+
         Self {
             pending_trees,
             poll_rate,
@@ -122,6 +129,7 @@ impl GlobalRangeMetrics {
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
             latest_processed_block,
+            gas_used,
         }
     }
 
@@ -209,6 +217,10 @@ impl GlobalRangeMetrics {
 
     pub fn update_latest_block(&self, block_num: u64) {
         self.latest_processed_block.set(block_num as i64);
+    }
+
+    pub fn update_gas_used(&self, gas: u64) {
+        self.gas_used.set(gas as i64);
     }
 }
 
