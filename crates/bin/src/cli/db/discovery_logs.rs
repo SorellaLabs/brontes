@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, FixedBytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use brontes_core::decoding::LogParser as DLogParser;
@@ -87,54 +87,20 @@ impl DiscoveryLogsFill {
             ctx.task_executor.clone(),
         ));
 
-        let balancer_v2_filter = Filter::new()
-            .address(BALANCER_V2_VAULT_ADDRESS)
-            .event_signature(BalancerV2::TokensRegistered::SIGNATURE_HASH);
-        let uniswap_v2_filter = Filter::new()
-            .address(UNISWAP_V2_FACTORY_ADDRESS)
-            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
-        let sushiswap_v2_filter = Filter::new()
-            .address(SUSHISWAP_V2_FACTORY_ADDRESS)
-            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
-        let pancakeswap_v2_filter = Filter::new()
-            .address(PANCAKESWAP_V2_FACTORY_ADDRESS)
-            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
-        let sushiswap_v3_filter = Filter::new()
-            .address(SUSHISWAP_V3_FACTORY_ADDRESS)
-            .event_signature(UniswapV3::PoolCreated::SIGNATURE_HASH);
-        let pancakeswap_v3_filter = Filter::new()
-            .address(PANCAKESWAP_V3_FACTORY_ADDRESS)
-            .event_signature(UniswapV3::PoolCreated::SIGNATURE_HASH);
-        let camelot_v2_filter = Filter::new()
-            .address(CAMELOT_V2_FACTORY_ADDRESS)
-            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
-        let camelot_v3_filter = Filter::new()
-            .address(CAMELOT_V3_FACTORY_ADDRESS)
-            .event_signature(CamelotV3::Pool::SIGNATURE_HASH);
-        let uniswap_v3_filter = Filter::new()
-            .address(UNISWAP_V3_FACTORY_ADDRESS)
-            .event_signature(UniswapV3::PoolCreated::SIGNATURE_HASH);
-        let uniswap_v4_filter = Filter::new()
-            .address(UNISWAP_V4_FACTORY_ADDRESS)
-            .event_signature(UniswapV4::Initialize::SIGNATURE_HASH);
-        let fluid_dex_filter = Filter::new()
-            .address(FLUID_DEX_FACTORY_ADDRESS)
-            .event_signature(FluidDEX::DexT1Deployed::SIGNATURE_HASH);
+        let mut protocol_to_address: HashMap<Protocol, (Address, FixedBytes<32>)> = HashMap::new();
+        protocol_to_address.insert(Protocol::BalancerV2, (BALANCER_V2_VAULT_ADDRESS, BalancerV2::TokensRegistered::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::UniswapV2, (UNISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::SushiSwapV2, (SUSHISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::PancakeSwapV2, (PANCAKESWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::SushiSwapV3, (SUSHISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::PancakeSwapV3, (PANCAKESWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::UniswapV3, (UNISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::UniswapV4, (UNISWAP_V4_FACTORY_ADDRESS, UniswapV4::Initialize::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::CamelotV2, (CAMELOT_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::CamelotV3, (CAMELOT_V3_FACTORY_ADDRESS, CamelotV3::Pool::SIGNATURE_HASH));
+        protocol_to_address.insert(Protocol::FluidDEX, (FLUID_DEX_FACTORY_ADDRESS, FluidDEX::DexT1Deployed::SIGNATURE_HASH));
 
-        let mut filters: HashMap<Protocol, Filter> = HashMap::new();
-        filters.insert(Protocol::BalancerV2, balancer_v2_filter);
-        filters.insert(Protocol::UniswapV2, uniswap_v2_filter);
-        filters.insert(Protocol::SushiSwapV2, sushiswap_v2_filter);
-        filters.insert(Protocol::PancakeSwapV2, pancakeswap_v2_filter);
-        filters.insert(Protocol::SushiSwapV3, sushiswap_v3_filter);
-        filters.insert(Protocol::PancakeSwapV3, pancakeswap_v3_filter);
-        filters.insert(Protocol::UniswapV3, uniswap_v3_filter);
-        filters.insert(Protocol::UniswapV4, uniswap_v4_filter);
-        filters.insert(Protocol::CamelotV2, camelot_v2_filter);
-        filters.insert(Protocol::CamelotV3, camelot_v3_filter);
-        filters.insert(Protocol::FluidDEX, fluid_dex_filter);
-        
-        let parser = static_object(DLogParser::new(libmdbx, tracer.clone(), filters).await);
+        let parser = static_object(DLogParser::new(libmdbx, tracer.clone(), protocol_to_address).await);
 
         let start_block = if let Some(s) = self.start_block {
             s

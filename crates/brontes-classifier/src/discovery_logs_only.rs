@@ -101,11 +101,11 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         Self { libmdbx }
     }
 
-    pub async fn run_discovery(&self, block_number: u64, logs: HashMap<Protocol, Vec<Log>>) {
+    pub async fn run_discovery(&self, block_number: u64, logs: HashMap<Protocol, Vec<alloy_primitives::Log>>) {
         self.process_logs(block_number, logs).await;
     }
 
-    pub(crate) async fn process_logs(&self, block_number: u64, logs: HashMap<Protocol, Vec<Log>>) {
+    pub(crate) async fn process_logs(&self, block_number: u64, logs: HashMap<Protocol, Vec<alloy_primitives::Log>>) {
         join_all(logs.into_iter().map(|(protocol, logs)| async move {
             self.process_classification(block_number, protocol, logs)
                 .await;
@@ -113,7 +113,7 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         .await;
     }
 
-    async fn process_classification(&self, block_number: u64, protocol: Protocol, logs: Vec<Log>) {
+    async fn process_classification(&self, block_number: u64, protocol: Protocol, logs: Vec<alloy_primitives::Log>) {
         // TODO: add classification for each factory protocol and pair
         join_all(
             logs.into_iter()
