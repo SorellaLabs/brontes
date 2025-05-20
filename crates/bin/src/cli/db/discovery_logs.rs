@@ -82,6 +82,18 @@ impl DiscoveryLogsFill {
         let uniswap_v2_filter = Filter::new()
             .address(Address::from_str("0xf1D7CC64Fb4452F05c498126312eBE29f30Fbcf9").unwrap())
             .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
+        let sushiswap_v2_filter = Filter::new()
+            .address(Address::from_str("0xc35DADB65012eC5796536bD9864eD8773aBc74C4").unwrap())
+            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
+        let pancakeswap_v2_filter = Filter::new()
+            .address(Address::from_str("0x02a84c1b3BBD7401a5f7fa98a384EBC70bB5749E").unwrap())
+            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
+        let sushiswap_v3_filter = Filter::new()
+            .address(Address::from_str("0x1af415a1EbA07a4986a52B6f2e7dE7003D82231e").unwrap())
+            .event_signature(UniswapV3::PoolCreated::SIGNATURE_HASH);
+        let pancakeswap_v3_filter = Filter::new()
+            .address(Address::from_str("0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865").unwrap())
+            .event_signature(UniswapV3::PoolCreated::SIGNATURE_HASH);
         let camelot_v2_filter = Filter::new()
             .address(Address::from_str("0x6EcCab422D763aC031210895C81787E87B43A652").unwrap())
             .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
@@ -101,6 +113,10 @@ impl DiscoveryLogsFill {
         let mut filters: HashMap<Protocol, Filter> = HashMap::new();
         filters.insert(Protocol::BalancerV2, balancer_v2_filter);
         filters.insert(Protocol::UniswapV2, uniswap_v2_filter);
+        filters.insert(Protocol::SushiSwapV2, sushiswap_v2_filter);
+        filters.insert(Protocol::PancakeSwapV2, pancakeswap_v2_filter);
+        filters.insert(Protocol::SushiSwapV3, sushiswap_v3_filter);
+        filters.insert(Protocol::PancakeSwapV3, pancakeswap_v3_filter);
         filters.insert(Protocol::UniswapV3, uniswap_v3_filter);
         filters.insert(Protocol::UniswapV4, uniswap_v4_filter);
         filters.insert(Protocol::CamelotV2, camelot_v2_filter);
