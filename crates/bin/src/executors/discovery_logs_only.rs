@@ -60,11 +60,12 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
     }
 
     async fn process_next(
-        block: u64,
+        start_block: u64,
+        end_block: u64,
         parser: &'static LogParser<T, DB>,
         classifier: DiscoveryLogsOnlyClassifier<'static, DB>,
     ) {
-        if let Some((block_number, logs)) = parser.execute_discovery(block).await {
+        if let Some((block_number, logs)) = parser.execute_discovery(start_block, end_block).await {
             classifier.run_discovery(block_number, logs).await
         }
     }
@@ -78,12 +79,13 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
             cx.waker().wake_by_ref();
             let fut = Box::pin(Self::process_next(
                 self.current_block,
+                self.end_block,
                 self.parser,
                 self.classifier.clone(),
             ));
             self.running.push(fut);
 
-            self.current_block += 1;
+            self.current_block = self.end_block;
         }
 
         while match self.running.poll_next_unpin(cx) {

@@ -55,14 +55,16 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
 
     pub async fn execute_block_discovery(
         self,
-        block_num: u64,
+        start_block: u64,
+        end_block: u64,
     ) -> Option<(u64, HashMap<Protocol, Vec<Log>>)> {
         let provider = self.provider.clone();
         let logs = join_all(self.filters.iter().map(|(protocol, filter)| {
             let provider = provider.clone();
             async move {
+                let filter_range = filter.clone().from_block(start_block).to_block(end_block);
                 let logs: Vec<Log> = provider
-                    .gets_logs(filter)
+                    .gets_logs(&filter_range)
                     .await
                     .unwrap()
                     .into_iter()
@@ -74,6 +76,6 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
         .await
         .into_iter()
         .collect::<HashMap<Protocol, Vec<Log>>>();
-        Some((block_num, logs))
+        Some((end_block, logs))
     }
 }

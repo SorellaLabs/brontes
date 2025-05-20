@@ -128,11 +128,11 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
     }
 
     /// ensures no libmdbx write
-    pub fn execute_discovery(&self, block_num: u64) -> LogParserFuture {
+    pub fn execute_discovery(&self, start_block: u64, end_block: u64) -> LogParserFuture {
         // This will satisfy its lifetime scope do to the lifetime itself living longer
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
-        Box::pin(parser.execute_block_discovery(block_num)) as LogParserFuture
+        Box::pin(parser.execute_block_discovery(start_block, end_block)) as LogParserFuture
     }
 }
