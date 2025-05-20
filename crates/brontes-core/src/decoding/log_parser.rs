@@ -11,7 +11,8 @@ use brontes_types::Protocol;
 use futures::future::join_all;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
-use reth_rpc_types::Filter;
+use reth_rpc_types::{Filter, FilterSet, Topic, ValueOrArray};
+use alloy_primitives::Address;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
 
@@ -59,12 +60,47 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
         end_block: u64,
     ) -> Option<(u64, HashMap<Protocol, Vec<Log>>)> {
         let provider = self.provider.clone();
+        let addresses: Vec<Address> = self.filters.iter().map(|(_, filter)| {
+            filter.address.to_value_or_array()
+        }).flat_map(|v|{
+            match v.as_ref() {
+                Some(ValueOrArray::Value(address)) => {
+                    vec![address.clone()]
+                }
+                Some(ValueOrArray::Array(addresses)) => {
+                    addresses.clone()
+                }
+                None => {
+                    vec![]
+                }
+            }
+        }).collect::<Vec<_>>();
+
+        let topics: Topic = self.filters.iter().map(|(_, filter)| {
+            filter.topics[0].to_value_or_array()
+        }).flat_map(|v|{
+            match v.as_ref() {
+                Some(ValueOrArray::Value(topic)) => {
+                    vec![topic.clone()]
+                }
+                Some(ValueOrArray::Array(topics)) => {
+                    topics.clone()
+                }
+                None => {
+                    vec![]
+                }
+            }
+        }).collect::<Vec<_>>().into();
+
+        let filter = Filter::new().address(addresses).event_signature(topics);
+        let logs = provider.get_logs(&filter).await?;
+
         let logs = join_all(self.filters.iter().map(|(protocol, filter)| {
             let provider = provider.clone();
             async move {
                 let filter_range = filter.clone().from_block(start_block).to_block(end_block);
                 let logs: Vec<Log> = provider
-                    .gets_logs(&filter_range)
+                    .get_logs(filter)
                     .await
                     .unwrap()
                     .into_iter()

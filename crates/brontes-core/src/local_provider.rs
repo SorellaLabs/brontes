@@ -49,7 +49,7 @@ impl LogProvider for LocalProvider {
         self.provider.get_block_number().await.map_err(Into::into)
     }
 
-    async fn gets_logs(&self, filter: &Filter) -> Option<Vec<Log>> {
+    async fn get_logs(&self, filter: &Filter) -> Option<Vec<Log>> {
         self.provider.get_logs(filter).await.ok()
     }
 }
