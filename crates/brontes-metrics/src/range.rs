@@ -2,7 +2,9 @@ use std::{pin::Pin, time::Instant};
 
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
+    register_int_gauge,
     register_int_counter_vec, register_int_gauge_vec, HistogramVec, IntCounterVec, IntGaugeVec,
+    IntGauge,
     Opts,
 };
 use reth_metrics::Metrics;
@@ -26,6 +28,12 @@ pub struct GlobalRangeMetrics {
     pub classification_throughput:   HistogramVec,
     /// amount of pending trees in dex pricing / metadata fetcher
     pub pending_trees:               IntGaugeVec,
+    /// amount of transactions
+    pub transactions_throughput:     HistogramVec,
+    /// latest block number processed
+    pub latest_processed_block:      IntGauge,  
+    /// gas used for the range
+    pub gas_used:                    IntGaugeVec,
 }
 
 impl GlobalRangeMetrics {
@@ -80,7 +88,15 @@ impl GlobalRangeMetrics {
             "tree_builder_throughput",
             "tree builder speed ",
             &["range_id"],
-            buckets
+            buckets.clone()
+        )
+        .unwrap();
+
+        let tx_process = prometheus::register_histogram_vec!(
+            "tx_process_throughput",
+            "tx process speed",
+            &["range_id"],
+            buckets.clone()
         )
         .unwrap();
 
@@ -91,6 +107,17 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
+        let latest_processed_block = register_int_gauge!(
+            "latest_processed_block",
+            "latest block number that has been processed"
+        ).unwrap();
+
+        let gas_used = register_int_gauge_vec!(
+            "gas_used",
+            "gas used for the range",
+            &["range_id"]
+        ).unwrap();
+
         Self {
             pending_trees,
             poll_rate,
@@ -99,8 +126,11 @@ impl GlobalRangeMetrics {
             total_blocks_range,
             block_tracing_throughput: block_tracing,
             classification_throughput: tree_builder,
+            transactions_throughput: tx_process,
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
+            latest_processed_block,
+            gas_used,
         }
     }
 
@@ -145,6 +175,7 @@ impl GlobalRangeMetrics {
     pub async fn tree_builder<R>(
         self,
         id: usize,
+        txs_count: usize,
         f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
         let instant = Instant::now();
@@ -153,6 +184,9 @@ impl GlobalRangeMetrics {
         self.classification_throughput
             .with_label_values(&[&format!("{id}")])
             .observe(elapsed as f64);
+        self.transactions_throughput
+            .with_label_values(&[&format!("{id}")])
+            .observe(txs_count as f64);
         res
     }
 
@@ -180,6 +214,15 @@ impl GlobalRangeMetrics {
         self.processing_run_time_ms.record(elapsed);
 
         res
+    }
+
+    pub fn update_latest_block(&self, block_num: u64) {
+        self.latest_processed_block.set(block_num as i64);
+    }
+
+    pub fn update_gas_used(&self, id: usize, gas: u64) {
+        self.gas_used.with_label_values(&[&format!("{id}")])
+            .set(gas as i64);
     }
 }
 

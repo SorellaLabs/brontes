@@ -133,12 +133,13 @@ action_impl!(
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, B256};
+    use alloy_primitives::{hex, B256, Address, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
         constants::WETH_ADDRESS, db::token_info::TokenInfo, normalized_actions::Action,
-        Protocol::BalancerV3, TreeSearchBuilder,
+        Protocol::BalancerV3, TreeSearchBuilder, db::token_info::TokenInfoWithAddress
     };
+
 
     use super::*;
 

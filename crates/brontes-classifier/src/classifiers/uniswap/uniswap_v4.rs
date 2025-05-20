@@ -84,6 +84,7 @@ mod tests {
         db::token_info::TokenInfoWithAddress, normalized_actions::Action, Protocol::UniswapV4,
         TreeSearchBuilder,
     };
+    use brontes_types::normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap};
 
     use super::*;
 
