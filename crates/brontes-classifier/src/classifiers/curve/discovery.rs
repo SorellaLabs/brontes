@@ -7,31 +7,24 @@ use brontes_types::{
     normalized_actions::pool::NormalizedNewPool, traits::TracingProvider, Protocol,
 };
 
-curve_discovery_impl!(
-    CurveV1,
-    crate::CurveV1MetapoolFactory,
-    0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
-    (1, 0)
-);
+// curve_discovery_impl!(
+//     CurveV1,
+//     crate::CurveV1MetapoolFactory,
+//     0x0959158b6040d32d04c301a72cbfd6b39e21c9ae,
+//     (1, 0)
+// );
 
 curve_discovery_impl!(
     CurveV2,
     crate::CurveV2MetapoolFactory,
-    0xb9fc157394af804a3578134a6585c0dc9cc990d4,
-    (2, 3)
-);
-
-curve_discovery_impl!(
-    CurvecrvUSD,
-    crate::CurvecrvUSDFactory,
-    0x4f8846ae9380b90d2e71d5e3d042dff3e7ebb40d,
+    0x9AF14D26075f142eb3F292D5065EB3faa646167b,
     (2, 3)
 );
 
 discovery_impl!(
     CurveCryptoSwapDiscovery,
     crate::CurveCryptoSwapFactory::deploy_poolCall,
-    0xf18056bbd320e96a48e3fbf8bc061322531aac99,
+    0x98EE851a00abeE0d95D08cF4CA2BdCE32aeaAF7F,
     |deployed_address: Address, trace_index: u64, call_data: deploy_poolCall, _| async move {
         vec![NormalizedNewPool {
             trace_index,
@@ -45,7 +38,7 @@ discovery_impl!(
 discovery_impl!(
     CurveTriCryptoDiscovery,
     crate::CurveTriCryptoFactory::deploy_poolCall,
-    0x0c0e5f2ff0ff18a3be9b835635039256dc4b4963,
+    0xbC0797015fcFc47d9C1856639CaE50D0e69FbEE8,
     |deployed_address: Address, trace_index: u64, call_data: deploy_poolCall, _| async move {
         let mut tokens = call_data._coins.to_vec();
 

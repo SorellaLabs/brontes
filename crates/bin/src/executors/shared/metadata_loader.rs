@@ -32,7 +32,7 @@ use super::dex_pricing::WaitingForPricerFuture;
 /// Limits the amount we work ahead in the processing. This is done
 /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
 /// of processed trees
-const MAX_PENDING_TREES: usize = 5;
+const MAX_PENDING_TREES: usize = 1000;
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
@@ -271,6 +271,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
                         block_hash,
                         tree.get_hashes(),
                         quote_asset,
+                        false,
                     )
                     .await
                     .inspect_err(|e| {

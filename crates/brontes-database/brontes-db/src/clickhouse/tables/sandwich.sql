@@ -1,4 +1,4 @@
-CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
+CREATE TABLE mev.sandwiches 
 (
     `frontrun_tx_hash` String,
     `block_number` UInt64,
@@ -59,6 +59,6 @@ CREATE TABLE mev.sandwiches ON CLUSTER eth_cluster0
     ),
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/sandwiches', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (`block_number`, `backrun_tx_hash`)
 ORDER BY (`block_number`, `backrun_tx_hash`)

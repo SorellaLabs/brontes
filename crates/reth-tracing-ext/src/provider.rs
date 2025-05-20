@@ -1,6 +1,5 @@
 use std::cmp::min;
 
-use alloy_rpc_types::AnyReceiptEnvelope;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use eyre::eyre;
 use reth_primitives::{
@@ -14,9 +13,7 @@ use reth_rpc::eth::{
     EthTransactions,
 };
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
-};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, TransactionRequest};
 use revm::{
     primitives::{
         db::DatabaseRef, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, TransactTo, TxEnv,
@@ -91,12 +88,17 @@ impl TracingProvider for TracingClient {
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>> {
+    ) -> eyre::Result<Option<Vec<alloy_rpc_types::AnyTransactionReceipt>>> {
         Ok(self
             .api
             .block_receipts(BlockId::Number(number))
             .await?
-            .map(|t| t.into_iter().map(|t| t.inner).collect::<Vec<_>>()))
+            .map(|receipts| {
+                receipts
+                    .into_iter()
+                    .map(|receipt| alloy_rpc_types::WithOtherFields::new(receipt.inner))
+                    .collect::<Vec<_>>()
+            }))
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {

@@ -1,5 +1,6 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
+use alloy_primitives::Address;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
@@ -11,7 +12,7 @@ use crate::errors::AmmError;
 
 sol!(
     IGetUniswapV2PoolDataBatchRequest,
-    "./src/protocols/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequestABI.json"
+    "./src/protocols/uniswap_v2/batch_request/GetUniswapV2PoolDataBatchRequest.json"
 );
 
 sol!(
@@ -43,12 +44,11 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
     block: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
-    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
+    let call_data = data_constructorCall::new((vec![pool.address],)).abi_encode();
 
     let req = TransactionRequest {
-        to: None,
-        input: TransactionInput::new(bytecode.into()),
+        to: Some(Address::from_str("0x3f701A02eC90295D44603CAcdd582FaA3A975e09").unwrap()),
+        input: TransactionInput::new(call_data.into()),
         ..Default::default()
     };
 

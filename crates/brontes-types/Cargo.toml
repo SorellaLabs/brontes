@@ -103,6 +103,7 @@ reth-tracing-ext.workspace = true
 [features]
 tests = []
 test_pricing = []
+arbitrum = []
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",

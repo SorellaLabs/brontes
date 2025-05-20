@@ -34,6 +34,7 @@ num_cpus.workspace = true
 revm-primitives.workspace = true
 revm-inspectors.workspace = true
 bitflags = "2.4"
+once_cell = { version = "1.19", default-features = false, features = ["critical-section"] }
 
 revm.workspace = true
 # error
@@ -57,6 +58,10 @@ local-reth = ["brontes-types/local-reth", "brontes-core/local-reth"]
 local-clickhouse = [
   "brontes-core/local-clickhouse",
   "brontes-types/local-clickhouse",
+]
+
+arbitrum = [
+  "brontes-types/arbitrum"
 ]
 
 

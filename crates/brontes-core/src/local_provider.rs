@@ -1,27 +1,56 @@
 use std::sync::Arc;
 
 use alloy_provider::{Provider, RootProvider};
-use alloy_rpc_types::AnyReceiptEnvelope;
 use alloy_transport_http::Http;
-use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
-use itertools::Itertools;
+use brontes_types::{
+    structured_trace::TxTrace,
+    traits::{LogProvider, TracingProvider},
+};
 use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
 };
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
-};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, Log, TransactionRequest};
+
+use crate::rpc_client::{RpcClient, TraceOptions};
 
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
-    provider: Arc<RootProvider<Http<reqwest::Client>>>,
-    retries:  u8,
+    provider:   Arc<RootProvider<Http<reqwest::Client>, alloy_network::AnyNetwork>>,
+    rpc_client: Arc<RpcClient>,
+    retries:    u8,
 }
 
 impl LocalProvider {
     pub fn new(url: String, retries: u8) -> Self {
-        Self { provider: Arc::new(RootProvider::new_http(url.parse().unwrap())), retries }
+        tracing::info!(target: "brontes", "creating local provider with url: {}", url);
+
+        Self {
+            provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
+            rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
+            retries,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl LogProvider for LocalProvider {
+    async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>> {
+        self.provider
+            .get_block(BlockId::Number(BlockNumberOrTag::Number(block_num)), true)
+            .await
+            .map(|op| op.map(|block| block.header.hash.unwrap()))
+            .map_err(Into::into)
+    }
+
+    #[cfg(not(feature = "local-reth"))]
+    async fn best_block_number(&self) -> eyre::Result<u64> {
+        tracing::info!(target: "brontes", "getting best block number");
+        self.provider.get_block_number().await.map_err(Into::into)
+    }
+
+    async fn gets_logs(&self, filter: &Filter) -> Option<Vec<Log>> {
+        self.provider.get_logs(filter).await.ok()
     }
 }
 
@@ -38,11 +67,12 @@ impl TracingProvider for LocalProvider {
             panic!("local provider doesn't support block or state overrides");
         }
         // for tests, shit can get beefy
+        let any_request = alloy_rpc_types::WithOtherFields::new(request);
         let mut attempts = 0;
         loop {
             let res = self
                 .provider
-                .call(&request.clone(), block_number.unwrap_or(BlockId::latest()))
+                .call(&any_request, block_number.unwrap_or(BlockId::latest()))
                 .await;
             if res.is_ok() || attempts > self.retries {
                 return res.map_err(Into::into)
@@ -69,28 +99,44 @@ impl TracingProvider for LocalProvider {
         self.provider.get_block_number().await.map_err(Into::into)
     }
 
-    async fn replay_block_transactions(&self, _: BlockId) -> eyre::Result<Option<Vec<TxTrace>>> {
-        unreachable!(
-            "Currently we use a custom tracing model which does not allow for 
-                     a local trace to occur"
-        );
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> eyre::Result<Option<Vec<TxTrace>>> {
+        tracing::info!(target: "brontes", "replaying block transactions: {:?}", block_id);
+        match block_id {
+            BlockId::Hash(hash) => {
+                let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
+                let traces = self
+                    .rpc_client
+                    .debug_trace_block_by_hash(hash.block_hash, trace_options)
+                    .await?;
+                Ok(Some(traces))
+            }
+            BlockId::Number(number) => {
+                let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
+                if number.is_number() {
+                    let traces = self
+                        .rpc_client
+                        .debug_trace_block_by_number(number.as_number().unwrap(), trace_options)
+                        .await?;
+                    Ok(Some(traces))
+                } else {
+                    tracing::error!(target: "brontes", "number is not a numeric: {:?}", number);
+                    Ok(None)
+                }
+            }
+        }
     }
 
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>> {
-        Ok(self.provider.get_block_receipts(number).await?.map(|t| {
-            t.into_iter()
-                .map(|tx| {
-                    tx.map_inner(|reciept_env| {
-                        let bloom = reciept_env.as_receipt_with_bloom().unwrap().clone();
-                        let log_type = reciept_env.tx_type() as u8;
-                        AnyReceiptEnvelope { inner: bloom, r#type: log_type }
-                    })
-                })
-                .collect_vec()
-        }))
+    ) -> eyre::Result<Option<Vec<alloy_rpc_types::AnyTransactionReceipt>>> {
+        // Get the receipts directly from the provider
+        let raw_receipts = self.provider.get_block_receipts(number).await?;
+        // Map the result
+        Ok(raw_receipts)
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {

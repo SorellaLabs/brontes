@@ -7,7 +7,7 @@ use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
-    block_metadata::Relays,
+    block_metadata::{RelayBlockMetadata, Relays},
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
@@ -39,6 +39,7 @@ use db_interfaces::{
     Database,
 };
 use eyre::Result;
+use futures::future::ok;
 use itertools::Itertools;
 use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
@@ -297,7 +298,7 @@ impl Clickhouse {
     ) -> Result<Vec<Q>, DatabaseError>
     where
         Q: ClickhouseQuery,
-        P: BindParameters + Send + Sync,
+        P: BindParameters + Send + Sync + Debug,
     {
         let retry_strategy = ExponentialBuilder::default()
             .with_max_times(10)
@@ -444,15 +445,25 @@ impl ClickhouseHandle for Clickhouse {
         block_hash: BlockHash,
         tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
+        get_mempool_metadata: bool,
     ) -> eyre::Result<Metadata> {
-        let (relay, p2p_timestamp, private_flow) = tokio::try_join!(
-            Relays::get_relay_metadata(block_num, block_hash),
-            self.get_earliest_p2p_observation(block_num, block_hash),
-            self.get_private_flow(tx_hashes_in_block)
-        )
-        .inspect_err(|e| {
-            tracing::warn!("error getting block metadata - {:?}", e);
-        })?;
+        let (relay, p2p_timestamp, private_flow) = if get_mempool_metadata {
+            tokio::try_join!(
+                Relays::get_relay_metadata(block_num, block_hash),
+                self.get_earliest_p2p_observation(block_num, block_hash),
+                self.get_private_flow(tx_hashes_in_block)
+            )
+            .inspect_err(|e| {
+                tracing::warn!("error getting block metadata - {:?}", e);
+            })?
+        } else {
+            tokio::try_join!(
+                ok::<Option<RelayBlockMetadata>, eyre::Error>(None),
+                async { Ok::<Option<u64>, eyre::Error>(None) },
+                async { Ok::<Vec<TxHash>, eyre::Error>(Vec::new()) }
+            )
+            .unwrap()
+        };
 
         let block_meta = BlockMetadataInner::make_new(
             block_hash,
@@ -558,6 +569,8 @@ impl ClickhouseHandle for Clickhouse {
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let mut query = BLOCK_TIMES.to_string();
 
+                tracing::info!("Querying block times for arbitrary values: {:?}", vals);
+
                 let vals = vals
                     .iter()
                     .flat_map(|v| {
@@ -573,6 +586,7 @@ impl ClickhouseHandle for Clickhouse {
                     &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
                 );
 
+                tracing::info!("Querying block times for arbitrary values: {:?}", query);
                 self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
@@ -745,13 +759,13 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - (6.0 * SECONDS_TO_US);
+                    - (0.125 * SECONDS_TO_US);
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (6.0 * SECONDS_TO_US);
+                    + (0.125 * SECONDS_TO_US);
 
                 debug!(
                     "Querying raw CEX trades for time range: start={}, end={}",
@@ -842,6 +856,7 @@ impl Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64;
 
+                tracing::info!("Querying most volume pair exchange for range: start={}, end={}", start_time, end_time);
                 self.query_many_with_retry(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
             }

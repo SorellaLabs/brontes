@@ -59,6 +59,7 @@ sol!(ZeroXPancakeSwapFeature, "./classifier-abis/zero-x/ZeroXPancakeSwapFeature.
 sol!(ZeroXOtcOrdersFeature, "./classifier-abis/zero-x/ZeroXOtcOrdersFeature.json");
 sol!(ZeroXLiquidityProviderFeature, "./classifier-abis/zero-x/ZeroXLiquidityProviderFeature.json");
 sol!(ZeroXInterface, "./classifier-abis/zero-x/ZeroXInterface.json");
+sol!(MaverickV2Pool, "./classifier-abis/maverick_v2/MaverickV2Pool.json");
 
 // Discovery
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");

@@ -1,4 +1,4 @@
-CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
+CREATE TABLE mev.cex_dex 
 (
     `tx_hash` String,
     `block_timestamp` UInt64,
@@ -92,6 +92,6 @@ CREATE TABLE mev.cex_dex ON CLUSTER eth_cluster0
     ),
     `run_id` UInt64
 )
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/cex_dex', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (block_number, tx_hash)
 ORDER BY (block_number, tx_hash)

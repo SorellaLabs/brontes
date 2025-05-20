@@ -58,12 +58,16 @@ pub async fn load_database(
     hr: Option<HeartRateMonitor>,
     run_id: Option<u64>,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
+    tracing::info!("Loading database from {}", db_endpoint);
+    let inner = LibmdbxReadWriter::init_db(db_endpoint.clone(), None, executor, true)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
+    tracing::info!("Loaded database from {}", &db_endpoint);
     let mut clickhouse = Clickhouse::new_default(run_id).await;
+    tracing::info!("Created clickhouse client");
     clickhouse.buffered_insert_tx = Some(tx);
+    tracing::info!("Set buffered insert tx");
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
 }
@@ -123,7 +127,7 @@ pub async fn load_clickhouse(
 pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let url = format!("{db_endpoint}:{db_port}");
+    let url = if db_port.is_empty() { db_endpoint } else { format!("{db_endpoint}:{db_port}") };
     LocalProvider::new(url, 5)
 }
 

@@ -110,3 +110,6 @@ local-clickhouse = [
   "brontes-classifier/local-clickhouse",
   "brontes-database/local-clickhouse",
 ]
+arbitrum = [
+  "brontes-types/arbitrum"
+]

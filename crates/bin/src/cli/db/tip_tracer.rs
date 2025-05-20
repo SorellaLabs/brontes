@@ -45,7 +45,7 @@ impl TipTraceArgs {
             get_tracing_provider(Path::new(&db_path), max_tasks, ctx.task_executor.clone());
 
         let parser = static_object(DParser::new(metrics_tx, libmdbx, tracer.clone()).await);
-        let mut end_block = parser.get_latest_block_number().unwrap();
+        let mut end_block = parser.get_latest_block_number().await.unwrap();
 
         let start_block = if let Some(s) = self.start_block {
             s
@@ -64,7 +64,7 @@ impl TipTraceArgs {
 
         let tip = ctx.task_executor.spawn_critical("tip", async move {
             loop {
-                let tip = parser.get_latest_block_number().unwrap();
+                let tip = parser.get_latest_block_number().await.unwrap();
                 if tip + 1 > end_block {
                     end_block += 1;
                     let _ = parser.trace_for_clickhouse(end_block).await;

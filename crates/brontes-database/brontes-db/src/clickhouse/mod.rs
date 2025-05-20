@@ -52,6 +52,7 @@ pub trait ClickhouseHandle: Send + Sync + Unpin + 'static {
         block_hash: BlockHash,
         tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
+        include_relay: bool,
     ) -> impl Future<Output = eyre::Result<Metadata>> + Send;
 
     fn get_cex_prices(
