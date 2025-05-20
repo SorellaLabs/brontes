@@ -143,6 +143,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             tracing::info!(%block,"starting new tip block");
             self.state_collector.fetch_state_for(block, 0, metrics);
             self.current_block += 1;
+            self.range_metrics.as_ref().inspect(|metrics| {
+                metrics.update_latest_block(block);
+            });
         }
 
         if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {

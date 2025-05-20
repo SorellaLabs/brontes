@@ -98,7 +98,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             metrics.add_pending_tree(id);
             let txs_count = traces.len();
             metrics
-                .tree_builder(id, || {
+                .tree_builder(id, txs_count, || {
                     Box::pin(tokio::spawn(classifier.build_block_tree(
                         traces,
                         header,

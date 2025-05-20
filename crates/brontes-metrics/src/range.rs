@@ -2,7 +2,9 @@ use std::{pin::Pin, time::Instant};
 
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
+    register_int_gauge,
     register_int_counter_vec, register_int_gauge_vec, HistogramVec, IntCounterVec, IntGaugeVec,
+    IntGauge,
     Opts,
 };
 use reth_metrics::Metrics;
@@ -28,6 +30,8 @@ pub struct GlobalRangeMetrics {
     pub pending_trees:               IntGaugeVec,
     /// amount of transactions
     pub transactions_throughput:     HistogramVec,
+    /// latest block number processed
+    pub latest_processed_block:      IntGauge,
 }
 
 impl GlobalRangeMetrics {
@@ -101,6 +105,11 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
+        let latest_processed_block = register_int_gauge!(
+            "latest_processed_block",
+            "latest block number that has been processed"
+        ).unwrap();
+
         Self {
             pending_trees,
             poll_rate,
@@ -112,6 +121,7 @@ impl GlobalRangeMetrics {
             transactions_throughput: tx_process,
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
+            latest_processed_block,
         }
     }
 
@@ -195,6 +205,10 @@ impl GlobalRangeMetrics {
         self.processing_run_time_ms.record(elapsed);
 
         res
+    }
+
+    pub fn update_latest_block(&self, block_num: u64) {
+        self.latest_processed_block.set(block_num as i64);
     }
 }
 
