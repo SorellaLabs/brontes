@@ -29,7 +29,7 @@ pub struct GlobalRangeMetrics {
     /// amount of pending trees in dex pricing / metadata fetcher
     pub pending_trees:               IntGaugeVec,
     /// amount of transactions
-    pub transactions_throughput:     IntGaugeVec,
+    pub transactions_throughput:     HistogramVec,
     /// latest block number processed
     pub latest_processed_block:      IntGauge,  
     /// gas used for the range
@@ -92,10 +92,11 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
-        let tx_process = prometheus::register_int_gauge_vec!(
+        let tx_process = prometheus::register_histogram_vec!(
             "tx_process_throughput",
             "tx process speed",
-            &["range_id"]
+            &["range_id"],
+            buckets.clone()
         )
         .unwrap();
 
@@ -185,7 +186,7 @@ impl GlobalRangeMetrics {
             .observe(elapsed as f64);
         self.transactions_throughput
             .with_label_values(&[&format!("{id}")])
-            .set(txs_count as i64);
+            .observe(txs_count as f64);
         res
     }
 
