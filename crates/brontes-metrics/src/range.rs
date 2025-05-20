@@ -26,6 +26,8 @@ pub struct GlobalRangeMetrics {
     pub classification_throughput:   HistogramVec,
     /// amount of pending trees in dex pricing / metadata fetcher
     pub pending_trees:               IntGaugeVec,
+    /// amount of transactions
+    pub transactions_throughput:     HistogramVec,
 }
 
 impl GlobalRangeMetrics {
@@ -80,7 +82,15 @@ impl GlobalRangeMetrics {
             "tree_builder_throughput",
             "tree builder speed ",
             &["range_id"],
-            buckets
+            buckets.clone()
+        )
+        .unwrap();
+
+        let tx_process = prometheus::register_histogram_vec!(
+            "tx_process_throughput",
+            "tx process speed",
+            &["range_id"],
+            buckets.clone()
         )
         .unwrap();
 
@@ -99,6 +109,7 @@ impl GlobalRangeMetrics {
             total_blocks_range,
             block_tracing_throughput: block_tracing,
             classification_throughput: tree_builder,
+            transactions_throughput: tx_process,
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
         }
@@ -145,6 +156,7 @@ impl GlobalRangeMetrics {
     pub async fn tree_builder<R>(
         self,
         id: usize,
+        txs_count: usize,
         f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
         let instant = Instant::now();
@@ -153,6 +165,9 @@ impl GlobalRangeMetrics {
         self.classification_throughput
             .with_label_values(&[&format!("{id}")])
             .observe(elapsed as f64);
+        self.transactions_throughput
+            .with_label_values(&[&format!("{id}")])
+            .observe(txs_count as f64);
         res
     }
 
