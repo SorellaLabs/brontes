@@ -10,8 +10,8 @@ use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
 };
-use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, Log, TransactionRequest};
-
+use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, TransactionRequest};
+use alloy_rpc_types::Log;
 use crate::rpc_client::{RpcClient, TraceOptions};
 
 #[derive(Debug, Clone)]
@@ -49,7 +49,7 @@ impl LogProvider for LocalProvider {
         self.provider.get_block_number().await.map_err(Into::into)
     }
 
-    async fn gets_logs(&self, filter: &Filter) -> Option<Vec<Log>> {
+    async fn get_logs(&self, filter: &Filter) -> Option<Vec<Log>> {
         self.provider.get_logs(filter).await.ok()
     }
 }

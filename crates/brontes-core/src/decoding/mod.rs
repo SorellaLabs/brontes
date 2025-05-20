@@ -1,12 +1,12 @@
 use std::{collections::HashMap, pin::Pin, sync::Arc};
 
-use alloy_primitives::Log;
+use alloy_rpc_types::Log;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 pub use brontes_types::traits::{LogProvider, TracingProvider};
 use brontes_types::{structured_trace::TxTrace, Protocol};
 use futures::Future;
 use reth_primitives::{BlockHash, BlockNumberOrTag, Header, B256};
-use reth_rpc_types::Filter;
+use alloy_primitives::{Address, FixedBytes};
 use tokio::sync::mpsc::UnboundedSender;
 
 use self::{log_parser::EthLogParser, parser::TraceParser};
@@ -116,7 +116,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
     pub async fn new(
         libmdbx: &'static DB,
         provider: Arc<T>,
-        filters: HashMap<Protocol, Filter>,
+        filters: HashMap<Protocol, (Address, FixedBytes<32>)>,
     ) -> Self {
         let parser = EthLogParser::new(libmdbx, provider, filters).await;
         Self { parser }
