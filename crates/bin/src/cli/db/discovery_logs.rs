@@ -63,6 +63,9 @@ pub struct DiscoveryLogsFill {
     /// Start Block
     #[arg(long, short)]
     pub start_block: Option<u64>,
+    /// End Block
+    #[arg(long, short)]
+    pub end_block: Option<u64>,
     /// Max number of tasks to run concurrently
     #[arg(long, short)]
     pub max_tasks:   Option<usize>,
@@ -107,7 +110,11 @@ impl DiscoveryLogsFill {
         } else {
             libmdbx.client.max_traced_block().await?
         };
-        let end_block = parser.get_latest_block_number().await.unwrap();
+        let end_block = if let Some(e) = self.end_block {
+            e
+        } else {
+            parser.get_latest_block_number().await?
+        };
 
         let bar = ProgressBar::with_draw_target(
             Some(end_block - start_block),
