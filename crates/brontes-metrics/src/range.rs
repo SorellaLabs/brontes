@@ -33,7 +33,7 @@ pub struct GlobalRangeMetrics {
     /// latest block number processed
     pub latest_processed_block:      IntGauge,  
     /// gas used for the range
-    pub gas_used:                    IntGauge,
+    pub gas_used:                    IntGaugeVec,
 }
 
 impl GlobalRangeMetrics {
@@ -112,9 +112,10 @@ impl GlobalRangeMetrics {
             "latest block number that has been processed"
         ).unwrap();
 
-        let gas_used = register_int_gauge!(
+        let gas_used = register_int_gauge_vec!(
             "gas_used",
-            "gas used for the range"
+            "gas used for the range",
+            &["range_id"]
         ).unwrap();
 
         Self {
@@ -219,8 +220,9 @@ impl GlobalRangeMetrics {
         self.latest_processed_block.set(block_num as i64);
     }
 
-    pub fn update_gas_used(&self, gas: u64) {
-        self.gas_used.set(gas as i64);
+    pub fn update_gas_used(&self, id: usize, gas: u64) {
+        self.gas_used.with_label_values(&[&format!("{id}")])
+            .set(gas as i64);
     }
 }
 
