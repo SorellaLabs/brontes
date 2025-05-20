@@ -236,13 +236,11 @@ mod tests {
         let swap =
             B256::from(hex!("88f60c94b868a5558bc53268ec035ffbf482381bbbeafdbdc03adaff11911e69"));
 
-        let tokens = vec![
-            TokenInfoWithAddress {
+        let tokens = [TokenInfoWithAddress {
                 address: Address::new(hex!("888f538aa0634472d3f038f225c59b5847cde015")),
                 inner:   TokenInfo { decimals: 18, symbol: "NGN".to_string() },
             },
-            TokenInfoWithAddress::weth(),
-        ];
+            TokenInfoWithAddress::weth()];
 
         classifier_utils.ensure_token(tokens[0].clone());
 

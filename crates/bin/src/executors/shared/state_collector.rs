@@ -96,7 +96,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
 
         let res = if let Some(metrics) = metrics {
             metrics.add_pending_tree(id);
-            metrics.update_gas_used(header.gas_used);
+            metrics.update_gas_used(id, header.gas_used);
             let txs_count = traces.len();
             metrics
                 .tree_builder(id, txs_count, || {

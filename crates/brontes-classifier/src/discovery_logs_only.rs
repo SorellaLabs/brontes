@@ -12,7 +12,7 @@ use futures::future::join_all;
 use tracing::{error, trace};
 
 use crate::{
-    classifiers::*, ActionCollection,
+    ActionCollection,
     FactoryDiscoveryDispatch,
 };
 
