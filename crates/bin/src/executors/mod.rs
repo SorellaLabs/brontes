@@ -348,6 +348,9 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         back_from_tip: u64,
         pricing_metrics: Option<DexPricingMetrics>,
     ) -> TipInspector<T, DB, CH, P> {
+        let range_metrics = self.metrics.then(|| {
+            GlobalRangeMetrics::new(vec![0])
+        });
         let state_collector = self.init_state_collector(
             range_id,
             executor,
@@ -363,6 +366,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             self.parser,
             self.tip_db,
             self.inspectors,
+            range_metrics,
         )
     }
 

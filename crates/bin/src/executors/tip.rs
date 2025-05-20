@@ -19,7 +19,7 @@ use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
 use crate::Processor;
-
+use brontes_metrics::range::GlobalRangeMetrics;
 pub struct TipInspector<
     T: TracingProvider,
     DB: LibmdbxReader + DBWriter,
@@ -34,6 +34,7 @@ pub struct TipInspector<
     inspectors:         &'static [&'static dyn Inspector<Result = P::InspectType>],
     processing_futures: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
     poll_interval:      Interval,
+    range_metrics:      Option<GlobalRangeMetrics>,
     _p:                 PhantomData<P>,
 }
 
@@ -47,6 +48,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         parser: &'static Parser<T, DB>,
         database: &'static DB,
         inspectors: &'static [&'static dyn Inspector<Result = P::InspectType>],
+        range_metrics: Option<GlobalRangeMetrics>,
     ) -> Self {
         Self {
             back_from_tip,
@@ -57,6 +59,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
             processing_futures: FuturesUnordered::new(),
             database,
             poll_interval: interval(Duration::from_secs(3)),
+            range_metrics,
             _p: PhantomData,
         }
     }
@@ -136,8 +139,9 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
         if self.start_block_inspector() && self.state_collector.should_process_next_block() {
             let block = self.current_block;
+            let metrics = self.range_metrics.clone();
             tracing::info!(%block,"starting new tip block");
-            self.state_collector.fetch_state_for(block, 0, None);
+            self.state_collector.fetch_state_for(block, 0, metrics);
             self.current_block += 1;
         }
 
