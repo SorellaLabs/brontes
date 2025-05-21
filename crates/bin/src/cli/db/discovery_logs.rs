@@ -181,13 +181,16 @@ impl DiscoveryLogsFill {
         bar.set_style(style);
         bar.set_message("Processing blocks:");
 
+        let total_blocks = end_block - start_block + 1;
+        let chunk_size = (total_blocks + max_tasks as u64 - 1) / max_tasks as u64; // ceiling division
+
         let chunks = (start_block..=end_block)
-            .chunks(self.range_size)
+            .chunks(chunk_size as usize)
             .into_iter()
             .map(|mut c| {
                 let start = c.next().unwrap();
-                let end_block = c.last().unwrap_or(start_block);
-                (start, end_block)
+                let end = c.last().unwrap_or(start);
+                (start, end)
             })
             .collect_vec();
 

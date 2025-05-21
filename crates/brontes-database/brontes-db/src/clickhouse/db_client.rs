@@ -269,6 +269,7 @@ impl Clickhouse {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        tracing::trace!("insert pool to clickhouse: {}", address);
         let data =
             ProtocolInfoClickhouse::new(block, address, tokens, curve_lp_token, classifier_name);
 
