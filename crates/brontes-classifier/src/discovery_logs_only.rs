@@ -7,7 +7,7 @@ use alloy_sol_types::SolEvent;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 use futures::future::join_all;
-use tracing::{error, trace};
+use tracing::{error, debug};
 
 use crate::{ActionCollection, FactoryDiscoveryDispatch};
 
