@@ -51,32 +51,80 @@ contract GetUniswapV3TickDataBatchRequest {
     int24 private constant _MIN_TICK = -887272;
     int24 private constant _MAX_TICK = 887272;
 
-    constructor(
-        address pool,
-        bool zeroForOne,
-        int24 currentTick,
-        uint16 numTicks,
-        int24 tickSpacing
-    ) {
-        (TickData[] memory ticks, uint64 counter) = tick_constructor(
-            pool,
-            zeroForOne,
-            currentTick,
-            numTicks,
-            tickSpacing
-        );
+    constructor(address[] memory pools) {
+        PoolData[] memory poolData = data_constructor(pools);
 
-        bytes memory data = abi.encode(ticks, counter);
+        bytes memory data = abi.encode(poolData);
         assembly ("memory-safe") {
             let dataStart := add(data, 0x20)
             return(dataStart, sub(msize(), dataStart))
         }
     }
 
+    struct PoolData {
+        address tokenA;
+        uint8 tokenADecimals;
+        address tokenB;
+        uint8 tokenBDecimals;
+        uint128 liquidity;
+        uint160 sqrtPrice;
+        int24 tick;
+        int24 tickSpacing;
+        uint24 fee;
+        int128 liquidityNet;
+    }
     struct TickData {
         bool initialized;
         int24 tick;
         int128 liquidityNet;
+    }
+
+    /// @notice Get uniV3 pool param info using pool address
+
+    function data_constructor(
+        address[] memory pools
+    ) public view returns (PoolData[] memory) {
+        PoolData[] memory poolData = new PoolData[](pools.length);
+        for (uint256 i = 0; i < pools.length; i++) {
+            address pool = pools[i];
+            poolData[i].tokenA = IUniswapV3Pool(pool).token0();
+            poolData[i].tokenADecimals = ERC20(IUniswapV3Pool(pool).token0())
+                .decimals();
+            poolData[i].tokenB = IUniswapV3Pool(pool).token1();
+            poolData[i].tokenBDecimals = ERC20(IUniswapV3Pool(pool).token1())
+                .decimals();
+            poolData[i].liquidity = IUniswapV3Pool(pool).liquidity();
+            uint160 sqrtPriceX96;
+            uint24 fee = IUniswapV3Pool(pool).fee();
+            int24 tick;
+            (bool success, bytes memory output) = pool.staticcall(
+                abi.encodeWithSelector(IUniswapV3Pool.currentFee.selector)
+            );
+            (, bytes memory result) = pool.staticcall(
+                abi.encodeWithSelector(0x3850c7bd)
+            ); // slot0 call
+            assembly ("memory-safe") {
+                let len := mload(result)
+                mstore(sqrtPriceX96, mload(add(result, 0x20))) // response.sqrtPriceX96
+                mstore(tick, mload(add(result, 0x40))) // response.tick
+                if and(gt(len, 0xc0), success) {
+                    mstore(fee, mload(add(output, 0x20))) // response.feeProtocol [ramses cases]
+                }
+            }
+            (success, output) = pool.staticcall(
+                abi.encodeWithSelector(0xf30dba93, tick)
+            );
+            int128 liquidityNet;
+            assembly ("memory-safe") {
+                liquidityNet := mload(add(output, 0x20))
+            }
+            poolData[i].fee = fee;
+            poolData[i].tick = tick;
+            poolData[i].sqrtPrice = sqrtPriceX96;
+            poolData[i].tickSpacing = IUniswapV3Pool(pool).tickSpacing();
+            poolData[i].liquidityNet = liquidityNet;
+        }
+        return poolData;
     }
 
     function tick_constructor(
