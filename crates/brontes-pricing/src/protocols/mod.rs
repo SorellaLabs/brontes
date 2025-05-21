@@ -1,8 +1,8 @@
+pub mod erc20;
 pub mod errors;
 pub mod lazy;
 pub mod uniswap_v2;
 pub mod uniswap_v3;
-
 use std::{future::Future, sync::Arc};
 
 use alloy_primitives::{Address, Log};
