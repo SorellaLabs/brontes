@@ -198,7 +198,7 @@ impl DiscoveryLogsFill {
                     .spawn_critical_with_graceful_shutdown_signal(
                         "DiscoveryLogs",
                         |shutdown| async move {
-                            DiscoveryLogsExecutor::new(start_block, end_block, libmdbx, parser, bar)
+                            DiscoveryLogsExecutor::new(start_block, end_block, self.range_size, libmdbx, parser, bar)
                                 .run_until_graceful_shutdown(shutdown)
                                 .await
                         },
