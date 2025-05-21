@@ -5,6 +5,7 @@ use alloy_json_abi::JsonAbi;
 use alloy_primitives::{Address, FixedBytes};
 #[cfg(feature = "dyn-decode")]
 use alloy_primitives::{Address, Log};
+use alloy_rpc_types::Log;
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
 use brontes_types::Protocol;
@@ -14,8 +15,6 @@ use reth_rpc_types::trace::parity::Action;
 use reth_rpc_types::{Filter, FilterSet, Topic, ValueOrArray};
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
-
-use alloy_rpc_types::Log;
 
 use super::*;
 #[cfg(feature = "dyn-decode")]
@@ -59,9 +58,8 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
         self,
         start_block: u64,
         end_block: u64,
-    ) -> Option<(u64, HashMap<Protocol, Vec<Log>>)> {
+    ) -> eyre::Result<HashMap<Protocol, Vec<Log>>> {
         let provider = self.provider.clone();
-
         let addresses = self
             .protocol_to_events
             .iter()
@@ -77,24 +75,24 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
             .iter()
             .map(|(protocol, (address, _))| (address, protocol))
             .collect::<HashMap<_, _>>();
-
         let filter = Filter::new()
             .address(addresses)
             .event_signature(topics)
             .from_block(start_block)
             .to_block(end_block);
-        let logs = provider.get_logs(&filter).await?;
-        let res = logs
-            .into_iter()
-            .fold(HashMap::new(), |mut acc, log| {
-                let protocol = address_to_protocol
-                    .get(&log.address())
-                    .expect("log address not found in protocol_to_events");
-                acc.entry(**protocol)
-                    .or_insert_with(Vec::new)
-                    .push(log);
-                acc
-            });
-        Some((end_block, res))
+        let logs = provider.get_logs(&filter).await.inspect_err(|e| {
+            tracing::error!("Failed to get logs: {:?}", e);
+        })?;
+
+        let mut res: HashMap<Protocol, Vec<Log>> = HashMap::new();
+        for log in logs {
+            let proto = address_to_protocol
+                .get(&log.address())
+                .expect("address not found");
+            // if Protocol: Copy, `*proto` works; otherwise derive Clone and do
+            // `proto.clone()`
+            res.entry(**proto).or_default().push(log);
+        }
+        Ok(res)
     }
 }

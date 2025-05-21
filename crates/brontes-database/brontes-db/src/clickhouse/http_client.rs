@@ -81,6 +81,7 @@ impl ClickhouseHandle for ClickhouseHttpClient {
         _: BlockHash,
         _: Vec<TxHash>,
         quote_asset: Address,
+        include_relay: bool,
     ) -> eyre::Result<Metadata> {
         let block_meta = self
             .query_many_range::<BlockInfo, BlockInfoData>(block_num, block_num + 1)

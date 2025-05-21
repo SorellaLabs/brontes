@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use alloy_primitives::{Address, FixedBytes, Log};
+use alloy_primitives::{Address, FixedBytes};
+use alloy_rpc_types::Log;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -53,42 +54,37 @@ fn convert_to_address(address: FixedBytes<32>) -> Address {
     Address::from_slice(&address[..20])
 }
 
-pub fn decode_event(log: &Log) -> eyre::Result<(Address, Vec<Address>)> {
-    // Attempt to decode the log using different protocols
-    if let Ok(decoded) = BalancerV2::TokensRegistered::decode_log(log, true) {
-        let pool_address = convert_to_address(decoded.poolId);
-        let tokens = decoded.tokens.clone();
-        Ok((pool_address, tokens))
-    } else if let Ok(decoded) = UniswapV2::PairCreated::decode_log(log, true) {
-        let pool_address = decoded.pair;
-        let tokens = vec![decoded.token0, decoded.token1];
-        Ok((pool_address, tokens))
-    } else if let Ok(decoded) = UniswapV3::PoolCreated::decode_log(log, true) {
-        let pool_address = decoded.pool;
-        let tokens = vec![decoded.token0, decoded.token1];
-        Ok((pool_address, tokens))
-    } else if let Ok(decoded) = UniswapV4::Initialize::decode_log(log, true) {
-        let pool_address = convert_to_address(decoded.id);
-        let tokens =
-            vec![convert_to_address(decoded.currency0), convert_to_address(decoded.currency1)];
-        Ok((pool_address, tokens))
-    } else if let Ok(decoded) = CamelotV3::Pool::decode_log(log, true) {
-        let pool_address = decoded.pool;
-        let tokens = vec![decoded.token0, decoded.token1];
-        Ok((pool_address, tokens))
-    } else if let Ok(decoded) = FluidDEX::DexT1Deployed::decode_log(log, true) {
-        let pool_address = decoded.dex;
-        let tokens = vec![decoded.supplyToken, decoded.borrowToken];
-        Ok((pool_address, tokens))
-    } else if let Ok(decoded) = LFJV2::LBPairCreated::decode_log(log, true) {
-        let pool_address = decoded.LBPair;
-        let tokens = vec![decoded.tokenX, decoded.tokenY];
-        Ok((pool_address, tokens))
-    } else {
-        println!("Failed to decode log: {:?}", log);
-        Err(eyre::eyre!("Failed to decode log"))
-    }
+pub fn decode_event(log: &Log) -> eyre::Result<(Option<u64>, Address, Vec<Address>)> {
+    let plog: alloy_primitives::Log = log.inner.clone();
+    let (pool_address, tokens) = match (
+        BalancerV2::TokensRegistered::decode_log(&plog, true),
+        UniswapV2::PairCreated::decode_log(&plog, true),
+        UniswapV3::PoolCreated::decode_log(&plog, true),
+        UniswapV4::Initialize::decode_log(&plog, true),
+        CamelotV3::Pool::decode_log(&plog, true),
+        FluidDEX::DexT1Deployed::decode_log(&plog, true),
+        LFJV2::LBPairCreated::decode_log(&plog, true),
+    ) {
+        (Ok(decoded), ..) => (convert_to_address(decoded.poolId), decoded.tokens.clone()),
+        (_, Ok(decoded), ..) => (decoded.pair, vec![decoded.token0, decoded.token1]),
+        (_, _, Ok(decoded), ..) => (decoded.pool, vec![decoded.token0, decoded.token1]),
+        (_, _, _, Ok(decoded), ..) => (
+            convert_to_address(decoded.id),
+            vec![convert_to_address(decoded.currency0), convert_to_address(decoded.currency1)],
+        ),
+        (_, _, _, _, Ok(decoded), ..) => (decoded.pool, vec![decoded.token0, decoded.token1]),
+        (_, _, _, _, _, Ok(decoded), ..) => {
+            (decoded.dex, vec![decoded.supplyToken, decoded.borrowToken])
+        }
+        (_, _, _, _, _, _, Ok(decoded)) => (decoded.LBPair, vec![decoded.tokenX, decoded.tokenY]),
+        _ => {
+            tracing::debug!("Failed to decode log: {:?}", plog);
+            return Err(eyre::eyre!("Failed to decode log"));
+        }
+    };
+    Ok((log.block_number, pool_address, tokens))
 }
+
 #[derive(Debug)]
 pub struct DiscoveryLogsOnlyClassifier<'db, DB: LibmdbxReader + DBWriter> {
     libmdbx: &'db DB,
@@ -105,43 +101,36 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         Self { libmdbx }
     }
 
-    pub async fn run_discovery(
-        &self,
-        block_number: u64,
-        logs: HashMap<Protocol, Vec<alloy_primitives::Log>>,
-    ) {
-        self.process_logs(block_number, logs).await;
-    }
-
-    pub(crate) async fn process_logs(
-        &self,
-        block_number: u64,
-        logs: HashMap<Protocol, Vec<alloy_primitives::Log>>,
-    ) {
-        join_all(logs.into_iter().map(|(protocol, logs)| async move {
-            self.process_classification(block_number, protocol, logs)
-                .await;
+    pub async fn process_logs(&self, logs: HashMap<Protocol, Vec<Log>>) -> eyre::Result<()> {
+        let _ = join_all(logs.into_iter().map(|(protocol, logs)| async move {
+            self.process_classification(protocol, logs).await;
         }))
         .await;
+        Ok(())
     }
 
-    async fn process_classification(
-        &self,
-        block_number: u64,
-        protocol: Protocol,
-        logs: Vec<alloy_primitives::Log>,
-    ) {
-        // TODO: add classification for each factory protocol and pair
+    async fn process_classification(&self, protocol: Protocol, logs: Vec<Log>) {
         join_all(
             logs.into_iter()
-                .filter_map(|log| match decode_event(&log) {
-                    Ok((pool_address, tokens)) => {
-                        Some(NormalizedNewPool { trace_index: 0, protocol, pool_address, tokens })
-                    }
-                    Err(_) => None,
+                .filter_map(|log| {
+                    decode_event(&log)
+                        .map(|(block_number, pool_address, tokens)| {
+                            (
+                                block_number,
+                                NormalizedNewPool {
+                                    trace_index: 0,
+                                    protocol,
+                                    pool_address,
+                                    tokens,
+                                },
+                            )
+                        })
+                        .ok()
                 })
-                .filter(|pool| !self.contains_pool(pool.pool_address))
-                .map(|pool| async move { self.insert_new_pool(block_number, pool).await }),
+                .filter(|(_, pool)| !self.contains_pool(pool.pool_address))
+                .map(|(block_number, pool)| async move {
+                    self.insert_new_pool(block_number, pool, None).await
+                }),
         )
         .await;
     }
@@ -150,19 +139,24 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         self.libmdbx.get_protocol(address).is_ok()
     }
 
-    async fn insert_new_pool(&self, block: u64, pool: NormalizedNewPool) {
+    async fn insert_new_pool(&self, block_number: Option<u64>, pool: NormalizedNewPool, curve_lp_token: Option<Address>) {
+        // TODO: Parse the blog number from Log
         if self
             .libmdbx
-            .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)
+            .insert_pool(
+                block_number.unwrap_or(0),
+                pool.pool_address,
+                &pool.tokens,
+                curve_lp_token,
+                pool.protocol,
+            )
             .await
             .is_err()
         {
-            error!(pool=?pool.pool_address,"failed to insert discovered pool into libmdbx");
+            error!(pool=?pool.pool_address, "failed to insert discovered pool into libmdbx");
         } else {
             trace!(
-                "Discovered new {} pool:
-                            \nAddress:{}
-                            ",
+                "Discovered new {} pool: Address:{}",
                 pool.protocol,
                 pool.pool_address
             );

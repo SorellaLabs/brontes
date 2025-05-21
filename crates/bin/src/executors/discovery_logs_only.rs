@@ -4,6 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use alloy_rpc_types::Log;
 use brontes_classifier::discovery_logs_only::DiscoveryLogsOnlyClassifier;
 use brontes_core::decoding::{LogParser, LogProvider};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
@@ -21,7 +22,7 @@ pub struct DiscoveryLogsExecutor<T: LogProvider, DB: DBWriter + LibmdbxReader> {
     end_block:     u64,
     parser:        &'static LogParser<T, DB>,
     classifier:    DiscoveryLogsOnlyClassifier<'static, DB>,
-    running:       FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    running:       FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
     progress_bar:  ProgressBar,
 }
 
@@ -66,21 +67,11 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
         end_block: u64,
         parser: &'static LogParser<T, DB>,
         classifier: DiscoveryLogsOnlyClassifier<'static, DB>,
-    ) {
-        if let Some((block_number, protocol_to_logs)) =
-            parser.execute_discovery(start_block, end_block).await
-        {
-            let data: HashMap<Protocol, Vec<alloy_primitives::Log>> =
-                protocol_to_logs
-                    .iter()
-                    .fold(HashMap::new(), |mut acc, (protocol, logs)| {
-                        let plogs: Vec<alloy_primitives::Log> = logs.iter().map(|log| log.inner.clone()).collect();
-                        acc.insert(*protocol, plogs);
-                        acc
-                    });
-
-            classifier.run_discovery(block_number, data).await
-        }
+    ) -> eyre::Result<()> {
+        classifier
+            .process_logs(parser.execute_discovery(start_block, end_block).await?)
+            .await?;
+        Ok(())
     }
 }
 
