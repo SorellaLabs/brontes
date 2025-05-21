@@ -46,16 +46,12 @@ impl LogProvider for LocalProvider {
 
     #[cfg(not(feature = "local-reth"))]
     async fn best_block_number(&self) -> eyre::Result<u64> {
-        tracing::info!(target: "brontes", "getting best block number");
         self.provider.get_block_number().await.map_err(Into::into)
     }
 
     async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>> {
-        tracing::info!("Getting logs with filter: {:?}", filter);
         let res = self.provider.get_logs(filter).await;
-        tracing::info!("Got logs with filter: {:?}", filter);
         if let Err(e) = res {
-            tracing::info!("Failed to get logs");
             return Err(e.into());
         }
 
@@ -230,10 +226,10 @@ impl TracingProvider for LocalProvider {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, str::FromStr};
+    use std::env;
 
-    use alloy_primitives::Address;
-    use alloy_rpc_types::{Filter, FilterSet};
+    
+    use alloy_rpc_types::Filter;
     use alloy_sol_macro::sol;
     use alloy_sol_types::SolEvent;
     use tracing_subscriber::{fmt, EnvFilter};

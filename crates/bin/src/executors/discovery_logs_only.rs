@@ -1,14 +1,11 @@
 use std::{
-    collections::HashMap,
     pin::Pin,
     task::{Context, Poll},
 };
 
-use alloy_rpc_types::Log;
 use brontes_classifier::discovery_logs_only::DiscoveryLogsOnlyClassifier;
 use brontes_core::decoding::{LogParser, LogProvider};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_types::Protocol;
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 

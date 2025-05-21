@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use alloy_primitives::{Address, FixedBytes};
 use alloy_sol_macro::sol;
@@ -17,7 +17,6 @@ use clap::Parser;
 use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
-use reth_rpc_types::Filter;
 
 use crate::{
     cli::{get_env_vars, get_tracing_provider, load_read_only_database, static_object},

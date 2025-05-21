@@ -9,10 +9,9 @@ use alloy_rpc_types::Log;
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
 use brontes_types::Protocol;
-use futures::future::join_all;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
-use reth_rpc_types::{Filter, FilterSet, Topic, ValueOrArray};
+use reth_rpc_types::Filter;
 #[cfg(feature = "dyn-decode")]
 use tracing::info;
 
@@ -63,12 +62,12 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
         let addresses = self
             .protocol_to_events
             .iter()
-            .map(|(_, (address, _))| address.clone())
+            .map(|(_, (address, _))| *address)
             .collect::<Vec<_>>();
         let topics = self
             .protocol_to_events
             .iter()
-            .map(|(_, (_, topic))| topic.clone())
+            .map(|(_, (_, topic))| *topic)
             .collect::<Vec<_>>();
         let address_to_protocol = self
             .protocol_to_events
