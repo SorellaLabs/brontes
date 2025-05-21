@@ -139,9 +139,13 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         self.libmdbx.get_protocol(address).is_ok()
     }
 
-    async fn insert_new_pool(&self, block_number: Option<u64>, pool: NormalizedNewPool, curve_lp_token: Option<Address>) {
-        // TODO: Parse the blog number from Log
-        if self
+    async fn insert_new_pool(
+        &self,
+        block_number: Option<u64>,
+        pool: NormalizedNewPool,
+        curve_lp_token: Option<Address>,
+    ) {
+        let insert_result = self
             .libmdbx
             .insert_pool(
                 block_number.unwrap_or(0),
@@ -150,16 +154,12 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
                 curve_lp_token,
                 pool.protocol,
             )
-            .await
-            .is_err()
-        {
+            .await;
+
+        if insert_result.is_err() {
             error!(pool=?pool.pool_address, "failed to insert discovered pool into libmdbx");
         } else {
-            trace!(
-                "Discovered new {} pool: Address:{}",
-                pool.protocol,
-                pool.pool_address
-            );
+            debug!("Discovered new {} pool: Address:{}", pool.protocol, pool.pool_address);
         }
     }
 }
