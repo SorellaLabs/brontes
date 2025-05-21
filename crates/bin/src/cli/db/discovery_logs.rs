@@ -20,7 +20,7 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 
 use crate::{
-    cli::{get_env_vars, get_tracing_provider, load_read_only_database, static_object},
+    cli::{get_env_vars, get_tracing_provider, load_database, load_read_only_database, static_object},
     discovery_logs_only::DiscoveryLogsExecutor,
     runner::CliContext,
 };
@@ -88,7 +88,7 @@ impl DiscoveryLogsFill {
         init_thread_pools(max_tasks);
 
         let libmdbx =
-            static_object(load_read_only_database(&ctx.task_executor, brontes_db_path).await?);
+            static_object(load_database(&ctx.task_executor, brontes_db_path, None, None).await?);
 
         let tracer = Arc::new(get_tracing_provider(
             Path::new(&db_path),
