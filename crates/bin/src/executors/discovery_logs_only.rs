@@ -17,6 +17,7 @@ const MAX_PENDING_TREE_BUILDING: usize = 5;
 pub struct DiscoveryLogsExecutor<T: LogProvider, DB: DBWriter + LibmdbxReader> {
     current_block: u64,
     end_block:     u64,
+    range_size:    usize,
     parser:        &'static LogParser<T, DB>,
     classifier:    DiscoveryLogsOnlyClassifier<'static, DB>,
     running:       FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
@@ -27,6 +28,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
     pub fn new(
         start_block: u64,
         end_block: u64,
+        range_size: usize,
         db: &'static DB,
         parser: &'static LogParser<T, DB>,
         progress_bar: ProgressBar,
@@ -36,6 +38,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
             progress_bar,
             current_block: start_block,
             end_block,
+            range_size,
             parser,
             classifier,
             running: FuturesUnordered::default(),
@@ -85,13 +88,12 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
                 self.classifier.clone(),
             ));
             self.running.push(fut);
-
-            self.current_block = self.end_block;
+            self.current_block = self.current_block + self.range_size as u64;
         }
 
         while match self.running.poll_next_unpin(cx) {
             Poll::Ready(Some(_)) => {
-                self.progress_bar.inc(1);
+                self.progress_bar.inc(self.range_size as u64);
                 true
             }
             Poll::Pending => false,
