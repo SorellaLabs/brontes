@@ -72,11 +72,10 @@ pub fn decode_event(log: &Log) -> eyre::Result<(Option<u64>, Address, Vec<Addres
             convert_to_address(decoded.id),
             vec![convert_to_address(decoded.currency0), convert_to_address(decoded.currency1)],
         ),
-        (_, _, _, _, Ok(decoded), ..) => (decoded.pool, vec![decoded.token0, decoded.token1]),
-        (_, _, _, _, _, Ok(decoded), ..) => {
+        (_, _, _, _, Ok(decoded), _) => (decoded.pool, vec![decoded.token0, decoded.token1]),
+        (_, _, _, _, _, Ok(decoded)) => {
             (decoded.dex, vec![decoded.supplyToken, decoded.borrowToken])
         }
-        (_, _, _, _, _, _, Ok(decoded)) => (decoded.LBPair, vec![decoded.tokenX, decoded.tokenY]),
         _ => {
             tracing::debug!("Failed to decode log: {:?}", plog);
             return Err(eyre::eyre!("Failed to decode log"));
