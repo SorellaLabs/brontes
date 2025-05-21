@@ -44,11 +44,12 @@ pub async fn get_v2_pool_data<M: TracingProvider>(
     block: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    let call_data = data_constructorCall::new((vec![pool.address],)).abi_encode();
+    let mut bytecode = IGetUniswapV2PoolDataBatchRequest::BYTECODE.to_vec();
+    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
     let req = TransactionRequest {
-        to: Some(Address::from_str("0x3f701A02eC90295D44603CAcdd582FaA3A975e09").unwrap()),
-        input: TransactionInput::new(call_data.into()),
+        to: None,
+        input: TransactionInput::new(bytecode.into()),
         ..Default::default()
     };
 

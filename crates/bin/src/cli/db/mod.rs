@@ -83,7 +83,7 @@ pub enum DatabaseCommands {
     #[command(name = "run-discovery")]
     Discovery(discovery::DiscoveryFill),
     /// Only runs discovery and inserts discovered protocols into clickhouse
-    #[cfg(feature = "local-clickhouse")]
+    #[cfg(all(feature = "local-clickhouse", feature = "arbitrum"))]
     #[command(name = "run-discovery-log")]
     DiscoveryLogs(discovery_logs::DiscoveryLogsFill),
 }
@@ -109,7 +109,7 @@ impl Database {
             DatabaseCommands::TestTracesInit(cmd) => cmd.execute(brontes_db_path, ctx).await,
             #[cfg(feature = "local-clickhouse")]
             DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_path, ctx).await,
-            #[cfg(feature = "local-clickhouse")]
+            #[cfg(all(feature = "local-clickhouse", feature = "arbitrum"))]
             DatabaseCommands::DiscoveryLogs(cmd) => cmd.execute(brontes_db_path, ctx).await,
         }
     }

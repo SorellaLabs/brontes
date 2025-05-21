@@ -1,18 +1,26 @@
-use std::{collections::HashMap, path::Path, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, FixedBytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use brontes_core::decoding::LogParser as DLogParser;
-use brontes_types::{init_thread_pools, Protocol};
+use brontes_types::{
+    constants::arbitrum::{
+        BALANCER_V2_VAULT_ADDRESS, CAMELOT_V2_FACTORY_ADDRESS, CAMELOT_V3_FACTORY_ADDRESS,
+        FLUID_DEX_FACTORY_ADDRESS, LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJ_V2_2_DEX_FACTORY_ADDRESS,
+        PANCAKESWAP_V2_FACTORY_ADDRESS, PANCAKESWAP_V3_FACTORY_ADDRESS,
+        SUSHISWAP_V2_FACTORY_ADDRESS, SUSHISWAP_V3_FACTORY_ADDRESS, UNISWAP_V2_FACTORY_ADDRESS,
+        UNISWAP_V3_FACTORY_ADDRESS, UNISWAP_V4_FACTORY_ADDRESS,
+    },
+    init_thread_pools, Protocol,
+};
 use clap::Parser;
 use futures::StreamExt;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
-use reth_rpc_types::Filter;
 
 use crate::{
-    cli::{get_env_vars, get_tracing_provider, load_read_only_database, static_object},
+    cli::{get_env_vars, get_tracing_provider, load_database, load_read_only_database, static_object},
     discovery_logs_only::DiscoveryLogsExecutor,
     runner::CliContext,
 };
@@ -41,6 +49,12 @@ sol!(
 );
 sol!(
     #![sol(all_derives)]
+    LFJV2,
+    "../brontes-classifier/classifier-abis/LFJ/ILBFactory.json"
+);
+
+sol!(
+    #![sol(all_derives)]
     CamelotV3,
     "../brontes-classifier/classifier-abis/Algebra1_9Factory.json"
 );
@@ -55,9 +69,15 @@ pub struct DiscoveryLogsFill {
     /// Start Block
     #[arg(long, short)]
     pub start_block: Option<u64>,
+    /// End Block
+    #[arg(long, short)]
+    pub end_block:   Option<u64>,
     /// Max number of tasks to run concurrently
     #[arg(long, short)]
     pub max_tasks:   Option<usize>,
+    /// Block range per request (defaults to alchemy block range limit = 10,000)
+    #[arg(long, short, default_value_t = 10_000)]
+    pub range_size:  usize,
 }
 
 impl DiscoveryLogsFill {
@@ -68,7 +88,7 @@ impl DiscoveryLogsFill {
         init_thread_pools(max_tasks);
 
         let libmdbx =
-            static_object(load_read_only_database(&ctx.task_executor, brontes_db_path).await?);
+            static_object(load_database(&ctx.task_executor, brontes_db_path, None, None).await?);
 
         let tracer = Arc::new(get_tracing_provider(
             Path::new(&db_path),
@@ -76,45 +96,70 @@ impl DiscoveryLogsFill {
             ctx.task_executor.clone(),
         ));
 
-        let balancer_v2_filter = Filter::new()
-            .address(Address::from_str("0xba12222222228d8ba445958a75a0704d566bf2c8").unwrap())
-            .event_signature(BalancerV2::TokensRegistered::SIGNATURE_HASH);
-        let uniswap_v2_filter = Filter::new()
-            .address(Address::from_str("0xf1D7CC64Fb4452F05c498126312eBE29f30Fbcf9").unwrap())
-            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
-        let camelot_v2_filter = Filter::new()
-            .address(Address::from_str("0x6EcCab422D763aC031210895C81787E87B43A652").unwrap())
-            .event_signature(UniswapV2::PairCreated::SIGNATURE_HASH);
-        let camelot_v3_filter = Filter::new()
-            .address(Address::from_str("0x1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B").unwrap())
-            .event_signature(CamelotV3::Pool::SIGNATURE_HASH);
-        let uniswap_v3_filter = Filter::new()
-            .address(Address::from_str("0x7858E59e0C01EA06D73002144C0a530770217229").unwrap())
-            .event_signature(UniswapV3::PoolCreated::SIGNATURE_HASH);
-        let uniswap_v4_filter = Filter::new()
-            .address(Address::from_str("0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32").unwrap())
-            .event_signature(UniswapV4::Initialize::SIGNATURE_HASH);
-        let fluid_dex_filter = Filter::new()
-            .address(Address::from_str("0x46978CD477A496028A18c02F07ab7F35EDBa5A54").unwrap())
-            .event_signature(FluidDEX::DexT1Deployed::SIGNATURE_HASH);
+        let mut protocol_to_address: HashMap<Protocol, (Address, FixedBytes<32>)> = HashMap::new();
+        protocol_to_address.insert(
+            Protocol::BalancerV2,
+            (BALANCER_V2_VAULT_ADDRESS, BalancerV2::TokensRegistered::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::UniswapV2,
+            (UNISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::SushiSwapV2,
+            (SUSHISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::PancakeSwapV2,
+            (PANCAKESWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::SushiSwapV3,
+            (SUSHISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::PancakeSwapV3,
+            (PANCAKESWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::UniswapV3,
+            (UNISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::UniswapV4,
+            (UNISWAP_V4_FACTORY_ADDRESS, UniswapV4::Initialize::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::CamelotV2,
+            (CAMELOT_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::CamelotV3,
+            (CAMELOT_V3_FACTORY_ADDRESS, CamelotV3::Pool::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::FluidDEX,
+            (FLUID_DEX_FACTORY_ADDRESS, FluidDEX::DexT1Deployed::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::LFJV2_1,
+            (LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::LFJV2_2,
+            (LFJ_V2_2_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH),
+        );
 
-        let mut filters: HashMap<Protocol, Filter> = HashMap::new();
-        filters.insert(Protocol::BalancerV2, balancer_v2_filter);
-        filters.insert(Protocol::UniswapV2, uniswap_v2_filter);
-        filters.insert(Protocol::UniswapV3, uniswap_v3_filter);
-        filters.insert(Protocol::UniswapV4, uniswap_v4_filter);
-        filters.insert(Protocol::CamelotV2, camelot_v2_filter);
-        filters.insert(Protocol::CamelotV3, camelot_v3_filter);
-        filters.insert(Protocol::FluidDEX, fluid_dex_filter);
-
-        let parser = static_object(DLogParser::new(libmdbx, tracer.clone(), filters).await);
+        let parser =
+            static_object(DLogParser::new(libmdbx, tracer.clone(), protocol_to_address).await);
 
         let start_block = if let Some(s) = self.start_block {
             s
         } else {
             libmdbx.client.max_traced_block().await?
         };
-        let end_block = parser.get_latest_block_number().await.unwrap();
+        let end_block =
+            if let Some(e) = self.end_block { e } else { parser.get_latest_block_number().await? };
 
         let bar = ProgressBar::with_draw_target(
             Some(end_block - start_block),
@@ -136,13 +181,16 @@ impl DiscoveryLogsFill {
         bar.set_style(style);
         bar.set_message("Processing blocks:");
 
+        let total_blocks = end_block - start_block + 1;
+        let chunk_size = (total_blocks + max_tasks as u64 - 1) / max_tasks as u64; // ceiling division
+
         let chunks = (start_block..=end_block)
-            .chunks(max_tasks)
+            .chunks(chunk_size as usize)
             .into_iter()
             .map(|mut c| {
                 let start = c.next().unwrap();
-                let end_block = c.last().unwrap_or(start_block);
-                (start, end_block)
+                let end = c.last().unwrap_or(start);
+                (start, end)
             })
             .collect_vec();
 
@@ -153,7 +201,7 @@ impl DiscoveryLogsFill {
                     .spawn_critical_with_graceful_shutdown_signal(
                         "DiscoveryLogs",
                         |shutdown| async move {
-                            DiscoveryLogsExecutor::new(start_block, end_block, libmdbx, parser, bar)
+                            DiscoveryLogsExecutor::new(start_block, end_block, self.range_size, libmdbx, parser, bar)
                                 .run_until_graceful_shutdown(shutdown)
                                 .await
                         },

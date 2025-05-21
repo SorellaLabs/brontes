@@ -7,178 +7,362 @@ use brontes_types::{
     ToScaledRational,
 };
 
-action_impl!(
-    Protocol::LFJ,
-    crate::LFJPair::swapCall,
-    Swap,
-    [Swap],
-    call_data: true,
-    logs: true,
-    |
-    info: CallInfo,
-    call_data: swapCall,
-    _logs: LFJSwapCallLogs,
-    db_tx: &DB| {
-        let swap_field=_logs.swap_field?;
-        let amount_in_bytes = swap_field.amountsIn;
-        let amount_out_bytes = swap_field.amountsOut;
+// Assuming DB type, crate::LFJPair, crate::LFJV2_2Pair,
+// and log types (e.g., LFJV2_1SwapCallLogs) are accessible.
 
-        let amount_in = U256::from_be_bytes(amount_in_bytes.into());
-        let amount_out = U256::from_be_bytes(amount_out_bytes.into());
-        let recipient = swap_field.to;
-        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
-        let [token_0, token_1] = [details.token0, details.token1];
+pub mod lfj_v2_1 {
+    use super::*;
 
-        let t0_info = db_tx.try_fetch_token_info(token_0)?;
-        let t1_info = db_tx.try_fetch_token_info(token_1)?;
+    action_impl!(
+        Protocol::LFJV2_1,
+        crate::LFJPair::swapCall,
+        Swap,
+        [Swap],
+        call_data: true,
+        logs: true,
+        |
+        info: CallInfo,
+        call_data: swapCall,
+        _logs: LFJV2_1SwapCallLogs,
+        db_tx: &DB| {
+            let swap_field=_logs.swap_field?;
+            let amount_in_bytes = swap_field.amountsIn;
+            let amount_out_bytes = swap_field.amountsOut;
 
-        let (amount_in, amount_out, token_in, token_out) = if call_data.swapForY {
-            (
-                amount_in.to_scaled_rational(t0_info.decimals),
-                amount_out.to_scaled_rational(t1_info.decimals),
-                t0_info,
-                t1_info,
-            )
-        } else {
-            (
-                amount_in.to_scaled_rational(t1_info.decimals),
-                amount_out.to_scaled_rational(t0_info.decimals),
-                t1_info,
-                t0_info,
-            )
-        };
+            let amount_in = U256::from_be_bytes(amount_in_bytes.into());
+            let amount_out = U256::from_be_bytes(amount_out_bytes.into());
+            let recipient = swap_field.to;
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
 
-        Ok(NormalizedSwap {
-            protocol: Protocol::LFJ,
-            trace_index: info.trace_idx,
-            from: info.from_address,
-            pool: info.target_address,
-            recipient,
-            token_in,
-            token_out,
-            amount_in,
-            amount_out,
-            msg_value: info.msg_value
-        })
-    }
-);
-action_impl!(
-    Protocol::LFJ,
-    crate::LFJPair::mintCall,
-    Mint,
-    [DepositedToBins],
-    logs: true,
-    call_data: true,
-     |
-     info: CallInfo,
-     call_data: mintCall,
-     _logs: LFJMintCallLogs,  db_tx: &DB| {
-        let deposited_to_bins_field = _logs.deposited_to_bins_field?;
-        let token_deltas = deposited_to_bins_field.amounts;
-        let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
-        let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
-        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
-        let [token_0, token_1] = [details.token0, details.token1];
+            let (amount_in, amount_out, token_in, token_out) = if call_data.swapForY {
+                (
+                    amount_in.to_scaled_rational(t0_info.decimals),
+                    amount_out.to_scaled_rational(t1_info.decimals),
+                    t0_info,
+                    t1_info,
+                )
+            } else {
+                (
+                    amount_in.to_scaled_rational(t1_info.decimals),
+                    amount_out.to_scaled_rational(t0_info.decimals),
+                    t1_info,
+                    t0_info,
+                )
+            };
 
-        let t0_info = db_tx.try_fetch_token_info(token_0)?;
-        let t1_info = db_tx.try_fetch_token_info(token_1)?;
+            Ok(NormalizedSwap {
+                protocol: Protocol::LFJV2_1,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                pool: info.target_address,
+                recipient,
+                token_in,
+                token_out,
+                amount_in,
+                amount_out,
+                msg_value: info.msg_value
+            })
+        }
+    );
+    action_impl!(
+        Protocol::LFJV2_1,
+        crate::LFJPair::mintCall,
+        Mint,
+        [DepositedToBins],
+        logs: true,
+        call_data: true,
+         |
+         info: CallInfo,
+         call_data: mintCall,
+         _logs: LFJV2_1MintCallLogs,  db_tx: &DB| {
+            let deposited_to_bins_field = _logs.deposited_to_bins_field?;
+            let token_deltas = deposited_to_bins_field.amounts;
+            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
+            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
 
-        let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
-        let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
 
-        Ok(NormalizedMint {
-            protocol: Protocol::LFJ,
-            trace_index: info.trace_idx,
-            from: info.from_address,
-            recipient: call_data.to,
-            pool: info.target_address,
-            token: vec![t0_info, t1_info],
-            amount: vec![am0, am1],
-        })
-    }
-);
-action_impl!(
-    Protocol::LFJ,
-    crate::LFJPair::burnCall,
-    Burn,
-    [WithdrawnFromBins],
-    logs:true,
-    |
-    info: CallInfo,
-    _logs: LFJBurnCallLogs,
-    db_tx: &DB| {
-        let withdrawn_from_bins_field = _logs.withdrawn_from_bins_field?;
-        let token_deltas = withdrawn_from_bins_field.amounts;
-        let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
-        let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
-        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
-        let [token_0, token_1] = [details.token0, details.token1];
+            let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
+            let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
 
-        let t0_info = db_tx.try_fetch_token_info(token_0)?;
-        let t1_info = db_tx.try_fetch_token_info(token_1)?;
+            Ok(NormalizedMint {
+                protocol: Protocol::LFJV2_1,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                recipient: call_data.to,
+                pool: info.target_address,
+                token: vec![t0_info, t1_info],
+                amount: vec![am0, am1],
+            })
+        }
+    );
+    action_impl!(
+        Protocol::LFJV2_1,
+        crate::LFJPair::burnCall,
+        Burn,
+        [WithdrawnFromBins],
+        logs:true,
+        |
+        info: CallInfo,
+        _logs: LFJV2_1BurnCallLogs,
+        db_tx: &DB| {
+            let withdrawn_from_bins_field = _logs.withdrawn_from_bins_field?;
+            let token_deltas = withdrawn_from_bins_field.amounts;
+            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
+            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
 
-        let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
-        let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
 
-        Ok(NormalizedBurn {
-            protocol: Protocol::LFJ,
-            recipient: info.from_address,
-            pool: info.target_address,
-            trace_index: info.trace_idx,
-            from: info.from_address,
-            token: vec![t0_info, t1_info],
-            amount: vec![am0, am1],
-        })
-    }
-);
-action_impl!(
-    Protocol::LFJ,
-    crate::LFJPair::collectProtocolFeesCall,
-    Collect,
-    [CollectedProtocolFees],
-    call_data: true,
-    return_data: true,
-    logs: true,
-    |
-    info: CallInfo,
-    call_data: collectProtocolFeesCall,
-    return_data: collectProtocolFeesReturn,
-    _logs: LFJCollectProtocolFeesCallLogs,
-    db_tx: &DB
-    | {
-        let logs=_logs.collected_protocol_fees_field?;
-        let details = db_tx.get_protocol_details_sorted(info.target_address)?;
-        let [token_0, token_1] = [details.token0, details.token1];
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
-        let t0_info = db_tx.try_fetch_token_info(token_0)?;
-        let t1_info = db_tx.try_fetch_token_info(token_1)?;
+            let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
+            let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
 
-        let collected_protocol_fees = return_data.collectedProtocolFees;
+            Ok(NormalizedBurn {
+                protocol: Protocol::LFJV2_1,
+                recipient: info.from_address,
+                pool: info.target_address,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                token: vec![t0_info, t1_info],
+                amount: vec![am0, am1],
+            })
+        }
+    );
+    action_impl!(
+        Protocol::LFJV2_1,
+        crate::LFJPair::collectProtocolFeesCall,
+        Collect,
+        [CollectedProtocolFees],
+        call_data: true,
+        return_data: true,
+        logs: true,
+        |
+        info: CallInfo,
+        call_data: collectProtocolFeesCall,
+        return_data: collectProtocolFeesReturn,
+        _logs: LFJV2_1CollectProtocolFeesCallLogs,
+        db_tx: &DB
+        | {
+            let logs=_logs.collected_protocol_fees_field?;
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
 
-        // Extract the lower and upper 16 bytes from the 32-byte array
-        let lower_16_bytes: [u8; 16] = collected_protocol_fees[0..16].try_into().expect("slice with incorrect length");
-        let upper_16_bytes: [u8; 16] = collected_protocol_fees[16..32].try_into().expect("slice with incorrect length");
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
-        // Convert each 16-byte array into a U256
-        let lower_u256 = U256::from_be_bytes(lower_16_bytes);
-        let upper_u256 = U256::from_be_bytes(upper_16_bytes);
+            let collected_protocol_fees = return_data.collectedProtocolFees;
 
-        let am0 = lower_u256.to_scaled_rational(t0_info.decimals);
-        let am1 = upper_u256.to_scaled_rational(t1_info.decimals);
+            // Extract the lower and upper 16 bytes from the 32-byte array
+            let lower_16_bytes: [u8; 16] = collected_protocol_fees[0..16].try_into().expect("slice with incorrect length");
+            let upper_16_bytes: [u8; 16] = collected_protocol_fees[16..32].try_into().expect("slice with incorrect length");
 
-        Ok(NormalizedCollect {
-            protocol: Protocol::LFJ,
-            trace_index: info.trace_idx,
-            from: info.from_address,
-            recipient: logs.feeRecipient,
-            pool: info.target_address,
-            token: vec![t0_info, t1_info],
-            amount: vec![am0, am1],
-        })
-    }
-);
+            // Convert each 16-byte array into a U256
+            let lower_u256 = U256::from_be_bytes(lower_16_bytes);
+            let upper_u256 = U256::from_be_bytes(upper_16_bytes);
+
+            let am0 = lower_u256.to_scaled_rational(t0_info.decimals);
+            let am1 = upper_u256.to_scaled_rational(t1_info.decimals);
+
+            Ok(NormalizedCollect {
+                protocol: Protocol::LFJV2_1,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                recipient: logs.feeRecipient,
+                pool: info.target_address,
+                token: vec![t0_info, t1_info],
+                amount: vec![am0, am1],
+            })
+        }
+    );
+}
+
+pub mod lfj_v2_2 {
+    use super::*;
+
+    action_impl!(
+        Protocol::LFJV2_2,
+        crate::LFJV2_2Pair::swapCall,
+        Swap,
+        [Swap],
+        call_data: true,
+        logs: true,
+        |
+        info: CallInfo,
+        call_data: swapCall,
+        _logs: LFJV2_2SwapCallLogs,
+        db_tx: &DB| {
+            let swap_field=_logs.swap_field?;
+            let amount_in_bytes = swap_field.amountsIn;
+            let amount_out_bytes = swap_field.amountsOut;
+
+            let amount_in = U256::from_be_bytes(amount_in_bytes.into());
+            let amount_out = U256::from_be_bytes(amount_out_bytes.into());
+            let recipient = swap_field.to;
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
+
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
+
+            let (amount_in, amount_out, token_in, token_out) = if call_data.swapForY {
+                (
+                    amount_in.to_scaled_rational(t0_info.decimals),
+                    amount_out.to_scaled_rational(t1_info.decimals),
+                    t0_info,
+                    t1_info,
+                )
+            } else {
+                (
+                    amount_in.to_scaled_rational(t1_info.decimals),
+                    amount_out.to_scaled_rational(t0_info.decimals),
+                    t1_info,
+                    t0_info,
+                )
+            };
+
+            Ok(NormalizedSwap {
+                protocol: Protocol::LFJV2_2,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                pool: info.target_address,
+                recipient,
+                token_in,
+                token_out,
+                amount_in,
+                amount_out,
+                msg_value: info.msg_value
+            })
+        }
+    );
+    action_impl!(
+        Protocol::LFJV2_2,
+        crate::LFJV2_2Pair::mintCall,
+        Mint,
+        [DepositedToBins],
+        logs: true,
+        call_data: true,
+         |
+         info: CallInfo,
+         call_data: mintCall,
+         _logs: LFJV2_2MintCallLogs,  db_tx: &DB| {
+            let deposited_to_bins_field = _logs.deposited_to_bins_field?;
+            let token_deltas = deposited_to_bins_field.amounts;
+            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
+            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
+
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
+
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
+
+            let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
+            let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
+
+            Ok(NormalizedMint {
+                protocol: Protocol::LFJV2_2,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                recipient: call_data.to,
+                pool: info.target_address,
+                token: vec![t0_info, t1_info],
+                amount: vec![am0, am1],
+            })
+        }
+    );
+    action_impl!(
+        Protocol::LFJV2_2,
+        crate::LFJV2_2Pair::burnCall,
+        Burn,
+        [WithdrawnFromBins],
+        logs:true,
+        |
+        info: CallInfo,
+        _logs: LFJV2_2BurnCallLogs,
+        db_tx: &DB| {
+            let withdrawn_from_bins_field = _logs.withdrawn_from_bins_field?;
+            let token_deltas = withdrawn_from_bins_field.amounts;
+            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
+            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
+
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
+
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
+
+            let am0 = token_0_delta.to_scaled_rational(t0_info.decimals);
+            let am1 = token_1_delta.to_scaled_rational(t1_info.decimals);
+
+            Ok(NormalizedBurn {
+                protocol: Protocol::LFJV2_2,
+                recipient: info.from_address,
+                pool: info.target_address,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                token: vec![t0_info, t1_info],
+                amount: vec![am0, am1],
+            })
+        }
+    );
+    action_impl!(
+        Protocol::LFJV2_2,
+        crate::LFJV2_2Pair::collectProtocolFeesCall,
+        Collect,
+        [CollectedProtocolFees],
+        call_data: true,
+        return_data: true,
+        logs: true,
+        |
+        info: CallInfo,
+        call_data: collectProtocolFeesCall,
+        return_data: collectProtocolFeesReturn,
+        _logs: LFJV2_2CollectProtocolFeesCallLogs,
+        db_tx: &DB
+        | {
+            let logs=_logs.collected_protocol_fees_field?;
+            let details = db_tx.get_protocol_details_sorted(info.target_address)?;
+            let [token_0, token_1] = [details.token0, details.token1];
+
+            let t0_info = db_tx.try_fetch_token_info(token_0)?;
+            let t1_info = db_tx.try_fetch_token_info(token_1)?;
+
+            let collected_protocol_fees = return_data.collectedProtocolFees;
+
+            // Extract the lower and upper 16 bytes from the 32-byte array
+            let lower_16_bytes: [u8; 16] = collected_protocol_fees[0..16].try_into().expect("slice with incorrect length");
+            let upper_16_bytes: [u8; 16] = collected_protocol_fees[16..32].try_into().expect("slice with incorrect length");
+
+            // Convert each 16-byte array into a U256
+            let lower_u256 = U256::from_be_bytes(lower_16_bytes);
+            let upper_u256 = U256::from_be_bytes(upper_16_bytes);
+
+            let am0 = lower_u256.to_scaled_rational(t0_info.decimals);
+            let am1 = upper_u256.to_scaled_rational(t1_info.decimals);
+
+            Ok(NormalizedCollect {
+                protocol: Protocol::LFJV2_2,
+                trace_index: info.trace_idx,
+                from: info.from_address,
+                recipient: logs.feeRecipient,
+                pool: info.target_address,
+                token: vec![t0_info, t1_info],
+                amount: vec![am0, am1],
+            })
+        }
+    );
+}
 
 #[cfg(test)]
 mod tests {
@@ -187,8 +371,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Action,
-        TreeSearchBuilder,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Action, TreeSearchBuilder,
     };
 
     use super::*;
@@ -200,7 +383,7 @@ mod tests {
             B256::from(hex!("057f1d5b3ddabec1b8d78ac7181f562f755669494514f94a767247af800339b1"));
 
         let eq_action = Action::Swap(NormalizedSwap {
-            protocol:    Protocol::LFJ,
+            protocol:    Protocol::LFJV2_1,
             trace_index: 2,
             from:        Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
             recipient:   Address::new(hex!("A69babEF1cA67A37Ffaf7a485DfFF3382056e78C")),
@@ -233,7 +416,7 @@ mod tests {
             B256::from(hex!("0089210683170b3f17201c8abeafdc4c022a26c7af1e44d351556eaa48d0fee8"));
 
         let eq_action = Action::Mint(NormalizedMint {
-            protocol:    Protocol::LFJ,
+            protocol:    Protocol::LFJV2_1,
             trace_index: 21,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
@@ -267,7 +450,7 @@ mod tests {
             B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
 
         let eq_action = Action::Burn(NormalizedBurn {
-            protocol:    Protocol::LFJ,
+            protocol:    Protocol::LFJV2_1,
             trace_index: 12,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
@@ -299,7 +482,7 @@ mod tests {
             B256::from(hex!("f179f349434a59d0dc899fc03a5754c7e50f52de1709d9523e7cbd09c4ba13eb"));
 
         let eq_action = Action::Collect(NormalizedCollect {
-            protocol:    Protocol::LFJ,
+            protocol:    Protocol::LFJV2_1,
             trace_index: 13,
             from:        Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),
             recipient:   Address::new(hex!("6b75d8AF000000e20B7a7DDf000Ba900b4009A80")),

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use alloy_provider::{Provider, RootProvider};
+use alloy_rpc_types::Log;
 use alloy_transport_http::Http;
 use brontes_types::{
     structured_trace::TxTrace,
@@ -10,7 +11,7 @@ use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
 };
-use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, Log, TransactionRequest};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, TransactionRequest};
 
 use crate::rpc_client::{RpcClient, TraceOptions};
 
@@ -45,12 +46,17 @@ impl LogProvider for LocalProvider {
 
     #[cfg(not(feature = "local-reth"))]
     async fn best_block_number(&self) -> eyre::Result<u64> {
-        tracing::info!(target: "brontes", "getting best block number");
         self.provider.get_block_number().await.map_err(Into::into)
     }
 
-    async fn gets_logs(&self, filter: &Filter) -> Option<Vec<Log>> {
-        self.provider.get_logs(filter).await.ok()
+    async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>> {
+        let res = self.provider.get_logs(filter).await;
+        if let Err(e) = res {
+            return Err(e.into());
+        }
+
+        let logs = res.unwrap();
+        Ok(logs)
     }
 }
 
@@ -215,5 +221,116 @@ impl TracingProvider for LocalProvider {
 
         let bytecode = Bytecode::new_raw(bytes);
         Ok(Some(bytecode))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    
+    use alloy_rpc_types::Filter;
+    use alloy_sol_macro::sol;
+    use alloy_sol_types::SolEvent;
+    use tracing_subscriber::{fmt, EnvFilter};
+
+    use super::*;
+
+    sol!(
+        #![sol(all_derives)]
+        BalancerV2,
+        "../brontes-classifier/classifier-abis/balancer/BalancerV2Vault.json"
+    );
+
+    sol!(
+        #![sol(all_derives)]
+        UniswapV2,
+        "../brontes-classifier/classifier-abis/UniswapV2Factory.json"
+    );
+    sol!(
+        #![sol(all_derives)]
+        UniswapV3,
+        "../brontes-classifier/classifier-abis/UniswapV3Factory.json"
+    );
+
+    sol!(
+        #![sol(all_derives)]
+        UniswapV4,
+        "../brontes-classifier/classifier-abis/UniswapV4.json"
+    );
+    sol!(
+        #![sol(all_derives)]
+        CamelotV3,
+        "../brontes-classifier/classifier-abis/Algebra1_9Factory.json"
+    );
+    sol!(
+        #![sol(all_derives)]
+        FluidDEX,
+        "../brontes-classifier/classifier-abis/fluid/FluidDexFactory.json"
+    );
+
+    // Helper function to get RPC URL from environment
+    fn get_rpc_url() -> String {
+        dotenv::dotenv().ok();
+        env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set for tests")
+    }
+
+    fn init_tracing() {
+        let _ = fmt()
+            .with_env_filter(
+                EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()),
+            )
+            .with_target(false)
+            .with_thread_ids(false)
+            .with_file(false)
+            .with_line_number(false)
+            .try_init();
+    }
+
+    #[tokio::test]
+    async fn test_get_logs_with_address() {
+        init_tracing();
+        let url = get_rpc_url();
+        let provider = LocalProvider::new(url, 3);
+
+        // Create a filter with a specific address
+        // Using USDC contract address on Ethereum mainnet as an example
+        let addresses = vec![
+            brontes_types::constants::UNISWAP_V2_FACTORY_ADDRESS,
+            brontes_types::constants::UNISWAP_V3_FACTORY_ADDRESS,
+            brontes_types::constants::UNISWAP_V4_FACTORY_ADDRESS,
+            brontes_types::constants::BALANCER_V2_VAULT_ADDRESS,
+            brontes_types::constants::CAMELOT_V2_FACTORY_ADDRESS,
+            brontes_types::constants::CAMELOT_V3_FACTORY_ADDRESS,
+            brontes_types::constants::FLUID_DEX_FACTORY_ADDRESS,
+            brontes_types::constants::SUSHISWAP_V2_FACTORY_ADDRESS,
+            brontes_types::constants::SUSHISWAP_V3_FACTORY_ADDRESS,
+            brontes_types::constants::PANCAKESWAP_V2_FACTORY_ADDRESS,
+            brontes_types::constants::PANCAKESWAP_V3_FACTORY_ADDRESS,
+        ];
+
+        let topics = vec![
+            UniswapV2::PairCreated::SIGNATURE_HASH,
+            UniswapV3::PoolCreated::SIGNATURE_HASH,
+            UniswapV3::PoolCreated::SIGNATURE_HASH,
+            UniswapV4::Initialize::SIGNATURE_HASH,
+            CamelotV3::Pool::SIGNATURE_HASH,
+            FluidDEX::DexT1Deployed::SIGNATURE_HASH,
+            BalancerV2::TokensRegistered::SIGNATURE_HASH,
+        ];
+
+        let filter = Filter::new()
+            .address(addresses)
+            .from_block(BlockNumberOrTag::Number(338833846))
+            .to_block(BlockNumberOrTag::Number(338843846))
+            .event_signature(topics);
+
+        tracing::info!("Fetching logs for DEX factory addresses");
+        // Get logs with address filter
+        let logs = provider
+            .get_logs(&filter)
+            .await
+            .expect("Failed to get logs");
+        tracing::info!("Retrieved {} logs for DEX factory addresses", logs.len());
     }
 }

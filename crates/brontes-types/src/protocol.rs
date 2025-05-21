@@ -114,7 +114,8 @@ utils!(
         PendleV2,
         FluidDEX,
         FluidLending,
-        LFJ,
+        LFJV2_1,
+        LFJV2_2,
         #[default]
         Unknown,
     }
@@ -167,7 +168,8 @@ impl Protocol {
             Protocol::CamelotV2 => ("Camelot", "V2"),
             Protocol::CamelotV3 => ("Camelot", "V3"),
             Protocol::Dexalot => ("Dexalot", ""),
-            Protocol::LFJ => ("LFJ", "V2"),
+            Protocol::LFJV2_1 => ("LFJ", "V2.1"),
+            Protocol::LFJV2_2 => ("LFJ", "V2.2"),
             Protocol::Dolomite => ("Dolomite", "V3"),
             Protocol::GMXV1 => ("GMX", "V1"),
             Protocol::GMXV2 => ("GMX", "V2"),
@@ -213,7 +215,8 @@ impl Protocol {
             "pendlev2" => Protocol::PendleV2,
             "fluiddex" => Protocol::FluidDEX,
             "fluidelending" => Protocol::FluidLending,
-            "lfj" => Protocol::LFJ,
+            "lfjv2.1" => Protocol::LFJV2_1,
+            "lfjv2.2" => Protocol::LFJV2_2,
             _ => Protocol::Unknown,
         }
     }
@@ -278,7 +281,8 @@ impl fmt::Display for Protocol {
                 Protocol::CamelotV2 => "Camelot V2",
                 Protocol::CamelotV3 => "Camelot V3",
                 Protocol::Dexalot => "Dexalot",
-                Protocol::LFJ => "LFJ",
+                Protocol::LFJV2_1 => "LFJ V2.1",
+                Protocol::LFJV2_2 => "LFJ V2.2",
                 Protocol::Dolomite => "Dolomite",
                 Protocol::GMXV1 => "GMX V1",
                 Protocol::GMXV2 => "GMX V2",
