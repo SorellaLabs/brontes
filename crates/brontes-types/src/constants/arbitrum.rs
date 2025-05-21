@@ -14,8 +14,7 @@ pub const TUSD_ADDRESS: Address = Address::new(hex!("4D15a3A2286D883AF0AA1B3f213
 pub const USDD_ADDRESS: Address = Address::new(hex!("680447595e8b7b3Aa1B43beB9f6098C79ac2Ab3f"));
 pub const FRAX_ADDRESS: Address = Address::new(hex!("17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F"));
 pub const GHO_ADDRESS: Address = Address::new(hex!("7dfF72693f6A4149b17e7C6314655f6A9F7c8B33"));
-pub const AARBGHO_ADDRESS: Address =
-    Address::new(hex!("eBe517846d0F36eCEd99C735cbF6131e1fEB775D"));
+pub const AARBGHO_ADDRESS: Address = Address::new(hex!("eBe517846d0F36eCEd99C735cbF6131e1fEB775D"));
 pub const DOLA_ADDRESS: Address = Address::new(hex!("6A7661795C374c0bFC635934efAddFf3A7Ee23b6"));
 pub const XUSD_ADDRESS: Address = Address::new(hex!("e80772Eaf6e2E18B651F160Bc9158b2A5caFCA65"));
 pub const USDM_ADDRESS: Address = Address::new(hex!("59D9356E565Ab3A36dD77763Fc0d87fEaf85508C"));
@@ -34,8 +33,7 @@ pub const UNI_TOKEN: Address = Address::new(hex!("Fa7F8980b0f1E64A2062791cc3b087
 pub const LINK_ADDRESS: Address = Address::new(hex!("f97f4df75117a78c1A5a0DBb814Af92458539FB4"));
 pub const ARB_TOKEN: Address = Address::new(hex!("912CE59144191C1204E64559FE8253a0e49E6548"));
 pub const CBBTC_ADDRESS: Address = Address::new(hex!("cbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"));
-pub const WSTETH_ADDRESS: Address =
-    Address::new(hex!("0fBcbaEA96Ce0cF7Ee00A8c19c3ab6f5Dc8E1921"));
+pub const WSTETH_ADDRESS: Address = Address::new(hex!("0fBcbaEA96Ce0cF7Ee00A8c19c3ab6f5Dc8E1921"));
 
 /// The first block where the chainbound mempool data is available.
 pub const START_OF_CHAINBOUND_MEMPOOL_DATA: u64 = 17193367;
@@ -67,8 +65,8 @@ pub const USD_STABLES: [&str; 15] = [
     "GHO",   // Aave
     "USX",   // dForce USD
     "USD0",  // UsualUSD
-    "USDM", // Mountain Pro
-    "XUSD", // Overnight Finance
+    "USDM",  // Mountain Pro
+    "XUSD",  // Overnight Finance
 ];
 
 pub fn is_usd_stable(symbol: &str) -> bool {
@@ -121,14 +119,29 @@ pub const EURO_STABLES_BY_ADDRESS: [Address; 2] = [AGEUR_ADDRESS, VEUR_ADDRESS];
 pub const GOLD_STABLES_BY_ADDRESS: [Address; 0] = [];
 
 // DEX Factory Addresses
-pub const BALANCER_V2_VAULT_ADDRESS: Address = Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8"));
-pub const UNISWAP_V2_FACTORY_ADDRESS: Address = Address::new(hex!("f1D7CC64Fb4452F05c498126312eBE29f30Fbcf9"));
-pub const SUSHISWAP_V2_FACTORY_ADDRESS: Address = Address::new(hex!("c35DADB65012eC5796536bD9864eD8773aBc74C4"));
-pub const PANCAKESWAP_V2_FACTORY_ADDRESS: Address = Address::new(hex!("02a84c1b3BBD7401a5f7fa98a384EBC70bB5749E"));
-pub const SUSHISWAP_V3_FACTORY_ADDRESS: Address = Address::new(hex!("1af415a1EbA07a4986a52B6f2e7dE7003D82231e"));
-pub const PANCAKESWAP_V3_FACTORY_ADDRESS: Address = Address::new(hex!("0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865"));
-pub const CAMELOT_V2_FACTORY_ADDRESS: Address = Address::new(hex!("6EcCab422D763aC031210895C81787E87B43A652"));
-pub const CAMELOT_V3_FACTORY_ADDRESS: Address = Address::new(hex!("1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B"));
-pub const UNISWAP_V3_FACTORY_ADDRESS: Address = Address::new(hex!("7858E59e0C01EA06D73002144C0a530770217229"));
-pub const UNISWAP_V4_FACTORY_ADDRESS: Address = Address::new(hex!("360E68faCcca8cA495c1B759Fd9EEe466db9FB32"));
-pub const FLUID_DEX_FACTORY_ADDRESS: Address = Address::new(hex!("46978CD477A496028A18c02F07ab7F35EDBa5A54"));
+pub const BALANCER_V2_VAULT_ADDRESS: Address =
+    Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8"));
+pub const UNISWAP_V2_FACTORY_ADDRESS: Address =
+    Address::new(hex!("f1D7CC64Fb4452F05c498126312eBE29f30Fbcf9"));
+pub const SUSHISWAP_V2_FACTORY_ADDRESS: Address =
+    Address::new(hex!("c35DADB65012eC5796536bD9864eD8773aBc74C4"));
+pub const PANCAKESWAP_V2_FACTORY_ADDRESS: Address =
+    Address::new(hex!("02a84c1b3BBD7401a5f7fa98a384EBC70bB5749E"));
+pub const SUSHISWAP_V3_FACTORY_ADDRESS: Address =
+    Address::new(hex!("1af415a1EbA07a4986a52B6f2e7dE7003D82231e"));
+pub const PANCAKESWAP_V3_FACTORY_ADDRESS: Address =
+    Address::new(hex!("0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865"));
+pub const CAMELOT_V2_FACTORY_ADDRESS: Address =
+    Address::new(hex!("6EcCab422D763aC031210895C81787E87B43A652"));
+pub const CAMELOT_V3_FACTORY_ADDRESS: Address =
+    Address::new(hex!("1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B"));
+pub const UNISWAP_V3_FACTORY_ADDRESS: Address =
+    Address::new(hex!("7858E59e0C01EA06D73002144C0a530770217229"));
+pub const UNISWAP_V4_FACTORY_ADDRESS: Address =
+    Address::new(hex!("360E68faCcca8cA495c1B759Fd9EEe466db9FB32"));
+pub const FLUID_DEX_FACTORY_ADDRESS: Address =
+    Address::new(hex!("46978CD477A496028A18c02F07ab7F35EDBa5A54"));
+pub const LFJ_V2_1_DEX_FACTORY_ADDRESS: Address =
+    Address::new(hex!("8e42f2F4101563bF679975178e880FD87d3eFd4e"));
+pub const LFJ_V2_2_DEX_FACTORY_ADDRESS: Address =
+    Address::new(hex!("b43120c4745967fa9b93E79C149E66B0f2D6Fe0c"));

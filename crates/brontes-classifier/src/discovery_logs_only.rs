@@ -4,17 +4,11 @@ use alloy_primitives::{Address, FixedBytes, Log};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_types::{
-    normalized_actions::pool::NormalizedNewPool,
-    Protocol,
-};
+use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 use futures::future::join_all;
 use tracing::{error, trace};
 
-use crate::{
-    ActionCollection,
-    FactoryDiscoveryDispatch,
-};
+use crate::{ActionCollection, FactoryDiscoveryDispatch};
 
 sol!(
     #![sol(all_derives)]
@@ -38,6 +32,12 @@ sol!(
     UniswapV4,
     "./classifier-abis/UniswapV4.json"
 );
+sol!(
+    #![sol(all_derives)]
+    LFJV2,
+    "./classifier-abis/LFJ/ILBFactory.json"
+);
+
 sol!(
     #![sol(all_derives)]
     CamelotV3,
@@ -80,6 +80,10 @@ pub fn decode_event(log: &Log) -> eyre::Result<(Address, Vec<Address>)> {
         let pool_address = decoded.dex;
         let tokens = vec![decoded.supplyToken, decoded.borrowToken];
         Ok((pool_address, tokens))
+    } else if let Ok(decoded) = LFJV2::LBPairCreated::decode_log(log, true) {
+        let pool_address = decoded.LBPair;
+        let tokens = vec![decoded.tokenX, decoded.tokenY];
+        Ok((pool_address, tokens))
     } else {
         println!("Failed to decode log: {:?}", log);
         Err(eyre::eyre!("Failed to decode log"))
@@ -101,11 +105,19 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         Self { libmdbx }
     }
 
-    pub async fn run_discovery(&self, block_number: u64, logs: HashMap<Protocol, Vec<alloy_primitives::Log>>) {
+    pub async fn run_discovery(
+        &self,
+        block_number: u64,
+        logs: HashMap<Protocol, Vec<alloy_primitives::Log>>,
+    ) {
         self.process_logs(block_number, logs).await;
     }
 
-    pub(crate) async fn process_logs(&self, block_number: u64, logs: HashMap<Protocol, Vec<alloy_primitives::Log>>) {
+    pub(crate) async fn process_logs(
+        &self,
+        block_number: u64,
+        logs: HashMap<Protocol, Vec<alloy_primitives::Log>>,
+    ) {
         join_all(logs.into_iter().map(|(protocol, logs)| async move {
             self.process_classification(block_number, protocol, logs)
                 .await;
@@ -113,7 +125,12 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         .await;
     }
 
-    async fn process_classification(&self, block_number: u64, protocol: Protocol, logs: Vec<alloy_primitives::Log>) {
+    async fn process_classification(
+        &self,
+        block_number: u64,
+        protocol: Protocol,
+        logs: Vec<alloy_primitives::Log>,
+    ) {
         // TODO: add classification for each factory protocol and pair
         join_all(
             logs.into_iter()
@@ -135,7 +152,7 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
 
     async fn insert_new_pool(&self, block: u64, pool: NormalizedNewPool) {
         if self
-        .libmdbx
+            .libmdbx
             .insert_pool(block, pool.pool_address, &pool.tokens, None, pool.protocol)
             .await
             .is_err()
