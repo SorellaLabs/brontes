@@ -55,7 +55,7 @@ contract GetUniswapV3TickDataBatchRequest {
         PoolData[] memory poolData = data_constructor(pools);
 
         bytes memory data = abi.encode(poolData);
-        assembly ("memory-safe") {
+        assembly {
             let dataStart := add(data, 0x20)
             return(dataStart, sub(msize(), dataStart))
         }
@@ -125,97 +125,6 @@ contract GetUniswapV3TickDataBatchRequest {
             poolData[i].liquidityNet = liquidityNet;
         }
         return poolData;
-    }
-
-    function tick_constructor(
-        address pool,
-        bool zeroForOne,
-        int24 currentTick,
-        uint16 numTicks,
-        int24 tickSpacing
-    ) public view returns (TickData[] memory, uint64) {
-        int24 tickRange = int24(int16(numTicks)) * tickSpacing;
-        int24 boundaryTick = zeroForOne
-            ? currentTick + tickRange
-            : currentTick - tickRange;
-        if (boundaryTick < _MIN_TICK) {
-            boundaryTick = _MIN_TICK;
-        }
-        if (boundaryTick > _MAX_TICK) {
-            boundaryTick = _MAX_TICK;
-        }
-
-        int24[] memory initTicks = new int24[](
-            uint256(int256((boundaryTick - currentTick + 1) / tickSpacing)) + 1
-        );
-
-        uint256 counter = 0;
-        (int16 pos, int16 endPos) = (
-            int16((currentTick / tickSpacing) >> 8),
-            int16((boundaryTick / tickSpacing) >> 8)
-        );
-        if (zeroForOne) {
-            for (; pos <= endPos; pos++) {
-                uint256 bm = IUniswapV3Pool(pool).tickBitmap(pos);
-                while (bm != 0) {
-                    uint8 bit = _leastSignificantBit(bm);
-                    bm ^= 1 << bit;
-                    int24 extractedTick = ((int24(pos) << 8) |
-                        int24(uint24(bit))) * int24(tickSpacing);
-                    if (
-                        extractedTick >= currentTick &&
-                        extractedTick <= boundaryTick
-                    ) {
-                        initTicks[counter++] = extractedTick;
-                    }
-                    if (counter == numTicks) {
-                        break;
-                    }
-                }
-            }
-        } else {
-            for (; pos >= endPos; pos--) {
-                uint256 bm = IUniswapV3Pool(pool).tickBitmap(pos);
-                while (bm != 0) {
-                    uint8 bit = _leastSignificantBit(bm);
-                    bm ^= 1 << bit;
-                    int24 extractedTick = ((int24(pos) << 8) |
-                        int24(uint24(bit))) * int24(tickSpacing);
-                    if (
-                        extractedTick >= boundaryTick &&
-                        extractedTick <= currentTick
-                    ) {
-                        initTicks[counter++] = extractedTick;
-                    }
-                    if (counter == numTicks) {
-                        break;
-                    }
-                }
-            }
-        }
-
-        TickData[] memory ticks = new TickData[](counter);
-
-        for (uint256 i = 0; i < counter; i++) {
-            (bool success, bytes memory outputs) = address(pool).staticcall(
-                abi.encodeWithSelector(0xf30dba93, initTicks[i])
-            ); // ticks(int24 tick)
-            if (!success) {
-                continue;
-            }
-
-            int128 liquidityNet;
-
-            assembly ("memory-safe") {
-                let data := add(outputs, 0x20)
-                liquidityNet := mload(add(data, 0x20))
-            }
-
-            ticks[i].liquidityNet = liquidityNet;
-            ticks[i].tick = initTicks[i];
-            ticks[i].initialized = true;
-        }
-        return (ticks, uint64(counter));
     }
 
     /// @dev Gets the least significant bit

@@ -15,6 +15,10 @@ mod test_bytecodes;
 use super::UniswapV3Pool;
 use crate::errors::AmmError;
 sol!(
+    IGetUniswapV3PoolDataBatchRequest,
+    "./src/protocols/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequest.json"
+);
+sol!(
     IGetUniswapV3TickDataBatchRequest,
     "./src/protocols/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequest.json"
 );
@@ -97,11 +101,12 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     block_number: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    let call_data = data_constructorCall::new((vec![pool.address],)).abi_encode();
+    let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
+    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
     let req = TransactionRequest {
-        to: Some(Address::from_str("0x23e5b07d8e216340Cf34252c81a0D19BE13FB22f").unwrap()),
-        input: TransactionInput::new(call_data.into()),
+        to: None,
+        input: TransactionInput::new(bytecode.into()),
         ..Default::default()
     };
 
