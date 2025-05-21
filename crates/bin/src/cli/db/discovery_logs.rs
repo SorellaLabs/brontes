@@ -65,13 +65,13 @@ pub struct DiscoveryLogsFill {
     pub start_block: Option<u64>,
     /// End Block
     #[arg(long, short)]
-    pub end_block: Option<u64>,
+    pub end_block:   Option<u64>,
     /// Max number of tasks to run concurrently
     #[arg(long, short)]
     pub max_tasks:   Option<usize>,
     /// Block range per request (defaults to alchemy block range limit = 10,000)
     #[arg(long, short, default_value_t = 10_000)]
-    pub range_size: usize,
+    pub range_size:  usize,
 }
 
 impl DiscoveryLogsFill {
@@ -91,30 +91,68 @@ impl DiscoveryLogsFill {
         ));
 
         let mut protocol_to_address: HashMap<Protocol, (Address, FixedBytes<32>)> = HashMap::new();
-        protocol_to_address.insert(Protocol::BalancerV2, (BALANCER_V2_VAULT_ADDRESS, BalancerV2::TokensRegistered::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::UniswapV2, (UNISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::SushiSwapV2, (SUSHISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::PancakeSwapV2, (PANCAKESWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::SushiSwapV3, (SUSHISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::PancakeSwapV3, (PANCAKESWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::UniswapV3, (UNISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::UniswapV4, (UNISWAP_V4_FACTORY_ADDRESS, UniswapV4::Initialize::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::CamelotV2, (CAMELOT_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::CamelotV3, (CAMELOT_V3_FACTORY_ADDRESS, CamelotV3::Pool::SIGNATURE_HASH));
-        protocol_to_address.insert(Protocol::FluidDEX, (FLUID_DEX_FACTORY_ADDRESS, FluidDEX::DexT1Deployed::SIGNATURE_HASH));
+        protocol_to_address.insert(
+            Protocol::BalancerV2,
+            (BALANCER_V2_VAULT_ADDRESS, BalancerV2::TokensRegistered::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::UniswapV2,
+            (UNISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::SushiSwapV2,
+            (SUSHISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::PancakeSwapV2,
+            (PANCAKESWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::SushiSwapV3,
+            (SUSHISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::PancakeSwapV3,
+            (PANCAKESWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::UniswapV3,
+            (UNISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::UniswapV4,
+            (UNISWAP_V4_FACTORY_ADDRESS, UniswapV4::Initialize::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::CamelotV2,
+            (CAMELOT_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::CamelotV3,
+            (CAMELOT_V3_FACTORY_ADDRESS, CamelotV3::Pool::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::FluidDEX,
+            (FLUID_DEX_FACTORY_ADDRESS, FluidDEX::DexT1Deployed::SIGNATURE_HASH),
+        );
 
-        let parser = static_object(DLogParser::new(libmdbx, tracer.clone(), protocol_to_address).await);
+        let parser =
+            static_object(DLogParser::new(libmdbx, tracer.clone(), protocol_to_address).await);
 
         let start_block = if let Some(s) = self.start_block {
             s
         } else {
             libmdbx.client.max_traced_block().await?
         };
-        let end_block = if let Some(e) = self.end_block {
-            e
-        } else {
-            parser.get_latest_block_number().await?
-        };
+        let end_block =
+            if let Some(e) = self.end_block { e } else { parser.get_latest_block_number().await? };
+
+        tracing::info!("Starting discovery logs from block {} to block {}", start_block, end_block);
+        tracing::error!(
+            "Starting discovery logs from block {} to block {}",
+            start_block,
+            end_block
+        );
 
         let bar = ProgressBar::with_draw_target(
             Some(end_block - start_block),

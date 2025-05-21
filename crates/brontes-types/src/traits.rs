@@ -67,7 +67,7 @@ pub trait TracingProvider: Send + Sync + 'static {
 #[async_trait::async_trait]
 #[auto_impl::auto_impl(Box)]
 pub trait LogProvider: Send + Sync + Clone + 'static {
-    async fn get_logs(&self, filter: &Filter) -> Option<Vec<Log>>;
+    async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>>;
 
     #[cfg(feature = "local-reth")]
     fn best_block_number(&self) -> eyre::Result<u64>;
