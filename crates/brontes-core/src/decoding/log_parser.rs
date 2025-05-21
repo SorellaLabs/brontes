@@ -80,9 +80,14 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
             .event_signature(topics)
             .from_block(start_block)
             .to_block(end_block);
-        let logs = provider.get_logs(&filter).await.inspect_err(|e| {
-            tracing::error!("Failed to get logs: {:?}", e);
-        })?;
+        tracing::trace!("Getting logs for filter: {:?}", filter);
+        let logs = provider.get_logs(&filter).await?;
+
+        if !logs.is_empty() {
+            tracing::debug!("Found {} logs", logs.len());
+        } else {
+            tracing::debug!("No logs found for filter: {:?}", filter);
+        }
 
         let mut res: HashMap<Protocol, Vec<Log>> = HashMap::new();
         for log in logs {

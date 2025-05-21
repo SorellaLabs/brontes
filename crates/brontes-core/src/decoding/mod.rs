@@ -129,9 +129,6 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
 
     /// ensures no libmdbx write
     pub async fn execute_discovery(&self, start_block: u64, end_block: u64) -> eyre::Result<HashMap<Protocol, Vec<Log>>> {
-        // This will satisfy its lifetime scope do to the lifetime itself living longer
-        // than the process that runs brontes.
-        let parser = self.parser.clone();
-        parser.execute_block_discovery(start_block, end_block).await
+        self.parser.clone().execute_block_discovery(start_block, end_block).await
     }
 }
