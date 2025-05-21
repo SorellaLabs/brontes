@@ -7,7 +7,8 @@ use brontes_core::decoding::LogParser as DLogParser;
 use brontes_types::{
     constants::arbitrum::{
         BALANCER_V2_VAULT_ADDRESS, CAMELOT_V2_FACTORY_ADDRESS, CAMELOT_V3_FACTORY_ADDRESS,
-        FLUID_DEX_FACTORY_ADDRESS, PANCAKESWAP_V2_FACTORY_ADDRESS, PANCAKESWAP_V3_FACTORY_ADDRESS,
+        FLUID_DEX_FACTORY_ADDRESS, LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJ_V2_2_DEX_FACTORY_ADDRESS,
+        PANCAKESWAP_V2_FACTORY_ADDRESS, PANCAKESWAP_V3_FACTORY_ADDRESS,
         SUSHISWAP_V2_FACTORY_ADDRESS, SUSHISWAP_V3_FACTORY_ADDRESS, UNISWAP_V2_FACTORY_ADDRESS,
         UNISWAP_V3_FACTORY_ADDRESS, UNISWAP_V4_FACTORY_ADDRESS,
     },
@@ -46,6 +47,12 @@ sol!(
     UniswapV4,
     "../brontes-classifier/classifier-abis/UniswapV4.json"
 );
+sol!(
+    #![sol(all_derives)]
+    LFJV2,
+    "../brontes-classifier/classifier-abis/LFJ/ILBFactory.json"
+);
+
 sol!(
     #![sol(all_derives)]
     CamelotV3,
@@ -134,6 +141,14 @@ impl DiscoveryLogsFill {
             Protocol::FluidDEX,
             (FLUID_DEX_FACTORY_ADDRESS, FluidDEX::DexT1Deployed::SIGNATURE_HASH),
         );
+        protocol_to_address.insert(
+            Protocol::LFJV2_1,
+            (LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH),
+        );
+        protocol_to_address.insert(
+            Protocol::LFJV2_2,
+            (LFJ_V2_2_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH),
+        );
 
         let parser =
             static_object(DLogParser::new(libmdbx, tracer.clone(), protocol_to_address).await);
@@ -145,13 +160,6 @@ impl DiscoveryLogsFill {
         };
         let end_block =
             if let Some(e) = self.end_block { e } else { parser.get_latest_block_number().await? };
-
-        tracing::info!("Starting discovery logs from block {} to block {}", start_block, end_block);
-        tracing::error!(
-            "Starting discovery logs from block {} to block {}",
-            start_block,
-            end_block
-        );
 
         let bar = ProgressBar::with_draw_target(
             Some(end_block - start_block),

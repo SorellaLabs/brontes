@@ -2,24 +2,49 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedNewPool, structured_trace::CallInfo};
 
-action_impl!(
-    Protocol::LFJ,
-    crate::LFJFactory::createLBPairCall,
-    NewPool,
-    [LBPairCreated],
-    logs: true,
-    |info: CallInfo, log_data: LFJCreateLBPairCallLogs, _| {
+pub mod lfj_v2_1 {
+    use super::*;
+
+    action_impl!(
+        Protocol::LFJV2_1,
+        crate::LFJFactory::createLBPairCall,
+        NewPool,
+        [LBPairCreated],
+        logs: true,
+    |info: CallInfo, log_data: LFJV2_1CreateLBPairCallLogs, _| {
         let logs = log_data.l_b_pair_created_field?;
 
         Ok(NormalizedNewPool {
             trace_index: info.trace_idx,
-            protocol: Protocol::LFJ,
+            protocol: Protocol::LFJV2_1,
             pool_address: logs.LBPair,
             tokens: vec![logs.tokenX, logs.tokenY],
         })
     }
-);
+    );
+}
 
+pub mod lfj_v2_2 {
+    use super::*;
+
+    action_impl!(
+            Protocol::LFJV2_2,
+        crate::LFJV2_2Factory::createLBPairCall,
+        NewPool,
+        [LBPairCreated],
+        logs: true,
+        |info: CallInfo, log_data: LFJV2_2CreateLBPairCallLogs, _| {
+            let logs = log_data.l_b_pair_created_field?;
+
+            Ok(NormalizedNewPool {
+                trace_index: info.trace_idx,
+                protocol: Protocol::LFJV2_2,
+                pool_address: logs.LBPair,
+                tokens: vec![logs.tokenX, logs.tokenY],
+            })
+        }
+    );
+}
 #[cfg(test)]
 mod tests {
     use alloy_primitives::{hex, Address, B256};

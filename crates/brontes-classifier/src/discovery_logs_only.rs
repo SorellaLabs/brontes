@@ -35,6 +35,12 @@ sol!(
 );
 sol!(
     #![sol(all_derives)]
+    LFJV2,
+    "./classifier-abis/LFJ/ILBFactory.json"
+);
+
+sol!(
+    #![sol(all_derives)]
     CamelotV3,
     "./classifier-abis/Algebra1_9Factory.json"
 );
@@ -57,6 +63,7 @@ pub fn decode_event(log: &Log) -> eyre::Result<(Option<u64>, Address, Vec<Addres
         UniswapV4::Initialize::decode_log(&plog, true),
         CamelotV3::Pool::decode_log(&plog, true),
         FluidDEX::DexT1Deployed::decode_log(&plog, true),
+        LFJV2::LBPairCreated::decode_log(&plog, true),
     ) {
         (Ok(decoded), ..) => (convert_to_address(decoded.poolId), decoded.tokens.clone()),
         (_, Ok(decoded), ..) => (decoded.pair, vec![decoded.token0, decoded.token1]),
