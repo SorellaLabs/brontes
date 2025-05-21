@@ -129,6 +129,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
 
     /// ensures no libmdbx write
     pub async fn execute_discovery(&self, start_block: u64, end_block: u64) -> eyre::Result<HashMap<Protocol, Vec<Log>>> {
-        self.parser.clone().execute_block_discovery(start_block, end_block).await
+        let parser = self.parser.clone();
+        Box::pin(parser.execute_block_discovery(start_block, end_block)).await
     }
 }

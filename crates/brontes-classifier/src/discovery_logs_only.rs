@@ -7,7 +7,7 @@ use alloy_sol_types::SolEvent;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 use futures::future::join_all;
-use tracing::{error, debug};
+use tracing::{debug, error};
 
 use crate::{ActionCollection, FactoryDiscoveryDispatch};
 
@@ -136,7 +136,11 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
     }
 
     fn contains_pool(&self, address: Address) -> bool {
-        self.libmdbx.get_protocol(address).is_ok()
+        let protocol = self.libmdbx.get_protocol(address).ok();
+        if let Some(protocol) = protocol {
+            tracing::debug!("already contains_pool: {:?} address {}", protocol.into_clickhouse_protocol(), address);
+        }
+        protocol.is_some()
     }
 
     async fn insert_new_pool(
@@ -145,6 +149,7 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         pool: NormalizedNewPool,
         curve_lp_token: Option<Address>,
     ) {
+        tracing::debug!("insert_new_pool: {:?}", pool.pool_address);
         let insert_result = self
             .libmdbx
             .insert_pool(
