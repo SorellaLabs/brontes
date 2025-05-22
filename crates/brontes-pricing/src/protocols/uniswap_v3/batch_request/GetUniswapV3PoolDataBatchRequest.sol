@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.17;
 
+import { console2 } from "forge-std/src/console2.sol";
+
 interface ERC20 {
     function decimals() external view returns (uint8);
 
@@ -36,10 +38,11 @@ interface IUniswapV3Pool {
         returns (
             uint160 sqrtPriceX96,
             int24 tick,
-            uint16 fee,
-            uint160 unlocked,
-            bool unlocked0,
-            bool unlocked1
+            uint16 observationIndex,
+            uint16 observationCardinality,
+            uint16 observationCardinalityNext,
+            uint8 feeProtocol,
+            bool unlocked
         );
 }
 
@@ -47,9 +50,9 @@ interface IUniswapV3Pool {
 /// @author Eisen (https://app.eisenfinance.com)
 /// @notice Provides functionality for UniswapV3 protocol
 /// @custom:version 1.0.0
-contract GetUniswapV3TickDataBatchRequest {
-    int24 private constant _MIN_TICK = -887272;
-    int24 private constant _MAX_TICK = 887272;
+contract GetUniswapV3PoolDataBatchRequest {
+    int24 private constant _MIN_TICK = -887_272;
+    int24 private constant _MAX_TICK = 887_272;
 
     constructor(address[] memory pools) {
         PoolData[] memory poolData = data_constructor(pools);
@@ -73,6 +76,7 @@ contract GetUniswapV3TickDataBatchRequest {
         uint24 fee;
         int128 liquidityNet;
     }
+
     struct TickData {
         bool initialized;
         int24 tick;
@@ -81,46 +85,72 @@ contract GetUniswapV3TickDataBatchRequest {
 
     /// @notice Get uniV3 pool param info using pool address
 
-    function data_constructor(
-        address[] memory pools
-    ) public view returns (PoolData[] memory) {
+    function data_constructor(address[] memory pools) public view returns (PoolData[] memory) {
         PoolData[] memory poolData = new PoolData[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
             address pool = pools[i];
             poolData[i].tokenA = IUniswapV3Pool(pool).token0();
-            poolData[i].tokenADecimals = ERC20(IUniswapV3Pool(pool).token0())
-                .decimals();
+            poolData[i].tokenADecimals = ERC20(IUniswapV3Pool(pool).token0()).decimals();
             poolData[i].tokenB = IUniswapV3Pool(pool).token1();
-            poolData[i].tokenBDecimals = ERC20(IUniswapV3Pool(pool).token1())
-                .decimals();
+            poolData[i].tokenBDecimals = ERC20(IUniswapV3Pool(pool).token1()).decimals();
             poolData[i].liquidity = IUniswapV3Pool(pool).liquidity();
-            uint160 sqrtPriceX96;
+
+            // fee is initialized here and potentially updated in assembly
             uint24 fee = IUniswapV3Pool(pool).fee();
-            int24 tick;
-            (bool success, bytes memory output) = pool.staticcall(
-                abi.encodeWithSelector(IUniswapV3Pool.currentFee.selector)
-            );
-            (, bytes memory result) = pool.staticcall(
-                abi.encodeWithSelector(0x3850c7bd)
-            ); // slot0 call
+
+            // slot0 call and currentFee call variables
+            bool success; // For currentFee call result
+            bytes memory output; // For currentFee call output
+            bytes memory result; // For slot0 call output
+
+            (success, output) = pool.staticcall(abi.encodeWithSelector(IUniswapV3Pool.currentFee.selector));
+            (, result) = pool.staticcall(abi.encodeWithSelector(0x3850c7bd)); // slot0 call
+            // console2.logBytes(result); // Retaining user's debug log if they uncomment
+
             assembly ("memory-safe") {
-                let len := mload(result)
-                mstore(sqrtPriceX96, mload(add(result, 0x20))) // response.sqrtPriceX96
-                mstore(tick, mload(add(result, 0x40))) // response.tick
-                if and(gt(len, 0xc0), success) {
-                    mstore(fee, mload(add(output, 0x20))) // response.feeProtocol [ramses cases]
+                // Load values from slot0 result
+                let value_sqrtPrice_from_slot0 := mload(add(result, 0x20))
+                let value_tick_from_slot0 := mload(add(result, 0x40))
+
+                // Calculate base pointer for poolData[i]
+                // poolData is a memory array, its value is a pointer to its length. Data starts at poolData + 0x20.
+                // Each PoolData struct element is 320 bytes (10 fields * 32 bytes/field).
+                let current_pd_elem_ptr := add(add(poolData, 0x20), mul(i, 320))
+
+                // Store sqrtPrice directly into poolData[i].sqrtPrice (offset 160)
+                let sqrtPrice_field_loc := add(current_pd_elem_ptr, 192)
+                mstore(sqrtPrice_field_loc, value_sqrtPrice_from_slot0)
+
+                // Store tick directly into poolData[i].tick (offset 192)
+                let tick_field_loc := add(current_pd_elem_ptr, 224)
+                mstore(tick_field_loc, value_tick_from_slot0)
+
+                // Update local 'fee' stack variable.
+                // 'success' is from currentFee call. 'len' (mload(result)) is from slot0 call.
+                // Kept original condition as per user context, only fixed mstore to assignment.
+                let len_slot0_result := mload(result)
+                if and(gt(len_slot0_result, 0xc0), success) {
+                    // Ensure output from currentFee has data before reading
+                    if gt(mload(output), 0x1f) {
+                        // Check if output length is >= 32 bytes
+                        fee := mload(add(output, 0x20))
+                    }
                 }
             }
-            (success, output) = pool.staticcall(
-                abi.encodeWithSelector(0xf30dba93, tick)
-            );
+
+            // 'tick' for the next call is now read from poolData[i].tick which was set in assembly
+            (success, output) = pool.staticcall(abi.encodeWithSelector(0xf30dba93, poolData[i].tick)); // ticks(int24
+                // tick)
             int128 liquidityNet;
             assembly ("memory-safe") {
-                liquidityNet := mload(add(output, 0x20))
+                // Ensure 'output' from the ticks call has data
+                if gt(mload(output), 0x1f) {
+                    // Check if output length is >= 32 bytes
+                    liquidityNet := mload(add(output, 0x20))
+                }
             }
-            poolData[i].fee = fee;
-            poolData[i].tick = tick;
-            poolData[i].sqrtPrice = sqrtPriceX96;
+            poolData[i].fee = fee; // Assign the (potentially updated by assembly) local stack var 'fee'
+            // tick and sqrtPrice are now set directly in assembly
             poolData[i].tickSpacing = IUniswapV3Pool(pool).tickSpacing();
             poolData[i].liquidityNet = liquidityNet;
         }

@@ -20,7 +20,7 @@ interface IUniswapV3Pool {
 
     function tickSpacing() external view returns (int24);
 
-    function tickBitmap(int24 tick) external view returns (uint256);
+    function tickBitmap(int16 tick) external view returns (uint256);
 
     function currentFee() external view returns (uint24);
 
@@ -33,14 +33,7 @@ interface IUniswapV3Pool {
     function slot0()
         external
         view
-        returns (
-            uint160 sqrtPriceX96,
-            int24 tick,
-            uint16 fee,
-            uint160 unlocked,
-            bool unlocked0,
-            bool unlocked1
-        );
+        returns (uint160 sqrtPriceX96, int24 tick, uint16 fee, uint160 unlocked, bool unlocked0, bool unlocked1);
 }
 
 /// @title UniV3Facet
@@ -48,23 +41,12 @@ interface IUniswapV3Pool {
 /// @notice Provides functionality for UniswapV3 protocol
 /// @custom:version 1.0.0
 contract GetUniswapV3TickDataBatchRequest {
-    int24 private constant _MIN_TICK = -887272;
-    int24 private constant _MAX_TICK = 887272;
+    int24 private constant _MIN_TICK = -887_272;
+    int24 private constant _MAX_TICK = 887_272;
 
-    constructor(
-        address pool,
-        bool zeroForOne,
-        int24 currentTick,
-        uint16 numTicks,
-        int24 tickSpacing
-    ) {
-        (TickData[] memory ticks, uint64 counter) = tick_constructor(
-            pool,
-            zeroForOne,
-            currentTick,
-            numTicks,
-            tickSpacing
-        );
+    constructor(address pool, bool zeroForOne, int24 currentTick, uint16 numTicks, int24 tickSpacing) {
+        (TickData[] memory ticks, uint64 counter) =
+            tick_constructor(pool, zeroForOne, currentTick, numTicks, tickSpacing);
 
         bytes memory data = abi.encode(ticks, counter);
         assembly {
@@ -85,11 +67,13 @@ contract GetUniswapV3TickDataBatchRequest {
         int24 currentTick,
         uint16 numTicks,
         int24 tickSpacing
-    ) public view returns (TickData[] memory, uint64) {
+    )
+        public
+        view
+        returns (TickData[] memory, uint64)
+    {
         int24 tickRange = int24(int16(numTicks)) * tickSpacing;
-        int24 boundaryTick = zeroForOne
-            ? currentTick + tickRange
-            : currentTick - tickRange;
+        int24 boundaryTick = zeroForOne ? currentTick + tickRange : currentTick - tickRange;
         if (boundaryTick < _MIN_TICK) {
             boundaryTick = _MIN_TICK;
         }
@@ -97,29 +81,21 @@ contract GetUniswapV3TickDataBatchRequest {
             boundaryTick = _MAX_TICK;
         }
 
-        int24[] memory initTicks = new int24[](
-            uint256(int256((boundaryTick - currentTick + 1) / tickSpacing)) + 1
-        );
+        int24[] memory initTicks = new int24[](uint256(int256((boundaryTick - currentTick + 1) / tickSpacing)) + 1);
         TickData[] memory ticks;
 
         {
             uint256 counter = 0;
-            (int16 pos, int16 endPos) = (
-                int16((currentTick / tickSpacing) >> 8),
-                int16((boundaryTick / tickSpacing) >> 8)
-            );
+            (int16 pos, int16 endPos) =
+                (int16((currentTick / tickSpacing) >> 8), int16((boundaryTick / tickSpacing) >> 8));
             if (zeroForOne) {
                 for (; pos <= endPos; pos++) {
                     uint256 bm = IUniswapV3Pool(pool).tickBitmap(pos);
                     while (bm != 0) {
                         uint8 bit = _leastSignificantBit(bm);
                         bm ^= 1 << bit;
-                        int24 extractedTick = ((int24(pos) << 8) |
-                            int24(uint24(bit))) * int24(tickSpacing);
-                        if (
-                            extractedTick >= currentTick &&
-                            extractedTick <= boundaryTick
-                        ) {
+                        int24 extractedTick = ((int24(pos) << 8) | int24(uint24(bit))) * int24(tickSpacing);
+                        if (extractedTick >= currentTick && extractedTick <= boundaryTick) {
                             initTicks[counter++] = extractedTick;
                         }
                         if (counter == numTicks) {
@@ -133,12 +109,8 @@ contract GetUniswapV3TickDataBatchRequest {
                     while (bm != 0) {
                         uint8 bit = _leastSignificantBit(bm);
                         bm ^= 1 << bit;
-                        int24 extractedTick = ((int24(pos) << 8) |
-                            int24(uint24(bit))) * int24(tickSpacing);
-                        if (
-                            extractedTick >= boundaryTick &&
-                            extractedTick <= currentTick
-                        ) {
+                        int24 extractedTick = ((int24(pos) << 8) | int24(uint24(bit))) * int24(tickSpacing);
+                        if (extractedTick >= boundaryTick && extractedTick <= currentTick) {
                             initTicks[counter++] = extractedTick;
                         }
                         if (counter == numTicks) {
@@ -151,9 +123,8 @@ contract GetUniswapV3TickDataBatchRequest {
         }
 
         for (uint256 i = 0; i < ticks.length; i++) {
-            (bool success, bytes memory outputs) = pool.staticcall(
-                abi.encodeWithSelector(0xf30dba93, initTicks[i])
-            ); // ticks(int24 tick)
+            (bool success, bytes memory outputs) = pool.staticcall(abi.encodeWithSelector(0xf30dba93, initTicks[i])); // ticks(int24
+                // tick)
             if (!success) {
                 continue;
             }
