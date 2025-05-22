@@ -434,7 +434,6 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     #[brontes_macros::metrics_call(ptr=metrics,scope,db_read,"protocol_info")]
     fn get_protocol_details(&self, address: Address) -> eyre::Result<ProtocolInfo> {
-        tracing::debug!("get_protocol_details: {}", address);
         self.db.view_db(|tx| {
             match self
                 .cache
