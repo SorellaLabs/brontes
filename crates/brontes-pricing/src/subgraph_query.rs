@@ -11,6 +11,8 @@ use crate::{
     GraphManager, Pair,
 };
 
+const SUBGRAPH_TIMEOUT: Duration = Duration::from_millis(10);
+
 type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
 
 pub fn graph_search_par(
@@ -91,7 +93,7 @@ pub fn par_state_query(graph: &GraphManager, pairs: Vec<RequeryPairs>) -> ParSta
                     ignore_state,
                     100,
                     None,
-                    Duration::from_millis(100),
+                    SUBGRAPH_TIMEOUT,
                     default_extends_pair.is_some(),
                     None,
                 );
@@ -114,7 +116,7 @@ pub fn par_state_query(graph: &GraphManager, pairs: Vec<RequeryPairs>) -> ParSta
                                 ignore_state.clone(),
                                 0,
                                 None,
-                                Duration::from_millis(100),
+                                SUBGRAPH_TIMEOUT,
                                 default_extends_pair.is_some(),
                                 None,
                             )
@@ -196,7 +198,7 @@ fn queue_loading_returns(
             FastHashSet::default(),
             100,
             Some(10),
-            Duration::from_millis(100),
+            SUBGRAPH_TIMEOUT,
             default_extend_to.is_some(),
             Some(pair.1),
         );

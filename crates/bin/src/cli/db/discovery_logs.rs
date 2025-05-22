@@ -20,7 +20,7 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 
 use crate::{
-    cli::{get_env_vars, get_tracing_provider, load_database, load_read_only_database, static_object},
+    cli::{get_env_vars, get_tracing_provider, load_database, static_object},
     discovery_logs_only::DiscoveryLogsExecutor,
     runner::CliContext,
 };
