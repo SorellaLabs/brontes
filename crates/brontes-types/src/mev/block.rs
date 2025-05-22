@@ -17,7 +17,7 @@ use serde_with::serde_as;
 use super::MevType;
 use crate::{
     db::redefined_types::primitives::{AddressRedefined, B256Redefined},
-    display::utils::formate_etherscan_address_url,
+    display::utils::format_etherscan_address_url,
     ToFloatNearest, ToScaledRational,
 };
 #[allow(unused_imports)]
@@ -144,7 +144,7 @@ impl fmt::Display for MevBlock {
             f,
             "  - {} {}",
             "Builder Address::".bold(),
-            formate_etherscan_address_url(&self.builder_address)
+            format_etherscan_address_url(&self.builder_address)
         )?;
 
         // Proposer section
