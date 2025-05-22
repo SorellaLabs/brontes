@@ -11,7 +11,7 @@ use crate::{
     GraphManager, Pair,
 };
 
-const SUBGRAPH_TIMEOUT: Duration = Duration::from_millis(10);
+const SUBGRAPH_TIMEOUT: Duration = Duration::from_millis(100);
 
 type GraphSeachParRes = (Vec<Vec<(Address, PoolUpdate)>>, Vec<Vec<NewGraphDetails>>);
 
