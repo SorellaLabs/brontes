@@ -983,7 +983,7 @@ pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
 
     match bundle.header.mev_contract {
         Some(contract) => {
-            writeln!(f, "   - Mev Contract: {}", formate_etherscan_address_url(&contract))?;
+            writeln!(f, "   - Mev Contract: {}", format_etherscan_address_url(&contract))?;
         }
         None => {
             writeln!(f, "   - Mev Contract: None")?;
@@ -1029,14 +1029,30 @@ fn format_bribe(value: f64) -> ColoredString {
     format!("${:.2}", value).red()
 }
 
+#[cfg(not(feature = "arbitrum"))]
 pub fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
     format!("https://etherscan.io/tx/{:?}", tx_hash)
         .underline()
         .to_string()
 }
 
-pub fn formate_etherscan_address_url(tx_hash: &Address) -> String {
+#[cfg(feature = "arbitrum")]
+pub fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
+    format!("https://arbiscan.io/tx/{:?}", tx_hash)
+        .underline()
+        .to_string()
+}
+
+#[cfg(not(feature = "arbitrum"))]
+pub fn format_etherscan_address_url(tx_hash: &Address) -> String {
     format!("https://etherscan.io/address/{:?}", tx_hash)
+        .underline()
+        .to_string()
+}
+
+#[cfg(feature = "arbitrum")]
+pub fn format_etherscan_address_url(tx_hash: &Address) -> String {
+    format!("https://arbiscan.io/address/{:?}", tx_hash)
         .underline()
         .to_string()
 }
