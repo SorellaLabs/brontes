@@ -86,7 +86,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
         // Poll the sleep future first
         if let Poll::Ready(_) = self.sleep.as_mut().poll(cx) {
             // Reset the sleep for next time
-            self.sleep.set(sleep_until(Instant::now() + Duration::from_millis(100)));
+            self.sleep.set(sleep_until(Instant::now() + Duration::from_millis(500)));
         } else {
             // If sleep is not ready, return Pending
             return Poll::Pending;
