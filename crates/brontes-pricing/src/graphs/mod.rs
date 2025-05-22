@@ -101,7 +101,7 @@ impl GraphManager {
     }
 
     pub fn add_pool(&mut self, pair: Pair, pool_addr: Address, dex: Protocol, block: u64) {
-        self.all_pair_graph.add_node(pair, pool_addr, dex, block);
+    self.all_pair_graph.add_node(pair, pool_addr, dex, block);
     }
 
     pub fn pool_dep_failure(

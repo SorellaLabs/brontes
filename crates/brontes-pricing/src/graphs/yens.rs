@@ -243,11 +243,17 @@ where
         }
     }
 
+    tracing::debug!("routes: {:?}", routes.len());
+
     routes.sort_unstable();
-    routes
+    let paths: Vec<(Vec<E>, C)> = routes
         .into_iter()
         .map(|Path { weights, cost, .. }| (weights, cost))
-        .collect()
+        .collect();
+
+    tracing::debug!("paths: {:?}", paths.len());
+
+    paths
 }
 
 fn make_cost<N, FN, IN, C>(nodes: &[N], successors: &FN) -> C
