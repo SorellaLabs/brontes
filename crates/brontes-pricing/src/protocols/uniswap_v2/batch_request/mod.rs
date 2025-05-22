@@ -1,6 +1,5 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
-use alloy_primitives::Address;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
