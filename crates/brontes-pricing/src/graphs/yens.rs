@@ -158,7 +158,7 @@ where
         if SystemTime::now().duration_since(start).unwrap() > extra_path_timeout
             && k.map(|k| k >= routes.len()).unwrap_or(true)
         {
-            tracing::debug!("timeout for extra routes hit");
+            tracing::error!("timeout for extra routes hit");
             break
         }
         // Take the most recent route to explore new spurs.
