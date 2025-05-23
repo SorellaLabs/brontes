@@ -7,7 +7,7 @@ use brontes_types::{
     structured_trace::TxTrace,
     traits::{LogProvider, TracingProvider},
 };
-use governor::DefaultDirectRateLimiter;
+use governor::{DefaultDirectRateLimiter, Jitter};
 use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
@@ -45,7 +45,7 @@ impl LocalProvider {
             provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
             rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
             retries,
-            limiter: limiter,
+            limiter,
         }
     }
 }
@@ -66,17 +66,21 @@ impl LogProvider for LocalProvider {
     }
 
     async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>> {
-        if let Some(limiter) = self.limiter.as_ref() {
-            limiter.until_ready().await;
-        }
+        let mut attempts = 0;
+        loop {
+            if let Some(limiter) = self.limiter.as_ref() {
+                let jitter = Jitter::up_to(std::time::Duration::from_millis(100));
+                limiter.until_ready_with_jitter(jitter).await;
+            }
 
-        let res = self.provider.get_logs(filter).await;
-        if let Err(e) = res {
-            return Err(e.into());
+            let res = self.provider.get_logs(filter).await;
+            if res.is_ok() || attempts > self.retries {
+                return res.map_err(|e| {
+                    eyre::eyre!("failed to get logs after {} retries: {}", attempts, e)
+                });
+            }
+            attempts += 1;
         }
-
-        let logs = res.unwrap();
-        Ok(logs)
     }
 }
 
