@@ -83,6 +83,11 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if let Err(_) = self.limiter.check() {
+            cx.waker().wake_by_ref();
+            return Poll::Pending;
+        }
+
         if self.current_block < self.end_block && self.running.len() < MAX_PENDING_TREE_BUILDING {
             cx.waker().wake_by_ref();
             let fut = Box::pin(Self::process_next(
