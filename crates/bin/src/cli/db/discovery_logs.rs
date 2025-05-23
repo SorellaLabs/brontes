@@ -1,4 +1,9 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    num::{NonZero, NonZeroU32},
+    path::Path,
+    sync::Arc,
+};
 
 use alloy_primitives::{Address, FixedBytes};
 use alloy_sol_macro::sol;
@@ -16,6 +21,7 @@ use brontes_types::{
 };
 use clap::Parser;
 use futures::StreamExt;
+use governor::{Quota, RateLimiter};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 
@@ -81,22 +87,8 @@ pub struct DiscoveryLogsFill {
 }
 
 impl DiscoveryLogsFill {
-    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
-        let db_path = get_env_vars()?;
-
-        let max_tasks = self.max_tasks.unwrap_or(num_cpus::get_physical());
-        init_thread_pools(max_tasks);
-
-        let libmdbx =
-            static_object(load_database(&ctx.task_executor, brontes_db_path, None, None).await?);
-
-        let tracer = Arc::new(get_tracing_provider(
-            Path::new(&db_path),
-            max_tasks as u64,
-            ctx.task_executor.clone(),
-        ));
-
-        let mut protocol_to_address: HashMap<Protocol, (Address, FixedBytes<32>)> = HashMap::new();
+    fn get_protocol_to_address_map() -> HashMap<Protocol, (Address, FixedBytes<32>)> {
+        let mut protocol_to_address = HashMap::new();
         protocol_to_address.insert(
             Protocol::BalancerV2,
             (BALANCER_V2_VAULT_ADDRESS, BalancerV2::TokensRegistered::SIGNATURE_HASH),
@@ -149,7 +141,25 @@ impl DiscoveryLogsFill {
             Protocol::LFJV2_2,
             (LFJ_V2_2_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH),
         );
+        protocol_to_address
+    }
 
+    pub async fn execute(self, brontes_db_path: String, ctx: CliContext) -> eyre::Result<()> {
+        let db_path = get_env_vars()?;
+
+        let max_tasks = self.max_tasks.unwrap_or(num_cpus::get_physical());
+        init_thread_pools(max_tasks);
+
+        let libmdbx =
+            static_object(load_database(&ctx.task_executor, brontes_db_path, None, None).await?);
+
+        let tracer = Arc::new(get_tracing_provider(
+            Path::new(&db_path),
+            max_tasks as u64,
+            ctx.task_executor.clone(),
+        ));
+
+        let protocol_to_address = Self::get_protocol_to_address_map();
         let parser =
             static_object(DLogParser::new(libmdbx, tracer.clone(), protocol_to_address).await);
 
@@ -183,7 +193,8 @@ impl DiscoveryLogsFill {
 
         let total_blocks = end_block - start_block + 1;
         let chunk_size = (total_blocks + max_tasks as u64 - 1) / max_tasks as u64; // ceiling division
-
+        let limiter =
+            Arc::new(RateLimiter::direct(Quota::per_second(NonZeroU32::new(50).unwrap())));
         let chunks = (start_block..=end_block)
             .chunks(chunk_size as usize)
             .into_iter()
@@ -197,13 +208,22 @@ impl DiscoveryLogsFill {
         futures::stream::iter(chunks)
             .map(|(start_block, end_block)| {
                 let bar = bar.clone();
+                let limiter = limiter.clone();
                 ctx.task_executor
                     .spawn_critical_with_graceful_shutdown_signal(
                         "DiscoveryLogs",
                         |shutdown| async move {
-                            DiscoveryLogsExecutor::new(start_block, end_block, self.range_size, libmdbx, parser, bar)
-                                .run_until_graceful_shutdown(shutdown)
-                                .await
+                            DiscoveryLogsExecutor::new(
+                                start_block,
+                                end_block,
+                                self.range_size,
+                                libmdbx,
+                                parser,
+                                limiter,
+                                bar,
+                            )
+                            .run_until_graceful_shutdown(shutdown)
+                            .await
                         },
                     )
             })

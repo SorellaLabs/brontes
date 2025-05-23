@@ -1,5 +1,7 @@
 use std::{
+    num::NonZeroU32,
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll},
     time::Duration,
 };
@@ -8,6 +10,7 @@ use brontes_classifier::discovery_logs_only::DiscoveryLogsOnlyClassifier;
 use brontes_core::decoding::{LogParser, LogProvider};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
+use governor::{Quota, RateLimiter, DefaultDirectRateLimiter};
 use reth_tasks::shutdown::GracefulShutdown;
 use tokio::time::{sleep_until, Instant, Sleep};
 
@@ -24,7 +27,7 @@ pub struct DiscoveryLogsExecutor<T: LogProvider, DB: DBWriter + LibmdbxReader> {
     classifier:    DiscoveryLogsOnlyClassifier<'static, DB>,
     running:       FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
     progress_bar:  ProgressBar,
-    sleep:         Pin<Box<Sleep>>,
+    limiter: Arc<DefaultDirectRateLimiter>,
 }
 
 impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> {
@@ -34,10 +37,10 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
         range_size: usize,
         db: &'static DB,
         parser: &'static LogParser<T, DB>,
+        limiter: Arc<DefaultDirectRateLimiter>,
         progress_bar: ProgressBar,
     ) -> Self {
         let classifier = DiscoveryLogsOnlyClassifier::new(db);
-        let sleep = Box::pin(sleep_until(Instant::now() + Duration::from_millis(100)));
         Self {
             progress_bar,
             current_block: start_block,
@@ -46,7 +49,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
             parser,
             classifier,
             running: FuturesUnordered::default(),
-            sleep,
+            limiter,
         }
     }
 
@@ -83,15 +86,6 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // Poll the sleep future first
-        if let Poll::Ready(_) = self.sleep.as_mut().poll(cx) {
-            // Reset the sleep for next time
-            self.sleep.set(sleep_until(Instant::now() + Duration::from_millis(500)));
-        } else {
-            // If sleep is not ready, return Pending
-            return Poll::Pending;
-        }
-
         if self.current_block < self.end_block && self.running.len() < MAX_PENDING_TREE_BUILDING {
             cx.waker().wake_by_ref();
             let fut = Box::pin(Self::process_next(
@@ -101,7 +95,8 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
                 self.classifier.clone(),
             ));
             self.running.push(fut);
-            self.current_block = std::cmp::min(self.current_block + self.range_size as u64, self.end_block);
+            self.current_block =
+                std::cmp::min(self.current_block + self.range_size as u64, self.end_block);
         }
 
         while match self.running.poll_next_unpin(cx) {
