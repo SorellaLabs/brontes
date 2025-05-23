@@ -54,8 +54,7 @@ fn convert_to_address(address: FixedBytes<32>) -> Address {
     Address::from_slice(&address[..20])
 }
 
-pub fn decode_event(log: &Log) -> eyre::Result<(Option<u64>, Address, Vec<Address>)> {
-    let plog: alloy_primitives::Log = log.inner.clone();
+pub fn decode_event(plog: &alloy_primitives::Log) -> eyre::Result<(Address, Vec<Address>)> {
     let (pool_address, tokens) = match (
         BalancerV2::TokensRegistered::decode_log(&plog, true),
         UniswapV2::PairCreated::decode_log(&plog, true),
@@ -82,7 +81,7 @@ pub fn decode_event(log: &Log) -> eyre::Result<(Option<u64>, Address, Vec<Addres
             return Err(eyre::eyre!("Failed to decode log"));
         }
     };
-    Ok((log.block_number, pool_address, tokens))
+    Ok((pool_address, tokens))
 }
 
 #[derive(Debug)]
@@ -113,10 +112,10 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         join_all(
             logs.into_iter()
                 .filter_map(|log| {
-                    decode_event(&log)
-                        .map(|(block_number, pool_address, tokens)| {
+                    decode_event(&log.inner)
+                        .map(|(pool_address, tokens)| {
                             (
-                                block_number,
+                                log.block_number,
                                 NormalizedNewPool {
                                     trace_index: 0,
                                     protocol,
@@ -166,5 +165,62 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         } else {
             debug!("Discovered new {} pool: Address:{}", pool.protocol, pool.pool_address);
         }
+    }
+}
+
+#[cfg(all(test))]
+mod tests {
+    use super::*;
+    use alloy_primitives::{Address, FixedBytes, Log, LogData, B256, Bytes};
+    use alloy_sol_types::SolEvent;
+    use std::{io::Read, str::FromStr};
+    // Helper function to create a mock address from hex string
+    fn mock_address(hex: &str) -> Address {
+        Address::from_str(hex).unwrap()
+    }
+
+    fn create_mock_uniswap_v3_pool_created_log(
+        factory_address: Address,
+        token0: Address,
+        token1: Address,
+        fee: u32,  // fee is in basis points (e.g., 3000 for 0.3%)
+        pool: Address
+    ) -> alloy_primitives::Log {
+        // Create the event data
+        let event = UniswapV3::PoolCreated {
+            token0,
+            token1,
+            fee,
+            pool,
+            tickSpacing: 60, // typical tick spacing for most fee tiers
+        };
+
+        // Encode the event to get topics and data
+        let topics: Vec<B256> = event.encode_topics().iter().map(|t| B256::from_slice(t.as_slice())).collect();
+        let data: alloy_primitives::Bytes = event.encode_data().into();
+        
+        // Create the log
+        alloy_primitives::Log::new(factory_address, topics, data).unwrap()
+    }
+
+    #[test]
+    fn test_decode_uniswap_v3_pool_created() {
+        let factory = mock_address("0x1F98431c8aD98523631AE4a59f267346ea31F984");
+        let token0 = mock_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"); 
+        let token1 = mock_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"); 
+        let pool = mock_address("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"); 
+        let fee = 3000; // 0.3% fee tier
+
+        let log = create_mock_uniswap_v3_pool_created_log(
+            factory,
+            token0,
+            token1,
+            fee,
+            pool
+        );
+
+        let (decoded_pool, decoded_tokens) = decode_event(&log).unwrap();
+        assert_eq!(decoded_pool, pool); // pool address
+        assert_eq!(decoded_tokens, vec![token0, token1]); // tokens
     }
 }
