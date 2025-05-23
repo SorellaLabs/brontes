@@ -1,18 +1,15 @@
 use std::{
-    num::NonZeroU32,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
-    time::Duration,
 };
 
 use brontes_classifier::discovery_logs_only::DiscoveryLogsOnlyClassifier;
 use brontes_core::decoding::{LogParser, LogProvider};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
-use governor::{Quota, RateLimiter, DefaultDirectRateLimiter};
+use governor::DefaultDirectRateLimiter;
 use reth_tasks::shutdown::GracefulShutdown;
-use tokio::time::{sleep_until, Instant, Sleep};
 
 use crate::executors::ProgressBar;
 

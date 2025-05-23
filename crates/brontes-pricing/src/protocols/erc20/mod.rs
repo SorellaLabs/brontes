@@ -1,9 +1,5 @@
-use std::{
-    str::{from_utf8, FromStr},
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use alloy_primitives::Bytes;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;

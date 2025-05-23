@@ -63,31 +63,31 @@ pub fn decode_event(
         | Protocol::SushiSwapV2
         | Protocol::PancakeSwapV2
         | Protocol::CamelotV2 => {
-            let decoded = UniswapV2::PairCreated::decode_log(&plog, true)?;
+            let decoded = UniswapV2::PairCreated::decode_log(plog, true)?;
             (decoded.pair, vec![decoded.token0, decoded.token1])
         }
         Protocol::UniswapV3 | Protocol::SushiSwapV3 | Protocol::PancakeSwapV3 => {
-            let decoded = UniswapV3::PoolCreated::decode_log(&plog, true)?;
+            let decoded = UniswapV3::PoolCreated::decode_log(plog, true)?;
             (decoded.pool, vec![decoded.token0, decoded.token1])
         }
         Protocol::UniswapV4 => {
-            let decoded = UniswapV4::Initialize::decode_log(&plog, true)?;
+            let decoded = UniswapV4::Initialize::decode_log(plog, true)?;
             (convert_to_address(decoded.id), vec![convert_to_address(decoded.currency0), convert_to_address(decoded.currency1)])
         }
         Protocol::CamelotV3 => {
-            let decoded = CamelotV3::Pool::decode_log(&plog, true)?;
+            let decoded = CamelotV3::Pool::decode_log(plog, true)?;
             (decoded.pool, vec![decoded.token0, decoded.token1])
         }
         Protocol::FluidDEX => {
-            let decoded = FluidDEX::DexT1Deployed::decode_log(&plog, true)?;
+            let decoded = FluidDEX::DexT1Deployed::decode_log(plog, true)?;
             (decoded.dex, vec![decoded.supplyToken, decoded.borrowToken])
         }
         Protocol::LFJV2_1 => {
-            let decoded = LFJV2::LBPairCreated::decode_log(&plog, true)?;
+            let decoded = LFJV2::LBPairCreated::decode_log(plog, true)?;
             (decoded.LBPair, vec![decoded.tokenX, decoded.tokenY])
         }
         Protocol::BalancerV2 => {
-            let decoded = BalancerV2::TokensRegistered::decode_log(&plog, true)?;
+            let decoded = BalancerV2::TokensRegistered::decode_log(plog, true)?;
             (convert_to_address(decoded.poolId), decoded.tokens.clone())
         }
         _ => {
@@ -187,9 +187,9 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
 
 #[cfg(all(test))]
 mod tests {
-    use std::{io::Read, str::FromStr};
+    use std::str::FromStr;
 
-    use alloy_primitives::{Address, Bytes, FixedBytes, Log, LogData, B256};
+    use alloy_primitives::{Address, B256};
     use alloy_sol_types::SolEvent;
 
     use super::*;
