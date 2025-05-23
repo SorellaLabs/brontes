@@ -17,7 +17,7 @@ const MAX_PENDING_TREE_BUILDING: usize = 5;
 pub struct DiscoveryLogsExecutor<T: LogProvider, DB: DBWriter + LibmdbxReader> {
     current_block: u64,
     end_block:     u64,
-    range_size:    usize,
+    batch_size:    usize,
     parser:        &'static LogParser<T, DB>,
     classifier:    DiscoveryLogsOnlyClassifier<'static, DB>,
     running:       FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
@@ -28,7 +28,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
     pub fn new(
         start_block: u64,
         end_block: u64,
-        range_size: usize,
+        batch_size: usize,
         db: &'static DB,
         parser: &'static LogParser<T, DB>,
         progress_bar: ProgressBar,
@@ -38,7 +38,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
             progress_bar,
             current_block: start_block,
             end_block,
-            range_size,
+            batch_size,
             parser,
             classifier,
             running: FuturesUnordered::default(),
@@ -82,13 +82,13 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
             cx.waker().wake_by_ref();
             let fut = Box::pin(Self::process_next(
                 self.current_block,
-                self.current_block + self.range_size as u64,
+                self.current_block + self.batch_size as u64,
                 self.parser,
                 self.classifier.clone(),
             ));
             self.running.push(fut);
             self.current_block =
-                std::cmp::min(self.current_block + self.range_size as u64, self.end_block);
+                std::cmp::min(self.current_block + self.batch_size as u64, self.end_block);
         }
 
         while match self.running.poll_next_unpin(cx) {
@@ -96,7 +96,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
                 if result.is_err() {
                     tracing::error!("Error processing logs: {:?}", result);
                 }
-                self.progress_bar.inc(self.range_size as u64);
+                self.progress_bar.inc(self.batch_size as u64);
                 true
             }
             Poll::Pending => false,

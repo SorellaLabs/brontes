@@ -77,10 +77,11 @@ pub struct DiscoveryLogsFill {
     #[arg(long, short)]
     pub max_tasks:   Option<usize>,
     /// Block range per request (defaults to alchemy block range limit = 10,000)
-    #[arg(long, short, default_value_t = 10_000)]
-    pub range_size:  usize,
+    #[arg(long, short = 'b', default_value_t = 10_000)]
+    pub batch_size:  usize,
 
-    #[arg(long, short)]
+    /// Rate limit for RPC requests per second
+    #[arg(long, short = 'r')]
     pub rate_limit: Option<u32>,
 }
 
@@ -216,7 +217,7 @@ impl DiscoveryLogsFill {
                             DiscoveryLogsExecutor::new(
                                 start_block,
                                 end_block,
-                                self.range_size,
+                                self.batch_size,
                                 libmdbx,
                                 parser,
                                 bar,
