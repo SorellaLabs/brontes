@@ -7,6 +7,7 @@ use brontes_types::{
     structured_trace::TxTrace,
     traits::{LogProvider, TracingProvider},
 };
+use governor::DefaultDirectRateLimiter;
 use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
@@ -20,6 +21,7 @@ pub struct LocalProvider {
     provider:   Arc<RootProvider<Http<reqwest::Client>, alloy_network::AnyNetwork>>,
     rpc_client: Arc<RpcClient>,
     retries:    u8,
+    limiter:    Option<Arc<DefaultDirectRateLimiter>>,
 }
 
 impl LocalProvider {
@@ -30,6 +32,20 @@ impl LocalProvider {
             provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
             rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
             retries,
+            limiter: None,
+        }
+    }
+
+    pub fn new_with_limiter(
+        url: String,
+        retries: u8,
+        limiter: Option<Arc<DefaultDirectRateLimiter>>,
+    ) -> Self {
+        Self {
+            provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
+            rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
+            retries,
+            limiter: limiter,
         }
     }
 }
@@ -50,6 +66,10 @@ impl LogProvider for LocalProvider {
     }
 
     async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>> {
+        if let Some(limiter) = self.limiter.as_ref() {
+            limiter.until_ready().await;
+        }
+
         let res = self.provider.get_logs(filter).await;
         if let Err(e) = res {
             return Err(e.into());
@@ -228,7 +248,6 @@ impl TracingProvider for LocalProvider {
 mod tests {
     use std::env;
 
-    
     use alloy_rpc_types::Filter;
     use alloy_sol_macro::sol;
     use alloy_sol_types::SolEvent;

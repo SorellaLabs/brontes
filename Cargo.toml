@@ -178,6 +178,7 @@ num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 bitflags = "2.5.0"
+governor = "0.10.0"
 
 arrow = "51.0.0"
 polars = { version = "0.38.3", features = ["lazy"] }
