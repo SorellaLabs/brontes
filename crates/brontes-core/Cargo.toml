@@ -72,6 +72,7 @@ auto_impl.workspace = true
 dotenv.workspace = true
 itertools.workspace = true
 indicatif.workspace = true
+governor.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true

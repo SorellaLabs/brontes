@@ -30,9 +30,11 @@ use brontes_types::{
     BrontesTaskExecutor,
 };
 use itertools::Itertools;
+use governor::DefaultDirectRateLimiter;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
+use std::sync::Arc;
 use tracing::info;
 
 #[cfg(not(feature = "local-clickhouse"))]
@@ -129,6 +131,17 @@ pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalPr
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
     let url = if db_port.is_empty() { db_endpoint } else { format!("{db_endpoint}:{db_port}") };
     LocalProvider::new(url, 5)
+}
+
+#[cfg(not(feature = "local-reth"))]
+pub fn get_tracing_provider_rpc(
+    _: &Path,
+    _: u64,
+    _: BrontesTaskExecutor,
+    limiter: Arc<DefaultDirectRateLimiter>,
+) -> LocalProvider {
+    let rpc_endpoint = env::var("RPC_URL").expect("No RPC_URL in .env");
+    LocalProvider::new_with_limiter(rpc_endpoint, 5, limiter)
 }
 
 #[cfg(feature = "local-reth")]

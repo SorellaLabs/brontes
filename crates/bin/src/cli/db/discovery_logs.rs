@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    num::NonZeroU32,
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::HashMap, num::NonZeroU32, path::Path, sync::Arc};
 
 use alloy_primitives::{Address, FixedBytes};
 use alloy_sol_macro::sol;
@@ -26,7 +21,7 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressState, ProgressStyle};
 use itertools::Itertools;
 
 use crate::{
-    cli::{get_env_vars, get_tracing_provider, load_database, static_object},
+    cli::{get_env_vars, get_tracing_provider_rpc, load_database, static_object},
     discovery_logs_only::DiscoveryLogsExecutor,
     runner::CliContext,
 };
@@ -153,11 +148,15 @@ impl DiscoveryLogsFill {
         let libmdbx =
             static_object(load_database(&ctx.task_executor, brontes_db_path, None, None).await?);
 
-        let tracer = Arc::new(get_tracing_provider(
+        let limiter =
+            Arc::new(RateLimiter::direct(Quota::per_second(NonZeroU32::new(50).unwrap())));
+
+        let tracer = Arc::new(get_tracing_provider_rpc(
             Path::new(&db_path),
             max_tasks as u64,
             ctx.task_executor.clone(),
-        ));
+            limiter,
+        )); 
 
         let protocol_to_address = Self::get_protocol_to_address_map();
         let parser =
@@ -193,8 +192,6 @@ impl DiscoveryLogsFill {
 
         let total_blocks = end_block - start_block + 1;
         let chunk_size = (total_blocks + max_tasks as u64 - 1) / max_tasks as u64; // ceiling division
-        let limiter =
-            Arc::new(RateLimiter::direct(Quota::per_second(NonZeroU32::new(50).unwrap())));
         let chunks = (start_block..=end_block)
             .chunks(chunk_size as usize)
             .into_iter()
@@ -208,7 +205,6 @@ impl DiscoveryLogsFill {
         futures::stream::iter(chunks)
             .map(|(start_block, end_block)| {
                 let bar = bar.clone();
-                let limiter = limiter.clone();
                 ctx.task_executor
                     .spawn_critical_with_graceful_shutdown_signal(
                         "DiscoveryLogs",
@@ -219,7 +215,6 @@ impl DiscoveryLogsFill {
                                 self.range_size,
                                 libmdbx,
                                 parser,
-                                limiter,
                                 bar,
                             )
                             .run_until_graceful_shutdown(shutdown)

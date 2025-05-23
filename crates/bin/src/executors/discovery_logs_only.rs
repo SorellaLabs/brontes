@@ -1,6 +1,5 @@
 use std::{
     pin::Pin,
-    sync::Arc,
     task::{Context, Poll},
 };
 
@@ -8,7 +7,6 @@ use brontes_classifier::discovery_logs_only::DiscoveryLogsOnlyClassifier;
 use brontes_core::decoding::{LogParser, LogProvider};
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
-use governor::DefaultDirectRateLimiter;
 use reth_tasks::shutdown::GracefulShutdown;
 
 use crate::executors::ProgressBar;
@@ -24,7 +22,6 @@ pub struct DiscoveryLogsExecutor<T: LogProvider, DB: DBWriter + LibmdbxReader> {
     classifier:    DiscoveryLogsOnlyClassifier<'static, DB>,
     running:       FuturesUnordered<Pin<Box<dyn Future<Output = eyre::Result<()>> + Send>>>,
     progress_bar:  ProgressBar,
-    limiter:       Arc<DefaultDirectRateLimiter>,
 }
 
 impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> {
@@ -34,7 +31,6 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
         range_size: usize,
         db: &'static DB,
         parser: &'static LogParser<T, DB>,
-        limiter: Arc<DefaultDirectRateLimiter>,
         progress_bar: ProgressBar,
     ) -> Self {
         let classifier = DiscoveryLogsOnlyClassifier::new(db);
@@ -46,7 +42,6 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
             parser,
             classifier,
             running: FuturesUnordered::default(),
-            limiter,
         }
     }
 
@@ -83,10 +78,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecu
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if self.current_block < self.end_block
-            && self.running.len() < MAX_PENDING_TREE_BUILDING
-            && self.limiter.check().is_ok()
-        {
+        if self.current_block < self.end_block && self.running.len() < MAX_PENDING_TREE_BUILDING {
             cx.waker().wake_by_ref();
             let fut = Box::pin(Self::process_next(
                 self.current_block,
