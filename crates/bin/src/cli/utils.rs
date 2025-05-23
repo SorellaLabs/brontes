@@ -138,7 +138,7 @@ pub fn get_tracing_provider_rpc(
     _: &Path,
     _: u64,
     _: BrontesTaskExecutor,
-    limiter: Arc<DefaultDirectRateLimiter>,
+    limiter: Option<Arc<DefaultDirectRateLimiter>>,
 ) -> LocalProvider {
     let rpc_endpoint = env::var("RPC_URL").expect("No RPC_URL in .env");
     LocalProvider::new_with_limiter(rpc_endpoint, 5, limiter)

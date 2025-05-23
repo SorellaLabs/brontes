@@ -39,13 +39,13 @@ impl LocalProvider {
     pub fn new_with_limiter(
         url: String,
         retries: u8,
-        limiter: Arc<DefaultDirectRateLimiter>,
+        limiter: Option<Arc<DefaultDirectRateLimiter>>,
     ) -> Self {
         Self {
             provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
             rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
             retries,
-            limiter: Some(limiter),
+            limiter: limiter,
         }
     }
 }

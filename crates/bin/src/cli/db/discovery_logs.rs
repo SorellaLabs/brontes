@@ -79,6 +79,9 @@ pub struct DiscoveryLogsFill {
     /// Block range per request (defaults to alchemy block range limit = 10,000)
     #[arg(long, short, default_value_t = 10_000)]
     pub range_size:  usize,
+
+    #[arg(long, short)]
+    pub rate_limit: Option<u32>,
 }
 
 impl DiscoveryLogsFill {
@@ -148,15 +151,16 @@ impl DiscoveryLogsFill {
         let libmdbx =
             static_object(load_database(&ctx.task_executor, brontes_db_path, None, None).await?);
 
-        let limiter =
-            Arc::new(RateLimiter::direct(Quota::per_second(NonZeroU32::new(50).unwrap())));
+        let limiter = self.rate_limit.map(|rate_limit| {
+            Arc::new(RateLimiter::direct(Quota::per_second(NonZeroU32::new(rate_limit).unwrap())))
+        });
 
         let tracer = Arc::new(get_tracing_provider_rpc(
             Path::new(&db_path),
             max_tasks as u64,
             ctx.task_executor.clone(),
             limiter,
-        )); 
+        ));
 
         let protocol_to_address = Self::get_protocol_to_address_map();
         let parser =
