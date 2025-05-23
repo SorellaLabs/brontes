@@ -136,7 +136,7 @@ pub const CAMELOT_V2_FACTORY_ADDRESS: Address =
 pub const CAMELOT_V3_FACTORY_ADDRESS: Address =
     Address::new(hex!("1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B"));
 pub const UNISWAP_V3_FACTORY_ADDRESS: Address =
-    Address::new(hex!("7858E59e0C01EA06D73002144C0a530770217229"));
+    Address::new(hex!("1F98431c8aD98523631AE4a59f267346ea31F984"));
 pub const UNISWAP_V4_FACTORY_ADDRESS: Address =
     Address::new(hex!("360E68faCcca8cA495c1B759Fd9EEe466db9FB32"));
 pub const FLUID_DEX_FACTORY_ADDRESS: Address =
