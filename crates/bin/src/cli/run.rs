@@ -44,6 +44,13 @@ pub struct RunArgs {
     /// physical cores on your machine
     #[arg(long, short)]
     pub max_tasks:            Option<u64>,
+    /// Optional max pending trees when processing dex price quotes and collecting states
+    /// Limits the amount we work ahead in the processing. This is done
+    /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
+    /// of processed trees
+    #[arg(long, short, default_value = "100")]
+    pub max_pending: usize,
+
     /// Optional minimum batch size
     #[arg(long, default_value = "500")]
     pub min_batch_size:       u64,
@@ -202,6 +209,7 @@ impl RunArgs {
                     self.with_metrics,
                     snapshot_mode,
                     load_window,
+                    self.max_pending,
                 )
                 .build(task_executor, shutdown)
                 .await

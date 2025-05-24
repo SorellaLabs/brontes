@@ -66,6 +66,7 @@ pub struct BrontesRunConfig<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseH
     pub metrics: bool,
     pub is_snapshot: bool,
     pub cex_window: usize,
+    pub max_pending: usize,
     _p: PhantomData<P>,
 }
 
@@ -89,6 +90,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
         metrics: bool,
         is_snapshot: bool,
         cex_window: usize,
+        max_pending: usize,
     ) -> Self {
         Self {
             clickhouse,
@@ -106,6 +108,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             tip_db,
             is_snapshot,
             cex_window,
+            max_pending,
             _p: PhantomData,
         }
     }
@@ -434,6 +437,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             data_req.clone(),
             pricing_metrics.clone(),
             executor.clone(),
+            self.max_pending,
         );
 
         let pricing = WaitingForPricerFuture::new(pricer, executor);
@@ -444,6 +448,7 @@ impl<T: TracingProvider, DB: LibmdbxInit, CH: ClickhouseHandle, P: Processor>
             self.force_no_dex_pricing,
             data_req,
             self.cex_window,
+            self.max_pending,
         );
 
         let block_window_size = self

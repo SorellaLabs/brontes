@@ -107,6 +107,7 @@ impl ClassifierTestUtils {
                 ctr.clone(),
                 None,
                 ex,
+                5
             ),
         ))
     }

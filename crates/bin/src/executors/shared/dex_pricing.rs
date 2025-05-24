@@ -60,6 +60,8 @@ impl<T: TracingProvider> WaitingForPricerFuture<T> {
             block_number=%block))
             .await;
 
+        tracing::debug!(?res, "Got pricing for block: {}", block);
+
         // we will keep trying to send util it is resolved or the channel is dropped
         while let Err(e) = tx.try_send((pricer, res)) {
             let TrySendError::Full((f_pricer, f_res)) = e else { return };

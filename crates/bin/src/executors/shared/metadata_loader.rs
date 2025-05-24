@@ -29,10 +29,7 @@ use tracing::error;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
-/// Limits the amount we work ahead in the processing. This is done
-/// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
-/// of processed trees
-const MAX_PENDING_TREES: usize = 1000;
+
 
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
@@ -47,6 +44,7 @@ pub struct MetadataLoader<T: TracingProvider, CH: ClickhouseHandle> {
     cex_window_data:       CexWindow,
     always_generate_price: bool,
     force_no_dex_pricing:  bool,
+    max_pending:           usize,
 }
 
 impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
@@ -57,6 +55,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         force_no_dex_pricing: bool,
         needs_more_data: Arc<AtomicBool>,
         #[allow(unused)] cex_window_sec: usize,
+        max_pending: usize,
     ) -> Self {
         Self {
             cex_window_data: CexWindow::new(cex_window_sec),
@@ -67,13 +66,28 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
             result_buf: VecDeque::new(),
             always_generate_price,
             force_no_dex_pricing,
+            max_pending,
         }
     }
 
     pub fn should_process_next_block(&self) -> bool {
-        self.needs_more_data.load(Ordering::SeqCst)
-            && self.dex_pricer_stream.pending_trees() < MAX_PENDING_TREES
-            && self.result_buf.len() < MAX_PENDING_TREES
+        let needs_more_data = self.needs_more_data.load(Ordering::SeqCst);
+        let pending_trees_ok = self.dex_pricer_stream.pending_trees() < self.max_pending;
+        let result_buf_ok = self.result_buf.len() < self.max_pending;
+
+        let combined_result = needs_more_data && pending_trees_ok && result_buf_ok;
+
+        tracing::debug!(
+            needs_more_data = %needs_more_data,
+            pending_trees = %self.dex_pricer_stream.pending_trees(),
+            pending_trees_ok = %pending_trees_ok,
+            result_buf_len = %self.result_buf.len(),
+            result_buf_ok = %result_buf_ok,
+            combined_result = %combined_result,
+            "should_process_next_block evaluation"
+        );
+
+        combined_result
     }
 
     pub fn is_finished(&self) -> bool {
