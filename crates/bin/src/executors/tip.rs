@@ -153,7 +153,12 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
         if let Poll::Ready(item) = self.state_collector.poll_next_unpin(cx) {
             match item {
-                Some(data) => self.on_price_finish(data),
+                Some(data) => {
+                    self.range_metrics.as_ref().inspect(|metrics| {
+                        metrics.remove_pending_tree(0);
+                    });
+                    self.on_price_finish(data);
+                }
                 None if self.processing_futures.is_empty() => return Poll::Ready(()),
                 _ => {}
             }
