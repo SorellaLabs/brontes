@@ -266,7 +266,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> MetadataLoader<T, CH> {
         block_hash: BlockHash,
         quote_asset: Address,
     ) {
-        tracing::info!(?block, "spawning clickhouse fut");
+        tracing::trace!(?block, "spawning clickhouse fut");
         let window = self.cex_window_data.get_window_lookahead();
         // given every download is -6 + 6 around the block
         // we calculate the offset from the current block that we need
@@ -360,7 +360,7 @@ impl<T: TracingProvider, CH: ClickhouseHandle> Stream for MetadataLoader<T, CH> 
         while let Poll::Ready(Some((block, tree, meta))) =
             self.clickhouse_futures.poll_next_unpin(cx)
         {
-            tracing::info!("clickhouse future resolved");
+            tracing::trace!("clickhouse future resolved");
             self.dex_pricer_stream
                 .add_pending_inspection(block, tree, meta)
         }

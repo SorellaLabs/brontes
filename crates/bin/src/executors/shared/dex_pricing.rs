@@ -160,7 +160,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                 debug!(target:"brontes","Generated dex prices for block: {} ", block);
 
                 if block > self.max_tree_block {
-                    tracing::info!(
+                    tracing::debug!(
                         pricing_block=%block,
                         last_metadata_block=%self.max_tree_block,
                         "Pricing completed for block before metadata"
@@ -172,7 +172,7 @@ impl<T: TracingProvider> Stream for WaitingForPricerFuture<T> {
                 return self.process_resolved_pricing(block, prices)
             }
 
-            tracing::info!("pricing returned completed");
+            tracing::debug!("pricing returned completed");
             // means we have completed chunks
             return Poll::Ready(None)
         }
