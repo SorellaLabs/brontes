@@ -676,6 +676,11 @@ pub fn log_cex_trade_price_delta(
 
     let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
 
+    #[cfg(feature = "arbitrum")]
+    let explorer_url = "https://arbiscan.io";
+    #[cfg(not(feature = "arbitrum"))]
+    let explorer_url = "https://etherscan.io";
+
     warn!(
         "\n\x1b[1;35mSignificant CEX trade price discrepancy detected for {} - {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap:\x1b[0m\n\
@@ -687,9 +692,9 @@ pub fn log_cex_trade_price_delta(
            * Equivalent Output: {}\n\
          - \x1b[1;33mArbitrage Ratio:\x1b[0m {:.4} ({}%)\n\
          - Token Contracts:\n\
-           * Token In: https://etherscan.io/address/{}\n\
-           * Token Out: https://etherscan.io/address/{}\n\
-         - Tx Hash: https://etherscan.io/tx/{:?}\n\
+           * Token In: {explorer_url}/address/{}\n\
+           * Token Out: {explorer_url}/address/{}\n\
+         - Tx Hash: {explorer_url}/tx/{:?}\n\
          - Price Calculation Type: {}\n\
          - Was calcuated with Intermediary: {}\n\
          - \x1b[1;31mWarning:\x1b[0m The CEX trade output is more than 2x the DEX input, indicating a potentially invalid trade or extreme market inefficiency.",

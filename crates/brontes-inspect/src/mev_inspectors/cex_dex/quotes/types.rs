@@ -110,6 +110,11 @@ pub fn log_cex_dex_quote_delta(
 
     let arb_percent = (arb_ratio.clone().to_float() - 1.0) * 100.0;
 
+    #[cfg(feature = "arbitrum")]
+    let explorer_url = "https://arbiscan.io";
+    #[cfg(not(feature = "arbitrum"))]
+    let explorer_url = "https://etherscan.io";
+
     warn!(
         "\n\x1b[1;35mSignificant Cex-Dex quote discrepancy detected for {} - {} on {}:\x1b[0m\n\
          - \x1b[1;36mDEX Swap:\x1b[0m\n\
@@ -121,9 +126,9 @@ pub fn log_cex_dex_quote_delta(
            * Equivalent Output: {}\n\
          - \x1b[1;33mArbitrage Ratio:\x1b[0m {:.4} ({}%)\n\
          - Token Contracts:\n\
-           * Token In: https://etherscan.io/address/{}\n\
-           * Token Out: https://etherscan.io/address/{}\n\
-         - Tx Hash: https://etherscan.io/tx/{}\n\
+           * Token In: {explorer_url}/address/{}\n\
+           * Token Out: {explorer_url}/address/{}\n\
+         - Tx Hash: {explorer_url}/tx/{}\n\
          - \x1b[1;31mWarning:\x1b[0m The CEX quote output is more than 2x the DEX input, suggesting a potentially invalid quote or extreme market inefficiency.",
         token_in_symbol,
         token_out_symbol,
