@@ -20,6 +20,7 @@ pub mod lfj_v2_1 {
         [Swap],
         call_data: true,
         logs: true,
+        include_delegated_logs: true,
         |
         info: CallInfo,
         call_data: swapCall,
@@ -75,7 +76,8 @@ pub mod lfj_v2_1 {
         [DepositedToBins],
         logs: true,
         call_data: true,
-         |
+        include_delegated_logs: true,
+        |
          info: CallInfo,
          call_data: mintCall,
          _logs: LFJV2_1MintCallLogs,  db_tx: &DB| {
@@ -110,6 +112,7 @@ pub mod lfj_v2_1 {
         Burn,
         [WithdrawnFromBins],
         logs:true,
+        include_delegated_logs: true,
         |
         info: CallInfo,
         _logs: LFJV2_1BurnCallLogs,
@@ -147,6 +150,7 @@ pub mod lfj_v2_1 {
         call_data: true,
         return_data: true,
         logs: true,
+        include_delegated_logs: true,
         |
         info: CallInfo,
         call_data: collectProtocolFeesCall,
@@ -197,6 +201,7 @@ pub mod lfj_v2_2 {
         [Swap],
         call_data: true,
         logs: true,
+        include_delegated_logs: true,
         |
         info: CallInfo,
         call_data: swapCall,
@@ -252,7 +257,8 @@ pub mod lfj_v2_2 {
         [DepositedToBins],
         logs: true,
         call_data: true,
-         |
+        include_delegated_logs: true,
+        |
          info: CallInfo,
          call_data: mintCall,
          _logs: LFJV2_2MintCallLogs,  db_tx: &DB| {
@@ -287,6 +293,7 @@ pub mod lfj_v2_2 {
         Burn,
         [WithdrawnFromBins],
         logs:true,
+        include_delegated_logs: true,
         |
         info: CallInfo,
         _logs: LFJV2_2BurnCallLogs,
@@ -324,6 +331,7 @@ pub mod lfj_v2_2 {
         call_data: true,
         return_data: true,
         logs: true,
+        include_delegated_logs: true,
         |
         info: CallInfo,
         call_data: collectProtocolFeesCall,
