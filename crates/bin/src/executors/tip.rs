@@ -110,8 +110,8 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
 
         match cur_block {
             Ok(chain_tip) => {
-                let res = chain_tip - self.back_from_tip > self.current_block;
-                res
+                
+                chain_tip - self.back_from_tip > self.current_block
             }
             Err(e) => {
                 tracing::error!("Error: {:?}", e);
