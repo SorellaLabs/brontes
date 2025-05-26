@@ -75,7 +75,8 @@ impl ActionMacro {
         {
             quote!(Ok(::brontes_pricing::types::DexPriceMsg::DiscoveredPool(result)))
         } else {
-            quote!(
+            quote!({
+                ::tracing::info!(?block, ?tx_idx, "result: {:?}", ::brontes_types::normalized_actions::Action::#action_type(result.clone()));
                 Ok(::brontes_pricing::types::DexPriceMsg::Update(
                     ::brontes_pricing::types::PoolUpdate {
                         block,
@@ -84,6 +85,7 @@ impl ActionMacro {
                         action: ::brontes_types::normalized_actions::Action::#action_type(result)
                     },
                 ))
+            }
             )
         };
 
