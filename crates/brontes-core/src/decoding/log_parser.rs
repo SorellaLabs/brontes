@@ -20,13 +20,13 @@ use super::*;
 use crate::decoding::dyn_decode::decode_input_with_abi;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
-pub struct EthLogParser<T: LogProvider, DB: LibmdbxReader + DBWriter> {
+pub struct EthLogParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     libmdbx:                &'static DB,
     pub provider:           Arc<T>,
     pub protocol_to_events: HashMap<Protocol, (Address, FixedBytes<32>)>,
 }
 
-impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Clone for EthLogParser<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for EthLogParser<T, DB> {
     fn clone(&self) -> Self {
         Self {
             libmdbx:            self.libmdbx,
@@ -36,7 +36,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Clone for EthLogParser<T, DB>
     }
 }
 
-impl<T: LogProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
     pub async fn new(
         libmdbx: &'static DB,
         provider: Arc<T>,

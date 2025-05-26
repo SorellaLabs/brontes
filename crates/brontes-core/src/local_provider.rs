@@ -5,7 +5,7 @@ use alloy_rpc_types::Log;
 use alloy_transport_http::Http;
 use brontes_types::{
     structured_trace::TxTrace,
-    traits::{LogProvider, TracingProvider},
+    traits::TracingProvider,
 };
 use governor::{DefaultDirectRateLimiter, Jitter};
 use reth_primitives::{
@@ -46,40 +46,6 @@ impl LocalProvider {
             rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
             retries,
             limiter,
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl LogProvider for LocalProvider {
-    async fn block_hash_for_id(&self, block_num: u64) -> eyre::Result<Option<B256>> {
-        self.provider
-            .get_block(BlockId::Number(BlockNumberOrTag::Number(block_num)), true)
-            .await
-            .map(|op| op.map(|block| block.header.hash.unwrap()))
-            .map_err(Into::into)
-    }
-
-    #[cfg(not(feature = "local-reth"))]
-    async fn best_block_number(&self) -> eyre::Result<u64> {
-        self.provider.get_block_number().await.map_err(Into::into)
-    }
-
-    async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>> {
-        let mut attempts = 0;
-        loop {
-            if let Some(limiter) = self.limiter.as_ref() {
-                let jitter = Jitter::up_to(std::time::Duration::from_millis(100));
-                limiter.until_ready_with_jitter(jitter).await;
-            }
-
-            let res = self.provider.get_logs(filter).await;
-            if res.is_ok() || attempts > self.retries {
-                return res.map_err(|e| {
-                    eyre::eyre!("failed to get logs after {} retries: {}", attempts, e)
-                });
-            }
-            attempts += 1;
         }
     }
 }
@@ -245,6 +211,24 @@ impl TracingProvider for LocalProvider {
 
         let bytecode = Bytecode::new_raw(bytes);
         Ok(Some(bytecode))
+    }
+
+    async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>> {
+        let mut attempts = 0;
+        loop {
+            if let Some(limiter) = self.limiter.as_ref() {
+                let jitter = Jitter::up_to(std::time::Duration::from_millis(100));
+                limiter.until_ready_with_jitter(jitter).await;
+            }
+
+            let res = self.provider.get_logs(filter).await;
+            if res.is_ok() || attempts > self.retries {
+                return res.map_err(|e| {
+                    eyre::eyre!("failed to get logs after {} retries: {}", attempts, e)
+                });
+            }
+            attempts += 1;
+        }
     }
 }
 

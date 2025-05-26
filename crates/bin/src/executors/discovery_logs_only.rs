@@ -4,8 +4,9 @@ use std::{
 };
 
 use brontes_classifier::discovery_logs_only::DiscoveryLogsOnlyClassifier;
-use brontes_core::decoding::{LogParser, LogProvider};
+use brontes_core::decoding::LogParser;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
+use brontes_types::traits::TracingProvider;
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
 
@@ -14,7 +15,7 @@ use crate::executors::ProgressBar;
 const MAX_PENDING_TREE_BUILDING: usize = 5;
 
 /// only runs discovery
-pub struct DiscoveryLogsExecutor<T: LogProvider, DB: DBWriter + LibmdbxReader> {
+pub struct DiscoveryLogsExecutor<T: TracingProvider, DB: DBWriter + LibmdbxReader> {
     current_block: u64,
     end_block:     u64,
     batch_size:    usize,
@@ -24,7 +25,7 @@ pub struct DiscoveryLogsExecutor<T: LogProvider, DB: DBWriter + LibmdbxReader> {
     progress_bar:  ProgressBar,
 }
 
-impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> {
     pub fn new(
         start_block: u64,
         end_block: u64,
@@ -74,7 +75,7 @@ impl<T: LogProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, DB> 
     }
 }
 
-impl<T: LogProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecutor<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Future for DiscoveryLogsExecutor<T, DB> {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

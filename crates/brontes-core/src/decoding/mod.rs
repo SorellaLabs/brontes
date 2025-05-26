@@ -2,7 +2,7 @@ use std::{collections::HashMap, pin::Pin, sync::Arc};
 
 use alloy_rpc_types::Log;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-pub use brontes_types::traits::{LogProvider, TracingProvider};
+pub use brontes_types::traits::TracingProvider;
 use brontes_types::{structured_trace::TxTrace, Protocol};
 use futures::Future;
 use reth_primitives::{BlockHash, BlockNumberOrTag, Header, B256};
@@ -40,7 +40,7 @@ pub struct Parser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     parser: TraceParser<T, DB>,
 }
 
-pub struct LogParser<T: LogProvider, DB: LibmdbxReader + DBWriter> {
+pub struct LogParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
     parser: EthLogParser<T, DB>,
 }
 
@@ -112,7 +112,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
     }
 }
 
-impl<T: LogProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
     pub async fn new(
         libmdbx: &'static DB,
         provider: Arc<T>,

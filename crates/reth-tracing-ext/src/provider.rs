@@ -21,6 +21,8 @@ use revm::{
     Database,
 };
 use revm_primitives::ExecutionResult;
+use reth_rpc_types::Filter;
+use reth_rpc_types::Log;
 
 use crate::TracingClient;
 
@@ -146,6 +148,10 @@ impl TracingProvider for TracingClient {
         let bytecode = provider.account_code(address)?;
 
         Ok(bytecode)
+    }
+
+    async fn get_logs(&self, _filter: &Filter) -> eyre::Result<Vec<Log>> {
+        todo!("Implement get_logs for reth-tracing-ext")
     }
 }
 
