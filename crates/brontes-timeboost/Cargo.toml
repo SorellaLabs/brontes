@@ -1,0 +1,21 @@
+[package]
+name = "brontes-timeboost"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+#brontes
+brontes-types.workspace = true
+
+#alloy
+alloy-sol-macro.workspace = true
+alloy-sol-types.workspace = true
+alloy-primitives.workspace = true
+alloy-rpc-types.workspace = true
+
+# Tracing
+tracing.workspace = true
+
+# Misc
+eyre.workspace = true

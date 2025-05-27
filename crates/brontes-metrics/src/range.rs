@@ -1,11 +1,11 @@
 use std::{pin::Pin, time::Instant};
 
+use alloy_primitives::Address;
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
-    register_int_gauge,
-    register_int_counter_vec, register_int_gauge_vec, HistogramVec, IntCounterVec, IntGaugeVec,
-    IntGauge,
-    Opts,
+    register_int_counter_vec, register_int_gauge, register_int_gauge_vec, HistogramVec,
+    register_gauge_vec,
+    IntCounterVec, IntGauge, IntGaugeVec, Opts, GaugeVec,
 };
 use reth_metrics::Metrics;
 
@@ -31,9 +31,15 @@ pub struct GlobalRangeMetrics {
     /// amount of transactions
     pub transactions_throughput:     HistogramVec,
     /// latest block number processed
-    pub latest_processed_block:      IntGauge,  
+    pub latest_processed_block:      IntGauge,
     /// gas used for the range
     pub gas_used:                    IntGaugeVec,
+    /// express lane auction
+    pub express_lane_auction_winner: IntGaugeVec,
+    pub express_lane_auction_first_price: GaugeVec,
+    pub express_lane_auction_price:  GaugeVec,
+    pub current_round:               IntGauge,
+    pub transfer_controller:         IntCounterVec,
 }
 
 impl GlobalRangeMetrics {
@@ -110,13 +116,40 @@ impl GlobalRangeMetrics {
         let latest_processed_block = register_int_gauge!(
             "latest_processed_block",
             "latest block number that has been processed"
-        ).unwrap();
+        )
+        .unwrap();
 
-        let gas_used = register_int_gauge_vec!(
-            "gas_used",
-            "gas used for the range",
-            &["range_id"]
-        ).unwrap();
+        let gas_used =
+            register_int_gauge_vec!("gas_used", "gas used for the range", &["range_id"]).unwrap();
+
+        let express_lane_auction_winner = register_int_gauge_vec!(
+            "express_lane_auction_winner",
+            "express lane auction winner",
+            &["address"]
+        )
+        .unwrap();
+
+        let current_round =
+            register_int_gauge!("current_round", "current round of the express lane auction")
+                .unwrap();
+
+        let transfer_controller =
+            register_int_counter_vec!("transfer_controller", "transfer controller", &["address"])
+                .unwrap();
+
+        let express_lane_auction_price = register_gauge_vec!(
+            "express_lane_auction_price",
+            "express lane auction price",
+            &["address"]
+        )
+        .unwrap();
+
+        let express_lane_auction_first_price = register_gauge_vec!(
+            "express_lane_auction_first_price",
+            "express lane auction first price",
+            &["address"]
+        )
+        .unwrap();
 
         Self {
             pending_trees,
@@ -131,6 +164,11 @@ impl GlobalRangeMetrics {
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
             latest_processed_block,
             gas_used,
+            express_lane_auction_winner,
+            express_lane_auction_first_price,
+            express_lane_auction_price,
+            current_round,
+            transfer_controller,
         }
     }
 
@@ -221,8 +259,36 @@ impl GlobalRangeMetrics {
     }
 
     pub fn update_gas_used(&self, id: usize, gas: u64) {
-        self.gas_used.with_label_values(&[&format!("{id}")])
+        self.gas_used
+            .with_label_values(&[&format!("{id}")])
             .set(gas as i64);
+    }
+
+    pub fn add_express_lane_auction_winner(
+        &self,
+        winner_address: Address,
+        price: f64,
+        first_price: f64,
+    ) {
+        self.express_lane_auction_winner
+            .with_label_values(&[&winner_address.to_string()])
+            .inc();
+        self.express_lane_auction_price
+            .with_label_values(&[&winner_address.to_string()])
+            .set(price);
+        self.express_lane_auction_first_price
+            .with_label_values(&[&winner_address.to_string()])
+            .set(first_price);
+    }
+
+    pub fn add_transfer_controller(&self, address: Address) {
+        self.transfer_controller
+            .with_label_values(&[&address.to_string()])
+            .inc();
+    }
+
+    pub fn set_current_round(&self, round: u64) {
+        self.current_round.set(round as i64);
     }
 }
 

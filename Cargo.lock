@@ -1538,6 +1538,7 @@ dependencies = [
  "brontes-macros",
  "brontes-metrics",
  "brontes-pricing",
+ "brontes-timeboost",
  "brontes-tracing",
  "brontes-types",
  "cfg-if",
@@ -1664,6 +1665,7 @@ dependencies = [
  "brontes-core",
  "brontes-database",
  "brontes-metrics",
+ "brontes-timeboost",
  "brontes-tracing",
  "brontes-types",
  "colored",
@@ -1958,6 +1960,19 @@ dependencies = [
  "strum 0.25.0",
  "thiserror",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "brontes-timeboost"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "alloy-rpc-types",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "brontes-types",
+ "eyre",
  "tracing",
 ]
 

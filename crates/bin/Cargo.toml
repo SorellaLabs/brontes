@@ -16,6 +16,7 @@ brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
 brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
+brontes-timeboost.workspace = true
 
 malachite.workspace = true
 toml = "0.8.2"
