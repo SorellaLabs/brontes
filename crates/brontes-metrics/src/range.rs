@@ -3,43 +3,42 @@ use std::{pin::Pin, time::Instant};
 use alloy_primitives::Address;
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
-    register_int_counter_vec, register_int_gauge, register_int_gauge_vec, HistogramVec,
-    register_gauge_vec,
-    IntCounterVec, IntGauge, IntGaugeVec, Opts, GaugeVec,
+    register_gauge_vec, register_int_counter_vec, register_int_gauge, register_int_gauge_vec,
+    GaugeVec, HistogramVec, IntCounterVec, IntGauge, IntGaugeVec, Opts,
 };
 use reth_metrics::Metrics;
 
 #[derive(Clone)]
 pub struct GlobalRangeMetrics {
     /// the amount of blocks all inspectors have completed
-    pub completed_blocks:            Counter,
+    pub completed_blocks: Counter,
     /// the runtime for inspectors
-    pub processing_run_time_ms:      Histogram,
+    pub processing_run_time_ms: Histogram,
     /// complete
-    pub completed_blocks_range:      IntCounterVec,
+    pub completed_blocks_range: IntCounterVec,
     /// the amount of blocks the inspector has completed
     /// the total blocks in the inspector range
-    pub total_blocks_range:          IntCounterVec,
+    pub total_blocks_range: IntCounterVec,
     /// range poll rate
-    pub poll_rate:                   IntCounterVec,
+    pub poll_rate: IntCounterVec,
     /// pending inspector runs
     pub active_inspector_processing: IntGaugeVec,
-    pub block_tracing_throughput:    HistogramVec,
-    pub classification_throughput:   HistogramVec,
+    pub block_tracing_throughput: HistogramVec,
+    pub classification_throughput: HistogramVec,
     /// amount of pending trees in dex pricing / metadata fetcher
-    pub pending_trees:               IntGaugeVec,
+    pub pending_trees: IntGaugeVec,
     /// amount of transactions
-    pub transactions_throughput:     HistogramVec,
+    pub transactions_throughput: HistogramVec,
     /// latest block number processed
-    pub latest_processed_block:      IntGauge,
+    pub latest_processed_block: IntGauge,
     /// gas used for the range
-    pub gas_used:                    IntGaugeVec,
+    pub gas_used: IntGaugeVec,
     /// express lane auction
     pub express_lane_auction_winner: IntGaugeVec,
     pub express_lane_auction_first_price: GaugeVec,
-    pub express_lane_auction_price:  GaugeVec,
-    pub current_round:               IntGauge,
-    pub transfer_controller:         IntCounterVec,
+    pub express_lane_auction_price: GaugeVec,
+    pub express_lane_current_round: IntGauge,
+    pub express_lane_transfer_controller: IntCounterVec,
 }
 
 impl GlobalRangeMetrics {
@@ -129,13 +128,18 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
-        let current_round =
-            register_int_gauge!("current_round", "current round of the express lane auction")
-                .unwrap();
+        let current_round = register_int_gauge!(
+            "express_lane_current_round",
+            "current round of the express lane auction"
+        )
+        .unwrap();
 
-        let transfer_controller =
-            register_int_counter_vec!("transfer_controller", "transfer controller", &["address"])
-                .unwrap();
+        let transfer_controller = register_int_counter_vec!(
+            "express_lane_transfer_controller",
+            "transfer controller",
+            &["address"]
+        )
+        .unwrap();
 
         let express_lane_auction_price = register_gauge_vec!(
             "express_lane_auction_price",
@@ -167,8 +171,8 @@ impl GlobalRangeMetrics {
             express_lane_auction_winner,
             express_lane_auction_first_price,
             express_lane_auction_price,
-            current_round,
-            transfer_controller,
+            express_lane_current_round: current_round,
+            express_lane_transfer_controller: transfer_controller,
         }
     }
 
@@ -282,13 +286,13 @@ impl GlobalRangeMetrics {
     }
 
     pub fn add_transfer_controller(&self, address: Address) {
-        self.transfer_controller
+        self.express_lane_transfer_controller
             .with_label_values(&[&address.to_string()])
             .inc();
     }
 
     pub fn set_current_round(&self, round: u64) {
-        self.current_round.set(round as i64);
+        self.express_lane_current_round.set(round as i64);
     }
 }
 
