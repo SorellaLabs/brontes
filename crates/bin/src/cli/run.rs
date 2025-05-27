@@ -42,13 +42,13 @@ pub struct RunArgs {
     pub ranges:               Option<Vec<String>>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
-    #[arg(long, short)]
+    #[arg(long, short, short_alias = 't')]
     pub max_tasks:            Option<u64>,
     /// Optional max pending trees when processing dex price quotes and collecting states
     /// Limits the amount we work ahead in the processing. This is done
     /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
     /// of processed trees
-    #[arg(long, short, default_value = "100")]
+    #[arg(long, short, default_value = "100", short_alias = 'p')]
     pub max_pending: usize,
 
     /// Optional minimum batch size
