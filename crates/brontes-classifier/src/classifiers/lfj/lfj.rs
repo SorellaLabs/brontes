@@ -29,9 +29,6 @@ pub mod lfj_v2_1 {
             let swap_field=_logs.swap_field?;
             let amount_in_bytes = swap_field.amountsIn;
             let amount_out_bytes = swap_field.amountsOut;
-
-            let amount_in = U256::from_be_bytes(amount_in_bytes.into());
-            let amount_out = U256::from_be_bytes(amount_out_bytes.into());
             let recipient = swap_field.to;
             let details = db_tx.get_protocol_details_sorted(info.target_address)?;
             let [token_0, token_1] = [details.token0, details.token1];
@@ -41,15 +38,15 @@ pub mod lfj_v2_1 {
 
             let (amount_in, amount_out, token_in, token_out) = if call_data.swapForY {
                 (
-                    amount_in.to_scaled_rational(t0_info.decimals),
-                    amount_out.to_scaled_rational(t1_info.decimals),
+                    U256::from_be_bytes(amount_in_bytes.into()).to_scaled_rational(t0_info.decimals),
+                    (U256::from_be_bytes(amount_out_bytes.into()) >> U256::from(128)).to_scaled_rational(t1_info.decimals),
                     t0_info,
                     t1_info,
                 )
             } else {
                 (
-                    amount_in.to_scaled_rational(t1_info.decimals),
-                    amount_out.to_scaled_rational(t0_info.decimals),
+                    (U256::from_be_bytes(amount_in_bytes.into()) >> U256::from(128)).to_scaled_rational(t1_info.decimals),
+                    U256::from_be_bytes(amount_out_bytes.into()).to_scaled_rational(t0_info.decimals),
                     t1_info,
                     t0_info,
                 )
@@ -83,8 +80,15 @@ pub mod lfj_v2_1 {
          _logs: LFJV2_1MintCallLogs,  db_tx: &DB| {
             let deposited_to_bins_field = _logs.deposited_to_bins_field?;
             let token_deltas = deposited_to_bins_field.amounts;
-            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
-            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
+
+            let mut token_amounts=U256::ZERO;
+            for token_delta in token_deltas {
+                let token_delta = U256::from_be_bytes(token_delta.into());
+                token_amounts+=token_delta;
+            }
+
+            let token_0_delta = token_amounts >> U256::from(128);
+            let token_1_delta = token_amounts & ((U256::from(1) << U256::from(128)) - U256::from(1));
 
             let details = db_tx.get_protocol_details_sorted(info.target_address)?;
             let [token_0, token_1] = [details.token0, details.token1];
@@ -119,9 +123,15 @@ pub mod lfj_v2_1 {
         db_tx: &DB| {
             let withdrawn_from_bins_field = _logs.withdrawn_from_bins_field?;
             let token_deltas = withdrawn_from_bins_field.amounts;
-            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
-            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
 
+            let mut token_amounts=U256::ZERO;
+            for token_delta in token_deltas {
+                let token_delta = U256::from_be_bytes(token_delta.into());
+                token_amounts+=token_delta;
+            }
+
+            let token_0_delta = token_amounts >> U256::from(128);
+            let token_1_delta = token_amounts & ((U256::from(1) << U256::from(128)) - U256::from(1));
             let details = db_tx.get_protocol_details_sorted(info.target_address)?;
             let [token_0, token_1] = [details.token0, details.token1];
 
@@ -211,8 +221,6 @@ pub mod lfj_v2_2 {
             let amount_in_bytes = swap_field.amountsIn;
             let amount_out_bytes = swap_field.amountsOut;
 
-            let amount_in = U256::from_be_bytes(amount_in_bytes.into());
-            let amount_out = U256::from_be_bytes(amount_out_bytes.into());
             let recipient = swap_field.to;
             let details = db_tx.get_protocol_details_sorted(info.target_address)?;
             let [token_0, token_1] = [details.token0, details.token1];
@@ -220,17 +228,18 @@ pub mod lfj_v2_2 {
             let t0_info = db_tx.try_fetch_token_info(token_0)?;
             let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
+    
             let (amount_in, amount_out, token_in, token_out) = if call_data.swapForY {
                 (
-                    amount_in.to_scaled_rational(t0_info.decimals),
-                    amount_out.to_scaled_rational(t1_info.decimals),
+                    U256::from_be_bytes(amount_in_bytes.into()).to_scaled_rational(t0_info.decimals),
+                    (U256::from_be_bytes(amount_out_bytes.into()) >> U256::from(128)).to_scaled_rational(t1_info.decimals),
                     t0_info,
                     t1_info,
                 )
             } else {
                 (
-                    amount_in.to_scaled_rational(t1_info.decimals),
-                    amount_out.to_scaled_rational(t0_info.decimals),
+                    (U256::from_be_bytes(amount_in_bytes.into()) >> U256::from(128)).to_scaled_rational(t1_info.decimals),
+                    U256::from_be_bytes(amount_out_bytes.into()).to_scaled_rational(t0_info.decimals),
                     t1_info,
                     t0_info,
                 )
@@ -264,8 +273,16 @@ pub mod lfj_v2_2 {
          _logs: LFJV2_2MintCallLogs,  db_tx: &DB| {
             let deposited_to_bins_field = _logs.deposited_to_bins_field?;
             let token_deltas = deposited_to_bins_field.amounts;
-            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
-            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
+
+            let mut token_amounts=U256::ZERO;
+            for token_delta in token_deltas {
+                let token_delta = U256::from_be_bytes(token_delta.into());
+                token_amounts+=token_delta;
+            }
+
+            let token_0_delta = token_amounts >> U256::from(128);
+            let token_1_delta = token_amounts & ((U256::from(1) << U256::from(128)) - U256::from(1));
+
 
             let details = db_tx.get_protocol_details_sorted(info.target_address)?;
             let [token_0, token_1] = [details.token0, details.token1];
@@ -300,8 +317,16 @@ pub mod lfj_v2_2 {
         db_tx: &DB| {
             let withdrawn_from_bins_field = _logs.withdrawn_from_bins_field?;
             let token_deltas = withdrawn_from_bins_field.amounts;
-            let token_0_delta = U256::from_be_bytes(token_deltas[0].into());
-            let token_1_delta = U256::from_be_bytes(token_deltas[1].into());
+
+            let mut token_amounts=U256::ZERO;
+            for token_delta in token_deltas {
+                let token_delta = U256::from_be_bytes(token_delta.into());
+                token_amounts+=token_delta;
+            }
+
+            let token_0_delta = token_amounts >> U256::from(128);
+            let token_1_delta = token_amounts & ((U256::from(1) << U256::from(128)) - U256::from(1));
+
 
             let details = db_tx.get_protocol_details_sorted(info.target_address)?;
             let [token_0, token_1] = [details.token0, details.token1];

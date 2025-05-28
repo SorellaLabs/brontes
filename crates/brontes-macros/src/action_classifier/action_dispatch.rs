@@ -122,7 +122,7 @@ fn expand_match_dispatch(
                     let action = res.get_action();
                     Some((res, action))
                  }).unwrap_or_else(|e| {
-                        ::tracing::warn!(error=%e,
+                        ::tracing::warn!(error=%e, ?block, ?tx_idx,
                             "classifier: {} failed on function sig: {:?} for address: {:?}",
                             stringify!(#reg_name),
                             ::malachite::strings::ToLowerHexString::to_lower_hex_string(

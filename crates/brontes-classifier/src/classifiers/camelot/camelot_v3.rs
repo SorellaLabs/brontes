@@ -160,3 +160,47 @@ action_impl!(
         })
     }
 );
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use alloy_primitives::{hex, Address, B256};
+    use brontes_classifier::test_utils::ClassifierTestUtils;
+    use brontes_types::{
+        db::token_info::TokenInfoWithAddress, normalized_actions::Action, Protocol::UniswapV3,
+        TreeSearchBuilder,
+    };
+
+    use super::*;
+
+    #[brontes_macros::test]
+    async fn test_univ3_swap() {
+        let classifier_utils = ClassifierTestUtils::new().await;
+        let swap =
+            B256::from(hex!("5ddb56d7c152e79288462e2da5d5961a91e8259799ecdf82df02eda79270cfd4"));
+
+        let eq_action = Action::Swap(NormalizedSwap {
+            protocol:    Protocol::CamelotV3,
+            trace_index: 8,
+            from:        Address::new(hex!("409De6561Cfc8C14359BeD66cB668b4f33420E73")),
+            recipient:   Address::new(hex!("409De6561Cfc8C14359BeD66cB668b4f33420E73")),
+            pool:        Address::new(hex!("a17aFCAb059F3C6751F5B64347b5a503C3291868")),
+            token_in:    TokenInfoWithAddress::usdc(),
+            amount_in:   U256::from_str("115117268").unwrap().to_scaled_rational(6),
+            token_out:   TokenInfoWithAddress::usdt(),
+            amount_out:  U256::from_str("115049574").unwrap().to_scaled_rational(6),
+            msg_value:   U256::ZERO,
+        });
+
+        classifier_utils
+            .contains_action(
+                swap,
+                0,
+                eq_action,
+                TreeSearchBuilder::default().with_action(Action::is_swap),
+            )
+            .await
+            .unwrap();
+    }
+}
