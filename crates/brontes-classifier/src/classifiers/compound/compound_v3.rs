@@ -10,6 +10,7 @@ action_impl!(
     Liquidation,
     [..BuyCollateral],
     logs: true,
+    include_delegated_logs: true,
     |
     info: CallInfo,
     log_data: CompoundV3BuyCollateralCallLogs,
