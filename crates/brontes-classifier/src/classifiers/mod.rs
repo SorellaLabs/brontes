@@ -251,12 +251,7 @@ action_dispatch!(
     DexalotPartialSwapCall,
     DexalotSimpleSwapCall,
     LFJV2_1SwapCall,
-    LFJV2_1MintCall,
-    LFJV2_1BurnCall,
-    LFJV2_1CollectProtocolFeesCall,
+    LFJV2_1CreateLBPairCall,
     LFJV2_2CreateLBPairCall,
-    LFJV2_2SwapCall,
-    LFJV2_2MintCall,
-    LFJV2_2BurnCall,
-    LFJV2_2CollectProtocolFeesCall
+    LFJV2_2SwapCall
 );
