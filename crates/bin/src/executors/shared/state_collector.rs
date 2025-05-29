@@ -106,7 +106,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             for update in express_lane_info {
                 match update {
                     ExpressLaneAuctionUpdate::SetExpressLaneController(info) => {
-                        metrics.add_transfer_controller(info.new_express_lane_controller);
+                        metrics.add_transfer_controller(info.new_express_lane_controller, info.round);
                     }
                     ExpressLaneAuctionUpdate::AuctionResolved(info) => {
                         // TODO(jinmel): check the biddingToken address and format the right amount by correct decimals.

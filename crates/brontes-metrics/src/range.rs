@@ -40,7 +40,7 @@ pub struct GlobalRangeMetrics {
     pub express_lane_auction_price: GaugeVec,
     pub express_lane_current_round: IntGauge,
     pub express_lane_transfer_controller: IntCounterVec,
-    pub express_lane_transfer_controller_this_round: IntCounter,
+    pub express_lane_transfer_controller_by_round: IntCounterVec,
 }
 
 impl GlobalRangeMetrics {
@@ -157,9 +157,10 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
-        let express_lane_transfer_controller_this_round = register_int_counter!(
-            "express_lane_transfer_controller_this_round",
-            "express lane transfer controller this round"
+        let express_lane_transfer_controller_by_round = register_int_counter_vec!(
+            "express_lane_transfer_controller_by_round",
+            "express lane transfer controller by round",
+            &["round"]
         )
         .unwrap();
 
@@ -181,7 +182,7 @@ impl GlobalRangeMetrics {
             express_lane_auction_price,
             express_lane_current_round: current_round,
             express_lane_transfer_controller: transfer_controller,
-            express_lane_transfer_controller_this_round,
+            express_lane_transfer_controller_by_round,
         }
     }
 
@@ -294,15 +295,16 @@ impl GlobalRangeMetrics {
             .set(first_price);
     }
 
-    pub fn add_transfer_controller(&self, address: Address) {
+    pub fn add_transfer_controller(&self, address: Address, round: u64) {
         self.express_lane_transfer_controller
             .with_label_values(&[&address.to_string()])
             .inc();
-        self.express_lane_transfer_controller_this_round.inc();
+        self.express_lane_transfer_controller_by_round
+            .with_label_values(&[&format!("{round}")])
+            .inc();
     }
 
     pub fn set_current_round(&self, round: u64) {
-        self.express_lane_transfer_controller_this_round.reset();
         self.express_lane_current_round.set(round as i64);
     }
 }
