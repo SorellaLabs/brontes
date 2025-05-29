@@ -106,7 +106,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             for update in express_lane_info {
                 match update {
                     ExpressLaneAuctionUpdate::SetExpressLaneController(info) => {
-                        metrics.set_current_round(info.round);
                         metrics.add_transfer_controller(info.new_express_lane_controller);
                     }
                     ExpressLaneAuctionUpdate::AuctionResolved(info) => {

@@ -4,6 +4,7 @@ use alloy_primitives::Address;
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
     register_gauge_vec, register_int_counter_vec, register_int_gauge, register_int_gauge_vec,
+    register_int_counter, IntCounter,
     GaugeVec, HistogramVec, IntCounterVec, IntGauge, IntGaugeVec, Opts,
 };
 use reth_metrics::Metrics;
@@ -39,6 +40,7 @@ pub struct GlobalRangeMetrics {
     pub express_lane_auction_price: GaugeVec,
     pub express_lane_current_round: IntGauge,
     pub express_lane_transfer_controller: IntCounterVec,
+    pub express_lane_transfer_controller_this_round: IntCounter,
 }
 
 impl GlobalRangeMetrics {
@@ -136,7 +138,7 @@ impl GlobalRangeMetrics {
 
         let transfer_controller = register_int_counter_vec!(
             "express_lane_transfer_controller",
-            "transfer controller",
+            "express lane transfer controller",
             &["address"]
         )
         .unwrap();
@@ -152,6 +154,12 @@ impl GlobalRangeMetrics {
             "express_lane_auction_first_price",
             "express lane auction first price",
             &["address"]
+        )
+        .unwrap();
+
+        let express_lane_transfer_controller_this_round = register_int_counter!(
+            "express_lane_transfer_controller_this_round",
+            "express lane transfer controller this round"
         )
         .unwrap();
 
@@ -173,6 +181,7 @@ impl GlobalRangeMetrics {
             express_lane_auction_price,
             express_lane_current_round: current_round,
             express_lane_transfer_controller: transfer_controller,
+            express_lane_transfer_controller_this_round,
         }
     }
 
@@ -289,9 +298,11 @@ impl GlobalRangeMetrics {
         self.express_lane_transfer_controller
             .with_label_values(&[&address.to_string()])
             .inc();
+        self.express_lane_transfer_controller_this_round.inc();
     }
 
     pub fn set_current_round(&self, round: u64) {
+        self.express_lane_transfer_controller_this_round.reset();
         self.express_lane_current_round.set(round as i64);
     }
 }
