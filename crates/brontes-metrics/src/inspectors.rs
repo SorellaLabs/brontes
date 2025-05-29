@@ -1,11 +1,67 @@
-use std::{pin::Pin, time::Instant};
+use std::{collections::HashSet, pin::Pin, time::Instant};
 
-use brontes_types::{mev::MevType, pair::Pair, FastHashMap};
+use brontes_types::{mev::MevType, pair::Pair, FastHashMap, Protocol};
 use dashmap::DashMap;
 use metrics::{Counter, Gauge};
 use prometheus::{HistogramVec, IntCounterVec};
 use reth_metrics::Metrics;
 use reth_primitives::Address;
+
+#[derive(Clone)]
+pub struct ProfitMetrics {
+    profit_histogram: HistogramVec,
+}
+
+impl Default for ProfitMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ProfitMetrics {
+    pub fn new() -> Self {
+        // Define custom buckets for profit values (e.g., in USD)
+        let profit_buckets = prometheus::exponential_buckets(0.1, 2.0, 15).unwrap_or_else(|_| {
+            vec![1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0, 10000.0]
+        }); // Example buckets
+
+        Self {
+            profit_histogram: prometheus::register_histogram_vec!(
+                "profit_usd",
+                "Distribution of profit in USD by MEV type, protocol, and block_number",
+                &["mev_type", "protocol", "block_number"],
+                profit_buckets
+            )
+            .expect("Failed to register profit_usd histogram"),
+        }
+    }
+
+    pub fn publish_profit_metrics(
+        &self,
+        mev: MevType,
+        protocols: HashSet<Protocol>,
+        block_number: u64,
+        profit: f64,
+    ) {
+        let num_protocols = protocols.len();
+        let profit_per_protocol = profit / num_protocols as f64;
+        for protocol in protocols {
+            self.profit_histogram
+                .with_label_values(&[
+                    mev.as_ref(),
+                    protocol.to_string().as_str(),
+                    &block_number.to_string(),
+                ])
+                .observe(profit_per_protocol);
+        }
+    }
+}
+
+impl std::fmt::Debug for ProfitMetrics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProfitMetrics").finish()
+    }
+}
 
 #[derive(Clone)]
 pub struct OutlierMetrics {

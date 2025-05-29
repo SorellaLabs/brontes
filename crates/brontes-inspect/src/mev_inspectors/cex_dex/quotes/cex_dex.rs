@@ -48,7 +48,7 @@ use std::{
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
     db::cex::{quotes::FeeAdjustedQuote, CexExchange},
     display::utils::format_etherscan_url,
@@ -95,9 +95,10 @@ impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
         cex_exchanges: &[CexExchange],
         quotes_fetch_offset: u64,
         metrics: Option<OutlierMetrics>,
+        profit_metrics: Option<ProfitMetrics>,
     ) -> Self {
         Self {
-            utils:                SharedInspectorUtils::new(quote, db, metrics),
+            utils:                SharedInspectorUtils::new(quote, db, metrics, profit_metrics),
             _quotes_fetch_offset: quotes_fetch_offset,
             _cex_exchanges:       cex_exchanges.to_owned(),
         }

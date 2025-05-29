@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
     constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
     db::dex::PriceAt,
@@ -29,8 +29,13 @@ pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
+    pub fn new(
+        quote: Address,
+        db: &'db DB,
+        metrics: Option<OutlierMetrics>,
+        profit_metrics: Option<ProfitMetrics>,
+    ) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics, profit_metrics) }
     }
 }
 
@@ -199,6 +204,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         // given we have a atomic arb now, we will go and try to find the trigger
         // transaction that lead to this arb.
+
+        let protocols = self.utils.get_related_protocols_atomic(&trees)?;
         let trigger_tx = self.find_trigger_tx(&info, trees, &swaps);
 
         let backrun = AtomicArb {
@@ -215,7 +222,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             vec![account_deltas],
             vec![info.tx_hash],
             &info,
-            profit.to_float(),
+            profit.clone().to_float(),
             &[info.gas_details],
             metadata.clone(),
             MevType::AtomicArb,
@@ -230,6 +237,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 )
             },
         );
+
+        self.utils.get_profit_metrics().inspect(|m| {
+            m.publish_profit_metrics(
+                MevType::AtomicArb,
+                protocols,
+                metadata.block_num,
+                profit.to_float(),
+            )
+        });
 
         Some(Bundle { header, data })
     }

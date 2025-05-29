@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
     db::dex::PriceAt,
     mev::{Bundle, BundleData, Liquidation, MevType},
@@ -20,8 +20,13 @@ pub struct LiquidationInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> LiquidationInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
+    pub fn new(
+        quote: Address,
+        db: &'db DB,
+        metrics: Option<OutlierMetrics>,
+        profit_metrics: Option<ProfitMetrics>,
+    ) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics, profit_metrics) }
     }
 }
 
@@ -89,6 +94,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
+        let protocols = self.utils.get_related_protocols_liquidation(&actions)?;
+
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
         let deltas = actions
@@ -127,7 +134,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             vec![deltas],
             vec![info.tx_hash],
             &info,
-            profit_usd.to_float(),
+            profit_usd.clone().to_float(),
             &[info.gas_details],
             metadata.clone(),
             MevType::Liquidation,
@@ -152,6 +159,14 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             gas_details:         info.gas_details,
         };
 
+        self.utils.get_profit_metrics().inspect(|m| {
+            m.publish_profit_metrics(
+                MevType::Liquidation,
+                protocols,
+                metadata.block_num,
+                profit_usd.to_float(),
+            )
+        });
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }
 }
