@@ -1,4 +1,4 @@
-CREATE TABLE brontes_api.address_meta (
+CREATE TABLE IF NOT EXISTS brontes_api.address_meta (
     `address` String,
     `entity_name` String,
     `nametag` String,

@@ -1,4 +1,4 @@
-CREATE TABLE brontes.tree 
+CREATE TABLE IF NOT EXISTS brontes.tree 
 (
     `block_number` UInt64,
     `tx_hash` String,

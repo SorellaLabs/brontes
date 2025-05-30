@@ -1,4 +1,4 @@
-CREATE TABLE mev.jit_sandwich 
+CREATE TABLE IF NOT EXISTS mev.jit_sandwich 
 (
     `frontrun_tx_hash` String,
     `block_number` UInt64,

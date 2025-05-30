@@ -1,4 +1,4 @@
-CREATE TABLE mev.searcher_tx 
+CREATE TABLE IF NOT EXISTS mev.searcher_tx 
 (
     `tx_hash` String,
     `block_number` UInt64,

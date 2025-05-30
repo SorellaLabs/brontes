@@ -1,4 +1,4 @@
-CREATE TABLE mev.liquidations 
+CREATE TABLE IF NOT EXISTS mev.liquidations 
 (
     `liquidation_tx_hash` String,
     `block_number` UInt64,

@@ -1,4 +1,4 @@
-CREATE TABLE mev.atomic_arbs 
+CREATE TABLE IF NOT EXISTS mev.atomic_arbs 
 (
     `tx_hash` String,
     `block_number` UInt64,

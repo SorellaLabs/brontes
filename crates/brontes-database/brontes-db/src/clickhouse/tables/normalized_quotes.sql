@@ -1,4 +1,4 @@
-CREATE TABLE cex.normalized_quotes (
+CREATE TABLE IF NOT EXISTS cex.normalized_quotes (
     `exchange` LowCardinality(String),           -- The exchange name
     `symbol` LowCardinality(String),            -- The trading pair symbol (e.g., "BTC/USD", "ETH-BTC", etc.)
     `timestamp` Int64,          -- Timestamp in microseconds (Unix timestamp * 1000000)

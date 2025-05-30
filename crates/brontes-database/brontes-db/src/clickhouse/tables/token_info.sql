@@ -1,4 +1,4 @@
-CREATE TABLE brontes.token_info 
+CREATE TABLE IF NOT EXISTS brontes.token_info 
 (
     `address` String,
     `symbol` String,
@@ -7,6 +7,3 @@ CREATE TABLE brontes.token_info
 ENGINE = MergeTree()
 PRIMARY KEY `address`
 ORDER BY `address`
-
-
-
