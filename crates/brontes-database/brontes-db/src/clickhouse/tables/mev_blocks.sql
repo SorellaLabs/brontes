@@ -1,4 +1,4 @@
-CREATE TABLE mev.mev_blocks 
+CREATE TABLE IF NOT EXISTS mev.mev_blocks 
 (
     `block_hash` String,
     `block_number` UInt64,

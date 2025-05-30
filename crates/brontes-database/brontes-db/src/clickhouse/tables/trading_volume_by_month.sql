@@ -1,4 +1,4 @@
-CREATE TABLE cex.trading_volume_by_month (
+CREATE TABLE IF NOT EXISTS cex.trading_volume_by_month (
     `month`       Date,
     `symbol`      LowCardinality(String),
     `exchange`    LowCardinality(String),
@@ -8,7 +8,7 @@ ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(month)
 ORDER BY (month, symbol, exchange);
 
-CREATE MATERIALIZED VIEW cex.mv_trading_volume_by_month
+CREATE MATERIALIZED VIEW IF NOT EXISTS cex.mv_trading_volume_by_month
   TO cex.trading_volume_by_month
 AS
 SELECT

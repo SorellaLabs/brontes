@@ -1,4 +1,4 @@
-CREATE TABLE brontes.block_analysis 
+CREATE TABLE IF NOT EXISTS brontes.block_analysis 
 (
     `block_number` UInt64,
     `eth_price` Float64, 

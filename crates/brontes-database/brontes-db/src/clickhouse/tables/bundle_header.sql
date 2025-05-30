@@ -1,4 +1,4 @@
-CREATE TABLE mev.bundle_header 
+CREATE TABLE IF NOT EXISTS mev.bundle_header 
 (
     `block_number` UInt64,
     `tx_index` UInt64,

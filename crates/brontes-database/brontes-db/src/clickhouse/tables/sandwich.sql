@@ -1,4 +1,4 @@
-CREATE TABLE mev.sandwiches 
+CREATE TABLE IF NOT EXISTS mev.sandwiches 
 (
     `frontrun_tx_hash` String,
     `block_number` UInt64,

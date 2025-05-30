@@ -1,4 +1,4 @@
-CREATE TABLE timeboost.bids (
+CREATE TABLE IF NOT EXISTS timeboost.bids (
     timestamp DateTime64(3),
     chain_id UInt64,
     bidder String,

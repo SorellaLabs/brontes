@@ -1,4 +1,4 @@
-CREATE TABLE brontes_api.builder_info 
+CREATE TABLE IF NOT EXISTS brontes_api.builder_info 
 (
     `address` String,
     `name` String,

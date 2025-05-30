@@ -1,4 +1,4 @@
-CREATE TABLE mev.jit 
+CREATE TABLE IF NOT EXISTS mev.jit 
 (
     `frontrun_mint_tx_hash` String,
     `block_number` UInt64,

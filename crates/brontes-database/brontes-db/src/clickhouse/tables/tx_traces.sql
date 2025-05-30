@@ -1,4 +1,4 @@
-CREATE TABLE brontes_api.tx_traces 
+CREATE TABLE IF NOT EXISTS brontes_api.tx_traces 
 (
     `block_number` UInt64,
     `tx_hash` String,

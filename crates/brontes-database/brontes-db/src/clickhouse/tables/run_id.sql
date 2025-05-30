@@ -1,4 +1,4 @@
-CREATE TABLE brontes.run_id 
+CREATE TABLE IF NOT EXISTS brontes.run_id 
 (
     `run_id` UInt64,
     `last_updated` UInt64 DEFAULT now()

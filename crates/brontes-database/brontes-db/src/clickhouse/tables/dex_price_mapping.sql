@@ -1,4 +1,4 @@
-CREATE TABLE brontes.dex_price_mapping 
+CREATE TABLE IF NOT EXISTS brontes.dex_price_mapping 
 (
     `block_number` UInt64,
     `tx_idx` UInt64,

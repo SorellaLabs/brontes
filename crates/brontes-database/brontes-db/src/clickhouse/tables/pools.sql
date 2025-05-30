@@ -1,4 +1,4 @@
-CREATE TABLE ethereum.pools     
+CREATE TABLE IF NOT EXISTS ethereum.pools     
 (
     `protocol` LowCardinality(String),
     `protocol_subtype` LowCardinality(String),
