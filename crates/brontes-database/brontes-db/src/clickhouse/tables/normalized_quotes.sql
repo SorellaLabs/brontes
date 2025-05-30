@@ -8,5 +8,5 @@ CREATE TABLE cex.normalized_quotes (
     `bid_amount` Float64        -- Amount available at bid price
 )
 ENGINE = MergeTree()
-PRIMARY KEY (timestamp, symbol)
-ORDER BY (timestamp, symbol)
+PRIMARY KEY (exchange, symbol, timestamp)
+ORDER BY (exchange, symbol, timestamp)
