@@ -35,7 +35,7 @@ pub struct GlobalRangeMetrics {
     /// gas used for the range
     pub gas_used: IntGaugeVec,
     /// express lane auction
-    pub express_lane_auction_winner: IntGaugeVec,
+    pub express_lane_auction_winner: IntCounterVec,
     pub express_lane_auction_first_price: GaugeVec,
     pub express_lane_auction_price: GaugeVec,
     pub express_lane_current_round: IntGauge,
@@ -123,7 +123,7 @@ impl GlobalRangeMetrics {
         let gas_used =
             register_int_gauge_vec!("gas_used", "gas used for the range", &["range_id"]).unwrap();
 
-        let express_lane_auction_winner = register_int_gauge_vec!(
+        let express_lane_auction_winner = register_int_counter_vec!(
             "express_lane_auction_winner",
             "express lane auction winner",
             &["address"]
