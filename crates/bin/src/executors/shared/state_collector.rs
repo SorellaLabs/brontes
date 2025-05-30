@@ -103,14 +103,21 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
         trace!("Got {} traces + header", traces.len());
 
         let res = if let Some(metrics) = metrics {
-            for update in express_lane_info {
+            let is_auction_resolved_round = express_lane_info
+                .iter()
+                .any(|update| matches!(update, ExpressLaneAuctionUpdate::AuctionResolved(_)));
+
+            for update in &express_lane_info {
                 match update {
                     ExpressLaneAuctionUpdate::SetExpressLaneController(info) => {
-                        metrics.add_transfer_controller(info.new_express_lane_controller, info.round);
+                        if is_auction_resolved_round {
+                            metrics.add_transfer_controller(info.new_express_lane_controller);
+                        }
                     }
                     ExpressLaneAuctionUpdate::AuctionResolved(info) => {
-                        // TODO(jinmel): check the biddingToken address and format the right amount by correct decimals.
-                        // Right now the biddingToken is WETH, so we use format_ether to convert wei to ether.
+                        // TODO(jinmel): check the biddingToken address and format the right amount
+                        // by correct decimals. Right now the biddingToken
+                        // is WETH, so we use format_ether to convert wei to ether.
                         let price_eth = format_ether(info.price).parse::<f64>()?;
                         let first_price_eth =
                             format_ether(info.first_price_amount).parse::<f64>()?;

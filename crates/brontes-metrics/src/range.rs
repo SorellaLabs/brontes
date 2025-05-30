@@ -40,7 +40,6 @@ pub struct GlobalRangeMetrics {
     pub express_lane_auction_price: GaugeVec,
     pub express_lane_current_round: IntGauge,
     pub express_lane_transfer_controller: IntCounterVec,
-    pub express_lane_transfer_controller_by_round: IntCounterVec,
 }
 
 impl GlobalRangeMetrics {
@@ -157,13 +156,6 @@ impl GlobalRangeMetrics {
         )
         .unwrap();
 
-        let express_lane_transfer_controller_by_round = register_int_counter_vec!(
-            "express_lane_transfer_controller_by_round",
-            "express lane transfer controller by round",
-            &["round"]
-        )
-        .unwrap();
-
         Self {
             pending_trees,
             poll_rate,
@@ -182,7 +174,6 @@ impl GlobalRangeMetrics {
             express_lane_auction_price,
             express_lane_current_round: current_round,
             express_lane_transfer_controller: transfer_controller,
-            express_lane_transfer_controller_by_round,
         }
     }
 
@@ -295,12 +286,9 @@ impl GlobalRangeMetrics {
             .set(first_price);
     }
 
-    pub fn add_transfer_controller(&self, address: Address, round: u64) {
+    pub fn add_transfer_controller(&self, address: Address) {
         self.express_lane_transfer_controller
             .with_label_values(&[&address.to_string()])
-            .inc();
-        self.express_lane_transfer_controller_by_round
-            .with_label_values(&[&format!("{round}")])
             .inc();
     }
 
