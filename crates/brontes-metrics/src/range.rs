@@ -35,11 +35,11 @@ pub struct GlobalRangeMetrics {
     /// gas used for the range
     pub gas_used: IntGaugeVec,
     /// express lane auction
-    pub express_lane_auction_winner: IntCounterVec,
+    pub express_lane_auction_win_total: IntCounterVec,
     pub express_lane_auction_first_price: GaugeVec,
     pub express_lane_auction_price: GaugeVec,
     pub express_lane_current_round: IntGauge,
-    pub express_lane_transfer_controller: IntCounterVec,
+    pub express_lane_transfer_controller_total: IntCounterVec,
 }
 
 impl GlobalRangeMetrics {
@@ -122,22 +122,22 @@ impl GlobalRangeMetrics {
         let gas_used =
             register_int_gauge_vec!("gas_used", "gas used for the range", &["range_id"]).unwrap();
 
-        let express_lane_auction_winner = register_int_counter_vec!(
-            "express_lane_auction_winner",
-            "express lane auction winner",
+        let express_lane_auction_win_total = register_int_counter_vec!(
+            "express_lane_auction_win_total",
+            "express lane auction winner total",
             &["address"]
         )
         .unwrap();
 
-        let current_round = register_int_gauge!(
+        let express_lane_current_round = register_int_gauge!(
             "express_lane_current_round",
             "current round of the express lane auction"
         )
         .unwrap();
 
-        let transfer_controller = register_int_counter_vec!(
-            "express_lane_transfer_controller",
-            "express lane transfer controller",
+        let express_lane_transfer_controller_total = register_int_counter_vec!(
+            "express_lane_transfer_controller_total",
+            "express lane transfer controller total",
             &["address"]
         )
         .unwrap();
@@ -169,11 +169,11 @@ impl GlobalRangeMetrics {
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
             latest_processed_block,
             gas_used,
-            express_lane_auction_winner,
+            express_lane_auction_win_total,
             express_lane_auction_first_price,
             express_lane_auction_price,
-            express_lane_current_round: current_round,
-            express_lane_transfer_controller: transfer_controller,
+            express_lane_current_round,
+            express_lane_transfer_controller_total,
         }
     }
 
@@ -275,7 +275,7 @@ impl GlobalRangeMetrics {
         price: f64,
         first_price: f64,
     ) {
-        self.express_lane_auction_winner
+        self.express_lane_auction_win_total
             .with_label_values(&[&winner_address.to_string()])
             .inc();
         self.express_lane_auction_price
@@ -287,7 +287,7 @@ impl GlobalRangeMetrics {
     }
 
     pub fn add_transfer_controller(&self, address: Address) {
-        self.express_lane_transfer_controller
+        self.express_lane_transfer_controller_total
             .with_label_values(&[&address.to_string()])
             .inc();
     }
