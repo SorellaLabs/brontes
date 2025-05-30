@@ -1,4 +1,5 @@
 CREATE TABLE timeboost.bids (
+    timestamp DateTime64(3),
     chain_id UInt64,
     bidder String,
     express_lane_controller String,
@@ -8,5 +9,5 @@ CREATE TABLE timeboost.bids (
     signature String
 ) ENGINE = MergeTree()
 PARTITION BY chain_id
-PRIMARY KEY (round)
-ORDER BY (round)
+PRIMARY KEY (timestamp)
+ORDER BY (timestamp)
