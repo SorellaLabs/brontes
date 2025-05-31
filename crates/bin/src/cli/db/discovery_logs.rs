@@ -3,14 +3,19 @@ use std::{collections::HashMap, num::NonZeroU32, path::Path, sync::Arc};
 use alloy_primitives::{Address, FixedBytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
+use brontes_classifier::{
+    FluidVaultFactory, FluidVaultResolver, PendleMarketV3Factory, PendleYieldContractFactory,
+};
 use brontes_core::decoding::LogParser as DLogParser;
 use brontes_types::{
     constants::arbitrum::{
         BALANCER_V2_VAULT_ADDRESS, CAMELOT_V2_FACTORY_ADDRESS, CAMELOT_V3_FACTORY_ADDRESS,
-        FLUID_DEX_FACTORY_ADDRESS, LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJ_V2_2_DEX_FACTORY_ADDRESS,
-        PANCAKESWAP_V2_FACTORY_ADDRESS, PANCAKESWAP_V3_FACTORY_ADDRESS,
-        SUSHISWAP_V2_FACTORY_ADDRESS, SUSHISWAP_V3_FACTORY_ADDRESS, UNISWAP_V2_FACTORY_ADDRESS,
-        UNISWAP_V3_FACTORY_ADDRESS, UNISWAP_V4_FACTORY_ADDRESS,
+        FLUID_DEX_FACTORY_ADDRESS, FLUID_VAULT_FACTORY_ADDRESS, FLUID_VAULT_RESOLVER_ADDRESS,
+        LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJ_V2_2_DEX_FACTORY_ADDRESS, PANCAKESWAP_V2_FACTORY_ADDRESS,
+        PANCAKESWAP_V3_FACTORY_ADDRESS, PENDLE_MARKET_V3_FACTORY_ADDRESS,
+        PENDLE_YIELD_CONTRACT_FACTORY_ADDRESS, SUSHISWAP_V2_FACTORY_ADDRESS,
+        SUSHISWAP_V3_FACTORY_ADDRESS, UNISWAP_V2_FACTORY_ADDRESS, UNISWAP_V3_FACTORY_ADDRESS,
+        UNISWAP_V4_FACTORY_ADDRESS,
     },
     init_thread_pools, Protocol,
 };
@@ -86,60 +91,79 @@ pub struct DiscoveryLogsFill {
 }
 
 impl DiscoveryLogsFill {
-    fn get_protocol_to_address_map() -> HashMap<Protocol, (Address, FixedBytes<32>)> {
+    fn get_protocol_to_address_map() -> HashMap<Protocol, Vec<(Address, FixedBytes<32>)>> {
         let mut protocol_to_address = HashMap::new();
         protocol_to_address.insert(
             Protocol::BalancerV2,
-            (BALANCER_V2_VAULT_ADDRESS, BalancerV2::TokensRegistered::SIGNATURE_HASH),
+            vec![(BALANCER_V2_VAULT_ADDRESS, BalancerV2::TokensRegistered::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::UniswapV2,
-            (UNISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+            vec![(UNISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::SushiSwapV2,
-            (SUSHISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+            vec![(SUSHISWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::PancakeSwapV2,
-            (PANCAKESWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+            vec![(PANCAKESWAP_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::SushiSwapV3,
-            (SUSHISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+            vec![(SUSHISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::PancakeSwapV3,
-            (PANCAKESWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+            vec![(PANCAKESWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::UniswapV3,
-            (UNISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH),
+            vec![(UNISWAP_V3_FACTORY_ADDRESS, UniswapV3::PoolCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::UniswapV4,
-            (UNISWAP_V4_FACTORY_ADDRESS, UniswapV4::Initialize::SIGNATURE_HASH),
+            vec![(UNISWAP_V4_FACTORY_ADDRESS, UniswapV4::Initialize::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::CamelotV2,
-            (CAMELOT_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH),
+            vec![(CAMELOT_V2_FACTORY_ADDRESS, UniswapV2::PairCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::CamelotV3,
-            (CAMELOT_V3_FACTORY_ADDRESS, CamelotV3::Pool::SIGNATURE_HASH),
+            vec![(CAMELOT_V3_FACTORY_ADDRESS, CamelotV3::Pool::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::FluidDEX,
-            (FLUID_DEX_FACTORY_ADDRESS, FluidDEX::DexT1Deployed::SIGNATURE_HASH),
+            vec![(FLUID_DEX_FACTORY_ADDRESS, FluidDEX::DexT1Deployed::SIGNATURE_HASH)],
+        );
+        protocol_to_address.insert(
+            Protocol::FluidLending,
+            vec![(FLUID_VAULT_FACTORY_ADDRESS, FluidVaultFactory::VaultDeployed::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::LFJV2_1,
-            (LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH),
+            vec![(LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH)],
         );
         protocol_to_address.insert(
             Protocol::LFJV2_2,
-            (LFJ_V2_2_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH),
+            vec![(LFJ_V2_2_DEX_FACTORY_ADDRESS, LFJV2::LBPairCreated::SIGNATURE_HASH)],
         );
+
+        protocol_to_address.insert(
+            Protocol::PendleV2,
+            vec![
+                (
+                    PENDLE_MARKET_V3_FACTORY_ADDRESS,
+                    PendleMarketV3Factory::CreateNewMarket::SIGNATURE_HASH,
+                ),
+                (
+                    PENDLE_YIELD_CONTRACT_FACTORY_ADDRESS,
+                    PendleYieldContractFactory::CreateYieldContract::SIGNATURE_HASH,
+                ),
+            ],
+        );
+
         protocol_to_address
     }
 

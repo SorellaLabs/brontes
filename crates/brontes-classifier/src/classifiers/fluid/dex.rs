@@ -1,6 +1,6 @@
 use brontes_macros::{action_impl, discovery_impl};
 use brontes_types::{
-    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedSwap},
+    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap},
     structured_trace::CallInfo,
     utils::ToScaledRational,
     Protocol,
@@ -8,6 +8,26 @@ use brontes_types::{
 use alloy_primitives::Address;
 use alloy_sol_types::SolType;
 use alloy_dyn_abi::{DynSolType, DynSolValue};
+
+action_impl!(
+    Protocol::FluidDEX,
+    crate::FluidDexFactory::deployDexCall,
+    NewPool,
+    [DexT1Deployed],
+    logs:true,
+    |info: CallInfo, log_data:FluidDEXDeployDexCallLogs,_| {
+        let dex_t1_deployed=log_data.dex_t1_deployed_field?;
+        let pool_address=dex_t1_deployed.dex;
+        let tokens=vec![dex_t1_deployed.supplyToken, dex_t1_deployed.borrowToken];
+
+        Ok(NormalizedNewPool {
+            trace_index: info.trace_idx,
+            protocol: Protocol::FluidDEX,
+            pool_address,
+            tokens,
+        })
+    }
+);
 
 action_impl!(
     Protocol::FluidDEX,
@@ -314,28 +334,3 @@ action_impl!(
 );
 
 
-
-
-discovery_impl!(
-    FluidDexFactoryDiscovery,
-    crate::FluidDexFactory::deployDexCall,
-    0x46978CD477A496028A18c02F07ab7F35EDBa5A54,
-    |deployed_address: Address, trace_index: u64, call_data: deployDexCall ,_| async move {
-        let pool_t1_creation_code = &call_data.dexDeploymentData_[4..];
-
-        let dex_t1_creation_code_type = DynSolType::Tuple(vec![DynSolType::Address, DynSolType::Address, DynSolType::Uint(256)]);
-
-        let decoded_data = dex_t1_creation_code_type.abi_decode(pool_t1_creation_code).expect("Failed to decode pool T1 creation code");
-        let DynSolValue::Tuple(values) = decoded_data else { panic!("Expected tuple") };
-        let [DynSolValue::Address(token0), DynSolValue::Address(token1), _] = values.as_slice() else { panic!("Invalid tuple structure") };
-
-        let tokens = vec![*token0, *token1];
-
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::FluidDEX,
-            pool_address: deployed_address,
-            tokens,
-        }]
-    }
-);
