@@ -2,7 +2,7 @@ use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap},
+    normalized_actions::NormalizedSwap,
     structured_trace::CallInfo,
     ToScaledRational,
 };

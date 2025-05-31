@@ -198,7 +198,7 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
 
         let new_pools_to_insert_futures = results
             .into_iter()
-            .filter_map(|opt_decoded_event| opt_decoded_event) // Filter out None results from decoding
+            .flatten() // Filter out None results from decoding
             .filter(|(_, pool)| !self.contains_pool(pool.pool_address)) // pool.pool_address should now be accessible
             .map(|(block_number, pool)| async move {
                 self.insert_new_pool(block_number, pool, None).await

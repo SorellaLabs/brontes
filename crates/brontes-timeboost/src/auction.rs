@@ -45,7 +45,7 @@ pub struct ExpressLaneAuction<T: TracingProvider> {
 
 impl<T: TracingProvider> Clone for ExpressLaneAuction<T> {
   fn clone(&self) -> Self {
-    Self { provider: self.provider.clone(), contract_address: self.contract_address.clone() }
+    Self { provider: self.provider.clone(), contract_address: self.contract_address }
   }
 }
 

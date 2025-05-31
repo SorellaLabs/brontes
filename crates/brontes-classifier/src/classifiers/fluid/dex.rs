@@ -1,13 +1,10 @@
-use brontes_macros::{action_impl, discovery_impl};
+use brontes_macros::action_impl;
 use brontes_types::{
     normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap},
     structured_trace::CallInfo,
     utils::ToScaledRational,
     Protocol,
 };
-use alloy_primitives::Address;
-use alloy_sol_types::SolType;
-use alloy_dyn_abi::{DynSolType, DynSolValue};
 
 action_impl!(
     Protocol::FluidDEX,

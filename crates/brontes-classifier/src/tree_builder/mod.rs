@@ -85,8 +85,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         account_for_tax_tokens(&mut tree);
         remove_possible_transfer_double_counts(&mut tree);
 
-        let finish_classification =
-            self.finish_classification(&mut tree, further_classification_requests);
+        self.finish_classification(&mut tree, further_classification_requests);
         tree.finalize_tree();
 
         // tracing::info!("finish_classification: {:?}", finish_classification);

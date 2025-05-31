@@ -1,16 +1,12 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
-use alloy_dyn_abi::{DynSolType, DynSolValue};
 use alloy_primitives::Address;
-use alloy_sol_types::SolType;
-use brontes_macros::{action_impl, discovery_impl};
+use brontes_macros::discovery_impl;
 use brontes_pricing::make_call_request;
 use brontes_types::{
-    constants::{FLUID_VAULT_FACTORY_ADDRESS, FLUID_VAULT_RESOLVER_ADDRESS},
-    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap},
-    structured_trace::CallInfo,
+    constants::FLUID_VAULT_RESOLVER_ADDRESS,
+    normalized_actions::NormalizedNewPool,
     traits::TracingProvider,
-    utils::ToScaledRational,
     Protocol,
 };
 
