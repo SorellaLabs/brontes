@@ -70,7 +70,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryLogsExecutor<T, 
         classifier: DiscoveryLogsOnlyClassifier<'static, DB>,
     ) -> eyre::Result<()> {
         let logs = parser.execute_discovery(start_block, end_block).await?;
-        classifier.process_logs(logs, parser.get_provider()).await?;
+        classifier.process_logs(logs).await?;
         Ok(())
     }
 }

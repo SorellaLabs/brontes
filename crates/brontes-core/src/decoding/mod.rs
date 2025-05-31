@@ -1,13 +1,13 @@
 use std::{collections::HashMap, pin::Pin, sync::Arc};
 
-use alloy_primitives::{Address, FixedBytes};
 use alloy_rpc_types::Log;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_timeboost::auction::{ExpressLaneAuction, ExpressLaneAuctionUpdate};
 pub use brontes_types::traits::TracingProvider;
 use brontes_types::{structured_trace::TxTrace, Protocol};
+use brontes_timeboost::auction::{ExpressLaneAuction, ExpressLaneAuctionUpdate};
 use futures::Future;
 use reth_primitives::{BlockHash, BlockNumberOrTag, Header, B256};
+use alloy_primitives::{Address, FixedBytes};
 use tokio::sync::mpsc::UnboundedSender;
 
 use self::{log_parser::EthLogParser, parser::TraceParser};
@@ -41,7 +41,7 @@ pub type ExpressLaneAuctionFuture =
 pub type TraceClickhouseFuture = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 
 pub struct Parser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    parser:               TraceParser<T, DB>,
+    parser: TraceParser<T, DB>,
     express_lane_auction: ExpressLaneAuction<T>,
 }
 
@@ -103,8 +103,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
     pub fn get_express_lane_updates(&self, block_num: u64) -> ExpressLaneAuctionFuture {
         let express_lane_auction = self.express_lane_auction.clone();
         tracing::info!(target: "brontes", "getting express lane auction controller for block: {:?}", block_num);
-        Box::pin(async move { express_lane_auction.fetch_auction_events(block_num).await })
-            as ExpressLaneAuctionFuture
+        Box::pin(async move {
+            express_lane_auction.fetch_auction_events(block_num).await
+        }) as ExpressLaneAuctionFuture
     }
 
     /// ensures no libmdbx write
@@ -129,14 +130,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
     pub async fn new(
         libmdbx: &'static DB,
         provider: Arc<T>,
-        filters: HashMap<Protocol, Vec<(Address, FixedBytes<32>)>>,
+        filters: HashMap<Protocol, (Address, FixedBytes<32>)>,
     ) -> Self {
         let parser = EthLogParser::new(libmdbx, provider, filters).await;
         Self { parser }
-    }
-
-    pub fn get_provider(&self) -> Arc<T> {
-        self.parser.get_provider()
     }
 
     #[cfg(not(feature = "local-reth"))]
@@ -145,11 +142,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
     }
 
     /// ensures no libmdbx write
-    pub async fn execute_discovery(
-        &self,
-        start_block: u64,
-        end_block: u64,
-    ) -> eyre::Result<HashMap<Protocol, Vec<Log>>> {
+    pub async fn execute_discovery(&self, start_block: u64, end_block: u64) -> eyre::Result<HashMap<Protocol, Vec<Log>>> {
         let parser = self.parser.clone();
         Box::pin(parser.execute_block_discovery(start_block, end_block)).await
     }

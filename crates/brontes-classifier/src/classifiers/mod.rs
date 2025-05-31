@@ -29,9 +29,6 @@ pub use fluid::*;
 pub mod gmx;
 pub use gmx::*;
 
-pub mod pendle_v2;
-pub use pendle_v2::*;
-
 pub mod dolomite;
 pub use dolomite::*;
 
@@ -55,6 +52,8 @@ pub use dodo::*;
 
 pub mod maverick_v2;
 pub use maverick_v2::*;
+pub mod pendle_v2;
+pub use pendle_v2::*;
 
 pub mod camelot;
 pub use camelot::*;
@@ -90,8 +89,7 @@ discovery_dispatch!(
     // BalancerV1SmartPoolDiscovery,
     CamelotV2Discovery,
     CamelotV3Discovery,
-    FluidLendingDiscovery,
-    PendleV2Discovery
+    FluidDexFactoryDiscovery
 );
 
 action_dispatch!(
@@ -247,7 +245,7 @@ action_dispatch!(
     CamelotV2Swap_0Call,
     CamelotV2Swap_1Call,
     CamelotV3SwapCall,
-    // PendleV2CreateNewMarketCall,
+    PendleV2CreateNewMarketCall,
     PendleV2CreateYieldContractCall,
     CompoundV3SetConfigurationCall,
     DexalotPartialSwapCall,

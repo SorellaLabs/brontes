@@ -82,8 +82,8 @@ action_impl!(
 
     let details=db_tx.get_protocol_details(info.target_address)?;
 
-    let sy=details.token0;
-    let pt=details.token1;
+    let pt=details.token0;
+    let sy=details.token1;
 
     let token_in = db_tx.try_fetch_token_info(pt)?;
     let token_out = db_tx.try_fetch_token_info(sy)?;
@@ -121,8 +121,8 @@ action_impl!(
 
     let details=db_tx.get_protocol_details(info.target_address)?;
 
-    let sy=details.token0;
-    let pt=details.token1;
+    let pt=details.token0;
+    let sy=details.token1;
 
     let token_in = db_tx.try_fetch_token_info(sy)?;
     let token_out = db_tx.try_fetch_token_info(pt)?;
@@ -160,7 +160,7 @@ action_impl!(
         let token_sy_delta=return_data.netSyUsed;
 
         let details=db_tx.get_protocol_details(info.target_address)?;
-        let [token_sy, token_pt]=[details.token0, details.token1];
+        let [token_pt, token_sy]=[details.token0, details.token1];
 
         let t0_info=db_tx.try_fetch_token_info(token_pt)?;
         let t1_info=db_tx.try_fetch_token_info(token_sy)?;
@@ -194,7 +194,7 @@ action_impl!(
         let token_pt_delta=return_data.netPtOut;
         let token_sy_delta=return_data.netSyOut;
         let details = db_tx.get_protocol_details(info.target_address)?;
-        let [token_sy, token_pt] = [details.token0, details.token1];
+        let [token_pt, token_sy] = [details.token0, details.token1];
 
         let t0_info = db_tx.try_fetch_token_info(token_pt)?;
         let t1_info = db_tx.try_fetch_token_info(token_sy)?;

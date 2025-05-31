@@ -1,21 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use alloy_primitives::{Address, FixedBytes};
 use alloy_rpc_types::Log;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_types::{
-    constants::FLUID_VAULT_RESOLVER_ADDRESS, normalized_actions::pool::NormalizedNewPool,
-    traits::TracingProvider, Protocol,
-};
+use brontes_types::{normalized_actions::pool::NormalizedNewPool, Protocol};
 use futures::future::join_all;
 use tracing::{debug, error};
 
-use crate::{
-    query_fluid_lending_market_tokens, query_pendle_v2_market_tokens, ActionCollection,
-    FactoryDiscoveryDispatch, FluidVaultFactory,
-};
+use crate::{ActionCollection, FactoryDiscoveryDispatch};
 
 sol!(
     #![sol(all_derives)]
@@ -55,25 +49,14 @@ sol!(
     FluidDEX,
     "./classifier-abis/fluid/FluidDexFactory.json"
 );
-sol!(
-    #![sol(all_derives)]
-    PendleV2Market,
-    "./classifier-abis/pendle_v2/PendleMarketFactoryV3.json"
-);
-sol!(
-    #![sol(all_derives)]
-    PendleV2YieldFactory,
-    "./classifier-abis/pendle_v2/PendleYieldContractFactory.json"
-);
 
 fn convert_to_address(address: FixedBytes<32>) -> Address {
-    Address::from_slice(&address[12..])
+    Address::from_slice(&address[..20])
 }
 
-pub async fn decode_event<T: TracingProvider>(
+pub fn decode_event(
     protocol: Protocol,
     plog: &alloy_primitives::Log,
-    tracer: Arc<T>,
 ) -> eyre::Result<(Address, Vec<Address>)> {
     let (pool_address, tokens) = match protocol {
         Protocol::UniswapV2
@@ -89,10 +72,7 @@ pub async fn decode_event<T: TracingProvider>(
         }
         Protocol::UniswapV4 => {
             let decoded = UniswapV4::Initialize::decode_log(plog, true)?;
-            (
-                Address::from_slice(&decoded.id[..20]),
-                vec![convert_to_address(decoded.currency0), convert_to_address(decoded.currency1)],
-            )
+            (convert_to_address(decoded.id), vec![convert_to_address(decoded.currency0), convert_to_address(decoded.currency1)])
         }
         Protocol::CamelotV3 => {
             let decoded = CamelotV3::Pool::decode_log(plog, true)?;
@@ -102,33 +82,13 @@ pub async fn decode_event<T: TracingProvider>(
             let decoded = FluidDEX::DexT1Deployed::decode_log(plog, true)?;
             (decoded.dex, vec![decoded.supplyToken, decoded.borrowToken])
         }
-        Protocol::FluidLending => {
-            let decoded = FluidVaultFactory::VaultDeployed::decode_log(plog, true)?;
-            let vault = decoded.vault;
-            let tokens =
-                query_fluid_lending_market_tokens(&tracer, &vault, FLUID_VAULT_RESOLVER_ADDRESS)
-                    .await;
-            (vault, tokens)
-        }
         Protocol::LFJV2_1 => {
             let decoded = LFJV2::LBPairCreated::decode_log(plog, true)?;
             (decoded.LBPair, vec![decoded.tokenX, decoded.tokenY])
         }
         Protocol::BalancerV2 => {
             let decoded = BalancerV2::TokensRegistered::decode_log(plog, true)?;
-            (Address::from_slice(&decoded.poolId[..20]), decoded.tokens.clone())
-        }
-        Protocol::PendleV2 => {
-            if let Ok(decoded) = PendleV2Market::CreateNewMarket::decode_log(plog, true) {
-                let tokens = query_pendle_v2_market_tokens(&tracer, &decoded.market).await;
-                (decoded.market, tokens)
-            } else if let Ok(decoded) =
-                PendleV2YieldFactory::CreateYieldContract::decode_log(plog, true)
-            {
-                (decoded.YT, vec![decoded.SY, decoded.PT, decoded.YT])
-            } else {
-                return Err(eyre::eyre!("Unsupported Pendle event: {:?}", plog));
-            }
+            (convert_to_address(decoded.poolId), decoded.tokens.clone())
         }
         _ => {
             return Err(eyre::eyre!("Unsupported protocol: {:?}", protocol));
@@ -153,58 +113,38 @@ impl<'db, DB: LibmdbxReader + DBWriter> DiscoveryLogsOnlyClassifier<'db, DB> {
         Self { libmdbx }
     }
 
-    pub async fn process_logs<T: TracingProvider>(
-        &self,
-        logs: HashMap<Protocol, Vec<Log>>,
-        tracer: Arc<T>,
-    ) -> eyre::Result<()> {
-        let futures = logs
-            .into_iter()
-            .map(|(protocol, logs)| {
-                let tracer_clone = tracer.clone();
-                async move {
-                    self.process_classification(protocol, logs, tracer_clone)
-                        .await;
-                }
-            })
-            .collect::<Vec<_>>();
-        join_all(futures).await;
+    pub async fn process_logs(&self, logs: HashMap<Protocol, Vec<Log>>) -> eyre::Result<()> {
+        let _ = join_all(logs.into_iter().map(|(protocol, logs)| async move {
+            self.process_classification(protocol, logs).await;
+        }))
+        .await;
         Ok(())
     }
 
-    async fn process_classification<T: TracingProvider>(
-        &self,
-        protocol: Protocol,
-        logs: Vec<Log>,
-        tracer: Arc<T>,
-    ) {
-        let decoded_events_futures = logs.into_iter().map(|log| {
-            let tracer_clone = tracer.clone();
-            async move {
-                match decode_event(protocol, &log.inner, tracer_clone).await {
-                    Ok((pool_address, tokens)) => Some((
-                        log.block_number,
-                        NormalizedNewPool { trace_index: 0, protocol, pool_address, tokens },
-                    )),
-                    Err(e) => {
-                        tracing::debug!("Failed to decode event: {:?}", e);
-                        None
-                    }
-                }
-            }
-        });
-
-        let results = join_all(decoded_events_futures).await;
-
-        let new_pools_to_insert_futures = results
-            .into_iter()
-            .filter_map(|opt_decoded_event| opt_decoded_event) // Filter out None results from decoding
-            .filter(|(_, pool)| !self.contains_pool(pool.pool_address)) // pool.pool_address should now be accessible
-            .map(|(block_number, pool)| async move {
-                self.insert_new_pool(block_number, pool, None).await
-            });
-
-        join_all(new_pools_to_insert_futures).await;
+    async fn process_classification(&self, protocol: Protocol, logs: Vec<Log>) {
+        join_all(
+            logs.into_iter()
+                .filter_map(|log| {
+                    decode_event(protocol, &log.inner)
+                        .map(|(pool_address, tokens)| {
+                            (
+                                log.block_number,
+                                NormalizedNewPool {
+                                    trace_index: 0,
+                                    protocol,
+                                    pool_address,
+                                    tokens,
+                                },
+                            )
+                        })
+                        .ok()
+                })
+                .filter(|(_, pool)| !self.contains_pool(pool.pool_address))
+                .map(|(block_number, pool)| async move {
+                    self.insert_new_pool(block_number, pool, None).await
+                }),
+        )
+        .await;
     }
 
     fn contains_pool(&self, address: Address) -> bool {
@@ -301,8 +241,7 @@ mod tests {
         assert_eq!(decoded.token0, token0); // tokens
         assert_eq!(decoded.token1, token1); // tokens
 
-        let (decoded_pool, decoded_tokens) =
-            decode_event(Protocol::UniswapV3, &log, Arc::new(MockTracingProvider::new()))?;
+        let (decoded_pool, decoded_tokens) = decode_event(Protocol::UniswapV3, &log)?;
         assert_eq!(decoded_pool, pool); // pool address
         assert_eq!(decoded_tokens, vec![token0, token1]); // tokens
 

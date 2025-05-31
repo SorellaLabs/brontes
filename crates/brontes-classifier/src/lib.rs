@@ -85,8 +85,7 @@ sol!(BalancerV3Vault, "./classifier-abis/balancer/BalancerV3Vault.json");
 sol!(FluidDexT1, "./classifier-abis/fluid/FluidDexT1.json");
 sol!(FluidLending, "./classifier-abis/fluid/FluidLending.json");
 sol!(DolomiteLiquidator, "./classifier-abis/dolomite/Liquidator.json");
-sol!(FluidVaultResolver, "./classifier-abis/fluid/FluidVaultResolver.json");
-sol!(FluidDexResolver, "./classifier-abis/fluid/FluidDexResolver.json");
+
 // Discovery
 sol!(BalancerV3VaultExtension, "./classifier-abis/balancer/BalancerV3VaultExtension.json");
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
@@ -116,7 +115,6 @@ sol!(PendleYieldContractFactory, "./classifier-abis/pendle_v2/PendleYieldContrac
 sol!(FluidDexFactory, "./classifier-abis/fluid/FluidDexFactory.json");
 sol!(DolomiteAdmin, "./classifier-abis/dolomite/Admin.json");
 sol!(FluidForwarder, "./classifier-abis/fluid/AvocadoForwarder.json");
-sol!(FluidVaultFactory, "./classifier-abis/fluid/FluidVaultFactory.json");
 // Balancer Pool Interfaces
 sol! {
     enum SwapKind {

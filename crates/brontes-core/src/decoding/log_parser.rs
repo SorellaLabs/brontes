@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 #[cfg(feature = "dyn-decode")]
 use alloy_json_abi::JsonAbi;
@@ -21,17 +21,17 @@ use crate::decoding::dyn_decode::decode_input_with_abi;
 /// A [`TraceParser`] will iterate through a block's Parity traces and attempt
 /// to decode each call for later analysis.
 pub struct EthLogParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    libmdbx: &'static DB,
-    pub provider: Arc<T>,
-    pub protocol_to_addr_event_vec: HashMap<Protocol, Vec<(Address, FixedBytes<32>)>>,
+    libmdbx:                &'static DB,
+    pub provider:           Arc<T>,
+    pub protocol_to_events: HashMap<Protocol, (Address, FixedBytes<32>)>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Clone for EthLogParser<T, DB> {
     fn clone(&self) -> Self {
         Self {
-            libmdbx:                    self.libmdbx,
-            provider:                   self.provider.clone(),
-            protocol_to_addr_event_vec: self.protocol_to_addr_event_vec.clone(),
+            libmdbx:            self.libmdbx,
+            provider:           self.provider.clone(),
+            protocol_to_events: self.protocol_to_events.clone(),
         }
     }
 }
@@ -40,9 +40,9 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
     pub async fn new(
         libmdbx: &'static DB,
         provider: Arc<T>,
-        protocol_to_addr_event_vec: HashMap<Protocol, Vec<(Address, FixedBytes<32>)>>,
+        protocol_to_events: HashMap<Protocol, (Address, FixedBytes<32>)>,
     ) -> Self {
-        Self { libmdbx, provider, protocol_to_addr_event_vec }
+        Self { libmdbx, provider, protocol_to_events }
     }
 
     pub async fn best_block_number(&self) -> eyre::Result<u64> {
@@ -60,27 +60,19 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> EthLogParser<T, DB> {
     ) -> eyre::Result<HashMap<Protocol, Vec<Log>>> {
         let provider = self.provider.clone();
         let addresses = self
-            .protocol_to_addr_event_vec
+            .protocol_to_events
             .iter()
-            .flat_map(|(_, addresses)| addresses.iter().map(|(address, _)| *address))
-            .collect::<HashSet<_>>() // Collect into a HashSet to merge duplicates
-            .into_iter()
-            .collect::<Vec<_>>(); // Convert the HashSet back into a Vec
+            .map(|(_, (address, _))| *address)
+            .collect::<Vec<_>>();
         let topics = self
-            .protocol_to_addr_event_vec
+            .protocol_to_events
             .iter()
-            .flat_map(|(_, events)| events.iter().map(|(_, topic)| *topic))
-            .collect::<HashSet<_>>() // Collect into a HashSet to merge duplicates
-            .into_iter()
-            .collect::<Vec<_>>(); // Convert the HashSet back into a Vec
+            .map(|(_, (_, topic))| *topic)
+            .collect::<Vec<_>>();
         let address_to_protocol = self
-            .protocol_to_addr_event_vec
+            .protocol_to_events
             .iter()
-            .flat_map(|(protocol, addresses)| {
-                addresses
-                    .iter()
-                    .map(move |(address, _)| (address, protocol))
-            })
+            .map(|(protocol, (address, _))| (address, protocol))
             .collect::<HashMap<_, _>>();
         let filter = Filter::new()
             .address(addresses)
