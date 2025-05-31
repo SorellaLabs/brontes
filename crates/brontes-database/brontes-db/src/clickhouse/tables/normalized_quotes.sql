@@ -8,5 +8,6 @@ CREATE TABLE IF NOT EXISTS cex.normalized_quotes (
     `bid_amount` Float64        -- Amount available at bid price
 )
 ENGINE = MergeTree()
+PARTITION BY toYYYYMMDD(toDateTime(timestamp / 1000000))
 PRIMARY KEY (exchange, symbol, timestamp)
 ORDER BY (exchange, symbol, timestamp)

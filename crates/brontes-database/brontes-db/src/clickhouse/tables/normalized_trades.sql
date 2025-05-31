@@ -7,5 +7,6 @@ CREATE TABLE IF NOT EXISTS cex.normalized_trades (
     `price` Float64            -- Trade price
 )
 ENGINE = MergeTree()
+PARTITION BY toYYYYMMDD(toDateTime(timestamp / 1000000))
 PRIMARY KEY (timestamp, symbol)
 ORDER BY (timestamp, symbol)
