@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::{env, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 #[cfg(not(feature = "local-reth"))]
@@ -17,7 +17,7 @@ use brontes_database::clickhouse::ReadOnlyMiddleware;
 use brontes_database::clickhouse::{dbms::BrontesClickhouseData, ClickhouseBuffered};
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxReadWriter};
 use brontes_inspect::{Inspector, Inspectors};
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
@@ -29,12 +29,11 @@ use brontes_types::{
     mev::Bundle,
     BrontesTaskExecutor,
 };
-use itertools::Itertools;
 use governor::DefaultDirectRateLimiter;
+use itertools::Itertools;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
 use strum::IntoEnumIterator;
-use std::sync::Arc;
 use tracing::info;
 
 #[cfg(not(feature = "local-clickhouse"))]
@@ -176,7 +175,9 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     metrics: bool,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
     let mut res = Vec::new();
+    let profit_metrics = metrics.then(ProfitMetrics::new);
     let metrics = metrics.then(OutlierMetrics::new);
+
     for inspector in inspectors
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
@@ -187,6 +188,7 @@ pub fn init_inspectors<DB: LibmdbxReader>(
             &cex_exchanges,
             trade_config,
             metrics.clone(),
+            profit_metrics.clone(),
         ));
     }
 
