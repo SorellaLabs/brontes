@@ -49,6 +49,7 @@ impl InspectorBenchUtils {
                     &[CexExchange::Binance],
                     CexDexTradeConfig::default(),
                     None,
+                    None,
                 )
             })
             .collect::<Vec<_>>();
@@ -99,6 +100,7 @@ impl InspectorBenchUtils {
             self.classifier_inspector.libmdbx,
             &[CexExchange::Binance],
             CexDexTradeConfig::default(),
+            None,
             None,
         );
 
@@ -163,6 +165,7 @@ impl InspectorBenchUtils {
             &[CexExchange::Binance],
             CexDexTradeConfig::default(),
             None,
+            None,
         );
 
         let (tree, prices) =
@@ -217,6 +220,7 @@ impl InspectorBenchUtils {
             &[CexExchange::Binance],
             CexDexTradeConfig::default(),
             None,
+            None,
         );
 
         let mut trees = self
@@ -263,6 +267,7 @@ impl InspectorBenchUtils {
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
                     CexDexTradeConfig::default(),
+                    None,
                     None,
                 )
             })
@@ -322,6 +327,7 @@ impl InspectorBenchUtils {
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
                     CexDexTradeConfig::default(),
+                    None,
                     None,
                 )
             })

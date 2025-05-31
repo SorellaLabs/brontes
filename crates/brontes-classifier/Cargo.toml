@@ -79,7 +79,7 @@ criterion = "0.5"
 brontes-macros.workspace = true
 
 [features]
-default = []
+default = ["arbitrum"]
 tests = [
   "reth-tracing-ext",
   "brontes-core/tests",

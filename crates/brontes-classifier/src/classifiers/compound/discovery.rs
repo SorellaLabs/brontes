@@ -2,9 +2,6 @@ use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{normalized_actions::NormalizedNewPool, structured_trace::CallInfo};
 
-/// governor -(execute)-> comet factory -(deploy)-> comet (based on comet
-/// so based on the clone calldata we can extract the tokens
-/// configurator)
 action_impl!(
     Protocol::CompoundV3,
     crate::CometConfigurator::setConfigurationCall,

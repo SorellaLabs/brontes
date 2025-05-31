@@ -101,9 +101,12 @@ reth-tracing-ext.workspace = true
 
 
 [features]
+default = ["arbitrum"]
 tests = []
 test_pricing = []
-arbitrum = []
+arbitrum = [
+  "brontes-classifier/arbitrum",
+]
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",

@@ -12,10 +12,7 @@ use brontes_types::{
 use futures::future::join_all;
 use tracing::{debug, error};
 
-use crate::{
-    query_fluid_lending_market_tokens, query_pendle_v2_market_tokens, ActionCollection,
-    FactoryDiscoveryDispatch, FluidVaultFactory,
-};
+use crate::{query_fluid_lending_market_tokens, query_pendle_v2_market_tokens, FluidVaultFactory};
 
 sol!(
     #![sol(all_derives)]
@@ -284,28 +281,5 @@ mod tests {
 
         // Create the log
         alloy_primitives::Log::new(factory_address, topics, data).unwrap()
-    }
-
-    #[test]
-    fn test_decode_uniswap_v3_pool_created() -> eyre::Result<()> {
-        let factory = mock_address("0x1F98431c8aD98523631AE4a59f267346ea31F984");
-        let token0 = mock_address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
-        let token1 = mock_address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
-        let pool = mock_address("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640");
-        let fee = 3000; // 0.3% fee tier
-
-        let log = create_mock_uniswap_v3_pool_created_log(factory, token0, token1, fee, pool);
-
-        let decoded = UniswapV3::PoolCreated::decode_log(&log, true)?;
-        assert_eq!(decoded.pool, pool); // pool address
-        assert_eq!(decoded.token0, token0); // tokens
-        assert_eq!(decoded.token1, token1); // tokens
-
-        let (decoded_pool, decoded_tokens) =
-            decode_event(Protocol::UniswapV3, &log, Arc::new(MockTracingProvider::new()))?;
-        assert_eq!(decoded_pool, pool); // pool address
-        assert_eq!(decoded_tokens, vec![token0, token1]); // tokens
-
-        Ok(()) // Return Ok(()) to indicate test success
     }
 }

@@ -532,13 +532,10 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         for tree in trees {
             for root in &tree.tx_roots {
                 for actions in &root.data_store.0 {
-                    match actions {
-                        Some(actions) => {
-                            let _ = actions
-                                .iter()
-                                .map(|action| protocols.insert(action.get_protocol()));
-                        }
-                        _ => {}
+                    if let Some(actions) = actions {
+                        let _ = actions
+                            .iter()
+                            .map(|action| protocols.insert(action.get_protocol()));
                     }
                 }
             }

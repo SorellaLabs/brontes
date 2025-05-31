@@ -215,7 +215,7 @@ action_impl!(
     [..],
     call_data: true,
     return_data: true,
-    |info: CallInfo, call_data: depositPerfectCall, return_data: depositPerfectReturn, db: &DB| {
+    |info: CallInfo, _call_data: depositPerfectCall, return_data: depositPerfectReturn, db: &DB| {
         let recipient=info.msg_sender;
         let pool=info.target_address;
 
@@ -277,7 +277,7 @@ action_impl!(
     [..],
     call_data: true,
     return_data: true,
-    |info: CallInfo, call_data: withdrawPerfectCall,return_data: withdrawPerfectReturn, db: &DB| {
+    |info: CallInfo, _call_data: withdrawPerfectCall,return_data: withdrawPerfectReturn, db: &DB| {
         let recipient=info.msg_sender;
         let pool=info.target_address;
         let details=db.get_protocol_details(pool)?;

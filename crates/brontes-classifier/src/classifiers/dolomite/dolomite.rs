@@ -50,7 +50,7 @@ action_impl!(
     logs:true,
     |
     info: CallInfo,
-    call_data: operateCall,
+    _call_data: operateCall,
     logs: DolomiteOperateCallLogs,
     db: &DB | {
 

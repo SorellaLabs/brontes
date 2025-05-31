@@ -135,7 +135,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Action, TreeSearchBuilder,
+        db::token_info::TokenInfoWithAddress, normalized_actions::{Action, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap}, TreeSearchBuilder
     };
 
     use super::*;

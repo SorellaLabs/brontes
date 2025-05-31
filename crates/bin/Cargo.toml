@@ -165,5 +165,6 @@ uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]
 
 arbitrum = [
-  "brontes-types/arbitrum"
+  "brontes-types/arbitrum",
+  "brontes-classifier/arbitrum",
 ]

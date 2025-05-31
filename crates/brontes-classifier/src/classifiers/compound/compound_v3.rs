@@ -3,7 +3,7 @@ use brontes_pricing::Protocol;
 use brontes_types::{
     normalized_actions::NormalizedLiquidation, structured_trace::CallInfo, utils::ToScaledRational,
 };
-/// TODO related to OEV(oracle based trading action is needed to implement)
+// TODO related to OEV(oracle based trading action is needed to implement)
 action_impl!(
     Protocol::CompoundV3,
     crate::Comet::buyCollateralCall,

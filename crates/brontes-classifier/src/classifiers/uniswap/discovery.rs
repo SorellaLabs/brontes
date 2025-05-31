@@ -48,7 +48,7 @@ discovery_impl!(
     UniswapV4Discovery,
     crate::UniswapV4Factory::initializeCall,
     0x360E68faCcca8cA495c1B759Fd9EEe466db9FB32,
-    |deployed_address: Address, trace_index: u64, call_data: initializeCall, _| async move {
+    |_deployed_address: Address, trace_index: u64, call_data: initializeCall, _| async move {
         let mut token_a = call_data.key.currency0;
         let mut token_b = call_data.key.currency1;
 
