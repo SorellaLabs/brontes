@@ -18,6 +18,7 @@ reth-rpc.workspace = true
 # alloy
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 alloy-rpc-types.workspace = true
+alloy-consensus.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -96,8 +97,6 @@ brontes-classifier = { workspace = true, features = ["tests"] }
 brontes-core = { workspace = true, features = ["tests"] }
 brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
-
-
 
 
 [features]
