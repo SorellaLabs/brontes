@@ -46,12 +46,11 @@ impl BlockStats {
 
 #[derive(Clone, Debug)]
 pub struct TransactionStats {
-    pub block_num:   u64,
-    pub tx_hash:     B256,
-    pub tx_idx:      u16,
-    pub traces:      Vec<TraceStats>,
-    pub timeboosted: bool,
-    pub err:         Option<TraceParseErrorKind>,
+    pub block_num: u64,
+    pub tx_hash:   B256,
+    pub tx_idx:    u16,
+    pub traces:    Vec<TraceStats>,
+    pub err:       Option<TraceParseErrorKind>,
 }
 
 impl TransactionStats {
@@ -59,10 +58,9 @@ impl TransactionStats {
         block_num: u64,
         tx_hash: B256,
         tx_idx: u16,
-        timeboosted: bool,
         err: Option<TraceParseErrorKind>,
     ) -> Self {
-        Self { block_num, tx_hash, tx_idx, traces: Vec::new(), timeboosted, err }
+        Self { block_num, tx_hash, tx_idx, traces: Vec::new(), err }
     }
 
     pub fn trace(&self) {

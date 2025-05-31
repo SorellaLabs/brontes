@@ -1989,7 +1989,6 @@ name = "brontes-types"
 version = "0.1.0"
 dependencies = [
  "ahash",
- "alloy-consensus",
  "alloy-dyn-abi",
  "alloy-json-abi",
  "alloy-primitives",
