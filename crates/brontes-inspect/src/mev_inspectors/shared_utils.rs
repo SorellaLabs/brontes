@@ -513,48 +513,29 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     pub fn get_related_protocols_liquidation(
         &self,
         actions: &[Action],
-    ) -> Option<HashSet<Protocol>> {
-        let mut protocols = HashSet::new();
-
-        for action in actions {
-            protocols.insert(action.get_protocol());
-        }
-
-        Some(protocols)
+    ) -> HashSet<Protocol> {
+        actions.into_iter().map(|action| action.get_protocol()).collect()
     }
 
     pub fn get_related_protocols_atomic(
         &self,
         trees: &Vec<Arc<BlockTree<Action>>>,
-    ) -> Option<HashSet<Protocol>> {
-        let mut protocols = HashSet::new();
-
-        for tree in trees {
-            for root in &tree.tx_roots {
-                for actions in &root.data_store.0 {
-                    if let Some(actions) = actions {
-                        let _ = actions
-                            .iter()
-                            .map(|action| protocols.insert(action.get_protocol()));
-                    }
-                }
-            }
-        }
-
-        Some(protocols)
+    ) -> HashSet<Protocol> {
+        trees
+            .into_iter()
+            .flat_map(|tree| &tree.tx_roots)
+            .flat_map(|root| &root.data_store.0)
+            .filter_map(|actions| actions.as_ref())
+            .flat_map(|actions| actions.iter())
+            .map(|action| action.get_protocol())
+            .collect()
     }
 
     pub fn get_related_protocols_cex_dex(
         &self,
         dex_swaps: &[NormalizedSwap],
-    ) -> Option<HashSet<Protocol>> {
-        let mut protocols = HashSet::new();
-
-        for swap in dex_swaps {
-            protocols.insert(swap.protocol);
-        }
-
-        Some(protocols)
+    ) -> HashSet<Protocol> {
+        dex_swaps.into_iter().map(|swap| swap.protocol).collect()
     }
 
     pub fn fetch_address_name(&self, address: Address) -> Option<String> {

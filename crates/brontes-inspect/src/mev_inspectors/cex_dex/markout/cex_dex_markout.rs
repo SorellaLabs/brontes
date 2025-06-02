@@ -252,8 +252,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             return None
         }
 
-        let protocols = self.utils.get_related_protocols_cex_dex(&dex_swaps)?;
-
+        let protocols = self.utils.get_related_protocols_cex_dex(&dex_swaps);
         let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
             dex_swaps,
             &metadata,

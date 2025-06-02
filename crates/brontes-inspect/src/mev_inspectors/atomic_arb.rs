@@ -205,7 +205,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         // given we have a atomic arb now, we will go and try to find the trigger
         // transaction that lead to this arb.
 
-        let protocols = self.utils.get_related_protocols_atomic(&trees)?;
+        let protocols = self.utils.get_related_protocols_atomic(&trees);
         let trigger_tx = self.find_trigger_tx(&info, trees, &swaps);
 
         let backrun = AtomicArb {

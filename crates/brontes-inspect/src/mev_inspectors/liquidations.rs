@@ -85,8 +85,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         actions: Vec<Action>,
     ) -> Option<Bundle> {
         let (swaps, liqs): (Vec<_>, Vec<_>) = actions
-            .clone()
-            .into_iter()
+            .iter()
+            .cloned()
             .action_split((Action::try_swaps_merged, Action::try_liquidation));
 
         if liqs.is_empty() {
@@ -94,10 +94,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             return None
         }
 
-        let protocols = self.utils.get_related_protocols_liquidation(&actions)?;
-
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
-
+        let protocols = self.utils.get_related_protocols_liquidation(&actions);
         let deltas = actions
             .into_iter()
             .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
