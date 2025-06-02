@@ -386,6 +386,7 @@ impl BrontesTracingInspector {
             tx_hash: info.hash.unwrap(),
             gas_used,
             effective_price: 0,
+            timeboosted: None,
             tx_index: info.index.unwrap(),
             is_success: res.is_success(),
         }
