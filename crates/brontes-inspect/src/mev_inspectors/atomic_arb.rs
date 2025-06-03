@@ -239,7 +239,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         );
 
         let profit = profit.to_float();
-        if profit > 100.0 {
+        if profit.abs() > 100.0 {
             tracing::warn!(?header.tx_hash, ?profit, "abnormal profit");
         }
 
