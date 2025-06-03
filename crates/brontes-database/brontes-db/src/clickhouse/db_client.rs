@@ -252,6 +252,7 @@ impl Clickhouse {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
+        tracing::trace!(?decimals, ?symbol, ?address, "insert token info to clickhouse");
         let data = TokenInfoWithAddress { address, inner: TokenInfo { symbol, decimals } };
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
