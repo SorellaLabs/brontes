@@ -107,7 +107,7 @@ impl ClassifierTestUtils {
                 ctr.clone(),
                 None,
                 ex,
-                5
+                5,
             ),
         ))
     }
@@ -578,7 +578,13 @@ impl ClassifierTestUtils {
 
         let call_info = trace.get_callframe_info();
 
-        let result = dispatcher.dispatch(call_info, self.trace_loader.libmdbx, block, 0);
+        let result = dispatcher.dispatch(
+            call_info,
+            self.trace_loader.libmdbx,
+            block,
+            0,
+            self.get_provider(),
+        );
 
         cmp_fn(result.map(|i| i.1));
 

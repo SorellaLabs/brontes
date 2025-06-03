@@ -139,6 +139,8 @@ pub const UNISWAP_V3_FACTORY_ADDRESS: Address =
     Address::new(hex!("1F98431c8aD98523631AE4a59f267346ea31F984"));
 pub const UNISWAP_V4_FACTORY_ADDRESS: Address =
     Address::new(hex!("360E68faCcca8cA495c1B759Fd9EEe466db9FB32"));
+pub const FLUID_DEX_RESOLVER_ADDRESS: Address =
+    Address::new(hex!("87B7E70D8F1FAcD3d154AF8559D632481724508E"));
 pub const FLUID_DEX_FACTORY_ADDRESS: Address =
     Address::new(hex!("91716C4EDA1Fb55e84Bf8b4c7085f84285c19085"));
 pub const FLUID_VAULT_FACTORY_ADDRESS: Address =

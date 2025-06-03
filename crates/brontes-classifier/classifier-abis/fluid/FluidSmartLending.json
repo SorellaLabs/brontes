@@ -1,0 +1,367 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "DEX",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IFluidDexT1"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "DEX_FACTORY",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract FluidDexFactory"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "IS_NATIVE_PAIR",
+      "inputs": [],
+      "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "LIQUIDITY",
+      "inputs": [],
+      "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "SMART_LENDING_FACTORY",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract FluidSmartLendingFactory"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "TOKEN0",
+      "inputs": [],
+      "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "TOKEN1",
+      "inputs": [],
+      "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+      "stateMutability": "view"
+    }
+  ],
+  "bytecode": { "object": "0x", "sourceMap": "", "linkReferences": {} },
+  "deployedBytecode": { "object": "0x", "sourceMap": "", "linkReferences": {} },
+  "methodIdentifiers": {
+    "DEX()": "80935aa9",
+    "DEX_FACTORY()": "97b87b4a",
+    "IS_NATIVE_PAIR()": "ddd59b9f",
+    "LIQUIDITY()": "2861c7d1",
+    "SMART_LENDING_FACTORY()": "f53eddcc",
+    "TOKEN0()": "443ec74d",
+    "TOKEN1()": "5ee04d78"
+  },
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.21+commit.d9974bed\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"DEX\",\"outputs\":[{\"internalType\":\"contract IFluidDexT1\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"DEX_FACTORY\",\"outputs\":[{\"internalType\":\"contract FluidDexFactory\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"IS_NATIVE_PAIR\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"LIQUIDITY\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"SMART_LENDING_FACTORY\",\"outputs\":[{\"internalType\":\"contract FluidSmartLendingFactory\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"TOKEN0\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"TOKEN1\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"stateVariables\":{\"SECONDS_PER_YEAR\":{\"details\":\"Ignoring leap years\"}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/protocols/dex/smartLending/main.sol\":\"Constants\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":10000000},\"remappings\":[\":@openzeppelin/=node_modules/@openzeppelin/\",\":ds-test/=lib/solmate/lib/ds-test/src/\",\":erc4626-tests/=lib/erc4626-tests/\",\":eth-gas-reporter/=node_modules/eth-gas-reporter/\",\":forge-std/=lib/forge-std/src/\",\":hardhat-deploy/=node_modules/hardhat-deploy/\",\":hardhat/=node_modules/hardhat/\",\":openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/src/\",\":openzeppelin-contracts/=lib/openzeppelin-contracts/src/\",\":solmate/=lib/solmate/\"]},\"sources\":{\"contracts/libraries/addressCalcs.sol\":{\"keccak256\":\"0xca389bcfef035463ff43939ac5eccab07ab74cbb053e201541f9bcd846b3105a\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://53cbe3e57bc9f1c7f020a07f7132e7fad1380f12107b030591febcc1d30ad39e\",\"dweb:/ipfs/QmZ8oPgrW3zSWUEuvhmpYSUy8s5kFAg6SkGMBZXexd97QC\"]},\"contracts/libraries/bigMathMinified.sol\":{\"keccak256\":\"0xf0be1002909edf30aec3dc6623c2bd2407ed94064b62674c01032b844dec206a\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://be0892ded12ec9908a54f3dea18016d897bc68cba645adf247ae291a666c5ce2\",\"dweb:/ipfs/QmZd46GHYvpKgg6BvSzFn8vi7xsV2phrjvGVWdjUMU1tZu\"]},\"contracts/libraries/dexCalcs.sol\":{\"keccak256\":\"0xd033a77bd57f4a608e693fdf6147ddd3bbfa0d80d86c1097d24e428c886c0d5e\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://3a1e9b3ca16f52440c507c9a0677ee1f965782ec853d28514e96f6bfd6cf7d69\",\"dweb:/ipfs/QmX1gydAVZQvsxEF25hHB5jrgBfH9cXYDVoGG3L6RyKMVp\"]},\"contracts/libraries/dexSlotsLink.sol\":{\"keccak256\":\"0xf1d6550d83fb0155a26655234922c9bdf4a1bbcf7a3ca767e9123d367a795307\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://81a8d3a94fbcf7aefccdb83ab825650c4488501ed58623f75894f0cc01f809db\",\"dweb:/ipfs/QmUBvgx6Bo2ZiAVrKPwyAJ73CFFz6JjKLjezP8z2rUrGBu\"]},\"contracts/libraries/errorTypes.sol\":{\"keccak256\":\"0x4057f500fd44ce9e89049512d06d5f72c46f91938ed37312fb044c204451009b\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://7de350f83f55f36f559786387dd75ae63284f949950c4708af4b2be1a2af22b5\",\"dweb:/ipfs/QmcGZUpz6qkr7dGm8xNb8WKMBYukTs7oW9FKNDU2g3orpL\"]},\"contracts/libraries/safeTransfer.sol\":{\"keccak256\":\"0x7f7d3a39d984c62e41c669a3d11deb899b3512ace9313263592575bf48a6e079\",\"license\":\"MIT OR Apache-2.0\",\"urls\":[\"bzz-raw://dc0cb84efd4643dc2f423bfe8e01ce731b9d11c36f3b9afdc7f9eaebcdc4dc89\",\"dweb:/ipfs/QmW1c5qiTLd6hcwJy4VV5kMbqmeeQSF6kmuhtWghWzVgm6\"]},\"contracts/libraries/storageRead.sol\":{\"keccak256\":\"0x1b03dfe294c2f0376f7e34c3960fe7088d7ff44bb2ffd9cb2ac940486bfba8c9\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://44cc3721612dc3bcbf3c0cf0690ef282a33fa6f31989b4ac86c76212f05c6b5b\",\"dweb:/ipfs/QmWZP9rZB6FX2XHywWcx1beVTMpLFhikiVqhCEuqGJpoWL\"]},\"contracts/protocols/dex/error.sol\":{\"keccak256\":\"0xd202c2cd2ca431bf8dd745a11f771573a480f92cddfce492202e2b21b248ff50\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://13009432ad48c8f4b9d57cd7b6090238a3891a0b84cf79d801df1b95a55799ef\",\"dweb:/ipfs/QmSGhf8sRD375ZN8cz2LnCHGUzwWxddQew4RWSozxPrAiG\"]},\"contracts/protocols/dex/errorTypes.sol\":{\"keccak256\":\"0xb02d949b87d641ce797c3bec65332e7b683260461d1656782301e75da3a60971\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://57cd6752f515813ff30a5e578e66102145214e97c7e37d4acacd55c24e8ca723\",\"dweb:/ipfs/QmWAQFVULvBUH7TTQcicdMz3h53HxJab7Lwfx7tTCyRUFT\"]},\"contracts/protocols/dex/factory/main.sol\":{\"keccak256\":\"0x96cbe9ceba16d29015ac95f4601b47e576b09de10acb8ca85b4245c8d4a4c3c4\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://81edb9022cb9de217154efbd08bf226a4ee6d56cde4eb9252055ae56689d1738\",\"dweb:/ipfs/QmVq2njCBHYaWqfDCo5rr4PzpZkkf25caVdD1xYoSNL1NU\"]},\"contracts/protocols/dex/interfaces/iDexT1.sol\":{\"keccak256\":\"0xd48834505ffcaa7523bf84e5c2da27e585b865f11d4fd75d6088696bfc40d47f\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://d9ddd716e013a443ae8696c0431eb6ae826e1062dfed42ec4c5ba54bdde5729e\",\"dweb:/ipfs/QmVfmun8YqzoxhZaFwqhGLeytQhYsw5reNJEg4c6kGZojf\"]},\"contracts/protocols/dex/poolT1/coreModule/structs.sol\":{\"keccak256\":\"0x1cccc3a9ff4f07f159ac2aebf969c2a714a6f912ef0e86b76362bf45a5ecb8be\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://078915912808a88c1e228e1c846cffb9c95ca7196d6f0fee07683722d2babf71\",\"dweb:/ipfs/QmVK5Dvgfnv3MSSy6ZiFdwCeAiyu4kxheks26GuckDDBHB\"]},\"contracts/protocols/dex/smartLending/factory/main.sol\":{\"keccak256\":\"0xd92524d38e0b3d56827b4423e9d4878ce64fba4ec42ad19bc0b45ff686f7f98e\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://4e452911e528020d83e3edc6088ae17c469d5c38364dec84d325451b1b8fe13c\",\"dweb:/ipfs/QmWGdBKGNmtkkbkuGnymj9nvssQH9TNX38yieCuHbxrpSQ\"]},\"contracts/protocols/dex/smartLending/main.sol\":{\"keccak256\":\"0x0c3a0b07fc94e250ab14aaf6bd6934e50961c49c16d755b6ef2e2e3cbf6e30fd\",\"license\":\"BUSL-1.1\",\"urls\":[\"bzz-raw://b5c2f8d003dbbfa6c68421c342137e30abeacd6191ff0ffd90b1854a402b1bcb\",\"dweb:/ipfs/QmTW66rHYaxLiB8fLw9u4Qgcx5eegZBtahHoSDWGDPwtgc\"]},\"lib/solmate/src/auth/Owned.sol\":{\"keccak256\":\"0xfedb27d14c508342c33eb067c9a02eabcdb0f9dcf93b04ded1001f580d12d0ea\",\"license\":\"AGPL-3.0-only\",\"urls\":[\"bzz-raw://1ff52bbee698b9cf9e4574615e6550be0887ccf355f6571e23d6f25b332e79b4\",\"dweb:/ipfs/QmVorA2apojVRStzS7h8aFccR3Uv32G6HVtBtFHZrE7YXx\"]},\"lib/solmate/src/utils/Bytes32AddressLib.sol\":{\"keccak256\":\"0xe709c9f2c6fb8bfe1158fa31967c0a2109844c52079fe4e327baec82fb87acb6\",\"license\":\"AGPL-3.0-only\",\"urls\":[\"bzz-raw://9633ab7c471e653dfb37c78b6475db47924c9ee731118545b5bc28aad97f2434\",\"dweb:/ipfs/Qmbt9gLb3hrs21nQxwSiG1ciE56Y73LLt1iPDfnmkcz27E\"]},\"lib/solmate/src/utils/CREATE3.sol\":{\"keccak256\":\"0x1d4ea6d2353ed117d7704ddf7488fcd39edb2d575351f6c64efd313170d74367\",\"license\":\"AGPL-3.0-only\",\"urls\":[\"bzz-raw://ea79e1a2a5950275ab628ecf628d0a60146435425f7841ad933c2a1f7e802022\",\"dweb:/ipfs/QmSy8eMrDY1VzCWyrjPbJcZCPQ1b4Lhtccdp9fupZrt6Yd\"]},\"lib/solmate/src/utils/SSTORE2.sol\":{\"keccak256\":\"0xc5359c92365c550c418725fc534a538426ea8f6e7f6c06c0a9d66647d864469d\",\"license\":\"AGPL-3.0-only\",\"urls\":[\"bzz-raw://f6210458e51eee25ea58a46924c35522419ed52aecd42c0bcf4519b9568a43a2\",\"dweb:/ipfs/QmWMpKRfioNTXNNsg5eKdgogRanDr7iNPQ11HvykBeQzAM\"]},\"node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol\":{\"keccak256\":\"0x4ffc0547c02ad22925310c585c0f166f8759e2648a09e9b489100c42f15dd98d\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://15f52f51413a9de1ff191e2f6367c62178e1df7806d7880fe857a98b0b66253d\",\"dweb:/ipfs/QmaQG1fwfgUt5E9nu2cccFiV47B2V78MM1tCy1qB7n4MsH\"]},\"node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"keccak256\":\"0x9750c6b834f7b43000631af5cc30001c5f547b3ceb3635488f140f60e897ea6b\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://5a7d5b1ef5d8d5889ad2ed89d8619c09383b80b72ab226e0fe7bde1636481e34\",\"dweb:/ipfs/QmebXWgtEfumQGBdVeM6c71McLixYXQP5Bk6kKXuoY4Bmr\"]},\"node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol\":{\"keccak256\":\"0x8de418a5503946cabe331f35fe242d3201a73f67f77aaeb7110acb1f30423aca\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://5a376d3dda2cb70536c0a45c208b29b34ac560c4cb4f513a42079f96ba47d2dd\",\"dweb:/ipfs/QmZQg6gn1sUpM8wHzwNvSnihumUCAhxD119MpXeKp8B9s8\"]},\"node_modules/@openzeppelin/contracts/utils/Context.sol\":{\"keccak256\":\"0xe2e337e6dde9ef6b680e07338c493ebea1b5fd09b43424112868e9cc1706bca7\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://6df0ddf21ce9f58271bdfaa85cde98b200ef242a05a3f85c2bc10a8294800a92\",\"dweb:/ipfs/QmRK2Y5Yc6BK7tGKkgsgn3aJEQGi5aakeSPZvS65PV8Xp3\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": { "version": "0.8.21+commit.d9974bed" },
+    "language": "Solidity",
+    "output": {
+      "abi": [
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "DEX",
+          "outputs": [
+            {
+              "internalType": "contract IFluidDexT1",
+              "name": "",
+              "type": "address"
+            }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "DEX_FACTORY",
+          "outputs": [
+            {
+              "internalType": "contract FluidDexFactory",
+              "name": "",
+              "type": "address"
+            }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "IS_NATIVE_PAIR",
+          "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "LIQUIDITY",
+          "outputs": [
+            { "internalType": "address", "name": "", "type": "address" }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "SMART_LENDING_FACTORY",
+          "outputs": [
+            {
+              "internalType": "contract FluidSmartLendingFactory",
+              "name": "",
+              "type": "address"
+            }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "TOKEN0",
+          "outputs": [
+            { "internalType": "address", "name": "", "type": "address" }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "TOKEN1",
+          "outputs": [
+            { "internalType": "address", "name": "", "type": "address" }
+          ]
+        }
+      ],
+      "devdoc": { "kind": "dev", "methods": {}, "version": 1 },
+      "userdoc": { "kind": "user", "methods": {}, "version": 1 }
+    },
+    "settings": {
+      "remappings": [
+        "@openzeppelin/=node_modules/@openzeppelin/",
+        "ds-test/=lib/solmate/lib/ds-test/src/",
+        "erc4626-tests/=lib/erc4626-tests/",
+        "eth-gas-reporter/=node_modules/eth-gas-reporter/",
+        "forge-std/=lib/forge-std/src/",
+        "hardhat-deploy/=node_modules/hardhat-deploy/",
+        "hardhat/=node_modules/hardhat/",
+        "openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/src/",
+        "openzeppelin-contracts/=lib/openzeppelin-contracts/src/",
+        "solmate/=lib/solmate/"
+      ],
+      "optimizer": { "enabled": true, "runs": 10000000 },
+      "metadata": { "bytecodeHash": "ipfs" },
+      "compilationTarget": {
+        "contracts/protocols/dex/smartLending/main.sol": "Constants"
+      },
+      "evmVersion": "shanghai",
+      "libraries": {}
+    },
+    "sources": {
+      "contracts/libraries/addressCalcs.sol": {
+        "keccak256": "0xca389bcfef035463ff43939ac5eccab07ab74cbb053e201541f9bcd846b3105a",
+        "urls": [
+          "bzz-raw://53cbe3e57bc9f1c7f020a07f7132e7fad1380f12107b030591febcc1d30ad39e",
+          "dweb:/ipfs/QmZ8oPgrW3zSWUEuvhmpYSUy8s5kFAg6SkGMBZXexd97QC"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/libraries/bigMathMinified.sol": {
+        "keccak256": "0xf0be1002909edf30aec3dc6623c2bd2407ed94064b62674c01032b844dec206a",
+        "urls": [
+          "bzz-raw://be0892ded12ec9908a54f3dea18016d897bc68cba645adf247ae291a666c5ce2",
+          "dweb:/ipfs/QmZd46GHYvpKgg6BvSzFn8vi7xsV2phrjvGVWdjUMU1tZu"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/libraries/dexCalcs.sol": {
+        "keccak256": "0xd033a77bd57f4a608e693fdf6147ddd3bbfa0d80d86c1097d24e428c886c0d5e",
+        "urls": [
+          "bzz-raw://3a1e9b3ca16f52440c507c9a0677ee1f965782ec853d28514e96f6bfd6cf7d69",
+          "dweb:/ipfs/QmX1gydAVZQvsxEF25hHB5jrgBfH9cXYDVoGG3L6RyKMVp"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/libraries/dexSlotsLink.sol": {
+        "keccak256": "0xf1d6550d83fb0155a26655234922c9bdf4a1bbcf7a3ca767e9123d367a795307",
+        "urls": [
+          "bzz-raw://81a8d3a94fbcf7aefccdb83ab825650c4488501ed58623f75894f0cc01f809db",
+          "dweb:/ipfs/QmUBvgx6Bo2ZiAVrKPwyAJ73CFFz6JjKLjezP8z2rUrGBu"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/libraries/errorTypes.sol": {
+        "keccak256": "0x4057f500fd44ce9e89049512d06d5f72c46f91938ed37312fb044c204451009b",
+        "urls": [
+          "bzz-raw://7de350f83f55f36f559786387dd75ae63284f949950c4708af4b2be1a2af22b5",
+          "dweb:/ipfs/QmcGZUpz6qkr7dGm8xNb8WKMBYukTs7oW9FKNDU2g3orpL"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/libraries/safeTransfer.sol": {
+        "keccak256": "0x7f7d3a39d984c62e41c669a3d11deb899b3512ace9313263592575bf48a6e079",
+        "urls": [
+          "bzz-raw://dc0cb84efd4643dc2f423bfe8e01ce731b9d11c36f3b9afdc7f9eaebcdc4dc89",
+          "dweb:/ipfs/QmW1c5qiTLd6hcwJy4VV5kMbqmeeQSF6kmuhtWghWzVgm6"
+        ],
+        "license": "MIT OR Apache-2.0"
+      },
+      "contracts/libraries/storageRead.sol": {
+        "keccak256": "0x1b03dfe294c2f0376f7e34c3960fe7088d7ff44bb2ffd9cb2ac940486bfba8c9",
+        "urls": [
+          "bzz-raw://44cc3721612dc3bcbf3c0cf0690ef282a33fa6f31989b4ac86c76212f05c6b5b",
+          "dweb:/ipfs/QmWZP9rZB6FX2XHywWcx1beVTMpLFhikiVqhCEuqGJpoWL"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/protocols/dex/error.sol": {
+        "keccak256": "0xd202c2cd2ca431bf8dd745a11f771573a480f92cddfce492202e2b21b248ff50",
+        "urls": [
+          "bzz-raw://13009432ad48c8f4b9d57cd7b6090238a3891a0b84cf79d801df1b95a55799ef",
+          "dweb:/ipfs/QmSGhf8sRD375ZN8cz2LnCHGUzwWxddQew4RWSozxPrAiG"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/protocols/dex/errorTypes.sol": {
+        "keccak256": "0xb02d949b87d641ce797c3bec65332e7b683260461d1656782301e75da3a60971",
+        "urls": [
+          "bzz-raw://57cd6752f515813ff30a5e578e66102145214e97c7e37d4acacd55c24e8ca723",
+          "dweb:/ipfs/QmWAQFVULvBUH7TTQcicdMz3h53HxJab7Lwfx7tTCyRUFT"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/protocols/dex/factory/main.sol": {
+        "keccak256": "0x96cbe9ceba16d29015ac95f4601b47e576b09de10acb8ca85b4245c8d4a4c3c4",
+        "urls": [
+          "bzz-raw://81edb9022cb9de217154efbd08bf226a4ee6d56cde4eb9252055ae56689d1738",
+          "dweb:/ipfs/QmVq2njCBHYaWqfDCo5rr4PzpZkkf25caVdD1xYoSNL1NU"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/protocols/dex/interfaces/iDexT1.sol": {
+        "keccak256": "0xd48834505ffcaa7523bf84e5c2da27e585b865f11d4fd75d6088696bfc40d47f",
+        "urls": [
+          "bzz-raw://d9ddd716e013a443ae8696c0431eb6ae826e1062dfed42ec4c5ba54bdde5729e",
+          "dweb:/ipfs/QmVfmun8YqzoxhZaFwqhGLeytQhYsw5reNJEg4c6kGZojf"
+        ],
+        "license": "MIT"
+      },
+      "contracts/protocols/dex/poolT1/coreModule/structs.sol": {
+        "keccak256": "0x1cccc3a9ff4f07f159ac2aebf969c2a714a6f912ef0e86b76362bf45a5ecb8be",
+        "urls": [
+          "bzz-raw://078915912808a88c1e228e1c846cffb9c95ca7196d6f0fee07683722d2babf71",
+          "dweb:/ipfs/QmVK5Dvgfnv3MSSy6ZiFdwCeAiyu4kxheks26GuckDDBHB"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/protocols/dex/smartLending/factory/main.sol": {
+        "keccak256": "0xd92524d38e0b3d56827b4423e9d4878ce64fba4ec42ad19bc0b45ff686f7f98e",
+        "urls": [
+          "bzz-raw://4e452911e528020d83e3edc6088ae17c469d5c38364dec84d325451b1b8fe13c",
+          "dweb:/ipfs/QmWGdBKGNmtkkbkuGnymj9nvssQH9TNX38yieCuHbxrpSQ"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "contracts/protocols/dex/smartLending/main.sol": {
+        "keccak256": "0x0c3a0b07fc94e250ab14aaf6bd6934e50961c49c16d755b6ef2e2e3cbf6e30fd",
+        "urls": [
+          "bzz-raw://b5c2f8d003dbbfa6c68421c342137e30abeacd6191ff0ffd90b1854a402b1bcb",
+          "dweb:/ipfs/QmTW66rHYaxLiB8fLw9u4Qgcx5eegZBtahHoSDWGDPwtgc"
+        ],
+        "license": "BUSL-1.1"
+      },
+      "lib/solmate/src/auth/Owned.sol": {
+        "keccak256": "0xfedb27d14c508342c33eb067c9a02eabcdb0f9dcf93b04ded1001f580d12d0ea",
+        "urls": [
+          "bzz-raw://1ff52bbee698b9cf9e4574615e6550be0887ccf355f6571e23d6f25b332e79b4",
+          "dweb:/ipfs/QmVorA2apojVRStzS7h8aFccR3Uv32G6HVtBtFHZrE7YXx"
+        ],
+        "license": "AGPL-3.0-only"
+      },
+      "lib/solmate/src/utils/Bytes32AddressLib.sol": {
+        "keccak256": "0xe709c9f2c6fb8bfe1158fa31967c0a2109844c52079fe4e327baec82fb87acb6",
+        "urls": [
+          "bzz-raw://9633ab7c471e653dfb37c78b6475db47924c9ee731118545b5bc28aad97f2434",
+          "dweb:/ipfs/Qmbt9gLb3hrs21nQxwSiG1ciE56Y73LLt1iPDfnmkcz27E"
+        ],
+        "license": "AGPL-3.0-only"
+      },
+      "lib/solmate/src/utils/CREATE3.sol": {
+        "keccak256": "0x1d4ea6d2353ed117d7704ddf7488fcd39edb2d575351f6c64efd313170d74367",
+        "urls": [
+          "bzz-raw://ea79e1a2a5950275ab628ecf628d0a60146435425f7841ad933c2a1f7e802022",
+          "dweb:/ipfs/QmSy8eMrDY1VzCWyrjPbJcZCPQ1b4Lhtccdp9fupZrt6Yd"
+        ],
+        "license": "AGPL-3.0-only"
+      },
+      "lib/solmate/src/utils/SSTORE2.sol": {
+        "keccak256": "0xc5359c92365c550c418725fc534a538426ea8f6e7f6c06c0a9d66647d864469d",
+        "urls": [
+          "bzz-raw://f6210458e51eee25ea58a46924c35522419ed52aecd42c0bcf4519b9568a43a2",
+          "dweb:/ipfs/QmWMpKRfioNTXNNsg5eKdgogRanDr7iNPQ11HvykBeQzAM"
+        ],
+        "license": "AGPL-3.0-only"
+      },
+      "node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol": {
+        "keccak256": "0x4ffc0547c02ad22925310c585c0f166f8759e2648a09e9b489100c42f15dd98d",
+        "urls": [
+          "bzz-raw://15f52f51413a9de1ff191e2f6367c62178e1df7806d7880fe857a98b0b66253d",
+          "dweb:/ipfs/QmaQG1fwfgUt5E9nu2cccFiV47B2V78MM1tCy1qB7n4MsH"
+        ],
+        "license": "MIT"
+      },
+      "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+        "keccak256": "0x9750c6b834f7b43000631af5cc30001c5f547b3ceb3635488f140f60e897ea6b",
+        "urls": [
+          "bzz-raw://5a7d5b1ef5d8d5889ad2ed89d8619c09383b80b72ab226e0fe7bde1636481e34",
+          "dweb:/ipfs/QmebXWgtEfumQGBdVeM6c71McLixYXQP5Bk6kKXuoY4Bmr"
+        ],
+        "license": "MIT"
+      },
+      "node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
+        "keccak256": "0x8de418a5503946cabe331f35fe242d3201a73f67f77aaeb7110acb1f30423aca",
+        "urls": [
+          "bzz-raw://5a376d3dda2cb70536c0a45c208b29b34ac560c4cb4f513a42079f96ba47d2dd",
+          "dweb:/ipfs/QmZQg6gn1sUpM8wHzwNvSnihumUCAhxD119MpXeKp8B9s8"
+        ],
+        "license": "MIT"
+      },
+      "node_modules/@openzeppelin/contracts/utils/Context.sol": {
+        "keccak256": "0xe2e337e6dde9ef6b680e07338c493ebea1b5fd09b43424112868e9cc1706bca7",
+        "urls": [
+          "bzz-raw://6df0ddf21ce9f58271bdfaa85cde98b200ef242a05a3f85c2bc10a8294800a92",
+          "dweb:/ipfs/QmRK2Y5Yc6BK7tGKkgsgn3aJEQGi5aakeSPZvS65PV8Xp3"
+        ],
+        "license": "MIT"
+      }
+    },
+    "version": 1
+  },
+  "id": 224
+}

@@ -196,6 +196,7 @@ impl ClassifierBenchUtils {
                         self.trace_loader.libmdbx,
                         block,
                         0,
+                        self.trace_loader.get_provider(),
                     ));
                 }
             })
