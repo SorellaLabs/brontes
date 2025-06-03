@@ -43,6 +43,7 @@
 //! `BundleData::CexDex` instances.
 use std::{
     cmp::{max, min},
+    collections::HashSet,
     sync::Arc,
 };
 
@@ -159,7 +160,8 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        tree.clone()
+        let bundles = tree
+            .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
                 Action::is_transfer,
@@ -168,6 +170,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             ]))
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+                let mut protocols = HashSet::new();
 
                 // Return early if this is an defi automation contract
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
@@ -192,6 +195,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     .utils
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
                     .split_return_rem(Action::try_swaps_merged);
+
+                dex_swaps.iter().for_each(|swap| {
+                    protocols.insert(swap.protocol);
+                });
 
                 let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
 
@@ -254,9 +261,14 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     |_, token, amount| Some(price_map.get(&token)? * amount),
                 );
 
+                self.utils.get_profit_metrics().inspect(|m| {
+                    m.publish_profit_metrics(MevType::CexDexQuotes, protocols, profit_usd)
+                });
                 Some(Bundle { header, data: cex_dex })
             })
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+
+        bundles
     }
 
     pub fn detect_cex_dex(
