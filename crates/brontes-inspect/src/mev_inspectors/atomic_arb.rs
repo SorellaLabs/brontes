@@ -240,8 +240,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let profit = profit.to_float();
 
-        if profit < 0.0 {
-            tracing::error!(?info, ?header, ?profit, "negative profit");
+        if profit > 100.0 {
+            tracing::error!(?info, ?header.tx_hash, ?profit, "negative profit");
         }
 
         self.utils.get_profit_metrics().inspect(|m| {
