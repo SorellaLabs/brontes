@@ -238,13 +238,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             },
         );
 
-        if profit.to_float() < 0.0 {
-            tracing::error!(?info, ?profit, ?header, "negative profit");
+        let profit = profit.to_float();
+
+        if profit < 0.0 {
+            tracing::error!(?info, ?header, ?profit, "negative profit");
         }
 
         self.utils.get_profit_metrics().inspect(|m| {
             if possible_arb_type != AtomicArbType::LongTail {
-                m.publish_profit_metrics(MevType::AtomicArb, protocols, profit.to_float())
+                m.publish_profit_metrics(MevType::AtomicArb, protocols, profit)
             } 
         });
 
