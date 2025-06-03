@@ -388,9 +388,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             }
         }
 
-        if let Some(results) =
-            ProtocolClassifier::default().dispatch(call_info, self.libmdbx, block, tx_idx)
-        {
+        if let Some(results) = ProtocolClassifier::default().dispatch(
+            call_info,
+            self.libmdbx,
+            block,
+            tx_idx,
+            self.provider.clone(),
+        ) {
             if results.1.is_new_pool() {
                 let Action::NewPool(p) = &results.1 else { unreachable!() };
                 self.insert_new_pool(block, p).await;

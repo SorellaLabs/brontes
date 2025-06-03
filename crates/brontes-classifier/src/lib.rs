@@ -87,6 +87,8 @@ sol!(FluidLending, "./classifier-abis/fluid/FluidLending.json");
 sol!(DolomiteLiquidator, "./classifier-abis/dolomite/Liquidator.json");
 sol!(FluidVaultResolver, "./classifier-abis/fluid/FluidVaultResolver.json");
 sol!(FluidDexResolver, "./classifier-abis/fluid/FluidDexResolver.json");
+sol!(FluidSmartLending, "./classifier-abis/fluid/FluidSmartLending.json");
+sol!(FluidVault, "./classifier-abis/fluid/FluidVault.json");
 // Discovery
 sol!(BalancerV3VaultExtension, "./classifier-abis/balancer/BalancerV3VaultExtension.json");
 sol!(UniswapV2Factory, "./classifier-abis/UniswapV2Factory.json");
@@ -166,22 +168,24 @@ sol! {
 pub static CLASSIFICATION_METRICS: OnceLock<ClassificationMetrics> = OnceLock::new();
 
 pub trait ActionCollection: Sync + Send {
-    fn dispatch<DB: LibmdbxReader + DBWriter>(
+    fn dispatch<DB: LibmdbxReader + DBWriter, T: TracingProvider>(
         &self,
         call_info: CallFrameInfo<'_>,
         db_tx: &DB,
         block: u64,
         tx_idx: u64,
+        tracer: Arc<T>,
     ) -> Option<(DexPriceMsg, Action)>;
 }
 
 pub trait IntoAction: Debug + Send + Sync {
-    fn decode_call_trace<DB: LibmdbxReader + DBWriter>(
+    fn decode_call_trace<DB: LibmdbxReader + DBWriter, T: TracingProvider>(
         &self,
         call_info: CallFrameInfo<'_>,
         block: u64,
         tx_idx: u64,
         db_tx: &DB,
+        tracer: Arc<T>,
     ) -> eyre::Result<DexPriceMsg>;
 }
 
