@@ -513,7 +513,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
     }
 
     pub fn get_related_protocols_liquidation(&self, actions: &[Action]) -> HashSet<Protocol> {
-        actions.iter().map(|action| action.get_protocol()).collect()
+        actions
+            .iter()
+            .filter_map(|action| match action {
+                Action::Swap(swap) => Some(swap.protocol),
+                Action::SwapWithFee(swap) => Some(swap.protocol),
+                Action::Liquidation(liquidation) => Some(liquidation.protocol),
+                _ => None,
+            })
+            .collect()
     }
 
     pub fn get_related_protocols_atomic(
@@ -526,7 +534,11 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .flat_map(|root| &root.data_store.0)
             .filter_map(|actions| actions.as_ref())
             .flat_map(|actions| actions.iter())
-            .map(|action| action.get_protocol())
+            .filter_map(|action| match action {
+                Action::Swap(swap) => Some(swap.protocol),
+                Action::SwapWithFee(swap) => Some(swap.protocol),
+                _ => None,
+            })
             .collect()
     }
 

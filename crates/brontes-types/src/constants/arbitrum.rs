@@ -120,6 +120,12 @@ pub const EURO_STABLES_BY_ADDRESS: [Address; 2] = [AGEUR_ADDRESS, VEUR_ADDRESS];
 
 pub const GOLD_STABLES_BY_ADDRESS: [Address; 0] = [];
 
+pub const LIFI_CONTRACT_ADDRESS: Address =
+    Address::new(hex!("1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE"));
+pub const ACROSS_CONTRACT_ADDRESS: Address =
+    Address::new(hex!("e35e9842fceaCA96570B734083f4a58e8F7C5f2A"));
+pub const BRIDGE_ADDRESSES: [Address; 2] = [LIFI_CONTRACT_ADDRESS, ACROSS_CONTRACT_ADDRESS];
+
 // DEX Factory Addresses
 pub const BALANCER_V2_VAULT_ADDRESS: Address =
     Address::new(hex!("ba12222222228d8ba445958a75a0704d566bf2c8"));

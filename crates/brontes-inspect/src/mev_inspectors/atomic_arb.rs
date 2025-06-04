@@ -3,7 +3,10 @@ use std::sync::Arc;
 use brontes_database::libmdbx::LibmdbxReader;
 use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
-    constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
+    constants::{
+        get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType,
+        BRIDGE_ADDRESSES,
+    },
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
@@ -118,6 +121,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         tracing::trace!(?info, "trying atomic");
         let (mut swaps, transfers, eth_transfers) = data;
+
+        for transfer in transfers.iter() {
+            if BRIDGE_ADDRESSES.contains(&transfer.from) || BRIDGE_ADDRESSES.contains(&transfer.to)
+            {
+                return None;
+            }
+        }
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
 
         let mut ignore_addresses = mev_addresses.clone();
