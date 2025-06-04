@@ -296,7 +296,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         let receipts = match tx_receipts {
             Ok(Some(t)) => Some(
                 t.into_iter()
-                    .map(|wrapped| TimeboostTransactionReceipt::from(wrapped))
+                    .map(TimeboostTransactionReceipt::from)
                     .collect::<Vec<_>>(),
             ),
             Ok(None) => {

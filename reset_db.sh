@@ -1,13 +1,16 @@
 #!/bin/bash
 
 USER="brontes"
+HOST="${HOST:-localhost}"
+
+echo "Connecting to ClickHouse at $HOST as user $USER..."
 
 # Get password securely
 read -s -p "Enter ClickHouse password: " PASSWORD
 echo
 
 echo "Dropping existing databases..."
-clickhouse-client --query="
+clickhouse client --query="
     DROP DATABASE IF EXISTS brontes;
     DROP DATABASE IF EXISTS brontes_api;
     DROP DATABASE IF EXISTS ethereum;
@@ -17,7 +20,7 @@ clickhouse-client --query="
 " --user $USER --password "$PASSWORD"
 
 echo "Recreating databases..."
-clickhouse-client --query="
+clickhouse client --query="
     CREATE DATABASE brontes;
     CREATE DATABASE brontes_api;
     CREATE DATABASE ethereum;
@@ -29,7 +32,7 @@ clickhouse-client --query="
 echo "Initializing brontes tables..."
 for sql_file in ./crates/brontes-database/brontes-db/src/clickhouse/tables/*.sql; do
     echo "Running $sql_file..."
-    clickhouse-client --user $USER --multiquery --password "$PASSWORD" < "$sql_file"
+    clickhouse client --host $HOST --user $USER --multiquery --password "$PASSWORD" < "$sql_file"
 done
 
-echo "Database reset complete!" 
+echo "Database reset complete!"

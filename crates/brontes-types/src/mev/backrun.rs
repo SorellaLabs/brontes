@@ -33,6 +33,8 @@ pub struct AtomicArb {
     pub gas_details:  GasDetails,
     #[redefined(same_fields)]
     pub arb_type:     AtomicArbType,
+    pub profit_usd:   f64,
+    pub protocols:    Vec<String>,
 }
 /// Represents the different types of atomic arb
 /// A triangle arb is a simple arb that goes from token A -> B -> C -> A
@@ -129,6 +131,8 @@ impl Serialize for AtomicArb {
         );
         ser_struct.serialize_field("gas_details", &gas_details)?;
         ser_struct.serialize_field("arb_type", &self.arb_type.to_string())?;
+        ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
+        ser_struct.serialize_field("protocols", &self.protocols)?;
         ser_struct.end()
     }
 }
@@ -148,5 +152,7 @@ impl DbRow for AtomicArb {
         "swaps.amount_out",
         "gas_details",
         "arb_type",
+        "profit_usd",
+        "protocols",
     ];
 }

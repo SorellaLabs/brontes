@@ -28,7 +28,9 @@ CREATE TABLE IF NOT EXISTS mev.liquidations
         `gas_used` UInt128,
         `effective_gas_price` UInt128
     ),
-    `run_id` UInt64
+    `run_id` UInt64,
+    `profit_usd` Float64,
+    `protocols` Array(String)
 ) 
 ENGINE = MergeTree()
 PRIMARY KEY (`block_number`,`liquidation_tx_hash`)

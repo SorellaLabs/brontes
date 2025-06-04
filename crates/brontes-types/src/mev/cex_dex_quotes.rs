@@ -37,6 +37,8 @@ pub struct CexDexQuote {
     pub pnl:               f64,
     #[redefined(same_fields)]
     pub gas_details:       GasDetails,
+    pub profit_usd:        f64,
+    pub protocols:         Vec<String>,
 }
 
 impl Mev for CexDexQuote {
@@ -104,6 +106,8 @@ impl Serialize for CexDexQuote {
                 self.gas_details.effective_gas_price,
             ),
         )?;
+        ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
+        ser_struct.serialize_field("protocols", &self.protocols)?;
         ser_struct.end()
     }
 }
@@ -130,5 +134,7 @@ impl DbRow for CexDexQuote {
         "t300_mid_price",
         "exchange",
         "gas_details",
+        "profit_usd",
+        "protocols",
     ];
 }

@@ -27,6 +27,8 @@ pub struct Liquidation {
     pub liquidations:        Vec<NormalizedLiquidation>,
     #[redefined(same_fields)]
     pub gas_details:         GasDetails,
+    pub profit_usd:          f64,
+    pub protocols:           Vec<String>,
 }
 
 impl Mev for Liquidation {
@@ -122,6 +124,8 @@ impl Serialize for Liquidation {
         );
         //serializer.seri
         ser_struct.serialize_field("gas_details", &(gas_details))?;
+        ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
+        ser_struct.serialize_field("protocols", &self.protocols)?;
 
         ser_struct.end()
     }
@@ -148,5 +152,7 @@ impl DbRow for Liquidation {
         "liquidations.covered_debt",
         "liquidations.liquidated_collateral",
         "gas_details",
+        "profit_usd",
+        "protocols",
     ];
 }

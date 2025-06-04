@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS mev.atomic_arbs
         `effective_gas_price` UInt128
     ),
     `arb_type` String,
-    `run_id` UInt64
+    `run_id` UInt64,
+    `profit_usd` Float64,
+    `protocols` Array(String)
 ) 
 ENGINE = MergeTree()
 PRIMARY KEY (`block_number`, `tx_hash`)

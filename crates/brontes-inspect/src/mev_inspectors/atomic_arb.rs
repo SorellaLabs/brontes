@@ -207,6 +207,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let protocols = self.utils.get_related_protocols_atomic(&trees);
         let trigger_tx = self.find_trigger_tx(&info, trees, &swaps);
+        let profit_usd = profit.to_float();
+        let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
+
+        tracing::debug!(?protocols, ?profit_usd, ?info.tx_hash, "Found atomic arb");
 
         let backrun = AtomicArb {
             block_number: metadata.block_num,
@@ -215,14 +219,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             gas_details: info.gas_details,
             swaps,
             arb_type: possible_arb_type,
+            profit_usd,
+            protocols: protocols_str,
         };
         let data = BundleData::AtomicArb(backrun);
-
         let header = self.utils.build_bundle_header(
             vec![account_deltas],
             vec![info.tx_hash],
             &info,
-            profit.clone().to_float(),
+            profit_usd,
             &[info.gas_details],
             metadata.clone(),
             MevType::AtomicArb,
@@ -238,14 +243,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             },
         );
 
-        let profit = profit.to_float();
-        if profit.abs() > 100.0 {
-            tracing::warn!(?header.tx_hash, ?profit, "abnormal profit");
+        if profit_usd.abs() > 100.0 {
+            tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit");
         }
+
+
 
         self.utils.get_profit_metrics().inspect(|m| {
             if possible_arb_type != AtomicArbType::LongTail {
-                m.publish_profit_metrics(MevType::AtomicArb, protocols, profit)
+                m.publish_profit_metrics(MevType::AtomicArb, protocols, profit_usd)
             } 
         });
 

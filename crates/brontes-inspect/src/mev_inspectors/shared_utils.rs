@@ -514,15 +514,15 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         actions: &[Action],
     ) -> HashSet<Protocol> {
-        actions.into_iter().map(|action| action.get_protocol()).collect()
+        actions.iter().map(|action| action.get_protocol()).collect()
     }
 
     pub fn get_related_protocols_atomic(
         &self,
-        trees: &Vec<Arc<BlockTree<Action>>>,
+        trees: &[Arc<BlockTree<Action>>],
     ) -> HashSet<Protocol> {
         trees
-            .into_iter()
+            .iter()
             .flat_map(|tree| &tree.tx_roots)
             .flat_map(|root| &root.data_store.0)
             .filter_map(|actions| actions.as_ref())
@@ -535,7 +535,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
         &self,
         dex_swaps: &[NormalizedSwap],
     ) -> HashSet<Protocol> {
-        dex_swaps.into_iter().map(|swap| swap.protocol).collect()
+        dex_swaps.iter().map(|swap| swap.protocol).collect()
     }
 
     pub fn fetch_address_name(&self, address: Address) -> Option<String> {

@@ -1272,6 +1272,8 @@ mod tests {
                 gas_used:            271686,
                 effective_gas_price: 8875282233,
             },
+            profit_usd: 12951.829205242997,
+            protocols: vec!["UniswapV2".to_string()],
         };
 
         db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 42069))
