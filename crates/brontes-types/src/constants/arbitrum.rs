@@ -29,6 +29,8 @@ pub const VEUR_ADDRESS: Address = Address::new(hex!("4883C8f0529F37e40eBeA870F3C
 
 // Tokens
 pub const ETH_ADDRESS: Address = Address::new(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"));
+pub const ETH_ADDRESS_2: Address = Address::new(hex!("0000000000000000000000000000000000000000"));
+pub const ETH_ADDRESSES: [Address; 2] = [ETH_ADDRESS, ETH_ADDRESS_2];
 pub const WBTC_ADDRESS: Address = Address::new(hex!("2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f"));
 pub const WETH_ADDRESS: Address = Address::new(hex!("82aF49447D8a07e3bd95BD0d56f35241523fBab1"));
 pub const UNI_TOKEN: Address = Address::new(hex!("Fa7F8980b0f1E64A2062791cc3b0871572f1F7f0"));
