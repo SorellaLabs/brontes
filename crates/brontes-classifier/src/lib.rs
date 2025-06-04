@@ -80,7 +80,7 @@ sol!(PendleMarketV3, "./classifier-abis/pendle_v2/PendleMarketV3.json");
 sol!(PendlePrincipalToken, "./classifier-abis/pendle_v2/PendlePrincipalToken.json");
 sol!(PendleYieldToken, "./classifier-abis/pendle_v2/PendleYieldToken.json");
 sol!(PendleSYToken, "./classifier-abis/pendle_v2/IStandardizedYield.json");
-sol!(GMXV1, "./classifier-abis/gmx_v1/Router.json");
+sol!(GMXV1, "./classifier-abis/gmx_v1/Vault.json");
 sol!(BalancerV3Vault, "./classifier-abis/balancer/BalancerV3Vault.json");
 sol!(FluidDexT1, "./classifier-abis/fluid/FluidDexT1.json");
 sol!(FluidLending, "./classifier-abis/fluid/FluidLending.json");

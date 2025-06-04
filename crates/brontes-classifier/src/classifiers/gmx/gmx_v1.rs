@@ -1,9 +1,7 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap,
-    structured_trace::CallInfo,
-    ToScaledRational,
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
 
 action_impl!(
@@ -24,7 +22,7 @@ action_impl!(
         let token_in=log_data.tokenIn;
         let token_out=log_data.tokenOut;
         let amount_in=log_data.amountIn;
-        let amount_out=log_data.amountOut;
+        let amount_out=log_data.amountOutAfterFees;
 
         let token_in=db_tx.try_fetch_token_info(token_in)?;
         let token_out=db_tx.try_fetch_token_info(token_out)?;
@@ -54,10 +52,13 @@ mod tests {
     use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Action, Protocol::GMXV1,
+        db::token_info::TokenInfoWithAddress,
+        normalized_actions::{
+            Action, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
+        },
+        Protocol::GMXV1,
         TreeSearchBuilder,
     };
-    use brontes_types::normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap};
 
     use super::*;
 
