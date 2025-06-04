@@ -245,6 +245,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit");
         }
 
+        tracing::debug!(?protocols_str, ?profit_usd, "Found atomic arb");
+
+
         self.utils.get_profit_metrics().inspect(|m| {
             if possible_arb_type != AtomicArbType::LongTail {
                 m.publish_profit_metrics(MevType::AtomicArb, protocols, profit_usd)
