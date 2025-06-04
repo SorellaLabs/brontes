@@ -858,7 +858,11 @@ impl Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64;
 
-                tracing::info!("Querying most volume pair exchange for range: start={}, end={}", start_time, end_time);
+                tracing::info!(
+                    "Querying most volume pair exchange for range: start={}, end={}",
+                    start_time,
+                    end_time
+                );
                 self.query_many_with_retry(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
             }
@@ -1272,8 +1276,8 @@ mod tests {
                 gas_used:            271686,
                 effective_gas_price: 8875282233,
             },
-            profit_usd: 12951.829205242997,
-            protocols: vec!["UniswapV2".to_string()],
+            profit_usd:        12951.829205242997,
+            protocols:         vec!["UniswapV2".to_string()],
         };
 
         db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 42069))

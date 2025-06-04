@@ -6,4 +6,4 @@ pub use mainnet::*;
 #[cfg(feature = "arbitrum")]
 pub mod arbitrum;
 #[cfg(feature = "arbitrum")]
-pub use arbitrum::*; 
+pub use arbitrum::*;

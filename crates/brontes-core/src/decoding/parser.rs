@@ -319,25 +319,24 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     ) -> (Vec<TxTrace>, BlockStats, Header) {
         let mut stats = BlockStats::new(block_num, None);
 
-        let (traces, tx_stats): (Vec<_>, Vec<_>) =
-            block_trace.into_iter().zip(block_receipts.into_iter()).map(
-                |(trace, receipt)| {
-                    let tx_hash = trace.tx_hash;
-
-                    self.parse_transaction(
-                        trace,
-                        #[cfg(feature = "dyn-decode")]
-                        &dyn_json,
-                        block_num,
-                        tx_hash,
-                        receipt.inner.transaction_index.unwrap(),
-                        receipt.timeboosted,
-                        receipt.inner.gas_used,
-                        receipt.inner.effective_gas_price,
-                    )
-                },
-            )
+        let (traces, tx_stats): (Vec<_>, Vec<_>) = block_trace
             .into_iter()
+            .zip(block_receipts.into_iter())
+            .map(|(trace, receipt)| {
+                let tx_hash = trace.tx_hash;
+
+                self.parse_transaction(
+                    trace,
+                    #[cfg(feature = "dyn-decode")]
+                    &dyn_json,
+                    block_num,
+                    tx_hash,
+                    receipt.inner.transaction_index.unwrap(),
+                    receipt.timeboosted,
+                    receipt.inner.gas_used,
+                    receipt.inner.effective_gas_price,
+                )
+            })
             .unzip();
 
         stats.txs = tx_stats;

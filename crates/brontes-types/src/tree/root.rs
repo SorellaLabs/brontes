@@ -185,7 +185,7 @@ impl<V: NormalizedAction> Root<V> {
                 searcher_eoa_info,
                 None,
                 self.total_msg_value_transfers.clone(),
-                self.timeboosted
+                self.timeboosted,
             ))
         }
 

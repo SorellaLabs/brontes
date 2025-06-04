@@ -1,9 +1,7 @@
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::{
-        NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap,
-    },
+    normalized_actions::{NormalizedBurn, NormalizedMint, NormalizedNewPool, NormalizedSwap},
     structured_trace::CallInfo,
     ToScaledRational,
 };
@@ -68,7 +66,6 @@ action_impl!(
     }
 );
 
-
 action_impl!(
     Protocol::BalancerV3,
     crate::BalancerV3Vault::removeLiquidityCall,
@@ -98,7 +95,6 @@ action_impl!(
     }
 );
 
-
 action_impl!(
     Protocol::BalancerV3,
     crate::BalancerV3VaultExtension::registerPoolCall,
@@ -120,25 +116,25 @@ action_impl!(
     }
 );
 
-
 // ~ https://docs.balancer.fi/reference/contracts/pool-interfacing.html#poolids
 // The poolId is a unique identifier, the first portion of which is the pool's
 // contract address. For example, the pool with the id
 // 0x5c6ee304399dbdb9c8ef030ab642b10820db8f56000200000000000000000014 has a
 // contract address of 0x5c6ee304399dbdb9c8ef030ab642b10820db8f56.
 
-
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
 
-    use alloy_primitives::{hex, B256, Address, U256};
+    use alloy_primitives::{hex, Address, B256, U256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        constants::WETH_ADDRESS, db::token_info::TokenInfo, normalized_actions::Action,
-        Protocol::BalancerV3, TreeSearchBuilder, db::token_info::TokenInfoWithAddress
+        constants::WETH_ADDRESS,
+        db::token_info::{TokenInfo, TokenInfoWithAddress},
+        normalized_actions::Action,
+        Protocol::BalancerV3,
+        TreeSearchBuilder,
     };
-
 
     use super::*;
 
@@ -197,7 +193,6 @@ mod tests {
             .unwrap();
     }
 
-    
     #[brontes_macros::test]
     async fn test_balancer_v3_join_pool() {
         let classifier_utils = ClassifierTestUtils::new().await;

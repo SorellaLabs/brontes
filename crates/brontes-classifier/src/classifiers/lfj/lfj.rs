@@ -2,9 +2,7 @@ use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap,
-    structured_trace::CallInfo,
-    ToScaledRational,
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
 
 // Assuming DB type, crate::LFJPair, crate::LFJV2_2Pair,
@@ -95,7 +93,7 @@ pub mod lfj_v2_2 {
             let t0_info = db_tx.try_fetch_token_info(token_0)?;
             let t1_info = db_tx.try_fetch_token_info(token_1)?;
 
-    
+
             let (amount_in, amount_out, token_in, token_out) = if call_data.swapForY {
                 (
                     U256::from_be_bytes(amount_in_bytes.into()).to_scaled_rational(t0_info.decimals),
@@ -135,7 +133,11 @@ mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::{Action, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap}, TreeSearchBuilder
+        db::token_info::TokenInfoWithAddress,
+        normalized_actions::{
+            Action, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
+        },
+        TreeSearchBuilder,
     };
 
     use super::*;

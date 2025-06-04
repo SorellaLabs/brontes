@@ -13,7 +13,7 @@ use reth_rpc::eth::{
     EthTransactions,
 };
 use reth_rpc_api::EthApiServer;
-use reth_rpc_types::{state::StateOverride, BlockOverrides, TransactionRequest};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, Log, TransactionRequest};
 use revm::{
     primitives::{
         db::DatabaseRef, BlockEnv, CfgEnvWithHandlerCfg, EnvWithHandlerCfg, TransactTo, TxEnv,
@@ -21,8 +21,6 @@ use revm::{
     Database,
 };
 use revm_primitives::ExecutionResult;
-use reth_rpc_types::Filter;
-use reth_rpc_types::Log;
 
 use crate::TracingClient;
 

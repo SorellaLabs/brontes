@@ -27,27 +27,27 @@ const SECONDS_TO_US_FLOAT: f64 = 1_000_000.0;
 pub struct RunArgs {
     /// Optional Start Block, if omitted it will run at tip until killed
     #[arg(long, short)]
-    pub start_block:          Option<u64>,
+    pub start_block: Option<u64>,
     /// Optional End Block, if omitted it will run historically & at tip until
     /// killed
     #[arg(long, short)]
-    pub end_block:            Option<u64>,
+    pub end_block:   Option<u64>,
     /// starts running at tip from where brontes was last left at.
     #[arg(long, default_value_t = false)]
-    pub from_db_tip:          bool,
+    pub from_db_tip: bool,
     /// Optional Multiple Ranges, format: "start1-end1 start2-end2 ..."
     /// Use this if you want to specify the exact, non continuous block ranges
     /// you want to run
     #[arg(long, num_args = 1.., value_delimiter = ' ')]
-    pub ranges:               Option<Vec<String>>,
+    pub ranges:      Option<Vec<String>>,
     /// Optional Max Tasks, if omitted it will default to 80% of the number of
     /// physical cores on your machine
     #[arg(long, short = 't')]
-    pub max_tasks:            Option<u64>,
-    /// Optional max pending trees when processing dex price quotes and collecting states
-    /// Limits the amount we work ahead in the processing. This is done
-    /// as the Pricer is a slow process and otherwise we will end up caching 100+ gb
-    /// of processed trees
+    pub max_tasks:   Option<u64>,
+    /// Optional max pending trees when processing dex price quotes and
+    /// collecting states Limits the amount we work ahead in the processing.
+    /// This is done as the Pricer is a slow process and otherwise we will
+    /// end up caching 100+ gb of processed trees
     #[arg(long, short = 'p', default_value = "100")]
     pub max_pending: usize,
 

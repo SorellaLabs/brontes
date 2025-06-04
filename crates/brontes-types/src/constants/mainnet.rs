@@ -1,6 +1,5 @@
 use alloy_primitives::{hex, Address};
 
-
 pub const BLOCK_TIME_MILLIS: usize = 12_000;
 
 pub const USDT_ADDRESS_STRING: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";

@@ -3,15 +3,13 @@ use std::{collections::HashMap, num::NonZeroU32, path::Path, sync::Arc};
 use alloy_primitives::{Address, FixedBytes};
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolEvent;
-use brontes_classifier::{
-    FluidVaultFactory, PendleMarketV3Factory, PendleYieldContractFactory,
-};
+use brontes_classifier::{FluidVaultFactory, PendleMarketV3Factory, PendleYieldContractFactory};
 use brontes_core::decoding::LogParser as DLogParser;
 use brontes_types::{
     constants::arbitrum::{
         BALANCER_V2_VAULT_ADDRESS, CAMELOT_V2_FACTORY_ADDRESS, CAMELOT_V3_FACTORY_ADDRESS,
-        FLUID_DEX_FACTORY_ADDRESS, FLUID_VAULT_FACTORY_ADDRESS,
-        LFJ_V2_1_DEX_FACTORY_ADDRESS, LFJ_V2_2_DEX_FACTORY_ADDRESS, PANCAKESWAP_V2_FACTORY_ADDRESS,
+        FLUID_DEX_FACTORY_ADDRESS, FLUID_VAULT_FACTORY_ADDRESS, LFJ_V2_1_DEX_FACTORY_ADDRESS,
+        LFJ_V2_2_DEX_FACTORY_ADDRESS, PANCAKESWAP_V2_FACTORY_ADDRESS,
         PANCAKESWAP_V3_FACTORY_ADDRESS, PENDLE_MARKET_V3_FACTORY_ADDRESS,
         PENDLE_YIELD_CONTRACT_FACTORY_ADDRESS, SUSHISWAP_V2_FACTORY_ADDRESS,
         SUSHISWAP_V3_FACTORY_ADDRESS, UNISWAP_V2_FACTORY_ADDRESS, UNISWAP_V3_FACTORY_ADDRESS,

@@ -3,9 +3,9 @@ use std::{pin::Pin, time::Instant};
 use alloy_primitives::Address;
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
-    register_gauge_vec, register_int_counter_vec, register_int_gauge, register_int_gauge_vec,
-    register_int_counter, IntCounter,
-    GaugeVec, HistogramVec, IntCounterVec, IntGauge, IntGaugeVec, Opts,
+    register_gauge_vec, register_int_counter, register_int_counter_vec, register_int_gauge,
+    register_int_gauge_vec, GaugeVec, HistogramVec, IntCounter, IntCounterVec, IntGauge,
+    IntGaugeVec, Opts,
 };
 use reth_metrics::Metrics;
 

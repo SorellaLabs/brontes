@@ -206,8 +206,6 @@ action_impl!(
     }
 );
 
-
-
 action_impl!(
     Protocol::FluidDEX,
     crate::FluidDexT1::depositPerfectCall,
@@ -238,8 +236,6 @@ action_impl!(
     }
 );
 
-
-
 action_impl!(
     Protocol::FluidDEX,
     crate::FluidDexT1::depositCall,
@@ -268,7 +264,6 @@ action_impl!(
         })
     }
 );
-
 
 action_impl!(
     Protocol::FluidDEX,
@@ -299,9 +294,6 @@ action_impl!(
     }
 );
 
-
-
-
 action_impl!(
     Protocol::FluidDEX,
     crate::FluidDexT1::withdrawCall,
@@ -329,5 +321,3 @@ action_impl!(
         })
     }
 );
-
-

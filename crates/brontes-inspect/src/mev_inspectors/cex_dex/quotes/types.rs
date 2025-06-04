@@ -119,20 +119,13 @@ pub fn log_cex_dex_quote_delta(
     let explorer_url = "https://etherscan.io";
 
     warn!(
-        "\n\x1b[1;35mSignificant Cex-Dex quote discrepancy detected for {} - {} on {}:\x1b[0m\n\
-         - \x1b[1;36mDEX Swap:\x1b[0m\n\
-           * Rate: {:.7}\n\
-           * Amount In: {}\n\
-           * Amount Out: {}\n\
-         - \x1b[1;36mCEX Quote:\x1b[0m\n\
-           * Rate: {:.7}\n\
-           * Equivalent Output: {}\n\
-         - \x1b[1;33mArbitrage Ratio:\x1b[0m {:.4} ({}%)\n\
-         - Token Contracts:\n\
-           * Token In: {explorer_url}/address/{}\n\
-           * Token Out: {explorer_url}/address/{}\n\
-         - Tx Hash: {explorer_url}/tx/{}\n\
-         - \x1b[1;31mWarning:\x1b[0m The CEX quote output is more than 2x the DEX input, suggesting a potentially invalid quote or extreme market inefficiency.",
+        "\n\x1b[1;35mSignificant Cex-Dex quote discrepancy detected for {} - {} on {}:\x1b[0m\n- \
+         \x1b[1;36mDEX Swap:\x1b[0m\n* Rate: {:.7}\n* Amount In: {}\n* Amount Out: {}\n- \
+         \x1b[1;36mCEX Quote:\x1b[0m\n* Rate: {:.7}\n* Equivalent Output: {}\n- \
+         \x1b[1;33mArbitrage Ratio:\x1b[0m {:.4} ({}%)\n- Token Contracts:\n* Token In: \
+         {explorer_url}/address/{}\n* Token Out: {explorer_url}/address/{}\n- Tx Hash: \
+         {explorer_url}/tx/{}\n- \x1b[1;31mWarning:\x1b[0m The CEX quote output is more than 2x \
+         the DEX input, suggesting a potentially invalid quote or extreme market inefficiency.",
         token_in_symbol,
         token_out_symbol,
         exchange,

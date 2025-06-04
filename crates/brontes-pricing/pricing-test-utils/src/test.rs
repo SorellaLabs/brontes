@@ -67,7 +67,7 @@ impl PricingTestUtils {
             Arc::new(AtomicBool::new(false)),
             None,
             ex,
-            5
+            5,
         ))
     }
 

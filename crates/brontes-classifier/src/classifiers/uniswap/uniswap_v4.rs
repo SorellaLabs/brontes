@@ -1,14 +1,10 @@
+use alloy_primitives::{keccak256, Address, U256};
 use alloy_sol_types::{sol_data, SolType};
-use alloy_primitives::{ Address, U256};
-use alloy_primitives::{keccak256};
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap,
-    structured_trace::CallInfo,
-    ToScaledRational,
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
-
 
 action_impl!(
     Protocol::UniswapV4,
@@ -27,7 +23,7 @@ action_impl!(
 
         let call_params=call_data.params;
         let pool_key=call_data.key;
-        
+
         let encoded_data = PoolKey::abi_encode(&
             (
                 pool_key.currency0,
@@ -40,7 +36,7 @@ action_impl!(
         let target_address = Address::from_slice(&keccak256(&encoded_data)[..20]);
         let exact_in=call_params.amountSpecified.is_negative();
         let zero_for_one=call_params.zeroForOne;
-        
+
         let swap_delta=return_data.swapDelta;
 
         let t0_info = db_tx.try_fetch_token_info(pool_key.currency0)?;
@@ -72,8 +68,6 @@ action_impl!(
     }
 );
 
-
-
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -81,10 +75,13 @@ mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress, normalized_actions::Action, Protocol::UniswapV4,
+        db::token_info::TokenInfoWithAddress,
+        normalized_actions::{
+            Action, NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap,
+        },
+        Protocol::UniswapV4,
         TreeSearchBuilder,
     };
-    use brontes_types::normalized_actions::{NormalizedBurn, NormalizedCollect, NormalizedMint, NormalizedSwap};
 
     use super::*;
 

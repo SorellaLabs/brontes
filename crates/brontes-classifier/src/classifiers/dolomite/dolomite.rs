@@ -65,7 +65,7 @@ action_impl!(
         let tokens = protocol_details.get_tokens();
 
 
-        
+
         let held_market_idx = log_data.heldMarket.to::<usize>();
         let owed_market_idx = log_data.owedMarket.to::<usize>();
 

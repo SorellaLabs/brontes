@@ -1,3 +1,5 @@
+// Add trait imports for U256 arithmetic operations
+use std::ops::{Div, Mul};
 use std::sync::Arc;
 
 use alloy_primitives::{Address, Uint, U256};
@@ -10,8 +12,6 @@ use brontes_types::{
     traits::TracingProvider,
     Protocol, ToScaledRational,
 };
-// Add trait imports for U256 arithmetic operations
-use std::ops::{Mul, Div};
 
 use crate::{FluidDexResolver, FluidVaultResolver};
 discovery_impl!(
@@ -77,7 +77,7 @@ action_impl!(
     |info: CallInfo, log_data: FluidLendingLiquidate_1CallLogs, db_tx: &DB| {
 
         let pool_address = info.target_address;
-        
+
         // Handle potential errors in sync part and return early with error future if needed
         let logs = log_data.log_liquidate_field?;
         let protocol_details = db_tx.get_protocol_details(pool_address)?;
@@ -92,7 +92,7 @@ action_impl!(
 
         let supply_info_token0 = db_tx.try_fetch_token_info(supply_asset_token0)?;
         let borrow_info_token0 = db_tx.try_fetch_token_info(borrow_asset_token0)?;
-        
+
         let liquidator = logs.liquidator_;
 
         let exchange_rates = tokio::task::block_in_place(|| {
@@ -128,42 +128,48 @@ pub async fn query_fluid_dex_state<T: TracingProvider>(
 ) -> Vec<Uint<256, 4>> {
     let mut result = vec![];
     if is_smart_col || is_smart_borrow {
-        if let Ok(call_return) =
-            make_call_request(FluidVaultResolver::getVaultEntireDataCall { vault_: *vault }, tracer, *vault, None).await
+        if let Ok(call_return) = make_call_request(
+            FluidVaultResolver::getVaultEntireDataCall { vault_: *vault },
+            tracer,
+            *vault,
+            None,
+        )
+        .await
         {
-
             if is_smart_col {
-                let smart_col_dex=call_return.vaultData_.constantVariables.supply;
+                let smart_col_dex = call_return.vaultData_.constantVariables.supply;
                 if let Ok(call_return) = make_call_request(
                     FluidDexResolver::getDexStateCall { dex_: smart_col_dex },
                     tracer,
                     dex_resolver,
                     None,
                 )
-                .await {
+                .await
+                {
                     let state = call_return.state_;
                     result.push(state.token0PerSupplyShare);
-                }else {
+                } else {
                     result.push(U256::from(10u128).pow(U256::from(18u128)));
                 }
-            }else {
+            } else {
                 result.push(U256::from(10u128).pow(U256::from(18u128)));
             }
             if is_smart_borrow {
-                let smart_borrow_dex=call_return.vaultData_.constantVariables.borrow;
+                let smart_borrow_dex = call_return.vaultData_.constantVariables.borrow;
                 if let Ok(call_return) = make_call_request(
                     FluidDexResolver::getDexStateCall { dex_: smart_borrow_dex },
                     tracer,
                     dex_resolver,
                     None,
                 )
-                .await {
+                .await
+                {
                     let state = call_return.state_;
                     result.push(state.token1PerBorrowShare);
-                }else{
+                } else {
                     result.push(U256::from(10u128).pow(U256::from(18u128)));
                 }
-            }else {
+            } else {
                 result.push(U256::from(10u128).pow(U256::from(18u128)));
             }
         }

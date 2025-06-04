@@ -8,10 +8,9 @@ use brontes_types::{
     normalized_actions::{accounting::ActionAccounting, Action},
     ActionIter, BlockData, FastHashSet, MultiBlockData, ToFloatNearest, TreeSearchBuilder, TxInfo,
 };
-use itertools::multizip;
+use itertools::{multizip, Itertools};
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{b256, Address};
-use itertools::Itertools;
 
 use super::{MAX_PROFIT, MIN_PROFIT};
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -163,7 +162,12 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         };
 
         self.utils.get_profit_metrics().inspect(|m| {
-            m.publish_profit_metrics(MevType::Liquidation, protocols, profit_usd.to_float(), info.timeboosted)
+            m.publish_profit_metrics(
+                MevType::Liquidation,
+                protocols,
+                profit_usd.to_float(),
+                info.timeboosted,
+            )
         });
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }

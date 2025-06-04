@@ -512,10 +512,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .collect()
     }
 
-    pub fn get_related_protocols_liquidation(
-        &self,
-        actions: &[Action],
-    ) -> HashSet<Protocol> {
+    pub fn get_related_protocols_liquidation(&self, actions: &[Action]) -> HashSet<Protocol> {
         actions.iter().map(|action| action.get_protocol()).collect()
     }
 
@@ -533,10 +530,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             .collect()
     }
 
-    pub fn get_related_protocols_cex_dex(
-        &self,
-        dex_swaps: &[NormalizedSwap],
-    ) -> HashSet<Protocol> {
+    pub fn get_related_protocols_cex_dex(&self, dex_swaps: &[NormalizedSwap]) -> HashSet<Protocol> {
         dex_swaps.iter().map(|swap| swap.protocol).collect()
     }
 

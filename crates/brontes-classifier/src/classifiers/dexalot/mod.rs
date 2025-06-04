@@ -2,9 +2,7 @@ use alloy_primitives::U256;
 use brontes_macros::action_impl;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    normalized_actions::NormalizedSwap,
-    structured_trace::CallInfo,
-    ToScaledRational,
+    normalized_actions::NormalizedSwap, structured_trace::CallInfo, ToScaledRational,
 };
 
 // Native Orders
@@ -80,9 +78,7 @@ mod tests {
     use alloy_primitives::{hex, Address, B256};
     use brontes_classifier::test_utils::ClassifierTestUtils;
     use brontes_types::{
-        db::token_info::TokenInfoWithAddress,
-        normalized_actions::Action,
-        TreeSearchBuilder,
+        db::token_info::TokenInfoWithAddress, normalized_actions::Action, TreeSearchBuilder,
     };
 
     use super::*;

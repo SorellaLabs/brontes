@@ -11,6 +11,7 @@ use brontes_database::{
     libmdbx::{DBWriter, LibmdbxReader},
 };
 use brontes_inspect::Inspector;
+use brontes_metrics::range::GlobalRangeMetrics;
 use brontes_types::MultiBlockData;
 use futures::{pin_mut, stream::FuturesUnordered, Future, StreamExt};
 use reth_tasks::shutdown::GracefulShutdown;
@@ -19,7 +20,6 @@ use tracing::debug;
 
 use super::shared::state_collector::StateCollector;
 use crate::Processor;
-use brontes_metrics::range::GlobalRangeMetrics;
 pub struct TipInspector<
     T: TracingProvider,
     DB: LibmdbxReader + DBWriter,
@@ -109,10 +109,7 @@ impl<T: TracingProvider, DB: DBWriter + LibmdbxReader, CH: ClickhouseHandle, P: 
         });
 
         match cur_block {
-            Ok(chain_tip) => {
-                
-                chain_tip - self.back_from_tip > self.current_block
-            }
+            Ok(chain_tip) => chain_tip - self.back_from_tip > self.current_block,
             Err(e) => {
                 tracing::error!("Error: {:?}", e);
                 false

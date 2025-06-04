@@ -214,12 +214,7 @@ impl CexExchange {
     pub fn most_common_quote_assets(&self) -> Vec<Address> {
         match self {
             CexExchange::Binance => {
-                vec![
-                    USDT_ADDRESS,
-                    WBTC_ADDRESS,
-                    USDC_ADDRESS,
-                    WETH_ADDRESS,
-                ]
+                vec![USDT_ADDRESS, WBTC_ADDRESS, USDC_ADDRESS, WETH_ADDRESS]
             }
             CexExchange::Bitmex => vec![USDT_ADDRESS, USDC_ADDRESS, WETH_ADDRESS],
             CexExchange::Bitstamp => {
@@ -229,13 +224,7 @@ impl CexExchange {
                 vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS, DAI_ADDRESS, WETH_ADDRESS]
             }
             CexExchange::Coinbase => {
-                vec![
-                    USDC_ADDRESS,
-                    USDT_ADDRESS,
-                    WBTC_ADDRESS,
-                    DAI_ADDRESS,
-                    WETH_ADDRESS,
-                ]
+                vec![USDC_ADDRESS, USDT_ADDRESS, WBTC_ADDRESS, DAI_ADDRESS, WETH_ADDRESS]
             }
             CexExchange::Deribit => vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS],
             CexExchange::GateIo => vec![USDT_ADDRESS, WETH_ADDRESS, WBTC_ADDRESS, USDC_ADDRESS],
@@ -243,34 +232,16 @@ impl CexExchange {
                 vec![WBTC_ADDRESS, WETH_ADDRESS, DAI_ADDRESS, USDT_ADDRESS]
             }
             CexExchange::Huobi => {
-                vec![
-                    USDT_ADDRESS,
-                    WBTC_ADDRESS,
-                    WETH_ADDRESS,
-                    USDC_ADDRESS,
-                    DAI_ADDRESS,
-                ]
+                vec![USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
             }
             CexExchange::Kraken => {
                 vec![WBTC_ADDRESS, WETH_ADDRESS, USDT_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
             }
             CexExchange::Kucoin => {
-                vec![
-                    USDT_ADDRESS,
-                    WBTC_ADDRESS,
-                    WETH_ADDRESS,
-                    USDC_ADDRESS,
-                    DAI_ADDRESS,
-                ]
+                vec![USDT_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS, USDC_ADDRESS, DAI_ADDRESS]
             }
             CexExchange::Okex => {
-                vec![
-                    USDT_ADDRESS,
-                    USDC_ADDRESS,
-                    WBTC_ADDRESS,
-                    WETH_ADDRESS,
-                    DAI_ADDRESS,
-                ]
+                vec![USDT_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS, WETH_ADDRESS, DAI_ADDRESS]
             }
             CexExchange::Upbit => {
                 vec![WETH_ADDRESS, WBTC_ADDRESS, LINK_ADDRESS]

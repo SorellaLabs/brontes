@@ -30,8 +30,6 @@ use tracing::error;
 
 use super::dex_pricing::WaitingForPricerFuture;
 
-
-
 pub type ClickhouseMetadataFuture =
     FuturesOrdered<Pin<Box<dyn Future<Output = (u64, BlockTree<Action>, Metadata)> + Send>>>;
 

@@ -3,10 +3,7 @@ use std::sync::Arc;
 use alloy_provider::{Provider, RootProvider};
 use alloy_rpc_types::Log;
 use alloy_transport_http::Http;
-use brontes_types::{
-    structured_trace::TxTrace,
-    traits::TracingProvider,
-};
+use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
 use governor::{DefaultDirectRateLimiter, Jitter};
 use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,

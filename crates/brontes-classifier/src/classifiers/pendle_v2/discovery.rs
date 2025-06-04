@@ -11,10 +11,7 @@ discovery_impl!(
     PendleV2Discovery,
     crate::PendleMarketV3Factory::createNewMarketCall,
     0xd29e76c6F15ada0150D10A1D3f45aCCD2098283B,
-    |deployed_address: Address,
-     trace_index: u64,
-     _: createNewMarketCall,
-     tracer: Arc<T>| async move {
+    |deployed_address: Address, trace_index: u64, _: createNewMarketCall, tracer: Arc<T>| async move {
         parse_market_pool(Protocol::PendleV2, deployed_address, trace_index, tracer).await
     } // sy pt yt
 );
@@ -63,12 +60,7 @@ async fn parse_market_pool<T: TracingProvider>(
 ) -> Vec<NormalizedNewPool> {
     let tokens = query_pendle_v2_market_tokens(&tracer, &deployed_address).await;
 
-    vec![NormalizedNewPool {
-        trace_index,
-        protocol,
-        pool_address: deployed_address,
-        tokens,
-    }]
+    vec![NormalizedNewPool { trace_index, protocol, pool_address: deployed_address, tokens }]
 }
 
 #[cfg(test)]

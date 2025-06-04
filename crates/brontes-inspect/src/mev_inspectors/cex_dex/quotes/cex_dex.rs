@@ -248,8 +248,12 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
 
                 let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
 
-                let (profit_usd, cex_dex) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata, &protocols_str)?;
+                let (profit_usd, cex_dex) = self.filter_possible_cex_dex(
+                    possible_cex_dex,
+                    &tx_info,
+                    &metadata,
+                    &protocols_str,
+                )?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -264,7 +268,12 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 );
 
                 self.utils.get_profit_metrics().inspect(|m| {
-                    m.publish_profit_metrics(MevType::CexDexQuotes, protocols, profit_usd, tx_info.timeboosted)
+                    m.publish_profit_metrics(
+                        MevType::CexDexQuotes,
+                        protocols,
+                        profit_usd,
+                        tx_info.timeboosted,
+                    )
                 });
                 Some(Bundle { header, data: cex_dex })
             })
@@ -521,7 +530,16 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 })
                 .collect_vec();
 
-            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t30, t60, t300, protocols)
+            possible_cex_dex.into_bundle(
+                info,
+                metadata.block_timestamp,
+                t2,
+                t12,
+                t30,
+                t60,
+                t300,
+                protocols,
+            )
         } else {
             None
         }
