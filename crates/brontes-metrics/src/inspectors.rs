@@ -10,6 +10,7 @@ use reth_primitives::Address;
 #[derive(Clone)]
 pub struct ProfitMetrics {
     profit_histogram: HistogramVec,
+    timeboost_profit_histogram: HistogramVec,
 }
 
 impl Default for ProfitMetrics {
@@ -30,19 +31,31 @@ impl ProfitMetrics {
                 "profit_usd",
                 "Distribution of profit in USD by MEV type, protocol, and block_number",
                 &["mev_type", "protocol"],
-                profit_buckets
+                profit_buckets.clone(),
             )
             .expect("Failed to register profit_usd histogram"),
+            timeboost_profit_histogram: prometheus::register_histogram_vec!(
+                "timeboost_profit_usd",
+                "Distribution of timeboosted tx profit in USD by MEV type, protocol, and block_number",
+                &["mev_type", "protocol"],
+                profit_buckets,
+            )
+            .expect("Failed to register timeboost_profit_usd histogram"),
         }
     }
 
-    pub fn publish_profit_metrics(&self, mev: MevType, protocols: HashSet<Protocol>, profit: f64) {
+    pub fn publish_profit_metrics(&self, mev: MevType, protocols: HashSet<Protocol>, profit: f64, timeboosted: bool) {
         let num_protocols = protocols.len();
         let profit_per_protocol = profit / num_protocols as f64;
         for protocol in protocols {
             self.profit_histogram
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                 .observe(profit_per_protocol);
+            if timeboosted {
+                self.timeboost_profit_histogram
+                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
+                    .observe(profit_per_protocol);
+            }
         }
     }
 }

@@ -294,6 +294,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
                 if batch_swap { MevType::CexDexRfq } else { MevType::CexDexTrades },
                 protocols,
                 profit_usd,
+                tx_info.timeboosted,
             )
         });
         Some(Bundle { header, data: cex_dex })

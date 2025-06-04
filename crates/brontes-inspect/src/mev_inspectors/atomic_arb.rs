@@ -251,7 +251,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         self.utils.get_profit_metrics().inspect(|m| {
             if possible_arb_type != AtomicArbType::LongTail {
-                m.publish_profit_metrics(MevType::AtomicArb, protocols, profit_usd)
+                m.publish_profit_metrics(MevType::AtomicArb, protocols, profit_usd, info.timeboosted)
             } 
         });
 

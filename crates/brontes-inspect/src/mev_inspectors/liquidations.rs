@@ -163,7 +163,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
         };
 
         self.utils.get_profit_metrics().inspect(|m| {
-            m.publish_profit_metrics(MevType::Liquidation, protocols, profit_usd.to_float())
+            m.publish_profit_metrics(MevType::Liquidation, protocols, profit_usd.to_float(), info.timeboosted)
         });
         Some(Bundle { header, data: BundleData::Liquidation(new_liquidation) })
     }

@@ -264,7 +264,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 );
 
                 self.utils.get_profit_metrics().inspect(|m| {
-                    m.publish_profit_metrics(MevType::CexDexQuotes, protocols, profit_usd)
+                    m.publish_profit_metrics(MevType::CexDexQuotes, protocols, profit_usd, tx_info.timeboosted)
                 });
                 Some(Bundle { header, data: cex_dex })
             })

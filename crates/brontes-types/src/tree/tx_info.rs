@@ -26,6 +26,7 @@ pub struct TxInfo {
     pub searcher_eoa_info:      Option<SearcherInfo>,
     pub searcher_contract_info: Option<SearcherInfo>,
     pub total_eth_value:        Vec<NormalizedEthTransfer>,
+    pub timeboosted:            bool,
 }
 
 impl TxInfo {
@@ -45,6 +46,7 @@ impl TxInfo {
         searcher_eoa_info: Option<SearcherInfo>,
         searcher_contract_info: Option<SearcherInfo>,
         total_eth_value: Vec<NormalizedEthTransfer>,
+        timeboosted: bool,
     ) -> Self {
         Self {
             total_eth_value,
@@ -61,6 +63,7 @@ impl TxInfo {
             is_verified_contract,
             searcher_eoa_info,
             searcher_contract_info,
+            timeboosted,
         }
     }
 

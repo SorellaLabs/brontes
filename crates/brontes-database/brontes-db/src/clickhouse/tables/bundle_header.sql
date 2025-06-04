@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS mev.bundle_header
         `name` Nullable(String),
         `token_deltas` Array(Tuple(Tuple(String, UInt8, String), Float64, Float64))
     ),
-    `run_id` UInt64
+    `run_id` UInt64,
+    `timeboosted` Bool DEFAULT false
 ) 
 ENGINE = MergeTree()
 PRIMARY KEY (`block_number`, `tx_hash`)

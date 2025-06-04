@@ -91,6 +91,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(action)]),
+                        timeboosted: trace.timeboosted,
                     };
 
                     let tx_trace = &trace.trace;

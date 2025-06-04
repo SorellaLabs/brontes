@@ -190,6 +190,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(classification)]),
+                        timeboosted: trace.timeboosted,
                     };
 
                     let tx_trace = &trace.trace;
@@ -263,6 +264,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         root: tx_root,
                         further_classification_requests: tx_classification_requests,
                         pool_updates,
+                        timeboosted: trace.timeboosted,
                     })
                 }),
         )
@@ -693,4 +695,5 @@ pub struct TxTreeResult {
     pub pool_updates: Vec<DexPriceMsg>,
     pub further_classification_requests: Option<(usize, Vec<MultiFrameRequest>)>,
     pub root: Root<Action>,
+    pub timeboosted: bool,
 }

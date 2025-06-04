@@ -96,18 +96,18 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter, CH: ClickhouseHandle>
             return Err(eyre!("no traces found {block}"))
         };
 
-        let express_lane_info = express_lane_auction_fut
+        let express_lane_updates = express_lane_auction_fut
             .await
-            .map_err(|e| eyre!("error getting express lane auction info: {e}"))?;
+            .map_err(|e| eyre!("error getting express lane auction updates: {e}"))?;
 
         trace!("Got {} traces + header", traces.len());
 
         let res = if let Some(metrics) = metrics {
-            let is_auction_resolved_round = express_lane_info
+            let is_auction_resolved_round = express_lane_updates
                 .iter()
                 .any(|update| matches!(update, ExpressLaneAuctionUpdate::AuctionResolved(_)));
 
-            for update in &express_lane_info {
+            for update in &express_lane_updates {
                 match update {
                     ExpressLaneAuctionUpdate::SetExpressLaneController(info) => {
                         if is_auction_resolved_round {

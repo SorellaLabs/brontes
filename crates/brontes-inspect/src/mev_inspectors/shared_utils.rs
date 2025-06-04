@@ -347,6 +347,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             mev_type,
             no_pricing_calculated,
             balance_deltas,
+            timeboosted: info.timeboosted,
         }
     }
 
@@ -401,6 +402,7 @@ impl<DB: LibmdbxReader> SharedInspectorUtils<'_, DB> {
             mev_type,
             no_pricing_calculated,
             balance_deltas,
+            timeboosted: info.timeboosted,
         }
     }
 

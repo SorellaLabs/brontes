@@ -60,6 +60,7 @@ pub struct Root<V: NormalizedAction> {
     /// eth transfers
     pub total_msg_value_transfers: Vec<NormalizedEthTransfer>,
     pub data_store: NodeData<V>,
+    pub timeboosted: bool,
 }
 
 impl<V: NormalizedAction> Root<V> {
@@ -184,6 +185,7 @@ impl<V: NormalizedAction> Root<V> {
                 searcher_eoa_info,
                 None,
                 self.total_msg_value_transfers.clone(),
+                self.timeboosted
             ))
         }
 
@@ -202,6 +204,7 @@ impl<V: NormalizedAction> Root<V> {
             searcher_eoa_info,
             searcher_contract_info,
             self.total_msg_value_transfers.clone(),
+            self.timeboosted,
         ))
     }
 
