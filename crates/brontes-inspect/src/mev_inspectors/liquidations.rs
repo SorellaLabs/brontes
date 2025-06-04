@@ -11,6 +11,7 @@ use brontes_types::{
 use itertools::multizip;
 use malachite::{num::basic::traits::Zero, Rational};
 use reth_primitives::{b256, Address};
+use itertools::Itertools;
 
 use super::{MAX_PROFIT, MIN_PROFIT};
 use crate::{shared_utils::SharedInspectorUtils, Inspector, Metadata};
@@ -96,6 +97,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
 
         let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
         let protocols = self.utils.get_related_protocols_liquidation(&actions);
+        let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
+
         let deltas = actions
             .into_iter()
             .chain(info.get_total_eth_value().iter().cloned().map(Action::from))
@@ -155,6 +158,8 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
             liquidation_swaps:   swaps,
             liquidations:        liqs,
             gas_details:         info.gas_details,
+            profit_usd:          profit_usd.clone().to_float(),
+            protocols:           protocols_str,
         };
 
         self.utils.get_profit_metrics().inspect(|m| {
