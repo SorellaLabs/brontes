@@ -226,6 +226,7 @@ pub struct TxTrace {
     #[serde(deserialize_with = "deserialize_u128_from_hex")]
     pub effective_price: u128,
     pub tx_index:        u64,
+    #[serde(default)]
     pub timeboosted:     bool,
     // False if the transaction reverted
     pub is_success:      bool,
