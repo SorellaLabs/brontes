@@ -33,6 +33,8 @@ pub struct AtomicArb {
     pub gas_details:  GasDetails,
     #[redefined(same_fields)]
     pub arb_type:     AtomicArbType,
+    pub profit_usd:   f64,
+    pub protocols:    Vec<String>,
 }
 /// Represents the different types of atomic arb
 /// A triangle arb is a simple arb that goes from token A -> B -> C -> A
