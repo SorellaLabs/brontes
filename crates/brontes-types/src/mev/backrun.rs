@@ -152,5 +152,7 @@ impl DbRow for AtomicArb {
         "swaps.amount_out",
         "gas_details",
         "arb_type",
+        "profit_usd",
+        "protocols",
     ];
 }
