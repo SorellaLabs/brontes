@@ -1632,6 +1632,7 @@ dependencies = [
  "paste",
  "phf",
  "rayon",
+ "reqwest 0.12.5",
  "reth-db",
  "reth-primitives",
  "reth-rpc-types",

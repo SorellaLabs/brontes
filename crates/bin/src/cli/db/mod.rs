@@ -16,6 +16,7 @@ mod discovery_logs;
 mod ensure_test_traces;
 mod export;
 mod init;
+mod pendle_pools;
 mod table_stats;
 #[cfg(feature = "local-clickhouse")]
 mod tip_tracer;
@@ -86,6 +87,9 @@ pub enum DatabaseCommands {
     #[cfg(all(feature = "local-clickhouse", feature = "arbitrum"))]
     #[command(name = "run-discovery-log")]
     DiscoveryLogs(discovery_logs::DiscoveryLogsFill),
+    /// Insert Pendle V2 SY pools into ClickHouse
+    #[command(name = "pendle-pools")]
+    PendlePools(pendle_pools::PendlePoolsCommand),
 }
 
 impl Database {
@@ -111,6 +115,8 @@ impl Database {
             DatabaseCommands::TraceAtTip(cmd) => cmd.execute(brontes_db_path, ctx).await,
             #[cfg(all(feature = "local-clickhouse", feature = "arbitrum"))]
             DatabaseCommands::DiscoveryLogs(cmd) => cmd.execute(brontes_db_path, ctx).await,
+            #[cfg(all(feature = "local-clickhouse", feature = "arbitrum"))]
+            DatabaseCommands::PendlePools(cmd) => cmd.execute().await,
         }
     }
 }

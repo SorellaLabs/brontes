@@ -121,6 +121,9 @@ pub const USD_STABLES_BY_ADDRESS: [Address; 13] = [
 pub const EURO_STABLES_BY_ADDRESS: [Address; 2] = [AGEUR_ADDRESS, VEUR_ADDRESS];
 
 pub const GOLD_STABLES_BY_ADDRESS: [Address; 0] = [];
+// Pendle V2 api url
+pub const PENDLE_V2_SY_ASSETS_API_URL: &str =
+    "https://api-v2.pendle.finance/core/v3/42161/assets/all";
 
 pub const LIFI_CONTRACT_ADDRESS: Address =
     Address::new(hex!("1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE"));

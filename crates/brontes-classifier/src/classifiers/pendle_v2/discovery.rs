@@ -6,6 +6,8 @@ use brontes_pricing::{make_call_request, Protocol};
 use brontes_types::{
     normalized_actions::NormalizedNewPool, structured_trace::CallInfo, traits::TracingProvider,
 };
+use brontes_types::constants::PENDLE_V2_SY_ASSETS_API_URL;
+use serde::{Deserialize, Serialize};
 
 discovery_impl!(
     PendleV2Discovery,
@@ -36,8 +38,25 @@ action_impl!(
 
 alloy_sol_types::sol!(
     function readTokens() external view returns (address,address,address);
-
+    function getTokensIn() external view returns(address[]);
+    function getTokensOut() external view returns(address[]);
 );
+
+pub async fn query_pendle_v2_sy_underlying_tokens<T: TracingProvider>(
+    tracer: &Arc<T>,
+    sy_token: &Address,
+) -> Vec<Address> {
+    let mut result = Vec::new();
+    if let Ok(call_return) = make_call_request(getTokensInCall {}, tracer, *sy_token, None).await {
+        result.extend(call_return._0);
+    }
+    if let Ok(call_return) = make_call_request(getTokensOutCall {}, tracer, *sy_token, None).await {
+        result.extend(call_return._0);
+    }
+    result.sort_unstable();
+    result.dedup();
+    result
+}
 
 pub async fn query_pendle_v2_market_tokens<T: TracingProvider>(
     tracer: &Arc<T>,
@@ -61,6 +80,73 @@ async fn parse_market_pool<T: TracingProvider>(
     let tokens = query_pendle_v2_market_tokens(&tracer, &deployed_address).await;
 
     vec![NormalizedNewPool { trace_index, protocol, pool_address: deployed_address, tokens }]
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PendleAsset {
+    pub name: String,
+    pub decimals: u8,
+    #[serde(deserialize_with = "deserialize_address")]
+    pub address: Address,
+    pub symbol: String,
+    pub tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expiry: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pro_icon: Option<String>,
+}
+
+fn deserialize_address<'de, D>(deserializer: D) -> Result<Address, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: String = serde::Deserialize::deserialize(deserializer)?;
+    s.parse().map_err(serde::de::Error::custom)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PendleAssetsResponse {
+    pub assets: Vec<PendleAsset>,
+}
+
+pub async fn get_pendle_v2_sy_pools<T: TracingProvider>(tracer: &Arc<T>) -> Result<Vec<NormalizedNewPool>, Box<dyn std::error::Error>> {
+    let url = PENDLE_V2_SY_ASSETS_API_URL;
+    
+    let client = reqwest::Client::new();
+    let response = client
+        .get(url)
+        .header("Accept", "application/json")
+        .send()
+        .await?;
+    
+    let pendle_response: PendleAssetsResponse = response.json().await?;
+    
+    // Filter for SY assets only
+    let sy_assets: Vec<PendleAsset> = pendle_response
+        .assets
+        .into_iter()
+        .filter(|asset| asset.tags.contains(&"SY".to_string()))
+        .collect();
+
+    let underlying_tokens: Vec<_> = futures::future::join_all(
+        sy_assets.iter().map(|asset| query_pendle_v2_sy_underlying_tokens(&tracer, &asset.address))
+    ).await.into_iter().collect();
+
+    let pools: Vec<_> = sy_assets.iter().zip(underlying_tokens.iter()).map(|(asset, tokens)| {
+        NormalizedNewPool {
+            trace_index: 0,
+            protocol: Protocol::PendleV2,
+            pool_address: asset.address,
+            tokens: {
+                let mut combined_tokens = vec![asset.address.clone()];
+                combined_tokens.extend(tokens);
+                combined_tokens
+            }
+        }
+    }).collect();
+    
+    
+    Ok(pools)
 }
 
 #[cfg(test)]
@@ -124,4 +210,5 @@ mod tests {
             .await
             .unwrap();
     }
+
 }

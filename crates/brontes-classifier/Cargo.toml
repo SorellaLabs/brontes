@@ -43,6 +43,8 @@ tracing.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
+# http
+reqwest.workspace = true
 
 # misc
 hex-literal.workspace = true
