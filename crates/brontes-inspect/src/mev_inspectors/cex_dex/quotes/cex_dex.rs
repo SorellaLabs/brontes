@@ -466,7 +466,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
         metadata: &Metadata,
-        protocols: &Vec<String>,
+        protocols: &[String],
     ) -> Option<(f64, BundleData)> {
         let is_cex_dex_bot_with_significant_activity =
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
