@@ -246,8 +246,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     },
                 );
 
+                let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
+
                 let (profit_usd, cex_dex) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata)?;
+                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata, &protocols_str)?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -464,6 +466,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
         metadata: &Metadata,
+        protocols: &Vec<String>,
     ) -> Option<(f64, BundleData)> {
         let is_cex_dex_bot_with_significant_activity =
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
@@ -518,7 +521,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 })
                 .collect_vec();
 
-            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t30, t60, t300)
+            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t30, t60, t300, protocols)
         } else {
             None
         }
