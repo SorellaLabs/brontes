@@ -1,4 +1,4 @@
-CREATE TABLE mev.cex_dex 
+CREATE TABLE IF NOT EXISTS mev.cex_dex 
 (
     `tx_hash` String,
     `block_timestamp` UInt64,
