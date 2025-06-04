@@ -210,6 +210,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let profit_usd = profit.to_float();
         let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
 
+        tracing::debug!(?protocols, ?profit_usd, "Found atomic arb");
+
         let backrun = AtomicArb {
             block_number: metadata.block_num,
             trigger_tx,
@@ -245,7 +247,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit");
         }
 
-        tracing::debug!(?protocols_str, ?profit_usd, "Found atomic arb");
 
 
         self.utils.get_profit_metrics().inspect(|m| {
