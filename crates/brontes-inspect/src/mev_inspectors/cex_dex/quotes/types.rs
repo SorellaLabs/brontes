@@ -56,7 +56,7 @@ impl CexDexProcessing {
         t30_mid_price: Vec<f64>,
         t60_mid_price: Vec<f64>,
         t300_mid_price: Vec<f64>,
-        protocols: &Vec<String>,
+        protocols: &[String],
     ) -> Option<(f64, BundleData)> {
         Some((
             self.pnl.aggregate_pnl,
@@ -80,7 +80,7 @@ impl CexDexProcessing {
                 gas_details: tx_info.gas_details,
                 swaps: self.dex_swaps,
                 profit_usd: self.pnl.aggregate_pnl,
-                protocols: protocols.clone(),
+                protocols: protocols.to_owned(),
             }),
         ))
     }
