@@ -376,7 +376,7 @@ impl BrontesTracingInspector {
 }
 
 impl BrontesTracingInspector {
-    pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult) -> TxTrace {
+    pub fn into_trace_results(self, info: TransactionInfo, res: &ExecutionResult, timeboosted: bool) -> TxTrace {
         let gas_used = res.gas_used().into();
         let trace = self.build_trace(info.hash.unwrap(), info.block_number.unwrap());
 
@@ -386,7 +386,7 @@ impl BrontesTracingInspector {
             tx_hash: info.hash.unwrap(),
             gas_used,
             effective_price: 0,
-            timeboosted: None,
+            timeboosted,
             tx_index: info.index.unwrap(),
             is_success: res.is_success(),
         }

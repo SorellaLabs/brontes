@@ -8,7 +8,6 @@ use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, Transaction
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
 use brontes_types::TimeboostTransactionReceipt;
-use futures::future::join_all;
 use reth_primitives::BlockHash;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
@@ -321,7 +320,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         let mut stats = BlockStats::new(block_num, None);
 
         let (traces, tx_stats): (Vec<_>, Vec<_>) =
-            join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
+            block_trace.into_iter().zip(block_receipts.into_iter()).map(
                 |(trace, receipt)| {
                     let tx_hash = trace.tx_hash;
 
@@ -337,8 +336,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
                         receipt.inner.effective_gas_price,
                     )
                 },
-            ))
-            .await
+            )
             .into_iter()
             .unzip();
 
@@ -357,7 +355,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     }
 
     /// parses a transaction and gathers the traces
-    async fn parse_transaction(
+    fn parse_transaction(
         &self,
         mut tx_trace: TxTrace,
         #[cfg(feature = "dyn-decode")] dyn_json: &FastHashMap<Address, JsonAbi>,
@@ -392,7 +390,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
 
         tx_trace.effective_price = effective_gas_price;
         tx_trace.gas_used = gas_used;
-        tx_trace.timeboosted = Some(timeboosted);
+        tx_trace.timeboosted = timeboosted;
 
         (tx_trace, stats)
     }

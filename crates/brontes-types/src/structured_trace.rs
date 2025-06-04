@@ -226,7 +226,7 @@ pub struct TxTrace {
     #[serde(deserialize_with = "deserialize_u128_from_hex")]
     pub effective_price: u128,
     pub tx_index:        u64,
-    pub timeboosted:     Option<bool>,
+    pub timeboosted:     bool,
     // False if the transaction reverted
     pub is_success:      bool,
 }
@@ -240,6 +240,7 @@ impl TxTrace {
         gas_used: u128,
         effective_price: u128,
         is_success: bool,
+        timeboosted: bool,
     ) -> Self {
         Self {
             block_number,
@@ -249,7 +250,7 @@ impl TxTrace {
             effective_price,
             gas_used,
             is_success,
-            timeboosted: None,
+            timeboosted,
         }
     }
 }
@@ -266,7 +267,7 @@ impl Serialize for TxTrace {
         ser_struct.serialize_field("gas_used", &self.gas_used)?;
         ser_struct.serialize_field("effective_price", &self.effective_price)?;
         ser_struct.serialize_field("tx_index", &self.tx_index)?;
-        ser_struct.serialize_field("timeboosted", &self.timeboosted.unwrap_or(false))?;
+        ser_struct.serialize_field("timeboosted", &self.timeboosted)?;
         ser_struct.serialize_field("is_success", &self.is_success)?;
 
         let trace_idx = self.trace.iter().map(|trace| trace.trace_idx).collect_vec();
