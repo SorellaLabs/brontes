@@ -210,7 +210,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let profit_usd = profit.to_float();
         let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
 
-        tracing::debug!(?protocols, ?profit_usd, "Found atomic arb");
+        tracing::debug!(?protocols, ?profit_usd, ?info.tx_hash, "Found atomic arb");
 
         let backrun = AtomicArb {
             block_number: metadata.block_num,
