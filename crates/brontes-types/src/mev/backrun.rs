@@ -131,6 +131,8 @@ impl Serialize for AtomicArb {
         );
         ser_struct.serialize_field("gas_details", &gas_details)?;
         ser_struct.serialize_field("arb_type", &self.arb_type.to_string())?;
+        ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
+        ser_struct.serialize_field("protocols", &self.protocols)?;
         ser_struct.end()
     }
 }
