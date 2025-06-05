@@ -41,10 +41,20 @@ use db_interfaces::{
 use eyre::Result;
 use futures::future::ok;
 use itertools::Itertools;
+use itertools::izip;
 use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
+use brontes_types::db::clickhouse_serde::tx_trace::{
+    ClickhouseCallAction, ClickhouseCallOutput, ClickhouseCreateAction,
+    ClickhouseCreateOutput, ClickhouseDecodedCallData, ClickhouseLogs,
+    ClickhouseRewardAction, ClickhouseSelfDestructAction,
+};
+use super::tx_traces::{
+    MetaTuple, TxTraceRow,
+    TxTraceTuple,
+};
 
 use super::{
     cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE,
@@ -289,7 +299,132 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
+    /// Store transaction traces using the same tuple layout understood by
+    /// `clickhouse_serde::tx_trace`'s deserializer.
+    pub async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+        fn to_tuple(trace: &TxTrace) -> TxTraceTuple {
+            let meta: Vec<MetaTuple> = trace
+                .trace
+                .iter()
+                .map(|t| {
+                    (
+                        t.trace_idx,
+                        format!("{:?}", t.msg_sender),
+                        t.trace.error.clone(),
+                        t.trace.subtraces as u64,
+                        t.trace
+                            .trace_address
+                            .iter()
+                            .map(|v| *v as u64)
+                            .collect::<Vec<u64>>(),
+                    )
+                })
+                .collect();
+
+            let decoded = {
+                let d = ClickhouseDecodedCallData::from(trace);
+                izip!(d.trace_idx, d.function_name, d.call_data, d.return_data)
+                    .map(|(i, f, c, r)| (i, f, c, r))
+                    .collect::<Vec<_>>()
+            };
+
+            let logs = {
+                let l = ClickhouseLogs::from(trace);
+                izip!(l.trace_idx, l.log_idx, l.address, l.topics, l.data)
+                    .map(|(ti, li, a, t, d)| (ti, li, a, t, d))
+                    .collect::<Vec<_>>()
+            };
+
+            let create_action = {
+                let c = ClickhouseCreateAction::from(trace);
+                izip!(c.trace_idx, c.from, c.gas, c.init, c.value)
+                    .map(|(i, f, g, init, v)| (i, f, g, init, v))
+                    .collect::<Vec<_>>()
+            };
+
+            let call_action = {
+                let c = ClickhouseCallAction::from(trace);
+                izip!(c.trace_idx, c.from, c.call_type, c.gas, c.input, c.to, c.value)
+                    .map(|(i, f, ct, g, inp, to, v)| (i, f, ct, g, inp, to, v))
+                    .collect::<Vec<_>>()
+            };
+
+            let self_destruct_action = {
+                let s = ClickhouseSelfDestructAction::from(trace);
+                izip!(s.trace_idx, s.address, s.balance, s.refund_address)
+                    .map(|(i, a, b, r)| (i, a, b, r))
+                    .collect::<Vec<_>>()
+            };
+
+            let reward_action = {
+                let r = ClickhouseRewardAction::from(trace);
+                izip!(r.trace_idx, r.author, r.reward_type, r.value)
+                    .map(|(i, a, t, v)| (i, a, t, v))
+                    .collect::<Vec<_>>()
+            };
+
+            let call_output = {
+                let c = ClickhouseCallOutput::from(trace);
+                izip!(c.trace_idx, c.gas_used, c.output)
+                    .map(|(i, g, o)| (i, g, o))
+                    .collect::<Vec<_>>()
+            };
+
+            let create_output = {
+                let c = ClickhouseCreateOutput::from(trace);
+                izip!(c.trace_idx, c.address, c.code, c.gas_used)
+                    .map(|(i, a, code, g)| (i, a, code, g))
+                    .collect::<Vec<_>>()
+            };
+
+            TxTraceTuple(
+                trace.block_number,
+                (
+                    meta,
+                    decoded,
+                    logs,
+                    create_action,
+                    call_action,
+                    self_destruct_action,
+                    reward_action,
+                    call_output,
+                    create_output,
+                ),
+                format!("{:?}", trace.tx_hash),
+                trace.gas_used,
+                trace.effective_price,
+                trace.tx_index,
+                trace.is_success,
+            )
+        }
+
+        if traces.is_empty() {
+            return Ok(());
+        }
+
+        let mut insert = self
+            .client
+            .client
+            .insert("brontes_api.tx_traces".to_string())?;
+
+        for trace in &traces {
+            let tuple = to_tuple(trace);
+            let serialized = serde_json::to_vec(&vec![tuple])?;
+            let row = TxTraceRow {
+                block_number:    block,
+                tx_hash:         format!("{:?}", trace.tx_hash),
+                traces:          serialized,
+                gas_used:        trace.gas_used as u64,
+                effective_price: trace.effective_price as u64,
+                tx_index:        trace.tx_index,
+                is_success:      trace.is_success,
+            };
+
+            insert.write(&row).await?;
+        }
+
+        insert.end().await?;
+
         Ok(())
     }
 

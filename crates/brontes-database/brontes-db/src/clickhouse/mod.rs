@@ -24,6 +24,8 @@ mod middleware;
 use std::fmt::Debug;
 
 pub mod cex_config;
+#[cfg(feature = "local-clickhouse")]
+pub mod tx_traces;
 
 use ::clickhouse::DbRow;
 use brontes_types::db::metadata::Metadata;

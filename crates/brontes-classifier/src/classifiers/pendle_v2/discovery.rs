@@ -129,7 +129,7 @@ pub async fn get_pendle_v2_sy_pools<T: TracingProvider>(tracer: &Arc<T>) -> Resu
         .collect();
 
     let underlying_tokens: Vec<_> = futures::future::join_all(
-        sy_assets.iter().map(|asset| query_pendle_v2_sy_underlying_tokens(&tracer, &asset.address))
+        sy_assets.iter().map(|asset| query_pendle_v2_sy_underlying_tokens(tracer, &asset.address))
     ).await.into_iter().collect();
 
     let pools: Vec<_> = sy_assets.iter().zip(underlying_tokens.iter()).map(|(asset, tokens)| {
@@ -138,7 +138,7 @@ pub async fn get_pendle_v2_sy_pools<T: TracingProvider>(tracer: &Arc<T>) -> Resu
             protocol: Protocol::PendleV2,
             pool_address: asset.address,
             tokens: {
-                let mut combined_tokens = vec![asset.address.clone()];
+                let mut combined_tokens = vec![asset.address];
                 combined_tokens.extend(tokens);
                 combined_tokens
             }
