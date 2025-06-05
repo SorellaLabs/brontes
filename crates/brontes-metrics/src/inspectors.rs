@@ -35,7 +35,7 @@ impl ProfitMetrics {
             )
             .expect("Failed to register profit_usd histogram"),
             timeboost_profit_histogram: prometheus::register_histogram_vec!(
-                "timeboost_profit_usd",
+                "profit_usd_timeboosted",
                 "Distribution of timeboosted tx profit in USD by MEV type, protocol, and \
                  block_number",
                 &["mev_type", "protocol"],
