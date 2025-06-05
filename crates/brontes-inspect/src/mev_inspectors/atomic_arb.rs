@@ -5,7 +5,7 @@ use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
     constants::{
         get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType,
-        BRIDGE_ADDRESSES,
+        FILTER_TRANSFER_ADDRESSES,
     },
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
@@ -123,7 +123,8 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let (mut swaps, transfers, eth_transfers) = data;
 
         for transfer in transfers.iter() {
-            if BRIDGE_ADDRESSES.contains(&transfer.from) || BRIDGE_ADDRESSES.contains(&transfer.to)
+            if FILTER_TRANSFER_ADDRESSES.contains(&transfer.from)
+                || FILTER_TRANSFER_ADDRESSES.contains(&transfer.to)
             {
                 return None;
             }
@@ -254,7 +255,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         );
 
         if profit_usd.abs() > 100.0 {
-            tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit");
+            tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit for arb type: {}", possible_arb_type);
         }
 
         self.utils.get_profit_metrics().inspect(|m| {
