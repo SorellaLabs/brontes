@@ -43,6 +43,8 @@ pub const LINK_ADDRESS: Address = Address::new(hex!("514910771af9ca656af840dff83
 pub const UNI_TOKEN: Address = Address::new(hex!("1f9840a85d5af5bf1d1762f925bdaddc4201f984"));
 pub const XAUT_ADDRESS: Address = Address::new(hex!("68749665ff8d2d112fa859aa293f07a622782f38"));
 
+pub const ETH_ADDRESSES: [Address; 2] = [ETH_ADDRESS];
+
 /// The first block where the chainbound mempool data is available.
 pub const START_OF_CHAINBOUND_MEMPOOL_DATA: u64 = 17193367;
 
