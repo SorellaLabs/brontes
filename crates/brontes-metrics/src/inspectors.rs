@@ -11,6 +11,7 @@ use reth_primitives::Address;
 pub struct ProfitMetrics {
     profit_histogram:           HistogramVec,
     timeboost_profit_histogram: HistogramVec,
+    abnormal_profit_histogram:  HistogramVec,
 }
 
 impl Default for ProfitMetrics {
@@ -36,12 +37,18 @@ impl ProfitMetrics {
             .expect("Failed to register profit_usd histogram"),
             timeboost_profit_histogram: prometheus::register_histogram_vec!(
                 "profit_usd_timeboosted",
-                "Distribution of timeboosted tx profit in USD by MEV type, protocol, and \
-                 block_number",
+                "Distribution of timeboosted tx profit in USD by MEV type, protocol, and block_number",
+                &["mev_type", "protocol"],
+                profit_buckets.clone(),
+            )
+            .expect("Failed to register timeboost_profit_usd histogram"),
+            abnormal_profit_histogram: prometheus::register_histogram_vec!(
+                "abnormal_profit_usd",
+                "Distribution of abnormal profit in USD by MEV type and protocol",
                 &["mev_type", "protocol"],
                 profit_buckets,
             )
-            .expect("Failed to register timeboost_profit_usd histogram"),
+            .expect("Failed to register abnormal_profit_usd histogram"),
         }
     }
 
@@ -63,6 +70,21 @@ impl ProfitMetrics {
                     .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                     .observe(profit_per_protocol);
             }
+        }
+    }
+
+    pub fn publish_abnormal_profit(
+        &self,
+        mev: MevType,
+        protocols: HashSet<Protocol>,
+        profit: f64,
+    ) {
+        let num_protocols = protocols.len();
+        let profit_per_protocol = profit / num_protocols as f64;
+        for protocol in protocols {
+            self.abnormal_profit_histogram
+                .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
+                .observe(profit_per_protocol);
         }
     }
 }
