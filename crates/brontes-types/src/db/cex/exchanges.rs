@@ -70,7 +70,7 @@ impl CexExchange {
             CexExchange::Kucoin => "c.exchange = 'kucoin'",
             CexExchange::Upbit => "c.exchange = 'upbit'",
             CexExchange::Huobi => "c.exchange = 'huobi'",
-            CexExchange::GateIo => "c.exchange = 'gate-io",
+            CexExchange::GateIo => "c.exchange = 'gate-io'",
             CexExchange::Bitstamp => "c.exchange = 'bitstamp'",
             CexExchange::Gemini => "c.exchange = 'gemini'",
             CexExchange::Unknown => "c.exchange = ''",
