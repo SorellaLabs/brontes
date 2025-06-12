@@ -7,6 +7,5 @@ CREATE TABLE IF NOT EXISTS ethereum.pools
     `curve_lp_token` Nullable(FixedString(42)),
     `init_block` UInt64
 ) 
-ENGINE = MergeTree()
-PRIMARY KEY (`protocol`, `address`)
-ORDER BY (`protocol`, `address`)
+ENGINE = ReplacingMergeTree()
+ORDER BY (`address`)
