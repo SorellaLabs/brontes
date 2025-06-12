@@ -99,11 +99,9 @@ impl ProfitMetrics {
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                 .observe(profit_per_protocol);
 
-            if possible_mev_type.is_some() {
-                let possible_mev_type = possible_mev_type.unwrap();
-                let possible_mev_type = possible_mev_type.to_string();
+            if let Some(possible_mev_type) = possible_mev_type {
                 self.profit_histogram_atomic_arb
-                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str().trim(), possible_mev_type.as_str()])
+                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str().trim(), possible_mev_type.to_string().as_str().trim()])
                     .observe(profit_per_protocol);
             }
 
@@ -111,11 +109,10 @@ impl ProfitMetrics {
                 self.timeboost_profit_histogram
                     .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                     .observe(profit_per_protocol);
-                if possible_mev_type.is_some() {
-                    let possible_mev_type = possible_mev_type.unwrap();
-                    let possible_mev_type = possible_mev_type.to_string();
+
+                if let Some(possible_mev_type) = possible_mev_type {
                     self.timeboost_profit_histogram_atomic_arb
-                        .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.as_str()])
+                        .with_label_values(&[mev.as_ref(), protocol.to_string().as_str().trim(), possible_mev_type.to_string().as_str().trim()])
                         .observe(profit_per_protocol);
                 }
             }
