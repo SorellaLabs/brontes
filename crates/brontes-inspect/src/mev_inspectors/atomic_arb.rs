@@ -141,14 +141,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
-        match possible_arb_type {
-            AtomicArbType::LongTail | AtomicArbType::CrossPair(_) => {
-                tracing::trace!(?info.tx_hash, "skipping long tail or cross pair atomic arb");
-                return None;
-            }
-            _ => {}
-        }
-
         let account_deltas = transfers
             .into_iter()
             .map(Action::from)
@@ -262,16 +254,35 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             },
         );
 
-        if profit_usd.abs() > 100.0 {
-            tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit for arb type: {}", possible_arb_type);
-            self.utils.get_profit_metrics().inspect(|m| {
-                m.publish_abnormal_profit(MevType::AtomicArb, protocols.clone(), profit_usd);
-            });
-        }
+        // skip reporting for long tail and cross pair atomic arbs
+        match possible_arb_type {
+            AtomicArbType::LongTail | AtomicArbType::CrossPair(_) => {
+                tracing::trace!(?info.tx_hash, "skipping long tail or cross pair atomic arb");
+                return None;
+            }
+            _ => {
+                if profit_usd.abs() > 100.0 {
+                    tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit for arb type: {}", possible_arb_type);
+                    self.utils.get_profit_metrics().inspect(|m| {
+                        m.publish_abnormal_profit(
+                            MevType::AtomicArb,
+                            protocols.clone(),
+                            profit_usd,
+                        );
+                    });
+                }
 
-        self.utils.get_profit_metrics().inspect(|m| {
-            m.publish_profit_metrics(MevType::AtomicArb, protocols, profit_usd, Some(possible_arb_type), info.timeboosted)
-        });
+                self.utils.get_profit_metrics().inspect(|m| {
+                    m.publish_profit_metrics(
+                        MevType::AtomicArb,
+                        protocols,
+                        profit_usd,
+                        Some(possible_arb_type),
+                        info.timeboosted,
+                    )
+                });
+            }
+        }
 
         Some(Bundle { header, data })
     }
