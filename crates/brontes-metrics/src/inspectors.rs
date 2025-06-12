@@ -22,10 +22,13 @@ impl Default for ProfitMetrics {
 
 impl ProfitMetrics {
     pub fn new() -> Self {
-        // Define custom buckets for profit values (e.g., in USD)
-        let profit_buckets = prometheus::exponential_buckets(0.1, 2.0, 15).unwrap_or_else(|_| {
-            vec![1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0, 10000.0]
-        }); // Example buckets
+        // Define custom buckets for profit values (e.g., in USD) including negative
+        // values for losses
+        let profit_buckets = vec![
+            -10000.0, -5000.0, -2500.0, -1000.0, -500.0, -250.0, -100.0, -50.0, -25.0, -10.0, -5.0,
+            -4.0, -3.0, -2.0, -1.0, -0.5, -0.1, 0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0,
+            10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0, 10000.0,
+        ];
 
         Self {
             profit_histogram:           prometheus::register_histogram_vec!(
@@ -37,12 +40,13 @@ impl ProfitMetrics {
             .expect("Failed to register profit_usd histogram"),
             timeboost_profit_histogram: prometheus::register_histogram_vec!(
                 "profit_usd_timeboosted",
-                "Distribution of timeboosted tx profit in USD by MEV type, protocol, and block_number",
+                "Distribution of timeboosted tx profit in USD by MEV type, protocol, and \
+                 block_number",
                 &["mev_type", "protocol"],
                 profit_buckets.clone(),
             )
             .expect("Failed to register timeboost_profit_usd histogram"),
-            abnormal_profit_histogram: prometheus::register_histogram_vec!(
+            abnormal_profit_histogram:  prometheus::register_histogram_vec!(
                 "abnormal_profit_usd",
                 "Distribution of abnormal profit in USD by MEV type and protocol",
                 &["mev_type", "protocol"],
@@ -73,12 +77,7 @@ impl ProfitMetrics {
         }
     }
 
-    pub fn publish_abnormal_profit(
-        &self,
-        mev: MevType,
-        protocols: HashSet<Protocol>,
-        profit: f64,
-    ) {
+    pub fn publish_abnormal_profit(&self, mev: MevType, protocols: HashSet<Protocol>, profit: f64) {
         let num_protocols = protocols.len();
         let profit_per_protocol = profit / num_protocols as f64;
         for protocol in protocols {
