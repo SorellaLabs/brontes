@@ -272,6 +272,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                         MevType::CexDexQuotes,
                         protocols,
                         profit_usd,
+                        None,
                         tx_info.timeboosted,
                     )
                 });

@@ -1,16 +1,19 @@
 use std::{collections::HashSet, pin::Pin, time::Instant};
 
-use brontes_types::{mev::MevType, pair::Pair, FastHashMap, Protocol};
+use brontes_types::{mev::{AtomicArbType, MevType}, pair::Pair, FastHashMap, Protocol};
 use dashmap::DashMap;
 use metrics::{Counter, Gauge};
-use prometheus::{HistogramVec, IntCounterVec};
+use prometheus::{GaugeVec, HistogramVec, IntCounterVec};
 use reth_metrics::Metrics;
 use reth_primitives::Address;
 
 #[derive(Clone)]
 pub struct ProfitMetrics {
+    profit_gauge:               GaugeVec,
+    profit_histogram_atomic_arb: HistogramVec,
     profit_histogram:           HistogramVec,
     timeboost_profit_histogram: HistogramVec,
+    timeboost_profit_histogram_atomic_arb: HistogramVec,
     abnormal_profit_histogram:  HistogramVec,
 }
 
@@ -26,14 +29,27 @@ impl ProfitMetrics {
         // values for losses
         let profit_buckets = vec![
             -10000.0, -5000.0, -2500.0, -1000.0, -500.0, -250.0, -100.0, -50.0, -25.0, -10.0, -5.0,
-            -4.0, -3.0, -2.0, -1.0, -0.5, -0.1, 0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0,
-            10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0, 10000.0,
+            -4.0, -3.0, -2.0, -1.0, -0.5, -0.1, 0.0, 0.1, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 25.0,
+            50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0, 10000.0,
         ];
 
         Self {
+            profit_gauge:               prometheus::register_gauge_vec!(
+                "profit_usd_gauge",
+                "Profit in USD by MEV type, protocol, and block_number",
+                &["mev_type", "protocol"],
+            )
+            .expect("Failed to register profit_usd gauge"),
+            profit_histogram_atomic_arb: prometheus::register_histogram_vec!(
+                "profit_usd_atomic_arb",
+                "Distribution of profit in USD by MEV type and protocol",
+                &["mev_type", "protocol", "atomic_arb_type"],
+                profit_buckets.clone(),
+            )
+            .expect("Failed to register profit_usd histogram"),
             profit_histogram:           prometheus::register_histogram_vec!(
                 "profit_usd",
-                "Distribution of profit in USD by MEV type, protocol, and block_number",
+                "Distribution of profit in USD by MEV type and protocol",
                 &["mev_type", "protocol"],
                 profit_buckets.clone(),
             )
@@ -43,6 +59,14 @@ impl ProfitMetrics {
                 "Distribution of timeboosted tx profit in USD by MEV type, protocol, and \
                  block_number",
                 &["mev_type", "protocol"],
+                profit_buckets.clone(),
+            )
+            .expect("Failed to register timeboost_profit_usd histogram"),
+            timeboost_profit_histogram_atomic_arb: prometheus::register_histogram_vec!(
+                "profit_usd_timeboosted_atomic_arb",
+                "Distribution of timeboosted tx profit in USD by MEV type, protocol, and \
+                 block_number",
+                &["mev_type", "protocol", "atomic_arb_type"],
                 profit_buckets.clone(),
             )
             .expect("Failed to register timeboost_profit_usd histogram"),
@@ -61,18 +85,39 @@ impl ProfitMetrics {
         mev: MevType,
         protocols: HashSet<Protocol>,
         profit: f64,
+        possible_mev_type: Option<AtomicArbType>,
         timeboosted: bool,
     ) {
         let num_protocols = protocols.len();
+        // TODO: per protocol profit estimation 
         let profit_per_protocol = profit / num_protocols as f64;
         for protocol in protocols {
+            self.profit_gauge
+                .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
+                .set(profit_per_protocol);
             self.profit_histogram
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                 .observe(profit_per_protocol);
+
+            if possible_mev_type.is_some() {
+                let possible_mev_type = possible_mev_type.unwrap();
+                let possible_mev_type = possible_mev_type.to_string();
+                self.profit_histogram_atomic_arb
+                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.as_str()])
+                    .observe(profit_per_protocol);
+            }
+
             if timeboosted {
                 self.timeboost_profit_histogram
                     .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                     .observe(profit_per_protocol);
+                if possible_mev_type.is_some() {
+                    let possible_mev_type = possible_mev_type.unwrap();
+                    let possible_mev_type = possible_mev_type.to_string();
+                    self.timeboost_profit_histogram_atomic_arb
+                        .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.as_str()])
+                        .observe(profit_per_protocol);
+                }
             }
         }
     }

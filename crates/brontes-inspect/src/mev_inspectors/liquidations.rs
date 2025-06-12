@@ -166,6 +166,7 @@ impl<DB: LibmdbxReader> LiquidationInspector<'_, DB> {
                 MevType::Liquidation,
                 protocols,
                 profit_usd.to_float(),
+                None,
                 info.timeboosted,
             )
         });

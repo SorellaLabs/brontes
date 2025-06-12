@@ -141,6 +141,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
+        if possible_arb_type == AtomicArbType::LongTail {
+            tracing::trace!(?info.tx_hash, "skipping long tail atomic arb");
+            return None;
+        }
+
         let account_deltas = transfers
             .into_iter()
             .map(Action::from)
@@ -262,7 +267,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
 
         self.utils.get_profit_metrics().inspect(|m| {
-            m.publish_profit_metrics(MevType::AtomicArb, protocols, profit_usd, info.timeboosted)
+            m.publish_profit_metrics(MevType::AtomicArb, protocols, profit_usd, Some(possible_arb_type), info.timeboosted)
         });
 
         Some(Bundle { header, data })
