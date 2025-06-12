@@ -141,9 +141,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
-        if possible_arb_type == AtomicArbType::LongTail || possible_arb_type == AtomicArbType::CrossPair {
-            tracing::trace!(?info.tx_hash, "skipping long tail or cross pair atomic arb");
-            return None;
+        match possible_arb_type {
+            AtomicArbType::LongTail | AtomicArbType::CrossPair(_) => {
+                tracing::trace!(?info.tx_hash, "skipping long tail or cross pair atomic arb");
+                return None;
+            }
+            _ => {}
         }
 
         let account_deltas = transfers
