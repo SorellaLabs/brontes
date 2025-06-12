@@ -103,7 +103,7 @@ impl ProfitMetrics {
                 let possible_mev_type = possible_mev_type.unwrap();
                 let possible_mev_type = possible_mev_type.to_string();
                 self.profit_histogram_atomic_arb
-                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.as_str()])
+                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str().trim(), possible_mev_type.as_str()])
                     .observe(profit_per_protocol);
             }
 
