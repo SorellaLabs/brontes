@@ -98,7 +98,7 @@ impl ProfitMetrics {
         for protocol in protocols {
             self.profit_gauge
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
-                .set(profit_per_protocol);
+                .add(profit_per_protocol);
             self.profit_histogram
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                 .observe(profit_per_protocol);
