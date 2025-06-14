@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS mev.mev_blocks
     `proposer_mev_reward` Nullable(UInt128),
     `proposer_profit_usd` Nullable(Float64),
     `total_mev_profit_usd` Float64,
+    `timeboosted_profit_usd` Float64,
+    `timeboosted_tx_count` UInt64,
+    `timeboosted_tx_mev_count` UInt64,
     `possible_mev` Nested (
         `tx_hash` String,
         `tx_idx` UInt64,
