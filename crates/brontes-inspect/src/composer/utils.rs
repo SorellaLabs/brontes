@@ -40,6 +40,7 @@ pub(crate) fn build_mev_header<DB: LibmdbxReader>(
     .0;
 
     let timeboosted_tx_count = tree.clone().tx_roots.iter().filter(|root| root.timeboosted).count() as u64;
+    let timeboosted_tx_mev_count = orchestra_data.iter().filter(|bundle| bundle.header.timeboosted).count() as u64;
 
     let builder_eth_profit = block_pnl.builder_eth_profit.to_scaled_rational(18);
 
@@ -82,6 +83,7 @@ pub(crate) fn build_mev_header<DB: LibmdbxReader>(
         total_mev_profit_usd,
         timeboosted_profit_usd: block_pnl.timeboosted_profit,
         timeboosted_tx_count,
+        timeboosted_tx_mev_count,
         possible_mev,
     }
 }
