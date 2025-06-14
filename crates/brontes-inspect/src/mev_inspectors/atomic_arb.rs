@@ -122,6 +122,23 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         tracing::trace!(?info, "trying atomic");
         let (mut swaps, transfers, eth_transfers) = data;
 
+        let mut mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
+
+        let recipient = match (transfers.last(), eth_transfers.last()) {
+            (Some(last_transfer), Some(last_eth_transfer)) => {
+                if last_transfer.trace_index > last_eth_transfer.trace_index {
+                    last_transfer.to
+                } else {
+                    last_eth_transfer.to
+                }
+            }
+            (Some(last_transfer), None) => last_transfer.to,
+            (None, Some(last_eth_transfer)) => last_eth_transfer.to,
+            (None, None) => info.eoa,
+        };
+
+        mev_addresses.insert(recipient);
+
         for transfer in transfers.iter() {
             if FILTER_TRANSFER_ADDRESSES.contains(&transfer.from)
                 || FILTER_TRANSFER_ADDRESSES.contains(&transfer.to)
@@ -129,8 +146,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 return None;
             }
         }
-        let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
-
         let mut ignore_addresses = mev_addresses.clone();
 
         swaps.iter().for_each(|s| {
