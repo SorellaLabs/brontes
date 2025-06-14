@@ -58,6 +58,7 @@ pub struct MevBlock {
     pub proposer_profit_usd:         Option<f64>,
     pub total_mev_profit_usd:        f64,
     pub timeboosted_profit_usd:      f64,
+    pub timeboosted_tx_count:        u64,
     pub possible_mev:                PossibleMevCollection,
 }
 
@@ -428,6 +429,7 @@ impl Serialize for MevBlock {
         ser_struct.serialize_field("proposer_profit_usd", &self.proposer_profit_usd)?;
         ser_struct.serialize_field("total_mev_profit_usd", &self.total_mev_profit_usd)?;
         ser_struct.serialize_field("timeboosted_profit_usd", &self.timeboosted_profit_usd)?;
+        ser_struct.serialize_field("timeboosted_tx_count", &self.timeboosted_tx_count)?;
         let mut possible_tx_hashes = Vec::new();
         let mut possible_tx_idxes = Vec::new();
         let mut possible_gas_coinbases = Vec::new();
@@ -536,6 +538,7 @@ impl DbRow for MevBlock {
         "proposer_profit_usd",
         "total_mev_profit_usd",
         "timeboosted_profit_usd",
+        "timeboosted_tx_count",
         "possible_mev.tx_hash",
         "possible_mev.tx_idx",
         "possible_mev.gas_details.coinbase_transfer",

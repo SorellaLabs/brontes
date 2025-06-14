@@ -31,13 +31,15 @@ pub(crate) fn build_mev_header<DB: LibmdbxReader>(
 
     let pre_processing = pre_process(tree.clone());
 
-    let block_pnl = calculate_builder_profit(tree, metadata, orchestra_data, &pre_processing);
+    let block_pnl = calculate_builder_profit(tree.clone(), metadata, orchestra_data, &pre_processing);
 
     let builder_searcher_bribes_usd = f64::rounding_from(
         block_pnl.builder_searcher_tip.to_scaled_rational(18) * &eth_price,
         RoundingMode::Nearest,
     )
     .0;
+
+    let timeboosted_tx_count = tree.clone().tx_roots.iter().filter(|root| root.timeboosted).count() as u64;
 
     let builder_eth_profit = block_pnl.builder_eth_profit.to_scaled_rational(18);
 
@@ -79,6 +81,7 @@ pub(crate) fn build_mev_header<DB: LibmdbxReader>(
         proposer_profit_usd,
         total_mev_profit_usd,
         timeboosted_profit_usd: block_pnl.timeboosted_profit,
+        timeboosted_tx_count,
         possible_mev,
     }
 }
