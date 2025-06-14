@@ -84,13 +84,58 @@ impl ProfitMetrics {
         }
     }
 
+    pub fn publish_profit_metrics_atomic_arb(
+        &self,
+        mev: MevType,
+        protocols: &HashSet<Protocol>,
+        profit: f64,
+        possible_mev_type: AtomicArbType,
+    ) {        
+        let num_protocols = protocols.len();
+        let profit_per_protocol = profit / num_protocols as f64;
+        for protocol in protocols {
+            self.profit_histogram_atomic_arb
+                .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
+                .observe(profit_per_protocol);
+        }
+    }
+
+    pub fn publish_profit_metrics_timeboosted_atomic_arb(
+        &self,
+        mev: MevType,
+        protocols: &HashSet<Protocol>,
+        profit: f64,
+        possible_mev_type: AtomicArbType,
+    ) {
+        let num_protocols = protocols.len();
+        let profit_per_protocol = profit / num_protocols as f64;
+        for protocol in protocols {
+            self.timeboost_profit_histogram_atomic_arb
+                .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
+                .observe(profit_per_protocol);
+        }
+    }
+    
+    pub fn publish_profit_metrics_timeboosted(
+        &self,
+        mev: MevType,
+        protocols: &HashSet<Protocol>,
+        profit: f64,
+    ) {
+        let num_protocols = protocols.len();
+        let profit_per_protocol = profit / num_protocols as f64;
+        for protocol in protocols {
+            self.timeboost_profit_histogram
+                .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
+                .observe(profit_per_protocol);
+        }
+    }
+
     pub fn publish_profit_metrics(
         &self,
         mev: MevType,
-        protocols: HashSet<Protocol>,
+        protocols: &HashSet<Protocol>,
         profit: f64,
-        possible_mev_type: Option<AtomicArbType>,
-        timeboosted: bool,
     ) {
         let num_protocols = protocols.len();
         // TODO: per protocol profit estimation
@@ -102,36 +147,10 @@ impl ProfitMetrics {
             self.profit_histogram
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
                 .observe(profit_per_protocol);
-
-            if let Some(possible_mev_type) = possible_mev_type {
-                self.profit_histogram_atomic_arb
-                    .with_label_values(&[
-                        mev.as_ref(),
-                        protocol.to_string().as_str().trim(),
-                        possible_mev_type.to_string().as_str().trim(),
-                    ])
-                    .observe(profit_per_protocol);
-            }
-
-            if timeboosted {
-                self.timeboost_profit_histogram
-                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str()])
-                    .observe(profit_per_protocol);
-
-                if let Some(possible_mev_type) = possible_mev_type {
-                    self.timeboost_profit_histogram_atomic_arb
-                        .with_label_values(&[
-                            mev.as_ref(),
-                            protocol.to_string().as_str().trim(),
-                            possible_mev_type.to_string().as_str().trim(),
-                        ])
-                        .observe(profit_per_protocol);
-                }
-            }
         }
     }
 
-    pub fn publish_abnormal_profit(&self, mev: MevType, protocols: HashSet<Protocol>, profit: f64) {
+    pub fn publish_abnormal_profit(&self, mev: MevType, protocols: &HashSet<Protocol>, profit: f64) {
         let num_protocols = protocols.len();
         let profit_per_protocol = profit / num_protocols as f64;
         for protocol in protocols {

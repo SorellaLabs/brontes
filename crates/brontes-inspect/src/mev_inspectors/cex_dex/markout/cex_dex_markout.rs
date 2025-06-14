@@ -292,11 +292,17 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
         self.utils.get_profit_metrics().inspect(|m| {
             m.publish_profit_metrics(
                 if batch_swap { MevType::CexDexRfq } else { MevType::CexDexTrades },
-                protocols,
+                &protocols,
                 profit_usd,
-                None,
-                tx_info.timeboosted,
-            )
+            );
+
+            if tx_info.timeboosted {
+                m.publish_profit_metrics_timeboosted(
+                    if batch_swap { MevType::CexDexRfq } else { MevType::CexDexTrades },
+                    &protocols,
+                    profit_usd,
+                );
+            }
         });
         Some(Bundle { header, data: cex_dex })
     }
