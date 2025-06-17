@@ -156,6 +156,10 @@ impl TxInfo {
     pub fn is_cex_dex_call(&self) -> bool {
         self.is_cex_dex_call
     }
+
+    pub fn is_timeboosted(&self) -> bool {
+        self.timeboosted
+    }
 }
 
 pub fn collect_address_set_for_accounting(tx_infos: &[TxInfo]) -> FastHashSet<Address> {

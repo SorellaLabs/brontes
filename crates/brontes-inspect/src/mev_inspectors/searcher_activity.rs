@@ -74,7 +74,7 @@ impl<DB: LibmdbxReader> SearcherActivity<'_, DB> {
                 }
                 let info = info?;
 
-                (info.searcher_eoa_info.is_some() || info.searcher_contract_info.is_some()).then(
+                (info.searcher_eoa_info.is_some() || info.searcher_contract_info.is_some() || info.is_timeboosted()).then(
                     || {
                         let deltas = transfers
                             .clone()
