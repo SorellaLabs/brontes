@@ -139,13 +139,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         mev_addresses.insert(recipient);
 
-        for transfer in transfers.iter() {
-            if FILTER_TRANSFER_ADDRESSES.contains(&transfer.from)
-                || FILTER_TRANSFER_ADDRESSES.contains(&transfer.to)
-            {
-                return None;
-            }
-        }
         let mut ignore_addresses = mev_addresses.clone();
 
         swaps.iter().for_each(|s| {
@@ -157,6 +150,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         let possible_arb_type = self.is_possible_arb(&swaps)?;
 
         let account_deltas = transfers
+            .clone()
             .into_iter()
             .map(Action::from)
             .chain(eth_transfers.into_iter().map(Action::from))
@@ -270,6 +264,11 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         );
 
         self.utils.get_profit_metrics().inspect(|m| {
+            let contains_bridge_or_crosschain_swap = transfers.iter().any(|transfer| {
+                FILTER_TRANSFER_ADDRESSES.contains(&transfer.from)
+                    || FILTER_TRANSFER_ADDRESSES.contains(&transfer.to)
+            });
+
             if profit_usd.abs() > 100.0 {
                 tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit for arb type: {}", possible_arb_type);
                 m.publish_abnormal_profit(MevType::AtomicArb, &protocols, profit_usd);
@@ -280,6 +279,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 &protocols,
                 profit_usd,
                 possible_arb_type,
+                contains_bridge_or_crosschain_swap,
             );
 
             if info.timeboosted {
@@ -289,6 +289,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     &protocols,
                     profit_usd,
                     possible_arb_type,
+                    contains_bridge_or_crosschain_swap,
                 );
             }
         });

@@ -15,9 +15,11 @@ use reth_primitives::Address;
 pub struct ProfitMetrics {
     profit_gauge: GaugeVec,
     profit_histogram_atomic_arb: HistogramVec,
+    profit_histogram_atomic_arb_filtered: HistogramVec,
     profit_histogram: HistogramVec,
     timeboost_profit_histogram: HistogramVec,
     timeboost_profit_histogram_atomic_arb: HistogramVec,
+    timeboost_profit_histogram_atomic_arb_filtered: HistogramVec,
     abnormal_profit_histogram: HistogramVec,
 }
 
@@ -51,6 +53,13 @@ impl ProfitMetrics {
                 profit_buckets.clone(),
             )
             .expect("Failed to register profit_usd histogram"),
+            profit_histogram_atomic_arb_filtered: prometheus::register_histogram_vec!(
+                "profit_usd_atomic_arb_filtered",
+                "Distribution of profit in USD by MEV type and protocol",
+                &["mev_type", "protocol", "atomic_arb_type"],
+                profit_buckets.clone(),
+            )
+            .expect("Failed to register profit_usd histogram"),
             profit_histogram: prometheus::register_histogram_vec!(
                 "profit_usd",
                 "Distribution of profit in USD by MEV type and protocol",
@@ -74,6 +83,14 @@ impl ProfitMetrics {
                 profit_buckets.clone(),
             )
             .expect("Failed to register timeboost_profit_usd histogram"),
+            timeboost_profit_histogram_atomic_arb_filtered: prometheus::register_histogram_vec!(
+                "profit_usd_timeboosted_atomic_arb_filtered",
+                "Distribution of timeboosted tx profit in USD by MEV type, protocol, and \
+                 block_number",
+                &["mev_type", "protocol", "atomic_arb_type"],
+                profit_buckets.clone(),
+            )
+            .expect("Failed to register timeboost_profit_usd histogram"),
             abnormal_profit_histogram: prometheus::register_histogram_vec!(
                 "abnormal_profit_usd",
                 "Distribution of abnormal profit in USD by MEV type and protocol",
@@ -90,6 +107,7 @@ impl ProfitMetrics {
         protocols: &HashSet<Protocol>,
         profit: f64,
         possible_mev_type: AtomicArbType,
+        contains_filtered_address: bool,
     ) {        
         let num_protocols = protocols.len();
         let profit_per_protocol = profit / num_protocols as f64;
@@ -97,6 +115,11 @@ impl ProfitMetrics {
             self.profit_histogram_atomic_arb
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
                 .observe(profit_per_protocol);
+            if contains_filtered_address {
+                self.profit_histogram_atomic_arb_filtered
+                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
+                    .observe(profit_per_protocol);
+            }
         }
     }
 
@@ -106,6 +129,7 @@ impl ProfitMetrics {
         protocols: &HashSet<Protocol>,
         profit: f64,
         possible_mev_type: AtomicArbType,
+        contains_filtered_address: bool,
     ) {
         let num_protocols = protocols.len();
         let profit_per_protocol = profit / num_protocols as f64;
@@ -113,6 +137,11 @@ impl ProfitMetrics {
             self.timeboost_profit_histogram_atomic_arb
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
                 .observe(profit_per_protocol);
+            if contains_filtered_address {
+                self.timeboost_profit_histogram_atomic_arb_filtered
+                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
+                    .observe(profit_per_protocol);
+            }
         }
     }
     
