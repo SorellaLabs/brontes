@@ -85,6 +85,20 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                     let info = info??;
                     let actions = action?;
 
+                    let (swaps, transfers, eth_transfers, burn, mint) = actions
+                        .into_iter()
+                        .split_actions::<(Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>), _>((
+                            Action::try_swaps_merged,
+                            Action::try_transfer,
+                            Action::try_eth_transfer,
+                            Action::try_burn,
+                            Action::try_mint,
+                        ));
+
+                    if !burn.is_empty() || !mint.is_empty() {
+                        return None;
+                    }
+
                     self.process_swaps(
                         data.per_block_data
                             .iter()
@@ -92,13 +106,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                             .collect_vec(),
                         info,
                         metadata.clone(),
-                        actions
-                            .into_iter()
-                            .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
-                                Action::try_swaps_merged,
-                                Action::try_transfer,
-                                Action::try_eth_transfer,
-                            )),
+                        (swaps, transfers, eth_transfers),
                     )
                 })
                 .collect::<Vec<_>>()
