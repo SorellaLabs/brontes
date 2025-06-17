@@ -357,6 +357,16 @@ const TRIANGULAR_ARB: &str = indoc! {r#"
                         |___/                                       
 "#};
 
+const BRIDGE_OR_CROSSCHAIN_ARB: &str = indoc! {r#"
+ _____                   _____ _           _          ___       _     
+/  __ \                 /  __ \ |         (_)        / _ \     | |    
+| /  \/_ __ ___  ___ ___| /  \/ |__   __ _ _ _ __   / /_\ \_ __| |__  
+| |   | '__/ _ \/ __/ __| |   | '_ \ / _` | | '_ \  |  _  | '__| '_ \ 
+| \__/\ | | (_) \__ \__ \ \__/\ | | | (_| | | | | | | | | | |  | |_) |
+ \____/_|  \___/|___/___/\____/_| |_|\__,_|_|_| |_| \_| |_/_|  |_.__/ 
+"#};
+
+
 pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let atomic_backrun_data = match &bundle.data {
         BundleData::AtomicArb(data) => data,
@@ -382,6 +392,11 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
         AtomicArbType::LongTail => {
             for line in LONG_TAIL_HEADER.lines() {
                 writeln!(f, "{}", line.bright_green())?;
+            }
+        }
+        AtomicArbType::CrossChain => {
+            for line in BRIDGE_OR_CROSSCHAIN_ARB.lines() {
+                writeln!(f, "{}", line.bright_magenta())?;
             }
         }
     }

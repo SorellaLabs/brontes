@@ -107,7 +107,6 @@ impl ProfitMetrics {
         protocols: &HashSet<Protocol>,
         profit: f64,
         possible_mev_type: AtomicArbType,
-        contains_filtered_address: bool,
     ) {        
         let num_protocols = protocols.len();
         let profit_per_protocol = profit / num_protocols as f64;
@@ -115,11 +114,6 @@ impl ProfitMetrics {
             self.profit_histogram_atomic_arb
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
                 .observe(profit_per_protocol);
-            if contains_filtered_address {
-                self.profit_histogram_atomic_arb_filtered
-                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
-                    .observe(profit_per_protocol);
-            }
         }
     }
 
@@ -129,7 +123,6 @@ impl ProfitMetrics {
         protocols: &HashSet<Protocol>,
         profit: f64,
         possible_mev_type: AtomicArbType,
-        contains_filtered_address: bool,
     ) {
         let num_protocols = protocols.len();
         let profit_per_protocol = profit / num_protocols as f64;
@@ -137,11 +130,6 @@ impl ProfitMetrics {
             self.timeboost_profit_histogram_atomic_arb
                 .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
                 .observe(profit_per_protocol);
-            if contains_filtered_address {
-                self.timeboost_profit_histogram_atomic_arb_filtered
-                    .with_label_values(&[mev.as_ref(), protocol.to_string().as_str(), possible_mev_type.to_string().as_str()])
-                    .observe(profit_per_protocol);
-            }
         }
     }
     

@@ -155,7 +155,7 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         swaps.extend(self.utils.try_create_swaps(&transfers, ignore_addresses));
 
-        let possible_arb_type = self.is_possible_arb(&swaps)?;
+        let possible_arb_type = self.is_possible_arb(&swaps, &transfers)?;
 
         let account_deltas = transfers
             .clone()
@@ -220,7 +220,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 || self.is_stable_arb(&swaps, jump_index)
                 || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
             .then_some(profit),
-
             AtomicArbType::StablecoinArb => (is_profitable
                 || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
             .then_some(profit),
@@ -228,6 +227,9 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 && is_profitable
                 || self.is_long_tail(&info, requirement_multiplier) & !has_dex_price)
                 .then_some(profit),
+            // set profit to zero when it is a cross chain swap as it complicates the profit
+            // calculation
+            AtomicArbType::CrossChain => None,
         }?;
 
         // given we have a atomic arb now, we will go and try to find the trigger
@@ -272,22 +274,12 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         );
 
         self.utils.get_profit_metrics().inspect(|m| {
-            let contains_bridge_or_crosschain_swap = transfers.iter().any(|transfer| {
-                FILTER_TRANSFER_ADDRESSES.contains(&transfer.from)
-                    || FILTER_TRANSFER_ADDRESSES.contains(&transfer.to)
-            });
-
-            if profit_usd.abs() > 100.0 {
-                tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit for arb type: {}", possible_arb_type);
-                m.publish_abnormal_profit(MevType::AtomicArb, &protocols, profit_usd);
-            }
             m.publish_profit_metrics(MevType::AtomicArb, &protocols, profit_usd);
             m.publish_profit_metrics_atomic_arb(
                 MevType::AtomicArb,
                 &protocols,
                 profit_usd,
                 possible_arb_type,
-                contains_bridge_or_crosschain_swap,
             );
 
             if info.timeboosted {
@@ -297,7 +289,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                     &protocols,
                     profit_usd,
                     possible_arb_type,
-                    contains_bridge_or_crosschain_swap,
                 );
             }
         });
@@ -382,7 +373,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .unwrap_or_default()
     }
 
-    fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
+    fn is_possible_arb(
+        &self,
+        swaps: &[NormalizedSwap],
+        transfers: &[NormalizedTransfer],
+    ) -> Option<AtomicArbType> {
+        // We filter out all the possible arbitrages that interacts with Crosschain swap
+        // protocols.
+        if self.is_bridge_or_crosschain_arb(transfers) {
+            return Some(AtomicArbType::CrossChain)
+        }
+
         match swaps.len() {
             0 | 1 => None,
             2 => {
@@ -463,6 +464,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
 
         res
+    }
+
+    fn is_bridge_or_crosschain_arb(&self, transfers: &[NormalizedTransfer]) -> bool {
+        transfers.iter().any(|transfer| {
+            FILTER_TRANSFER_ADDRESSES.contains(&transfer.from)
+                || FILTER_TRANSFER_ADDRESSES.contains(&transfer.to)
+        })
     }
 }
 

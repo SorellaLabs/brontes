@@ -59,6 +59,7 @@ pub enum AtomicArbType {
     CrossPair(usize),
     StablecoinArb,
     LongTail,
+    CrossChain,
 }
 impl Display for AtomicArbType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -67,6 +68,7 @@ impl Display for AtomicArbType {
             AtomicArbType::CrossPair(_) => writeln!(f, "Cross Pair Arbitrage"),
             AtomicArbType::StablecoinArb => writeln!(f, "Stablecoin Arbitrage"),
             AtomicArbType::LongTail => writeln!(f, "LongTail Arbitrage"),
+            AtomicArbType::CrossChain => writeln!(f, "Bridge or Crosschain Arbitrage"),
         }
     }
 }
