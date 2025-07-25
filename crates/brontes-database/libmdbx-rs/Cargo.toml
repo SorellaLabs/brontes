@@ -25,14 +25,16 @@ tempfile = "3.8"
 criterion = "0.5"
 pprof = "0.13"
 
-[target.'cfg(not(windows))'.dependencies]
+# For macOS ARM64: use system libffi, as building from source does not work
+# you can install it via brew install libffi
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+libffi = { version = "3.2.0", features = ["system"] }
+
+# For everything else (non-Windows): build from source
+[target.'cfg(all(not(windows), not(all(target_os = "macos", target_arch = "aarch64"))))'.dependencies]
 libffi = "3.2.0"
 
 [features]
 default = []
 return-borrowed = []
 read-tx-timeouts = ["dashmap", "dashmap/inline"]
-
-
-
-
