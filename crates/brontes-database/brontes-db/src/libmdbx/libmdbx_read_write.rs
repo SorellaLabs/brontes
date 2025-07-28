@@ -4,7 +4,7 @@ use alloy_primitives::Address;
 use brontes_metrics::db_reads::LibmdbxMetrics;
 use brontes_pricing::Protocol;
 use brontes_types::{
-    constants::{ETH_ADDRESS, WETH_ADDRESS},
+    constants,
     db::{
         address_metadata::AddressMetadata,
         address_to_protocol_info::ProtocolInfo,
@@ -514,13 +514,13 @@ impl LibmdbxReader for LibmdbxReadWriter {
 
     #[brontes_macros::metrics_call(ptr=metrics,scope, db_read, "try_fetch_token_info")]
     fn try_fetch_token_info(&self, og_address: Address) -> eyre::Result<TokenInfoWithAddress> {
-        let address = if og_address == ETH_ADDRESS { WETH_ADDRESS } else { og_address };
+        let address = if constants::ETH_ADDRESSES.contains(&og_address) { constants::WETH_ADDRESS } else { og_address };
 
         self.db
             .view_db(|tx| match self.cache.token_info(true, |lock| lock.get(&address)) {
                 Some(Some(e)) => {
                     let mut info = TokenInfoWithAddress { inner: e, address: og_address };
-                    if og_address == ETH_ADDRESS {
+                    if constants::ETH_ADDRESSES.contains(&og_address) {
                         info.symbol = "ETH".to_string();
                     }
                     Ok(info)
@@ -536,7 +536,7 @@ impl LibmdbxReader for LibmdbxReadWriter {
                     .map(|inner| TokenInfoWithAddress { inner, address: og_address })
                     .map(|mut inner| {
                         // quick patch
-                        if og_address == ETH_ADDRESS {
+                        if constants::ETH_ADDRESSES.contains(&og_address) {
                             inner.symbol = "ETH".to_string();
                             inner
                         } else {
@@ -1046,6 +1046,8 @@ impl DBWriter for LibmdbxReadWriter {
             handle.insert(address, Some(details.clone()));
         });
 
+        tracing::trace!("insert pool to libmdbx: {}", address);
+
         Ok(self.tx.send(
             WriterMessage::Pool {
                 block,
@@ -1316,7 +1318,7 @@ pub fn determine_eth_prices(
     Some(
         cex_quotes
             .get_quote_from_most_liquid_exchange(
-                &Pair(quote_asset, WETH_ADDRESS),
+                &Pair(quote_asset, constants::WETH_ADDRESS),
                 block_timestamp,
                 None,
             )?

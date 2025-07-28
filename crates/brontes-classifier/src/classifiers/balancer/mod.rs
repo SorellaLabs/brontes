@@ -6,6 +6,8 @@ mod balancer_v2;
 
 pub use balancer_v2::*;
 
-mod discovery;
+mod balancer_v3;
 
-pub use discovery::*;
+pub use balancer_v3::*;
+
+mod discovery;

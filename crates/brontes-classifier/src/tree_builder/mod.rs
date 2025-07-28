@@ -88,6 +88,8 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
         self.finish_classification(&mut tree, further_classification_requests);
         tree.finalize_tree();
 
+        // tracing::info!("finish_classification: {:?}", finish_classification);
+
         tree
     }
 
@@ -188,6 +190,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(classification)]),
+                        timeboosted: trace.timeboosted,
                     };
 
                     let tx_trace = &trace.trace;
@@ -261,6 +264,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
                         root: tx_root,
                         further_classification_requests: tx_classification_requests,
                         pool_updates,
+                        timeboosted: trace.timeboosted,
                     })
                 }),
         )
@@ -386,9 +390,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> Classifier<'db, T, D
             }
         }
 
-        if let Some(results) =
-            ProtocolClassifier::default().dispatch(call_info, self.libmdbx, block, tx_idx)
-        {
+        if let Some(results) = ProtocolClassifier::default().dispatch(
+            call_info,
+            self.libmdbx,
+            block,
+            tx_idx,
+            self.provider.clone(),
+        ) {
             if results.1.is_new_pool() {
                 let Action::NewPool(p) = &results.1 else { unreachable!() };
                 self.insert_new_pool(block, p).await;
@@ -687,4 +695,5 @@ pub struct TxTreeResult {
     pub pool_updates: Vec<DexPriceMsg>,
     pub further_classification_requests: Option<(usize, Vec<MultiFrameRequest>)>,
     pub root: Root<Action>,
+    pub timeboosted: bool,
 }

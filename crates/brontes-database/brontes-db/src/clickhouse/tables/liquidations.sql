@@ -1,4 +1,4 @@
-CREATE TABLE mev.liquidations ON CLUSTER eth_cluster0
+CREATE TABLE IF NOT EXISTS mev.liquidations 
 (
     `liquidation_tx_hash` String,
     `block_number` UInt64,
@@ -28,8 +28,10 @@ CREATE TABLE mev.liquidations ON CLUSTER eth_cluster0
         `gas_used` UInt128,
         `effective_gas_price` UInt128
     ),
-    `run_id` UInt64
+    `run_id` UInt64,
+    `profit_usd` Float64,
+    `protocols` Array(String)
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/liquidations', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (`block_number`,`liquidation_tx_hash`)
 ORDER BY (`block_number`,`liquidation_tx_hash` )

@@ -1,4 +1,4 @@
-CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
+CREATE TABLE IF NOT EXISTS mev.atomic_arbs 
 (
     `tx_hash` String,
     `block_number` UInt64,
@@ -20,9 +20,11 @@ CREATE TABLE mev.atomic_arbs ON CLUSTER eth_cluster0
         `effective_gas_price` UInt128
     ),
     `arb_type` String,
-    `run_id` UInt64
+    `run_id` UInt64,
+    `profit_usd` Float64,
+    `protocols` Array(String)
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/atomic_arbs', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)
 

@@ -18,6 +18,7 @@ reth-rpc.workspace = true
 # alloy
 alloy-json-abi = { workspace = true, features = ["serde_json"] }
 alloy-rpc-types.workspace = true
+alloy-consensus.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -98,11 +99,13 @@ brontes-database = { workspace = true, features = ["tests"] }
 reth-tracing-ext.workspace = true
 
 
-
-
 [features]
+default = ["arbitrum"]
 tests = []
 test_pricing = []
+arbitrum = [
+  "brontes-classifier/arbitrum",
+]
 
 local-clickhouse = [
   "brontes-database/local-clickhouse",

@@ -357,6 +357,16 @@ const TRIANGULAR_ARB: &str = indoc! {r#"
                         |___/                                       
 "#};
 
+const BRIDGE_OR_CROSSCHAIN_ARB: &str = indoc! {r#"
+ _____                   _____ _           _          ___       _     
+/  __ \                 /  __ \ |         (_)        / _ \     | |    
+| /  \/_ __ ___  ___ ___| /  \/ |__   __ _ _ _ __   / /_\ \_ __| |__  
+| |   | '__/ _ \/ __/ __| |   | '_ \ / _` | | '_ \  |  _  | '__| '_ \ 
+| \__/\ | | (_) \__ \__ \ \__/\ | | | (_| | | | | | | | | | |  | |_) |
+ \____/_|  \___/|___/___/\____/_| |_|\__,_|_|_| |_| \_| |_/_|  |_.__/ 
+"#};
+
+
 pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Result {
     let atomic_backrun_data = match &bundle.data {
         BundleData::AtomicArb(data) => data,
@@ -382,6 +392,11 @@ pub fn display_atomic_backrun(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::R
         AtomicArbType::LongTail => {
             for line in LONG_TAIL_HEADER.lines() {
                 writeln!(f, "{}", line.bright_green())?;
+            }
+        }
+        AtomicArbType::CrossChain => {
+            for line in BRIDGE_OR_CROSSCHAIN_ARB.lines() {
+                writeln!(f, "{}", line.bright_magenta())?;
             }
         }
     }
@@ -983,7 +998,7 @@ pub fn display_searcher_tx(bundle: &Bundle, f: &mut fmt::Formatter) -> fmt::Resu
 
     match bundle.header.mev_contract {
         Some(contract) => {
-            writeln!(f, "   - Mev Contract: {}", formate_etherscan_address_url(&contract))?;
+            writeln!(f, "   - Mev Contract: {}", format_etherscan_address_url(&contract))?;
         }
         None => {
             writeln!(f, "   - Mev Contract: None")?;
@@ -1029,14 +1044,30 @@ fn format_bribe(value: f64) -> ColoredString {
     format!("${:.2}", value).red()
 }
 
+#[cfg(not(feature = "arbitrum"))]
 pub fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
     format!("https://etherscan.io/tx/{:?}", tx_hash)
         .underline()
         .to_string()
 }
 
-pub fn formate_etherscan_address_url(tx_hash: &Address) -> String {
+#[cfg(feature = "arbitrum")]
+pub fn format_etherscan_url(tx_hash: &FixedBytes<32>) -> String {
+    format!("https://arbiscan.io/tx/{:?}", tx_hash)
+        .underline()
+        .to_string()
+}
+
+#[cfg(not(feature = "arbitrum"))]
+pub fn format_etherscan_address_url(tx_hash: &Address) -> String {
     format!("https://etherscan.io/address/{:?}", tx_hash)
+        .underline()
+        .to_string()
+}
+
+#[cfg(feature = "arbitrum")]
+pub fn format_etherscan_address_url(tx_hash: &Address) -> String {
+    format!("https://arbiscan.io/address/{:?}", tx_hash)
         .underline()
         .to_string()
 }

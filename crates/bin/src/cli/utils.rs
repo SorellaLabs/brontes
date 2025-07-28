@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::{env, path::Path, sync::Arc};
 
 use alloy_primitives::Address;
 #[cfg(not(feature = "local-reth"))]
@@ -17,7 +17,7 @@ use brontes_database::clickhouse::ReadOnlyMiddleware;
 use brontes_database::clickhouse::{dbms::BrontesClickhouseData, ClickhouseBuffered};
 use brontes_database::{clickhouse::cex_config::CexDownloadConfig, libmdbx::LibmdbxReadWriter};
 use brontes_inspect::{Inspector, Inspectors};
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::UnboundedYapperReceiver;
 use brontes_types::{
@@ -29,6 +29,7 @@ use brontes_types::{
     mev::Bundle,
     BrontesTaskExecutor,
 };
+use governor::DefaultDirectRateLimiter;
 use itertools::Itertools;
 #[cfg(feature = "local-reth")]
 use reth_tracing_ext::TracingClient;
@@ -58,12 +59,16 @@ pub async fn load_database(
     hr: Option<HeartRateMonitor>,
     run_id: Option<u64>,
 ) -> eyre::Result<ClickhouseMiddleware<LibmdbxReadWriter>> {
-    let inner = LibmdbxReadWriter::init_db(db_endpoint, None, executor, true)?;
+    tracing::info!("Loading database from {}", db_endpoint);
+    let inner = LibmdbxReadWriter::init_db(db_endpoint.clone(), None, executor, true)?;
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     spawn_db_writer_thread(executor, rx, hr);
+    tracing::info!("Loaded database from {}", &db_endpoint);
     let mut clickhouse = Clickhouse::new_default(run_id).await;
+    tracing::info!("Created clickhouse client");
     clickhouse.buffered_insert_tx = Some(tx);
+    tracing::info!("Set buffered insert tx");
 
     Ok(ClickhouseMiddleware::new(clickhouse, inner.into()))
 }
@@ -123,8 +128,19 @@ pub async fn load_clickhouse(
 pub fn get_tracing_provider(_: &Path, _: u64, _: BrontesTaskExecutor) -> LocalProvider {
     let db_endpoint = env::var("RETH_ENDPOINT").expect("No db Endpoint in .env");
     let db_port = env::var("RETH_PORT").expect("No DB port.env");
-    let url = format!("{db_endpoint}:{db_port}");
+    let url = if db_port.is_empty() { db_endpoint } else { format!("{db_endpoint}:{db_port}") };
     LocalProvider::new(url, 5)
+}
+
+#[cfg(not(feature = "local-reth"))]
+pub fn get_tracing_provider_rpc(
+    _: &Path,
+    _: u64,
+    _: BrontesTaskExecutor,
+    limiter: Option<Arc<DefaultDirectRateLimiter>>,
+) -> LocalProvider {
+    let rpc_endpoint = env::var("RPC_URL").expect("No RPC_URL in .env");
+    LocalProvider::new_with_limiter(rpc_endpoint, 5, limiter)
 }
 
 #[cfg(feature = "local-reth")]
@@ -159,7 +175,9 @@ pub fn init_inspectors<DB: LibmdbxReader>(
     metrics: bool,
 ) -> &'static [&'static dyn Inspector<Result = Vec<Bundle>>] {
     let mut res = Vec::new();
+    let profit_metrics = metrics.then(ProfitMetrics::new);
     let metrics = metrics.then(OutlierMetrics::new);
+
     for inspector in inspectors
         .map(|i| i.into_iter())
         .unwrap_or_else(|| Inspectors::iter().collect_vec().into_iter())
@@ -170,6 +188,7 @@ pub fn init_inspectors<DB: LibmdbxReader>(
             &cex_exchanges,
             trade_config,
             metrics.clone(),
+            profit_metrics.clone(),
         ));
     }
 

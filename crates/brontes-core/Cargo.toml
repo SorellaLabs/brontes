@@ -28,6 +28,7 @@ brontes-types.workspace = true
 brontes-metrics.workspace = true
 brontes-tracing.workspace = true
 brontes-database.workspace = true
+brontes-timeboost.workspace = true
 
 once_cell.workspace = true
 
@@ -45,6 +46,8 @@ alloy-json-abi.workspace = true
 alloy-dyn-abi = { workspace = true, features = ["default"] }
 alloy-provider.workspace = true
 alloy-transport-http.workspace = true
+alloy-network.workspace = true
+alloy-consensus.workspace = true
 alloy-rpc-types = { workspace = true, features = ["jsonrpsee-types"] }
 
 # Serde 
@@ -70,6 +73,7 @@ auto_impl.workspace = true
 dotenv.workspace = true
 itertools.workspace = true
 indicatif.workspace = true
+governor.workspace = true
 
 [dev-dependencies]
 serial_test.workspace = true
@@ -92,4 +96,8 @@ local-reth = [
 local-clickhouse = [
   "brontes-database/local-clickhouse",
   "reth-tracing-ext/local-clickhouse",
+]
+
+arbitrum = [
+  "brontes-types/arbitrum"
 ]

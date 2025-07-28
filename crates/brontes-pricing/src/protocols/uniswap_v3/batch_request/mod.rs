@@ -3,19 +3,24 @@ use std::{
     sync::Arc,
 };
 
-use alloy_primitives::{hex, Bytes, FixedBytes, U256};
+use alloy_primitives::Bytes;
 use alloy_sol_macro::sol;
 use alloy_sol_types::SolCall;
 use brontes_types::traits::TracingProvider;
-use reth_primitives::{Address, Bytecode, StorageValue};
+use futures::TryFutureExt;
+use reth_primitives::Address;
 use reth_rpc_types::{request::TransactionInput, TransactionRequest};
 
 mod test_bytecodes;
 use super::UniswapV3Pool;
 use crate::errors::AmmError;
 sol!(
+    IGetUniswapV3PoolDataBatchRequest,
+    "./src/protocols/uniswap_v3/batch_request/GetUniswapV3PoolDataBatchRequest.json"
+);
+sol!(
     IGetUniswapV3TickDataBatchRequest,
-    "./src/protocols/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequestABI.json"
+    "./src/protocols/uniswap_v3/batch_request/GetUniswapV3TickDataBatchRequest.json"
 );
 sol!(IGetERC20DataRequest, "./src/protocols/uniswap_v3/batch_request/GetERC20DataABI.json");
 
@@ -96,53 +101,28 @@ pub async fn get_v3_pool_data_batch_request<M: TracingProvider>(
     block_number: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(), AmmError> {
-    // Pool Storage Slots
-    let slot0_slot: FixedBytes<32> = FixedBytes::new([0u8; 32]);
-    let liquidity_slot: FixedBytes<32> = FixedBytes::with_last_byte(4);
+    let mut bytecode = IGetUniswapV3PoolDataBatchRequest::BYTECODE.to_vec();
+    data_constructorCall::new((vec![pool.address],)).abi_encode_raw(&mut bytecode);
 
-    // Fetch from db
-    let slot0: Option<StorageValue> = middleware
-        .get_storage(block_number, pool.address, slot0_slot)
+    let req = TransactionRequest {
+        to: None,
+        input: TransactionInput::new(bytecode.into()),
+        ..Default::default()
+    };
+
+    let res = middleware
+        .eth_call_light(req, block_number.unwrap().into())
+        .map_err(|e| eyre::eyre!("v3 state call failed, err={}", e))
         .await?;
-    let liquidity: Option<StorageValue> = middleware
-        .get_storage(block_number, pool.address, liquidity_slot)
-        .await?;
 
-    // Fetch bytecode
-    let pool_bytecode: Option<Bytecode> =
-        middleware.get_bytecode(block_number, pool.address).await?;
-
-    // Decode slot0 into sqrt_price and tick
-    if let Some(slot0) = slot0 {
-        let slot0 = hex::encode::<[u8; 32]>(slot0.to_be_bytes());
-        let sqrt_price = U256::from_str_radix(&slot0[slot0.len() - 40..], 16).unwrap();
-        let tick = i32::from_str_radix(&slot0[slot0.len() - 46..][..6], 16).unwrap();
-        pool.sqrt_price = sqrt_price;
-        pool.tick = tick;
-    }
-
-    // Decode liquidity
-    if let Some(liquidity) = liquidity {
-        let liquidity = hex::encode::<[u8; 32]>(liquidity.to_be_bytes());
-        let liquidity = u128::from_str_radix(&liquidity[liquidity.len() - 16..], 16).unwrap();
-        pool.liquidity = liquidity;
-    }
-
-    // Extract token0, token1, fee, tick_spacing from bytecode
-    if let Some(pool_bytecode) = pool_bytecode {
-        if pool_bytecode.is_empty() {
-            return Err(AmmError::CallError(eyre::eyre!(
-                "pool bytecode was empty {:?}",
-                pool.address
-            )))
-        }
-        let pool_bytecode = Bytes::from(hex::encode_prefixed(pool_bytecode.bytecode.as_ref()));
-        let (token0, token1, fee, tick_spacing) = extract_uni_v3_immutables(pool_bytecode)?;
-        pool.fee = fee;
-        pool.tick_spacing = tick_spacing;
-        pool.token_a = token0;
-        pool.token_b = token1;
-    }
+    let return_data = data_constructorCall::abi_decode_returns(&res, false)?;
+    pool.sqrt_price = return_data._0[0].sqrtPrice;
+    pool.tick = return_data._0[0].tick;
+    pool.liquidity = return_data._0[0].liquidity;
+    pool.token_a = return_data._0[0].tokenA;
+    pool.token_b = return_data._0[0].tokenB;
+    pool.fee = return_data._0[0].fee;
+    pool.tick_spacing = return_data._0[0].tickSpacing;
 
     let mut bytecode = IGetERC20DataRequest::BYTECODE.to_vec();
     getERC20DataCall::new((pool.token_a, pool.token_b, pool.address)).abi_encode_raw(&mut bytecode);
@@ -174,19 +154,18 @@ pub async fn get_uniswap_v3_tick_data_batch_request<M: TracingProvider>(
     block_number: Option<u64>,
     middleware: Arc<M>,
 ) -> Result<(Vec<TickData>, u64), AmmError> {
-    let mut bytecode = IGetUniswapV3TickDataBatchRequest::BYTECODE.to_vec();
-    tick_constructorCall::new((
+    let call_data = tick_constructorCall::new((
         pool.address,
         zero_for_one,
         tick_start,
         num_ticks,
         pool.tick_spacing,
     ))
-    .abi_encode_raw(&mut bytecode);
+    .abi_encode();
 
     let req = TransactionRequest {
-        to: None,
-        input: TransactionInput::new(bytecode.into()),
+        to: Some(Address::from_str("0x23e5b07d8e216340Cf34252c81a0D19BE13FB22f").unwrap()),
+        input: TransactionInput::new(call_data.into()),
         ..Default::default()
     };
 

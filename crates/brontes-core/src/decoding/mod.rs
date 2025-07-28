@@ -1,17 +1,21 @@
-use std::{pin::Pin, sync::Arc};
+use std::{collections::HashMap, pin::Pin, sync::Arc};
 
+use alloy_primitives::{Address, FixedBytes};
+use alloy_rpc_types::Log;
 use brontes_database::libmdbx::{DBWriter, LibmdbxReader};
-use brontes_types::structured_trace::TxTrace;
+use brontes_timeboost::auction::{ExpressLaneAuction, ExpressLaneAuctionUpdate};
 pub use brontes_types::traits::TracingProvider;
+use brontes_types::{structured_trace::TxTrace, Protocol};
 use futures::Future;
 use reth_primitives::{BlockHash, BlockNumberOrTag, Header, B256};
 use tokio::sync::mpsc::UnboundedSender;
 
-use self::parser::TraceParser;
+use self::{log_parser::EthLogParser, parser::TraceParser};
 
 #[cfg(feature = "dyn-decode")]
 mod dyn_decode;
 
+pub mod log_parser;
 pub mod parser;
 mod utils;
 use brontes_metrics::{
@@ -25,13 +29,24 @@ pub(crate) const RECEIVE: &str = "receive";
 pub(crate) const FALLBACK: &str = "fallback";
 use reth_primitives::BlockId;
 
+pub type LogParserFuture =
+    Pin<Box<dyn Future<Output = Option<(u64, HashMap<Protocol, Vec<Log>>)>> + Send + 'static>>;
+
 pub type ParserFuture =
     Pin<Box<dyn Future<Output = Option<(BlockHash, Vec<TxTrace>, Header)>> + Send + 'static>>;
+
+pub type ExpressLaneAuctionFuture =
+    Pin<Box<dyn Future<Output = eyre::Result<Vec<ExpressLaneAuctionUpdate>>> + Send + 'static>>;
 
 pub type TraceClickhouseFuture = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 
 pub struct Parser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
-    parser: TraceParser<T, DB>,
+    parser:               TraceParser<T, DB>,
+    express_lane_auction: ExpressLaneAuction<T>,
+}
+
+pub struct LogParser<T: TracingProvider, DB: LibmdbxReader + DBWriter> {
+    parser: EthLogParser<T, DB>,
 }
 
 impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
@@ -40,9 +55,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         libmdbx: &'static DB,
         tracing: T,
     ) -> Self {
-        let parser = TraceParser::new(libmdbx, Arc::new(tracing), Arc::new(metrics_tx)).await;
-
-        Self { parser }
+        let tracing = Arc::new(tracing);
+        let parser = TraceParser::new(libmdbx, tracing.clone(), Arc::new(metrics_tx)).await;
+        let express_lane_auction = ExpressLaneAuction::new(tracing.clone());
+        Self { parser, express_lane_auction }
     }
 
     #[cfg(not(feature = "local-reth"))]
@@ -74,12 +90,21 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         // than the process that runs brontes.
         let parser = self.parser.clone();
 
+        tracing::info!(target: "brontes", "executing block: {:?}", block_num);
+
         if let Some(metrics) = metrics {
             Box::pin(metrics.block_tracing(id, move || Box::pin(parser.execute_block(block_num))))
                 as ParserFuture
         } else {
             Box::pin(parser.execute_block(block_num)) as ParserFuture
         }
+    }
+
+    pub fn get_express_lane_updates(&self, block_num: u64) -> ExpressLaneAuctionFuture {
+        let express_lane_auction = self.express_lane_auction.clone();
+        tracing::info!(target: "brontes", "getting express lane auction controller for block: {:?}", block_num);
+        Box::pin(async move { express_lane_auction.fetch_auction_events(block_num).await })
+            as ExpressLaneAuctionFuture
     }
 
     /// ensures no libmdbx write
@@ -97,5 +122,35 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> Parser<T, DB> {
         let parser = self.parser.clone();
 
         Box::pin(parser.trace_clickhouse_block(block_num)) as TraceClickhouseFuture
+    }
+}
+
+impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> LogParser<T, DB> {
+    pub async fn new(
+        libmdbx: &'static DB,
+        provider: Arc<T>,
+        filters: HashMap<Protocol, Vec<(Address, FixedBytes<32>)>>,
+    ) -> Self {
+        let parser = EthLogParser::new(libmdbx, provider, filters).await;
+        Self { parser }
+    }
+
+    pub fn get_provider(&self) -> Arc<T> {
+        self.parser.get_provider()
+    }
+
+    #[cfg(not(feature = "local-reth"))]
+    pub async fn get_latest_block_number(&self) -> eyre::Result<u64> {
+        self.parser.best_block_number().await
+    }
+
+    /// ensures no libmdbx write
+    pub async fn execute_discovery(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> eyre::Result<HashMap<Protocol, Vec<Log>>> {
+        let parser = self.parser.clone();
+        Box::pin(parser.execute_block_discovery(start_block, end_block)).await
     }
 }

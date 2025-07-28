@@ -12,6 +12,7 @@ members = [
   "crates/brontes-macros",
   "crates/brontes-pricing",
   "crates/brontes-database/libmdbx-rs",
+  "crates/brontes-timeboost",
 ]
 
 resolver = "2"
@@ -35,6 +36,7 @@ reth-tracing-ext = { path = "./crates/reth-tracing-ext/" }
 brontes-tracing = { path = "./crates/brontes-tracing" }
 brontes-analytics = { path = "./crates/brontes-analytics" }
 brontes-libmdbx = { path = "./crates/brontes-database/libmdbx-rs" }
+brontes-timeboost = { path = "./crates/brontes-timeboost" }
 
 # Reth
 reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", package = "reth-node-ethereum", rev = "ac29b4b" }
@@ -101,6 +103,7 @@ alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b869
   "jsonrpsee-types",
 ] }
 alloy-rpc-client = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
+alloy-consensus = { git = "https://github.com/alloy-rs/alloy.git", rev = "39b8695" }
 
 # Async
 tokio = { version = "1.13.0", features = ["full", "tracing"] }
@@ -177,6 +180,7 @@ num_cpus = "1.16.0"
 redefined = { git = "https://github.com/SorellaLabs/redefined" }
 bytes = "1.5"
 bitflags = "2.5.0"
+governor = { version = "0.10.0" , features = ["jitter"] }
 
 arrow = "51.0.0"
 polars = { version = "0.38.3", features = ["lazy"] }

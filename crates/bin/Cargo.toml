@@ -16,6 +16,7 @@ brontes-metrics.workspace = true
 brontes-pricing.workspace = true
 brontes-tracing.workspace = true
 brontes-libmdbx = { workspace = true, features = ["read-tx-timeouts"] }
+brontes-timeboost.workspace = true
 
 malachite.workspace = true
 toml = "0.8.2"
@@ -80,6 +81,7 @@ human_bytes = "0.4.1"
 boyer-moore-magiclen = "0.2.16"
 comfy-table = "7.0"
 serde_json.workspace = true
+governor.workspace = true
 
 # http/rpc
 hyper.workspace = true
@@ -126,7 +128,7 @@ const_format = { version = "0.2.32", features = ["rust_1_64"] }
 vergen = { version = "8.0.0", features = ["build", "cargo", "git", "gitcl"] }
 
 [features]
-default = ["brontes-core/default", "brontes-classifier/default", "jemalloc"]
+default = ["brontes-core/default", "brontes-classifier/default", "jemalloc", "local-clickhouse", "arbitrum"]
 
 jemalloc = ["brontes-metrics/jemalloc"]
 jemalloc-prof = ["jemalloc", "tikv-jemallocator/profiling"]
@@ -161,3 +163,8 @@ local-clickhouse = [
 
 uni-v3-ticks = ["brontes-pricing/uni-v3-ticks"]
 dyn-decode = ["brontes-core/dyn-decode"]
+
+arbitrum = [
+  "brontes-types/arbitrum",
+  "brontes-classifier/arbitrum",
+]

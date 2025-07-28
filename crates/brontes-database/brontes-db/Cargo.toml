@@ -183,3 +183,7 @@ local-clickhouse = [
   "brontes-database/local-clickhouse",
   "async-rate-limiter",
 ]
+
+arbitrum = [
+  "brontes-types/arbitrum"
+]

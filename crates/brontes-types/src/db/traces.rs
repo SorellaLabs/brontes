@@ -47,6 +47,7 @@ pub struct TxTraceRedefined {
     pub gas_used:        u128,
     pub effective_price: u128,
     pub tx_index:        u64,
+    pub timeboosted:     bool,
     // False if the transaction reverted
     pub is_success:      bool,
 }

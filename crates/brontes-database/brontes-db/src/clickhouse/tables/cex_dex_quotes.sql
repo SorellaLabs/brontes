@@ -1,4 +1,4 @@
-CREATE TABLE mev.cex_dex_quotes ON CLUSTER eth_cluster0
+CREATE TABLE IF NOT EXISTS mev.cex_dex_quotes 
 (
     `tx_hash` String,
     `block_timestamp` UInt64,
@@ -27,8 +27,10 @@ CREATE TABLE mev.cex_dex_quotes ON CLUSTER eth_cluster0
         `gas_used` UInt128,
         `effective_gas_price` UInt128
     ),
-    `run_id` UInt64
+    `run_id` UInt64,
+    `profit_usd` Float64,
+    `protocols` Array(String)
 )
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/mev/cex_dex_quotes', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (`block_number`, `tx_hash`)
 ORDER BY (`block_number`, `tx_hash`)

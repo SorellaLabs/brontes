@@ -1,5 +1,7 @@
 use alloy_primitives::{hex, Address};
 
+pub const BLOCK_TIME_MILLIS: usize = 12_000;
+
 pub const USDT_ADDRESS_STRING: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
 pub const ETH_ADDRESS: Address = Address::new(hex!("EeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"));
@@ -40,6 +42,8 @@ pub const EURT_ADDRESS: Address = Address::new(hex!("c581b735a1688071a1746c968e0
 pub const LINK_ADDRESS: Address = Address::new(hex!("514910771af9ca656af840dff83e8264ecf986ca"));
 pub const UNI_TOKEN: Address = Address::new(hex!("1f9840a85d5af5bf1d1762f925bdaddc4201f984"));
 pub const XAUT_ADDRESS: Address = Address::new(hex!("68749665ff8d2d112fa859aa293f07a622782f38"));
+
+pub const ETH_ADDRESSES: [Address; 1] = [ETH_ADDRESS];
 
 /// The first block where the chainbound mempool data is available.
 pub const START_OF_CHAINBOUND_MEMPOOL_DATA: u64 = 17193367;

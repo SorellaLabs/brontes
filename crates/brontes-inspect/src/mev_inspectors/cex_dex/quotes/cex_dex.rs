@@ -43,12 +43,13 @@
 //! `BundleData::CexDex` instances.
 use std::{
     cmp::{max, min},
+    collections::HashSet,
     sync::Arc,
 };
 
 use alloy_primitives::Address;
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
     db::cex::{quotes::FeeAdjustedQuote, CexExchange},
     display::utils::format_etherscan_url,
@@ -95,9 +96,10 @@ impl<'db, DB: LibmdbxReader> CexDexQuotesInspector<'db, DB> {
         cex_exchanges: &[CexExchange],
         quotes_fetch_offset: u64,
         metrics: Option<OutlierMetrics>,
+        profit_metrics: Option<ProfitMetrics>,
     ) -> Self {
         Self {
-            utils:                SharedInspectorUtils::new(quote, db, metrics),
+            utils:                SharedInspectorUtils::new(quote, db, metrics, profit_metrics),
             _quotes_fetch_offset: quotes_fetch_offset,
             _cex_exchanges:       cex_exchanges.to_owned(),
         }
@@ -158,7 +160,8 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         tree: Arc<BlockTree<Action>>,
         metadata: Arc<Metadata>,
     ) -> Vec<Bundle> {
-        tree.clone()
+        let bundles = tree
+            .clone()
             .collect_all(TreeSearchBuilder::default().with_actions([
                 Action::is_swap,
                 Action::is_transfer,
@@ -167,6 +170,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
             ]))
             .filter_map(|(tx, swaps)| {
                 let tx_info = tree.get_tx_info(tx, self.utils.db)?;
+                let mut protocols = HashSet::new();
 
                 // Return early if this is an defi automation contract
                 if let Some(contract_type) = tx_info.contract_type.as_ref() {
@@ -191,6 +195,10 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     .utils
                     .flatten_nested_actions(swaps.into_iter(), &|action| action.is_swap())
                     .split_return_rem(Action::try_swaps_merged);
+
+                dex_swaps.iter().for_each(|swap| {
+                    protocols.insert(swap.protocol);
+                });
 
                 let transfers: Vec<_> = rem.into_iter().split_actions(Action::try_transfer);
 
@@ -238,8 +246,14 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     },
                 );
 
-                let (profit_usd, cex_dex) =
-                    self.filter_possible_cex_dex(possible_cex_dex, &tx_info, &metadata)?;
+                let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
+
+                let (profit_usd, cex_dex) = self.filter_possible_cex_dex(
+                    possible_cex_dex,
+                    &tx_info,
+                    &metadata,
+                    &protocols_str,
+                )?;
 
                 let header = self.utils.build_bundle_header(
                     vec![deltas],
@@ -253,9 +267,26 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                     |_, token, amount| Some(price_map.get(&token)? * amount),
                 );
 
+                self.utils.get_profit_metrics().inspect(|m| {
+                    m.publish_profit_metrics(
+                        MevType::CexDexQuotes,
+                        &protocols,
+                        profit_usd,
+                    );
+
+                    if tx_info.timeboosted {
+                        m.publish_profit_metrics_timeboosted(
+                            MevType::CexDexQuotes,
+                            &protocols,
+                            profit_usd,
+                        );
+                    }
+                });
                 Some(Bundle { header, data: cex_dex })
             })
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+
+        bundles
     }
 
     pub fn detect_cex_dex(
@@ -451,6 +482,7 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
         possible_cex_dex: CexDexProcessing,
         info: &TxInfo,
         metadata: &Metadata,
+        protocols: &[String],
     ) -> Option<(f64, BundleData)> {
         let is_cex_dex_bot_with_significant_activity =
             info.is_searcher_of_type_with_count_threshold(MevType::CexDexQuotes, FILTER_THRESHOLD);
@@ -505,7 +537,16 @@ impl<DB: LibmdbxReader> CexDexQuotesInspector<'_, DB> {
                 })
                 .collect_vec();
 
-            possible_cex_dex.into_bundle(info, metadata.block_timestamp, t2, t12, t30, t60, t300)
+            possible_cex_dex.into_bundle(
+                info,
+                metadata.block_timestamp,
+                t2,
+                t12,
+                t30,
+                t60,
+                t300,
+                protocols,
+            )
         } else {
             None
         }

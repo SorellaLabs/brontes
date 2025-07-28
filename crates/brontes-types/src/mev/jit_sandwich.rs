@@ -185,6 +185,7 @@ pub fn compose_sandwich_jit(mev: Vec<Bundle>) -> Option<Bundle> {
         balance_deltas:        classified_sandwich.balance_deltas,
         bribe_usd:             classified_sandwich.bribe_usd,
         no_pricing_calculated: classified_sandwich.no_pricing_calculated,
+        timeboosted:           classified_sandwich.timeboosted,
     };
 
     Some(Bundle { header: new_classified, data: BundleData::JitSandwich(jit_sand) })

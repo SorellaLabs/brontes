@@ -7,7 +7,7 @@ use backon::{ExponentialBuilder, Retryable};
 #[cfg(feature = "local-clickhouse")]
 use brontes_types::db::{block_times::BlockTimes, cex::CexSymbols};
 use brontes_types::{
-    block_metadata::Relays,
+    block_metadata::{RelayBlockMetadata, Relays},
     db::{
         address_to_protocol_info::ProtocolInfoClickhouse,
         block_analysis::BlockAnalysis,
@@ -39,11 +39,22 @@ use db_interfaces::{
     Database,
 };
 use eyre::Result;
+use futures::future::ok;
 use itertools::Itertools;
+use itertools::izip;
 use reth_primitives::{BlockHash, TxHash};
 use serde::{Deserialize, Serialize};
 use tokio::{sync::mpsc::UnboundedSender, time::Duration};
 use tracing::{debug, error, warn};
+use brontes_types::db::clickhouse_serde::tx_trace::{
+    ClickhouseCallAction, ClickhouseCallOutput, ClickhouseCreateAction,
+    ClickhouseCreateOutput, ClickhouseDecodedCallData, ClickhouseLogs,
+    ClickhouseRewardAction, ClickhouseSelfDestructAction,
+};
+use super::tx_traces::{
+    MetaTuple, TxTraceRow,
+    TxTraceTuple,
+};
 
 use super::{
     cex_config::CexDownloadConfig, dbms::*, ClickhouseHandle, MOST_VOLUME_PAIR_EXCHANGE,
@@ -251,6 +262,7 @@ impl Clickhouse {
         decimals: u8,
         symbol: String,
     ) -> eyre::Result<()> {
+        tracing::trace!(?decimals, ?symbol, ?address, "insert token info to clickhouse");
         let data = TokenInfoWithAddress { address, inner: TokenInfo { symbol, decimals } };
 
         if let Some(tx) = self.buffered_insert_tx.as_ref() {
@@ -268,6 +280,7 @@ impl Clickhouse {
         curve_lp_token: Option<Address>,
         classifier_name: Protocol,
     ) -> eyre::Result<()> {
+        tracing::trace!("insert pool to clickhouse: {}", address);
         let data =
             ProtocolInfoClickhouse::new(block, address, tokens, curve_lp_token, classifier_name);
 
@@ -286,7 +299,132 @@ impl Clickhouse {
         Ok(())
     }
 
-    pub async fn save_traces(&self, _block: u64, _traces: Vec<TxTrace>) -> eyre::Result<()> {
+    /// Store transaction traces using the same tuple layout understood by
+    /// `clickhouse_serde::tx_trace`'s deserializer.
+    pub async fn save_traces(&self, block: u64, traces: Vec<TxTrace>) -> eyre::Result<()> {
+        fn to_tuple(trace: &TxTrace) -> TxTraceTuple {
+            let meta: Vec<MetaTuple> = trace
+                .trace
+                .iter()
+                .map(|t| {
+                    (
+                        t.trace_idx,
+                        format!("{:?}", t.msg_sender),
+                        t.trace.error.clone(),
+                        t.trace.subtraces as u64,
+                        t.trace
+                            .trace_address
+                            .iter()
+                            .map(|v| *v as u64)
+                            .collect::<Vec<u64>>(),
+                    )
+                })
+                .collect();
+
+            let decoded = {
+                let d = ClickhouseDecodedCallData::from(trace);
+                izip!(d.trace_idx, d.function_name, d.call_data, d.return_data)
+                    .map(|(i, f, c, r)| (i, f, c, r))
+                    .collect::<Vec<_>>()
+            };
+
+            let logs = {
+                let l = ClickhouseLogs::from(trace);
+                izip!(l.trace_idx, l.log_idx, l.address, l.topics, l.data)
+                    .map(|(ti, li, a, t, d)| (ti, li, a, t, d))
+                    .collect::<Vec<_>>()
+            };
+
+            let create_action = {
+                let c = ClickhouseCreateAction::from(trace);
+                izip!(c.trace_idx, c.from, c.gas, c.init, c.value)
+                    .map(|(i, f, g, init, v)| (i, f, g, init, v))
+                    .collect::<Vec<_>>()
+            };
+
+            let call_action = {
+                let c = ClickhouseCallAction::from(trace);
+                izip!(c.trace_idx, c.from, c.call_type, c.gas, c.input, c.to, c.value)
+                    .map(|(i, f, ct, g, inp, to, v)| (i, f, ct, g, inp, to, v))
+                    .collect::<Vec<_>>()
+            };
+
+            let self_destruct_action = {
+                let s = ClickhouseSelfDestructAction::from(trace);
+                izip!(s.trace_idx, s.address, s.balance, s.refund_address)
+                    .map(|(i, a, b, r)| (i, a, b, r))
+                    .collect::<Vec<_>>()
+            };
+
+            let reward_action = {
+                let r = ClickhouseRewardAction::from(trace);
+                izip!(r.trace_idx, r.author, r.reward_type, r.value)
+                    .map(|(i, a, t, v)| (i, a, t, v))
+                    .collect::<Vec<_>>()
+            };
+
+            let call_output = {
+                let c = ClickhouseCallOutput::from(trace);
+                izip!(c.trace_idx, c.gas_used, c.output)
+                    .map(|(i, g, o)| (i, g, o))
+                    .collect::<Vec<_>>()
+            };
+
+            let create_output = {
+                let c = ClickhouseCreateOutput::from(trace);
+                izip!(c.trace_idx, c.address, c.code, c.gas_used)
+                    .map(|(i, a, code, g)| (i, a, code, g))
+                    .collect::<Vec<_>>()
+            };
+
+            TxTraceTuple(
+                trace.block_number,
+                (
+                    meta,
+                    decoded,
+                    logs,
+                    create_action,
+                    call_action,
+                    self_destruct_action,
+                    reward_action,
+                    call_output,
+                    create_output,
+                ),
+                format!("{:?}", trace.tx_hash),
+                trace.gas_used,
+                trace.effective_price,
+                trace.tx_index,
+                trace.is_success,
+            )
+        }
+
+        if traces.is_empty() {
+            return Ok(());
+        }
+
+        let mut insert = self
+            .client
+            .client
+            .insert("brontes_api.tx_traces".to_string())?;
+
+        for trace in &traces {
+            let tuple = to_tuple(trace);
+            let serialized = serde_json::to_vec(&vec![tuple])?;
+            let row = TxTraceRow {
+                block_number:    block,
+                tx_hash:         format!("{:?}", trace.tx_hash),
+                traces:          serialized,
+                gas_used:        trace.gas_used as u64,
+                effective_price: trace.effective_price as u64,
+                tx_index:        trace.tx_index,
+                is_success:      trace.is_success,
+            };
+
+            insert.write(&row).await?;
+        }
+
+        insert.end().await?;
+
         Ok(())
     }
 
@@ -297,7 +435,7 @@ impl Clickhouse {
     ) -> Result<Vec<Q>, DatabaseError>
     where
         Q: ClickhouseQuery,
-        P: BindParameters + Send + Sync,
+        P: BindParameters + Send + Sync + Debug,
     {
         let retry_strategy = ExponentialBuilder::default()
             .with_max_times(10)
@@ -444,15 +582,25 @@ impl ClickhouseHandle for Clickhouse {
         block_hash: BlockHash,
         tx_hashes_in_block: Vec<TxHash>,
         quote_asset: Address,
+        get_mempool_metadata: bool,
     ) -> eyre::Result<Metadata> {
-        let (relay, p2p_timestamp, private_flow) = tokio::try_join!(
-            Relays::get_relay_metadata(block_num, block_hash),
-            self.get_earliest_p2p_observation(block_num, block_hash),
-            self.get_private_flow(tx_hashes_in_block)
-        )
-        .inspect_err(|e| {
-            tracing::warn!("error getting block metadata - {:?}", e);
-        })?;
+        let (relay, p2p_timestamp, private_flow) = if get_mempool_metadata {
+            tokio::try_join!(
+                Relays::get_relay_metadata(block_num, block_hash),
+                self.get_earliest_p2p_observation(block_num, block_hash),
+                self.get_private_flow(tx_hashes_in_block)
+            )
+            .inspect_err(|e| {
+                tracing::warn!("error getting block metadata - {:?}", e);
+            })?
+        } else {
+            tokio::try_join!(
+                ok::<Option<RelayBlockMetadata>, eyre::Error>(None),
+                async { Ok::<Option<u64>, eyre::Error>(None) },
+                async { Ok::<Vec<TxHash>, eyre::Error>(Vec::new()) }
+            )
+            .unwrap()
+        };
 
         let block_meta = BlockMetadataInner::make_new(
             block_hash,
@@ -558,6 +706,8 @@ impl ClickhouseHandle for Clickhouse {
             CexRangeOrArbitrary::Arbitrary(vals) => {
                 let mut query = BLOCK_TIMES.to_string();
 
+                tracing::info!("Querying block times for arbitrary values: {:?}", vals);
+
                 let vals = vals
                     .iter()
                     .flat_map(|v| {
@@ -573,6 +723,7 @@ impl ClickhouseHandle for Clickhouse {
                     &format!("block_number IN (SELECT arrayJoin({:?}) AS block_number)", vals),
                 );
 
+                tracing::info!("Querying block times for arbitrary values: {:?}", query);
                 self.client.query_many(query, &()).await?
             }
             CexRangeOrArbitrary::Timestamp { block_number, block_timestamp } => {
@@ -745,13 +896,13 @@ impl ClickhouseHandle for Clickhouse {
                     .min_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    - (6.0 * SECONDS_TO_US);
+                    - (0.125 * SECONDS_TO_US);
                 let end_time = block_times
                     .iter()
                     .max_by_key(|b| b.timestamp)
                     .map(|b| b.timestamp)
                     .unwrap() as f64
-                    + (6.0 * SECONDS_TO_US);
+                    + (0.125 * SECONDS_TO_US);
 
                 debug!(
                     "Querying raw CEX trades for time range: start={}, end={}",
@@ -842,6 +993,11 @@ impl Clickhouse {
                     .map(|b| b.timestamp)
                     .unwrap() as f64;
 
+                tracing::info!(
+                    "Querying most volume pair exchange for range: start={}, end={}",
+                    start_time,
+                    end_time
+                );
                 self.query_many_with_retry(MOST_VOLUME_PAIR_EXCHANGE, &(start_time, end_time))
                     .await?
             }
@@ -1255,6 +1411,8 @@ mod tests {
                 gas_used:            271686,
                 effective_gas_price: 8875282233,
             },
+            profit_usd:        12951.829205242997,
+            protocols:         vec!["UniswapV2".to_string()],
         };
 
         db.insert_one::<MevCex_Dex_Quotes>(&DbDataWithRunId::new_with_run_id(case0, 42069))

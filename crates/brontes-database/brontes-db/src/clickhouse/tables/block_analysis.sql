@@ -1,4 +1,4 @@
-CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0  
+CREATE TABLE IF NOT EXISTS brontes.block_analysis 
 (
     `block_number` UInt64,
     `eth_price` Float64, 
@@ -443,6 +443,6 @@ CREATE TABLE brontes.block_analysis ON CLUSTER eth_cluster0
     
     `run_id` UInt64
 ) 
-ENGINE = ReplicatedMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/block_analysis', '{replica}')
+ENGINE = MergeTree()
 PRIMARY KEY (`block_number`)
 ORDER BY (`block_number`)

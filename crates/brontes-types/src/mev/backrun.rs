@@ -33,6 +33,8 @@ pub struct AtomicArb {
     pub gas_details:  GasDetails,
     #[redefined(same_fields)]
     pub arb_type:     AtomicArbType,
+    pub profit_usd:   f64,
+    pub protocols:    Vec<String>,
 }
 /// Represents the different types of atomic arb
 /// A triangle arb is a simple arb that goes from token A -> B -> C -> A
@@ -57,6 +59,7 @@ pub enum AtomicArbType {
     CrossPair(usize),
     StablecoinArb,
     LongTail,
+    CrossChain,
 }
 impl Display for AtomicArbType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -65,6 +68,7 @@ impl Display for AtomicArbType {
             AtomicArbType::CrossPair(_) => writeln!(f, "Cross Pair Arbitrage"),
             AtomicArbType::StablecoinArb => writeln!(f, "Stablecoin Arbitrage"),
             AtomicArbType::LongTail => writeln!(f, "LongTail Arbitrage"),
+            AtomicArbType::CrossChain => writeln!(f, "Bridge or Crosschain Arbitrage"),
         }
     }
 }
@@ -129,6 +133,8 @@ impl Serialize for AtomicArb {
         );
         ser_struct.serialize_field("gas_details", &gas_details)?;
         ser_struct.serialize_field("arb_type", &self.arb_type.to_string())?;
+        ser_struct.serialize_field("profit_usd", &self.profit_usd)?;
+        ser_struct.serialize_field("protocols", &self.protocols)?;
         ser_struct.end()
     }
 }
@@ -148,5 +154,7 @@ impl DbRow for AtomicArb {
         "swaps.amount_out",
         "gas_details",
         "arb_type",
+        "profit_usd",
+        "protocols",
     ];
 }

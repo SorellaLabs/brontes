@@ -60,7 +60,7 @@
 pub mod composer;
 pub mod discovery;
 pub mod mev_inspectors;
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use mev_inspectors::searcher_activity::SearcherActivity;
 pub use mev_inspectors::*;
 
@@ -124,14 +124,15 @@ impl Inspectors {
         cex_exchanges: &[CexExchange],
         trade_config: CexDexTradeConfig,
         metrics: Option<OutlierMetrics>,
+        profit_metrics: Option<ProfitMetrics>,
     ) -> DynMevInspector {
         match &self {
             Self::AtomicArb => {
-                static_object(AtomicArbInspector::new(quote_token, db, metrics)) as DynMevInspector
+                static_object(AtomicArbInspector::new(quote_token, db, metrics, profit_metrics))
+                    as DynMevInspector
             }
-            Self::Jit => {
-                static_object(JitInspector::new(quote_token, db, metrics)) as DynMevInspector
-            }
+            Self::Jit => static_object(JitInspector::new(quote_token, db, metrics, profit_metrics))
+                as DynMevInspector,
 
             Self::CexDex => static_object(CexDexQuotesInspector::new(
                 quote_token,
@@ -139,16 +140,19 @@ impl Inspectors {
                 cex_exchanges,
                 trade_config.quote_offset_from_block_us,
                 metrics,
+                profit_metrics,
             )) as DynMevInspector,
             Self::Sandwich => {
-                static_object(SandwichInspector::new(quote_token, db, metrics)) as DynMevInspector
+                static_object(SandwichInspector::new(quote_token, db, metrics, profit_metrics))
+                    as DynMevInspector
             }
             Self::Liquidations => {
-                static_object(LiquidationInspector::new(quote_token, db, metrics))
+                static_object(LiquidationInspector::new(quote_token, db, metrics, profit_metrics))
                     as DynMevInspector
             }
             Self::SearcherActivity => {
-                static_object(SearcherActivity::new(quote_token, db, metrics)) as DynMevInspector
+                static_object(SearcherActivity::new(quote_token, db, metrics, profit_metrics))
+                    as DynMevInspector
             }
             Self::CexDexMarkout => static_object(CexDexMarkoutInspector::new(
                 quote_token,
@@ -156,6 +160,7 @@ impl Inspectors {
                 cex_exchanges,
                 trade_config,
                 metrics,
+                profit_metrics,
             )) as DynMevInspector,
             Self::JitCexDex => static_object(JitCexDex {
                 cex_dex: CexDexMarkoutInspector::new(
@@ -164,8 +169,9 @@ impl Inspectors {
                     cex_exchanges,
                     trade_config,
                     metrics.clone(),
+                    profit_metrics.clone(),
                 ),
-                jit:     JitInspector::new(quote_token, db, metrics),
+                jit:     JitInspector::new(quote_token, db, metrics, profit_metrics),
             }) as DynMevInspector,
         }
     }

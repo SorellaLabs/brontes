@@ -13,7 +13,7 @@ use serde_with::serde_as;
 use crate::{
     constants::{EXECUTE_FFS_YO, SCP_MAIN_CEX_DEX_BOT},
     db::clickhouse_serde::tx_trace::*,
-    serde_utils::u256,
+    serde_utils::{u128_from_hex::deserialize_u128_from_hex, u256},
 };
 pub trait TraceActions {
     fn get_callframe_info(&self) -> CallFrameInfo<'_>;
@@ -221,9 +221,13 @@ pub struct TxTrace {
     pub trace:           Vec<TransactionTraceWithLogs>,
     #[serde(with = "u256")]
     pub tx_hash:         B256,
+    #[serde(deserialize_with = "deserialize_u128_from_hex")]
     pub gas_used:        u128,
+    #[serde(deserialize_with = "deserialize_u128_from_hex")]
     pub effective_price: u128,
     pub tx_index:        u64,
+    #[serde(default)]
+    pub timeboosted:     bool,
     // False if the transaction reverted
     pub is_success:      bool,
 }
@@ -237,8 +241,18 @@ impl TxTrace {
         gas_used: u128,
         effective_price: u128,
         is_success: bool,
+        timeboosted: bool,
     ) -> Self {
-        Self { block_number, trace, tx_hash, tx_index, effective_price, gas_used, is_success }
+        Self {
+            block_number,
+            trace,
+            tx_hash,
+            tx_index,
+            effective_price,
+            gas_used,
+            is_success,
+            timeboosted,
+        }
     }
 }
 
@@ -254,6 +268,7 @@ impl Serialize for TxTrace {
         ser_struct.serialize_field("gas_used", &self.gas_used)?;
         ser_struct.serialize_field("effective_price", &self.effective_price)?;
         ser_struct.serialize_field("tx_index", &self.tx_index)?;
+        ser_struct.serialize_field("timeboosted", &self.timeboosted)?;
         ser_struct.serialize_field("is_success", &self.is_success)?;
 
         let trace_idx = self.trace.iter().map(|trace| trace.trace_idx).collect_vec();
@@ -371,6 +386,7 @@ impl DbRow for TxTrace {
         "gas_used",
         "effective_price",
         "tx_index",
+        "timeboosted",
         "is_success",
         "trace_meta.trace_idx",
         "trace_meta.msg_sender",
@@ -414,4 +430,302 @@ impl DbRow for TxTrace {
         "trace_create_outputs.code",
         "trace_create_outputs.gas_used",
     ];
+}
+
+#[cfg(test)]
+mod tests {
+    use alloy_primitives::{Address, LogData};
+    use reth_primitives::B256;
+
+    use super::*;
+
+    #[test]
+    fn test_tx_trace_call_deserialization() {
+        let json_str = r#"
+        {
+            "gas_used": "0x5208",
+            "effective_price": "0x4a817c800",
+            "block_number": 12345,
+            "trace": [
+                {
+                    "trace": {
+                        "type": "call",
+                        "action": {
+                            "callType": "call",
+                            "from": "0x1111111111111111111111111111111111111111",
+                            "to": "0x2222222222222222222222222222222222222222",
+                            "gas": "0x5208",
+                            "input": "0x010203",
+                            "value": "0xde0b6b3a7640000"
+                        },
+                        "result": {
+                            "gasUsed": 21000,
+                            "output": "0x040506"
+                        },
+                        "subtraces": 0,
+                        "traceAddress": [],
+                        "from": "0x1111111111111111111111111111111111111111",
+                        "to": "0x2222222222222222222222222222222222222222",
+                        "gas": 21000,
+                        "input": "0x010203",
+                        "refundAddress": "0x0000000000000000000000000000000000000000",
+                        "author": "0x0000000000000000000000000000000000000000",
+                        "value": "0xde0b6b3a7640000"
+                    },
+                    "logs": [
+                        {
+                            "address": "0x2222222222222222222222222222222222222222",
+                            "topics": [
+                                "0x3333333333333333333333333333333333333333333333333333333333333333"
+                            ],
+                            "data": "0x010203",
+                            "blockNumber": "0x0",
+                            "transactionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                            "transactionIndex": "0x0",
+                            "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                            "logIndex": "0x0",
+                            "removed": false
+                        }
+                    ],
+                    "msg_sender": "0x1111111111111111111111111111111111111111",
+                    "trace_idx": 0
+                }
+            ],
+            "tx_hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+            "tx_index": 0,
+            "is_success": true
+        }"#;
+
+        let tx_trace: TxTrace =
+            serde_json::from_str(json_str).expect("Failed to deserialize TxTrace");
+
+        // Verify the top-level fields
+        assert_eq!(tx_trace.block_number, 12345);
+        assert_eq!(tx_trace.gas_used, 21000); // 0x5208 = 21000
+        assert_eq!(tx_trace.effective_price, 20000000000); // 0x4a817c800 = 20000000000
+        assert_eq!(tx_trace.tx_index, 0);
+        assert!(tx_trace.is_success);
+        assert_eq!(
+            tx_trace.tx_hash,
+            B256::from_str("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+                .unwrap()
+        );
+
+        // Verify the trace array
+        assert_eq!(tx_trace.trace.len(), 1);
+        let trace = &tx_trace.trace[0];
+
+        // Verify trace fields
+        assert_eq!(trace.trace_idx, 0);
+        assert_eq!(
+            trace.msg_sender,
+            Address::from_str("0x1111111111111111111111111111111111111111").unwrap()
+        );
+
+        // Verify logs
+        assert_eq!(trace.logs.len(), 1);
+        let log = &trace.logs[0];
+        assert_eq!(
+            log.address,
+            Address::from_str("0x2222222222222222222222222222222222222222").unwrap()
+        );
+        assert_eq!(
+            log.data,
+            LogData::new_unchecked(
+                vec![B256::from_str(
+                    "0x3333333333333333333333333333333333333333333333333333333333333333"
+                )
+                .unwrap()],
+                Bytes::from_str("0x010203").unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_tx_trace_reward_deserialization() {
+        let json_str = r#"
+        {
+            "gas_used": "0x5208",
+            "effective_price": "0x4a817c800",
+            "block_number": 12345,
+            "trace": [
+                {
+                    "trace": {
+                        "type": "reward",
+                        "action": {
+                            "author": "0x4444444444444444444444444444444444444444",
+                            "rewardType": "block",
+                            "value": "0x1bc16d674ec80000"
+                        },
+                        "subtraces": 0,
+                        "traceAddress": [],
+                        "from": "0x0000000000000000000000000000000000000000",
+                        "to": "0x0000000000000000000000000000000000000000",
+                        "refundAddress": "0x0000000000000000000000000000000000000000"
+                    },
+                    "logs": [],
+                    "msg_sender": "0x1111111111111111111111111111111111111111",
+                    "trace_idx": 0
+                }
+            ],
+            "tx_hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+            "tx_index": 0,
+            "is_success": true
+        }"#;
+
+        let tx_trace: TxTrace =
+            serde_json::from_str(json_str).expect("Failed to deserialize TxTrace");
+
+        // Verify the top-level fields
+        assert_eq!(tx_trace.block_number, 12345);
+        assert_eq!(tx_trace.gas_used, 21000); // 0x5208 = 21000
+        assert_eq!(tx_trace.effective_price, 20000000000); // 0x4a817c800 = 20000000000
+        assert_eq!(tx_trace.tx_index, 0);
+        assert!(tx_trace.is_success);
+        assert_eq!(
+            tx_trace.tx_hash,
+            B256::from_str("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+                .unwrap()
+        );
+
+        // Verify the trace array
+        assert_eq!(tx_trace.trace.len(), 1);
+        let trace = &tx_trace.trace[0];
+
+        // Verify trace fields
+        assert_eq!(trace.trace_idx, 0);
+        assert_eq!(
+            trace.msg_sender,
+            Address::from_str("0x1111111111111111111111111111111111111111").unwrap()
+        );
+
+        // Verify the reward action
+        match &trace.trace.action {
+            Action::Reward(reward) => {
+                assert_eq!(
+                    reward.author,
+                    Address::from_str("0x4444444444444444444444444444444444444444").unwrap()
+                );
+                assert_eq!(reward.reward_type, RewardType::Block);
+                assert_eq!(reward.value, U256::from_str("0x1bc16d674ec80000").unwrap());
+            }
+            _ => panic!("Expected reward action"),
+        }
+
+        // Verify logs
+        assert!(trace.logs.is_empty());
+    }
+
+    #[test]
+    fn test_tx_trace_delegate_and_static_calls() {
+        let json_str = r#"
+        {
+            "gas_used": "0x5208",
+            "effective_price": "0x4a817c800",
+            "block_number": 12345,
+            "trace": [
+                {
+                    "trace": {
+                        "type": "call",
+                        "action": {
+                            "callType": "delegatecall",
+                            "from": "0x1cd9a56c8c2ea913c70319a44da75e99255aa46f",
+                            "gas": "0x884d37",
+                            "input": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                            "to": "0x3f770ac673856f105b586bb393d122721265ad46",
+                            "value": "0x0"
+                        },
+                        "error": "",
+                        "result": {
+                            "gasUsed": 10987,
+                            "output": "0x0000000000000000000000000000000000000000000000000000000000000001"
+                        },
+                        "subtraces": 0,
+                        "traceAddress": [2, 0, 0, 1]
+                    },
+                    "logs": [],
+                    "msg_sender": "0x1cd9a56c8c2ea913c70319a44da75e99255aa46f",
+                    "trace_idx": 10
+                },
+                {
+                    "trace": {
+                        "type": "call",
+                        "action": {
+                            "callType": "staticcall",
+                            "from": "0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43",
+                            "gas": "0x8a4956",
+                            "input": "0x000000000000000000000000000000000000000000000000000000000000002000000000",
+                            "to": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+                            "value": "0x0"
+                        },
+                        "error": "",
+                        "result": {
+                            "gasUsed": 3250,
+                            "output": "0x0000000000000000000000000000000000000000000000000000000037768422"
+                        },
+                        "subtraces": 1,
+                        "traceAddress": [2, 0, 1]
+                    },
+                    "logs": [],
+                    "msg_sender": "0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43",
+                    "trace_idx": 11
+                }
+            ],
+            "tx_hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+            "tx_index": 0,
+            "is_success": true
+        }"#;
+
+        let tx_trace: TxTrace =
+            serde_json::from_str(json_str).expect("Failed to deserialize TxTrace");
+
+        // Verify the top-level fields
+        assert_eq!(tx_trace.block_number, 12345);
+        assert_eq!(tx_trace.gas_used, 21000); // 0x5208 = 21000
+        assert_eq!(tx_trace.effective_price, 20000000000); // 0x4a817c800 = 20000000000
+        assert_eq!(tx_trace.tx_index, 0);
+        assert!(tx_trace.is_success);
+
+        // Verify the trace array
+        assert_eq!(tx_trace.trace.len(), 2);
+
+        // Verify first trace (delegate call)
+        let delegate_trace = &tx_trace.trace[0];
+        assert_eq!(delegate_trace.trace_idx, 10);
+        assert_eq!(
+            delegate_trace.msg_sender,
+            Address::from_str("0x1cd9a56c8c2ea913c70319a44da75e99255aa46f").unwrap()
+        );
+        assert!(delegate_trace.is_delegate_call());
+        assert!(!delegate_trace.is_static_call());
+        assert_eq!(
+            delegate_trace.get_to_address(),
+            Address::from_str("0x3f770ac673856f105b586bb393d122721265ad46").unwrap()
+        );
+        assert_eq!(
+            delegate_trace.get_from_addr(),
+            Address::from_str("0x1cd9a56c8c2ea913c70319a44da75e99255aa46f").unwrap()
+        );
+        assert_eq!(delegate_trace.get_msg_value(), U256::ZERO);
+        assert_eq!(delegate_trace.get_trace_address(), vec![2, 0, 0, 1]);
+
+        // Verify second trace (static call)
+        let static_trace = &tx_trace.trace[1];
+        assert_eq!(static_trace.trace_idx, 11);
+        assert_eq!(
+            static_trace.msg_sender,
+            Address::from_str("0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43").unwrap()
+        );
+        assert!(static_trace.is_static_call());
+        assert!(!static_trace.is_delegate_call());
+        assert_eq!(
+            static_trace.get_to_address(),
+            Address::from_str("0xaf88d065e77c8cc2239327c5edb3a432268e5831").unwrap()
+        );
+        assert_eq!(
+            static_trace.get_from_addr(),
+            Address::from_str("0x690bc9d5a2e3f90016c3ac755d7f28e8a31d1c43").unwrap()
+        );
+        assert_eq!(static_trace.get_trace_address(), vec![2, 0, 1]);
+    }
 }

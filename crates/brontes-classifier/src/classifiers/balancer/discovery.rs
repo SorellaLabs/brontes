@@ -1,36 +1,32 @@
-use alloy_primitives::Address;
-use brontes_macros::discovery_impl;
-use brontes_pricing::Protocol;
-
 // Balancer V1 pool factory. See balancer pool lifecycle:
 // https://balancer.gitbook.io/balancer/core-concepts/protocol/pool-lifecycle
-discovery_impl!(
-    BalancerV1CoreDiscovery,
-    crate::BalancerV1CorePoolFactory::newBPoolCall,
-    0x9424B1412450D0f8Fc2255FAf6046b98213B76Bd,
-    |deployed_address: Address, trace_index: u64, _call_data: newBPoolCall, _| async move {
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV1,
-            pool_address: deployed_address,
-            tokens: vec![],
-        }]
-    }
-);
+// discovery_impl!(
+//     BalancerV1CoreDiscovery,
+//     crate::BalancerV1CorePoolFactory::newBPoolCall,
+//     0x9424B1412450D0f8Fc2255FAf6046b98213B76Bd,
+//     |deployed_address: Address, trace_index: u64, _call_data: newBPoolCall, _| async move {
+//         vec![NormalizedNewPool {
+//             trace_index,
+//             protocol: Protocol::BalancerV1,
+//             pool_address: deployed_address,
+//             tokens: vec![],
+//         }]
+//     }
+// );
 
-discovery_impl!(
-    BalancerV1SmartPoolDiscovery,
-    crate::BalancerV1SmartPoolFactory::newCrpCall,
-    0xed52D8E202401645eDAD1c0AA21e872498ce47D0,
-    |deployed_address: Address, trace_index: u64, _call_data: newCrpCall, _| async move {
-        vec![NormalizedNewPool {
-            trace_index,
-            protocol: Protocol::BalancerV1CRP,
-            pool_address: deployed_address,
-            tokens: vec![],
-        }]
-    }
-);
+// discovery_impl!(
+//     BalancerV1SmartPoolDiscovery,
+//     crate::BalancerV1SmartPoolFactory::newCrpCall,
+//     0xed52D8E202401645eDAD1c0AA21e872498ce47D0,
+//     |deployed_address: Address, trace_index: u64, _call_data: newCrpCall, _| async move {
+//         vec![NormalizedNewPool {
+//             trace_index,
+//             protocol: Protocol::BalancerV1CRP,
+//             pool_address: deployed_address,
+//             tokens: vec![],
+//         }]
+//     }
+// );
 
 #[cfg(test)]
 mod tests {

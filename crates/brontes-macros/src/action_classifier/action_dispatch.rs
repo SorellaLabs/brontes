@@ -1,3 +1,6 @@
+// Ensure these are at the top of
+// crates/brontes-macros/src/action_classifier/action_dispatch.rs
+
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{parse::Parse, Ident, Index, Token};
@@ -35,54 +38,54 @@ impl ActionDispatch {
             .map(|(i, n)| (Index::from(i), n))
             .unzip();
 
-        let match_stmt = expand_match_dispatch(&rest, &var_name, i);
+        let tracer_ident = Ident::new("tracer", Span::call_site());
+        let match_stmt = expand_match_dispatch(&rest, &var_name, i, &tracer_ident);
 
         Ok(quote!(
-                    #[derive(Default, Debug)]
-                    pub struct #struct_name(#(pub #name,)*);
+            #[derive(Default, Debug)]
+            pub struct #struct_name(#(pub #name,)*);
 
-                    impl crate::ActionCollection for #struct_name {
-                        fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader
-        + ::brontes_database::libmdbx::DBWriter
-                            > (
-                            &self,
-                            call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
-                            db_tx: &DB,
-                            block: u64,
-                            tx_idx: u64,
-                        ) -> Option<(
-                                ::brontes_pricing::types::DexPriceMsg,
-                                ::brontes_types::normalized_actions::Action
-                            )> {
+            impl crate::ActionCollection for #struct_name {
+                fn dispatch<DB: ::brontes_database::libmdbx::LibmdbxReader
+                    + ::brontes_database::libmdbx::DBWriter,
+                    T: ::brontes_types::traits::TracingProvider
+                >(
+                    &self,
+                    call_info: ::brontes_types::structured_trace::CallFrameInfo<'_>,
+                    db_tx: &DB,
+                    block: u64,
+                    tx_idx: u64,
+                    tracer: std::sync::Arc<T>
+                ) -> Option<(
+                        ::brontes_pricing::types::DexPriceMsg,
+                        ::brontes_types::normalized_actions::Action
+                    )> {
 
+                    let protocol_byte = db_tx.get_protocol(call_info.target_address)
+                        .ok()?.to_byte();
 
-                            let protocol_byte = db_tx.get_protocol(call_info.target_address)
-                                .ok()?.to_byte();
-
-                            if call_info.call_data.len() < 4 {
-                                return None
-                            }
-
-                            let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
-                                &call_info.call_data[0..4]);
-
-                            let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(
-                                &call_info.call_data[0..4]).0;
-
-                            let mut sig_w_byte= [0u8; 5];
-                            sig_w_byte[0..4].copy_from_slice(&sig);
-                            sig_w_byte[4] = protocol_byte;
-
-
-                            #(
-                                const #var_name: [u8; 5] = #const_fns();
-                            )*;
-
-                            #match_stmt
-
-                        }
+                    if call_info.call_data.len() < 4 {
+                        return None
                     }
-                ))
+
+                    let hex_selector = ::alloy_primitives::Bytes::copy_from_slice(
+                        &call_info.call_data[0..4]);
+
+                    let sig = ::alloy_primitives::FixedBytes::<4>::from_slice(
+                        &call_info.call_data[0..4]).0;
+
+                    let mut sig_w_byte= [0u8; 5];
+                    sig_w_byte[0..4].copy_from_slice(&sig);
+                    sig_w_byte[4] = protocol_byte;
+
+                    #(
+                        const #var_name: [u8; 5] = #const_fns();
+                    )*;
+
+                    #match_stmt // Contains .await on decode_call_trace
+                }
+            }
+        ))
     }
 }
 
@@ -95,7 +98,7 @@ impl Parse for ActionDispatch {
         }
 
         if !input.is_empty() {
-            return Err(syn::Error::new(input.span(), "Unwanted input at end of macro"))
+            return Err(syn::Error::new(input.span(), "Unwanted input at end of macro"));
         }
 
         Ok(Self { rest, struct_name })
@@ -106,6 +109,7 @@ fn expand_match_dispatch(
     reg_name: &[Ident],
     var_name: &[Ident],
     var_idx: Vec<Index>,
+    tracer: &Ident,
 ) -> TokenStream {
     quote!(
         match sig_w_byte {
@@ -117,12 +121,13 @@ fn expand_match_dispatch(
                     call_info,
                     block,
                     tx_idx,
-                    db_tx
+                    db_tx,
+                    #tracer
                 ).map(|res| {
                     let action = res.get_action();
                     Some((res, action))
                  }).unwrap_or_else(|e| {
-                        ::tracing::warn!(error=%e,
+                        ::tracing::warn!(error=%e, ?block, ?tx_idx,
                             "classifier: {} failed on function sig: {:?} for address: {:?}",
                             stringify!(#reg_name),
                             ::malachite::strings::ToLowerHexString::to_lower_hex_string(

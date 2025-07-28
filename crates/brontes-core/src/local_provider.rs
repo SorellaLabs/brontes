@@ -1,27 +1,49 @@
 use std::sync::Arc;
 
 use alloy_provider::{Provider, RootProvider};
-use alloy_rpc_types::AnyReceiptEnvelope;
+use alloy_rpc_types::Log;
 use alloy_transport_http::Http;
 use brontes_types::{structured_trace::TxTrace, traits::TracingProvider};
-use itertools::Itertools;
+use governor::{DefaultDirectRateLimiter, Jitter};
 use reth_primitives::{
     Address, BlockId, BlockNumber, BlockNumberOrTag, Bytecode, Bytes, Header, StorageValue, TxHash,
     B256,
 };
-use reth_rpc_types::{
-    state::StateOverride, BlockOverrides, Log, TransactionReceipt, TransactionRequest,
-};
+use reth_rpc_types::{state::StateOverride, BlockOverrides, Filter, TransactionRequest};
+
+use crate::rpc_client::{RpcClient, TraceOptions};
 
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
-    provider: Arc<RootProvider<Http<reqwest::Client>>>,
-    retries:  u8,
+    provider:   Arc<RootProvider<Http<reqwest::Client>, alloy_network::AnyNetwork>>,
+    rpc_client: Arc<RpcClient>,
+    retries:    u8,
+    limiter:    Option<Arc<DefaultDirectRateLimiter>>,
 }
 
 impl LocalProvider {
     pub fn new(url: String, retries: u8) -> Self {
-        Self { provider: Arc::new(RootProvider::new_http(url.parse().unwrap())), retries }
+        tracing::info!(target: "brontes", "creating local provider with url: {}", url);
+
+        Self {
+            provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
+            rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
+            retries,
+            limiter: None,
+        }
+    }
+
+    pub fn new_with_limiter(
+        url: String,
+        retries: u8,
+        limiter: Option<Arc<DefaultDirectRateLimiter>>,
+    ) -> Self {
+        Self {
+            provider: Arc::new(RootProvider::new_http(url.parse().unwrap())),
+            rpc_client: Arc::new(RpcClient::new(url.parse().unwrap())),
+            retries,
+            limiter,
+        }
     }
 }
 
@@ -38,11 +60,12 @@ impl TracingProvider for LocalProvider {
             panic!("local provider doesn't support block or state overrides");
         }
         // for tests, shit can get beefy
+        let any_request = alloy_rpc_types::WithOtherFields::new(request);
         let mut attempts = 0;
         loop {
             let res = self
                 .provider
-                .call(&request.clone(), block_number.unwrap_or(BlockId::latest()))
+                .call(&any_request, block_number.unwrap_or(BlockId::latest()))
                 .await;
             if res.is_ok() || attempts > self.retries {
                 return res.map_err(Into::into)
@@ -69,28 +92,44 @@ impl TracingProvider for LocalProvider {
         self.provider.get_block_number().await.map_err(Into::into)
     }
 
-    async fn replay_block_transactions(&self, _: BlockId) -> eyre::Result<Option<Vec<TxTrace>>> {
-        unreachable!(
-            "Currently we use a custom tracing model which does not allow for 
-                     a local trace to occur"
-        );
+    async fn replay_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> eyre::Result<Option<Vec<TxTrace>>> {
+        tracing::info!(target: "brontes", "replaying block transactions: {:?}", block_id);
+        match block_id {
+            BlockId::Hash(hash) => {
+                let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
+                let traces = self
+                    .rpc_client
+                    .debug_trace_block_by_hash(hash.block_hash, trace_options)
+                    .await?;
+                Ok(Some(traces))
+            }
+            BlockId::Number(number) => {
+                let trace_options = TraceOptions { tracer: "brontesTracer".to_string() };
+                if number.is_number() {
+                    let traces = self
+                        .rpc_client
+                        .debug_trace_block_by_number(number.as_number().unwrap(), trace_options)
+                        .await?;
+                    Ok(Some(traces))
+                } else {
+                    tracing::error!(target: "brontes", "number is not a numeric: {:?}", number);
+                    Ok(None)
+                }
+            }
+        }
     }
 
     async fn block_receipts(
         &self,
         number: BlockNumberOrTag,
-    ) -> eyre::Result<Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>> {
-        Ok(self.provider.get_block_receipts(number).await?.map(|t| {
-            t.into_iter()
-                .map(|tx| {
-                    tx.map_inner(|reciept_env| {
-                        let bloom = reciept_env.as_receipt_with_bloom().unwrap().clone();
-                        let log_type = reciept_env.tx_type() as u8;
-                        AnyReceiptEnvelope { inner: bloom, r#type: log_type }
-                    })
-                })
-                .collect_vec()
-        }))
+    ) -> eyre::Result<Option<Vec<alloy_rpc_types::AnyTransactionReceipt>>> {
+        // Get the receipts directly from the provider
+        let raw_receipts = self.provider.get_block_receipts(number).await?;
+        // Map the result
+        Ok(raw_receipts)
     }
 
     async fn block_and_tx_index(&self, hash: TxHash) -> eyre::Result<(u64, usize)> {
@@ -169,5 +208,133 @@ impl TracingProvider for LocalProvider {
 
         let bytecode = Bytecode::new_raw(bytes);
         Ok(Some(bytecode))
+    }
+
+    async fn get_logs(&self, filter: &Filter) -> eyre::Result<Vec<Log>> {
+        let mut attempts = 0;
+        loop {
+            if let Some(limiter) = self.limiter.as_ref() {
+                let jitter = Jitter::up_to(std::time::Duration::from_millis(100));
+                limiter.until_ready_with_jitter(jitter).await;
+            }
+
+            let res = self.provider.get_logs(filter).await;
+            if res.is_ok() || attempts > self.retries {
+                return res.map_err(|e| {
+                    eyre::eyre!("failed to get logs after {} retries: {}", attempts, e)
+                });
+            }
+            attempts += 1;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use alloy_rpc_types::Filter;
+    use alloy_sol_macro::sol;
+    use alloy_sol_types::SolEvent;
+    use tracing_subscriber::{fmt, EnvFilter};
+
+    use super::*;
+
+    sol!(
+        #![sol(all_derives)]
+        BalancerV2,
+        "../brontes-classifier/classifier-abis/balancer/BalancerV2Vault.json"
+    );
+
+    sol!(
+        #![sol(all_derives)]
+        UniswapV2,
+        "../brontes-classifier/classifier-abis/UniswapV2Factory.json"
+    );
+    sol!(
+        #![sol(all_derives)]
+        UniswapV3,
+        "../brontes-classifier/classifier-abis/UniswapV3Factory.json"
+    );
+
+    sol!(
+        #![sol(all_derives)]
+        UniswapV4,
+        "../brontes-classifier/classifier-abis/UniswapV4.json"
+    );
+    sol!(
+        #![sol(all_derives)]
+        CamelotV3,
+        "../brontes-classifier/classifier-abis/Algebra1_9Factory.json"
+    );
+    sol!(
+        #![sol(all_derives)]
+        FluidDEX,
+        "../brontes-classifier/classifier-abis/fluid/FluidDexFactory.json"
+    );
+
+    // Helper function to get RPC URL from environment
+    fn get_rpc_url() -> String {
+        dotenv::dotenv().ok();
+        env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set for tests")
+    }
+
+    fn init_tracing() {
+        let _ = fmt()
+            .with_env_filter(
+                EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()),
+            )
+            .with_target(false)
+            .with_thread_ids(false)
+            .with_file(false)
+            .with_line_number(false)
+            .try_init();
+    }
+
+    #[tokio::test]
+    async fn test_get_logs_with_address() {
+        init_tracing();
+        let url = get_rpc_url();
+        let provider = LocalProvider::new(url, 3);
+
+        // Create a filter with a specific address
+        // Using USDC contract address on Ethereum mainnet as an example
+        let addresses = vec![
+            brontes_types::constants::UNISWAP_V2_FACTORY_ADDRESS,
+            brontes_types::constants::UNISWAP_V3_FACTORY_ADDRESS,
+            brontes_types::constants::UNISWAP_V4_FACTORY_ADDRESS,
+            brontes_types::constants::BALANCER_V2_VAULT_ADDRESS,
+            brontes_types::constants::CAMELOT_V2_FACTORY_ADDRESS,
+            brontes_types::constants::CAMELOT_V3_FACTORY_ADDRESS,
+            brontes_types::constants::FLUID_DEX_FACTORY_ADDRESS,
+            brontes_types::constants::SUSHISWAP_V2_FACTORY_ADDRESS,
+            brontes_types::constants::SUSHISWAP_V3_FACTORY_ADDRESS,
+            brontes_types::constants::PANCAKESWAP_V2_FACTORY_ADDRESS,
+            brontes_types::constants::PANCAKESWAP_V3_FACTORY_ADDRESS,
+        ];
+
+        let topics = vec![
+            UniswapV2::PairCreated::SIGNATURE_HASH,
+            UniswapV3::PoolCreated::SIGNATURE_HASH,
+            UniswapV3::PoolCreated::SIGNATURE_HASH,
+            UniswapV4::Initialize::SIGNATURE_HASH,
+            CamelotV3::Pool::SIGNATURE_HASH,
+            FluidDEX::DexT1Deployed::SIGNATURE_HASH,
+            BalancerV2::TokensRegistered::SIGNATURE_HASH,
+        ];
+
+        let filter = Filter::new()
+            .address(addresses)
+            .from_block(BlockNumberOrTag::Number(338833846))
+            .to_block(BlockNumberOrTag::Number(338843846))
+            .event_signature(topics);
+
+        tracing::info!("Fetching logs for DEX factory addresses");
+        // Get logs with address filter
+        let logs = provider
+            .get_logs(&filter)
+            .await
+            .expect("Failed to get logs");
+        tracing::info!("Retrieved {} logs for DEX factory addresses", logs.len());
     }
 }

@@ -5,7 +5,7 @@ use std::{
 
 use alloy_primitives::FixedBytes;
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
     db::cex::{
         trades::{
@@ -61,9 +61,10 @@ impl<'db, DB: LibmdbxReader> CexDexMarkoutInspector<'db, DB> {
         cex_exchanges: &[CexExchange],
         trade_config: CexDexTradeConfig,
         metrics: Option<OutlierMetrics>,
+        profit_metrics: Option<ProfitMetrics>,
     ) -> Self {
         Self {
-            utils: SharedInspectorUtils::new(quote, db, metrics),
+            utils: SharedInspectorUtils::new(quote, db, metrics, profit_metrics),
             trade_config,
             cex_exchanges: cex_exchanges.to_owned(),
         }
@@ -251,6 +252,7 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             return None
         }
 
+        let protocols = self.utils.get_related_protocols_cex_dex(&dex_swaps);
         let mut possible_cex_dex: CexDexProcessing = self.detect_cex_dex(
             dex_swaps,
             &metadata,
@@ -287,6 +289,21 @@ impl<DB: LibmdbxReader> CexDexMarkoutInspector<'_, DB> {
             |_, token, amount| Some(price_map.get(&token)? * &amount),
         );
 
+        self.utils.get_profit_metrics().inspect(|m| {
+            m.publish_profit_metrics(
+                if batch_swap { MevType::CexDexRfq } else { MevType::CexDexTrades },
+                &protocols,
+                profit_usd,
+            );
+
+            if tx_info.timeboosted {
+                m.publish_profit_metrics_timeboosted(
+                    if batch_swap { MevType::CexDexRfq } else { MevType::CexDexTrades },
+                    &protocols,
+                    profit_usd,
+                );
+            }
+        });
         Some(Bundle { header, data: cex_dex })
     }
 

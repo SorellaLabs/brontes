@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
 use brontes_database::libmdbx::LibmdbxReader;
-use brontes_metrics::inspectors::OutlierMetrics;
+use brontes_metrics::inspectors::{OutlierMetrics, ProfitMetrics};
 use brontes_types::{
-    constants::{get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType},
+    constants::{
+        get_stable_type, is_euro_stable, is_gold_stable, is_usd_stable, StableType,
+        FILTER_TRANSFER_ADDRESSES,
+    },
     db::dex::PriceAt,
     mev::{AtomicArb, AtomicArbType, Bundle, BundleData, MevType},
     normalized_actions::{
@@ -29,8 +32,13 @@ pub struct AtomicArbInspector<'db, DB: LibmdbxReader> {
 }
 
 impl<'db, DB: LibmdbxReader> AtomicArbInspector<'db, DB> {
-    pub fn new(quote: Address, db: &'db DB, metrics: Option<OutlierMetrics>) -> Self {
-        Self { utils: SharedInspectorUtils::new(quote, db, metrics) }
+    pub fn new(
+        quote: Address,
+        db: &'db DB,
+        metrics: Option<OutlierMetrics>,
+        profit_metrics: Option<ProfitMetrics>,
+    ) -> Self {
+        Self { utils: SharedInspectorUtils::new(quote, db, metrics, profit_metrics) }
     }
 }
 
@@ -77,6 +85,20 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                     let info = info??;
                     let actions = action?;
 
+                    let (swaps, transfers, eth_transfers, burn, mint) = actions
+                        .into_iter()
+                        .split_actions::<(Vec<_>, Vec<_>, Vec<_>, Vec<_>, Vec<_>), _>((
+                            Action::try_swaps_merged,
+                            Action::try_transfer,
+                            Action::try_eth_transfer,
+                            Action::try_burn,
+                            Action::try_mint,
+                        ));
+
+                    if !burn.is_empty() || !mint.is_empty() {
+                        return None;
+                    }
+
                     self.process_swaps(
                         data.per_block_data
                             .iter()
@@ -84,13 +106,7 @@ impl<DB: LibmdbxReader> Inspector for AtomicArbInspector<'_, DB> {
                             .collect_vec(),
                         info,
                         metadata.clone(),
-                        actions
-                            .into_iter()
-                            .split_actions::<(Vec<_>, Vec<_>, Vec<_>), _>((
-                                Action::try_swaps_merged,
-                                Action::try_transfer,
-                                Action::try_eth_transfer,
-                            )),
+                        (swaps, transfers, eth_transfers),
                     )
                 })
                 .collect::<Vec<_>>()
@@ -113,7 +129,23 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
     ) -> Option<Bundle> {
         tracing::trace!(?info, "trying atomic");
         let (mut swaps, transfers, eth_transfers) = data;
-        let mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
+
+        let mut mev_addresses: FastHashSet<Address> = info.collect_address_set_for_accounting();
+
+        let recipient = match (transfers.last(), eth_transfers.last()) {
+            (Some(last_transfer), Some(last_eth_transfer)) => {
+                if last_transfer.trace_index > last_eth_transfer.trace_index {
+                    last_transfer.to
+                } else {
+                    last_eth_transfer.to
+                }
+            }
+            (Some(last_transfer), None) => last_transfer.to,
+            (None, Some(last_eth_transfer)) => last_eth_transfer.to,
+            (None, None) => info.eoa,
+        };
+
+        mev_addresses.insert(recipient);
 
         let mut ignore_addresses = mev_addresses.clone();
 
@@ -123,9 +155,10 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
 
         swaps.extend(self.utils.try_create_swaps(&transfers, ignore_addresses));
 
-        let possible_arb_type = self.is_possible_arb(&swaps)?;
+        let possible_arb_type = self.is_possible_arb(&swaps, &transfers)?;
 
         let account_deltas = transfers
+            .clone()
             .into_iter()
             .map(Action::from)
             .chain(eth_transfers.into_iter().map(Action::from))
@@ -187,7 +220,6 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 || self.is_stable_arb(&swaps, jump_index)
                 || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
             .then_some(profit),
-
             AtomicArbType::StablecoinArb => (is_profitable
                 || self.is_cross_pair_or_stable_arb(&info, requirement_multiplier))
             .then_some(profit),
@@ -195,11 +227,20 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 && is_profitable
                 || self.is_long_tail(&info, requirement_multiplier) & !has_dex_price)
                 .then_some(profit),
+            // set profit to zero when it is a cross chain swap as it complicates the profit
+            // calculation
+            AtomicArbType::CrossChain => None,
         }?;
 
         // given we have a atomic arb now, we will go and try to find the trigger
         // transaction that lead to this arb.
+
+        let protocols = self.utils.get_related_protocols_atomic(&trees);
         let trigger_tx = self.find_trigger_tx(&info, trees, &swaps);
+        let profit_usd = profit.to_float();
+        let protocols_str = protocols.iter().map(|p| p.to_string()).collect_vec();
+
+        tracing::debug!(?protocols, ?profit_usd, ?info.tx_hash, "Found atomic arb");
 
         let backrun = AtomicArb {
             block_number: metadata.block_num,
@@ -208,14 +249,15 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             gas_details: info.gas_details,
             swaps,
             arb_type: possible_arb_type,
+            profit_usd,
+            protocols: protocols_str,
         };
         let data = BundleData::AtomicArb(backrun);
-
         let header = self.utils.build_bundle_header(
             vec![account_deltas],
             vec![info.tx_hash],
             &info,
-            profit.to_float(),
+            profit_usd,
             &[info.gas_details],
             metadata.clone(),
             MevType::AtomicArb,
@@ -230,6 +272,31 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
                 )
             },
         );
+
+        self.utils.get_profit_metrics().inspect(|m| {
+            if profit_usd.abs() > 100.0 {
+                tracing::warn!(?header.tx_hash, ?profit_usd, "abnormal profit for arb type: {}", possible_arb_type);
+                m.publish_abnormal_profit(MevType::AtomicArb, &protocols, profit_usd);
+            }
+
+            m.publish_profit_metrics(MevType::AtomicArb, &protocols, profit_usd);
+            m.publish_profit_metrics_atomic_arb(
+                MevType::AtomicArb,
+                &protocols,
+                profit_usd,
+                possible_arb_type,
+            );
+
+            if info.timeboosted {
+                m.publish_profit_metrics_timeboosted(MevType::AtomicArb, &protocols, profit_usd);
+                m.publish_profit_metrics_timeboosted_atomic_arb(
+                    MevType::AtomicArb,
+                    &protocols,
+                    profit_usd,
+                    possible_arb_type,
+                );
+            }
+        });
 
         Some(Bundle { header, data })
     }
@@ -311,7 +378,17 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
             .unwrap_or_default()
     }
 
-    fn is_possible_arb(&self, swaps: &[NormalizedSwap]) -> Option<AtomicArbType> {
+    fn is_possible_arb(
+        &self,
+        swaps: &[NormalizedSwap],
+        transfers: &[NormalizedTransfer],
+    ) -> Option<AtomicArbType> {
+        // We filter out all the possible arbitrages that interacts with Crosschain swap
+        // protocols.
+        if self.is_bridge_or_crosschain_arb(transfers) {
+            return Some(AtomicArbType::CrossChain)
+        }
+
         match swaps.len() {
             0 | 1 => None,
             2 => {
@@ -392,6 +469,13 @@ impl<DB: LibmdbxReader> AtomicArbInspector<'_, DB> {
         }
 
         res
+    }
+
+    fn is_bridge_or_crosschain_arb(&self, transfers: &[NormalizedTransfer]) -> bool {
+        transfers.iter().any(|transfer| {
+            FILTER_TRANSFER_ADDRESSES.contains(&transfer.from)
+                || FILTER_TRANSFER_ADDRESSES.contains(&transfer.to)
+        })
     }
 }
 

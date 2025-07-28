@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use crate::{
-    constants::{ETH_ADDRESS, WETH_ADDRESS},
+    constants::{ETH_ADDRESSES, WETH_ADDRESS},
     db::{clickhouse_serde::dex::dex_quote, redefined_types::malachite::RationalRedefined},
     implement_table_value_codecs_with_zc,
     pair::{Pair, PairRedefined},
@@ -113,10 +113,10 @@ impl DexQuotes {
     /// the index to zero
     #[cfg(feature = "test_pricing")]
     pub fn price_at(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
-        if pair.0 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.0) {
             pair.0 = WETH_ADDRESS;
         }
-        if pair.1 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.1) {
             pair.1 = WETH_ADDRESS;
         }
         let s_idx = tx;
@@ -152,10 +152,10 @@ impl DexQuotes {
     /// the price at all previous indexes in the block
     #[cfg(not(feature = "test_pricing"))]
     pub fn price_at(&self, mut pair: Pair, tx: usize) -> Option<DexPrices> {
-        if pair.0 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.0) {
             pair.0 = WETH_ADDRESS;
         }
-        if pair.1 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.1) {
             pair.1 = WETH_ADDRESS;
         }
         let s_idx = tx;
@@ -181,10 +181,10 @@ impl DexQuotes {
     }
 
     pub fn price_at_or_before(&self, mut pair: Pair, mut tx: usize) -> Option<DexPrices> {
-        if pair.0 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.0) {
             pair.0 = WETH_ADDRESS;
         }
-        if pair.1 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.1) {
             pair.1 = WETH_ADDRESS;
         }
         let s_idx = tx;
@@ -217,10 +217,10 @@ impl DexQuotes {
     }
 
     pub fn price_for_block(&self, mut pair: Pair, price_at: BlockPrice) -> Option<Rational> {
-        if pair.0 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.0) {
             pair.0 = WETH_ADDRESS;
         }
-        if pair.1 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.1) {
             pair.1 = WETH_ADDRESS;
         }
 
@@ -272,10 +272,10 @@ impl DexQuotes {
     }
 
     fn get_price(&self, mut pair: Pair, tx: usize) -> Option<&DexPrices> {
-        if pair.0 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.0) {
             pair.0 = WETH_ADDRESS;
         }
-        if pair.1 == ETH_ADDRESS {
+        if ETH_ADDRESSES.contains(&pair.1) {
             pair.1 = WETH_ADDRESS;
         }
         self.0.get(tx)?.as_ref()?.get(&pair)

@@ -169,6 +169,7 @@ impl InspectorTestUtils {
             ],
             CexDexTradeConfig::default(),
             None,
+            None,
         );
         let data = BlockData { metadata: metadata.into(), tree: tree.into() };
         let multi = MultiBlockData { per_block_data: vec![data], blocks: 1 };
@@ -258,6 +259,7 @@ impl InspectorTestUtils {
                 CexExchange::Upbit,
             ],
             cex_trade_config,
+            None,
             None,
         );
 
@@ -367,6 +369,7 @@ impl InspectorTestUtils {
                     self.classifier_inspector.libmdbx,
                     &[CexExchange::Binance],
                     CexDexTradeConfig::default(),
+                    None,
                     None,
                 )
             })

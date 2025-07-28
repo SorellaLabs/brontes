@@ -226,6 +226,7 @@ fn pool_id_to_address(pool_id: FixedBytes<32>) -> Address {
 
 #[cfg(test)]
 mod tests {
+
     use std::str::FromStr;
 
     use alloy_primitives::{hex, B256};

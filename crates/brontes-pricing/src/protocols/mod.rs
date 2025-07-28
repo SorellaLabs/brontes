@@ -1,8 +1,8 @@
+pub mod erc20;
 pub mod errors;
 pub mod lazy;
 pub mod uniswap_v2;
 pub mod uniswap_v3;
-
 use std::{future::Future, sync::Arc};
 
 use alloy_primitives::{Address, Log};
@@ -52,6 +52,7 @@ impl LoadState for Protocol {
                 | Self::SushiSwapV3
                 | Self::PancakeSwapV2
                 | Self::PancakeSwapV3
+                | Self::CamelotV2
         )
     }
 
@@ -64,7 +65,7 @@ impl LoadState for Protocol {
         fp: PairWithFirstPoolHop,
     ) -> Result<PoolFetchSuccess, PoolFetchError> {
         match self {
-            Self::UniswapV2 | Self::SushiSwapV2 | Self::PancakeSwapV2 => {
+            Self::UniswapV2 | Self::SushiSwapV2 | Self::PancakeSwapV2 | Self::CamelotV2 => {
                 let (pool, res) = if let Ok(pool) =
                     UniswapV2Pool::new_load_on_block(address, provider.clone(), block_number - 1)
                         .await

@@ -26,7 +26,7 @@ discovery_impl!(
 discovery_impl!(
     PancakeSwapV2Discovery,
     crate::UniswapV2Factory::createPairCall,
-    0x1097053Fd2ea711dad45caCcc45EfF7548fCB362,
+    0x02a84c1b3BBD7401a5f7fa98a384EBC70bB5749E,
     |deployed_address: Address, trace_index: u64, call_data: createPairCall, _| async move {
         let mut token_a = call_data.tokenA;
         let mut token_b = call_data.tokenB;

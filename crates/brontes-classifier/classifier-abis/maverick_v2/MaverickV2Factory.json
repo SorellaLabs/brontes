@@ -1,0 +1,292 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "contract IMaverickV2Pool",
+        "name": "poolAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "protocolFeeRatio",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "feeAIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "feeBIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tickSpacing",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "lookback",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "int32",
+        "name": "activeTick",
+        "type": "int32"
+      },
+      {
+        "indexed": false,
+        "internalType": "contract IERC20",
+        "name": "tokenA",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "contract IERC20",
+        "name": "tokenB",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "kinds",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "accessor",
+        "type": "address"
+      }
+    ],
+    "name": "PoolCreated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "fee",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint16",
+        "name": "tickSpacing",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint32",
+        "name": "lookback",
+        "type": "uint32"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenA",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenB",
+        "type": "address"
+      },
+      {
+        "internalType": "int32",
+        "name": "activeTick",
+        "type": "int32"
+      },
+      {
+        "internalType": "uint8",
+        "name": "kinds",
+        "type": "uint8"
+      }
+    ],
+    "name": "create",
+    "outputs": [
+      {
+        "internalType": "contract IMaverickV2Pool",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "fee",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint16",
+        "name": "tickSpacing",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint32",
+        "name": "lookback",
+        "type": "uint32"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenA",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenB",
+        "type": "address"
+      },
+      {
+        "internalType": "int32",
+        "name": "activeTick",
+        "type": "int32"
+      },
+      {
+        "internalType": "uint8",
+        "name": "kinds",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "accessor",
+        "type": "address"
+      }
+    ],
+    "name": "createPermissioned",
+    "outputs": [
+      {
+        "internalType": "contract IMaverickV2Pool",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "feeAIn",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint64",
+        "name": "feeBIn",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint16",
+        "name": "tickSpacing",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint32",
+        "name": "lookback",
+        "type": "uint32"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenA",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenB",
+        "type": "address"
+      },
+      {
+        "internalType": "int32",
+        "name": "activeTick",
+        "type": "int32"
+      },
+      {
+        "internalType": "uint8",
+        "name": "kinds",
+        "type": "uint8"
+      }
+    ],
+    "name": "create",
+    "outputs": [
+      {
+        "internalType": "contract IMaverickV2Pool",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "feeAIn",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint64",
+        "name": "feeBIn",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint16",
+        "name": "tickSpacing",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint32",
+        "name": "lookback",
+        "type": "uint32"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenA",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "tokenB",
+        "type": "address"
+      },
+      {
+        "internalType": "int32",
+        "name": "activeTick",
+        "type": "int32"
+      },
+      {
+        "internalType": "uint8",
+        "name": "kinds",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "accessor",
+        "type": "address"
+      }
+    ],
+    "name": "createPermissioned",
+    "outputs": [
+      {
+        "internalType": "contract IMaverickV2Pool",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

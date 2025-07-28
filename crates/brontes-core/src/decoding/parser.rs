@@ -7,7 +7,7 @@ use alloy_primitives::Address;
 use brontes_metrics::trace::types::{BlockStats, TraceParseErrorKind, TransactionStats};
 #[cfg(feature = "dyn-decode")]
 use brontes_types::FastHashMap;
-use futures::future::join_all;
+use brontes_types::TimeboostTransactionReceipt;
 use reth_primitives::BlockHash;
 #[cfg(feature = "dyn-decode")]
 use reth_rpc_types::trace::parity::Action;
@@ -98,6 +98,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     /// executes the tracing of a given block
     #[allow(unreachable_code)]
     pub async fn execute_block(self, block_num: u64) -> Option<(BlockHash, Vec<TxTrace>, Header)> {
+        tracing::info!(target: "brontes", "executing block: {:?}", block_num);
         if let Some(res) = self.load_block_from_db(block_num).await {
             tracing::debug!(%block_num, traces_in_block= res.0.len(),"loaded trace for db");
 
@@ -109,15 +110,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
 
             return block_hash.map(|b| (b, res.0, res.1))
         }
-        #[cfg(not(feature = "local-reth"))]
-        {
-            tracing::error!("no block found in db");
-            return None
-        }
 
+        tracing::info!(target: "brontes", "no block found in db, tracing block: {:?}", block_num);
         let parity_trace = self.trace_block(block_num).await;
         let receipts = self.get_receipts(block_num).await;
-
         if parity_trace.0.is_none() && receipts.0.is_none() {
             #[cfg(feature = "dyn-decode")]
             self.metrics_tx
@@ -175,11 +171,6 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             }
 
             return block_hash.map(|b| (b, res.0, res.1))
-        }
-        #[cfg(not(feature = "local-reth"))]
-        {
-            tracing::error!("no block found in db");
-            return None
         }
 
         let parity_trace = self.trace_block(block_num).await;
@@ -265,6 +256,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
 
     #[cfg(not(feature = "dyn-decode"))]
     pub(crate) async fn trace_block(&self, block_num: u64) -> (Option<Vec<TxTrace>>, BlockStats) {
+        tracing::info!(target: "brontes", "tracing block: {:?}", block_num);
         let merged_trace = self
             .tracer
             .replay_block_transactions(BlockId::Number(BlockNumberOrTag::Number(block_num)))
@@ -290,7 +282,10 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     pub(crate) async fn get_receipts(
         &self,
         block_num: u64,
-    ) -> (Option<Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>>, BlockStats) {
+    ) -> (
+        Option<Vec<TimeboostTransactionReceipt<TransactionReceipt<AnyReceiptEnvelope<Log>>>>>,
+        BlockStats,
+    ) {
         let tx_receipts = self
             .tracer
             .block_receipts(BlockNumberOrTag::Number(block_num))
@@ -298,7 +293,11 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         let mut stats = BlockStats::new(block_num, None);
 
         let receipts = match tx_receipts {
-            Ok(Some(t)) => Some(t),
+            Ok(Some(t)) => Some(
+                t.into_iter()
+                    .map(TimeboostTransactionReceipt::from)
+                    .collect::<Vec<_>>(),
+            ),
             Ok(None) => {
                 stats.err = Some(TraceParseErrorKind::TracesMissingBlock);
                 None
@@ -313,30 +312,31 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
         &self,
         block_trace: Vec<TxTrace>,
         #[cfg(feature = "dyn-decode")] dyn_json: FastHashMap<Address, JsonAbi>,
-        block_receipts: Vec<TransactionReceipt<AnyReceiptEnvelope<Log>>>,
+        block_receipts: Vec<
+            TimeboostTransactionReceipt<TransactionReceipt<AnyReceiptEnvelope<Log>>>,
+        >,
         block_num: u64,
     ) -> (Vec<TxTrace>, BlockStats, Header) {
         let mut stats = BlockStats::new(block_num, None);
 
-        let (traces, tx_stats): (Vec<_>, Vec<_>) =
-            join_all(block_trace.into_iter().zip(block_receipts.into_iter()).map(
-                |(trace, receipt)| {
-                    let tx_hash = trace.tx_hash;
-
-                    self.parse_transaction(
-                        trace,
-                        #[cfg(feature = "dyn-decode")]
-                        &dyn_json,
-                        block_num,
-                        tx_hash,
-                        receipt.transaction_index.unwrap(),
-                        receipt.gas_used,
-                        receipt.effective_gas_price,
-                    )
-                },
-            ))
-            .await
+        let (traces, tx_stats): (Vec<_>, Vec<_>) = block_trace
             .into_iter()
+            .zip(block_receipts.into_iter())
+            .map(|(trace, receipt)| {
+                let tx_hash = trace.tx_hash;
+
+                self.parse_transaction(
+                    trace,
+                    #[cfg(feature = "dyn-decode")]
+                    &dyn_json,
+                    block_num,
+                    tx_hash,
+                    receipt.inner.transaction_index.unwrap(),
+                    receipt.timeboosted,
+                    receipt.inner.gas_used,
+                    receipt.inner.effective_gas_price,
+                )
+            })
             .unzip();
 
         stats.txs = tx_stats;
@@ -354,13 +354,14 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
     }
 
     /// parses a transaction and gathers the traces
-    async fn parse_transaction(
+    fn parse_transaction(
         &self,
         mut tx_trace: TxTrace,
         #[cfg(feature = "dyn-decode")] dyn_json: &FastHashMap<Address, JsonAbi>,
         block_num: u64,
         tx_hash: B256,
         tx_idx: u64,
+        timeboosted: bool,
         gas_used: u128,
         effective_gas_price: u128,
     ) -> (TxTrace, TransactionStats) {
@@ -369,6 +370,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
             tx_hash,
             tx_idx: tx_idx as u16,
             traces: vec![],
+            timeboosted,
             err: None,
         };
 
@@ -387,6 +389,7 @@ impl<T: TracingProvider, DB: LibmdbxReader + DBWriter> TraceParser<T, DB> {
 
         tx_trace.effective_price = effective_gas_price;
         tx_trace.gas_used = gas_used;
+        tx_trace.timeboosted = timeboosted;
 
         (tx_trace, stats)
     }

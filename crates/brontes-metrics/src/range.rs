@@ -1,31 +1,45 @@
 use std::{pin::Pin, time::Instant};
 
+use alloy_primitives::Address;
 use metrics::{Counter, Gauge, Histogram};
 use prometheus::{
-    register_int_counter_vec, register_int_gauge_vec, HistogramVec, IntCounterVec, IntGaugeVec,
-    Opts,
+    register_gauge_vec, register_int_counter, register_int_counter_vec, register_int_gauge,
+    register_int_gauge_vec, GaugeVec, HistogramVec, IntCounter, IntCounterVec, IntGauge,
+    IntGaugeVec, Opts,
 };
 use reth_metrics::Metrics;
 
 #[derive(Clone)]
 pub struct GlobalRangeMetrics {
     /// the amount of blocks all inspectors have completed
-    pub completed_blocks:            Counter,
+    pub completed_blocks: Counter,
     /// the runtime for inspectors
-    pub processing_run_time_ms:      Histogram,
+    pub processing_run_time_ms: Histogram,
     /// complete
-    pub completed_blocks_range:      IntCounterVec,
+    pub completed_blocks_range: IntCounterVec,
     /// the amount of blocks the inspector has completed
     /// the total blocks in the inspector range
-    pub total_blocks_range:          IntCounterVec,
+    pub total_blocks_range: IntCounterVec,
     /// range poll rate
-    pub poll_rate:                   IntCounterVec,
+    pub poll_rate: IntCounterVec,
     /// pending inspector runs
     pub active_inspector_processing: IntGaugeVec,
-    pub block_tracing_throughput:    HistogramVec,
-    pub classification_throughput:   HistogramVec,
+    pub block_tracing_throughput: HistogramVec,
+    pub classification_throughput: HistogramVec,
     /// amount of pending trees in dex pricing / metadata fetcher
-    pub pending_trees:               IntGaugeVec,
+    pub pending_trees: IntGaugeVec,
+    /// amount of transactions
+    pub transactions_throughput: HistogramVec,
+    /// latest block number processed
+    pub latest_processed_block: IntGauge,
+    /// gas used for the range
+    pub gas_used: IntGaugeVec,
+    /// express lane auction
+    pub express_lane_auction_win_total: IntCounterVec,
+    pub express_lane_auction_first_price: GaugeVec,
+    pub express_lane_auction_price: GaugeVec,
+    pub express_lane_current_round: IntGauge,
+    pub express_lane_transfer_controller_total: IntCounterVec,
 }
 
 impl GlobalRangeMetrics {
@@ -80,7 +94,15 @@ impl GlobalRangeMetrics {
             "tree_builder_throughput",
             "tree builder speed ",
             &["range_id"],
-            buckets
+            buckets.clone()
+        )
+        .unwrap();
+
+        let tx_process = prometheus::register_histogram_vec!(
+            "tx_process_throughput",
+            "tx process speed",
+            &["range_id"],
+            buckets.clone()
         )
         .unwrap();
 
@@ -88,6 +110,49 @@ impl GlobalRangeMetrics {
             "range_pending_trees",
             "amount of pending trees in metadata fetcher and dex pricer",
             &["range_id"]
+        )
+        .unwrap();
+
+        let latest_processed_block = register_int_gauge!(
+            "latest_processed_block",
+            "latest block number that has been processed"
+        )
+        .unwrap();
+
+        let gas_used =
+            register_int_gauge_vec!("gas_used", "gas used for the range", &["range_id"]).unwrap();
+
+        let express_lane_auction_win_total = register_int_counter_vec!(
+            "express_lane_auction_win_total",
+            "express lane auction winner total",
+            &["address"]
+        )
+        .unwrap();
+
+        let express_lane_current_round = register_int_gauge!(
+            "express_lane_current_round",
+            "current round of the express lane auction"
+        )
+        .unwrap();
+
+        let express_lane_transfer_controller_total = register_int_counter_vec!(
+            "express_lane_transfer_controller_total",
+            "express lane transfer controller total",
+            &["address"]
+        )
+        .unwrap();
+
+        let express_lane_auction_price = register_gauge_vec!(
+            "express_lane_auction_price",
+            "express lane auction price",
+            &["address"]
+        )
+        .unwrap();
+
+        let express_lane_auction_first_price = register_gauge_vec!(
+            "express_lane_auction_first_price",
+            "express lane auction first price",
+            &["address"]
         )
         .unwrap();
 
@@ -99,8 +164,16 @@ impl GlobalRangeMetrics {
             total_blocks_range,
             block_tracing_throughput: block_tracing,
             classification_throughput: tree_builder,
+            transactions_throughput: tx_process,
             completed_blocks: metrics::register_counter!("brontes_total_completed_blocks"),
             processing_run_time_ms: metrics::register_histogram!("brontes_processing_runtime_ms"),
+            latest_processed_block,
+            gas_used,
+            express_lane_auction_win_total,
+            express_lane_auction_first_price,
+            express_lane_auction_price,
+            express_lane_current_round,
+            express_lane_transfer_controller_total,
         }
     }
 
@@ -145,6 +218,7 @@ impl GlobalRangeMetrics {
     pub async fn tree_builder<R>(
         self,
         id: usize,
+        txs_count: usize,
         f: impl FnOnce() -> Pin<Box<dyn futures::Future<Output = R> + Send>>,
     ) -> R {
         let instant = Instant::now();
@@ -153,6 +227,9 @@ impl GlobalRangeMetrics {
         self.classification_throughput
             .with_label_values(&[&format!("{id}")])
             .observe(elapsed as f64);
+        self.transactions_throughput
+            .with_label_values(&[&format!("{id}")])
+            .observe(txs_count as f64);
         res
     }
 
@@ -180,6 +257,43 @@ impl GlobalRangeMetrics {
         self.processing_run_time_ms.record(elapsed);
 
         res
+    }
+
+    pub fn update_latest_block(&self, block_num: u64) {
+        self.latest_processed_block.set(block_num as i64);
+    }
+
+    pub fn update_gas_used(&self, id: usize, gas: u64) {
+        self.gas_used
+            .with_label_values(&[&format!("{id}")])
+            .set(gas as i64);
+    }
+
+    pub fn add_express_lane_auction_winner(
+        &self,
+        winner_address: Address,
+        price: f64,
+        first_price: f64,
+    ) {
+        self.express_lane_auction_win_total
+            .with_label_values(&[&winner_address.to_string()])
+            .inc();
+        self.express_lane_auction_price
+            .with_label_values(&[&winner_address.to_string()])
+            .set(price);
+        self.express_lane_auction_first_price
+            .with_label_values(&[&winner_address.to_string()])
+            .set(first_price);
+    }
+
+    pub fn add_transfer_controller(&self, address: Address) {
+        self.express_lane_transfer_controller_total
+            .with_label_values(&[&address.to_string()])
+            .inc();
+    }
+
+    pub fn set_current_round(&self, round: u64) {
+        self.express_lane_current_round.set(round as i64);
     }
 }
 

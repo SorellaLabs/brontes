@@ -26,6 +26,7 @@ alloy-sol-types.workspace = true
 alloy-sol-macro = { workspace = true, features = ["json"] }
 alloy-rpc-types.workspace = true
 alloy-rlp.workspace = true
+alloy-dyn-abi.workspace = true
 
 # reth
 reth-rpc-types.workspace = true
@@ -42,6 +43,8 @@ tracing.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
+# http
+reqwest.workspace = true
 
 # misc
 hex-literal.workspace = true
@@ -78,7 +81,7 @@ criterion = "0.5"
 brontes-macros.workspace = true
 
 [features]
-default = []
+default = ["arbitrum"]
 tests = [
   "reth-tracing-ext",
   "brontes-core/tests",
@@ -97,4 +100,4 @@ local-clickhouse = [
   "brontes-core/local-clickhouse",
 ]
 
-
+arbitrum = ["brontes-types/arbitrum"]

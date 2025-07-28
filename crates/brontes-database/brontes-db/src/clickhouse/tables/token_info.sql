@@ -1,12 +1,9 @@
-CREATE TABLE brontes.token_info ON CLUSTER eth_cluster0
+CREATE TABLE IF NOT EXISTS brontes.token_info 
 (
     `address` String,
     `symbol` String,
     `decimals` UInt8
 )
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/token_info', '{replica}')
+ENGINE = ReplacingMergeTree()
 PRIMARY KEY `address`
 ORDER BY `address`
-
-
-

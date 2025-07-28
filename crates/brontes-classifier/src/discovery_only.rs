@@ -91,6 +91,7 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
                                 - (header.base_fee_per_gas.unwrap_or_default() as u128),
                         },
                         data_store: NodeData(vec![Some(action)]),
+                        timeboosted: trace.timeboosted,
                     };
 
                     let tx_trace = &trace.trace;
@@ -212,9 +213,13 @@ impl<'db, T: TracingProvider, DB: LibmdbxReader + DBWriter> DiscoveryOnlyClassif
             }
         }
 
-        if let Some(results) =
-            ProtocolClassifier::default().dispatch(call_info, self.libmdbx, block, tx_idx)
-        {
+        if let Some(results) = ProtocolClassifier::default().dispatch(
+            call_info,
+            self.libmdbx,
+            block,
+            tx_idx,
+            self.provider.clone(),
+        ) {
             if results.1.is_new_pool() {
                 let Action::NewPool(p) = &results.1 else { unreachable!() };
                 self.insert_new_pool(block, p.clone()).await;

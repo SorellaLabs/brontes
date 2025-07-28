@@ -1,8 +1,8 @@
-CREATE TABLE brontes.run_id ON CLUSTER eth_cluster0
+CREATE TABLE IF NOT EXISTS brontes.run_id 
 (
     `run_id` UInt64,
     `last_updated` UInt64 DEFAULT now()
 )
-ENGINE = ReplicatedReplacingMergeTree('/clickhouse/eth_cluster0/tables/all/brontes/run_id', '{replica}', last_updated)
+ENGINE = MergeTree()
 ORDER BY run_id
 SETTINGS index_granularity = 8192
