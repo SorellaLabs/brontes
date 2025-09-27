@@ -2,7 +2,7 @@ ARG TARGETOS=linux
 ARG TARGETARCH=x86_64
 
 FROM rustlang/rust:nightly AS chef
-RUN apt-get update && apt-get -y upgrade && apt-get install -y libclang-dev pkg-config cmake libclang-dev
+RUN apt-get update && apt-get -y upgrade && apt-get install -y libclang-dev pkg-config cmake
 RUN cargo install cargo-chef
 WORKDIR /app
 
@@ -22,7 +22,8 @@ COPY . .
 
 RUN cargo +nightly build --release --features "$FEATURES"
 
-FROM alpine AS runtime
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/brontes /usr/local/bin/brontes
 
 EXPOSE 6923
