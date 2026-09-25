@@ -23,7 +23,7 @@ ffi = { package = "reth-mdbx-sys", git = "https://github.com/paradigmxyz/reth", 
 [dev-dependencies]
 tempfile = "3.8"
 criterion = "0.5"
-pprof = "0.13"
+pprof = "0.14"
 
 # For macOS ARM64: use system libffi, as building from source does not work
 # you can install it via brew install libffi
